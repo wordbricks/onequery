@@ -3,7 +3,6 @@ members = [
   "crates/onequery-cli",
   "crates/onequery-cli-core",
   "crates/onequery-config",
-  "crates/onequery-wtl",
 ]
 resolver = "2"
 
@@ -25,7 +24,6 @@ license = "Apache-2.0"
 onequery-cli = { path = "crates/onequery-cli" }
 onequery-cli-core = { path = "crates/onequery-cli-core" }
 onequery-config = { path = "crates/onequery-config" }
-onequery-wtl = { path = "crates/onequery-wtl" }
 
 # External
 clap = "4"
