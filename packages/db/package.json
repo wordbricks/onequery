@@ -22,9 +22,8 @@
     "db:seed:dev": "bun run ../../scripts/run-local-env-command.ts -- bun src/scripts/seed-dev.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.4.2",
     "@onequery/contracts": "workspace:*",
-    "@types/better-sqlite3": "7.6.13",
-    "better-sqlite3": "12.8.0",
     "drizzle-orm": "0.45.1",
     "pg": "8.17.1",
     "postgres": "3.4.8",

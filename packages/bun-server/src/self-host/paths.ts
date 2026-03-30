@@ -5,7 +5,7 @@ const APP_DIR_NAME = "onequery";
 const SELF_HOST_CONFIG_DIR_NAME = "self-host";
 const CONFIG_FILENAME = "config.toml";
 const SECRETS_CONFIG_FILENAME = "secrets.toml";
-const SQLITE_FILENAME = "onequery.sqlite";
+const PGLITE_DIRNAME = "onequery";
 const SERVER_LOG_FILENAME = "server.log";
 const PID_FILENAME = "server.pid";
 const LOCK_FILENAME = "server.lock";
@@ -15,8 +15,7 @@ export interface SelfHostRuntimePaths {
   dataDir: string;
   configPath: string;
   secretsPath: string;
-  sqliteDir: string;
-  sqlitePath: string;
+  pgliteDir: string;
   logsDir: string;
   serverLogPath: string;
   backupsDir: string;
@@ -42,7 +41,7 @@ export function resolveSelfHostRuntimePaths(
   const cwd = process.cwd();
   const configDir = resolveConfigDir(env, platformAccess, cwd);
   const dataDir = resolveDataDir(env, platformAccess, cwd);
-  const sqliteDir = resolve(dataDir, "sqlite");
+  const pgliteDir = resolve(dataDir, "pglite", PGLITE_DIRNAME);
   const logsDir = resolve(dataDir, "logs");
   const runDir = resolve(dataDir, "run");
 
@@ -51,8 +50,7 @@ export function resolveSelfHostRuntimePaths(
     dataDir,
     configPath: resolve(configDir, CONFIG_FILENAME),
     secretsPath: resolve(configDir, SECRETS_CONFIG_FILENAME),
-    sqliteDir,
-    sqlitePath: resolve(sqliteDir, SQLITE_FILENAME),
+    pgliteDir,
     logsDir,
     serverLogPath: resolve(logsDir, SERVER_LOG_FILENAME),
     backupsDir: resolve(dataDir, "backups"),
@@ -133,7 +131,7 @@ function resolvePathRoot(candidate: string, cwd: string): string {
 export function runtimeDirPaths(paths: SelfHostRuntimePaths): string[] {
   return [
     paths.configDir,
-    paths.sqliteDir,
+    paths.pgliteDir,
     paths.logsDir,
     paths.backupsDir,
     paths.runDir,

@@ -28,7 +28,7 @@ When a CLI feature needs retries, polling, or multi-step orchestration, model it
 ## Ownership Boundaries
 
 - Config loading: the `config/` module group owns on-disk config paths, file I/O, parsing, validation, and persistence for user configuration.
-- Self-host runtime bootstrap: the `config/` module group also owns `self-host/config.toml`, `self-host/secrets.toml`, platform-standard config/data directory resolution, and the derived runtime paths for SQLite, logs, backups, pid, and lock files.
+- Self-host runtime bootstrap: the `config/` module group also owns `self-host/config.toml`, `self-host/secrets.toml`, platform-standard config/data directory resolution, and the derived runtime paths for PGlite, logs, backups, pid, and lock files.
 - Serve lifecycle command surface: `commands/serve.rs` owns the public local `onequery serve*` surface, including the foreground `onequery serve` launcher that resolves packaged Bun runtime assets and the shared local runtime-state inspection used by `serve status`, `serve logs`, and the remaining lifecycle subcommands.
 - Credential storage: the `credentials/` module group owns the `auth.json` path, credential metadata persistence, and credential removal semantics.
 - Auth session management: `commands/auth/workflow.rs` owns login, logout, and whoami state transitions, while `commands/auth_session.rs` owns the reducer-driven preflight session lifecycle (`load -> refresh -> persist`) that authenticated commands run before building an authenticated API client.

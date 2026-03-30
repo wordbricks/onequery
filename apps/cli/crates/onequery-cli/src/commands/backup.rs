@@ -310,7 +310,7 @@ mod tests {
     use crate::config::self_host::SelfHostRuntimePaths;
 
     #[test]
-    fn backup_archives_server_sqlite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
+    fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
      {
         let temp_root =
             std::env::temp_dir().join(format!("onequery-backup-command-{}", Uuid::new_v4()));
@@ -352,7 +352,7 @@ mod tests {
             false
         );
         assert_eq!(
-            entries.contains(&"data/sqlite/onequery.sqlite".to_owned()),
+            entries.contains(&"data/pglite/onequery/PG_VERSION".to_owned()),
             true
         );
         assert_eq!(entries.contains(&"data/logs/server.log".to_owned()), true);
@@ -423,8 +423,8 @@ mod tests {
     fn seed_runtime_fixture(paths: &SelfHostRuntimePaths, include_secrets: bool) {
         fs::create_dir_all(&paths.config_dir)
             .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
-        fs::create_dir_all(paths.sqlite_path.parent().expect("sqlite parent"))
-            .unwrap_or_else(|error| panic!("expected sqlite dir creation to succeed: {error}"));
+        fs::create_dir_all(&paths.pglite_dir)
+            .unwrap_or_else(|error| panic!("expected pglite dir creation to succeed: {error}"));
         fs::create_dir_all(&paths.logs_dir)
             .unwrap_or_else(|error| panic!("expected logs dir creation to succeed: {error}"));
         fs::create_dir_all(paths.data_dir.join("state"))
@@ -446,8 +446,8 @@ mod tests {
             )
             .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
         }
-        fs::write(&paths.sqlite_path, "sqlite-bytes")
-            .unwrap_or_else(|error| panic!("expected sqlite fixture write to succeed: {error}"));
+        fs::write(paths.pglite_dir.join("PG_VERSION"), "16")
+            .unwrap_or_else(|error| panic!("expected pglite fixture write to succeed: {error}"));
         fs::write(&paths.server_log_path, "listening\n")
             .unwrap_or_else(|error| panic!("expected log fixture write to succeed: {error}"));
         fs::write(

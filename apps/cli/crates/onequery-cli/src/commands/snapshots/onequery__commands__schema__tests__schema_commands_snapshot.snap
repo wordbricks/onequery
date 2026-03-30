@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/commands/schema/tests.rs
+assertion_line: 37
 expression: rendered
 ---
 {
@@ -2856,6 +2857,9 @@ expression: rendered
               "logsDir": {
                 "type": "string"
               },
+              "pgliteDir": {
+                "type": "string"
+              },
               "pidPath": {
                 "type": "string"
               },
@@ -2867,9 +2871,6 @@ expression: rendered
               },
               "serverLogPath": {
                 "type": "string"
-              },
-              "sqlitePath": {
-                "type": "string"
               }
             },
             "required": [
@@ -2877,7 +2878,7 @@ expression: rendered
               "dataDir",
               "configPath",
               "secretsPath",
-              "sqlitePath",
+              "pgliteDir",
               "logsDir",
               "serverLogPath",
               "backupsDir",
@@ -2908,13 +2909,13 @@ expression: rendered
               "logFilePresent": {
                 "type": "boolean"
               },
+              "pgliteDirPresent": {
+                "type": "boolean"
+              },
               "pidFilePresent": {
                 "type": "boolean"
               },
               "running": {
-                "type": "boolean"
-              },
-              "sqliteFilePresent": {
                 "type": "boolean"
               },
               "status": {
@@ -2924,7 +2925,7 @@ expression: rendered
             "required": [
               "running",
               "status",
-              "sqliteFilePresent",
+              "pgliteDirPresent",
               "logFilePresent",
               "pidFilePresent",
               "lockFilePresent"
@@ -3109,6 +3110,9 @@ expression: rendered
               "logsDir": {
                 "type": "string"
               },
+              "pgliteDir": {
+                "type": "string"
+              },
               "pidPath": {
                 "type": "string"
               },
@@ -3120,9 +3124,6 @@ expression: rendered
               },
               "serverLogPath": {
                 "type": "string"
-              },
-              "sqlitePath": {
-                "type": "string"
               }
             },
             "required": [
@@ -3130,7 +3131,7 @@ expression: rendered
               "dataDir",
               "configPath",
               "secretsPath",
-              "sqlitePath",
+              "pgliteDir",
               "logsDir",
               "serverLogPath",
               "backupsDir",
@@ -3152,13 +3153,13 @@ expression: rendered
               "logFilePresent": {
                 "type": "boolean"
               },
+              "pgliteDirPresent": {
+                "type": "boolean"
+              },
               "pidFilePresent": {
                 "type": "boolean"
               },
               "running": {
-                "type": "boolean"
-              },
-              "sqliteFilePresent": {
                 "type": "boolean"
               },
               "status": {
@@ -3168,7 +3169,7 @@ expression: rendered
             "required": [
               "running",
               "status",
-              "sqliteFilePresent",
+              "pgliteDirPresent",
               "logFilePresent",
               "pidFilePresent",
               "lockFilePresent"
@@ -3303,6 +3304,9 @@ expression: rendered
               "logsDir": {
                 "type": "string"
               },
+              "pgliteDir": {
+                "type": "string"
+              },
               "pidPath": {
                 "type": "string"
               },
@@ -3314,9 +3318,6 @@ expression: rendered
               },
               "serverLogPath": {
                 "type": "string"
-              },
-              "sqlitePath": {
-                "type": "string"
               }
             },
             "required": [
@@ -3324,7 +3325,7 @@ expression: rendered
               "dataDir",
               "configPath",
               "secretsPath",
-              "sqlitePath",
+              "pgliteDir",
               "logsDir",
               "serverLogPath",
               "backupsDir",
@@ -3346,13 +3347,13 @@ expression: rendered
               "logFilePresent": {
                 "type": "boolean"
               },
+              "pgliteDirPresent": {
+                "type": "boolean"
+              },
               "pidFilePresent": {
                 "type": "boolean"
               },
               "running": {
-                "type": "boolean"
-              },
-              "sqliteFilePresent": {
                 "type": "boolean"
               },
               "status": {
@@ -3362,7 +3363,7 @@ expression: rendered
             "required": [
               "running",
               "status",
-              "sqliteFilePresent",
+              "pgliteDirPresent",
               "logFilePresent",
               "pidFilePresent",
               "lockFilePresent"

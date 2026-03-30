@@ -26,7 +26,7 @@ export type ServerStorage = {
   db: ServerDatabase;
   emailDelivery: AuthEmailDeliveryConfig;
   emailDeliveryMode: EmailDeliveryMode;
-  engine: "postgres" | "sqlite";
+  engine: "postgres" | "pglite";
   schema: DatabaseSchema;
   apiRateLimitStorage: ReturnType<typeof createStorage>;
 };
@@ -71,7 +71,7 @@ function createServerStorage(env: ServerEnv): ServerStorage {
       authRateLimitStorage,
       db: databaseRuntime.db,
       emailDelivery: authConfig.emailDelivery,
-      provider: databaseRuntime.engine === "sqlite" ? "sqlite" : "pg",
+      provider: "pg",
       schema: databaseRuntime.schema,
     }),
     authRateLimitStorage,

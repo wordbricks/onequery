@@ -368,7 +368,7 @@ mod tests {
             Some(false)
         );
         assert_eq!(paths.config_path.is_file(), true);
-        assert_eq!(paths.sqlite_path.is_file(), true);
+        assert_eq!(paths.pglite_dir.join("PG_VERSION").is_file(), true);
         assert_eq!(paths.server_log_path.is_file(), true);
         assert_eq!(
             paths.data_dir.join("state").join("cache.json").is_file(),
@@ -475,8 +475,8 @@ mod tests {
         let data_dir = source_root.join("data");
         fs::create_dir_all(&config_dir)
             .unwrap_or_else(|error| panic!("expected source config dir creation: {error}"));
-        fs::create_dir_all(data_dir.join("sqlite"))
-            .unwrap_or_else(|error| panic!("expected source sqlite dir creation: {error}"));
+        fs::create_dir_all(data_dir.join("pglite").join("onequery"))
+            .unwrap_or_else(|error| panic!("expected source pglite dir creation: {error}"));
         fs::create_dir_all(data_dir.join("logs"))
             .unwrap_or_else(|error| panic!("expected source logs dir creation: {error}"));
         fs::create_dir_all(data_dir.join("state"))
@@ -494,10 +494,10 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected source secrets config write: {error}"));
         }
         fs::write(
-            data_dir.join("sqlite").join("onequery.sqlite"),
-            "sqlite-data",
+            data_dir.join("pglite").join("onequery").join("PG_VERSION"),
+            "16",
         )
-        .unwrap_or_else(|error| panic!("expected source sqlite write: {error}"));
+        .unwrap_or_else(|error| panic!("expected source pglite write: {error}"));
         fs::write(data_dir.join("logs").join("server.log"), "server-log")
             .unwrap_or_else(|error| panic!("expected source log write: {error}"));
         fs::write(

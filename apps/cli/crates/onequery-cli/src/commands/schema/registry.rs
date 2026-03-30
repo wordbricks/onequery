@@ -375,7 +375,7 @@ fn serve_paths_schema() -> Value {
             "dataDir",
             "configPath",
             "secretsPath",
-            "sqlitePath",
+            "pgliteDir",
             "logsDir",
             "serverLogPath",
             "backupsDir",
@@ -388,7 +388,7 @@ fn serve_paths_schema() -> Value {
             "dataDir": { "type": "string" },
             "configPath": { "type": "string" },
             "secretsPath": { "type": "string" },
-            "sqlitePath": { "type": "string" },
+            "pgliteDir": { "type": "string" },
             "logsDir": { "type": "string" },
             "serverLogPath": { "type": "string" },
             "backupsDir": { "type": "string" },
@@ -406,7 +406,7 @@ fn serve_runtime_state_schema() -> Value {
         "required": [
             "running",
             "status",
-            "sqliteFilePresent",
+            "pgliteDirPresent",
             "logFilePresent",
             "pidFilePresent",
             "lockFilePresent"
@@ -414,7 +414,7 @@ fn serve_runtime_state_schema() -> Value {
         "properties": {
             "running": { "type": "boolean" },
             "status": { "type": "string" },
-            "sqliteFilePresent": { "type": "boolean" },
+            "pgliteDirPresent": { "type": "boolean" },
             "logFilePresent": { "type": "boolean" },
             "pidFilePresent": { "type": "boolean" },
             "lockFilePresent": { "type": "boolean" }

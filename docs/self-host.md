@@ -64,7 +64,7 @@ Files under those roots:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
-- `sqlite/onequery.sqlite`
+- `pglite/onequery/`
 - `logs/server.log`
 - `backups/`
 - `run/server.pid`
@@ -95,9 +95,9 @@ Without `public_origin`, OneQuery falls back to the listen address.
 
 ## Storage Modes
 
-Default mode is SQLite:
+Default mode is PGlite:
 
-- database path: `sqlite/onequery.sqlite` under the OneQuery data root
+- database path: `pglite/onequery/` under the OneQuery data root
 - no external database dependency
 
 Optional Postgres mode:
@@ -108,7 +108,7 @@ DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
 
 Runtime behavior:
 
-- SQLite bootstraps the checked-in schema automatically.
+- PGlite runs the checked-in Drizzle migrations on startup.
 - Postgres runs the checked-in Drizzle migrations on startup and fails closed if
   migration application fails.
 

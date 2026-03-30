@@ -6,7 +6,7 @@ Serve status
 Bootstrapped: yes
 Listen: 127.0.0.1:4545
 Runtime: not_running
-SQLite file present: no
+PGlite directory present: no
 Log file present: no
 PID file present: no
 Lock file present: no

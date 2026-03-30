@@ -60,7 +60,7 @@ struct ServeRuntimeState {
     config_created: bool,
     secrets_created: bool,
     config: Option<SelfHostConfig>,
-    sqlite_file_present: bool,
+    pglite_dir_present: bool,
     log_file_present: bool,
     pid_file_present: bool,
     lock_file_present: bool,
@@ -163,7 +163,7 @@ fn resolve_runtime_state(
             .as_ref()
             .map(|result| result.secrets_created)
             .unwrap_or(false),
-        sqlite_file_present: paths.sqlite_path.is_file(),
+        pglite_dir_present: paths.pglite_dir.is_dir(),
         log_file_present: paths.server_log_path.is_file(),
         pid_file_present: paths.pid_path.is_file(),
         lock_file_present: paths.lock_path.is_file(),
@@ -693,8 +693,8 @@ fn render_serve_status_output(state: &ServeRuntimeState) -> CommandOutput {
             format!("Listen: {listen}"),
             format!("Runtime: {runtime_status}"),
             format!(
-                "SQLite file present: {}",
-                yes_no_label(state.sqlite_file_present)
+                "PGlite directory present: {}",
+                yes_no_label(state.pglite_dir_present)
             ),
             format!("Log file present: {}", yes_no_label(state.log_file_present)),
             format!("PID file present: {}", yes_no_label(state.pid_file_present)),
@@ -783,7 +783,7 @@ fn runtime_state_json(state: &ServeRuntimeState) -> serde_json::Value {
         } else {
             "not_initialized"
         },
-        "sqliteFilePresent": state.sqlite_file_present,
+        "pgliteDirPresent": state.pglite_dir_present,
         "logFilePresent": state.log_file_present,
         "pidFilePresent": state.pid_file_present,
         "lockFilePresent": state.lock_file_present,
@@ -816,7 +816,7 @@ fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
         "dataDir": paths.data_dir.display().to_string(),
         "configPath": paths.config_path.display().to_string(),
         "secretsPath": paths.secrets_path.display().to_string(),
-        "sqlitePath": paths.sqlite_path.display().to_string(),
+        "pgliteDir": paths.pglite_dir.display().to_string(),
         "logsDir": paths.logs_dir.display().to_string(),
         "serverLogPath": paths.server_log_path.display().to_string(),
         "backupsDir": paths.backups_dir.display().to_string(),
@@ -852,7 +852,7 @@ mod tests {
             data_dir: "/tmp/onequery/data".into(),
             config_path: "/tmp/onequery/config/self-host/config.toml".into(),
             secrets_path: "/tmp/onequery/config/self-host/secrets.toml".into(),
-            sqlite_path: "/tmp/onequery/data/sqlite/onequery.sqlite".into(),
+            pglite_dir: "/tmp/onequery/data/pglite/onequery".into(),
             logs_dir: "/tmp/onequery/data/logs".into(),
             server_log_path: "/tmp/onequery/data/logs/server.log".into(),
             backups_dir: "/tmp/onequery/data/backups".into(),
@@ -869,7 +869,7 @@ mod tests {
             config_created: true,
             secrets_created: true,
             config: Some(SelfHostConfig::default()),
-            sqlite_file_present: false,
+            pglite_dir_present: false,
             log_file_present: false,
             pid_file_present: false,
             lock_file_present: false,
@@ -1011,7 +1011,7 @@ mod tests {
                 .as_ref()
                 .map(|result| result.secrets_created)
                 .unwrap_or(false),
-            sqlite_file_present: paths.sqlite_path.is_file(),
+            pglite_dir_present: paths.pglite_dir.is_dir(),
             log_file_present: paths.server_log_path.is_file(),
             pid_file_present: paths.pid_path.is_file(),
             lock_file_present: paths.lock_path.is_file(),

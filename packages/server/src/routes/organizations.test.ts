@@ -1,8 +1,14 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { createDb, eq, getDatabaseSchema } from "@onequery/db/server";
+import {
+  createDb,
+  eq,
+  getDatabaseSchema,
+  prepareSelfHostDatabase,
+} from "@onequery/db/server";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -72,16 +78,25 @@ function createRunId() {
   return crypto.randomUUID().replaceAll("-", "");
 }
 
-function createSqliteDatabaseUrl(prefix: string): string {
+const migrationsFolder = fileURLToPath(
+  new URL("../../../db/src/migrations", import.meta.url)
+);
+
+async function createPgliteDatabaseUrl(prefix: string): Promise<string> {
   const root = mkdtempSync(join(tmpdir(), prefix));
-  return `sqlite:${join(root, "onequery.sqlite")}`;
+  const databaseUrl = `pglite:${join(root, "pglite", "onequery")}`;
+  await prepareSelfHostDatabase({
+    connectionString: databaseUrl,
+    migrationsFolder,
+  });
+  return databaseUrl;
 }
 
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
 
   if (client && typeof client.close === "function") {
-    client.close();
+    await client.close();
     return;
   }
 
@@ -191,7 +206,7 @@ async function seedAuditAction(input: {
 describe("organizations audit route", () => {
   it("lists org audit entries newest-first, paginates them, and applies filters", async () => {
     const env = createTestEnv({
-      DATABASE_URL: createSqliteDatabaseUrl("onequery-org-audit-"),
+      DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-"),
       DISABLE_RATE_LIMIT: true,
     });
     const databaseUrl = env.DATABASE_URL;
@@ -351,7 +366,7 @@ describe("organizations audit route", () => {
 
   it("rejects unauthenticated and unauthorized audit reads and returns 404 for unknown orgs", async () => {
     const env = createTestEnv({
-      DATABASE_URL: createSqliteDatabaseUrl("onequery-org-audit-access-"),
+      DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
       DISABLE_RATE_LIMIT: true,
     });
     const databaseUrl = env.DATABASE_URL;

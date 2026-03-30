@@ -14,7 +14,7 @@ describe("self-host runtime paths", () => {
       dataDir: "/tmp/data-dir",
       configPath: "/tmp/config-dir/config.toml",
       secretsPath: "/tmp/config-dir/secrets.toml",
-      sqlitePath: "/tmp/data-dir/sqlite/onequery.sqlite",
+      pgliteDir: "/tmp/data-dir/pglite/onequery",
       serverLogPath: "/tmp/data-dir/logs/server.log",
       backupsDir: "/tmp/data-dir/backups",
       pidPath: "/tmp/data-dir/run/server.pid",

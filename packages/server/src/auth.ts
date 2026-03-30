@@ -29,7 +29,7 @@ type AuthConfig = {
   databaseUrl?: string;
   db?: DbInstance;
   schema?: DatabaseSchema;
-  provider?: "pg" | "sqlite";
+  provider?: "pg";
   secret: string;
   baseURL?: string;
   authRateLimitStorage?: ReturnType<typeof createBetterAuthRateLimitStorage>;
@@ -94,13 +94,7 @@ export function createAuth(config: AuthConfig) {
     (config.databaseUrl
       ? createDatabaseRuntime(config.databaseUrl).schema
       : undefined);
-  const provider =
-    config.provider ??
-    (config.databaseUrl
-      ? createDatabaseRuntime(config.databaseUrl).engine === "sqlite"
-        ? "sqlite"
-        : "pg"
-      : "pg");
+  const provider = config.provider ?? "pg";
   const authSchema = tables;
 
   if (!tables) {
