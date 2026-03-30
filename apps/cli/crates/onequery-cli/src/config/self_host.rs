@@ -457,10 +457,7 @@ mod tests {
         assert_eq!(paths.logs_dir.is_dir(), true);
         assert_eq!(paths.backups_dir.is_dir(), true);
         assert_eq!(paths.run_dir.is_dir(), true);
-        assert_eq!(
-            paths.pglite_dir.is_dir(),
-            true
-        );
+        assert_eq!(paths.pglite_dir.is_dir(), true);
 
         let loaded = load_self_host_config_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected load to succeed after bootstrap: {error}"));
