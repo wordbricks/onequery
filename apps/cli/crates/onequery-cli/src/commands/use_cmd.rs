@@ -1,8 +1,8 @@
 use std::time::Duration;
 
+use onequery_cli_core::error::CliError;
 use serde_json::Map;
 use serde_json::Value;
-use onequery_cli_core::error::CliError;
 
 use crate::cli::UseArgs;
 use crate::output::CommandOutput;

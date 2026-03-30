@@ -1,7 +1,7 @@
-use serde_json::json;
-use url::Url;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde_json::json;
+use url::Url;
 
 use crate::cli::ConfigCommand;
 use crate::config::CONFIG_SET_SERVER_COMMAND_EXAMPLE;

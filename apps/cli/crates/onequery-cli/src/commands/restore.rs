@@ -3,11 +3,11 @@ use std::fs::File;
 use std::path::Path;
 
 use flate2::read::GzDecoder;
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
 use tar::Archive;
 use uuid::Uuid;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::RestoreArgs;
 use crate::config::self_host::SelfHostBootstrapResult;
@@ -493,8 +493,11 @@ mod tests {
             )
             .unwrap_or_else(|error| panic!("expected source secrets config write: {error}"));
         }
-        fs::write(data_dir.join("sqlite").join("onequery.sqlite"), "sqlite-data")
-            .unwrap_or_else(|error| panic!("expected source sqlite write: {error}"));
+        fs::write(
+            data_dir.join("sqlite").join("onequery.sqlite"),
+            "sqlite-data",
+        )
+        .unwrap_or_else(|error| panic!("expected source sqlite write: {error}"));
         fs::write(data_dir.join("logs").join("server.log"), "server-log")
             .unwrap_or_else(|error| panic!("expected source log write: {error}"));
         fs::write(

@@ -179,7 +179,10 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
     let client = reqwest::Client::new();
     let latest_version = client
         .get(CLI_NPM_DIST_TAGS_URL)
-        .header(USER_AGENT, format!("onequery/{}", env!("CARGO_PKG_VERSION")))
+        .header(
+            USER_AGENT,
+            format!("onequery/{}", env!("CARGO_PKG_VERSION")),
+        )
         .send()
         .await
         .map_err(|source| VersionError::FetchLatest { source })?

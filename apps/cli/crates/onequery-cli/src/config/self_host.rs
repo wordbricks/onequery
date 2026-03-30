@@ -2,12 +2,12 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use super::config_dir;
 use super::data_dir;
@@ -434,7 +434,10 @@ mod tests {
             PathBuf::from("/data/onequery/logs/server.log")
         );
         assert_eq!(paths.backups_dir, PathBuf::from("/data/onequery/backups"));
-        assert_eq!(paths.pid_path, PathBuf::from("/data/onequery/run/server.pid"));
+        assert_eq!(
+            paths.pid_path,
+            PathBuf::from("/data/onequery/run/server.pid")
+        );
         assert_eq!(
             paths.lock_path,
             PathBuf::from("/data/onequery/run/server.lock")

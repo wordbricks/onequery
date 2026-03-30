@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use insta::assert_snapshot;
+use onequery_cli_core::error::ErrorStage;
 use pretty_assertions::assert_eq;
 use tokio::time::Duration;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::ListReadArgs;
 use crate::cli::PaginationArgs;

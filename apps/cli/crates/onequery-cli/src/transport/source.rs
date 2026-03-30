@@ -1,6 +1,6 @@
+use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;

@@ -7,12 +7,12 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use dirs::home_dir;
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use path_absolutize::Absolutize;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use tempfile::NamedTempFile;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct AbsolutePathBuf(PathBuf);
@@ -524,6 +524,7 @@ pub(crate) fn atomic_write_private_file(
 #[cfg(test)]
 mod tests {
     use dirs::home_dir;
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use std::fs;
     #[cfg(unix)]
@@ -534,7 +535,6 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::tempdir;
     use uuid::Uuid;
-    use onequery_cli_core::error::ErrorStage;
 
     use super::AbsolutePathBuf;
     use super::AtomicWriteStage;

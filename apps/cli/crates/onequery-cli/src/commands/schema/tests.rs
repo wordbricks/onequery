@@ -1,7 +1,7 @@
 use insta::assert_snapshot;
+use onequery_cli_core::error::ErrorStage;
 use pretty_assertions::assert_eq;
 use serde_json::json;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::SchemaCommandArgs;
 use crate::cli::SchemaSubcommand;

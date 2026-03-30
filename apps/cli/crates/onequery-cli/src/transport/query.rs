@@ -1,7 +1,7 @@
+use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::output_metadata::UntrustedOutputMetadata;
 use crate::transport::client::AuthenticatedApiClient;
@@ -450,10 +450,10 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
     use serde_json::json;
-    use onequery_cli_core::error::ErrorStage;
 
     use crate::output_metadata::UntrustedOutputMetadata;
     use crate::transport::client::AuthenticatedApiClient;
@@ -760,7 +760,9 @@ mod tests {
             error,
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-logged-in".to_owned(),),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
+                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("no authenticated session was found".to_owned()),
                 code: Some("not_logged_in".to_owned()),

@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
-use serde_json::Map;
-use serde_json::Value;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde_json::Map;
+use serde_json::Value;
 
 use super::AuthRequirements;
 use super::CommandSchema;
@@ -52,7 +52,8 @@ fn resolve_http_command_schema(
     path: &str,
 ) -> Result<CommandSchema, CliError> {
     let derivation_command = schema_derivation_command(method, path);
-    let command = required_string_field(operation, "x-onequery-command", derivation_command.clone())?;
+    let command =
+        required_string_field(operation, "x-onequery-command", derivation_command.clone())?;
     let kind = required_string_field(operation, "x-onequery-kind", derivation_command.clone())?;
     let summary = required_non_empty_string_field(
         operation,

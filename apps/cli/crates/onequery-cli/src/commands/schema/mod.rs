@@ -7,12 +7,12 @@ mod skills;
 #[cfg(test)]
 mod tests;
 
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::json;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::SchemaSubcommand;
 use crate::output::CommandOutput;
