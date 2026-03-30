@@ -60,7 +60,7 @@ enum SourceConnectEvent {
         error: CliError,
     },
     GuideLoaded {
-        guide: SourceConnectGuide,
+        guide: Box<SourceConnectGuide>,
         request_id: Option<String>,
     },
     GuideLoadFailed {
@@ -213,7 +213,7 @@ fn reduce(
         },
         SourceConnectState::LoadingGuide => match event {
             SourceConnectEvent::GuideLoaded { guide, request_id } => {
-                match render_source_connect_guide_output(guide) {
+                match render_source_connect_guide_output(*guide) {
                     Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
                         output: output.with_request_id(request_id),
                     }),
@@ -318,7 +318,7 @@ async fn execute_effect<B, T>(
                 .await
             {
                 Ok(response) => SourceConnectEvent::GuideLoaded {
-                    guide: response.payload,
+                    guide: Box::new(response.payload),
                     request_id: response.request_id,
                 },
                 Err(failure) => {

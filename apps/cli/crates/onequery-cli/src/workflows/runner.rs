@@ -60,14 +60,6 @@ impl<S, T, F> Transition<S, T, F> {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn effect(&self) -> Option<&F> {
-        match &self.kind {
-            TransitionKind::Continue { effect, .. } => Some(effect),
-            TransitionKind::Done { .. } => None,
-        }
-    }
-
     pub(crate) fn into_progress(self) -> TransitionProgress<S, T, F> {
         match self.kind {
             TransitionKind::Continue { next_state, effect } => {
@@ -122,8 +114,9 @@ where
             return Err(CliError::internal(
                 config.command_line.to_owned(),
                 format!(
-                    "{} workflow exceeded max step count ({}) without reaching terminal state",
-                    config.workflow_name, config.max_steps,
+                    "{workflow_name} workflow exceeded max step count ({max_steps}) without reaching terminal state",
+                    workflow_name = config.workflow_name,
+                    max_steps = config.max_steps,
                 ),
             ));
         }
