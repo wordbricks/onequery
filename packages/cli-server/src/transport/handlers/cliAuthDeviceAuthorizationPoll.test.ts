@@ -56,7 +56,7 @@ describe("cli auth device authorization poll transport", () => {
         type: "https://onequery.invalid/problems/cli/not-logged-in",
         extensions: {
           code: "not_logged_in",
-          hint: "run `oneq auth login` again",
+          hint: "run `onequery auth login` again",
           retryable: false,
           stage: "auth",
         },

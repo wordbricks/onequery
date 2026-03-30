@@ -60,7 +60,7 @@ enum SourceConnectEvent {
         error: CliError,
     },
     GuideLoaded {
-        guide: SourceConnectGuide,
+        guide: Box<SourceConnectGuide>,
         request_id: Option<String>,
     },
     GuideLoadFailed {
@@ -213,7 +213,7 @@ fn reduce(
         },
         SourceConnectState::LoadingGuide => match event {
             SourceConnectEvent::GuideLoaded { guide, request_id } => {
-                match render_source_connect_guide_output(guide) {
+                match render_source_connect_guide_output(*guide) {
                     Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
                         output: output.with_request_id(request_id),
                     }),
@@ -318,7 +318,7 @@ async fn execute_effect<B, T>(
                 .await
             {
                 Ok(response) => SourceConnectEvent::GuideLoaded {
-                    guide: response.payload,
+                    guide: Box::new(response.payload),
                     request_id: response.request_id,
                 },
                 Err(failure) => {
@@ -332,7 +332,7 @@ async fn execute_effect<B, T>(
                                 transport_why_prefix: "failed to reach source connect guide endpoint",
                                 decode_why_prefix: "failed to decode source connect guide response",
                                 fallback_try_next: vec![format!("retry {}", context.command_line)],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         outcome,
@@ -369,10 +369,10 @@ async fn execute_effect<B, T>(
                                 transport_why_prefix: "failed to reach source connect endpoint",
                                 decode_why_prefix: "failed to decode source connect response",
                                 fallback_try_next: vec![
-                                    format!("oneq source connect --source {}", source),
+                                    format!("onequery source connect --source {}", source),
                                     format!("retry {}", context.command_line),
                                 ],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         outcome,
@@ -408,15 +408,15 @@ fn parse_source_connect_input(
 
 fn source_connect_input_examples() -> Vec<String> {
     vec![
-        "oneq source connect --source <provider>".to_owned(),
-        "oneq --org <org_slug> source connect --source postgres --input '{\"name\":\"warehouse\",\"credentials\":{\"type\":\"postgres\",\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
+        "onequery source connect --source <provider>".to_owned(),
+        "onequery --org <org_slug> source connect --source postgres --input '{\"name\":\"warehouse\",\"credentials\":{\"type\":\"postgres\",\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
     ]
 }
 
 fn render_source_connect_guide_output(
     guide: SourceConnectGuide,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&guide, "oneq source connect")?;
+    let data = serialize_command_data(&guide, "onequery source connect")?;
     let lines = guide.content.lines().map(ToOwned::to_owned).collect();
     Ok(CommandOutput::structured(lines, data))
 }
@@ -445,7 +445,7 @@ fn render_source_connect_result_output(
         format!("Next: {}", result.next_command),
     ];
     Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&result, "oneq source connect")
+        serialize_command_data(&result, "onequery source connect")
     }))
 }
 
@@ -532,7 +532,7 @@ mod tests {
             content:
                 "# OneQuery Source Connect Guide\n\n1. Gather credentials.\n2. Run the command.\n"
                     .to_owned(),
-            command: "oneq source connect --source postgres --input '<json>'".to_owned(),
+            command: "onequery source connect --source postgres --input '<json>'".to_owned(),
             input_schema: SourceConnectInputSchema {
                 field_type: "object".to_owned(),
                 required: vec!["name".to_owned(), "credentials".to_owned()],
@@ -569,7 +569,7 @@ mod tests {
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             },
-            next_command: "oneq source show warehouse".to_owned(),
+            next_command: "onequery source show warehouse".to_owned(),
         })
         .expect("expected source connect result output");
 
@@ -581,7 +581,8 @@ mod tests {
         let error = parse_source_connect_input(
             r#"{"name":"warehouse","organizationSlug":"acme","credentials":{"type":"postgres"}}"#,
             &CommandContext {
-                command_line: "oneq source connect --source postgres --input <excerpt>".to_owned(),
+                command_line: "onequery source connect --source postgres --input <excerpt>"
+                    .to_owned(),
                 base_url: DEFAULT_BASE_URL.to_owned(),
                 request_id: None,
                 resolved_org: Some("acme".to_owned()),
@@ -598,7 +599,7 @@ mod tests {
     #[test]
     fn unauthorized_source_connect_failure_transitions_to_explicit_reauth_terminal_state() {
         let context = CommandContext {
-            command_line: "oneq source connect --source postgres".to_owned(),
+            command_line: "onequery source connect --source postgres".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -614,7 +615,7 @@ mod tests {
                     context.command_line.clone(),
                     ErrorStage::Auth,
                     "stored credentials are no longer authorized",
-                    vec!["oneq auth login".to_owned()],
+                    vec!["onequery auth login".to_owned()],
                 ),
                 outcome: SourceConnectFailureOutcome::NeedsReauth,
             },
@@ -632,7 +633,7 @@ mod tests {
     #[test]
     fn source_connect_starts_in_guide_mode_without_input() {
         let context = CommandContext {
-            command_line: "oneq source connect --source postgres".to_owned(),
+            command_line: "onequery source connect --source postgres".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),

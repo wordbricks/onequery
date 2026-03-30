@@ -97,7 +97,7 @@ const GUIDE_CONTENT: Record<ProviderType, GuideContent> = {
     "region": "us"
   }
 }`,
-          note: "`oneq source connect --source amplitude --input '<json>'`로 연결할 수 있습니다.",
+          note: "`onequery source connect --source amplitude --input '<json>'`로 연결할 수 있습니다.",
           imageSrc: "/images/amplitude/step4_api_keys.png",
           imageAlt: "Amplitude API and Secret Keys page",
           reverse: true,
@@ -159,7 +159,7 @@ const GUIDE_CONTENT: Record<ProviderType, GuideContent> = {
     "region": "us"
   }
 }`,
-          note: "Connect with `oneq source connect --source amplitude --input '<json>'`.",
+          note: "Connect with `onequery source connect --source amplitude --input '<json>'`.",
           imageSrc: "/images/amplitude/step4_api_keys.png",
           imageAlt: "Amplitude API and Secret Keys page",
           reverse: true,
@@ -423,7 +423,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
           paragraphs: [
             "Select `JSON` and click `Create` to download the key file.",
             "The OneQuery web form can accept the downloaded Google service-account JSON file directly by upload or paste.",
-            'For `oneq source connect`, normalize that file into OneQuery\'s schema with `authType: "service_account"` and camelCase `serviceAccount` fields.',
+            'For `onequery source connect`, normalize that file into OneQuery\'s schema with `authType: "service_account"` and camelCase `serviceAccount` fields.',
           ],
           code: `{
   "name": "bigquery_prod",
@@ -570,7 +570,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
           paragraphs: [
             "Open `Admin` > `Property details` and click `Copy property ID`.",
             "OneQuery accepts either plain digits such as `123456789` or the prefixed form `properties/123456789`.",
-            "For `oneq source connect`, normalize the Google JSON into OneQuery's `serviceAccount` schema as shown below.",
+            "For `onequery source connect`, normalize the Google JSON into OneQuery's `serviceAccount` schema as shown below.",
           ],
           code: `{
   "name": "ga_marketing",
@@ -644,7 +644,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
           title: "토큰 복사 후 OneQuery에 연결",
           paragraphs: [
             "Generate token을 누른 뒤 표시되는 토큰 값을 즉시 복사하세요. GitHub는 이 값을 다시 보여주지 않습니다.",
-            "복사한 값을 `oneq source connect --source github --input '<json>'`의 `credentials.accessToken`에 넣어 연결하세요.",
+            "복사한 값을 `onequery source connect --source github --input '<json>'`의 `credentials.accessToken`에 넣어 연결하세요.",
           ],
           code: `{
   "name": "github_main",
@@ -709,7 +709,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
           title: "Copy the token and connect OneQuery",
           paragraphs: [
             "Click Generate token, then copy the token value immediately. GitHub only shows it once.",
-            "Use that value as `credentials.accessToken` in `oneq source connect --source github --input '<json>'`.",
+            "Use that value as `credentials.accessToken` in `onequery source connect --source github --input '<json>'`.",
           ],
           code: `{
   "name": "github_main",
@@ -793,7 +793,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
     "region": "us"
   }
 }`,
-          note: "`oneq source connect --source mixpanel --input '<json>'`에서 위 JSON을 그대로 사용하고, 필요할 때만 `workspaceId`를 추가하세요.",
+          note: "`onequery source connect --source mixpanel --input '<json>'`에서 위 JSON을 그대로 사용하고, 필요할 때만 `workspaceId`를 추가하세요.",
           imageSrc: "/images/mixpanel/step4_project_settings.png",
           imageAlt:
             "Mixpanel project settings with project ID and data residency",
@@ -860,7 +860,7 @@ SELECT * FROM analytics.orders LIMIT 10;`,
     "region": "us"
   }
 }`,
-          note: "Run `oneq source connect --source mixpanel --input '<json>'` with that payload, and add `workspaceId` only when you intentionally need it.",
+          note: "Run `onequery source connect --source mixpanel --input '<json>'` with that payload, and add `workspaceId` only when you intentionally need it.",
           imageSrc: "/images/mixpanel/step4_project_settings.png",
           imageAlt:
             "Mixpanel project settings with project ID and data residency",
@@ -1344,7 +1344,7 @@ GRANT SELECT ON TABLES TO onequery_readonly;`,
       ],
       closingTitle: "준비가 완료되었습니다!",
       closingDescription:
-        "이제 생성한 Personal Token과 slug 값을 OneQuery 웹 폼이나 `oneq source connect --source sentry` 입력 JSON에 넣으면 됩니다.",
+        "이제 생성한 Personal Token과 slug 값을 OneQuery 웹 폼이나 `onequery source connect --source sentry` 입력 JSON에 넣으면 됩니다.",
       closingNote:
         "`projectSlug` 없이 연결하면 조직 프로젝트 목록 접근부터 확인하고, `projectSlug`를 넣으면 프로젝트 이벤트 접근까지 바로 확인합니다.",
     },
@@ -1419,7 +1419,7 @@ GRANT SELECT ON TABLES TO onequery_readonly;`,
       ],
       closingTitle: "Ready to Go!",
       closingDescription:
-        "Paste the Personal Token and slug values into the OneQuery form or `oneq source connect --source sentry` JSON payload to finish the setup.",
+        "Paste the Personal Token and slug values into the OneQuery form or `onequery source connect --source sentry` JSON payload to finish the setup.",
       closingNote:
         "Without `projectSlug`, OneQuery checks organization-level project access first. With `projectSlug`, it also checks project event access during connect.",
     },

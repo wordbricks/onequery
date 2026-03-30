@@ -258,7 +258,7 @@ mod tests {
 
     fn sample_invocation() -> Invocation {
         Invocation {
-            raw_command: "oneq source list".to_owned(),
+            raw_command: "onequery source list".to_owned(),
             global: GlobalOptions {
                 org: None,
                 raw_config_overrides: Vec::new(),
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn idle_state_receives_invocation_and_emits_context_resolution_effect() {
         let context = AppWorkflowContext {
-            command_line: "oneq source list".to_owned(),
+            command_line: "onequery source list".to_owned(),
         };
         let transition = reduce(
             AppState::Idle,
@@ -290,7 +290,7 @@ mod tests {
             TransitionProgress::Continue {
                 next_state: AppState::ResolvingContext,
                 effect: AppEffect::ResolveContext { invocation },
-            } => assert_eq!(invocation.raw_command, "oneq source list"),
+            } => assert_eq!(invocation.raw_command, "onequery source list"),
             other => panic!("expected resolving-context transition, got {other:?}"),
         }
     }
@@ -298,7 +298,7 @@ mod tests {
     #[test]
     fn unexpected_transition_fails_with_internal_error() {
         let context = AppWorkflowContext {
-            command_line: "oneq source list".to_owned(),
+            command_line: "onequery source list".to_owned(),
         };
         let transition = reduce(
             AppState::Idle,

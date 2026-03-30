@@ -339,7 +339,7 @@ queryExecute:
               detail: the query runner is temporarily unavailable
               code: query_execution_unavailable
               stage: execute_query
-              hint: retry `oneq query --source <source> --sql "select ..."`
+              hint: retry `onequery query --source <source> --sql "select ..."`
               requestId: req_query_execute_unavailable_01
               retryable: true
       "504":

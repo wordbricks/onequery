@@ -4,17 +4,17 @@ OneQuery OSS is a self-hosted OneQuery distribution for a single-node Bun runtim
 The product shape is:
 
 1. install the `onequery` CLI package
-2. run `oneq serve`
+2. run `onequery serve`
 3. open the local web UI
-4. point the CLI at that server with `oneq config set server ...`
-5. use `oneq auth login` against the same self-hosted instance
+4. point the CLI at that server with `onequery config set server ...`
+5. use `onequery auth login` against the same self-hosted instance
 
 ## Install
 
 Prerequisites:
 
 - `curl` and `tar`
-- Bun `1.3.10` or newer on `PATH` when you want to run `oneq serve`
+- Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
 - current packaged support: macOS and Linux only
 
 Install with the hosted script:
@@ -42,7 +42,7 @@ npx @wordbricks/onequery --help
 Start the server:
 
 ```bash
-oneq serve
+onequery serve
 ```
 
 Then:
@@ -52,8 +52,8 @@ Then:
 3. point the CLI at the same server
 
 ```bash
-oneq config set server http://127.0.0.1:4545
-oneq auth login
+onequery config set server http://127.0.0.1:4545
+onequery auth login
 ```
 
 The first browser user bootstraps the instance. After that, sign-up becomes
@@ -64,27 +64,27 @@ invite-only.
 Core runtime commands:
 
 ```bash
-oneq serve
-oneq serve status
-oneq serve logs
-oneq serve stop
+onequery serve
+onequery serve status
+onequery serve logs
+onequery serve stop
 ```
 
 Backup and restore:
 
 ```bash
-oneq backup --include-secrets --archive-path ./onequery-backup.tar.gz
-oneq restore ./onequery-backup.tar.gz
+onequery backup --include-secrets --archive-path ./onequery-backup.tar.gz
+onequery restore ./onequery-backup.tar.gz
 ```
 
-Stop the runtime before running `oneq backup` or `oneq restore`.
+Stop the runtime before running `onequery backup` or `onequery restore`.
 
 Upgrade flow:
 
 ```bash
-oneq serve stop
+onequery serve stop
 curl -fsSL https://onequery.wordbricks.ai/ | sh
-oneq serve
+onequery serve
 ```
 
 Take a backup before upgrading. In Postgres mode, the server applies checked-in
@@ -111,7 +111,7 @@ By default, OneQuery uses SQLite at the path above. To run against Postgres, set
 `DATABASE_URL` before starting the server:
 
 ```bash
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery oneq serve
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
 ```
 
 If you run OneQuery behind a reverse proxy, set `public_origin` in

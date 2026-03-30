@@ -75,10 +75,10 @@ mod tests {
     fn parse_org_scoped_json_input_rejects_non_object_payloads() {
         let error = parse_org_scoped_json_input(
             r#"["not","an","object"]"#,
-            &test_context("oneq use --source github --input <excerpt>"),
+            &test_context("onequery use --source github --input <excerpt>"),
             "invalid use input",
             "use input",
-            || vec!["oneq use --source github".to_owned()],
+            || vec!["onequery use --source github".to_owned()],
         )
         .expect_err("expected non-object input to be rejected");
 
@@ -90,10 +90,10 @@ mod tests {
     fn parse_org_scoped_json_input_rejects_org_override_fields() {
         let error = parse_org_scoped_json_input(
             r#"{"organizationSlug":"acme"}"#,
-            &test_context("oneq source connect --source postgres --input <excerpt>"),
+            &test_context("onequery source connect --source postgres --input <excerpt>"),
             "invalid source connect input",
             "source connect input",
-            || vec!["oneq source connect --source postgres".to_owned()],
+            || vec!["onequery source connect --source postgres".to_owned()],
         )
         .expect_err("expected org override fields to be rejected");
 

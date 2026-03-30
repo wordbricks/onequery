@@ -561,7 +561,7 @@ function buildSourceConnectContent(
     "",
     "Use a CLI-safe `name` such as `warehouse` or `github_main`.",
     `Run: \`${buildCliSourceConnectCommand(provider.provider)}\``,
-    "Verify: `oneq source show <name>`",
+    "Verify: `onequery source show <name>`",
     "Do not include `organizationId` or `organizationSlug`; the CLI injects org context automatically.",
     "",
     provider.summary,

@@ -62,7 +62,7 @@ pub(super) fn read_persisted_auth_session_record(
             startup_command,
             ErrorStage::LoadCredentials,
             format!("{read_error} ({})", path.display()),
-            vec!["oneq auth login".to_owned()],
+            vec!["onequery auth login".to_owned()],
         )
     })?;
 

@@ -33,7 +33,7 @@ pub(crate) async fn execute<B, T>(
         &context.command_line,
         ErrorStage::LoadConfig,
         "failed to resolve backup archive path",
-        vec!["pass a valid archive path to oneq restore".to_owned()],
+        vec!["pass a valid archive path to onequery restore".to_owned()],
     )?;
 
     if !archive_path.is_file() {
@@ -42,7 +42,7 @@ pub(crate) async fn execute<B, T>(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("missing {}", archive_path.display()),
-            vec!["pass a valid archive path to oneq restore".to_owned()],
+            vec!["pass a valid archive path to onequery restore".to_owned()],
         ));
     }
 
@@ -70,7 +70,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", temp_root.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })?;
     fs::copy(archive_path, &archive_copy_path).map_err(|error| {
@@ -79,7 +79,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", archive_path.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })?;
 
@@ -90,7 +90,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", extract_root.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })?;
 
@@ -100,7 +100,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", archive_copy_path.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })?;
     let mut archive = Archive::new(GzDecoder::new(archive_file));
@@ -110,7 +110,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             error.to_string(),
-            vec!["verify the archive and retry oneq restore".to_owned()],
+            vec!["verify the archive and retry onequery restore".to_owned()],
         )
     })?;
 
@@ -125,7 +125,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("missing {}", extracted_config_path.display()),
-            vec!["create a new backup archive and retry oneq restore".to_owned()],
+            vec!["create a new backup archive and retry onequery restore".to_owned()],
         ));
     }
 
@@ -197,7 +197,7 @@ fn remove_if_present(path: &Path, command_line: &str) -> Result<(), CliError> {
             command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", path.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })
 }
@@ -217,7 +217,7 @@ fn copy_dir_recursive(
             command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", destination.display()),
-            vec!["retry oneq restore".to_owned()],
+            vec!["retry onequery restore".to_owned()],
         )
     })?;
 
@@ -260,7 +260,7 @@ fn copy_file(source: &Path, destination: &Path, command_line: &str) -> Result<()
                 command_line,
                 ErrorStage::LoadConfig,
                 format!("{error} ({})", parent.display()),
-                vec!["retry oneq restore".to_owned()],
+                vec!["retry onequery restore".to_owned()],
             )
         })?;
     }
@@ -282,7 +282,7 @@ fn restore_error(title: &str, command_line: &str, error: impl std::fmt::Display)
         command_line,
         ErrorStage::LoadConfig,
         error.to_string(),
-        vec!["retry oneq restore".to_owned()],
+        vec!["retry onequery restore".to_owned()],
     )
 }
 
@@ -299,7 +299,7 @@ fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
     trimmed.parse::<u32>().map(Some).map_err(|error| {
         CliError::new(
             "failed to parse runtime pid file",
-            "oneq restore",
+            "onequery restore",
             ErrorStage::LoadConfig,
             format!("{error} ({})", path.display()),
             vec!["remove the stale pid file and retry".to_owned()],
@@ -354,7 +354,7 @@ mod tests {
 
         let output = execute_with_paths(
             archive_path.as_path(),
-            &sample_context("oneq restore"),
+            &sample_context("onequery restore"),
             &paths,
             |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
         )
@@ -412,7 +412,7 @@ mod tests {
 
         let output = execute_with_paths(
             archive_path.as_path(),
-            &sample_context("oneq restore"),
+            &sample_context("onequery restore"),
             &paths,
             |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
         )

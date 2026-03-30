@@ -235,10 +235,10 @@ async fn execute_effect<B, T>(
                                 transport_why_prefix: "failed to reach org read endpoint",
                                 decode_why_prefix: "failed to decode org read response",
                                 fallback_try_next: vec![
-                                    "run oneq auth login".to_owned(),
+                                    "run onequery auth login".to_owned(),
                                     format!("retry {}", context.command_line),
                                 ],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         outcome,

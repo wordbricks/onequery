@@ -6,4 +6,4 @@ Source connected: warehouse
 Provider: postgres
 Status: active
 Query (v1): yes
-Next: oneq source show warehouse
+Next: onequery source show warehouse

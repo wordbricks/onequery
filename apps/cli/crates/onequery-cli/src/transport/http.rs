@@ -366,7 +366,7 @@ mod tests {
                 "detail": "no source named \"warehouse\" exists",
                 "code": "source_not_found",
                 "stage": "resolve_source",
-                "hint": "run `oneq source list`",
+                "hint": "run `onequery source list`",
                 "requestId": "req_123",
                 "retryable": false
             })
@@ -387,7 +387,7 @@ mod tests {
                 code: Some("source_not_found".to_owned()),
                 retryable: false,
                 stage: ErrorStage::ResolveSource,
-                hint: Some("run `oneq source list`".to_owned()),
+                hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
                 validation_issues: Vec::new(),
                 raw_body: json!({
@@ -397,7 +397,7 @@ mod tests {
                     "detail": "no source named \"warehouse\" exists",
                     "code": "source_not_found",
                     "stage": "resolve_source",
-                    "hint": "run `oneq source list`",
+                    "hint": "run `onequery source list`",
                     "requestId": "req_123",
                     "retryable": false
                 })

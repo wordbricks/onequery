@@ -466,7 +466,7 @@ export const deviceAuthMachine = setup({
                 result: {
                   title: "Device Denied",
                   message:
-                    "This device code has already been denied. Start oneq auth login again if you need a new code.",
+                    "This device code has already been denied. Start onequery auth login again if you need a new code.",
                   tone: "error",
                 },
               })

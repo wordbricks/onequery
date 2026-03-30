@@ -453,7 +453,7 @@ mod tests {
             test_dir.join("data"),
         );
 
-        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "oneq serve")
+        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected bootstrap to succeed: {error}"));
 
         assert_eq!(bootstrap.config_created, true);
@@ -469,7 +469,7 @@ mod tests {
             true
         );
 
-        let loaded = load_self_host_config_with_paths(paths.clone(), "oneq serve")
+        let loaded = load_self_host_config_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected load to succeed after bootstrap: {error}"));
 
         assert_eq!(loaded.paths, paths);
@@ -520,9 +520,9 @@ enrollment_token = "connector"
         )
         .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
 
-        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "oneq serve")
+        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected bootstrap to preserve files: {error}"));
-        let loaded = load_self_host_config_with_paths(paths, "oneq serve")
+        let loaded = load_self_host_config_with_paths(paths, "onequery serve")
             .unwrap_or_else(|error| panic!("expected load to succeed after preserve: {error}"));
 
         assert_eq!(bootstrap.config_created, false);

@@ -241,7 +241,7 @@ impl CliError {
             command,
             ErrorStage::Internal,
             why,
-            vec!["oneq help".to_owned()],
+            vec!["onequery help".to_owned()],
         )
     }
 }
@@ -295,7 +295,7 @@ mod tests {
         ]
         .into_iter()
         .map(|(stage, expected_exit_code)| {
-            let error = CliError::new("title", "oneq test", stage, "why", vec![]);
+            let error = CliError::new("title", "onequery test", stage, "why", vec![]);
             (stage, error.exit_code(), expected_exit_code)
         })
         .collect::<Vec<_>>();

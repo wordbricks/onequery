@@ -170,7 +170,7 @@ pub(super) fn load_user_file_layer(
             startup_command,
             ErrorStage::LoadConfig,
             format!("{read_error} ({})", path.display()),
-            vec!["oneq auth login".to_owned()],
+            vec!["onequery auth login".to_owned()],
         )
     })?;
 

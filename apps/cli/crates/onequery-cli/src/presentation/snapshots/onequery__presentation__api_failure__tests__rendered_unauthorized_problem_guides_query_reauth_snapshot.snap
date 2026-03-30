@@ -3,10 +3,10 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Not Logged In
-Command: oneq source show warehouse
+Command: onequery query execute --source warehouse --sql "select 1"
 Stage: auth
 Why: stored credentials are no longer authorized
-Request ID: req_source_auth
+Request ID: req_query_auth
 Hint: login via the OneQuery web app and retry
 Try:
-  - oneq auth login
+  - onequery auth login

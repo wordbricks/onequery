@@ -8,4 +8,4 @@ Data dir: /tmp/onequery/data
 Listen: 127.0.0.1:4545
 Created self-host config.toml: yes
 Created secrets.toml: yes
-Next step: oneq serve start
+Next step: onequery serve start

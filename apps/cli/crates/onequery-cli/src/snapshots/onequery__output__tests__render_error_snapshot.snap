@@ -3,11 +3,11 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: query failed
-Command: oneq query execute --source warehouse --sql "<excerpt: select ...>"
+Command: onequery query execute --source warehouse --sql "<excerpt: select ...>"
 Stage: execute_query
 Why: server rejected write query
 Request ID: req_123
 Hint: queries must be read-only
 Try:
   - retry with a read-only SELECT
-  - run oneq source show warehouse
+  - run onequery source show warehouse

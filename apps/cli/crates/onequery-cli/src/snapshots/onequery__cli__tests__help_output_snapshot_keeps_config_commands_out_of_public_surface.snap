@@ -4,7 +4,7 @@ expression: rendered
 ---
 OneQuery CLI
 
-Usage: oneq [OPTIONS] [COMMAND]
+Usage: onequery [OPTIONS] [COMMAND]
 
 Commands:
   auth     Manage authentication and stored sessions

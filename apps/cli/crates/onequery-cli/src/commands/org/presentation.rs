@@ -20,7 +20,7 @@ pub(super) fn render_org_list_output(
     read: &ListReadArgs,
 ) -> Result<CommandOutput, CliError> {
     if read.has_field_selection() {
-        let data = serialize_command_data(&payload, "oneq org list")?;
+        let data = serialize_command_data(&payload, "onequery org list")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
@@ -28,7 +28,7 @@ pub(super) fn render_org_list_output(
     if orgs.is_empty() {
         return Ok(CommandOutput::try_deferred(
             vec!["No organizations found for this account.".to_owned()],
-            move || serialize_command_data(&payload, "oneq org list"),
+            move || serialize_command_data(&payload, "onequery org list"),
         ));
     }
 
@@ -70,7 +70,7 @@ pub(super) fn render_org_list_output(
     );
 
     Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&payload, "oneq org list")
+        serialize_command_data(&payload, "onequery org list")
     }))
 }
 
@@ -79,7 +79,7 @@ pub(super) fn render_org_get_output(
     read: &ReadArgs,
 ) -> Result<CommandOutput, CliError> {
     if read.has_field_selection() {
-        let data = serialize_command_data(&org, "oneq org get")?;
+        let data = serialize_command_data(&org, "onequery org get")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
@@ -111,7 +111,7 @@ pub(super) fn render_org_get_output(
             format!("Roles: {roles}"),
             format!("Capabilities: {capabilities}"),
         ],
-        move || serialize_command_data(&org, "oneq org get"),
+        move || serialize_command_data(&org, "onequery org get"),
     ))
 }
 

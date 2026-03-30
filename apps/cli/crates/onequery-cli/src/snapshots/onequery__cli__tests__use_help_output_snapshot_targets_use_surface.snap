@@ -2,18 +2,15 @@
 source: crates/onequery-cli/src/cli.rs
 expression: rendered
 ---
-Execute or validate source queries
+Load provider-specific skill content for non-SQL sources
 
-Usage: oneq query [OPTIONS] <COMMAND>
-
-Commands:
-  execute   Execute a query and return rows
-  validate  Validate a query without executing it
-  help      Print this message or the help of the given subcommand(s)
+Usage: onequery use [OPTIONS] --source <SOURCE>
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+      --source <SOURCE>  Load skill content for this non-SQL source provider [possible values: amplitude, ga, github, mixpanel, mongodb, posthog, sentry]
+      --input <JSON>     Execute one provider-specific relay request from an inline JSON payload
+  -h, --help             Print help
+  -V, --version          Print version
 
 Global Options:
       --org <ORG_SLUG>           Override the active org for this invocation

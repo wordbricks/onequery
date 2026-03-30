@@ -7,10 +7,10 @@ describe("use skills", () => {
     const skill = getCliUseSkill("github");
 
     expect(skill.content).toContain(
-      "Inspect this skill with `oneq use --source github`."
+      "Inspect this skill with `onequery use --source github`."
     );
     expect(skill.content).toContain(
-      "Execute the relay with `oneq use --source github --input '<json>'`."
+      "Execute the relay with `onequery use --source github --input '<json>'`."
     );
   });
 
@@ -21,8 +21,8 @@ describe("use skills", () => {
     });
 
     expect(skill.content).toContain(
-      "You should connect GitHub in OneQuery before using `oneq use --source github`."
+      "You should connect GitHub in OneQuery before using `onequery use --source github`."
     );
-    expect(skill.content).toContain("Rerun `oneq use --source github`.");
+    expect(skill.content).toContain("Rerun `onequery use --source github`.");
   });
 });

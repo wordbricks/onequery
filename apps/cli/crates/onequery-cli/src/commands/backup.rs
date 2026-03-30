@@ -61,7 +61,7 @@ fn execute_with_paths(
                 &context.command_line,
                 ErrorStage::LoadConfig,
                 format!("{error} ({})", parent.display()),
-                vec!["retry oneq backup".to_owned()],
+                vec!["retry onequery backup".to_owned()],
             )
         })?;
     }
@@ -72,7 +72,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             format!("{error} ({})", archive_path.display()),
-            vec!["retry oneq backup".to_owned()],
+            vec!["retry onequery backup".to_owned()],
         )
     })?;
     let encoder = GzEncoder::new(file, Compression::default());
@@ -117,7 +117,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             error.to_string(),
-            vec!["retry oneq backup".to_owned()],
+            vec!["retry onequery backup".to_owned()],
         )
     })?;
     encoder.finish().map_err(|error| {
@@ -126,7 +126,7 @@ fn execute_with_paths(
             &context.command_line,
             ErrorStage::LoadConfig,
             error.to_string(),
-            vec!["retry oneq backup".to_owned()],
+            vec!["retry onequery backup".to_owned()],
         )
     })?;
 
@@ -159,7 +159,7 @@ fn ensure_backup_inputs_exist(
             command_line,
             ErrorStage::LoadConfig,
             format!("missing {}", paths.config_path.display()),
-            vec!["run oneq serve once before creating a backup".to_owned()],
+            vec!["run onequery serve once before creating a backup".to_owned()],
         ));
     }
 
@@ -253,7 +253,7 @@ fn archive_error(title: &str, command_line: &str, error: impl std::fmt::Display)
         command_line,
         ErrorStage::LoadConfig,
         error.to_string(),
-        vec!["retry oneq backup".to_owned()],
+        vec!["retry onequery backup".to_owned()],
     )
 }
 
@@ -270,7 +270,7 @@ fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
     trimmed.parse::<u32>().map(Some).map_err(|error| {
         CliError::new(
             "failed to parse runtime pid file",
-            "oneq backup",
+            "onequery backup",
             ErrorStage::LoadConfig,
             format!("{error} ({})", path.display()),
             vec!["remove the stale pid file and retry".to_owned()],
@@ -326,7 +326,7 @@ mod tests {
                 include_secrets: false,
                 archive_path: Some(archive_path.clone()),
             },
-            &sample_context("oneq backup"),
+            &sample_context("onequery backup"),
             &paths,
         )
         .unwrap_or_else(|error| panic!("expected backup to succeed: {error}"));
@@ -386,7 +386,7 @@ mod tests {
                 include_secrets: true,
                 archive_path: Some(archive_path.clone()),
             },
-            &sample_context("oneq backup --include-secrets"),
+            &sample_context("onequery backup --include-secrets"),
             &paths,
         )
         .unwrap_or_else(|error| panic!("expected backup with secrets to succeed: {error}"));

@@ -34,10 +34,10 @@ const SERVE_STOP_POLL_ATTEMPTS: usize = 50;
 const SERVE_STOP_POLL_INTERVAL_MS: u64 = 100;
 const BUN_EXECUTABLE_NAME: &str = "bun";
 const INSTALL_BUN_GUIDANCE: &str = "install bun and ensure it is on PATH";
-const RETRY_SERVE_COMMAND: &str = "retry oneq serve";
-const RETRY_SERVE_STOP_COMMAND: &str = "retry oneq serve stop";
+const RETRY_SERVE_COMMAND: &str = "retry onequery serve";
+const RETRY_SERVE_STOP_COMMAND: &str = "retry onequery serve stop";
 const CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP: &str =
-    "check the server log and retry oneq serve stop";
+    "check the server log and retry onequery serve stop";
 const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
 const BUILD_REPO_WEB_COMMAND: &str = "run bun run --cwd apps/web build";
 const ONEQUERY_NPM_ROOT_ENV_VAR: &str = "ONEQUERY_NPM_ROOT";
@@ -639,7 +639,7 @@ fn render_serve_output(state: &ServeRuntimeState) -> CommandOutput {
                 "Created secrets.toml: {}",
                 yes_no_label(state.secrets_created)
             ),
-            "Next step: oneq serve start".to_owned(),
+            "Next step: onequery serve start".to_owned(),
         ],
         json!({
             "kind": "serve",
@@ -768,7 +768,7 @@ fn server_json(config: &SelfHostConfig) -> serde_json::Value {
 }
 
 fn runtime_state_json(state: &ServeRuntimeState) -> serde_json::Value {
-    let running = read_runtime_pid(state.paths.pid_path.as_path(), "oneq serve status")
+    let running = read_runtime_pid(state.paths.pid_path.as_path(), "onequery serve status")
         .ok()
         .flatten()
         .is_some_and(is_process_running);
@@ -791,7 +791,7 @@ fn runtime_state_json(state: &ServeRuntimeState) -> serde_json::Value {
 }
 
 fn runtime_status_label(state: &ServeRuntimeState) -> &'static str {
-    if read_runtime_pid(state.paths.pid_path.as_path(), "oneq serve status")
+    if read_runtime_pid(state.paths.pid_path.as_path(), "onequery serve status")
         .ok()
         .flatten()
         .is_some_and(is_process_running)
@@ -939,7 +939,7 @@ mod tests {
         let state = resolve_runtime_state_with_paths_for_test(
             paths.clone(),
             ServeStateAccessMode::BootstrapIfMissing,
-            "oneq serve",
+            "onequery serve",
         )
         .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
 

@@ -99,7 +99,7 @@ impl Command {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "oneq",
+    name = "onequery",
     version,
     about = "OneQuery CLI",
     propagate_version(true),
@@ -478,17 +478,17 @@ pub(crate) struct QueryValidateArgs {
 pub(crate) enum QuerySubcommand {
     /// Execute a query and return rows.
     #[command(override_usage = "\
-oneq query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --stdin")]
+onequery query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --stdin")]
     Execute(QueryExecuteArgs),
     /// Validate a query without executing it.
     #[command(override_usage = "\
-oneq query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --stdin")]
+onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin")]
     Validate(QueryValidateArgs),
 }
 
@@ -647,7 +647,7 @@ pub(crate) fn parse_invocation_from_with_stdout_tty(
                 raw_command,
                 ErrorStage::ParseCommand,
                 parse_error.to_string(),
-                vec!["oneq help".to_owned()],
+                vec!["onequery help".to_owned()],
             )),
         },
     }
@@ -674,7 +674,7 @@ fn render_root_help_text(raw_command: String) -> Result<String, CliError> {
                 raw_command,
                 ErrorStage::ParseCommand,
                 write_error.to_string(),
-                vec!["oneq help".to_owned()],
+                vec!["onequery help".to_owned()],
             )
         })?;
     Ok(String::from_utf8_lossy(&help_buffer).to_string())
@@ -722,7 +722,7 @@ fn map_command(raw_command: RawCommand) -> Command {
 }
 
 fn normalize_command_line(args: &[OsString]) -> String {
-    let mut normalized = vec!["oneq".to_owned()];
+    let mut normalized = vec!["onequery".to_owned()];
     if args.is_empty() {
         return normalized.join(" ");
     }
@@ -902,10 +902,10 @@ mod tests {
     use super::requested_output_from_args;
     #[test]
     fn help_output_snapshot_keeps_config_commands_out_of_public_surface() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq")]).expect("expected help");
+        let outcome = parse_invocation_from(&[OsString::from("onequery")]).expect("expected help");
 
         let ParseOutcome::Display(display) = outcome else {
-            panic!("expected bare oneq to render display output");
+            panic!("expected bare onequery to render display output");
         };
 
         let rendered = display.lines.join("\n");
@@ -916,7 +916,7 @@ mod tests {
     #[test]
     fn auth_help_output_snapshot_targets_auth_surface() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("--help"),
         ])
@@ -933,7 +933,7 @@ mod tests {
     #[test]
     fn query_help_output_snapshot_targets_query_surface() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("--help"),
         ])
@@ -950,7 +950,7 @@ mod tests {
     #[test]
     fn use_help_output_snapshot_targets_use_surface() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("use"),
             OsString::from("--help"),
         ])
@@ -967,7 +967,7 @@ mod tests {
     #[test]
     fn serve_help_output_snapshot_targets_serve_surface() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("serve"),
             OsString::from("--help"),
         ])
@@ -984,7 +984,7 @@ mod tests {
     #[test]
     fn org_use_help_output_keeps_global_org_override_visible() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("org"),
             OsString::from("use"),
             OsString::from("--help"),
@@ -1002,7 +1002,7 @@ mod tests {
     #[test]
     fn query_execute_help_output_uses_explicit_multiline_usage() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("execute"),
             OsString::from("--help"),
@@ -1020,7 +1020,7 @@ mod tests {
     #[test]
     fn query_validate_help_output_uses_explicit_multiline_usage() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("validate"),
             OsString::from("--help"),
@@ -1037,20 +1037,21 @@ mod tests {
 
     #[test]
     fn parse_invocation_renders_bare_config_as_help() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("config")])
-            .expect("expected bare config command to render help");
+        let outcome =
+            parse_invocation_from(&[OsString::from("onequery"), OsString::from("config")])
+                .expect("expected bare config command to render help");
 
         let ParseOutcome::Display(display) = outcome else {
             panic!("expected bare config command to render display output");
         };
 
-        assert!(display.lines.join("\n").contains("Usage: oneq config"));
+        assert!(display.lines.join("\n").contains("Usage: onequery config"));
     }
 
     #[test]
     fn parse_invocation_accepts_config_set_server() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("config"),
             OsString::from("set"),
             OsString::from("server"),
@@ -1073,7 +1074,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_output_mode() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("backup"),
             OsString::from("--archive-path"),
             OsString::from("/tmp/onequery-backup.tar.gz"),
@@ -1107,7 +1108,8 @@ mod tests {
 
     #[test]
     fn version_output_matches_current_package_version() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("--version")]);
+        let outcome =
+            parse_invocation_from(&[OsString::from("onequery"), OsString::from("--version")]);
 
         match outcome {
             // Version output is derived from release metadata, so snapshotting it creates
@@ -1115,7 +1117,7 @@ mod tests {
             Ok(ParseOutcome::Display(display)) => {
                 assert_eq!(
                     display.lines.join("\n").trim(),
-                    format!("oneq {}", env!("CARGO_PKG_VERSION"))
+                    format!("onequery {}", env!("CARGO_PKG_VERSION"))
                 );
             }
             Ok(ParseOutcome::Invocation(_)) => {
@@ -1128,7 +1130,7 @@ mod tests {
     #[test]
     fn subcommand_version_output_matches_current_package_version() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("--version"),
         ]);
@@ -1137,7 +1139,7 @@ mod tests {
             Ok(ParseOutcome::Display(display)) => {
                 assert_eq!(
                     display.lines.join("\n").trim(),
-                    format!("oneq-auth {}", env!("CARGO_PKG_VERSION"))
+                    format!("onequery-auth {}", env!("CARGO_PKG_VERSION"))
                 );
             }
             Ok(ParseOutcome::Invocation(_)) => {
@@ -1150,7 +1152,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_hidden_debug_subcommand() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("debug"),
             OsString::from("config"),
         ]);
@@ -1167,7 +1169,7 @@ mod tests {
 
     #[test]
     fn parse_invocation_accepts_serve_without_subcommand() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("serve")]);
+        let outcome = parse_invocation_from(&[OsString::from("onequery"), OsString::from("serve")]);
 
         let Ok(ParseOutcome::Invocation(invocation)) = outcome else {
             panic!("expected serve command to parse");
@@ -1182,7 +1184,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_serve_status_subcommand() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("serve"),
             OsString::from("status"),
         ]);
@@ -1200,7 +1202,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_org_get_read_controls() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("--org"),
             OsString::from("acme"),
             OsString::from("org"),
@@ -1232,7 +1234,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_auth_whoami_read_controls() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("whoami"),
             OsString::from("--fields"),
@@ -1257,7 +1259,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_request_id_and_timeout_transport_controls() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("--request-id"),
             OsString::from("req_cli_123"),
             OsString::from("--timeout"),
@@ -1283,7 +1285,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_raw_config_overrides() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("-c"),
             OsString::from("api.request_timeout_sec=30"),
             OsString::from("--config"),
@@ -1311,7 +1313,7 @@ mod tests {
     #[test]
     fn parse_invocation_rejects_invalid_raw_config_overrides() {
         let error = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("--config"),
             OsString::from("api.request_timeout_sec"),
             OsString::from("org"),
@@ -1332,14 +1334,14 @@ mod tests {
     fn normalize_command_line_redacts_raw_config_override_values() {
         assert_eq!(
             super::normalize_command_line(&[
-                OsString::from("oneq"),
+                OsString::from("onequery"),
                 OsString::from("--config"),
                 OsString::from("api.access_token=secret-token"),
                 OsString::from("--config=query.output.format=json"),
                 OsString::from("org"),
                 OsString::from("list"),
             ]),
-            "oneq --config api.access_token=<redacted> --config=query.output.format=<redacted> org list"
+            "onequery --config api.access_token=<redacted> --config=query.output.format=<redacted> org list"
                 .to_owned()
         );
     }
@@ -1347,7 +1349,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_use_source_flag() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("use"),
             OsString::from("--source"),
             OsString::from("sentry"),
@@ -1369,7 +1371,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_use_input_json() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("use"),
             OsString::from("--source"),
             OsString::from("github"),
@@ -1393,7 +1395,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_auth_import_raw_input() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("import"),
             OsString::from("--input"),
@@ -1414,7 +1416,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_auth_import_dry_run() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("import"),
             OsString::from("--input"),
@@ -1436,7 +1438,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_auth_logout_dry_run() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("logout"),
             OsString::from("--dry-run"),
@@ -1455,7 +1457,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_auth_session_refresh() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("auth"),
             OsString::from("session"),
             OsString::from("refresh"),
@@ -1477,7 +1479,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_schema_command_path_tokens() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("schema"),
             OsString::from("command"),
             OsString::from("query"),
@@ -1500,7 +1502,7 @@ mod tests {
     fn requested_output_from_args_reads_space_separated_long_flag() {
         assert_eq!(
             requested_output_from_args(&[
-                OsString::from("oneq"),
+                OsString::from("onequery"),
                 OsString::from("--output"),
                 OsString::from("json"),
             ]),
@@ -1511,7 +1513,10 @@ mod tests {
     #[test]
     fn requested_output_from_args_reads_equals_delimited_long_flag() {
         assert_eq!(
-            requested_output_from_args(&[OsString::from("oneq"), OsString::from("--output=text")]),
+            requested_output_from_args(&[
+                OsString::from("onequery"),
+                OsString::from("--output=text")
+            ]),
             Some(RequestedOutputMode::Text)
         );
     }
@@ -1520,7 +1525,7 @@ mod tests {
     fn parse_invocation_resolves_effective_output_mode_before_execution() {
         let outcome = parse_invocation_from_with_stdout_tty(
             &[
-                OsString::from("oneq"),
+                OsString::from("onequery"),
                 OsString::from("org"),
                 OsString::from("list"),
             ],
@@ -1540,7 +1545,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_list_read_controls() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("source"),
             OsString::from("list"),
             OsString::from("--fields"),
@@ -1574,7 +1579,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_source_connect_input() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("source"),
             OsString::from("connect"),
             OsString::from("--source"),
@@ -1601,7 +1606,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_query_result_window_args() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("execute"),
             OsString::from("--source"),
@@ -1659,7 +1664,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_explicit_query_validate_subcommand() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("validate"),
             OsString::from("--source"),
@@ -1701,7 +1706,7 @@ mod tests {
 
     #[test]
     fn parse_invocation_renders_bare_auth_as_help() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("auth")])
+        let outcome = parse_invocation_from(&[OsString::from("onequery"), OsString::from("auth")])
             .expect("expected bare auth to render help");
 
         let ParseOutcome::Display(display) = outcome else {
@@ -1712,13 +1717,13 @@ mod tests {
             display
                 .lines
                 .join("\n")
-                .contains("Usage: oneq auth [OPTIONS] <COMMAND>")
+                .contains("Usage: onequery auth [OPTIONS] <COMMAND>")
         );
     }
 
     #[test]
     fn parse_invocation_renders_bare_query_as_help() {
-        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("query")])
+        let outcome = parse_invocation_from(&[OsString::from("onequery"), OsString::from("query")])
             .expect("expected bare query to render help");
 
         let ParseOutcome::Display(display) = outcome else {
@@ -1729,14 +1734,14 @@ mod tests {
             display
                 .lines
                 .join("\n")
-                .contains("Usage: oneq query [OPTIONS] <COMMAND>")
+                .contains("Usage: onequery query [OPTIONS] <COMMAND>")
         );
     }
 
     #[test]
     fn parse_invocation_preserves_query_as_org_use_argument() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("org"),
             OsString::from("use"),
             OsString::from("query"),
@@ -1756,7 +1761,7 @@ mod tests {
     #[test]
     fn parse_invocation_accepts_org_use_dry_run() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("org"),
             OsString::from("use"),
             OsString::from("acme"),
@@ -1777,7 +1782,7 @@ mod tests {
     #[test]
     fn parse_invocation_preserves_query_as_schema_command_path_segment() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("schema"),
             OsString::from("command"),
             OsString::from("query"),
@@ -1798,7 +1803,7 @@ mod tests {
     #[test]
     fn parse_invocation_preserves_query_as_source_flag_value() {
         let outcome = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("execute"),
             OsString::from("--source"),
@@ -1823,7 +1828,7 @@ mod tests {
     #[test]
     fn parse_invocation_rejects_raw_query_input_with_result_window_controls() {
         let error = parse_invocation_from(&[
-            OsString::from("oneq"),
+            OsString::from("onequery"),
             OsString::from("query"),
             OsString::from("execute"),
             OsString::from("--source"),

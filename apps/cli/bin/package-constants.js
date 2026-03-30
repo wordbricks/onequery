@@ -1,5 +1,5 @@
 export const CLI_PACKAGE_NAME = "@wordbricks/onequery";
-export const CLI_BINARY_NAME = "oneq";
+export const CLI_BINARY_NAME = "onequery";
 export const CLI_SERVER_BINARY_NAME = "onequery-server";
 export const CLI_NPM_TARBALL_PREFIX = "onequery-npm";
 export const CLI_NPM_STAGE_DIR_PREFIX = `${CLI_NPM_TARBALL_PREFIX}-stage-`;

@@ -204,7 +204,7 @@ async fn execute_effect<B, T>(
                             transport_why_prefix: "failed to reach auth session refresh endpoint",
                             decode_why_prefix: "failed to decode auth session refresh response",
                             fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                         },
                     ),
                 },
@@ -606,8 +606,8 @@ mod tests {
                 "not logged in",
                 ErrorStage::Auth,
                 vec![
-                    "oneq auth login".to_owned(),
-                    "oneq auth import --input <path|->".to_owned(),
+                    "onequery auth login".to_owned(),
+                    "onequery auth import --input <path|->".to_owned(),
                 ],
             )
         );
@@ -659,7 +659,7 @@ mod tests {
 
     fn test_context(base_url: String) -> CommandContext {
         CommandContext {
-            command_line: "oneq auth session refresh".to_owned(),
+            command_line: "onequery auth session refresh".to_owned(),
             base_url,
             request_id: None,
             resolved_org: None,

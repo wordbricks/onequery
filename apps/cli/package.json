@@ -10,7 +10,7 @@
     "directory": "apps/cli"
   },
   "bin": {
-    "oneq": "bin/oneq.js"
+    "onequery": "bin/onequery.js"
   },
   "files": [
     "bin",
@@ -23,7 +23,7 @@
     "access": "public"
   },
   "scripts": {
-    "dev:cli": "just oneq",
+    "dev:cli": "just onequery",
     "build": "just build",
     "typecheck": "sh -c 'if command -v just >/dev/null 2>&1; then just typecheck; else cargo check --tests; fi'",
     "test": "sh -c 'if command -v just >/dev/null 2>&1; then just test; else if command -v cargo-nextest >/dev/null 2>&1; then cargo nextest run --no-fail-fast; else cargo test; fi; fi'",

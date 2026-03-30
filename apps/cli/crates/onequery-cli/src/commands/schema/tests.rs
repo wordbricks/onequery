@@ -279,7 +279,7 @@ async fn execute_schema_command_reports_unknown_public_paths() {
             "unknown command schema".to_owned(),
             ErrorStage::ParseCommand,
             vec![
-                "oneq schema commands --output json".to_owned(),
+                "onequery schema commands --output json".to_owned(),
                 "use one of the listed command paths verbatim".to_owned(),
             ],
         )

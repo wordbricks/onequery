@@ -2,15 +2,18 @@
 source: crates/onequery-cli/src/cli.rs
 expression: rendered
 ---
-Persist the selected org as the active default
+Bootstrap or inspect the self-host runtime lifecycle surface
 
-Usage: oneq org use [OPTIONS] <ORG_SLUG>
+Usage: onequery serve [OPTIONS] [COMMAND]
 
-Arguments:
-  <ORG_SLUG>  Persist this org slug as the active org
+Commands:
+  start   Bootstrap the self-host runtime foundation and prepare to launch
+  stop    Stop the self-host runtime if a managed process is present
+  status  Show the current self-host runtime state and derived paths
+  logs    Show the current self-host server log path and any available preview
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
-      --dry-run  Validate the selection without updating local config
   -h, --help     Print help
   -V, --version  Print version
 

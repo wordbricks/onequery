@@ -12,19 +12,19 @@ export const CLI_DEFAULT_RELAY_TIMEOUT_MS = 30_000;
 const CLI_JSON_INPUT_PLACEHOLDER = "'<json>'";
 
 export function buildCliSourceConnectCommand(provider: string) {
-  return `oneq source connect --source ${provider} --input ${CLI_JSON_INPUT_PLACEHOLDER}`;
+  return `onequery source connect --source ${provider} --input ${CLI_JSON_INPUT_PLACEHOLDER}`;
 }
 
 export function buildCliSourceShowCommand(sourceKey: string) {
-  return `oneq source show ${sourceKey}`;
+  return `onequery source show ${sourceKey}`;
 }
 
 export function buildCliUseInspectCommand(source: string) {
-  return `oneq use --source ${source}`;
+  return `onequery use --source ${source}`;
 }
 
 export function buildCliUseExecuteCommand(source: string) {
-  return `oneq use --source ${source} --input ${CLI_JSON_INPUT_PLACEHOLDER}`;
+  return `onequery use --source ${source} --input ${CLI_JSON_INPUT_PLACEHOLDER}`;
 }
 
 export function buildCliUseIntegrationReminder(

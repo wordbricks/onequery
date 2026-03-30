@@ -18,7 +18,7 @@ pub(super) fn render_query_output(
     let output_metadata = result.output_metadata.clone();
 
     if read.has_field_selection() {
-        let data = serialize_command_data(&result, "oneq query")?;
+        let data = serialize_command_data(&result, "onequery query")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data)
             .with_untrusted_output_metadata(output_metadata));
     }
@@ -60,10 +60,10 @@ pub(super) fn render_query_output(
             || read.pagination.cursor().is_some(),
     );
 
-    Ok(
-        CommandOutput::try_deferred(lines, move || serialize_command_data(&result, "oneq query"))
-            .with_untrusted_output_metadata(output_metadata),
-    )
+    Ok(CommandOutput::try_deferred(lines, move || {
+        serialize_command_data(&result, "onequery query")
+    })
+    .with_untrusted_output_metadata(output_metadata))
 }
 
 pub(super) fn render_query_validation_output(
@@ -71,7 +71,7 @@ pub(super) fn render_query_validation_output(
     read: &ReadArgs,
 ) -> Result<CommandOutput, CliError> {
     if read.has_field_selection() {
-        let data = serialize_command_data(&result, "oneq query validate")?;
+        let data = serialize_command_data(&result, "onequery query validate")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
@@ -118,7 +118,7 @@ pub(super) fn render_query_validation_output(
     }
 
     Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&result, "oneq query validate")
+        serialize_command_data(&result, "onequery query validate")
     }))
 }
 

@@ -174,8 +174,8 @@ async fn read_import_payload_json(
 
 fn import_input_examples() -> Vec<String> {
     vec![
-        "cat auth.json | oneq auth import --input -".to_owned(),
-        "oneq auth import --input ./auth.json".to_owned(),
+        "cat auth.json | onequery auth import --input -".to_owned(),
+        "onequery auth import --input ./auth.json".to_owned(),
     ]
 }
 
@@ -271,8 +271,8 @@ where
                             transport_why_prefix: "failed to reach org list endpoint",
                             decode_why_prefix: "failed to decode org list response",
                             fallback_try_next: vec![
-                                "run oneq auth login".to_owned(),
-                                "retry oneq org list".to_owned(),
+                                "run onequery auth login".to_owned(),
+                                "retry onequery org list".to_owned(),
                             ],
                             unauthorized_try_next: None,
                         },
@@ -318,7 +318,7 @@ where
                             transport_why_prefix: "failed to reach whoami endpoint",
                             decode_why_prefix: "failed to decode whoami response",
                             fallback_try_next: vec![
-                                "run oneq auth login".to_owned(),
+                                "run onequery auth login".to_owned(),
                                 format!("retry {}", context.command_line),
                             ],
                             unauthorized_try_next: None,
@@ -440,7 +440,7 @@ where
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "browser authorization was denied before token exchange completed",
-                vec!["run oneq auth login again".to_owned()],
+                vec!["run onequery auth login again".to_owned()],
             ),
         },
         Ok(login_poll::LoginPollTerminalState::Expired) => AuthEvent::LoginCompletionFailed {
@@ -449,7 +449,7 @@ where
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "browser authorization session expired before token exchange completed",
-                vec!["run oneq auth login again".to_owned()],
+                vec!["run onequery auth login again".to_owned()],
             ),
         },
         Ok(login_poll::LoginPollTerminalState::TimedOut { expires_in_sec }) => {
@@ -459,7 +459,7 @@ where
                     context.command_line.clone(),
                     ErrorStage::Auth,
                     format!("did not receive authorization after {expires_in_sec} seconds"),
-                    vec!["run oneq auth login again".to_owned()],
+                    vec!["run onequery auth login again".to_owned()],
                 ),
             }
         }
@@ -472,7 +472,7 @@ where
                         title: "login poll failed",
                         transport_why_prefix: "failed to poll login session",
                         decode_why_prefix: "failed to decode login poll response",
-                        fallback_try_next: vec!["run oneq auth login again".to_owned()],
+                        fallback_try_next: vec!["run onequery auth login again".to_owned()],
                         unauthorized_try_next: None,
                     },
                 ),
@@ -526,7 +526,7 @@ async fn execute_resolve_login_identity<B, T>(
                     title: "login identity lookup failed",
                     transport_why_prefix: "failed to reach whoami endpoint after device authorization",
                     decode_why_prefix: "failed to decode whoami response after device authorization",
-                    fallback_try_next: vec!["run oneq auth login again".to_owned()],
+                    fallback_try_next: vec!["run onequery auth login again".to_owned()],
                     unauthorized_try_next: None,
                 },
             ),
@@ -553,7 +553,7 @@ fn logout_active_org_clear_error(
         error.stage,
         format!("stored auth session was cleared, but {}", error.why),
         vec![
-            "retry oneq auth logout".to_owned(),
+            "retry onequery auth logout".to_owned(),
             format!("remove or fix {}", config_path.display()),
         ],
     )

@@ -4,15 +4,15 @@ set positional-arguments
 help:
     just -l
 
-# `oneq`
-alias v := oneq
-oneq *args:
-    cargo run --bin oneq -- "$@"
+# `onequery`
+alias v := onequery
+onequery *args:
+    cargo run --bin onequery -- "$@"
 
-# Run `oneq use --source <SOURCE>`
+# Run `onequery use --source <SOURCE>`
 alias u := use
 use source:
-    cargo run --bin oneq -- use --source {{source}}
+    cargo run --bin onequery -- use --source {{source}}
 
 # format code
 fmt:

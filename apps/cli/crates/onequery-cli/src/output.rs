@@ -433,12 +433,12 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "query failed",
-                "oneq query execute --source warehouse --sql \"<excerpt: select ...>\"",
+                "onequery query execute --source warehouse --sql \"<excerpt: select ...>\"",
                 ErrorStage::ExecuteQuery,
                 "server rejected write query",
                 vec![
                     "retry with a read-only SELECT".to_owned(),
-                    "run oneq source show warehouse".to_owned(),
+                    "run onequery source show warehouse".to_owned(),
                 ],
             )
             .with_request_id(Some("req_123".to_owned()))
@@ -454,7 +454,7 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "failed to parse config file",
-                "oneq auth whoami",
+                "onequery auth whoami",
                 ErrorStage::LoadConfig,
                 "expected newline, found a string at line 2 column 14 (/Users/alice/.config/onequery/config.toml)",
                 vec!["remove or fix /Users/alice/.config/onequery/config.toml".to_owned()],
@@ -470,7 +470,7 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "failed to resolve config directory",
-                "oneq auth whoami",
+                "onequery auth whoami",
                 ErrorStage::LoadConfig,
                 "XDG_CONFIG_HOME points to /Users/alice/.config-missing, but that path does not exist",
                 vec!["set XDG_CONFIG_HOME or HOME to a valid directory".to_owned()],
@@ -541,7 +541,7 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "query failed",
-                "oneq query execute --source warehouse --sql \"<excerpt: select ...>\"",
+                "onequery query execute --source warehouse --sql \"<excerpt: select ...>\"",
                 ErrorStage::ExecuteQuery,
                 "server rejected write query",
                 vec!["retry with a read-only SELECT".to_owned()],
@@ -740,10 +740,10 @@ mod tests {
             CommandOutput::try_deferred(vec!["ok".to_owned()], move || {
                 Err(CliError::new(
                     "failed to render command output",
-                    "oneq query",
+                    "onequery query",
                     ErrorStage::Render,
                     "boom",
-                    vec!["retry oneq query".to_owned()],
+                    vec!["retry onequery query".to_owned()],
                 ))
             }),
             EffectiveOutputMode::Json,

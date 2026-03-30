@@ -7,4 +7,4 @@ Display Name: Warehouse
 Provider: postgres
 Status: active
 Query (v1): yes
-Sample query: oneq query execute --source warehouse --sql "select 1"
+Sample query: onequery query execute --source warehouse --sql "select 1"
