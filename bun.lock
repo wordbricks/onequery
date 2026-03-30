@@ -37,7 +37,7 @@
         "@aws-sdk/client-athena": "3.940.0",
         "@aws-sdk/client-glue": "3.940.0",
         "@onequery/base": "workspace:*",
-        "@onequery/config": "workspace:*",
+        "@onequery/config-loader": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -118,7 +118,7 @@
         "@hono/zod-validator": "catalog:",
         "@onequery/base": "workspace:*",
         "@onequery/cli-server": "workspace:*",
-        "@onequery/config": "workspace:*",
+        "@onequery/config-loader": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/dev-config": "workspace:*",
         "@onequery/server": "workspace:*",
@@ -157,13 +157,16 @@
         "zod": "catalog:",
       },
     },
-    "packages/config": {
-      "name": "@onequery/config",
+    "packages/config-loader": {
+      "name": "@onequery/config-loader",
       "version": "0.0.0",
       "dependencies": {
         "smol-toml": "1.6.1",
         "zod": "catalog:",
         "zod-config": "1.4.0",
+      },
+      "devDependencies": {
+        "vitest": "catalog:",
       },
     },
     "packages/contracts": {
@@ -199,8 +202,7 @@
       "name": "@onequery/dev-config",
       "version": "0.0.0",
       "dependencies": {
-        "@onequery/config": "workspace:*",
-        "smol-toml": "1.6.1",
+        "@onequery/config-loader": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -216,7 +218,7 @@
         "@noble/ciphers": "2.1.1",
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
-        "@onequery/config": "workspace:*",
+        "@onequery/config-loader": "workspace:*",
         "@onequery/contracts": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/dev-config": "workspace:*",
@@ -600,7 +602,7 @@
 
     "@onequery/codecs": ["@onequery/codecs@workspace:packages/codecs"],
 
-    "@onequery/config": ["@onequery/config@workspace:packages/config"],
+    "@onequery/config-loader": ["@onequery/config-loader@workspace:packages/config-loader"],
 
     "@onequery/connector": ["@onequery/connector@workspace:apps/connector"],
 

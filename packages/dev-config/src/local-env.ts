@@ -2,7 +2,10 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { loadConfigFromSourcesSync, readTomlFileSync } from "@onequery/config";
+import {
+  loadConfigFromSourcesSync,
+  readTomlFileSync,
+} from "@onequery/config-loader";
 import {
   LOCAL_AGENT_ORIGIN,
   LOCAL_DATABASE_URL,

@@ -1,5 +1,5 @@
 {
-  "name": "@onequery/config",
+  "name": "@onequery/config-loader",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,12 +8,16 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "smol-toml": "1.6.1",
     "zod": "catalog:",
     "zod-config": "1.4.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
 }

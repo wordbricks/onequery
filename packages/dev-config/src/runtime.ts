@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   literalConfigAdapter,
   loadConfigFromSourcesSync,
-} from "@onequery/config";
+} from "@onequery/config-loader";
 import {
   getLocalConfigPath,
   getManagedLocalConfigDefaults,

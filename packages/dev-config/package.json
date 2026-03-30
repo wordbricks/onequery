@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@onequery/config": "workspace:*",
+    "@onequery/config-loader": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

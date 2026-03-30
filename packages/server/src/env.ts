@@ -1,4 +1,4 @@
-import { loadConfigFromSourcesSync } from "@onequery/config";
+import { loadConfigFromSourcesSync } from "@onequery/config-loader";
 import { z } from "zod";
 
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
