@@ -1,5 +1,4 @@
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
@@ -9,6 +8,7 @@ import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
 import { getDatabaseEngine, postgresSchema } from "./client";
+import { resolvePgliteRuntimeOptions } from "./pglite-assets";
 
 export type DatabasePreparationResult =
   | {
@@ -26,7 +26,7 @@ function resolvePgliteDataDir(connectionString: string): string {
   }
 
   if (connectionString.startsWith("pglite://")) {
-    return connectionString.slice("pglite://".length - 1);
+    return connectionString.slice("pglite://".length);
   }
 
   if (connectionString.startsWith("pglite:")) {
@@ -40,7 +40,7 @@ function ensurePgliteDataDir(connectionString: string): string {
   const dataDir = resolvePgliteDataDir(connectionString);
 
   if (dataDir !== "memory://") {
-    mkdirSync(dirname(dataDir), {
+    mkdirSync(dataDir, {
       recursive: true,
     });
   }
@@ -53,7 +53,10 @@ export async function prepareSelfHostDatabase(options: {
   migrationsFolder: string;
 }): Promise<DatabasePreparationResult> {
   if (getDatabaseEngine(options.connectionString) === "pglite") {
-    const client = new PGlite(ensurePgliteDataDir(options.connectionString));
+    const client = new PGlite(
+      ensurePgliteDataDir(options.connectionString),
+      resolvePgliteRuntimeOptions()
+    );
 
     try {
       const db = drizzlePglite(client, { schema: postgresSchema });

@@ -157,6 +157,47 @@ describe("bun runtime app", () => {
     );
   });
 
+  it("uses ONEQUERY_RUNTIME_ROOT to resolve relative runtime asset paths", async () => {
+    const runtimeRoot = mkdtempSync(join(tmpdir(), "onequery-runtime-root-"));
+    const assetDir = join(runtimeRoot, "runtime", "web");
+    mkdirSync(assetDir, { recursive: true });
+    writeFileSync(
+      join(assetDir, "index.html"),
+      "<!doctype html><title>rooted spa</title>"
+    );
+
+    const runtime = createRuntimeConfig({
+      processEnv: {
+        BETTER_AUTH_SECRET: "test-better-auth-secret",
+        BETTER_AUTH_URL: "http://localhost:4545",
+        MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+        ONEQUERY_RUNTIME_ROOT: runtimeRoot,
+        ONEQUERY_WEB_DIST_DIR: "runtime/web",
+        ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
+        WEB_URL: "http://localhost:4545",
+      },
+      selfHostPaths: {
+        backupsDir: "/tmp/onequery-data/onequery/backups",
+        configDir: "/tmp/onequery-config/onequery/self-host",
+        dataDir: "/tmp/onequery-data/onequery",
+        lockPath: "/tmp/onequery-data/onequery/run/server.lock",
+        logsDir: "/tmp/onequery-data/onequery/logs",
+        pidPath: "/tmp/onequery-data/onequery/run/server.pid",
+        runDir: "/tmp/onequery-data/onequery/run",
+        secretsPath: "/tmp/onequery-config/onequery/self-host/secrets.toml",
+        configPath: "/tmp/onequery-config/onequery/self-host/config.toml",
+        serverLogPath: "/tmp/onequery-data/onequery/logs/server.log",
+        pgliteDir: "/tmp/onequery-data/onequery/pglite/onequery",
+      },
+    });
+
+    const response = await runtime.env.SPA_ASSETS.fetch(
+      new Request("http://localhost:4545/")
+    );
+
+    await expect(response.text()).resolves.toContain("rooted spa");
+  });
+
   it("loads auth, public origin, and SMTP settings from self-host TOML config", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-config-"));
     const configDir = join(root, "config", "self-host");

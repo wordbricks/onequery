@@ -1,5 +1,4 @@
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 
 // Comment: The public @onequery/db surface stays stable while the runtime now
 // selects either a remote Postgres connection or a local PGlite data dir.
@@ -9,6 +8,7 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
+import { resolvePgliteRuntimeOptions } from "./pglite-assets";
 import * as authSchema from "./schema/auth";
 import * as bigQueryQueryCostsSchema from "./schema/bigquery-query-costs";
 import * as cliQueryActionEventsSchema from "./schema/cli-query-action-events";
@@ -90,7 +90,7 @@ function resolvePgliteDataDir(connectionString: string): string {
   }
 
   if (connectionString.startsWith("pglite://")) {
-    return connectionString.slice("pglite://".length - 1);
+    return connectionString.slice("pglite://".length);
   }
 
   if (connectionString.startsWith("pglite:")) {
@@ -104,7 +104,7 @@ function ensurePgliteDataDir(connectionString: string): string {
   const dataDir = resolvePgliteDataDir(connectionString);
 
   if (dataDir !== "memory://") {
-    mkdirSync(dirname(dataDir), {
+    mkdirSync(dataDir, {
       recursive: true,
     });
   }
@@ -186,7 +186,10 @@ export function createDb(connectionString: string): Database {
 }
 
 function createPgliteDb(connectionString: string): Database {
-  const client = new PGlite(ensurePgliteDataDir(connectionString));
+  const client = new PGlite(
+    ensurePgliteDataDir(connectionString),
+    resolvePgliteRuntimeOptions()
+  );
   return drizzlePglite(client, {
     schema: postgresSchema,
   });
