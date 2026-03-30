@@ -224,13 +224,33 @@ async function stagePackagedRuntime({ stagingDir }) {
 }
 
 async function buildWebAssets() {
-  const result = spawnSync("bun", ["run", "build"], {
-    cwd: WEB_BUILD_ROOT,
-    encoding: "utf8",
-  });
+  // Comment: Build the web package through Turbo so its workspace
+  // prerequisites (notably repo-local packages that export generated `dist/`
+  // entrypoints) are materialized on clean CI runners before npm staging.
+  const result = spawnSync(
+    "bun",
+    ["x", "turbo", "run", "build", "--filter=@onequery/web"],
+    {
+      cwd: WORKSPACE_ROOT,
+      encoding: "utf8",
+    }
+  );
+
+  if (result.error) {
+    throw result.error;
+  }
 
   if (result.status !== 0) {
-    throw new Error("failed to build apps/web for npm packaging");
+    const output = [result.stdout, result.stderr]
+      .filter((value) => typeof value === "string" && value.trim().length > 0)
+      .join("\n")
+      .trim();
+    const message =
+      output.length > 0
+        ? `failed to build apps/web for npm packaging\n${output}`
+        : "failed to build apps/web for npm packaging";
+
+    throw new Error(message);
   }
 }
 
