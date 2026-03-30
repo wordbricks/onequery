@@ -4,43 +4,43 @@ Thank you for your interest in OneQuery.
 
 ## Pull Requests
 
-**We only accept pull requests for data source connectors.**
+**We only accept pull requests for new data source integrations.**
 
 The core platform (server, web UI, CLI, database schema) is not open to external contributions at this time. If you have a request for core functionality, please open an issue instead — see [Feature Requests](#feature-requests) below.
 
-### What counts as a connector contribution
+### What counts as a data source integration
 
-A connector is a self-contained agent that runs on customer infrastructure, polls OneQuery for query jobs, executes them against a data source, and returns results. The current connector lives in `apps/connector` and targets AWS Athena.
+A data source integration connects OneQuery to an external service — such as Google Analytics, Sentry, Mixpanel, Amplitude, PostHog, GitHub, or Linear — so users can query it alongside their other sources.
 
-Accepted connector contributions include:
+Each integration lives in `packages/server/src/services/` and consists of:
 
-- New data source support (e.g. a new connector for Snowflake, Redshift, BigQuery on-prem, etc.)
-- Bug fixes or reliability improvements to an existing connector
-- New query validation rules for an existing connector
+- **`{provider}/relay.ts`** — authenticates and proxies requests to the provider's API, with input sanitization and error normalization
+- **`testers/{provider}-tester.ts`** — tests the connection using stored credentials and returns a `ConnectionTestResult`
+
+See the existing Sentry integration (`packages/server/src/services/sentry/`) as a reference implementation.
 
 ### Before you open a PR
 
-1. Open an issue first describing the connector you want to add or the problem you want to fix. Wait for a maintainer to confirm it's in scope before investing significant time.
+1. Open an issue first describing the data source you want to add. Wait for a maintainer to confirm it's in scope before investing significant time.
 2. Fork the repo and work on a branch.
-3. Follow the existing structure in `apps/connector` — each connector must:
-   - Register with OneQuery via an enrollment token
-   - Validate queries for safety (read-only, single statement) before executing
-   - Return normalized success or error payloads
-   - Not log query result row contents
+3. Follow the patterns established in existing integrations:
+   - Sanitize all inputs; never leak credentials in error messages
+   - Normalize errors to human-readable messages with appropriate HTTP status handling
+   - Keep the relay stateless — no side effects beyond the outbound API call
+   - Cover the relay and tester with unit tests (see `relay.test.ts` files for examples)
 4. Run checks before submitting:
 
 ```bash
-cd apps/connector
 bun run typecheck
+bun run lint
 bun run test
-bun run check
 ```
 
-5. Keep the PR focused. One connector or one fix per PR.
+5. Keep the PR focused. One data source per PR.
 
 ## Feature Requests
 
-For any feature request outside of connector contributions — new platform capabilities, CLI commands, web UI features, integrations, API changes — please **open a GitHub issue** with a title starting with:
+For any feature request outside of data source integrations — new platform capabilities, CLI commands, web UI features, API changes, etc. — please **open a GitHub issue** with a title starting with:
 
 ```
 [Feature Request] <your title here>
@@ -54,11 +54,10 @@ Open a GitHub issue with a clear description of the problem, steps to reproduce,
 
 ## Setup
 
-See the root `README.md` for local development setup. If you're working on the connector only:
-
 ```bash
-cd apps/connector
-cp config/local.toml.example config/local.toml
-# edit config/local.toml with your local values
-bun run dev
+bun install --frozen-lockfile
+bun run dev:setup
+bun dev
 ```
+
+See the root `README.md` for full local development instructions.
