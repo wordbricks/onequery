@@ -85,7 +85,9 @@ For a higher-level overview, see
 The GitHub repository rulesets for OSS governance are tracked in
 `.github/rulesets/`:
 
-- `main.json`: the `main` branch protection ruleset.
+- `main.json`: the `main` branch protection ruleset. The
+  `onequery-maintainers` team can bypass pull request review requirements from
+  the PR UI without bypassing CI or branch-history protections.
 - `cli-release-tags.json`: the protected CLI release tag ruleset.
 - `teams.json`: org team state required by the tag ruleset.
 
