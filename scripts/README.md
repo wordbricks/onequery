@@ -95,5 +95,9 @@ Use the Bun scripts below to check or apply the GitHub state:
 
 ```bash
 bun run github:rulesets:check
+bun run github:rulesets:plan
 bun run github:rulesets:apply
 ```
+
+`github:rulesets:plan` prints the exact team/ruleset changes that
+`github:rulesets:apply` would make without mutating GitHub state.
