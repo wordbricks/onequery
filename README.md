@@ -17,13 +17,11 @@ Prerequisites:
 - Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
 - current packaged support: macOS and Linux only
 
-Install with the hosted script:
+Install directly with npm:
 
 ```bash
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+npm install -g @wordbricks/onequery
 ```
-
-Or install directly with Bun:
 
 ```bash
 bun install -g @wordbricks/onequery
