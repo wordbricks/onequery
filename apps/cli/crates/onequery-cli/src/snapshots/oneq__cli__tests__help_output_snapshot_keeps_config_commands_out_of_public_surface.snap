@@ -1,0 +1,48 @@
+---
+source: crates/onequery-cli/src/cli.rs
+expression: rendered
+---
+OneQuery CLI
+
+Usage: oneq [OPTIONS] [COMMAND]
+
+Commands:
+  auth     Manage authentication and stored sessions
+  backup   Create a self-host backup archive from the current runtime state
+  config   Persist local CLI targeting defaults
+  org      Inspect org access and select the active org
+  source   Inspect sources available to the active org
+  query    Execute or validate source queries
+  restore  Restore a self-host backup archive into the runtime directories
+  serve    Bootstrap or inspect the self-host runtime lifecycle surface
+  use      Load provider-specific skill content for non-SQL sources
+  schema   Inspect machine-readable CLI schemas and skills
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help
+
+  -V, --version
+          Print version
+
+Global Options:
+      --org <ORG_SLUG>
+          Override the active org for this invocation
+
+  -c, --config <KEY=VALUE>
+          Apply a raw config override for this invocation using `key=value`
+
+      --request-id <REQUEST_ID>
+          Attach a caller-supplied request ID to outbound API requests
+
+      --timeout <SECONDS>
+          Override the request timeout in seconds for this invocation
+
+      --output <OUTPUT>
+          Choose text or JSON output
+          
+          [possible values: text, json]
+
+      --verbose
+          Emit workflow progress and retry tracing to stderr

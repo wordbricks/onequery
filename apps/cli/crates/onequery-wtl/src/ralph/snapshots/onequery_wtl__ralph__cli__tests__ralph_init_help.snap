@@ -1,0 +1,30 @@
+---
+source: crates/onequery-wtl/src/ralph/cli.rs
+expression: rendered
+---
+Ralph Loop init
+
+Usage: ralph-loop init [OPTIONS]
+
+Options:
+      --output <OUTPUT>
+          Output format
+          
+          [possible values: text, json]
+
+      --base-branch <BASE_BRANCH>
+          Base branch to branch from
+          
+          [default: main]
+
+      --work-branch <WORK_BRANCH>
+          Working branch name
+
+      --dry-run
+          Validate and describe the init without side effects
+
+  -h, --help
+          Print help
+
+  -V, --version
+          Print version

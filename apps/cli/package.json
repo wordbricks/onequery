@@ -1,0 +1,35 @@
+{
+  "name": "@wordbricks/onequery",
+  "version": "0.0.0-dev",
+  "private": true,
+  "description": "OneQuery CLI",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wordbricks/onequery-oss.git",
+    "directory": "apps/cli"
+  },
+  "bin": {
+    "oneq": "bin/oneq.js"
+  },
+  "files": [
+    "bin",
+    "runtime",
+    "vendor",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev:cli": "just oneq",
+    "build": "just build",
+    "typecheck": "sh -c 'if command -v just >/dev/null 2>&1; then just typecheck; else cargo check --tests; fi'",
+    "test": "sh -c 'if command -v just >/dev/null 2>&1; then just test; else if command -v cargo-nextest >/dev/null 2>&1; then cargo nextest run --no-fail-fast; else cargo test; fi; fi'",
+    "fix": "just fix"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

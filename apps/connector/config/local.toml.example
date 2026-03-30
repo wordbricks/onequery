@@ -1,0 +1,18 @@
+# Copy to config/local.toml for local connector development.
+
+ONEQUERY_BASE_URL = "http://localhost:4545/api"
+ONEQUERY_ENROLLMENT_TOKEN = "replace-with-enrollment-token"
+ORGANIZATION_ID = "org_123"
+CONNECTOR_NAME = "customer-prod-apne2"
+AWS_REGION = "ap-northeast-2"
+ATHENA_DATABASE = "silver"
+ATHENA_WORKGROUP = "onequery"
+ATHENA_OUTPUT_LOCATION = "s3://customer-athena-results/onequery/"
+POLL_INTERVAL_MS = 3000
+HEARTBEAT_INTERVAL_MS = 15000
+QUERY_TIMEOUT_MS = 60000
+MAX_ROWS = 1000
+MAX_PAYLOAD_BYTES = 5242880
+LOG_LEVEL = "info"
+# HTTPS_PROXY = "http://proxy.company.local:8080"
+# NODE_EXTRA_CA_CERTS = "/etc/ssl/certs/custom-ca.pem"

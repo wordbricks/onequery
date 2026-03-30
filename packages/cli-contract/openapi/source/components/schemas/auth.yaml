@@ -1,0 +1,258 @@
+components:
+  schemas:
+    CliAuthMode:
+      type: string
+      enum:
+        - browser_session
+        - bearer_token
+    CliAuthDeviceAuthorizationPendingResponse:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - pending
+        pollAfterMs:
+          type: integer
+          exclusiveMinimum: true
+          maximum: 9007199254740991
+          minimum: 0
+      required:
+        - state
+        - pollAfterMs
+      additionalProperties: false
+    CliAuthDeviceAuthorizationPollEnvelope:
+      type: object
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+        data:
+          oneOf:
+            - "$ref": "#/components/schemas/CliAuthDeviceAuthorizationPendingResponse"
+            - "$ref": "#/components/schemas/CliAuthDeviceAuthorizationSuccessResponse"
+        warnings:
+          type: array
+          items:
+            "$ref": "./common.yaml#/components/schemas/CliWarning"
+      required:
+        - requestId
+        - data
+        - warnings
+      additionalProperties: false
+    CliAuthDeviceAuthorizationPollRequest:
+      type: object
+      properties:
+        deviceCode:
+          type: string
+          minLength: 1
+      required:
+        - deviceCode
+      additionalProperties: false
+    CliAuthDeviceAuthorizationStartEnvelope:
+      type: object
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+        data:
+          "$ref": "#/components/schemas/CliAuthDeviceAuthorizationStartResponse"
+        warnings:
+          type: array
+          items:
+            "$ref": "./common.yaml#/components/schemas/CliWarning"
+      required:
+        - requestId
+        - data
+        - warnings
+      additionalProperties: false
+    CliAuthDeviceAuthorizationStartResponse:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - pending
+        deviceCode:
+          type: string
+          minLength: 1
+        userCode:
+          type: string
+          minLength: 1
+        verificationUrl:
+          type: string
+          format: uri
+        verificationCompleteUrl:
+          type: string
+          format: uri
+        pollAfterMs:
+          type: integer
+          exclusiveMinimum: true
+          maximum: 9007199254740991
+          minimum: 0
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+      required:
+        - state
+        - deviceCode
+        - userCode
+        - verificationUrl
+        - verificationCompleteUrl
+        - pollAfterMs
+        - expiresAt
+      additionalProperties: false
+    CliAuthDeviceAuthorizationSuccessResponse:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - authorized
+        accessToken:
+          type: string
+          minLength: 1
+        authMode:
+          "$ref": "#/components/schemas/CliAuthMode"
+        user:
+          "$ref": "#/components/schemas/CliAuthSessionUser"
+        activeOrgSlug:
+          type: string
+          minLength: 1
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+      required:
+        - state
+        - accessToken
+        - authMode
+        - user
+        - activeOrgSlug
+        - issuedAt
+        - expiresAt
+      additionalProperties: false
+    CliAuthSessionProjectedUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+          pattern: "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        displayName:
+          type: string
+      additionalProperties: false
+    CliAuthSessionRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+        authMode:
+          "$ref": "#/components/schemas/CliAuthMode"
+        user:
+          "$ref": "#/components/schemas/CliAuthSessionUser"
+        activeOrgSlug:
+          type: string
+          minLength: 1
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+      required:
+        - accessToken
+        - authMode
+        - user
+        - activeOrgSlug
+        - issuedAt
+        - expiresAt
+      additionalProperties: false
+    CliAuthSessionResponse:
+      type: object
+      properties:
+        authMode:
+          "$ref": "#/components/schemas/CliAuthMode"
+        user:
+          "$ref": "#/components/schemas/CliAuthSessionProjectedUser"
+        activeOrgSlug:
+          type: string
+          minLength: 1
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          pattern: "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          nullable: true
+      additionalProperties: false
+    CliAuthSessionUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+          pattern: "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        displayName:
+          type: string
+      required:
+        - id
+        - email
+        - displayName
+      additionalProperties: false
+    CliSessionReadEnvelope:
+      type: object
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+        data:
+          "$ref": "#/components/schemas/CliAuthSessionResponse"
+        warnings:
+          type: array
+          items:
+            "$ref": "./common.yaml#/components/schemas/CliWarning"
+      required:
+        - requestId
+        - data
+        - warnings
+      additionalProperties: false
+    CliSessionRefreshEnvelope:
+      type: object
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+        data:
+          "$ref": "#/components/schemas/CliAuthSessionRefreshResponse"
+        warnings:
+          type: array
+          items:
+            "$ref": "./common.yaml#/components/schemas/CliWarning"
+      required:
+        - requestId
+        - data
+        - warnings
+      additionalProperties: false

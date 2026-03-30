@@ -1,0 +1,80 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-worker/
+dist-worker-types/
+build/
+target/
+.next/
+out/
+
+# Turbo
+.turbo/
+
+# Bun (lock file should be committed for reproducible builds)
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# Misc
+*.tsbuildinfo
+__pycache__/
+*.py[cod]
+
+.reports
+.claude/settings.local.json
+AGENTS.override.md
+
+!.env.local.example
+.env.local.*
+
+mise.local.toml
+onequery.local.toml
+onequery.local.env.toml
+apps/connector/config/local.toml
+
+# Local agent memory (development only)
+
+.memory/
+
+dash/
+
+.plans/
+.envrc
+
+/insights-agent
+/.tmp
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
+web/.tanstack
+/openai-skills
+/codex-ref

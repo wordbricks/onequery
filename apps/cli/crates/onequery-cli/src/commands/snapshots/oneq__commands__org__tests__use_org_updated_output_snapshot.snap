@@ -1,0 +1,5 @@
+---
+source: crates/onequery-cli/src/commands/org/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Active org set to acme

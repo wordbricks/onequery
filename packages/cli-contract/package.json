@@ -1,0 +1,22 @@
+{
+  "name": "@onequery/cli-contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./document": "./src/document.ts",
+    "./openapi": "./openapi/generated/cli.openapi.json"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsgo --noEmit",
+    "generate:bundle": "bun run scripts/bundle-openapi.ts",
+    "generate:orval": "bun run scripts/generate-orval.ts",
+    "generate": "bun run generate:bundle && bun run generate:orval"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "12.1.0",
+    "orval": "8.5.3"
+  }
+}

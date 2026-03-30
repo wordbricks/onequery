@@ -1,0 +1,12 @@
+---
+source: crates/onequery-cli/src/commands/query/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Source: warehouse (postgres)
+Rows: 2
+Time: 428 ms
+
+day         signups
+----------  -------
+2026-03-04  182    
+2026-03-03  177

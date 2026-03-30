@@ -1,0 +1,55 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "treatConfigHintsAsErrors": true,
+  "ignoreIssues": {
+    "apps/web/src/server/auth-rate-limit.ts": ["unlisted"],
+    "packages/cli-server/generated/**/*.ts": ["exports", "types"]
+  },
+  "ignoreBinaries": ["just"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "turbo.json",
+        "scripts/run-local-env-command.ts",
+        "scripts/upload-image.ts",
+        "scripts/oxlint/plugin.mjs"
+      ],
+      "project": ["*.json", "scripts/**/*.ts", "scripts/**/*.mjs"]
+    },
+    "apps/*": {
+      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+    },
+    "apps/cli": {
+      "entry": ["bin/*.js", "scripts/stage-npm-packages.js"],
+      "project": ["bin/*.js", "scripts/*.js", "src/**/*.ts"]
+    },
+    "apps/web": {
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "scripts/*.ts",
+        "!src/**/*.test.{ts,tsx}",
+        "!src/vite-env.d.ts"
+      ],
+      "ignoreDependencies": ["tailwindcss"]
+    },
+    "packages/*": {
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+    },
+    "packages/cli-server": {
+      "project": ["generated/**/*.ts", "src/**/*.ts", "!src/**/*.test.ts"]
+    },
+    "packages/server": {
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+    },
+    "packages/cli-contract": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/ui": {
+      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+    },
+    "packages/db": {
+      "entry": ["src/scripts/seed-dev.ts"],
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+    }
+  }
+}

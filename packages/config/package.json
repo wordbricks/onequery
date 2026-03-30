@@ -1,0 +1,19 @@
+{
+  "name": "@onequery/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "smol-toml": "1.6.1",
+    "zod": "catalog:",
+    "zod-config": "1.4.0"
+  },
+  "devDependencies": {}
+}

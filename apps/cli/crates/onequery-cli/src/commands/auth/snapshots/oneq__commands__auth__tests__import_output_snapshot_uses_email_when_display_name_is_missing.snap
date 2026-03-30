@@ -1,0 +1,6 @@
+---
+source: crates/onequery-cli/src/commands/auth/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Imported auth session for alice@example.com <alice@example.com>
+Credentials: stored

@@ -1,0 +1,199 @@
+organizations:
+  get:
+    operationId: cliOrgList
+    description: List organizations where the authenticated caller is a member.
+    x-onequery-command: org list
+    x-onequery-expose-command-schema: true
+    x-onequery-kind: read
+    x-onequery-read-controls:
+      fields:
+        support: supported
+        unsupportedReason:
+      limit:
+        support: supported
+        unsupportedReason:
+      cursor:
+        support: supported
+        unsupportedReason:
+      sort:
+        support: unsupported
+        unsupportedReason: not_sortable
+    x-onequery-supports-fields: true
+    x-onequery-supports-pagination: true
+    x-onequery-supports-dry-run: false
+    x-onequery-supports-raw-input: false
+    x-onequery-auth-requirements:
+      authenticated: true
+      modes:
+        - session_cookie
+        - bearer_token
+      orgScoped: false
+    x-onequery-required-org-role:
+    x-onequery-stable-error-codes:
+      - not_logged_in
+    x-onequery-untrusted-response-paths: []
+    x-onequery-sanitization-profile:
+    x-onequery-retryable-statuses: []
+    parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      - in: query
+        name: cursor
+        schema:
+          type: string
+          minLength: 1
+    responses:
+      "200":
+        description:
+          Organizations visible through org membership on the standard
+          CLI surface
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/organizations.yaml#/components/schemas/CliOrgListEnvelope"
+            example:
+              requestId: req_org_list_01
+              data:
+                organizations:
+                  - slug: acme
+                    name: Acme Corp
+                  - slug: paperkite
+                    name: Paperkite
+              warnings: []
+              page:
+                nextCursor:
+                returned: 2
+                hasMore: false
+      "401":
+        description: No authenticated session is available
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/common.yaml#/components/schemas/CliProblem"
+            example:
+              type: https://onequery.invalid/problems/cli/not-logged-in
+              status: 401
+              title: Not Logged In
+              detail: no authenticated session was found
+              code: not_logged_in
+              stage: auth
+              hint: login via the OneQuery web app and retry
+              requestId: req_org_list_unauthorized_01
+              retryable: false
+organization:
+  get:
+    operationId: cliOrgGet
+    description:
+      Show one organization visible to the caller, including normalized
+      org roles and current CLI capabilities.
+    x-onequery-command: org get
+    x-onequery-expose-command-schema: true
+    x-onequery-kind: read
+    x-onequery-read-controls:
+      fields:
+        support: supported
+        unsupportedReason:
+      limit:
+        support: unsupported
+        unsupportedReason: not_paginated
+      cursor:
+        support: unsupported
+        unsupportedReason: not_paginated
+      sort:
+        support: unsupported
+        unsupportedReason: not_sortable
+    x-onequery-supports-fields: true
+    x-onequery-supports-pagination: false
+    x-onequery-supports-dry-run: false
+    x-onequery-supports-raw-input: false
+    x-onequery-auth-requirements:
+      authenticated: true
+      modes:
+        - session_cookie
+        - bearer_token
+      orgScoped: true
+    x-onequery-required-org-role: member
+    x-onequery-stable-error-codes:
+      - not_logged_in
+      - forbidden
+      - org_not_found
+      - invalid_request
+    x-onequery-untrusted-response-paths: []
+    x-onequery-sanitization-profile:
+    x-onequery-retryable-statuses: []
+    parameters:
+      - in: query
+        name: fields
+        schema:
+          type: string
+          minLength: 1
+      - in: path
+        name: orgSlug
+        schema:
+          type: string
+          minLength: 1
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        required: true
+    responses:
+      "200":
+        description: Organization details plus caller roles and route capabilities
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/organizations.yaml#/components/schemas/CliOrgGetEnvelope"
+            example:
+              requestId: req_org_get_01
+              data:
+                slug: acme
+                name: Acme Corp
+                roles:
+                  - member
+                capabilities:
+                  - org.read
+                  - source.list
+                  - source.read
+                  - query.execute
+              warnings: []
+      "401":
+        description: No authenticated session is available
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/common.yaml#/components/schemas/CliProblem"
+      "403":
+        description: Authenticated user lacks permission to read the requested org
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/common.yaml#/components/schemas/CliProblem"
+      "404":
+        description: Requested org slug does not exist
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/common.yaml#/components/schemas/CliProblem"
+            example:
+              type: https://onequery.invalid/problems/cli/org-not-found
+              status: 404
+              title: Organization Not Found
+              detail: org `acme-missing` was not found
+              code: org_not_found
+              stage: resolve_org
+              hint: run `oneq org list`
+              requestId: req_org_get_not_found_01
+              retryable: false
+      "422":
+        description: The requested org slug is invalid
+        content:
+          application/json:
+            schema:
+              "$ref": "../components/schemas/common.yaml#/components/schemas/CliProblem"

@@ -1,0 +1,43 @@
+---
+source: crates/onequery-cli/src/cli.rs
+expression: rendered
+---
+Execute a query and return rows
+
+Usage: oneq query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       oneq query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       oneq query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       oneq query execute [OPTIONS] --source <SOURCE_KEY> --stdin
+
+Options:
+      --source <SOURCE_KEY>  Execute the query against this source key
+  -h, --help                 Print help
+  -V, --version              Print version
+
+Read Controls:
+      --fields <FIELDS>  Project only the requested response fields
+
+Pagination:
+      --page-size <PAGE_SIZE>  Limit the number of records returned in one page
+      --cursor <CURSOR>        Resume listing from this pagination cursor
+      --page-all               Continue loading pages until the server is exhausted
+
+Query Input:
+      --input <PATH|->  Read a full query request payload from a JSON file or stdin (`-`)
+      --sql <SQL>       Provide SQL directly on the command line
+      --file <PATH>     Read SQL from a UTF-8 file
+      --stdin           Read SQL from stdin
+
+Result Window:
+      --max-rows <MAX_ROWS>              Cap the number of rows returned by the query
+      --max-bytes <MAX_BYTES>            Cap the total response payload size in bytes
+      --cell-max-chars <CELL_MAX_CHARS>  Truncate individual cell values to this many characters
+      --timeout-ms <MILLISECONDS>        Override the query execution timeout in milliseconds
+
+Global Options:
+      --org <ORG_SLUG>           Override the active org for this invocation
+  -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
+      --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
+      --timeout <SECONDS>        Override the request timeout in seconds for this invocation
+      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --verbose                  Emit workflow progress and retry tracing to stderr

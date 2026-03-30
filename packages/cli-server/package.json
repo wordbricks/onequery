@@ -1,0 +1,28 @@
+{
+  "name": "@onequery/cli-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./env": "./src/env.ts",
+    "./route": "./src/route.ts"
+  },
+  "scripts": {
+    "openapi:cli:generate": "bun run --cwd ../cli-contract generate",
+    "openapi:cli:check": "bun run openapi:cli:generate && git -C ../.. diff --exit-code -- packages/cli-contract/openapi/generated/cli.openapi.json packages/cli-server/generated packages/cli-server/src/transport/handlers",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "catalog:",
+    "@onequery/cli-contract": "workspace:*",
+    "@onequery/codecs": "workspace:*",
+    "@onequery/db": "workspace:*",
+    "@onequery/server": "workspace:*",
+    "hono": "catalog:",
+    "hono-problem-details": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {}
+}

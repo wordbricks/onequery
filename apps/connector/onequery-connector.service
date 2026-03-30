@@ -1,0 +1,17 @@
+[Unit]
+Description=OneQuery Connector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/onequery-connector
+EnvironmentFile=/opt/onequery-connector/.env
+ExecStart=/usr/bin/bun run start
+Restart=always
+RestartSec=5
+User=ec2-user
+Group=ec2-user
+
+[Install]
+WantedBy=multi-user.target

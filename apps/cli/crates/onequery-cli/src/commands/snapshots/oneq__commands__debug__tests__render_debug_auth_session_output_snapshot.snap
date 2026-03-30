@@ -1,0 +1,14 @@
+---
+source: crates/onequery-cli/src/commands/debug.rs
+expression: rendered
+---
+Debug: auth-session
+Auth path: /tmp/onequery-debug-auth/auth.json
+Access token present: true
+Metadata:
+  principal_user_id: usr_123
+  principal_email: alice@example.com
+  display_name: Alice Example
+  issued_at: 2026-03-10T00:00:00.000Z
+  expires_at: 2026-03-17T00:00:00.000Z
+  last_refresh: 2026-03-10T00:00:00Z

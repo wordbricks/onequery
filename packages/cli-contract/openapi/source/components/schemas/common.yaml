@@ -1,0 +1,118 @@
+components:
+  schemas:
+    CliPage:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          minLength: 1
+          nullable: true
+        returned:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        hasMore:
+          type: boolean
+      required:
+        - nextCursor
+        - returned
+        - hasMore
+      additionalProperties: false
+    CliProblem:
+      type: object
+      properties:
+        type:
+          type: string
+        status:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        title:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+          enum:
+            - forbidden
+            - invalid_request
+            - login_denied
+            - login_rate_limited
+            - login_session_expired
+            - not_logged_in
+            - org_not_found
+            - query_execution_failed
+            - query_execution_timed_out
+            - query_execution_unavailable
+            - query_preparation_failed
+            - query_rejected
+            - source_not_found
+            - source_not_queryable
+        stage:
+          type: string
+          enum:
+            - auth
+            - execute_query
+            - read_query_input
+            - resolve_org
+            - resolve_source
+        hint:
+          type: string
+        requestId:
+          type: string
+          minLength: 1
+        retryable:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+            required:
+              - field
+              - message
+              - code
+            additionalProperties: false
+        retryAfterMs:
+          type: integer
+          exclusiveMinimum: true
+          maximum: 9007199254740991
+          minimum: 0
+      required:
+        - type
+        - status
+        - title
+        - code
+        - stage
+        - requestId
+        - retryable
+      additionalProperties: false
+    CliSanitization:
+      type: object
+      properties:
+        profile:
+          type: string
+          minLength: 1
+        sanitizedPaths:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        rawAvailable:
+          type: boolean
+      required:
+        - profile
+        - sanitizedPaths
+        - rawAvailable
+      additionalProperties: false
+    CliWarning:
+      type: string
+      minLength: 1

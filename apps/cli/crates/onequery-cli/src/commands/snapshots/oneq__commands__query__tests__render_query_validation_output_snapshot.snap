@@ -1,0 +1,15 @@
+---
+source: crates/onequery-cli/src/commands/query/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Source: warehouse (postgres)
+Truncated: no
+
+Normalized SQL:
+SELECT 1
+
+Declared result window:
+  maxRows: 100
+  maxBytes: 4096
+  cellMaxChars: 256
+  timeoutMs: 2500

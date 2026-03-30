@@ -1,0 +1,276 @@
+// Refer to https://github.com/haydenbleasel/ultracite/blob/main/packages/cli/config/oxlint/core/.oxlintrc.json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // Slow... use only when needed with `--type-aware` flag.
+  // "options": {
+  //   "typeAware": true,
+  // },
+  "plugins": [
+    "import",
+    "jsx-a11y",
+    "oxc",
+    "promise",
+    "react",
+    "react-perf",
+    "typescript",
+  ],
+  "jsPlugins": ["./scripts/oxlint/plugin.mjs"],
+  "categories": {
+    "correctness": "error",
+    "perf": "error",
+    "restriction": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "style": "error",
+  },
+  "rules": {
+    "eslint/prefer-destructuring": "off",
+
+    "no-await-in-loop": "off",
+    "max-lines-per-function": "off",
+    "no-implicit-coercion": "off",
+    "no-magic-numbers": "off",
+    "no-console": "off",
+    "no-ternary": "off",
+    "no-undefined": "off",
+    "max-lines": "off",
+    "id-length": "off",
+    "func-style": [
+      "off", // TEMP
+      // "error",
+      // "expression",
+      // {
+      // 	"allowArrowFunctions": true
+      // }
+    ],
+    // "arrow-body-style": ["error", "as-needed"],
+    "max-depth": "off",
+    "max-params": "off",
+    "max-statements": "off",
+    "capitalized-comments": "off",
+    "new-cap": "off",
+    "no-continue": "off",
+    "init-declarations": "off",
+    // Rely on oxfmt `experimentalSortImports` instead
+    "sort-imports": "off",
+    "no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+
+    "import/no-relative-parent-imports": "off",
+    "import/no-default-export": "off",
+    "import/exports-last": "off",
+    "import/no-named-export": "off",
+    "import/max-dependencies": "off",
+    "import/no-unresolved": "off",
+    "import/extensions": "off",
+    "import/no-namespace": "off",
+    "import/no-anonymous-default-export": "off",
+    "import/prefer-default-export": "off",
+    "import/group-exports": "off",
+    "import/no-commonjs": "off",
+    "import/unambiguous": "off",
+    "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+    "import/no-dynamic-require": "off",
+    "import/no-unassigned-import": "off",
+    "import/no-nodejs-modules": "off",
+
+    "jsdoc/require-param": "off",
+    "jsdoc/require-param-type": "off",
+    "jsdoc/require-returns": "off",
+    "jsdoc/require-returns-type": "off",
+
+    "@typescript-eslint/consistent-type-definitions": "off",
+    "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-require-imports": "off",
+    "typescript/explicit-function-return-type": "off",
+    "typescript/no-var-requires": "off",
+    "typescript/require-await": "off",
+
+    // TEMP: type-aware rules to fix incrementally
+    "typescript/strict-boolean-expressions": "off", // TEMP ~1044
+    "typescript/no-unsafe-member-access": "off", // TEMP ~656
+    "typescript/no-unsafe-assignment": "off", // TEMP ~595
+    "typescript/no-unsafe-call": "off", // TEMP ~139 external library .......
+    "typescript/no-unsafe-return": "off", // TEMP ~137
+    "typescript/no-unsafe-argument": "off", // TEMP ~102
+    // "typescript/promise-function-async": "off", // TEMP ~326
+    "typescript/no-confusing-void-expression": "off", // TEMP ~172
+    "typescript/no-floating-promises": "off", // TEMP ~71
+    "typescript/prefer-nullish-coalescing": "off", // TEMP ~70
+    "typescript/no-unnecessary-type-arguments": "off", // TEMP ~59
+    "typescript/no-deprecated": "off", // TEMP ~58
+    "typescript/no-misused-promises": "off", // TEMP ~39
+    "typescript/unbound-method": "off", // TEMP ~23
+    "typescript/use-unknown-in-catch-callback-variable": "off", // TEMP ~16
+    "typescript/no-unnecessary-boolean-literal-compare": "off", // TEMP ~14
+    "typescript/switch-exhaustiveness-check": "off", // TEMP ~13
+    "typescript/no-unsafe-type-assertion": "off", // TEMP
+    "typescript/no-unnecessary-type-assertion": "off", // TEMP ~11
+    "typescript/no-redundant-type-constituents": "off", // TEMP ~11
+    "typescript/only-throw-error": "off", // TEMP ~10
+    "typescript/no-base-to-string": "off", // TEMP ~10
+    "typescript/restrict-template-expressions": "off", // TEMP ~5
+    "typescript/no-unsafe-enum-comparison": "off", // TEMP ~4
+    "typescript/no-misused-spread": "off", // TEMP ~4
+    "typescript/prefer-promise-reject-errors": "off", // TEMP ~3
+    "typescript/non-nullable-type-assertion-style": "off", // TEMP ~2
+    "typescript/no-duplicate-type-constituents": "off", // TEMP ~2
+    "typescript/no-unnecessary-template-expression": "off", // TEMP ~1
+
+    "node/no-process-env": "off",
+
+    "oxc/no-map-spread": "off",
+    "oxc/no-async-await": "off",
+    "oxc/no-rest-spread-properties": "off",
+    "oxc/no-optional-chaining": "off",
+
+    "promise/catch-or-return": "off",
+    "promise/always-return": "off",
+
+    "no-unused-imports": "warn",
+    "no-empty-pattern": "off",
+
+    "react/only-export-components": "off",
+    "react/jsx-boolean-value": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-filename-extension": "off",
+    "react/no-unknown-property": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react/jsx-max-depth": "off",
+    "react/no-multi-comp": "off",
+
+    "react_perf/jsx-no-jsx-as-prop": "off",
+    "react_perf/jsx-no-new-object-as-prop": "off",
+    "react_perf/jsx-no-new-array-as-prop": "off",
+    "react_perf/jsx-no-new-function-as-prop": "off", // Not a blanket perf win with React Compiler; prefer targeted stabilization at memo/effect boundaries.
+
+    "jsx-a11y/no-autofocus": "off",
+
+    "sort-keys": "off",
+    "no-inline-comments": "off",
+    "no-plusplus": "off",
+
+    "onequery/no-vi-mock": "error",
+
+    // TEMP: rules to fix incrementally (4315 errors after --fix)
+    "require-await": "off", // TEMP ~258 — remove async from functions without await
+    "promise/prefer-await-to-then": "off", // TEMP ~120 — refactor .then() chains to async/await
+    // "no-void": "off", // TEMP ~74 — remove void operator usage
+    "promise/prefer-await-to-callbacks": "off", // TEMP ~67 — refactor callback patterns to async/await
+    "import/first": "off", // TEMP ~64 — move imports before other statements
+    "typescript/consistent-type-imports": "off", // TEMP ~46 — use import type for type-only imports
+    "no-nested-ternary": "off", // TEMP ~42 — flatten nested ternary expressions
+    "default-case": "off", // TEMP ~35 — add default case to switch statements
+    "no-negated-condition": "off", // TEMP ~30 — flip negated if/else conditions
+    "curly": "off", // TEMP ~28 — add braces to single-line if/else/for/while
+    "promise/avoid-new": "off", // TEMP ~28 — avoid new Promise(), use async/await
+    "no-use-before-define": "off", // TEMP ~402 — reorder function declarations
+    "complexity": "off", // TEMP ~55 — reduce cyclomatic complexity
+    "no-shadow": "off", // TEMP ~24 — rename shadowed variables
+    "no-empty-function": "off", // TEMP ~21 — remove or fill empty functions
+    "class-methods-use-this": "off", // TEMP ~20 — make methods static or use this
+    "promise/no-nesting": "off", // TEMP ~19 — flatten nested promises
+    "react-hooks/exhaustive-deps": "off", // TEMP ~16 — fix hook dependency arrays
+    "max-classes-per-file": "off", // TEMP ~14 — split files with multiple classes
+    "react/jsx-handler-names": "off", // TEMP ~13 — prefix handlers with handle/on
+    "typescript/parameter-properties": "off", // TEMP ~11 — use class property declarations
+    "no-promise-executor-return": "off", // TEMP ~10 — don't return in Promise executor
+    "react/jsx-pascal-case": "off", // TEMP ~9 — use PascalCase for JSX components
+    "typescript/no-invalid-void-type": "off", // TEMP ~8 — restrict void to return types
+    "no-bitwise": "off", // TEMP ~7 — avoid bitwise operators
+    "typescript/array-type": "off", // TEMP ~6 — use T[] instead of Array<T>
+    "jsx-a11y/heading-has-content": "off", // TEMP ~6 — add content to headings
+    "react/no-unescaped-entities": "off", // TEMP ~5 — escape special chars in JSX
+    "jsx-a11y/anchor-has-content": "off", // TEMP ~5 — add content to anchors
+    "oxc/no-barrel-file": "off", // TEMP ~4 — eliminate barrel/index re-exports
+    "no-warning-comments": "off", // TEMP ~3 — resolve TODO/FIXME comments
+    "react/no-array-index-key": "off", // TEMP ~3 — don't use array index as key
+    "promise/prefer-catch": "off", // TEMP ~2 — use .catch() for error handling
+    "promise/no-promise-in-callback": "off", // TEMP ~2 — avoid promises in callbacks
+    "typescript/triple-slash-reference": "off", // TEMP ~1
+    "typescript/no-extraneous-class": "off", // TEMP ~1
+    "typescript/no-dynamic-delete": "off", // TEMP ~1
+    "typescript/ban-ts-comment": "off", // TEMP ~1
+    "no-useless-return": "off", // TEMP ~1
+    "no-script-url": "off", // TEMP ~1
+    "no-redeclare": "off", // TEMP ~1
+    "no-new": "off", // TEMP ~1
+    "react/no-set-state": "off", // TEMP ~1
+    "jsx-a11y/prefer-tag-over-role": "off", // TEMP ~1
+  },
+  "ignorePatterns": [
+    "**/node_modules",
+    "**/dist",
+    "**/dist-worker",
+    "**/generated",
+    "**/.agents",
+    "**/.claude",
+    "**/.codex",
+    "**/.opencode",
+    "**/.turbo",
+    "**/bun.lock",
+    "packages/cli-contract/openapi/generated/cli.openapi.json",
+    "**/routeTree.gen.ts",
+    "packages/ui/src/components/ui",
+    "packages/ui/src/hooks",
+    "**/*.md",
+  ],
+  "overrides": [
+    {
+      "files": ["apps/web/src/**/*.{ts,tsx,js,jsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@onequery/db/server",
+                "message": "Client code must use @onequery/contracts/* or a browser-safe @onequery/db surface instead of the DB runtime.",
+              },
+              {
+                "name": "@onequery/bun-server/app",
+                "message": "Client code must use @onequery/bun-server/client instead of the runtime app surface.",
+              },
+            ],
+            "patterns": [
+              {
+                "group": ["@onequery/server/*"],
+                "message": "Client code must not depend on server package internals. Move shared types or values into @onequery/contracts or a client-safe subpath.",
+              },
+              {
+                "group": ["@/server/*"],
+                "message": "Client code must not import the local server subtree. Expose a client-safe surface instead.",
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      "files": ["apps/web/src/server/**/*.{ts,tsx,js,jsx}"],
+      "rules": {
+        "no-restricted-imports": "off",
+      },
+    },
+    {
+      // Shared test file overrides — framework-specific test rules
+      // are in separate jest/ and vitest/ configs to avoid conflicts.
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**/*.{ts,tsx,js,jsx}",
+        "**/e2e/**/*.{ts,tsx,js,jsx}",
+        "**/scripts/**/*.{ts,tsx,js,jsx}",
+      ],
+      "rules": {
+        // Disabled: mock callbacks often need empty functions
+        "no-empty-function": "off",
+        // Disabled: mock factories use Promise.resolve/reject (conflicts with require-await)
+        "promise/prefer-await-to-then": "off",
+        // Disabled: tests and fixtures frequently narrow partial mocks and synthetic payloads.
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unsafe-call": "off", // TEMP ~139
+        "typescript/no-unsafe-return": "off", // TEMP ~137
+        "typescript/no-unsafe-argument": "off", // TEMP ~102
+      },
+    },
+  ],
+}

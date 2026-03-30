@@ -1,0 +1,6 @@
+---
+source: crates/onequery-cli/src/commands/org/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Active org unchanged: acme
+Reason: already active in config

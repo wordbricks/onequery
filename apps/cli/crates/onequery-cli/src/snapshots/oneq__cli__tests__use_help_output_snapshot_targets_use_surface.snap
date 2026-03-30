@@ -1,0 +1,21 @@
+---
+source: crates/onequery-cli/src/cli.rs
+expression: rendered
+---
+Load provider-specific skill content for non-SQL sources
+
+Usage: oneq use [OPTIONS] --source <SOURCE>
+
+Options:
+      --source <SOURCE>  Load skill content for this non-SQL source provider [possible values: amplitude, ga, github, mixpanel, mongodb, posthog, sentry]
+      --input <JSON>     Execute one provider-specific relay request from an inline JSON payload
+  -h, --help             Print help
+  -V, --version          Print version
+
+Global Options:
+      --org <ORG_SLUG>           Override the active org for this invocation
+  -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
+      --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
+      --timeout <SECONDS>        Override the request timeout in seconds for this invocation
+      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --verbose                  Emit workflow progress and retry tracing to stderr

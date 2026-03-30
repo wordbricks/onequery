@@ -1,0 +1,265 @@
+---
+source: crates/onequery-cli/src/commands/schema/tests.rs
+expression: rendered
+---
+{
+  "authRequirements": {
+    "authenticated": true,
+    "modes": [
+      "session_cookie",
+      "bearer_token"
+    ],
+    "orgScoped": true
+  },
+  "command": "query execute",
+  "errorCodes": [
+    "not_logged_in",
+    "forbidden",
+    "org_not_found",
+    "source_not_found",
+    "source_not_queryable",
+    "query_rejected",
+    "query_preparation_failed",
+    "query_execution_failed",
+    "query_execution_unavailable",
+    "query_execution_timed_out",
+    "invalid_request"
+  ],
+  "http": {
+    "method": "POST",
+    "operationId": "cliQueryExecute",
+    "path": "/organizations/{orgSlug}/sources/{sourceKey}/queries:execute"
+  },
+  "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "cellMaxChars": {
+        "maximum": 8000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxBytes": {
+        "maximum": 4194304,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxRows": {
+        "maximum": 1000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "parameters": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ],
+              "type": "string"
+            },
+            "value": {
+              "description": "Positional parameter value encoded as a string.",
+              "nullable": true,
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "sql": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "timeoutMs": {
+        "maximum": 120000,
+        "minimum": 1,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "sql"
+    ],
+    "type": "object"
+  },
+  "kind": "read",
+  "outputSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "columns": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "logicalType": {
+              "enum": [
+                "string",
+                "number",
+                "boolean",
+                "bigint",
+                "datetime",
+                "array",
+                "json"
+              ],
+              "nullable": true,
+              "type": "string"
+            },
+            "name": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "elapsedMs": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "rowCount": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "rows": {
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "source": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "minLength": 1,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "postgres",
+              "supabase",
+              "mysql",
+              "mongodb",
+              "bigquery",
+              "laminar",
+              "aws_athena_connector",
+              "ga",
+              "amplitude",
+              "mixpanel",
+              "posthog",
+              "sentry",
+              "github",
+              "linear"
+            ],
+            "type": "string"
+          },
+          "queryable": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "error",
+              "disconnected"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "truncated": {
+        "type": "boolean"
+      }
+    },
+    "type": "object"
+  },
+  "readControls": {
+    "cursor": {
+      "support": "supported",
+      "unsupportedReason": null
+    },
+    "fields": {
+      "support": "supported",
+      "unsupportedReason": null
+    },
+    "limit": {
+      "support": "supported",
+      "unsupportedReason": null
+    },
+    "sort": {
+      "support": "unsupported",
+      "unsupportedReason": "not_sortable"
+    }
+  },
+  "requiredOrgRole": "member",
+  "retryableStatuses": [
+    503,
+    504
+  ],
+  "sanitizationProfile": "default-v1",
+  "schemaSource": "http-route",
+  "selectorSchema": {
+    "additionalProperties": false,
+    "properties": {
+      "cursor": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "fields": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "limit": {
+        "maximum": 100,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "orgSlug": {
+        "minLength": 1,
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "type": "string"
+      },
+      "sourceKey": {
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$",
+        "type": "string"
+      }
+    },
+    "required": [
+      "orgSlug",
+      "sourceKey"
+    ],
+    "type": "object"
+  },
+  "summary": "Execute a read-only SQL query for the requested source in the requested org. Any org member can execute queries on the standard CLI surface.",
+  "supportsDryRun": false,
+  "supportsFields": true,
+  "supportsHeadlessAuth": true,
+  "supportsOutputModes": [
+    "text",
+    "json"
+  ],
+  "supportsPagination": true,
+  "supportsRawInput": true,
+  "untrustedResponsePaths": [
+    "$.data.columns[*].name",
+    "$.data.rows[*][*]"
+  ]
+}

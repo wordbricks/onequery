@@ -1,0 +1,52 @@
+openapiDocument:
+  get:
+    operationId: cliOpenapiDocument
+    description: Return the current checked-in CLI OpenAPI discovery document.
+    x-onequery-command: schema openapi
+    x-onequery-expose-command-schema: false
+    x-onequery-kind: discovery
+    x-onequery-read-controls:
+      fields:
+        support: unsupported
+        unsupportedReason: not_available
+      limit:
+        support: unsupported
+        unsupportedReason: not_paginated
+      cursor:
+        support: unsupported
+        unsupportedReason: not_paginated
+      sort:
+        support: unsupported
+        unsupportedReason: not_sortable
+    x-onequery-supports-fields: false
+    x-onequery-supports-pagination: false
+    x-onequery-supports-dry-run: false
+    x-onequery-supports-raw-input: false
+    x-onequery-auth-requirements:
+      authenticated: false
+      modes:
+        - none
+      orgScoped: false
+    x-onequery-required-org-role:
+    x-onequery-stable-error-codes: []
+    x-onequery-untrusted-response-paths: []
+    x-onequery-sanitization-profile:
+    x-onequery-retryable-statuses: []
+    parameters: []
+    responses:
+      "200":
+        description: Current CLI OpenAPI discovery document
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              openapi: 3.1.0
+              info:
+                title: OneQuery CLI API
+                version: 0.1.0
+              paths:
+                /session:
+                  get:
+                    operationId: cliSessionRead

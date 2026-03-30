@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dnf update -y
+dnf install -y docker awscli amazon-ssm-agent
+systemctl enable --now amazon-ssm-agent
+systemctl enable --now docker
+usermod -aG docker ec2-user || true
+
+install -d -m 0755 /opt/onequery-connector/bin
+
+cat > /opt/onequery-connector/bin/render-env.sh <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOKEN="$(aws ssm get-parameter --name "${enrollment_token_parameter_name}" --with-decryption --query 'Parameter.Value' --output text --region "${aws_region}")"
+
+cat > /opt/onequery-connector/.env <<EOF
+ONEQUERY_BASE_URL=${onequery_base_url}
+ONEQUERY_ENROLLMENT_TOKEN=$${TOKEN}
+ORGANIZATION_ID=${organization_id}
+CONNECTOR_NAME=${connector_name}
+AWS_REGION=${aws_region}
+ATHENA_DATABASE=${athena_database}
+ATHENA_WORKGROUP=${athena_workgroup}
+ATHENA_OUTPUT_LOCATION=${athena_output_location}
+POLL_INTERVAL_MS=3000
+HEARTBEAT_INTERVAL_MS=15000
+QUERY_TIMEOUT_MS=60000
+MAX_ROWS=1000
+MAX_PAYLOAD_BYTES=5242880
+EOF
+
+chmod 600 /opt/onequery-connector/.env
+SCRIPT
+chmod +x /opt/onequery-connector/bin/render-env.sh
+
+cat > /opt/onequery-connector/bin/start-connector.sh <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEFAULT_IMAGE="${connector_image_uri}"
+IMAGE="$${1:-$${DEFAULT_IMAGE}}"
+if [[ -z "$${IMAGE}" || "$${IMAGE}" == "null" ]]; then
+	echo "No connector image configured. Pass image URI explicitly:"
+	echo "  /opt/onequery-connector/bin/start-connector.sh <image-uri>"
+	exit 1
+fi
+
+/opt/onequery-connector/bin/render-env.sh
+
+if [[ "$${IMAGE}" == *.dkr.ecr.*.amazonaws.com/* ]]; then
+	REGISTRY="$${IMAGE%%/*}"
+	aws ecr get-login-password --region "${aws_region}" | docker login --username AWS --password-stdin "$${REGISTRY}"
+fi
+
+docker rm -f onequery-connector >/dev/null 2>&1 || true
+docker pull "$${IMAGE}"
+docker run -d \
+	--name onequery-connector \
+	--restart always \
+	--env-file /opt/onequery-connector/.env \
+	"$${IMAGE}"
+
+docker logs --tail 50 onequery-connector || true
+SCRIPT
+chmod +x /opt/onequery-connector/bin/start-connector.sh
+
+cat > /etc/systemd/system/onequery-connector-docker.service <<'UNIT'
+[Unit]
+Description=OneQuery Connector (Docker)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/onequery-connector/bin/start-connector.sh
+ExecStop=/usr/bin/docker stop -t 20 onequery-connector
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+/opt/onequery-connector/bin/render-env.sh
+
+cat > /opt/onequery-connector/README-bootstrap.txt <<'NOTES'
+Terraform bootstrap completed.
+
+Next steps:
+1) Push connector image to ECR (or choose another registry image).
+2) Start connector once:
+   sudo /opt/onequery-connector/bin/start-connector.sh
+3) Optionally enable auto-start on reboot:
+   sudo systemctl enable onequery-connector-docker.service
+NOTES

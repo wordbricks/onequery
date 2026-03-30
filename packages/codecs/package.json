@@ -1,0 +1,23 @@
+{
+  "name": "@onequery/codecs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base64": "./src/base64.ts",
+    "./utf8": "./src/utf8.ts",
+    "./hex": "./src/hex.ts",
+    "./number": "./src/number.ts",
+    "./boolean": "./src/boolean.ts",
+    "./date": "./src/date.ts",
+    "./url": "./src/url.ts",
+    "./json": "./src/json.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {}
+}

@@ -1,0 +1,1914 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  AmplitudeCredentialsSchema,
+  BigQueryCredentialsSchema,
+  ConnectorCredentialsSchema,
+  credentialSchemaMap,
+  GitHubCredentialsSchema,
+  GoogleAnalyticsCredentialsSchema,
+  isAnalyticsCredentials,
+  isDatabaseCredentials,
+  isGitHubCredentials,
+  isLinearCredentials,
+  isMongoCredentials,
+  isOAuthCredentials,
+  isTokenExpired,
+  LaminarCredentialsSchema,
+  LinearCredentialsSchema,
+  MixpanelCredentialsSchema,
+  MongoDBCredentialsSchema,
+  MySQLCredentialsSchema,
+  normalizeEnvVarName,
+  PostgresCredentialsSchema,
+  PostHogCredentialsSchema,
+  SentryCredentialsSchema,
+  safeValidateCredentials,
+  validateCredentials,
+} from "./credentials";
+import type {
+  AmplitudeCredentials,
+  BigQueryCredentials,
+  ConnectorCredentials,
+  Credentials,
+  GitHubCredentials,
+  GoogleAnalyticsCredentials,
+  LaminarCredentials,
+  LinearCredentials,
+  MixpanelCredentials,
+  MongoDBCredentials,
+  MySQLCredentials,
+  PostgresCredentials,
+  PostHogCredentials,
+  SentryCredentials,
+} from "./credentials";
+
+describe("credentials schemas", () => {
+  describe("PostgresCredentialsSchema", () => {
+    it("should validate valid postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should validate postgres credentials without sslMode (defaults to prefer)", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 5432,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sslMode).toBe("prefer");
+      }
+    });
+
+    it("should reject invalid port (out of range)", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 70000,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing required fields", () => {
+      const credentials = {
+        host: "localhost",
+        type: "postgres",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty host", () => {
+      const credentials = {
+        database: "mydb",
+        host: "",
+        password: "secret123",
+        port: 5432,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only host", () => {
+      const credentials = {
+        database: "mydb",
+        host: "   ",
+        password: "secret123",
+        port: 5432,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only password", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "   ",
+        port: 5432,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should coerce legacy ssl boolean to prefer", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 5432,
+        ssl: true,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sslMode).toBe("prefer");
+      }
+    });
+
+    it("should preserve explicit sslMode when present", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 5432,
+        ssl: true,
+        sslMode: "require",
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sslMode).toBe("require");
+      }
+    });
+
+    it("should coerce legacy ssl false to disable", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret123",
+        port: 5432,
+        ssl: false,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.sslMode).toBe("disable");
+      }
+    });
+
+    it("should accept connection string format", () => {
+      const credentials = {
+        database: "production",
+        host: "db.example.com",
+        password: "p@ssw0rd!#$%",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "app_user",
+      };
+
+      const result = PostgresCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("MySQLCredentialsSchema", () => {
+    it("should validate valid mysql credentials", () => {
+      const credentials: MySQLCredentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret",
+        port: 3306,
+        sslMode: "prefer",
+        type: "mysql",
+        username: "root",
+      };
+
+      const result = MySQLCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should default port to 3306 if not provided", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret",
+        type: "mysql",
+        username: "root",
+      };
+
+      const result = MySQLCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.port).toBe(3306);
+      }
+    });
+
+    it("should reject wrong type", () => {
+      const credentials = {
+        type: "postgres", // wrong type
+        host: "localhost",
+        port: 3306,
+        database: "mydb",
+        username: "root",
+        password: "secret",
+      };
+
+      const result = MySQLCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("MongoDBCredentialsSchema", () => {
+    it("should validate valid mongodb credentials", () => {
+      const credentials: MongoDBCredentials = {
+        connectionString: "mongodb://user:pass@localhost:27017/admin",
+        database: "analytics",
+        databases: ["analytics", "app"],
+        type: "mongodb",
+      };
+
+      const result = MongoDBCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should allow optional database fields", () => {
+      const credentials = {
+        connectionString:
+          "mongodb+srv://user:pass@cluster.example.mongodb.net/",
+        type: "mongodb",
+      };
+
+      const result = MongoDBCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject missing connection string", () => {
+      const credentials = {
+        type: "mongodb",
+      };
+
+      const result = MongoDBCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject non-mongodb connection strings", () => {
+      const credentials = {
+        connectionString: "postgres://user:pass@localhost:5432/app",
+        type: "mongodb",
+      };
+
+      const result = MongoDBCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("GoogleAnalyticsCredentialsSchema", () => {
+    it("should validate valid GA credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        accessToken: "ya29.xxx",
+        expiresAt: Date.now() + 3600000,
+        propertyId: "properties/123456789",
+        refreshToken: "1//xxx",
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should validate GA service account credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        authType: "service_account",
+        propertyId: "properties/123456789",
+        serviceAccount: {
+          projectId: "ga-project",
+          clientEmail: "ga-service@example.com",
+          privateKey:
+            "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+        },
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should reject missing accessToken", () => {
+      const credentials = {
+        expiresAt: Date.now() + 3600000,
+        propertyId: "properties/123456789",
+        refreshToken: "1//xxx",
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject invalid expiresAt (negative)", () => {
+      const credentials = {
+        accessToken: "ya29.xxx",
+        expiresAt: -1,
+        propertyId: "properties/123456789",
+        refreshToken: "1//xxx",
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only oauth tokens", () => {
+      const credentials = {
+        accessToken: "   ",
+        expiresAt: Date.now() + 3600000,
+        propertyId: "properties/123456789",
+        refreshToken: "   ",
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only service account private keys", () => {
+      const credentials = {
+        authType: "service_account",
+        propertyId: "properties/123456789",
+        serviceAccount: {
+          clientEmail: "ga-service@example.com",
+          privateKey: "   ",
+          projectId: "ga-project",
+        },
+        type: "ga",
+      };
+
+      const result = GoogleAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("BigQueryCredentialsSchema", () => {
+    it("should validate valid BigQuery credentials", () => {
+      const credentials: BigQueryCredentials = {
+        accessToken: "ya29.xxx",
+        expiresAt: Date.now() + 3600000,
+        projectId: "my-project-123",
+        refreshToken: "1//xxx",
+        type: "bigquery",
+      };
+
+      const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should validate BigQuery service account credentials", () => {
+      const credentials: BigQueryCredentials = {
+        authType: "service_account",
+        projectId: "my-project-123",
+        serviceAccount: {
+          projectId: "my-project-123",
+          clientEmail: "bq-service@example.com",
+          privateKey:
+            "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+        },
+        type: "bigquery",
+      };
+
+      const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should reject empty projectId", () => {
+      const credentials = {
+        accessToken: "ya29.xxx",
+        expiresAt: Date.now() + 3600000,
+        projectId: "",
+        refreshToken: "1//xxx",
+        type: "bigquery",
+      };
+
+      const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing refreshToken", () => {
+      const credentials = {
+        accessToken: "ya29.xxx",
+        expiresAt: Date.now() + 3600000,
+        projectId: "my-project",
+        type: "bigquery",
+      };
+
+      const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("LaminarCredentialsSchema", () => {
+    it("should validate valid Laminar credentials", () => {
+      const credentials: LaminarCredentials = {
+        apiKey: "lmnr_project_key_123",
+        type: "laminar",
+      };
+
+      const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional apiBaseUrl", () => {
+      const credentials: LaminarCredentials = {
+        apiBaseUrl: "https://api.lmnr.ai",
+        apiKey: "lmnr_project_key_123",
+        type: "laminar",
+      };
+
+      const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe("https://api.lmnr.ai");
+      }
+    });
+
+    it("should treat blank optional apiBaseUrl as undefined", () => {
+      const result = LaminarCredentialsSchema.safeParse({
+        apiBaseUrl: "   ",
+        apiKey: "lmnr_project_key_123",
+        type: "laminar",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBeUndefined();
+      }
+    });
+
+    it("should reject invalid apiBaseUrl", () => {
+      const credentials = {
+        apiBaseUrl: "not-a-url",
+        apiKey: "lmnr_project_key_123",
+        type: "laminar",
+      };
+
+      const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty apiKey", () => {
+      const credentials = {
+        apiKey: "",
+        type: "laminar",
+      };
+
+      const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing apiKey", () => {
+      const credentials = {
+        type: "laminar",
+      };
+
+      const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("ConnectorCredentialsSchema", () => {
+    it("should validate valid connector credentials", () => {
+      const credentials: ConnectorCredentials = {
+        connectorId: "connector_123",
+        database: "analytics",
+        maxRows: 1_000,
+        timeoutMs: 60_000,
+        type: "aws_athena_connector",
+        workgroup: "primary",
+      };
+
+      const result = ConnectorCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional workgroup timeout and maxRows", () => {
+      const result = ConnectorCredentialsSchema.safeParse({
+        connectorId: "connector_123",
+        database: "analytics",
+        type: "aws_athena_connector",
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject missing connectorId", () => {
+      const result = ConnectorCredentialsSchema.safeParse({
+        database: "analytics",
+        type: "aws_athena_connector",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing database", () => {
+      const result = ConnectorCredentialsSchema.safeParse({
+        connectorId: "connector_123",
+        type: "aws_athena_connector",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("validateCredentials", () => {
+    it("should validate and return credentials", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret",
+        port: 5432,
+        type: "postgres",
+        username: "admin",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("postgres");
+    });
+
+    it("should throw on invalid credentials", () => {
+      const credentials = {
+        host: "",
+        type: "postgres", // invalid
+      };
+
+      expect(() => validateCredentials(credentials)).toThrow();
+    });
+  });
+
+  describe("safeValidateCredentials", () => {
+    it("should return success result for valid credentials", () => {
+      const credentials = {
+        database: "mydb",
+        host: "localhost",
+        password: "secret",
+        type: "mysql",
+        username: "root",
+      };
+
+      const result = safeValidateCredentials(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("should return error result for invalid credentials", () => {
+      const credentials = {
+        type: "unknown",
+      };
+
+      const result = safeValidateCredentials(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("isTokenExpired", () => {
+    it("should return false for future expiration", () => {
+      const expiresAt = Date.now() + 3_600_000; // 1 hour from now
+      expect(isTokenExpired(expiresAt)).toBe(false);
+    });
+
+    it("should return true for past expiration", () => {
+      const expiresAt = Date.now() - 1000; // 1 second ago
+      expect(isTokenExpired(expiresAt)).toBe(true);
+    });
+
+    it("should return true when within buffer time", () => {
+      const expiresAt = Date.now() + 60_000; // 1 minute from now
+      const bufferMs = 5 * 60 * 1000; // 5 minutes buffer
+      expect(isTokenExpired(expiresAt, bufferMs)).toBe(true);
+    });
+
+    it("should return false when outside buffer time", () => {
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+      const bufferMs = 5 * 60 * 1000; // 5 minutes buffer
+      expect(isTokenExpired(expiresAt, bufferMs)).toBe(false);
+    });
+  });
+
+  describe("isOAuthCredentials", () => {
+    it("should return true for GA credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        propertyId: "prop",
+        refreshToken: "refresh",
+        type: "ga",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for GA service account credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        authType: "service_account",
+        propertyId: "prop",
+        serviceAccount: {
+          projectId: "ga-project",
+          clientEmail: "ga-service@example.com",
+          privateKey:
+            "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+        },
+        type: "ga",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(false);
+    });
+
+    it("should return true for BigQuery credentials", () => {
+      const credentials: BigQueryCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        projectId: "proj",
+        refreshToken: "refresh",
+        type: "bigquery",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for BigQuery service account credentials", () => {
+      const credentials: BigQueryCredentials = {
+        authType: "service_account",
+        projectId: "proj",
+        serviceAccount: {
+          projectId: "proj",
+          clientEmail: "bq-service@example.com",
+          privateKey:
+            "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----",
+        },
+        type: "bigquery",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(false);
+    });
+
+    it("should return false for Postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "user",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("isDatabaseCredentials", () => {
+    it("should return true for Postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "user",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for MySQL credentials", () => {
+      const credentials: MySQLCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 3306,
+        sslMode: "prefer",
+        type: "mysql",
+        username: "user",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for BigQuery credentials", () => {
+      const credentials: BigQueryCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        projectId: "proj",
+        refreshToken: "refresh",
+        type: "bigquery",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for Laminar credentials", () => {
+      const credentials: LaminarCredentials = {
+        apiKey: "lmnr_project_key_123",
+        type: "laminar",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for Connector credentials", () => {
+      const credentials: ConnectorCredentials = {
+        connectorId: "connector_123",
+        database: "analytics",
+        type: "aws_athena_connector",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for GA credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        propertyId: "prop",
+        refreshToken: "refresh",
+        type: "ga",
+      };
+      expect(isDatabaseCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("isMongoCredentials", () => {
+    it("should return true for MongoDB credentials", () => {
+      const credentials: MongoDBCredentials = {
+        connectionString: "mongodb://user:pass@localhost:27017/admin",
+        type: "mongodb",
+      };
+      expect(isMongoCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for MySQL credentials", () => {
+      const credentials: MySQLCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 3306,
+        sslMode: "prefer",
+        type: "mysql",
+        username: "user",
+      };
+      expect(isMongoCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("AmplitudeCredentialsSchema", () => {
+    it("should validate valid Amplitude credentials", () => {
+      const credentials: AmplitudeCredentials = {
+        apiKey: "amp-api-key-123",
+        region: "us",
+        secretKey: "amp-secret-key-456",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should default region to 'us' if not provided", () => {
+      const credentials = {
+        apiKey: "amp-api-key",
+        secretKey: "amp-secret-key",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.region).toBe("us");
+      }
+    });
+
+    it("should accept 'eu' region", () => {
+      const credentials = {
+        apiKey: "amp-api-key",
+        region: "eu",
+        secretKey: "amp-secret-key",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.region).toBe("eu");
+      }
+    });
+
+    it("should reject invalid region", () => {
+      const credentials = {
+        apiKey: "amp-api-key",
+        region: "asia",
+        secretKey: "amp-secret-key",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty apiKey", () => {
+      const credentials = {
+        apiKey: "",
+        secretKey: "amp-secret-key",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty secretKey", () => {
+      const credentials = {
+        apiKey: "amp-api-key",
+        secretKey: "",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing required fields", () => {
+      const credentials = {
+        apiKey: "amp-api-key",
+        type: "amplitude",
+      };
+
+      const result = AmplitudeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("MixpanelCredentialsSchema", () => {
+    it("should validate valid Mixpanel credentials", () => {
+      const credentials: MixpanelCredentials = {
+        projectId: "project-12345",
+        region: "us",
+        secret: "service-account-secret",
+        type: "mixpanel",
+        username: "service-account-user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should reject empty username", () => {
+      const credentials = {
+        projectId: "project-123",
+        secret: "secret",
+        type: "mixpanel",
+        username: "",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty secret", () => {
+      const credentials = {
+        projectId: "project-123",
+        secret: "",
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty projectId", () => {
+      const credentials = {
+        projectId: "",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing required fields", () => {
+      const credentials = {
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should default region to 'us' if not provided", () => {
+      const credentials = {
+        projectId: "project-123",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.region).toBe("us");
+      }
+    });
+
+    it("should accept supported regions", () => {
+      const eu = MixpanelCredentialsSchema.safeParse({
+        projectId: "project-123",
+        region: "eu",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      });
+      const india = MixpanelCredentialsSchema.safeParse({
+        projectId: "project-123",
+        region: "in",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      });
+
+      expect(eu.success).toBe(true);
+      expect(india.success).toBe(true);
+    });
+
+    it("should reject invalid region", () => {
+      const credentials = {
+        projectId: "project-123",
+        region: "asia",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should accept optional workspaceId", () => {
+      const credentials = {
+        projectId: "project-123",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+        workspaceId: "workspace-1",
+      };
+
+      const result = MixpanelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.workspaceId).toBe("workspace-1");
+      }
+    });
+
+    it("should treat blank optional workspaceId as undefined", () => {
+      const result = MixpanelCredentialsSchema.safeParse({
+        projectId: "project-123",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+        workspaceId: "   ",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.workspaceId).toBeUndefined();
+      }
+    });
+  });
+
+  describe("PostHogCredentialsSchema", () => {
+    it("should validate valid PostHog credentials", () => {
+      const credentials: PostHogCredentials = {
+        hostUrl: "https://us.posthog.com",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      };
+
+      const result = PostHogCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should reject empty projectId", () => {
+      const result = PostHogCredentialsSchema.safeParse({
+        hostUrl: "https://us.posthog.com",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "",
+        type: "posthog",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty personalApiKey", () => {
+      const result = PostHogCredentialsSchema.safeParse({
+        hostUrl: "https://us.posthog.com",
+        personalApiKey: "",
+        projectId: "12345",
+        type: "posthog",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject invalid hostUrl", () => {
+      const result = PostHogCredentialsSchema.safeParse({
+        hostUrl: "not-a-url",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should strip trailing slash from hostUrl", () => {
+      const result = PostHogCredentialsSchema.safeParse({
+        hostUrl: "https://us.posthog.com/",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hostUrl).toBe("https://us.posthog.com");
+      }
+    });
+
+    it("should trim hostUrl before validation", () => {
+      const result = PostHogCredentialsSchema.safeParse({
+        hostUrl: "  https://us.posthog.com/  ",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.hostUrl).toBe("https://us.posthog.com");
+      }
+    });
+  });
+
+  describe("SentryCredentialsSchema", () => {
+    it("should validate valid Sentry credentials", () => {
+      const credentials: SentryCredentials = {
+        apiBaseUrl: "https://sentry.io/api/0",
+        authToken: "sntrys_123",
+        organizationSlug: "acme",
+        projectSlug: "frontend",
+        type: "sentry",
+      };
+
+      const result = SentryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional projectSlug and apiBaseUrl", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        authToken: "sntrys_123",
+        organizationSlug: "acme",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should treat blank optional projectSlug and apiBaseUrl as undefined", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        apiBaseUrl: "   ",
+        authToken: "sntrys_123",
+        organizationSlug: "acme",
+        projectSlug: "   ",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBeUndefined();
+        expect(result.data.projectSlug).toBeUndefined();
+      }
+    });
+
+    it("should reject empty authToken", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        authToken: "",
+        organizationSlug: "acme",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only authToken", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        authToken: "   ",
+        organizationSlug: "acme",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject empty organizationSlug", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        authToken: "sntrys_123",
+        organizationSlug: "",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject invalid apiBaseUrl", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        apiBaseUrl: "not-a-url",
+        authToken: "sntrys_123",
+        organizationSlug: "acme",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("should trim organizationSlug before validation", () => {
+      const result = SentryCredentialsSchema.safeParse({
+        authToken: "sntrys_123",
+        organizationSlug: "  acme  ",
+        type: "sentry",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.organizationSlug).toBe("acme");
+      }
+    });
+  });
+
+  describe("GitHubCredentialsSchema", () => {
+    it("should validate valid GitHub credentials", () => {
+      const credentials: GitHubCredentials = {
+        accessToken: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional installationId", () => {
+      const credentials = {
+        accessToken: "ghp_xxx",
+        installationId: "12345678",
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.installationId).toBe("12345678");
+      }
+    });
+
+    it("should accept optional repositories list", () => {
+      const credentials = {
+        accessToken: "ghp_xxx",
+        repositories: ["onequery/onequery2", "onequery/website"],
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.repositories).toEqual([
+          "onequery/onequery2",
+          "onequery/website",
+        ]);
+      }
+    });
+
+    it("should work without installationId", () => {
+      const credentials = {
+        accessToken: "ghp_xxx",
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.installationId).toBeUndefined();
+      }
+    });
+
+    it("should treat blank optional installationId as undefined", () => {
+      const result = GitHubCredentialsSchema.safeParse({
+        accessToken: "ghp_xxx",
+        installationId: "   ",
+        type: "github",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.installationId).toBeUndefined();
+      }
+    });
+
+    it("should reject empty accessToken", () => {
+      const credentials = {
+        accessToken: "",
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject whitespace-only accessToken", () => {
+      const credentials = {
+        accessToken: "   ",
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing accessToken", () => {
+      const credentials = {
+        type: "github",
+      };
+
+      const result = GitHubCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("LinearCredentialsSchema", () => {
+    it("should validate valid Linear credentials", () => {
+      const credentials: LinearCredentials = {
+        apiKey: "lin_api_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        type: "linear",
+      };
+
+      const result = LinearCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should validate valid Linear OAuth credentials", () => {
+      const credentials: LinearCredentials = {
+        accessToken: "lin_oauth_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        appUserId: "user_123",
+        expiresAt: new Date().toISOString(),
+        linearOrganizationId: "org_123",
+        linearOrganizationName: "Wordbricks",
+        refreshToken: "lin_refresh_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        scope: "read,write",
+        tokenType: "Bearer",
+        type: "linear",
+      };
+
+      const result = LinearCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should treat blank optional OAuth metadata fields as undefined", () => {
+      const result = LinearCredentialsSchema.safeParse({
+        accessToken: "lin_oauth_xxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        appUserId: "   ",
+        expiresAt: "   ",
+        linearOrganizationId: "org_123",
+        linearOrganizationName: "   ",
+        refreshToken: "   ",
+        scope: "   ",
+        tokenType: "   ",
+        type: "linear",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.type).toBe("linear");
+        if ("apiKey" in result.data) {
+          throw new Error("Expected Linear OAuth credentials");
+        }
+        expect(result.data.appUserId).toBeUndefined();
+        expect(result.data.expiresAt).toBeUndefined();
+        expect(result.data.linearOrganizationName).toBeUndefined();
+        expect(result.data.refreshToken).toBeUndefined();
+        expect(result.data.scope).toBeUndefined();
+        expect(result.data.tokenType).toBeUndefined();
+      }
+    });
+
+    it("should reject empty apiKey", () => {
+      const credentials = {
+        apiKey: "",
+        type: "linear",
+      };
+
+      const result = LinearCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject missing apiKey", () => {
+      const credentials = {
+        type: "linear",
+      };
+
+      const result = LinearCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+
+    it("should reject wrong type", () => {
+      const credentials = {
+        apiKey: "lin_api_xxx",
+        type: "github",
+      };
+
+      const result = LinearCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("credentialSchemaMap", () => {
+    it("should map postgres to PostgresCredentialsSchema", () => {
+      expect(credentialSchemaMap.postgres).toBe(PostgresCredentialsSchema);
+    });
+
+    it("should map mysql to MySQLCredentialsSchema", () => {
+      expect(credentialSchemaMap.mysql).toBe(MySQLCredentialsSchema);
+    });
+
+    it("should map mongodb to MongoDBCredentialsSchema", () => {
+      expect(credentialSchemaMap.mongodb).toBe(MongoDBCredentialsSchema);
+    });
+
+    it("should map ga to GoogleAnalyticsCredentialsSchema", () => {
+      expect(credentialSchemaMap.ga).toBe(GoogleAnalyticsCredentialsSchema);
+    });
+
+    it("should map bigquery to BigQueryCredentialsSchema", () => {
+      expect(credentialSchemaMap.bigquery).toBe(BigQueryCredentialsSchema);
+    });
+
+    it("should map laminar to LaminarCredentialsSchema", () => {
+      expect(credentialSchemaMap.laminar).toBe(LaminarCredentialsSchema);
+    });
+
+    it("should map connector to ConnectorCredentialsSchema", () => {
+      expect(credentialSchemaMap.aws_athena_connector).toBe(
+        ConnectorCredentialsSchema
+      );
+    });
+
+    it("should map amplitude to AmplitudeCredentialsSchema", () => {
+      expect(credentialSchemaMap.amplitude).toBe(AmplitudeCredentialsSchema);
+    });
+
+    it("should map mixpanel to MixpanelCredentialsSchema", () => {
+      expect(credentialSchemaMap.mixpanel).toBe(MixpanelCredentialsSchema);
+    });
+
+    it("should map posthog to PostHogCredentialsSchema", () => {
+      expect(credentialSchemaMap.posthog).toBe(PostHogCredentialsSchema);
+    });
+
+    it("should map sentry to SentryCredentialsSchema", () => {
+      expect(credentialSchemaMap.sentry).toBe(SentryCredentialsSchema);
+    });
+
+    it("should map github to GitHubCredentialsSchema", () => {
+      expect(credentialSchemaMap.github).toBe(GitHubCredentialsSchema);
+    });
+
+    it("should map linear to LinearCredentialsSchema", () => {
+      expect(credentialSchemaMap.linear).toBe(LinearCredentialsSchema);
+    });
+
+    it("should have all supported provider types", () => {
+      const expectedProviders = [
+        "postgres",
+        "mysql",
+        "mongodb",
+        "ga",
+        "bigquery",
+        "laminar",
+        "aws_athena_connector",
+        "amplitude",
+        "mixpanel",
+        "posthog",
+        "sentry",
+        "github",
+        "linear",
+      ];
+      expect(Object.keys(credentialSchemaMap).toSorted()).toEqual(
+        expectedProviders.toSorted()
+      );
+    });
+  });
+
+  describe("isAnalyticsCredentials", () => {
+    it("should return true for Amplitude credentials", () => {
+      const credentials: AmplitudeCredentials = {
+        apiKey: "key",
+        region: "us",
+        secretKey: "secret",
+        type: "amplitude",
+      };
+      expect(isAnalyticsCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for Mixpanel credentials", () => {
+      const credentials: MixpanelCredentials = {
+        projectId: "proj",
+        region: "us",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      };
+      expect(isAnalyticsCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for PostHog credentials", () => {
+      const credentials: PostHogCredentials = {
+        hostUrl: "https://us.posthog.com",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      };
+      expect(isAnalyticsCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for Postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "user",
+      };
+      expect(isAnalyticsCredentials(credentials)).toBe(false);
+    });
+
+    it("should return false for GA credentials", () => {
+      const credentials: GoogleAnalyticsCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        propertyId: "prop",
+        refreshToken: "refresh",
+        type: "ga",
+      };
+      expect(isAnalyticsCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("isGitHubCredentials", () => {
+    it("should return true for GitHub credentials", () => {
+      const credentials: GitHubCredentials = {
+        accessToken: "ghp_xxx",
+        type: "github",
+      };
+      expect(isGitHubCredentials(credentials)).toBe(true);
+    });
+
+    it("should return true for GitHub credentials with installationId", () => {
+      const credentials: GitHubCredentials = {
+        accessToken: "ghp_xxx",
+        installationId: "12345",
+        type: "github",
+      };
+      expect(isGitHubCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for Postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "user",
+      };
+      expect(isGitHubCredentials(credentials)).toBe(false);
+    });
+
+    it("should return false for Linear credentials", () => {
+      const credentials: LinearCredentials = {
+        apiKey: "lin_api_xxx",
+        type: "linear",
+      };
+      expect(isGitHubCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("isLinearCredentials", () => {
+    it("should return true for Linear credentials", () => {
+      const credentials: LinearCredentials = {
+        apiKey: "lin_api_xxx",
+        type: "linear",
+      };
+      expect(isLinearCredentials(credentials)).toBe(true);
+    });
+
+    it("should return false for Postgres credentials", () => {
+      const credentials: PostgresCredentials = {
+        database: "db",
+        host: "localhost",
+        password: "pass",
+        port: 5432,
+        sslMode: "prefer",
+        type: "postgres",
+        username: "user",
+      };
+      expect(isLinearCredentials(credentials)).toBe(false);
+    });
+
+    it("should return false for GitHub credentials", () => {
+      const credentials: GitHubCredentials = {
+        accessToken: "ghp_xxx",
+        type: "github",
+      };
+      expect(isLinearCredentials(credentials)).toBe(false);
+    });
+  });
+
+  describe("normalizeEnvVarName", () => {
+    it("should convert to uppercase", () => {
+      expect(normalizeEnvVarName("prod-db")).toBe("PROD_DB");
+    });
+
+    it("should replace hyphens with underscores", () => {
+      expect(normalizeEnvVarName("my-database")).toBe("MY_DATABASE");
+    });
+
+    it("should replace spaces with underscores", () => {
+      expect(normalizeEnvVarName("My GA Property")).toBe("MY_GA_PROPERTY");
+    });
+
+    it("should replace parentheses with underscores", () => {
+      expect(normalizeEnvVarName("analytics (main)")).toBe("ANALYTICS_MAIN");
+    });
+
+    it("should collapse multiple underscores into one", () => {
+      expect(normalizeEnvVarName("prod---db")).toBe("PROD_DB");
+    });
+
+    it("should trim leading underscores", () => {
+      expect(normalizeEnvVarName("---prod")).toBe("PROD");
+    });
+
+    it("should trim trailing underscores", () => {
+      expect(normalizeEnvVarName("prod---")).toBe("PROD");
+    });
+
+    it("should handle mixed special characters", () => {
+      expect(normalizeEnvVarName("My DB! @#$ Server")).toBe("MY_DB_SERVER");
+    });
+
+    it("should preserve numbers", () => {
+      expect(normalizeEnvVarName("db-server-01")).toBe("DB_SERVER_01");
+    });
+
+    it("should handle already uppercase names", () => {
+      expect(normalizeEnvVarName("PROD_DB")).toBe("PROD_DB");
+    });
+
+    it("should handle single word", () => {
+      expect(normalizeEnvVarName("database")).toBe("DATABASE");
+    });
+
+    it("should handle empty string", () => {
+      expect(normalizeEnvVarName("")).toBe("");
+    });
+
+    it("should handle only special characters", () => {
+      expect(normalizeEnvVarName("!@#$%")).toBe("");
+    });
+
+    it("should handle unicode characters", () => {
+      expect(normalizeEnvVarName("データベース")).toBe("");
+    });
+
+    it("should handle mixed alphanumeric and special", () => {
+      expect(normalizeEnvVarName("prod_db_v2.0")).toBe("PROD_DB_V2_0");
+    });
+
+    it("should handle dots", () => {
+      expect(normalizeEnvVarName("api.production.db")).toBe(
+        "API_PRODUCTION_DB"
+      );
+    });
+
+    it("should handle slashes", () => {
+      expect(normalizeEnvVarName("path/to/db")).toBe("PATH_TO_DB");
+    });
+
+    it("should handle camelCase names", () => {
+      expect(normalizeEnvVarName("myDatabaseServer")).toBe("MYDATABASESERVER");
+    });
+  });
+
+  describe("validateCredentials with all types", () => {
+    it("should validate Amplitude credentials", () => {
+      const credentials = {
+        apiKey: "key",
+        secretKey: "secret",
+        type: "amplitude",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("amplitude");
+    });
+
+    it("should validate Mixpanel credentials", () => {
+      const credentials = {
+        projectId: "proj",
+        secret: "secret",
+        type: "mixpanel",
+        username: "user",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("mixpanel");
+    });
+
+    it("should validate PostHog credentials", () => {
+      const credentials = {
+        hostUrl: "https://us.posthog.com",
+        personalApiKey: "phx_valid_personal_api_key",
+        projectId: "12345",
+        type: "posthog",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("posthog");
+    });
+
+    it("should validate GitHub credentials", () => {
+      const credentials = {
+        accessToken: "ghp_xxx",
+        type: "github",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("github");
+    });
+
+    it("should validate Linear credentials", () => {
+      const credentials = {
+        apiKey: "lin_api_xxx",
+        type: "linear",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("linear");
+    });
+
+    it("should validate Connector credentials", () => {
+      const credentials = {
+        connectorId: "connector_123",
+        database: "analytics",
+        type: "aws_athena_connector",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("aws_athena_connector");
+    });
+
+    it("should validate Sentry credentials", () => {
+      const credentials = {
+        authToken: "sntrys_123",
+        organizationSlug: "acme",
+        projectSlug: "frontend",
+        type: "sentry",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("sentry");
+    });
+
+    it("should validate MongoDB credentials", () => {
+      const credentials = {
+        connectionString: "mongodb://user:pass@localhost:27017/admin",
+        type: "mongodb",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("mongodb");
+    });
+
+    it("should throw on unknown credential type", () => {
+      const credentials = {
+        apiKey: "key",
+        type: "unknown_provider",
+      };
+
+      expect(() => validateCredentials(credentials)).toThrow();
+    });
+  });
+
+  describe("type guards with all credential types", () => {
+    it("should correctly identify all OAuth credentials", () => {
+      const allCredentials: Credentials[] = [
+        {
+          database: "db",
+          host: "localhost",
+          password: "pass",
+          port: 5432,
+          sslMode: "prefer",
+          type: "postgres",
+          username: "user",
+        },
+        {
+          database: "db",
+          host: "localhost",
+          password: "pass",
+          port: 3306,
+          sslMode: "prefer",
+          type: "mysql",
+          username: "user",
+        },
+        {
+          connectionString: "mongodb://user:pass@localhost:27017/admin",
+          type: "mongodb",
+        },
+        {
+          accessToken: "token",
+          expiresAt: Date.now(),
+          propertyId: "prop",
+          refreshToken: "refresh",
+          type: "ga",
+        },
+        {
+          accessToken: "token",
+          expiresAt: Date.now(),
+          projectId: "proj",
+          refreshToken: "refresh",
+          type: "bigquery",
+        },
+        {
+          apiKey: "lmnr_project_key_123",
+          type: "laminar",
+        },
+        {
+          connectorId: "connector_123",
+          database: "analytics",
+          type: "aws_athena_connector",
+        },
+        {
+          apiKey: "key",
+          region: "us",
+          secretKey: "secret",
+          type: "amplitude",
+        },
+        {
+          projectId: "proj",
+          region: "us",
+          secret: "secret",
+          type: "mixpanel",
+          username: "user",
+        },
+        {
+          hostUrl: "https://us.posthog.com",
+          personalApiKey: "phx_valid_personal_api_key",
+          projectId: "12345",
+          type: "posthog",
+        },
+        {
+          authToken: "sntrys_123",
+          organizationSlug: "acme",
+          projectSlug: "frontend",
+          type: "sentry",
+        },
+        {
+          accessToken: "ghp_xxx",
+          type: "github",
+        },
+        {
+          apiKey: "lin_api_xxx",
+          type: "linear",
+        },
+      ];
+
+      const oauthCreds = allCredentials.filter(isOAuthCredentials);
+      expect(oauthCreds.map((c) => c.type).toSorted()).toEqual(
+        ["bigquery", "ga"].toSorted()
+      );
+
+      const dbCreds = allCredentials.filter(isDatabaseCredentials);
+      expect(dbCreds.map((c) => c.type).toSorted()).toEqual(
+        [
+          "bigquery",
+          "aws_athena_connector",
+          "laminar",
+          "mysql",
+          "postgres",
+        ].toSorted()
+      );
+
+      const analyticsCreds = allCredentials.filter(isAnalyticsCredentials);
+      expect(analyticsCreds.map((c) => c.type).toSorted()).toEqual(
+        ["amplitude", "mixpanel", "posthog"].toSorted()
+      );
+
+      const githubCreds = allCredentials.filter(isGitHubCredentials);
+      expect(githubCreds.map((c) => c.type)).toEqual(["github"]);
+
+      const linearCreds = allCredentials.filter(isLinearCredentials);
+      expect(linearCreds.map((c) => c.type)).toEqual(["linear"]);
+    });
+  });
+});

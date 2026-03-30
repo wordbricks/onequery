@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-dx-cli-scale": {
+      "source": "jpoehnelt/skills",
+      "sourceType": "github",
+      "computedHash": "1d2aa0d3cfa03501af8656283631b61f572f6458ed7958f232f8acd5601386fa"
+    },
+    "orval": {
+      "source": "orval-labs/orval",
+      "sourceType": "github",
+      "computedHash": "f843a346b46ef027a50348c38794ebf839db927081ea6ba234a22c49879a0093"
+    },
+    "rust-best-practices": {
+      "source": "apollographql/skills",
+      "sourceType": "github",
+      "computedHash": "fd336f2f772eb46ddf8658de5f9dd8faa1f35615b316665307fc82eeb4b2e658"
+    }
+  }
+}

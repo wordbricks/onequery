@@ -1,0 +1,38 @@
+{
+  "name": "@onequery/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./constants": "./src/constants.ts",
+    "./credentials": "./src/credentials.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit generate",
+    "db:migrate": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit migrate",
+    "db:migrate:ci": "drizzle-kit migrate",
+    "db:push": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit push",
+    "db:studio": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit studio",
+    "db:seed:dev": "bun run ../../scripts/run-local-env-command.ts -- bun src/scripts/seed-dev.ts"
+  },
+  "dependencies": {
+    "@onequery/contracts": "workspace:*",
+    "@types/better-sqlite3": "7.6.13",
+    "better-sqlite3": "12.8.0",
+    "drizzle-orm": "0.45.1",
+    "pg": "8.17.1",
+    "postgres": "3.4.8",
+    "ulid": "3.0.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/pg": "8.16.0",
+    "drizzle-kit": "0.31.10"
+  }
+}

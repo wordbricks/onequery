@@ -1,0 +1,96 @@
+[workspace]
+members = [
+  "crates/onequery-cli",
+  "crates/onequery-cli-core",
+  "crates/onequery-config",
+  "crates/onequery-wtl",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.0"
+# COMMENT: Keep the checked-in Rust workspace version at 0.0.0 on origin/main
+# and normal development branches. Only temporary release/* branches should
+# carry the real release version so Cargo embeds it and the release workflow
+# can validate tag parity before that branch/PR is removed.
+# Track the edition for all workspace crates in one place. Individual
+# crates can still override this value, but keeping it here means new
+# crates created with `cargo new -w ...` automatically inherit the 2024
+# edition.
+edition = "2024"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+# Internal
+onequery-cli = { path = "crates/onequery-cli" }
+onequery-cli-core = { path = "crates/onequery-cli-core" }
+onequery-config = { path = "crates/onequery-config" }
+onequery-wtl = { path = "crates/onequery-wtl" }
+
+# External
+clap = "4"
+dirs = "6"
+futures-util = "0.3"
+insta = "1.46.3"
+pretty_assertions = "1.4.1"
+path-absolutize = "3"
+reqwest = { version = "0.13", default-features = false }
+serde = "1"
+serde_path_to_error = "0.1"
+serde_json = "1"
+sha2 = "0.10"
+tabled = "0.20"
+tempfile = "3"
+thiserror = "2"
+time = "0.3"
+tokio = "1"
+toml = "1"
+toml_edit = "0.23"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+url = "2"
+uuid = "1"
+webbrowser = "1"
+
+[workspace.lints]
+rust = {}
+
+[workspace.lints.clippy]
+expect_used = "deny"
+identity_op = "deny"
+manual_clamp = "deny"
+manual_filter = "deny"
+manual_find = "deny"
+manual_flatten = "deny"
+manual_map = "deny"
+manual_memcpy = "deny"
+manual_non_exhaustive = "deny"
+manual_ok_or = "deny"
+manual_range_contains = "deny"
+manual_retain = "deny"
+manual_strip = "deny"
+manual_try_fold = "deny"
+manual_unwrap_or = "deny"
+needless_borrow = "deny"
+needless_borrowed_reference = "deny"
+needless_collect = "deny"
+needless_late_init = "deny"
+needless_option_as_deref = "deny"
+needless_question_mark = "deny"
+needless_update = "deny"
+redundant_clone = "deny"
+redundant_closure = "deny"
+redundant_closure_for_method_calls = "deny"
+redundant_static_lifetimes = "deny"
+trivially_copy_pass_by_ref = "deny"
+uninlined_format_args = "deny"
+unnecessary_filter_map = "deny"
+unnecessary_lazy_evaluations = "deny"
+unnecessary_sort_by = "deny"
+unnecessary_to_owned = "deny"
+unwrap_used = "deny"
+
+[profile.ci-test]
+debug = 1 # Reduce debug symbol size
+inherits = "test"
+opt-level = 0

@@ -1,0 +1,9 @@
+---
+source: crates/onequery-cli/src/commands/source_connect.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Source connected: warehouse
+Provider: postgres
+Status: active
+Query (v1): yes
+Next: oneq source show warehouse

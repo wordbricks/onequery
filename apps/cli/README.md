@@ -1,0 +1,63 @@
+# onequery
+
+Rust CLI workspace for `onequery` and the companion CLI API contract.
+
+Experimental binaries:
+
+- `cargo run -p onequery-wtl --bin wtl -- run`
+  - Reads the initial request from stdin.
+  - Drives Codex App Server with a minimal WhatTheLoop engine/policy loop.
+  - Honors `WTL_CODEX_BIN`, `WTL_CODEX_MODEL`, and `WTL_TURN_TIMEOUT_SEC`.
+- `cargo run -p onequery-wtl --bin ralph-loop -- "<task prompt>"`
+  - Runs the Ralph Loop workflow on top of the shared WTL engine.
+  - Supports `init` and the main three-phase loop.
+  - Honors the same `WTL_*` runtime environment variables and exposes CLI flags for model, sandbox, approval policy, and timeouts.
+
+Key references:
+
+- CLI workflow architecture note: `docs/ARCHITECTURE.md`
+- Split OpenAPI source: `../../packages/cli-contract/openapi/source/cli.openapi.yaml`
+- Generated JSON API contract: `../../packages/cli-contract/openapi/generated/cli.openapi.json`
+
+Runtime config:
+
+- On Unix-like systems, the user config file is `${XDG_CONFIG_HOME:-~/.config}/onequery/config.toml`.
+- On Windows, the user config file is `%APPDATA%\\onequery\\config.toml`.
+- `config.toml` stores `[org].active`, `[api].server_url`, and `[api].request_timeout_sec`.
+- Runtime config is resolved in this order: built-in defaults -> user config file -> internal typed runtime overrides.
+- `oneq org use <org>` persists `active_org`. Passing `--org <org>` for a command takes precedence over the stored `active_org` value for that invocation.
+- `oneq auth logout` clears both the stored auth session and the stored `active_org`, so later org-scoped commands fail explicitly until a new org is selected.
+
+Credential storage:
+
+- On Unix-like systems, the CLI persists the full auth session blob to `${XDG_CONFIG_HOME:-~/.config}/onequery/auth.json`.
+- On Windows, the CLI persists the full auth session blob to `%APPDATA%\\onequery\\auth.json`.
+- `auth.json` stores the user identity, bearer token, session timing metadata, and the last refresh timestamp.
+- Authenticated commands now run an explicit auth-session lifecycle before building an authenticated API client:
+  load `auth.json` on startup -> call the CLI session refresh contract -> persist the returned token and timing metadata.
+
+Version cache:
+
+- Release builds refresh `${XDG_CONFIG_HOME:-~/.config}/onequery/version.json` on Unix-like systems and `%APPDATA%\\onequery\\version.json` on Windows as a cached latest-version record sourced from the npm dist-tags for `@wordbricks/onequery`.
+- The cache format mirrors Codex: `latest_version`, `last_checked_at`, and `dismissed_version`.
+
+Install:
+
+- `curl -fsSL https://onequery.wordbricks.ai/ | sh`
+- `bun install -g @wordbricks/onequery`
+- `bunx @wordbricks/oneq --help`
+- `npx @wordbricks/oneq --help`
+- The published npm package currently supports macOS and Linux only.
+- Packaged `oneq serve` uses a bundled native server executable and does not require `bun` on `PATH`.
+- Linux npm installs ship musl-linked binaries so the CLI runs on both glibc and musl-based distributions, including Alpine.
+
+Release:
+
+- Keep `apps/cli/package.json` at `0.0.0-dev`.
+- Keep `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` at `0.0.0` on normal development commits.
+- Only temporary `release/...` branches should change `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` to the real release version before tagging.
+- After the release is tagged, close or delete that temporary release branch/PR so `origin/main` stays at `0.0.0`.
+- Configure npm trusted publishing for `@wordbricks/onequery` with GitHub Actions using the workflow filename `cli-release.yml`.
+- Push a tag like `cli-v0.1.0` or `cli-v0.1.0-alpha.1`.
+- The `cli-release` workflow validates `cli-v<version>` against `apps/cli/Cargo.toml`, builds the CLI binaries plus per-target self-host server executables, stages versioned npm tarballs plus stable installer asset names, creates a GitHub release, and publishes the versioned tarballs to npm with `npm publish --provenance`.
+- Linux npm platform tarballs are staged from musl artifacts for the broadest runtime compatibility.

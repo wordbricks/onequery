@@ -1,0 +1,7 @@
+---
+source: crates/onequery-cli/src/commands/auth/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Logged in as Alice <alice@example.com>
+Credentials: stored
+Warning: login succeeded, but org bootstrap failed: timeout

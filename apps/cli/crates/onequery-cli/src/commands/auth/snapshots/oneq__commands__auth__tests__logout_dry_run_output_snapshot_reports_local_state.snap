@@ -1,0 +1,7 @@
+---
+source: crates/onequery-cli/src/commands/auth/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Auth logout dry run succeeded.
+Would remove persisted credentials: yes
+Would clear active org: yes

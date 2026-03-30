@@ -1,0 +1,4 @@
+interface:
+  display_name: "DB Migration Conflict Resolver"
+  short_description: "Resolve Drizzle migration merge conflicts safely"
+  default_prompt: "Use $drizzle-migration-conflict-resolution to resolve a Drizzle migration conflict in this branch."

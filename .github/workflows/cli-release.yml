@@ -1,0 +1,282 @@
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - "cli-v*.*.*"
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  tag-check:
+    runs-on: ubuntu-latest
+    outputs:
+      publish_tag: ${{ steps.validate.outputs.publish_tag }}
+      version: ${{ steps.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate tag matches CLI release version
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Tag validation"
+
+          [[ "${GITHUB_REF_TYPE}" == "tag" ]] \
+            || { echo "❌  Not a tag push"; exit 1; }
+          [[ "${GITHUB_REF_NAME}" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+            || { echo "❌  Tag '${GITHUB_REF_NAME}' does not match cli-v<semver>"; exit 1; }
+          version="${GITHUB_REF_NAME#cli-v}"
+          cargo_version="$(grep -A5 '^\[workspace\.package\]' apps/cli/Cargo.toml | grep -m1 '^version' | sed -E 's/version *= *\"([^\"]+)\".*/\1/')"
+
+          [[ "${version}" == "${cargo_version}" ]] \
+            || { echo "❌  Tag ${version} ≠ Cargo.toml ${cargo_version}"; exit 1; }
+
+          # COMMENT: Match Codex's release shape: normal development commits
+          # can keep a placeholder Rust version, but the tagged release commit
+          # must carry the real version and agree with the release tag.
+          echo "✅  Tag and Cargo.toml agree (${version})"
+
+          publish_tag="latest"
+          if [[ "${version}" == *"-alpha."* ]]; then
+            publish_tag="alpha"
+          elif [[ "${version}" == *"-beta."* ]]; then
+            publish_tag="beta"
+          elif [[ "${version}" == *"-"* ]]; then
+            publish_tag="next"
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "publish_tag=${publish_tag}" >> "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
+  build-unix:
+    needs: tag-check
+    name: Build - ${{ matrix.runner }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          # COMMENT: Keep the current macOS runner classes for OneQuery. Unlike
+          # Codex, this CLI only builds one binary per macOS target and does
+          # not need the larger xlarge runner shape.
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    defaults:
+      run:
+        working-directory: apps/cli
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - uses: dtolnay/rust-toolchain@1.93.0
+        with:
+          targets: ${{ matrix.target }}
+
+      - if: ${{ matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl' }}
+        name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.0
+
+      - if: ${{ matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl' }}
+        name: Install musl build tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TARGET: ${{ matrix.target }}
+          APT_UPDATE_ARGS: -o Acquire::Retries=3
+          APT_INSTALL_ARGS: --no-install-recommends
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/install-musl-build-tools.sh"
+
+      - if: ${{ matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl' }}
+        name: Configure aws-lc musl env
+        shell: bash
+        run: |
+          set -euo pipefail
+          # CONTEXT: OneQuery also pulls in aws-lc via rustls; match Codex's
+          # musl workaround to avoid the problematic jitter entropy path.
+          echo "AWS_LC_SYS_NO_JITTER_ENTROPY=1" >> "$GITHUB_ENV"
+          target_no_jitter="AWS_LC_SYS_NO_JITTER_ENTROPY_${{ matrix.target }}"
+          target_no_jitter="${target_no_jitter//-/_}"
+          echo "${target_no_jitter}=1" >> "$GITHUB_ENV"
+
+      - name: Build CLI binary
+        run: |
+          # COMMENT: Keep the musl path on plain cargo so target installation,
+          # linker wiring, and C toolchain setup are visible in workflow logs.
+          cargo build --locked --release --bin oneq --target ${{ matrix.target }}
+
+      - name: Build self-host server executable
+        run: |
+          set -euo pipefail
+          bun scripts/build-server-executable.js \
+            --target-triple "${{ matrix.target }}" \
+            --outfile "dist/vendor/${{ matrix.target }}/server/onequery-server"
+
+      - name: Stage vendor payload
+        run: |
+          set -euo pipefail
+
+          binary_name="oneq"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            binary_name="oneq.exe"
+          fi
+
+          mkdir -p "dist/vendor/${{ matrix.target }}/onequery"
+          cp "target/${{ matrix.target }}/release/${binary_name}" "dist/vendor/${{ matrix.target }}/onequery/${binary_name}"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: cli-npm-vendor-${{ matrix.target }}
+          path: apps/cli/dist/vendor
+          if-no-files-found: error
+
+  release:
+    needs: [tag-check, build-unix]
+    runs-on: ubuntu-latest
+    outputs:
+      publish_tag: ${{ needs.tag-check.outputs.publish_tag }}
+      version: ${{ needs.tag-check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: cli-npm-vendor-*
+          # upload-artifact stores the contents of apps/cli/dist/vendor, so
+          # restore into dist/vendor to preserve the target directory layout.
+          path: dist/vendor
+          merge-multiple: true
+
+      - name: Stage npm tarballs
+        run: |
+          bun apps/cli/scripts/stage-npm-packages.js \
+            --package cli \
+            --release-version "${{ needs.tag-check.outputs.version }}" \
+            --vendor-src dist/vendor \
+            --output-dir dist/npm
+
+      - name: Stage stable installer assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.tag-check.outputs.version }}"
+
+          cp "dist/npm/onequery-npm-${version}.tgz" "dist/npm/onequery-npm.tgz"
+          cp "dist/npm/onequery-npm-darwin-arm64-${version}.tgz" "dist/npm/onequery-npm-darwin-arm64.tgz"
+          cp "dist/npm/onequery-npm-darwin-x64-${version}.tgz" "dist/npm/onequery-npm-darwin-x64.tgz"
+          cp "dist/npm/onequery-npm-linux-arm64-${version}.tgz" "dist/npm/onequery-npm-linux-arm64.tgz"
+          cp "dist/npm/onequery-npm-linux-x64-${version}.tgz" "dist/npm/onequery-npm-linux-x64.tgz"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: cli-npm-tarballs
+          path: dist/npm/*.tgz
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ needs.tag-check.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          files: dist/npm/*.tgz
+          prerelease: ${{ contains(needs.tag-check.outputs.version, '-') }}
+
+  publish-npm:
+    needs: [tag-check, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PUBLISH_TAG: ${{ needs.tag-check.outputs.publish_tag }}
+      VERSION: ${{ needs.tag-check.outputs.version }}
+      REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: cli-npm-tarballs
+          path: dist/npm
+
+      - name: Publish tarballs to npm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # COMMENT: npm provenance currently rejects publishes sourced from private GitHub repositories.
+          publish_args=(--access public)
+          if [[ "${REPOSITORY_PRIVATE}" != "true" ]]; then
+            publish_args=(--provenance --access public)
+          fi
+
+          root_tarball="dist/npm/onequery-npm-${VERSION}.tgz"
+          [[ -f "${root_tarball}" ]] || {
+            echo "Missing root tarball ${root_tarball}"
+            exit 1
+          }
+
+          mapfile -t platform_tarballs < <(find dist/npm -maxdepth 1 -type f -name 'onequery-npm-*.tgz' ! -name "$(basename "${root_tarball}")" | sort)
+
+          for tarball in "${platform_tarballs[@]}"; do
+            publish_cmd=(npm publish "${tarball}" "${publish_args[@]}")
+            if [[ -n "${PUBLISH_TAG}" ]]; then
+              publish_cmd+=(--tag "${PUBLISH_TAG}")
+            fi
+
+            echo "+ ${publish_cmd[*]}"
+            set +e
+            publish_output="$("${publish_cmd[@]}" 2>&1)"
+            publish_status=$?
+            set -e
+
+            echo "${publish_output}"
+            if [[ ${publish_status} -eq 0 ]]; then
+              continue
+            fi
+
+            if grep -qiE "previously published|cannot publish over|version already exists" <<< "${publish_output}"; then
+              echo "Skipping already-published package version for ${tarball}"
+              continue
+            fi
+
+            exit "${publish_status}"
+          done
+
+          publish_cmd=(npm publish "${root_tarball}" "${publish_args[@]}")
+          if [[ -n "${PUBLISH_TAG}" ]]; then
+            publish_cmd+=(--tag "${PUBLISH_TAG}")
+          fi
+
+          echo "+ ${publish_cmd[*]}"
+          "${publish_cmd[@]}"

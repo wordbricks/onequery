@@ -1,0 +1,26 @@
+{
+  "name": "@onequery/connector",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "CONNECTOR_ABORT_ON_PREREQ_FAILURE=false CONNECTOR_ABORT_ON_AUTH_FAILURE=false bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "check": "bun run typecheck && bun run test",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-athena": "3.940.0",
+    "@aws-sdk/client-glue": "3.940.0",
+    "@onequery/base": "workspace:*",
+    "@onequery/config": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "vitest": "catalog:"
+  }
+}

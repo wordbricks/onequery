@@ -1,0 +1,6 @@
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+
+# Increase the size threshold for result_large_err to accommodate
+# richer error variants.
+large-error-threshold = 256

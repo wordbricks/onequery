@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5454:5432"
+    environment:
+      POSTGRES_DB: onequery
+      POSTGRES_USER: onequery
+      POSTGRES_PASSWORD: onequery
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onequery -d onequery"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Ephemeral agent runner - spawned per /agent/run request
+  # This service is only used for building the image.
+  # The gateway spawns containers using `docker run --rm onequery-agent-runner`
+  # Usage: LOCAL_AGENT=1 bun dev
+  agent-runner:
+    image: onequery-agent-runner
+    build:
+      context: .
+      dockerfile: apps/agent/Dockerfile.runner
+    # This service is not meant to run via docker-compose
+    # It's spawned by the gateway with `docker run --rm`
+    profiles:
+      - build-only
+
+volumes:
+  postgres_data:

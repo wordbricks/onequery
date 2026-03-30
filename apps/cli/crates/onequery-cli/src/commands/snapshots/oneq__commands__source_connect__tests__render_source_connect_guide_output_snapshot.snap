@@ -1,0 +1,8 @@
+---
+source: crates/onequery-cli/src/commands/source_connect.rs
+expression: "output.lines.join(\"\\n\")"
+---
+# OneQuery Source Connect Guide
+
+1. Gather credentials.
+2. Run the command.

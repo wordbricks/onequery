@@ -1,0 +1,18 @@
+[tools]
+"aqua:astral-sh/uv" = "latest"
+"aqua:casey/just" = "latest"
+"aqua:rhysd/actionlint" = "latest"
+"aqua:mitsuhiko/insta" = "latest"
+"cargo:cargo-expand" = "latest"
+"cargo:cargo-nextest" = "latest"
+"npm:turbo" = "latest"
+"npm:@antfu/ni" = "latest"
+"npm:@hono/cli" = "latest"
+
+[settings]
+npm.bun = true
+# tools can read the versions files used by other version managers
+idiomatic_version_file_enable_tools = ["bun", "node", "rust"]
+
+[env]
+_.path = "./"

@@ -1,0 +1,51 @@
+import babel from "@rolldown/plugin-babel";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+import { resolveViteDevServerConfig } from "./src/lib/vite-dev-server-config";
+
+const isE2E = process.env.ONEQUERY_E2E === "1";
+
+export default defineConfig(() => {
+  const { apiProxyTarget, port } = resolveViteDevServerConfig(process.env);
+
+  return {
+    define: {
+      "globalThis.__ONEQUERY_E2E__": JSON.stringify(isE2E),
+    },
+    plugins: [
+      tanstackRouter({
+        autoCodeSplitting: true,
+        generatedRouteTree: "./src/routeTree.gen.ts",
+        routeFileIgnorePattern: "\\.test\\.tsx?$",
+        routesDirectory: "./src/routes",
+        target: "react",
+      }),
+      react(),
+      // Surprising: editor type-checking for this plugin also needs
+      // @types/babel__core, even though @babel/core is already installed.
+      babel({
+        presets: [reactCompilerPreset()],
+      }),
+      tailwindcss(),
+    ],
+    resolve: {
+      tsconfigPaths: true,
+    },
+    server: {
+      host: "0.0.0.0",
+      // Comment: Keep the browser on the managed WEB_URL origin and proxy only
+      // `/api` in dev so auth/cookie behavior stays same-origin while the Bun
+      // server can restart independently under Vite HMR.
+      port,
+      proxy: {
+        "/api": apiProxyTarget,
+      },
+      strictPort: true,
+      // Allow requests from Docker containers
+      allowedHosts: ["localhost", "host.docker.internal"],
+    },
+  };
+});

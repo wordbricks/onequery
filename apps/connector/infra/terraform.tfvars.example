@@ -1,0 +1,31 @@
+aws_region = "ap-northeast-2"
+
+name_prefix  = "onequery-connector"
+environment  = "test"
+organization_id = "org_123"
+connector_name  = "aws-athena-connector-test"
+
+onequery_base_url = "https://your-onequery-host.example/api"
+
+# Must match CONNECTOR_ENROLLMENT_TOKEN configured on OneQuery server.
+connector_enrollment_token = "replace-with-a-long-random-secret"
+
+athena_database       = "onequery_connector_test"
+athena_workgroup      = "onequery_connector_test"
+athena_results_prefix = "onequery"
+create_sample_dataset = true
+sample_table_name     = "connector_smoke_test"
+
+create_ecr_repository = true
+connector_image_tag   = "latest"
+
+create_ec2_host = true
+instance_type   = "t3.small"
+
+# If your AWS account has no default VPC, set these explicitly.
+# vpc_id    = "vpc-xxxxxxxx"
+# subnet_id = "subnet-xxxxxxxx"
+
+# Optional: enable SSH for troubleshooting.
+# enable_ssh_ingress      = true
+# ssh_ingress_cidr_blocks = ["203.0.113.10/32"]

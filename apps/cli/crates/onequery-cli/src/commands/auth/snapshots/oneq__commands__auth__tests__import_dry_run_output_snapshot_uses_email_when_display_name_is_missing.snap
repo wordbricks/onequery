@@ -1,0 +1,6 @@
+---
+source: crates/onequery-cli/src/commands/auth/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Auth import dry run succeeded for alice@example.com <alice@example.com>
+Planned effect: persist local auth session

@@ -1,0 +1,46 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "topo": {
+      "inputs": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "justfile",
+        ".cargo/**",
+        "crates/**/Cargo.toml",
+        "crates/**/build.rs",
+        "crates/**/*.rs",
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
+      ]
+    },
+    "typecheck": {
+      "inputs": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "justfile",
+        ".cargo/**",
+        "crates/**/Cargo.toml",
+        "crates/**/build.rs",
+        "crates/**/*.rs",
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
+      ]
+    },
+    "test": {
+      "inputs": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "justfile",
+        ".config/nextest.toml",
+        ".cargo/**",
+        "crates/**/Cargo.toml",
+        "crates/**/build.rs",
+        "crates/**/*.rs",
+        "crates/**/*.snap",
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
+      ]
+    }
+  }
+}

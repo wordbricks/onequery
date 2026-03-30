@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "skills": {
+    "better-auth-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
+    },
+    "better-auth-security-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "computedHash": "5717187bba9c22030c7174c74012f01c359f21e2ce87e0eb80e24244d8b8c915"
+    },
+    "commit": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "9384add5572ef41749c7b24dbff7131db267506aff3bce7ff7c2effe4ec0e7f8"
+    },
+    "debug": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "9ba57239460065b1acf67d80293b1332e26077cab5dc0047867ad53949fff97d"
+    },
+    "knip-deadcode": {
+      "source": "pproenca/dot-skills",
+      "sourceType": "github",
+      "computedHash": "e58764b88123c65e617368a65d90ea82db6935da26a54d652e82a8c820346b67"
+    },
+    "land": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "b2a4891b2454d35e300620ef3c44e444f64c207c59fbbfe9a1d1af2b01fc1a1a"
+    },
+    "linear": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "50a8e09b2223e9b958e780a877a64e5b6f0b225650e14714cf94847987837086"
+    },
+    "organization-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "computedHash": "79a5a85b43d10e9fe37582b3506b051a33a991817b938f349099baa5ddba21aa"
+    },
+    "pull": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "f32735dab559a59353bcb5855065c6dce991f4f31b3dbe2925493842e9aa324f"
+    },
+    "push": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "b9ace137b2f25f73887e6cee47b91b548f300ea771a41a81999b02a7ce6c12a9"
+    },
+    "rust-best-practices": {
+      "source": "apollographql/skills",
+      "sourceType": "github",
+      "computedHash": "ba11ae333ab71e30dd83de34d5f5cfa23ed3ee782618215f7fb69b749d63762d"
+    },
+    "symphony-setup": {
+      "source": "odysseus0/symphony",
+      "sourceType": "github",
+      "computedHash": "46a18eb8b74361c5dcd3a1b405b0add638e8fca022de64b64c548257b95321ed"
+    },
+    "tanstack-query-best-practices": {
+      "source": "deckardger/tanstack-agent-skills",
+      "sourceType": "github",
+      "computedHash": "21d2e8b7468a81d772b6527ad8ca178cc2f3f08af777bb9061333013ee88a0c9"
+    },
+    "tanstack-router-best-practices": {
+      "source": "deckardger/tanstack-agent-skills",
+      "sourceType": "github",
+      "computedHash": "65764bc7b90e47f6023cb7f89b3af93eaaafc517754f10b9382e184d4646a77d"
+    },
+    "onequery-cli": {
+      "source": "wordbricks/skills",
+      "sourceType": "github",
+      "computedHash": "81b4eaf3d78b0cc4cef38e82334c6aa60cf167558d0466fe872b228ad4044a1f"
+    },
+    "xstate": {
+      "source": "seed-hypermedia/seed",
+      "sourceType": "github",
+      "computedHash": "c743411252fc09f07cda7bf01620337735397e5a607e93f4ba6560768c9aab72"
+    }
+  }
+}

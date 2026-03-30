@@ -1,0 +1,4 @@
+interface:
+  display_name: "GH PR Writing"
+  short_description: "Write PR titles and bodies with repo template and conventions"
+  default_prompt: "Write or update this GitHub PR title/body using the repo template and conventional title prefix rules."

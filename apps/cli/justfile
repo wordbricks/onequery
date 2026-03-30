@@ -1,0 +1,71 @@
+set positional-arguments
+
+# Display help
+help:
+    just -l
+
+# `oneq`
+alias v := oneq
+oneq *args:
+    cargo run --bin oneq -- "$@"
+
+# Run `oneq use --source <SOURCE>`
+alias u := use
+use source:
+    cargo run --bin oneq -- use --source {{source}}
+
+# format code
+fmt:
+    cargo fmt -- --config imports_granularity=Item 2>/dev/null
+
+typecheck *args:
+    cargo check --tests "$@"
+
+lint *args:
+    cargo clippy --tests "$@"
+
+fix *args:
+    cargo clippy --fix --tests --allow-dirty "$@"
+
+clippy *args:
+    cargo clippy --tests "$@"
+
+install:
+    rustup show active-toolchain
+    cargo fetch
+
+build *args:
+    cargo build "$@"
+
+# Run `cargo nextest` since it's faster than `cargo test`, though including
+# --no-fail-fast is important to ensure all tests are run.
+#
+# Run `cargo install cargo-nextest` if you don't have it installed.
+test *args:
+    # CONTEXT: Turbo/CI should use the same `just test` entrypoint as local
+    # development, but not every environment has cargo-nextest installed.
+    if command -v cargo-nextest >/dev/null 2>&1; then cargo nextest run --no-fail-fast "$@"; else cargo test "$@"; fi
+
+test-cargo *args:
+    cargo test "$@"
+
+check:
+    cargo fmt -- --check --config imports_granularity=Item 2>/dev/null
+    just lint
+    just check-openapi
+
+# Regenerate CLI server adapters from the canonical contract package.
+regen-openapi:
+    bun run --cwd {{justfile_directory()}}/../../packages/cli-server openapi:cli:generate
+
+check-openapi:
+    bun run --cwd {{justfile_directory()}}/../../packages/cli-server openapi:cli:check
+
+insta-pending *args:
+    cargo insta pending-snapshots "$@"
+
+insta-show *args:
+    cargo insta show "$@"
+
+insta-accept *args:
+    cargo insta accept "$@"

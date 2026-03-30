@@ -1,0 +1,82 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { createSpaAssetBinding } from "./assets";
+
+const tempDirs: string[] = [];
+
+function createAssetDir() {
+  const assetDir = mkdtempSync(join(tmpdir(), "onequery-bun-server-assets-"));
+  tempDirs.push(assetDir);
+  mkdirSync(join(assetDir, "assets"), { recursive: true });
+  writeFileSync(
+    join(assetDir, "index.html"),
+    "<!doctype html><div>SPA Shell</div>",
+    "utf8"
+  );
+  writeFileSync(
+    join(assetDir, "assets", "app.js"),
+    "console.log('app');",
+    "utf8"
+  );
+  return assetDir;
+}
+
+describe("spa asset binding", () => {
+  afterEach(() => {
+    while (tempDirs.length > 0) {
+      const path = tempDirs.pop();
+      if (path) {
+        rmSync(path, { force: true, recursive: true });
+      }
+    }
+  });
+
+  it("serves built assets and falls back to index.html for client routes", async () => {
+    const assetDir = createAssetDir();
+    const binding = createSpaAssetBinding({ assetDir });
+
+    const assetResponse = await binding.fetch(
+      new Request("http://local/assets/app.js")
+    );
+    const routeResponse = await binding.fetch(
+      new Request("http://local/dashboard")
+    );
+
+    expect(assetResponse.status).toBe(200);
+    await expect(assetResponse.text()).resolves.toContain(
+      "console.log('app');"
+    );
+
+    expect(routeResponse.status).toBe(200);
+    expect(routeResponse.headers.get("content-type")).toContain("text/html");
+    await expect(routeResponse.text()).resolves.toContain("SPA Shell");
+  });
+
+  it("returns 404 for missing file-like paths and traversal attempts", async () => {
+    const assetDir = createAssetDir();
+    const binding = createSpaAssetBinding({ assetDir });
+
+    const missingResponse = await binding.fetch(
+      new Request("http://local/assets/missing.js")
+    );
+    const traversalResponse = await binding.fetch(
+      new Request("http://local/%2E%2E/secret.txt")
+    );
+
+    expect(missingResponse.status).toBe(404);
+    expect(traversalResponse.status).toBe(404);
+  });
+
+  it("returns 404 for malformed percent-encoded paths instead of throwing", async () => {
+    const assetDir = createAssetDir();
+    const binding = createSpaAssetBinding({ assetDir });
+
+    const response = await binding.fetch(new Request("http://local/%E0%A4%A"));
+
+    expect(response.status).toBe(404);
+  });
+});

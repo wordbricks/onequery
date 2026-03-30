@@ -1,0 +1,57 @@
+[package]
+name = "onequery-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "oneq"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+clap = { workspace = true, features = ["derive"] }
+dirs = { workspace = true }
+flate2 = "1.1.5"
+futures-util = { workspace = true }
+libc = "0.2.177"
+path-absolutize = { workspace = true }
+progenitor-client = "0.13.0"
+regress = "0.10"
+reqwest = { workspace = true, features = ["json", "query", "rustls", "stream"] }
+serde = { workspace = true, features = ["derive"] }
+tar = "0.4"
+tabled = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = [
+  "fs",
+  "io-std",
+  "io-util",
+  "macros",
+  "rt-multi-thread",
+  "time",
+] }
+serde_json = { workspace = true }
+toml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+time = { workspace = true, features = ["formatting", "parsing"] }
+url = { workspace = true }
+webbrowser = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+onequery-cli-core = { workspace = true }
+onequery-config = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+insta = { workspace = true }
+
+[build-dependencies]
+prettyplease = "0.2.37"
+progenitor = { version = "0.13.0", default-features = false }
+serde_json = { workspace = true }
+syn = "2.0"
+
+[lints]
+workspace = true

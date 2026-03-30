@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" suppressHydrationWarning>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/onequery.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OneQuery - Autonomous Data Workspace</title>
+    <script>
+      // Prevent flash of unstyled content (FOUC) for theme
+      (() => {
+        const theme = localStorage.getItem("theme");
+        const systemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        if (theme === "dark" || (!theme && systemDark)) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+---
+source: crates/onequery-cli/src/commands/org/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Active org would be set to acme
+Planned effect: update active org in config

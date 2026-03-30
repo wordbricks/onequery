@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/ui/*": ["../../packages/ui/src/components/ui/*"],
+      "@/*": ["./src/*", "../../packages/ui/src/*"]
+    },
+    "types": ["@types/bun"]
+  },
+  "include": ["src", "vite.config.ts"]
+}

@@ -1,0 +1,9 @@
+name = "translator"
+description = "Translate answer to Korean"
+model = "gpt-5.3-codex-spark"
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"
+developer_instructions = """
+Translate answer to Korean
+"""
+nickname_candidates = ["Sejong"]

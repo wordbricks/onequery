@@ -1,0 +1,132 @@
+info:
+  title: OneQuery CLI API
+  version: 1.0.0
+servers:
+  - url: "/api/cli"
+    description: Canonical CLI endpoint base path
+openapi: 3.0.4
+paths:
+  "/openapi.json":
+    "$ref": "./paths/openapi.yaml#/openapiDocument"
+  "/use":
+    "$ref": "./paths/use.yaml#/use"
+  "/session":
+    "$ref": "./paths/session.yaml#/session"
+  "/auth/device-authorizations":
+    "$ref": "./paths/auth.yaml#/deviceAuthorizations"
+  "/organizations":
+    "$ref": "./paths/organizations.yaml#/organizations"
+  "/organizations/{orgSlug}":
+    "$ref": "./paths/organizations.yaml#/organization"
+  "/organizations/{orgSlug}/sources":
+    "$ref": "./paths/sources.yaml#/sources"
+  "/organizations/{orgSlug}/sources:connect":
+    "$ref": "./paths/sources.yaml#/sourceConnect"
+  "/organizations/{orgSlug}/sources/{sourceKey}":
+    "$ref": "./paths/sources.yaml#/source"
+  "/session:refresh":
+    "$ref": "./paths/session.yaml#/sessionRefresh"
+  "/auth/device-authorizations:poll":
+    "$ref": "./paths/auth.yaml#/deviceAuthorizationsPoll"
+  "/organizations/{orgSlug}/sources/{sourceKey}/queries:validate":
+    "$ref": "./paths/queries.yaml#/queryValidate"
+  "/organizations/{orgSlug}/sources/{sourceKey}/queries:execute":
+    "$ref": "./paths/queries.yaml#/queryExecute"
+components:
+  schemas:
+    CliAuthDeviceAuthorizationPollRequest:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationPollRequest"
+    CliQueryParameter:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryParameter"
+    CliQueryRequest:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryRequest"
+    CliAuthSessionResponse:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthSessionResponse"
+    CliAuthMode:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthMode"
+    CliAuthSessionProjectedUser:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthSessionProjectedUser"
+    CliProblem:
+      "$ref": "./components/schemas/common.yaml#/components/schemas/CliProblem"
+    CliUseSource:
+      "$ref": "./components/schemas/use.yaml#/components/schemas/CliUseSource"
+    CliUseResponse:
+      "$ref": "./components/schemas/use.yaml#/components/schemas/CliUseResponse"
+    CliAuthSessionRefreshResponse:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthSessionRefreshResponse"
+    CliAuthSessionUser:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthSessionUser"
+    CliAuthDeviceAuthorizationStartResponse:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationStartResponse"
+    CliAuthDeviceAuthorizationSuccessResponse:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationSuccessResponse"
+    CliAuthDeviceAuthorizationPendingResponse:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationPendingResponse"
+    CliPage:
+      "$ref": "./components/schemas/common.yaml#/components/schemas/CliPage"
+    CliOrgListResponse:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgListResponse"
+    CliOrgSummary:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgSummary"
+    CliOrgReadResponse:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgReadResponse"
+    CliOrgCapability:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgCapability"
+    CliQueryValidateResponse:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryValidateResponse"
+    CliQueryCanonicalRequest:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryCanonicalRequest"
+    CliDeclaredQueryResultWindow:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliDeclaredQueryResultWindow"
+    CliSourceSummary:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceSummary"
+    CliSourceProvider:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceProvider"
+    CliSourceConnectGuide:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectGuide"
+    CliSourceConnectInputSchema:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectInputSchema"
+    CliSourceConnectSchemaField:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectSchemaField"
+    CliSourceConnectProviderGuide:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectProviderGuide"
+    CliSourceConnectRequest:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectRequest"
+    CliSourceConnectResponse:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectResponse"
+    CliQuerySuccess:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQuerySuccess"
+    CliQueryColumn:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryColumn"
+    CliSourceListResponse:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceListResponse"
+    CliWarning:
+      "$ref": "./components/schemas/common.yaml#/components/schemas/CliWarning"
+    CliSanitization:
+      "$ref": "./components/schemas/common.yaml#/components/schemas/CliSanitization"
+    CliSessionReadEnvelope:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliSessionReadEnvelope"
+    CliUseEnvelope:
+      "$ref": "./components/schemas/use.yaml#/components/schemas/CliUseEnvelope"
+    CliAuthDeviceAuthorizationStartEnvelope:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationStartEnvelope"
+    CliOrgListEnvelope:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgListEnvelope"
+    CliOrgGetEnvelope:
+      "$ref": "./components/schemas/organizations.yaml#/components/schemas/CliOrgGetEnvelope"
+    CliSourceListEnvelope:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceListEnvelope"
+    CliSourceShowEnvelope:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceShowEnvelope"
+    CliSourceConnectGuideEnvelope:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectGuideEnvelope"
+    CliSourceConnectEnvelope:
+      "$ref": "./components/schemas/sources.yaml#/components/schemas/CliSourceConnectEnvelope"
+    CliSessionRefreshEnvelope:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliSessionRefreshEnvelope"
+    CliAuthDeviceAuthorizationPollEnvelope:
+      "$ref": "./components/schemas/auth.yaml#/components/schemas/CliAuthDeviceAuthorizationPollEnvelope"
+    CliQueryValidateEnvelope:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryValidateEnvelope"
+    CliQueryExecuteEnvelope:
+      "$ref": "./components/schemas/queries.yaml#/components/schemas/CliQueryExecuteEnvelope"

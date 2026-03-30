@@ -1,0 +1,10 @@
+---
+source: crates/onequery-cli/src/commands/auth/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+User: Alice
+Email: alice@example.com
+Authenticated: yes
+User ID: user-1
+Effective Org: acme
+Effective Org Source: server

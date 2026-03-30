@@ -1,0 +1,5 @@
+---
+source: crates/onequery-cli/src/commands/org/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+No organizations found for this account.

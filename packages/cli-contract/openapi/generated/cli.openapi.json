@@ -1,0 +1,3420 @@
+{
+	"info": {
+		"title": "OneQuery CLI API",
+		"version": "1.0.0"
+	},
+	"servers": [
+		{
+			"url": "/api/cli",
+			"description": "Canonical CLI endpoint base path"
+		}
+	],
+	"openapi": "3.0.4",
+	"paths": {
+		"/openapi.json": {
+			"get": {
+				"operationId": "cliOpenapiDocument",
+				"description": "Return the current checked-in CLI OpenAPI discovery document.",
+				"x-onequery-command": "schema openapi",
+				"x-onequery-expose-command-schema": false,
+				"x-onequery-kind": "discovery",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": false,
+					"modes": [
+						"none"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Current CLI OpenAPI discovery document",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"additionalProperties": true
+								},
+								"example": {
+									"openapi": "3.1.0",
+									"info": {
+										"title": "OneQuery CLI API",
+										"version": "0.1.0"
+									},
+									"paths": {
+										"/session": {
+											"get": {
+												"operationId": "cliSessionRead"
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/use": {
+			"get": {
+				"operationId": "cliUse",
+				"description": "Return provider-specific skill content for non-SQL OneQuery sources so agents can use the correct relay surface instead of SQL query execution.",
+				"x-onequery-command": "use",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "discovery",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": false,
+					"modes": [
+						"none"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "source",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/CliUseSource"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Provider-specific skill content for the requested source kind",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliUseEnvelope"
+								},
+								"example": {
+									"requestId": "req_use_01",
+									"data": {
+										"source": "sentry",
+										"title": "OneQuery Sentry Relay Skill",
+										"description": "Use the Sentry relay route instead of SQL for a OneQuery-connected Sentry source.",
+										"format": "markdown",
+										"content": "# OneQuery Sentry Relay Skill\n\nUse `POST /api/data-sources/sentry/query` with `method: \"fetch_api\"` and a bounded `request`.\n"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Requested source kind is not supported by the use surface",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/invalid-request",
+									"status": 422,
+									"title": "Invalid Request",
+									"detail": "Invalid enum value. Expected 'amplitude' | 'ga' | 'github' | 'mixpanel' | 'mongodb' | 'posthog' | 'sentry', received 'linear'",
+									"code": "invalid_request",
+									"stage": "resolve_source",
+									"hint": "choose one of the supported use sources and retry",
+									"requestId": "req_use_invalid_01",
+									"retryable": false
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/session": {
+			"get": {
+				"operationId": "cliSessionRead",
+				"description": "Return the current authenticated principal and active org context for the CLI surface.",
+				"x-onequery-command": "auth whoami",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"not_logged_in"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Current authenticated CLI session identity",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSessionReadEnvelope"
+								},
+								"example": {
+									"requestId": "req_session_read_01",
+									"data": {
+										"authMode": "browser_session",
+										"user": {
+											"id": "user-1",
+											"email": "alice@example.com",
+											"displayName": "Alice"
+										},
+										"activeOrgSlug": "acme",
+										"issuedAt": "2026-03-10T00:00:00Z",
+										"expiresAt": "2026-03-17T00:00:00Z"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/not-logged-in",
+									"status": 401,
+									"title": "Not Logged In",
+									"detail": "no authenticated session was found",
+									"code": "not_logged_in",
+									"stage": "auth",
+									"hint": "login via the OneQuery web app and retry",
+									"requestId": "req_session_read_unauthorized_01",
+									"retryable": false
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/device-authorizations": {
+			"post": {
+				"operationId": "cliAuthDeviceAuthorizationStart",
+				"description": "Start CLI device authorization and return the pending session metadata on the canonical OneQuery auth workflow surface.",
+				"x-onequery-command": "auth login start",
+				"x-onequery-expose-command-schema": false,
+				"x-onequery-kind": "mutate",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": true,
+				"x-onequery-auth-requirements": {
+					"authenticated": false,
+					"modes": [
+						"none"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"invalid_request",
+					"login_rate_limited"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [
+					429
+				],
+				"parameters": [],
+				"responses": {
+					"200": {
+						"description": "Started device authorization session",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliAuthDeviceAuthorizationStartEnvelope"
+								},
+								"example": {
+									"requestId": "req_device_start_01",
+									"data": {
+										"state": "pending",
+										"deviceCode": "device-code-example",
+										"userCode": "ABCD-1234",
+										"verificationUrl": "https://example.test/api/device",
+										"verificationCompleteUrl": "https://example.test/api/device?user_code=ABCD-1234",
+										"pollAfterMs": 5000,
+										"expiresAt": "2026-03-17T00:15:00Z"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Device authorization request was invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Device authorization request was rate-limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/login-rate-limited",
+									"status": 429,
+									"title": "Login Rate Limited",
+									"detail": "too many login attempts from this client",
+									"code": "login_rate_limited",
+									"stage": "auth",
+									"hint": "wait briefly, then retry `oneq auth login`",
+									"requestId": "req_device_start_rate_limited_01",
+									"retryable": true,
+									"retryAfterMs": 60000
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations": {
+			"get": {
+				"operationId": "cliOrgList",
+				"description": "List organizations where the authenticated caller is a member.",
+				"x-onequery-command": "org list",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"cursor": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": true,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"not_logged_in"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Organizations visible through org membership on the standard CLI surface",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliOrgListEnvelope"
+								},
+								"example": {
+									"requestId": "req_org_list_01",
+									"data": {
+										"organizations": [
+											{
+												"slug": "acme",
+												"name": "Acme Corp"
+											},
+											{
+												"slug": "paperkite",
+												"name": "Paperkite"
+											}
+										]
+									},
+									"warnings": [],
+									"page": {
+										"nextCursor": null,
+										"returned": 2,
+										"hasMore": false
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/not-logged-in",
+									"status": 401,
+									"title": "Not Logged In",
+									"detail": "no authenticated session was found",
+									"code": "not_logged_in",
+									"stage": "auth",
+									"hint": "login via the OneQuery web app and retry",
+									"requestId": "req_org_list_unauthorized_01",
+									"retryable": false
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}": {
+			"get": {
+				"operationId": "cliOrgGet",
+				"description": "Show one organization visible to the caller, including normalized org roles and current CLI capabilities.",
+				"x-onequery-command": "org get",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Organization details plus caller roles and route capabilities",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliOrgGetEnvelope"
+								},
+								"example": {
+									"requestId": "req_org_get_01",
+									"data": {
+										"slug": "acme",
+										"name": "Acme Corp",
+										"roles": [
+											"member"
+										],
+										"capabilities": [
+											"org.read",
+											"source.list",
+											"source.read",
+											"query.execute"
+										]
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to read the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/org-not-found",
+									"status": 404,
+									"title": "Organization Not Found",
+									"detail": "org `acme-missing` was not found",
+									"code": "org_not_found",
+									"stage": "resolve_org",
+									"hint": "run `oneq org list`",
+									"requestId": "req_org_get_not_found_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "The requested org slug is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}/sources": {
+			"get": {
+				"operationId": "cliSourceList",
+				"description": "List source metadata for the requested org. Any org member can read source metadata on the standard CLI surface.",
+				"x-onequery-command": "source list",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"cursor": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": true,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Connected sources visible to the authenticated caller within that org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSourceListEnvelope"
+								},
+								"example": {
+									"requestId": "req_source_list_01",
+									"data": {
+										"sources": [
+											{
+												"name": "warehouse",
+												"displayName": "Production Warehouse",
+												"provider": "postgres",
+												"queryable": true,
+												"status": "active"
+											},
+											{
+												"name": "product_analytics",
+												"displayName": "Product Analytics",
+												"provider": "posthog",
+												"queryable": false,
+												"status": "active"
+											}
+										]
+									},
+									"warnings": [],
+									"page": {
+										"nextCursor": null,
+										"returned": 2,
+										"hasMore": false
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to list sources in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/org-not-found",
+									"status": 404,
+									"title": "Organization Not Found",
+									"detail": "org `acme-missing` was not found",
+									"code": "org_not_found",
+									"stage": "resolve_org",
+									"hint": "run `oneq org list`",
+									"requestId": "req_source_list_org_not_found_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Requested org slug is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}/sources:connect": {
+			"get": {
+				"operationId": "cliSourceConnectGuide",
+				"description": "Return step-by-step instructions plus machine-readable input guidance for connecting one provider-specific data source to the requested org.",
+				"x-onequery-command": "source connect guide",
+				"x-onequery-expose-command-schema": false,
+				"x-onequery-kind": "discovery",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					},
+					{
+						"in": "query",
+						"name": "source",
+						"schema": {
+							"$ref": "#/components/schemas/CliSourceProvider"
+						},
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Connect-source guide for the requested provider, including the required JSON contract and credential instructions",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSourceConnectGuideEnvelope"
+								},
+								"example": {
+									"requestId": "req_source_connect_guide_01",
+									"data": {
+										"title": "OneQuery Source Connect Guide",
+										"description": "Follow these steps to gather credentials and create one postgres source connection.",
+										"format": "markdown",
+										"content": "1. Choose a CLI-safe source name such as `warehouse`.\n2. Retrieve postgres credentials using the provider-specific steps.\n3. Build one JSON payload with `name` and `credentials`.\n4. Run `oneq source connect --source postgres --input '<json>'`.\n5. Verify the result with `oneq source show <name>`.\n",
+										"command": "oneq source connect --source postgres --input '<json>'",
+										"inputSchema": {
+											"type": "object",
+											"required": [
+												"name",
+												"credentials"
+											],
+											"properties": {
+												"name": {
+													"type": "string",
+													"description": "CLI-safe org-unique source key",
+													"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+												},
+												"credentials": {
+													"type": "object",
+													"description": "Provider-specific credential object whose `type` matches the selected `--source`"
+												}
+											}
+										},
+										"providers": [
+											{
+												"provider": "postgres",
+												"summary": "Connect a Postgres database.",
+												"requiredCredentialFields": [
+													"type",
+													"host",
+													"database",
+													"username",
+													"password"
+												],
+												"optionalCredentialFields": [
+													"port",
+													"sslMode"
+												],
+												"steps": [
+													"Retrieve host, database name, username, and password from the Postgres deployment or secret manager.",
+													"Choose the correct port and sslMode for that deployment."
+												],
+												"credentialTemplate": {
+													"type": "postgres",
+													"host": "db.example.com",
+													"port": 5432,
+													"database": "app",
+													"username": "onequery",
+													"password": "secret",
+													"sslMode": "prefer"
+												},
+												"exampleInput": {
+													"name": "warehouse",
+													"credentials": {
+														"type": "postgres",
+														"host": "db.example.com",
+														"port": 5432,
+														"database": "app",
+														"username": "onequery",
+														"password": "secret",
+														"sslMode": "prefer"
+													}
+												}
+											}
+										]
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to connect sources in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Requested org slug is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "cliSourceConnect",
+				"description": "Create one new org-scoped source connection for the selected provider from a JSON payload. The CLI injects org context from the selected org rather than taking it from `--input`.",
+				"x-onequery-command": "source connect",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "mutate",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": true,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"invalid_request",
+					"source_name_conflict"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					},
+					{
+						"in": "query",
+						"name": "source",
+						"schema": {
+							"$ref": "#/components/schemas/CliSourceProvider"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CliSourceConnectRequest"
+							},
+							"example": {
+								"name": "warehouse",
+								"credentials": {
+									"type": "postgres",
+									"host": "db.example.com",
+									"port": 5432,
+									"database": "app",
+									"username": "onequery",
+									"password": "secret",
+									"sslMode": "prefer"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Source connection was created successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSourceConnectEnvelope"
+								},
+								"example": {
+									"requestId": "req_source_connect_02",
+									"data": {
+										"source": {
+											"name": "warehouse",
+											"displayName": null,
+											"provider": "postgres",
+											"queryable": true,
+											"status": "active"
+										},
+										"nextCommand": "oneq source show warehouse"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to connect sources in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Source name already exists in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/source-name-conflict",
+									"status": 409,
+									"title": "Source Name Conflict",
+									"detail": "source `warehouse` already exists in org `acme`",
+									"code": "source_name_conflict",
+									"stage": "resolve_source",
+									"hint": "choose a different source name and retry",
+									"requestId": "req_source_connect_conflict_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Request body or org slug is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}/sources/{sourceKey}": {
+			"get": {
+				"operationId": "cliSourceShow",
+				"description": "Show one source in the requested org. Any org member can read source metadata on the standard CLI surface.",
+				"x-onequery-command": "source show",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"source_not_found",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "sourceKey",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+						},
+						"required": true
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Source details for the requested source key",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSourceShowEnvelope"
+								},
+								"example": {
+									"requestId": "req_source_show_01",
+									"data": {
+										"name": "warehouse",
+										"displayName": "Production Warehouse",
+										"provider": "postgres",
+										"queryable": true,
+										"status": "active"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to read source metadata in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug or source key does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/source-not-found",
+									"status": 404,
+									"title": "Source Not Found",
+									"detail": "source `warehouse_missing` does not exist in org `acme`",
+									"code": "source_not_found",
+									"stage": "resolve_source",
+									"hint": "run `oneq source list`",
+									"requestId": "req_source_show_not_found_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "The requested source key is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/session:refresh": {
+			"post": {
+				"operationId": "cliSessionRefresh",
+				"description": "Validate the current CLI bearer session and return the currently valid bearer token plus session metadata.",
+				"x-onequery-command": "auth session refresh",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "mutate",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": false,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"not_logged_in"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"responses": {
+					"200": {
+						"description": "Current authenticated CLI session after refresh validation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliSessionRefreshEnvelope"
+								},
+								"example": {
+									"requestId": "req_session_refresh_01",
+									"data": {
+										"accessToken": "onequery_access_token_example",
+										"authMode": "bearer_token",
+										"user": {
+											"id": "user-1",
+											"email": "alice@example.com",
+											"displayName": "Alice"
+										},
+										"activeOrgSlug": "acme",
+										"issuedAt": "2026-03-10T00:00:00Z",
+										"expiresAt": "2026-03-17T00:00:00Z"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/not-logged-in",
+									"status": 401,
+									"title": "Not Logged In",
+									"detail": "no authenticated session was found",
+									"code": "not_logged_in",
+									"stage": "auth",
+									"hint": "login via the OneQuery web app and retry",
+									"requestId": "req_session_refresh_unauthorized_01",
+									"retryable": false
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/device-authorizations:poll": {
+			"post": {
+				"operationId": "cliAuthDeviceAuthorizationPoll",
+				"description": "Poll a pending device authorization session until it becomes authorized, remains pending, or fails terminally.",
+				"x-onequery-command": "auth login poll",
+				"x-onequery-expose-command-schema": false,
+				"x-onequery-kind": "mutate",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "unsupported",
+						"unsupportedReason": "not_available"
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": false,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": true,
+				"x-onequery-auth-requirements": {
+					"authenticated": false,
+					"modes": [
+						"none"
+					],
+					"orgScoped": false
+				},
+				"x-onequery-required-org-role": null,
+				"x-onequery-stable-error-codes": [
+					"invalid_request",
+					"login_denied",
+					"login_rate_limited",
+					"login_session_expired"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [
+					429
+				],
+				"parameters": [],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CliAuthDeviceAuthorizationPollRequest"
+							},
+							"example": {
+								"deviceCode": "device-code-example"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Device authorization is pending or completed with session metadata",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliAuthDeviceAuthorizationPollEnvelope"
+								},
+								"example": {
+									"requestId": "req_device_poll_01",
+									"data": {
+										"state": "authorized",
+										"accessToken": "onequery_access_token_example",
+										"authMode": "browser_session",
+										"user": {
+											"id": "user-1",
+											"email": "alice@example.com",
+											"displayName": "Alice"
+										},
+										"activeOrgSlug": "acme",
+										"issuedAt": "2026-03-17T00:01:00Z",
+										"expiresAt": "2026-03-24T00:01:00Z"
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Device authorization request was invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Device authorization was denied",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/login-denied",
+									"status": 403,
+									"title": "Login Denied",
+									"detail": "device authorization was denied by the user",
+									"code": "login_denied",
+									"stage": "auth",
+									"hint": "run `oneq auth login` again",
+									"requestId": "req_device_poll_denied_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"410": {
+						"description": "Device authorization session expired",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "Device authorization polling was rate-limited",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}/sources/{sourceKey}/queries:validate": {
+			"post": {
+				"operationId": "cliQueryValidate",
+				"description": "Validate a read-only SQL query for the requested source and return the canonicalized request plus planned limits.",
+				"x-onequery-command": "query validate",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"cursor": {
+						"support": "unsupported",
+						"unsupportedReason": "not_paginated"
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": false,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": true,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"source_not_found",
+					"source_not_queryable",
+					"query_rejected",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [],
+				"x-onequery-sanitization-profile": null,
+				"x-onequery-retryable-statuses": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "sourceKey",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CliQueryRequest"
+							},
+							"example": {
+								"sql": "select day, revenue from daily_revenue order by day desc limit 30",
+								"parameters": [],
+								"maxRows": 30,
+								"timeoutMs": 30000
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Validated query plan including canonicalized request and source summary",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliQueryValidateEnvelope"
+								},
+								"example": {
+									"requestId": "req_query_validate_01",
+									"data": {
+										"request": {
+											"sql": "select day, revenue from daily_revenue order by day desc limit 30",
+											"parameters": [],
+											"maxRows": 30,
+											"timeoutMs": 30000
+										},
+										"normalizedSql": "SELECT day, revenue FROM daily_revenue ORDER BY day DESC LIMIT 30",
+										"declaredResultWindow": {
+											"maxRows": 30,
+											"maxBytes": 262144,
+											"cellMaxChars": 512,
+											"timeoutMs": 30000
+										},
+										"source": {
+											"name": "warehouse",
+											"displayName": "Production Warehouse",
+											"provider": "postgres",
+											"queryable": true,
+											"status": "active"
+										},
+										"truncated": false
+									},
+									"warnings": []
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Source is not queryable in CLI v1 or SQL was rejected by read-only validation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/query-rejected",
+									"status": 400,
+									"title": "Query Rejected",
+									"detail": "only a single read-only SELECT statement is allowed",
+									"code": "query_rejected",
+									"stage": "execute_query",
+									"hint": "use a single read-only SELECT query",
+									"requestId": "req_query_validate_rejected_01",
+									"retryable": false
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to execute queries in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug or source key does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Read-only SQL query request is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/organizations/{orgSlug}/sources/{sourceKey}/queries:execute": {
+			"post": {
+				"operationId": "cliQueryExecute",
+				"description": "Execute a read-only SQL query for the requested source in the requested org. Any org member can execute queries on the standard CLI surface.",
+				"x-onequery-command": "query execute",
+				"x-onequery-expose-command-schema": true,
+				"x-onequery-kind": "read",
+				"x-onequery-read-controls": {
+					"fields": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"limit": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"cursor": {
+						"support": "supported",
+						"unsupportedReason": null
+					},
+					"sort": {
+						"support": "unsupported",
+						"unsupportedReason": "not_sortable"
+					}
+				},
+				"x-onequery-supports-fields": true,
+				"x-onequery-supports-pagination": true,
+				"x-onequery-supports-dry-run": false,
+				"x-onequery-supports-raw-input": true,
+				"x-onequery-auth-requirements": {
+					"authenticated": true,
+					"modes": [
+						"session_cookie",
+						"bearer_token"
+					],
+					"orgScoped": true
+				},
+				"x-onequery-required-org-role": "member",
+				"x-onequery-stable-error-codes": [
+					"not_logged_in",
+					"forbidden",
+					"org_not_found",
+					"source_not_found",
+					"source_not_queryable",
+					"query_rejected",
+					"query_preparation_failed",
+					"query_execution_failed",
+					"query_execution_unavailable",
+					"query_execution_timed_out",
+					"invalid_request"
+				],
+				"x-onequery-untrusted-response-paths": [
+					"$.data.columns[*].name",
+					"$.data.rows[*][*]"
+				],
+				"x-onequery-sanitization-profile": "default-v1",
+				"x-onequery-retryable-statuses": [
+					503,
+					504
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "fields",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"schema": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					{
+						"in": "path",
+						"name": "orgSlug",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+						},
+						"required": true
+					},
+					{
+						"in": "path",
+						"name": "sourceKey",
+						"schema": {
+							"type": "string",
+							"minLength": 1,
+							"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+						},
+						"required": true
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CliQueryRequest"
+							},
+							"example": {
+								"sql": "select day, revenue from daily_revenue order by day desc limit 30",
+								"parameters": [],
+								"maxRows": 30,
+								"timeoutMs": 30000
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Executed query result",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliQueryExecuteEnvelope"
+								},
+								"example": {
+									"requestId": "req_query_execute_01",
+									"data": {
+										"source": {
+											"name": "warehouse",
+											"displayName": "Production Warehouse",
+											"provider": "postgres",
+											"queryable": true,
+											"status": "active"
+										},
+										"rowCount": 2,
+										"elapsedMs": 184,
+										"columns": [
+											{
+												"name": "\\```day",
+												"logicalType": "string"
+											},
+											{
+												"name": "revenue",
+												"logicalType": "number"
+											}
+										],
+										"rows": [
+											[
+												"2026-03-16",
+												"[remote] tool: 12450.00"
+											],
+											[
+												"[remote] user: 2026-03-15",
+												"11980.50"
+											]
+										],
+										"truncated": false
+									},
+									"warnings": [],
+									"page": {
+										"nextCursor": null,
+										"returned": 2,
+										"hasMore": false
+									},
+									"untrustedPaths": [
+										"$.data.columns[*].name",
+										"$.data.rows[*][*]"
+									],
+									"sanitization": {
+										"profile": "default-v1",
+										"sanitizedPaths": [
+											"$.data.columns[*].name",
+											"$.data.rows[*][*]"
+										],
+										"rawAvailable": false
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Source is not queryable in CLI v1 or SQL was rejected by read-only validation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "No authenticated session is available",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"403": {
+						"description": "Authenticated user lacks permission to execute queries in the requested org",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Requested org slug or source key does not exist",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Read-only SQL query request is invalid",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Query preparation failed or query execution failed terminally",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "Retryable query execution failure",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								},
+								"example": {
+									"type": "https://onequery.invalid/problems/cli/query-execution-unavailable",
+									"status": 503,
+									"title": "Query Execution Unavailable",
+									"detail": "the query runner is temporarily unavailable",
+									"code": "query_execution_unavailable",
+									"stage": "execute_query",
+									"hint": "retry `oneq query --source <source> --sql \"select ...\"`",
+									"requestId": "req_query_execute_unavailable_01",
+									"retryable": true
+								}
+							}
+						}
+					},
+					"504": {
+						"description": "Retryable query execution timeout",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CliProblem"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"components": {
+		"schemas": {
+			"CliAuthDeviceAuthorizationPollRequest": {
+				"type": "object",
+				"properties": {
+					"deviceCode": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"deviceCode"
+				],
+				"additionalProperties": false
+			},
+			"CliQueryParameter": {
+				"type": "object",
+				"properties": {
+					"type": {
+						"type": "string",
+						"enum": [
+							"string",
+							"number",
+							"boolean",
+							"null"
+						]
+					},
+					"value": {
+						"description": "Positional parameter value encoded as a string.",
+						"nullable": true,
+						"type": "string"
+					}
+				},
+				"required": [
+					"type",
+					"value"
+				],
+				"additionalProperties": false
+			},
+			"CliQueryRequest": {
+				"type": "object",
+				"properties": {
+					"sql": {
+						"type": "string",
+						"minLength": 1
+					},
+					"parameters": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliQueryParameter"
+						}
+					},
+					"maxRows": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 1000
+					},
+					"maxBytes": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 4194304
+					},
+					"cellMaxChars": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 8000
+					},
+					"timeoutMs": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 120000
+					}
+				},
+				"required": [
+					"sql"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthSessionResponse": {
+				"type": "object",
+				"properties": {
+					"authMode": {
+						"$ref": "#/components/schemas/CliAuthMode"
+					},
+					"user": {
+						"$ref": "#/components/schemas/CliAuthSessionProjectedUser"
+					},
+					"activeOrgSlug": {
+						"type": "string",
+						"minLength": 1,
+						"nullable": true
+					},
+					"issuedAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliAuthMode": {
+				"type": "string",
+				"enum": [
+					"browser_session",
+					"bearer_token"
+				]
+			},
+			"CliAuthSessionProjectedUser": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"format": "email",
+						"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliProblem": {
+				"type": "object",
+				"properties": {
+					"type": {
+						"type": "string"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": -9007199254740991,
+						"maximum": 9007199254740991
+					},
+					"title": {
+						"type": "string"
+					},
+					"detail": {
+						"type": "string"
+					},
+					"instance": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string",
+						"enum": [
+							"forbidden",
+							"invalid_request",
+							"login_denied",
+							"login_rate_limited",
+							"login_session_expired",
+							"not_logged_in",
+							"org_not_found",
+							"query_execution_failed",
+							"query_execution_timed_out",
+							"query_execution_unavailable",
+							"query_preparation_failed",
+							"query_rejected",
+							"source_not_found",
+							"source_not_queryable"
+						]
+					},
+					"stage": {
+						"type": "string",
+						"enum": [
+							"auth",
+							"execute_query",
+							"read_query_input",
+							"resolve_org",
+							"resolve_source"
+						]
+					},
+					"hint": {
+						"type": "string"
+					},
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"retryable": {
+						"type": "boolean"
+					},
+					"errors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"field": {
+									"type": "string"
+								},
+								"message": {
+									"type": "string"
+								},
+								"code": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"field",
+								"message",
+								"code"
+							],
+							"additionalProperties": false
+						}
+					},
+					"retryAfterMs": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					}
+				},
+				"required": [
+					"type",
+					"status",
+					"title",
+					"code",
+					"stage",
+					"requestId",
+					"retryable"
+				],
+				"additionalProperties": false
+			},
+			"CliUseSource": {
+				"type": "string",
+				"enum": [
+					"amplitude",
+					"ga",
+					"github",
+					"mixpanel",
+					"mongodb",
+					"posthog",
+					"sentry"
+				]
+			},
+			"CliUseResponse": {
+				"type": "object",
+				"properties": {
+					"source": {
+						"$ref": "#/components/schemas/CliUseSource"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"description": {
+						"type": "string",
+						"minLength": 1
+					},
+					"format": {
+						"type": "string",
+						"enum": [
+							"markdown"
+						]
+					},
+					"content": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"source",
+					"title",
+					"description",
+					"format",
+					"content"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthSessionRefreshResponse": {
+				"type": "object",
+				"properties": {
+					"accessToken": {
+						"type": "string",
+						"minLength": 1
+					},
+					"authMode": {
+						"$ref": "#/components/schemas/CliAuthMode"
+					},
+					"user": {
+						"$ref": "#/components/schemas/CliAuthSessionUser"
+					},
+					"activeOrgSlug": {
+						"type": "string",
+						"minLength": 1,
+						"nullable": true
+					},
+					"issuedAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					}
+				},
+				"required": [
+					"accessToken",
+					"authMode",
+					"user",
+					"activeOrgSlug",
+					"issuedAt",
+					"expiresAt"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthSessionUser": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"email": {
+						"type": "string",
+						"format": "email",
+						"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+					},
+					"displayName": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"email",
+					"displayName"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthDeviceAuthorizationStartResponse": {
+				"type": "object",
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"pending"
+						]
+					},
+					"deviceCode": {
+						"type": "string",
+						"minLength": 1
+					},
+					"userCode": {
+						"type": "string",
+						"minLength": 1
+					},
+					"verificationUrl": {
+						"type": "string",
+						"format": "uri"
+					},
+					"verificationCompleteUrl": {
+						"type": "string",
+						"format": "uri"
+					},
+					"pollAfterMs": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+					}
+				},
+				"required": [
+					"state",
+					"deviceCode",
+					"userCode",
+					"verificationUrl",
+					"verificationCompleteUrl",
+					"pollAfterMs",
+					"expiresAt"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthDeviceAuthorizationSuccessResponse": {
+				"type": "object",
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"authorized"
+						]
+					},
+					"accessToken": {
+						"type": "string",
+						"minLength": 1
+					},
+					"authMode": {
+						"$ref": "#/components/schemas/CliAuthMode"
+					},
+					"user": {
+						"$ref": "#/components/schemas/CliAuthSessionUser"
+					},
+					"activeOrgSlug": {
+						"type": "string",
+						"minLength": 1,
+						"nullable": true
+					},
+					"issuedAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+						"nullable": true
+					}
+				},
+				"required": [
+					"state",
+					"accessToken",
+					"authMode",
+					"user",
+					"activeOrgSlug",
+					"issuedAt",
+					"expiresAt"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthDeviceAuthorizationPendingResponse": {
+				"type": "object",
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"pending"
+						]
+					},
+					"pollAfterMs": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					}
+				},
+				"required": [
+					"state",
+					"pollAfterMs"
+				],
+				"additionalProperties": false
+			},
+			"CliPage": {
+				"type": "object",
+				"properties": {
+					"nextCursor": {
+						"type": "string",
+						"minLength": 1,
+						"nullable": true
+					},
+					"returned": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					},
+					"hasMore": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"nextCursor",
+					"returned",
+					"hasMore"
+				],
+				"additionalProperties": false
+			},
+			"CliOrgListResponse": {
+				"type": "object",
+				"properties": {
+					"organizations": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliOrgSummary"
+						}
+					}
+				},
+				"required": [
+					"organizations"
+				],
+				"additionalProperties": false
+			},
+			"CliOrgSummary": {
+				"type": "object",
+				"properties": {
+					"slug": {
+						"type": "string",
+						"minLength": 1
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliOrgReadResponse": {
+				"type": "object",
+				"properties": {
+					"slug": {
+						"type": "string",
+						"minLength": 1
+					},
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"roles": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"capabilities": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliOrgCapability"
+						}
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliOrgCapability": {
+				"type": "string",
+				"enum": [
+					"org.list",
+					"org.read",
+					"source.connect",
+					"source.list",
+					"source.read",
+					"query.execute"
+				]
+			},
+			"CliQueryValidateResponse": {
+				"type": "object",
+				"properties": {
+					"request": {
+						"$ref": "#/components/schemas/CliQueryCanonicalRequest"
+					},
+					"normalizedSql": {
+						"type": "string",
+						"minLength": 1
+					},
+					"declaredResultWindow": {
+						"$ref": "#/components/schemas/CliDeclaredQueryResultWindow"
+					},
+					"source": {
+						"$ref": "#/components/schemas/CliSourceSummary"
+					},
+					"truncated": {
+						"type": "boolean"
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliQueryCanonicalRequest": {
+				"type": "object",
+				"properties": {
+					"sql": {
+						"type": "string",
+						"minLength": 1
+					},
+					"parameters": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliQueryParameter"
+						}
+					},
+					"maxRows": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"maxBytes": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"cellMaxChars": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"timeoutMs": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliDeclaredQueryResultWindow": {
+				"type": "object",
+				"properties": {
+					"maxRows": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"maxBytes": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"cellMaxChars": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					},
+					"timeoutMs": {
+						"type": "integer",
+						"exclusiveMinimum": true,
+						"maximum": 9007199254740991,
+						"minimum": 0
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliSourceSummary": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"displayName": {
+						"type": "string",
+						"minLength": 1,
+						"nullable": true
+					},
+					"provider": {
+						"$ref": "#/components/schemas/CliSourceProvider"
+					},
+					"queryable": {
+						"type": "boolean"
+					},
+					"status": {
+						"type": "string",
+						"enum": [
+							"active",
+							"error",
+							"disconnected"
+						]
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliSourceProvider": {
+				"type": "string",
+				"enum": [
+					"postgres",
+					"supabase",
+					"mysql",
+					"mongodb",
+					"bigquery",
+					"laminar",
+					"aws_athena_connector",
+					"ga",
+					"amplitude",
+					"mixpanel",
+					"posthog",
+					"sentry",
+					"github",
+					"linear"
+				]
+			},
+			"CliSourceConnectGuide": {
+				"type": "object",
+				"properties": {
+					"title": {
+						"type": "string",
+						"minLength": 1
+					},
+					"description": {
+						"type": "string",
+						"minLength": 1
+					},
+					"format": {
+						"type": "string",
+						"enum": [
+							"markdown"
+						]
+					},
+					"content": {
+						"type": "string",
+						"minLength": 1
+					},
+					"command": {
+						"type": "string",
+						"minLength": 1
+					},
+					"inputSchema": {
+						"$ref": "#/components/schemas/CliSourceConnectInputSchema"
+					},
+					"providers": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliSourceConnectProviderGuide"
+						}
+					}
+				},
+				"required": [
+					"title",
+					"description",
+					"format",
+					"content",
+					"command",
+					"inputSchema",
+					"providers"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectInputSchema": {
+				"type": "object",
+				"properties": {
+					"type": {
+						"type": "string",
+						"enum": [
+							"object"
+						]
+					},
+					"required": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"properties": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"$ref": "#/components/schemas/CliSourceConnectSchemaField"
+							},
+							"credentials": {
+								"$ref": "#/components/schemas/CliSourceConnectSchemaField"
+							}
+						},
+						"required": [
+							"name",
+							"credentials"
+						],
+						"additionalProperties": false
+					}
+				},
+				"required": [
+					"type",
+					"required",
+					"properties"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectSchemaField": {
+				"type": "object",
+				"properties": {
+					"type": {
+						"type": "string",
+						"minLength": 1
+					},
+					"description": {
+						"type": "string",
+						"minLength": 1
+					},
+					"pattern": {
+						"type": "string",
+						"minLength": 1
+					},
+					"enum": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				},
+				"required": [
+					"type",
+					"description"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectProviderGuide": {
+				"type": "object",
+				"properties": {
+					"provider": {
+						"$ref": "#/components/schemas/CliSourceProvider"
+					},
+					"summary": {
+						"type": "string",
+						"minLength": 1
+					},
+					"requiredCredentialFields": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"optionalCredentialFields": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"steps": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"credentialTemplate": {
+						"type": "object",
+						"additionalProperties": true
+					},
+					"exampleInput": {
+						"type": "object",
+						"additionalProperties": true
+					}
+				},
+				"required": [
+					"provider",
+					"summary",
+					"requiredCredentialFields",
+					"optionalCredentialFields",
+					"steps",
+					"credentialTemplate",
+					"exampleInput"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectRequest": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1,
+						"pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+					},
+					"credentials": {
+						"type": "object",
+						"additionalProperties": true
+					}
+				},
+				"required": [
+					"name",
+					"credentials"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectResponse": {
+				"type": "object",
+				"properties": {
+					"source": {
+						"$ref": "#/components/schemas/CliSourceSummary"
+					},
+					"nextCommand": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"required": [
+					"source",
+					"nextCommand"
+				],
+				"additionalProperties": false
+			},
+			"CliQuerySuccess": {
+				"type": "object",
+				"properties": {
+					"source": {
+						"$ref": "#/components/schemas/CliSourceSummary"
+					},
+					"rowCount": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					},
+					"elapsedMs": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					},
+					"columns": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliQueryColumn"
+						}
+					},
+					"rows": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						}
+					},
+					"truncated": {
+						"type": "boolean"
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliQueryColumn": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"minLength": 1
+					},
+					"logicalType": {
+						"type": "string",
+						"enum": [
+							"string",
+							"number",
+							"boolean",
+							"bigint",
+							"datetime",
+							"array",
+							"json"
+						],
+						"nullable": true
+					}
+				},
+				"additionalProperties": false
+			},
+			"CliSourceListResponse": {
+				"type": "object",
+				"properties": {
+					"sources": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliSourceSummary"
+						}
+					}
+				},
+				"required": [
+					"sources"
+				],
+				"additionalProperties": false
+			},
+			"CliWarning": {
+				"type": "string",
+				"minLength": 1
+			},
+			"CliSanitization": {
+				"type": "object",
+				"properties": {
+					"profile": {
+						"type": "string",
+						"minLength": 1
+					},
+					"sanitizedPaths": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"rawAvailable": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"profile",
+					"sanitizedPaths",
+					"rawAvailable"
+				],
+				"additionalProperties": false
+			},
+			"CliSessionReadEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliAuthSessionResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliUseEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliUseResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthDeviceAuthorizationStartEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliAuthDeviceAuthorizationStartResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliOrgListEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliOrgListResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					},
+					"page": {
+						"$ref": "#/components/schemas/CliPage"
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliOrgGetEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliOrgReadResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceListEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliSourceListResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					},
+					"page": {
+						"$ref": "#/components/schemas/CliPage"
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceShowEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliSourceSummary"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectGuideEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliSourceConnectGuide"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliSourceConnectEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliSourceConnectResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliSessionRefreshEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliAuthSessionRefreshResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliAuthDeviceAuthorizationPollEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/CliAuthDeviceAuthorizationPendingResponse"
+							},
+							{
+								"$ref": "#/components/schemas/CliAuthDeviceAuthorizationSuccessResponse"
+							}
+						]
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliQueryValidateEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliQueryValidateResponse"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			},
+			"CliQueryExecuteEnvelope": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"minLength": 1
+					},
+					"data": {
+						"$ref": "#/components/schemas/CliQuerySuccess"
+					},
+					"warnings": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CliWarning"
+						}
+					},
+					"page": {
+						"$ref": "#/components/schemas/CliPage"
+					},
+					"untrustedPaths": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					},
+					"sanitization": {
+						"$ref": "#/components/schemas/CliSanitization"
+					}
+				},
+				"required": [
+					"requestId",
+					"data",
+					"warnings"
+				],
+				"additionalProperties": false
+			}
+		}
+	}
+}

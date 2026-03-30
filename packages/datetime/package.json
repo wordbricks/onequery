@@ -1,0 +1,18 @@
+{
+  "name": "@onequery/datetime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./format-date": "./src/format-date.ts",
+    "./format-relative": "./src/format-relative.ts",
+    "./format-duration": "./src/format-duration.ts",
+    "./timezones": "./src/timezones.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {}
+}

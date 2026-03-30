@@ -1,0 +1,266 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-paths:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      cli_code: ${{ steps.detect.outputs.cli_code }}
+      workflow_code: ${{ steps.detect.outputs.workflow_code }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect changed paths
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA='${{ github.event.pull_request.base.sha }}'
+          HEAD_SHA='${{ github.event.pull_request.head.sha }}'
+          echo "Base SHA: $BASE_SHA"
+          echo "Head SHA: $HEAD_SHA"
+          mapfile -t files < <(git diff --name-only --no-renames "$BASE_SHA" "$HEAD_SHA")
+
+          cli_code=false
+          workflow_code=false
+
+          for f in "${files[@]}"; do
+            case "$f" in
+              .github/workflows/*)
+                workflow_code=true
+                ;;
+            esac
+
+            case "$f" in
+              apps/cli/*)
+                if [[ "$f" != *.md ]]; then
+                  cli_code=true
+                fi
+                ;;
+              .github/workflows/cli-release.yml|.github/workflows/cli-cargo-audit.yml|.github/workflows/ci.yml|package.json|turbo.json|packages/server/scripts/generate-cli-auth-openapi.ts|packages/server/package.json|packages/server/scripts/generate-cli-openapi.ts|packages/server/src/app.ts|packages/server/src/auth.ts|packages/server/src/env.ts|packages/server/src/problem-details/*|packages/server/src/routes/cli/*|apps/web/src/lib/check-authenticated-redirect.ts|apps/web/src/lib/check-authenticated-redirect.test.ts|apps/web/src/server/cli-auth-login-session.ts)
+                cli_code=true
+                ;;
+            esac
+          done
+
+          {
+            echo "cli_code=$cli_code"
+            echo "workflow_code=$workflow_code"
+          } >> "$GITHUB_OUTPUT"
+
+  workflow-lint:
+    needs: [check-paths]
+    if: always() && !cancelled() && (github.event_name != 'pull_request' || needs.check-paths.outputs.workflow_code == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: actionlint
+        # CONTEXT: rhysd/actionlint does not currently publish a floating `v1`
+        # tag, so pin a concrete release or workflow setup fails before linting.
+        uses: rhysd/actionlint@v1.7.11
+
+  ci:
+    needs: [check-paths]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: test
+        ports:
+          - 5454:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TURBO_API: ${{ secrets.TURBO_API }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # CONTEXT: Turbo's source-control filters need the full git history
+          # so PR-scoped runs compare the correct base and head revisions.
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Detect affected JS tasks
+        if: github.event_name == 'pull_request'
+        id: affected
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_SHA='${{ github.event.pull_request.base.sha }}'
+          HEAD_SHA='${{ github.event.pull_request.head.sha }}'
+          # Keep detection lightweight by using the repo-pinned Turbo CLI
+          # without installing the full workspace dependencies first.
+          TURBO_VERSION="$(bun -e 'process.stdout.write(require("./package.json").devDependencies.turbo)')"
+          json="$(bunx "turbo@$TURBO_VERSION" run typecheck build test --dry=json --filter="...[$BASE_SHA...$HEAD_SHA]" --filter='!@wordbricks/onequery')"
+          count="$(printf '%s\n' "$json" | bun -e 'const fs = require("fs"); const input = fs.readFileSync(0, "utf8"); const data = JSON.parse(input.slice(input.indexOf("{"))); const count = data.tasks.filter((task) => task.package !== "//" && task.package !== "@wordbricks/onequery" && task.command !== "<NONEXISTENT>").length; process.stdout.write(String(count));')"
+
+          if [[ "$count" -gt 0 ]]; then
+            echo "has_tasks=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tasks=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip JS CI
+        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks != 'true'
+        run: echo "Skipping JS CI - no affected non-CLI Turbo tasks"
+
+      - name: Install dependencies
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        run: bun ci
+
+      - name: Wait for Postgres
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        # Comment: packages/server route tests exercise Better Auth against the
+        # shared test Postgres DSN from @onequery/dev-config, so the CI job must
+        # provide the matching database service before test execution.
+        run: |
+          for _ in {1..30}; do
+            if bash -lc '</dev/tcp/127.0.0.1/5454' >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres service did not become ready on localhost:5454" >&2
+          exit 1
+
+      - name: Drizzle migration graph check
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        run: cd packages/db && bunx drizzle-kit check
+
+      - name: Apply test database schema
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        # Comment: The CI Postgres database is ephemeral, so tests only need
+        # the current Drizzle schema materialized; migration graph validation
+        # still runs separately above.
+        run: cd packages/db && DATABASE_URL=postgres://test:test@localhost:5454/test bunx drizzle-kit push --force --config drizzle.config.ts
+
+      - name: Lint & Format
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        # CONTEXT: `turbo` is installed as a repo devDependency, so invoke it
+        # through Bun instead of assuming the binary is on the runner PATH.
+        run: bunx turbo run //#check
+
+      - name: Type check (affected)
+        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
+        run: bunx turbo run typecheck --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+
+      - name: Type check (full)
+        if: github.event_name != 'pull_request'
+        run: bunx turbo run typecheck --filter=!@wordbricks/onequery
+
+      - name: Build (affected)
+        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
+        run: bunx turbo run build --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+
+      - name: Build (full)
+        if: github.event_name != 'pull_request'
+        run: bunx turbo run build --filter=!@wordbricks/onequery
+
+      - name: Test (affected)
+        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
+        run: bunx turbo run test --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+
+      - name: Test (full)
+        if: github.event_name != 'pull_request'
+        run: bunx turbo run test --filter=!@wordbricks/onequery
+
+      # - name: Check unused code
+      #   run: bun run knip
+
+  cli-ci:
+    needs: [check-paths]
+    if: always() && !cancelled() && (github.event_name != 'pull_request' || needs.check-paths.outputs.cli_code == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rust-src-dir: apps/cli
+          rustflags: ""
+
+      - name: Install dependencies
+        run: bun ci
+
+      - name: CLI Lint & Format
+        working-directory: apps/cli
+        run: |
+          # CONTEXT: Keep CI independent from `just`; invoke the underlying checks directly.
+          cargo fmt -- --check --config imports_granularity=Item
+          cargo clippy --tests
+          cd ../../packages/cli-server
+          bun run openapi:cli:check
+
+      - name: CLI Build
+        working-directory: apps/cli
+        run: cargo build
+
+      - name: CLI Test
+        working-directory: apps/cli
+        run: cargo test
+
+  results:
+    name: CI results (required)
+    needs: [check-paths, workflow-lint, ci, cli-ci]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize
+        shell: bash
+        run: |
+          echo "workflow-lint: ${{ needs['workflow-lint'].result }}"
+          echo "ci           : ${{ needs.ci.result }}"
+          echo "cli-ci       : ${{ needs['cli-ci'].result }}"
+
+          if [[ '${{ needs['workflow-lint'].result }}' != 'success' && '${{ needs['workflow-lint'].result }}' != 'skipped' ]]; then
+            echo 'workflow-lint failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs.ci.result }}' != 'success' && '${{ needs.ci.result }}' != 'skipped' ]]; then
+            echo 'ci failed'
+            exit 1
+          fi
+
+          if [[ '${{ needs['cli-ci'].result }}' != 'success' && '${{ needs['cli-ci'].result }}' != 'skipped' ]]; then
+            echo 'cli-ci failed'
+            exit 1
+          fi

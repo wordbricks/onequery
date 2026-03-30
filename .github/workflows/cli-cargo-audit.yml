@@ -1,0 +1,38 @@
+name: CLI Cargo Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/cli/**"
+      - ".github/workflows/cli-cargo-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/cli/**"
+      - ".github/workflows/cli-cargo-audit.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cli-cargo-audit-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/cli
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@1.93.0
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: Run cargo audit
+        run: cargo audit --deny warnings

@@ -1,0 +1,18 @@
+---
+source: crates/onequery-cli/src/commands/debug.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Debug: config
+Config path: /tmp/onequery-debug-config/config.toml
+Base URL: http://localhost:4545
+Resolved org: acme
+Resolved org source: config
+Values:
+  active_org: acme (user config file /tmp/onequery-debug-config/config.toml)
+  server_url: http://localhost:4545 (user config file /tmp/onequery-debug-config/config.toml)
+  request_timeout_sec: 90 (user config file /tmp/onequery-debug-config/config.toml)
+Typed overrides:
+  request_timeout_sec: <none>
+Layers:
+  - source=defaults status=enabled fingerprint=b33c4f8ecc64f312dd7ebd9cbf7d62b605e9857db5f53fc233a729c3df604038 raw_toml_present=true
+  - source=user_file path=/tmp/onequery-debug-config/config.toml status=enabled fingerprint=07b2bbdc4400f9b01fe87a64acefa84a23e8f75d610b163ad76b607202e703cd raw_toml_present=true

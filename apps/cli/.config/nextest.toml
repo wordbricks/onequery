@@ -1,0 +1,3 @@
+[profile.default]
+# Do not increase, fix your test instead
+slow-timeout = { period = "15s", terminate-after = 2 }
