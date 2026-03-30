@@ -1,7 +1,7 @@
 {
   "name": "@onequery/dev-config",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     "./local-env": {

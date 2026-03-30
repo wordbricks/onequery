@@ -1,7 +1,7 @@
 {
   "name": "@onequery/ui",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     "./globals.css": "./src/globals.css",

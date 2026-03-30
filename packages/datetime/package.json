@@ -1,7 +1,7 @@
 {
   "name": "@onequery/datetime",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     "./format-date": "./src/format-date.ts",
