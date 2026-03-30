@@ -156,6 +156,8 @@ jobs:
   release:
     needs: [tag-check, build-unix]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       publish_tag: ${{ needs.tag-check.outputs.publish_tag }}
       version: ${{ needs.tag-check.outputs.version }}
@@ -172,7 +174,7 @@ jobs:
           # so this release job also needs the workspace dependencies hydrated.
           bun ci
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: cli-npm-vendor-*
           # upload-artifact stores the contents of apps/cli/dist/vendor, so
@@ -206,13 +208,47 @@ jobs:
           path: dist/npm/*.tgz
           if-no-files-found: error
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ needs.tag-check.outputs.version }}
-          tag_name: ${{ github.ref_name }}
-          files: dist/npm/*.tgz
-          prerelease: ${{ contains(needs.tag-check.outputs.version, '-') }}
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          VERSION: ${{ needs.tag-check.outputs.version }}
+          IS_PRERELEASE: ${{ contains(needs.tag-check.outputs.version, '-') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # COMMENT: Keep the release step rerunnable without depending on
+          # softprops/action-gh-release, whose current v2 line still executes on
+          # the deprecated Node 20 runtime.
+          release_assets=(dist/npm/*.tgz)
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            edit_args=(gh release edit "${TAG_NAME}" --title "${VERSION}")
+            if [[ "${IS_PRERELEASE}" == "true" ]]; then
+              edit_args+=(--prerelease)
+            else
+              edit_args+=(--latest)
+            fi
+
+            echo "+ ${edit_args[*]}"
+            "${edit_args[@]}"
+
+            upload_args=(gh release upload "${TAG_NAME}" "${release_assets[@]}" --clobber)
+            echo "+ ${upload_args[*]}"
+            "${upload_args[@]}"
+            exit 0
+          fi
+
+          create_args=(gh release create "${TAG_NAME}" "${release_assets[@]}" --verify-tag --title "${VERSION}" --notes "")
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            create_args+=(--prerelease)
+          else
+            create_args+=(--latest)
+          fi
+
+          echo "+ ${create_args[*]}"
+          "${create_args[@]}"
 
   publish-npm:
     needs: [tag-check, release]
@@ -234,11 +270,7 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: ".bun-version"
-
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: cli-npm-tarballs
           path: dist/npm
