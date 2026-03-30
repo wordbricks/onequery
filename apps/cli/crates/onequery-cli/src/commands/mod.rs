@@ -225,10 +225,7 @@ pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
             context.command_line.clone(),
             ErrorStage::ResolveOrg,
             "no org was passed with --org and no active org is stored in config.toml.",
-            vec![
-                "oneq org list".to_owned(),
-                "oneq org use <org>".to_owned(),
-            ],
+            vec!["oneq org list".to_owned(), "oneq org use <org>".to_owned()],
         )),
     }
 }

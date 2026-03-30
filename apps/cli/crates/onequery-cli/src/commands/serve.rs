@@ -5,9 +5,9 @@ use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
 use std::process::Stdio;
 
-use serde_json::json;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde_json::json;
 
 use crate::cli::ServeCommand;
 use crate::config::self_host::SelfHostConfig;
@@ -213,7 +213,10 @@ fn run_serve_foreground(
         }
     };
     child
-        .env(ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR, &launch_plan.config_dir)
+        .env(
+            ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR,
+            &launch_plan.config_dir,
+        )
         .env(ONEQUERY_SELF_HOST_DATA_DIR_ENV_VAR, &launch_plan.data_dir)
         .env(ONEQUERY_RUNTIME_ROOT_ENV_VAR, &launch_plan.runtime_root)
         .env(ONEQUERY_WEB_DIST_DIR_ENV_VAR, &launch_plan.web_dist_dir)
@@ -302,7 +305,9 @@ fn resolve_launch_plan(
             command_line,
             ErrorStage::LoadConfig,
             "failed to resolve packaged runtime root",
-            vec![format!("set {ONEQUERY_NPM_ROOT_ENV_VAR} to a valid directory")],
+            vec![format!(
+                "set {ONEQUERY_NPM_ROOT_ENV_VAR} to a valid directory"
+            )],
         )?;
         let packaged_runtime = resolve_packaged_server_executable(command_line)?;
         let packaged_web = join_path_segments(&npm_root, &[PACKAGED_RUNTIME_DIR, PACKAGED_WEB_DIR]);
@@ -924,7 +929,8 @@ mod tests {
 
     #[test]
     fn serve_bootstrap_creates_phase_two_foundation_and_reports_it() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-serve-proof-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-serve-proof-{}", Uuid::new_v4()));
         let paths = SelfHostRuntimePaths::for_test(
             test_dir.join("config").join("self-host"),
             test_dir.join("data"),

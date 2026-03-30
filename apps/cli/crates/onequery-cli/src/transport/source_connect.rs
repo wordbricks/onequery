@@ -1,9 +1,9 @@
+use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::http::ApiFailure;

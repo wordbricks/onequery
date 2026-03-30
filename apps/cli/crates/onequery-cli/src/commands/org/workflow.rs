@@ -1,7 +1,7 @@
-use tokio::time::Duration;
-use tokio::time::sleep;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use tokio::time::Duration;
+use tokio::time::sleep;
 
 use crate::cli::ListReadArgs;
 use crate::cli::OrgSubcommand;
@@ -306,10 +306,7 @@ pub(super) fn reduce(
                                 format!(
                                     "no organization with slug \"{next_org}\" is available to this account."
                                 ),
-                                vec![
-                                    "oneq org list".to_owned(),
-                                    "oneq org use <org>".to_owned(),
-                                ],
+                                vec!["oneq org list".to_owned(), "oneq org use <org>".to_owned()],
                             ),
                         });
                     }

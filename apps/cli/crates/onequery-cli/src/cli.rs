@@ -1107,8 +1107,7 @@ mod tests {
 
     #[test]
     fn version_output_matches_current_package_version() {
-        let outcome =
-            parse_invocation_from(&[OsString::from("oneq"), OsString::from("--version")]);
+        let outcome = parse_invocation_from(&[OsString::from("oneq"), OsString::from("--version")]);
 
         match outcome {
             // Version output is derived from release metadata, so snapshotting it creates

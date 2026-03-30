@@ -1,6 +1,6 @@
+use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use reqwest::header::HeaderMap;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::output_metadata::SanitizationMetadata;
 use crate::output_metadata::UntrustedOutputMetadata;
@@ -342,10 +342,10 @@ fn generated_problem_stage_to_error_stage(stage: types::CliProblemStage) -> Erro
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
     use serde_json::json;
-    use onequery_cli_core::error::ErrorStage;
 
     use super::ApiFailure;
     use super::ApiProblem;

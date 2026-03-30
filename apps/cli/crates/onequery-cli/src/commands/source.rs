@@ -620,9 +620,9 @@ fn append_page_lines(lines: &mut Vec<String>, page: &PageInfo, force_render: boo
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use pretty_assertions::assert_eq;
     use onequery_cli_core::error::CliError;
     use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
 
     use crate::cli::ListReadArgs;
     use crate::cli::ReadArgs;

@@ -7,10 +7,10 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 
 use insta::assert_snapshot;
-use pretty_assertions::assert_eq;
-use uuid::Uuid;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use pretty_assertions::assert_eq;
+use uuid::Uuid;
 
 use crate::cli::AuthImportArgs;
 use crate::cli::AuthSubcommand;

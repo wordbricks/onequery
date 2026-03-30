@@ -497,8 +497,8 @@ impl WorkflowLabel for SourceConnectEffect {
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use pretty_assertions::assert_eq;
     use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
 
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
