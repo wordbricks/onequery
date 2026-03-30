@@ -83,6 +83,14 @@ jobs:
         with:
           bun-version-file: ".bun-version"
 
+      - name: Install dependencies
+        working-directory: ${{ github.workspace }}
+        run: |
+          # COMMENT: setup-bun only installs the Bun runtime. The self-host
+          # executable build compiles packages/bun-server and must resolve the
+          # workspace graph from bun.lock first.
+          bun ci
+
       - uses: dtolnay/rust-toolchain@1.93.0
         with:
           targets: ${{ matrix.target }}
@@ -157,6 +165,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: ".bun-version"
+
+      - name: Install dependencies
+        run: |
+          # COMMENT: npm staging builds apps/web and packages the Bun runtime,
+          # so this release job also needs the workspace dependencies hydrated.
+          bun ci
 
       - uses: actions/download-artifact@v5
         with:
