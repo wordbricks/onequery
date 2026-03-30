@@ -1,152 +1,113 @@
-# OneQuery OSS
+# OneQuery
 
-OneQuery OSS is a self-hosted OneQuery distribution for a single-node Bun runtime.
-The product shape is:
+OneQuery is an open-source platform for unified data querying. Connect to your databases, analytics tools, and APIs from a single place — via a CLI or web UI — with centralized credential management, query safety controls, and team collaboration built in.
 
-1. install the `onequery` CLI package
-2. run `onequery serve`
-3. open the local web UI
-4. point the CLI at that server with `onequery config set server ...`
-5. use `onequery auth login` against the same self-hosted instance
+## What it does
 
-## Install
+- **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
+- **Manage credentials centrally** — encrypted credential storage with organization-level access control
+- **Enforce query safety** — read-only validation, rate limiting, and single-statement enforcement
+- **Track costs** — budget monitoring for expensive queries (BigQuery, Athena)
+- **Run on your infrastructure** — a connector agent runs on your EC2 instance to query protected sources without exposing credentials
 
-Prerequisites:
+## How it works
 
-- `curl` and `tar`
-- Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
-- current packaged support: macOS and Linux only
+OneQuery is a Bun/Turbo monorepo with three main layers:
 
-Install directly with npm:
-
-```bash
-npm install -g @onequery/cli
+```
+┌─────────────────┐   ┌────────────────────┐
+│   CLI (Rust)    │   │   Web UI (React)   │
+└────────┬────────┘   └────────┬───────────┘
+         │                     │
+         ▼                     ▼
+┌─────────────────────────────────────────┐
+│          API Server (Hono)              │
+│  auth · orgs · data-sources · queries  │
+└──────────────────┬──────────────────────┘
+                   │
+         ┌─────────┴─────────┐
+         ▼                   ▼
+┌────────────────┐  ┌────────────────────┐
+│  Postgres/     │  │  Connector Agent   │
+│  SQLite (ORM)  │  │  (customer infra)  │
+└────────────────┘  └────────────────────┘
 ```
 
-```bash
-bun install -g @onequery/cli
+**CLI** — a Rust binary (`onequery`) that authenticates via OAuth2 device flow and sends queries to the API. It uses a reducer/state-machine pattern for workflows like login, polling, and retries.
+
+**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or SQLite. The `packages/bun-server` runtime serves both the API and the React SPA.
+
+**Web UI** — a React 19 SPA with TanStack Router, TanStack Query, and XState for complex state. Provides data source management, team admin, budget dashboards, and audit logs.
+
+**Connector** — a lightweight Bun agent deployed on customer infrastructure. It registers with OneQuery via an enrollment token, polls for query jobs, executes them locally (e.g. against AWS Athena via IAM), and returns results — so credentials never leave the customer's network.
+
+## Monorepo structure
+
+```
+apps/
+  cli/          # Rust CLI binary
+  web/          # React SPA
+  landing/      # Marketing site
+  connector/    # Customer-side connector agent
+
+packages/
+  server/       # Shared Hono API routes and middleware
+  bun-server/   # Runtime: serves API + SPA
+  cli-server/   # CLI-specific endpoints (device auth, sessions)
+  db/           # Drizzle schema and migrations
+  contracts/    # Zod-validated API types
+  ui/           # React component library
+  config-loader/ # Config and environment management
 ```
 
-Other package-manager entrypoints still work:
+## Getting started
+
+**Prerequisites:** Bun `1.3.10`, Docker (for local Postgres), Rust (only if changing the CLI)
 
 ```bash
-bunx @onequery/cli --help
-# or
-npx @onequery/cli --help
+# Install dependencies and bootstrap local config
+bun install --frozen-lockfile
+bun run dev:setup
+
+# Start the server and web UI
+bun dev
 ```
 
-## Quick Start
-
-Start the server:
+The first run creates `onequery.local.env.toml` from the committed template. Edit it to configure your local environment. To apply config changes:
 
 ```bash
-onequery serve
+bun run env:sync
 ```
 
-Then:
-
-1. open `http://127.0.0.1:4545`
-2. complete the first-user bootstrap in the browser
-3. point the CLI at the same server
+**Database commands:**
 
 ```bash
-onequery config set server http://127.0.0.1:4545
-onequery auth login
+bun run db:migrate      # Run pending migrations
+bun run db:seed:dev     # Seed development data
+bun run db:studio       # Open Drizzle Studio
+bun run db:reset        # Wipe and restart Docker volumes
 ```
 
-The first browser user bootstraps the instance. After that, sign-up becomes
-invite-only.
-
-## Operate
-
-Core runtime commands:
+**Validation:**
 
 ```bash
-onequery serve
-onequery serve status
-onequery serve logs
-onequery serve stop
+bun run typecheck
+bun run lint
+bun run test
 ```
 
-Backup and restore:
+## Installing the CLI
 
 ```bash
-onequery backup --include-secrets --archive-path ./onequery-backup.tar.gz
-onequery restore ./onequery-backup.tar.gz
-```
+# Via npm/bun
+bun add -g @onequery/cli
 
-Stop the runtime before running `onequery backup` or `onequery restore`.
-
-Upgrade flow:
-
-```bash
-onequery serve stop
+# Or with the install script (self-hosted)
 curl -fsSL https://onequery.wordbricks.ai/ | sh
-onequery serve
 ```
 
-Take a backup before upgrading. In Postgres mode, the server applies checked-in
-migrations during startup. In SQLite mode, the runtime bootstraps the checked-in
-schema automatically.
+CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
 
-## Config And Storage
+## License
 
-Platform-default paths on supported hosts:
-
-- Unix config: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-- Unix data: `${XDG_DATA_HOME:-~/.local/share}/onequery`
-
-Important files:
-
-- `self-host/config.toml`: listen host, port, public origin, log level, and SMTP settings
-- `self-host/secrets.toml`: generated secrets plus optional SMTP password
-- `sqlite/onequery.sqlite`: default SQLite database path
-- `logs/server.log`: runtime lifecycle log
-- `backups/`: default backup directory
-- `run/server.pid` and `run/server.lock`: runtime markers
-
-By default, OneQuery uses SQLite at the path above. To run against Postgres, set
-`DATABASE_URL` before starting the server:
-
-```bash
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
-```
-
-If you run OneQuery behind a reverse proxy, set `public_origin` in
-`self-host/config.toml`
-to the external URL, for example:
-
-```toml
-[server]
-listen_host = "127.0.0.1"
-port = 4545
-public_origin = "https://onequery.example.com"
-```
-
-## Email
-
-SMTP is optional.
-
-- If SMTP is configured, invitation and auth emails are delivered through SMTP.
-- If SMTP is not configured, the product falls back to manual-link flows.
-
-`self-host/config.toml` SMTP keys under `[smtp]`:
-
-- `host`
-- `port`
-- `from_email`
-- `from_name`
-- `username`
-- `secure`
-
-`self-host/secrets.toml` SMTP key under `[smtp]`:
-
-- `password`
-
-## More Docs
-
-- [`docs/self-host.md`](./docs/self-host.md): install, proxy, SMTP, storage, operations, and validation
-- [`docs/self-host-runtime-foundation.md`](./docs/self-host-runtime-foundation.md): filesystem and lifecycle contract
-- [`docs/README.md`](./docs/README.md): docs index
-- [`CONTRIBUTING.md`](./CONTRIBUTING.md): contributor workflow
-- [`apps/cli/README.md`](./apps/cli/README.md): CLI workspace and release notes
+Apache 2.0 — see [LICENSE](./LICENSE).
