@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cli_code: ${{ steps.detect.outputs.cli_code }}
+      root_code: ${{ steps.detect.outputs.root_code }}
       workflow_code: ${{ steps.detect.outputs.workflow_code }}
     steps:
       - uses: actions/checkout@v6
@@ -33,12 +34,22 @@ jobs:
           mapfile -t files < <(git diff --name-only --no-renames "$BASE_SHA" "$HEAD_SHA")
 
           cli_code=false
+          root_code=false
           workflow_code=false
 
           for f in "${files[@]}"; do
             case "$f" in
               .github/workflows/*)
                 workflow_code=true
+                ;;
+            esac
+
+            case "$f" in
+              .github/rulesets/*|scripts/*|package.json|tsconfig.scripts.json)
+                # Comment: Root automation scripts are outside Turbo's package
+                # affected graph, so CI must track them explicitly or script-only
+                # changes bypass validation.
+                root_code=true
                 ;;
             esac
 
@@ -56,6 +67,7 @@ jobs:
 
           {
             echo "cli_code=$cli_code"
+            echo "root_code=$root_code"
             echo "workflow_code=$workflow_code"
           } >> "$GITHUB_OUTPUT"
 
@@ -136,7 +148,7 @@ jobs:
         run: echo "Skipping JS CI - no affected non-CLI Turbo tasks"
 
       - name: Install dependencies
-        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true' || needs.check-paths.outputs.root_code == 'true'
         run: bun ci
 
       - name: Wait for Postgres
@@ -166,10 +178,14 @@ jobs:
         run: cd packages/db && DATABASE_URL=postgres://test:test@localhost:5454/test bunx drizzle-kit push --force --config drizzle.config.ts
 
       - name: Lint & Format
-        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
+        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true' || needs.check-paths.outputs.root_code == 'true'
         # CONTEXT: `turbo` is installed as a repo devDependency, so invoke it
         # through Bun instead of assuming the binary is on the runner PATH.
         run: bunx turbo run //#check
+
+      - name: Type check (root)
+        if: github.event_name != 'pull_request' || needs.check-paths.outputs.root_code == 'true'
+        run: bun run typecheck:root
 
       - name: Type check (affected)
         if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'

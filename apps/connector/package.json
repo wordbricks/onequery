@@ -16,7 +16,7 @@
     "@aws-sdk/client-athena": "3.940.0",
     "@aws-sdk/client-glue": "3.940.0",
     "@onequery/base": "workspace:*",
-    "@onequery/config": "workspace:*",
+    "@onequery/config-loader": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
