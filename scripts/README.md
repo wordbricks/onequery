@@ -72,8 +72,8 @@ For a higher-level overview, see
 
 - `scripts/dev-setup.ts`: local Postgres bootstrap plus managed config syncing and
   validation.
-- `scripts/github/sync-rulesets.ts`: checks or applies the repo-tracked GitHub
-  ruleset definitions under `.github/rulesets/`.
+- `packages/github-rulesets`: package that owns the repo-tracked GitHub
+  ruleset planner and sync CLI for `.github/rulesets/`.
 - `scripts/sync-local-env.ts`: refreshes the tracked TOML template and syncs
   the managed local TOML file.
 - `scripts/run-local-env-command.ts`: runs a command with the managed local config
@@ -101,3 +101,12 @@ bun run github:rulesets:apply
 
 `github:rulesets:plan` prints the exact team/ruleset changes that
 `github:rulesets:apply` would make without mutating GitHub state.
+
+The root commands delegate to `packages/github-rulesets`, which can also be run
+directly:
+
+```bash
+bun run --cwd packages/github-rulesets check
+bun run --cwd packages/github-rulesets plan
+bun run --cwd packages/github-rulesets apply
+```
