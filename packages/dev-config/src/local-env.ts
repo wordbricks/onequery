@@ -6,13 +6,14 @@ import {
   loadConfigFromSourcesSync,
   readTomlFileSync,
 } from "@onequery/config-loader";
+import { z } from "zod";
+
 import {
   LOCAL_AGENT_ORIGIN,
   LOCAL_DATABASE_URL,
   LOCAL_WEB_DOCKER_ORIGIN,
   LOCAL_WEB_ORIGIN,
-} from "@onequery/dev-config/topology";
-import { z } from "zod";
+} from "./topology";
 
 const DOCKER_URL = LOCAL_WEB_DOCKER_ORIGIN;
 const LOCAL_CONFIG_RELATIVE_PATH = "onequery.local.env.toml";

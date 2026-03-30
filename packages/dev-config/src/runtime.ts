@@ -5,11 +5,13 @@ import {
   literalConfigAdapter,
   loadConfigFromSourcesSync,
 } from "@onequery/config-loader";
+import { z } from "zod";
+
 import {
   getLocalConfigPath,
   getManagedLocalConfigDefaults,
   managedLocalConfigSourceSchema,
-} from "@onequery/dev-config/local-env";
+} from "./local-env";
 import {
   LOCAL_DATABASE_URL,
   LOCAL_DEV_LOOPBACK_HOST,
@@ -19,8 +21,7 @@ import {
   LOCAL_WEB_API_DEV_ORIGIN,
   LOCAL_WEB_API_DEV_PORT,
   LOCAL_WEB_PORT,
-} from "@onequery/dev-config/topology";
-import { z } from "zod";
+} from "./topology";
 
 const defaultRootDir = resolve(
   dirname(fileURLToPath(import.meta.url)),

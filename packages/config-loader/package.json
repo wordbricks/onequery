@@ -5,9 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "build": "bun build ./src/index.ts --outfile ./dist/index.js --target node --format esm --packages external",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
