@@ -72,8 +72,26 @@ For a higher-level overview, see
 
 - `scripts/dev-setup.ts`: local Postgres bootstrap plus managed config syncing and
   validation.
+- `scripts/github/sync-rulesets.ts`: checks or applies the repo-tracked GitHub
+  ruleset definitions under `.github/rulesets/`.
 - `scripts/sync-local-env.ts`: refreshes the tracked TOML template and syncs
   the managed local TOML file.
 - `scripts/run-local-env-command.ts`: runs a command with the managed local config
   projected from TOML at process launch.
 - `scripts/upload-image.ts`: uploads local images into the app’s asset flow.
+
+## GitHub Rulesets
+
+The GitHub repository rulesets for OSS governance are tracked in
+`.github/rulesets/`:
+
+- `main.json`: the `main` branch protection ruleset.
+- `cli-release-tags.json`: the protected CLI release tag ruleset.
+- `teams.json`: org team state required by the tag ruleset.
+
+Use the Bun scripts below to check or apply the GitHub state:
+
+```bash
+bun run github:rulesets:check
+bun run github:rulesets:apply
+```

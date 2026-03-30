@@ -43,6 +43,8 @@
     "serve": "bun run dev:setup && bun run --cwd packages/bun-server serve",
     "dev:setup": "bun run scripts/dev-setup.ts",
     "env:sync": "bun run scripts/sync-local-env.ts",
+    "github:rulesets:check": "bun run scripts/github/sync-rulesets.ts --check",
+    "github:rulesets:apply": "bun run scripts/github/sync-rulesets.ts --apply",
     "dev:topology:check": "bun run scripts/check-dev-topology.ts",
     "build": "turbo build",
     "lint": "oxlint .",
