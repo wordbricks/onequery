@@ -86,7 +86,7 @@ function stopConflictingPostgres(): void {
 
   // Find any running container publishing the configured Postgres host port.
   // Do not hardcode the compose container name here because it changes with the
-  // checkout directory (for example `onequery-postgres-1` vs `onequery-oss-postgres-1`).
+  // checkout directory.
   const runtime = getLocalDevRuntime();
   const result = exec(
     `docker ps --filter "publish=${runtime.postgres.hostPort}" --format "{{.Names}}"`,

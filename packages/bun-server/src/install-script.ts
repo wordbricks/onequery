@@ -2,7 +2,7 @@
 // Keep the shell flow minimal here until the release pipeline can publish
 // checksums or signatures for end-to-end artifact verification.
 const RELEASE_BASE_URL =
-  "https://github.com/wordbricks/onequery-oss/releases/latest/download";
+  "https://github.com/wordbricks/onequery/releases/latest/download";
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
 

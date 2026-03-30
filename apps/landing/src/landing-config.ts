@@ -5,7 +5,7 @@ export const LANDING_SECTION_IDS = {
 } as const;
 
 export const LANDING_REPOSITORY_URL =
-  "https://github.com/wordbricks/onequery-oss" as const;
+  "https://github.com/wordbricks/onequery" as const;
 export const LANDING_CLI_SOURCE_URL =
   `${LANDING_REPOSITORY_URL}/tree/main/apps/cli` as const;
 export const LANDING_INSTALLER_URL = "https://onequery.wordbricks.ai/" as const;

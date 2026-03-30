@@ -6,7 +6,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wordbricks/onequery-oss.git",
+    "url": "git+https://github.com/wordbricks/onequery.git",
     "directory": "apps/cli"
   },
   "bin": {
