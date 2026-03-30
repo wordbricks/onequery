@@ -9,7 +9,7 @@ with the same CLI.
 Prerequisites:
 
 - `curl` and `tar`
-- Bun `1.3.10` or newer on `PATH` when you want to run `oneq serve`
+- Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
 - current packaged support: macOS and Linux only
 
 Install the CLI:
@@ -34,7 +34,7 @@ npx @wordbricks/onequery --help
 Start the server:
 
 ```bash
-oneq serve
+onequery serve
 ```
 
 Then open `http://127.0.0.1:4545` and complete the first-user bootstrap.
@@ -42,15 +42,15 @@ Then open `http://127.0.0.1:4545` and complete the first-user bootstrap.
 Point the CLI at that server:
 
 ```bash
-oneq config set server http://127.0.0.1:4545
-oneq auth login
+onequery config set server http://127.0.0.1:4545
+onequery auth login
 ```
 
 ## Auth Model
 
 - The first browser user bootstraps the instance.
 - After bootstrap, sign-up is invite-only.
-- `oneq auth login` uses the same self-hosted device-authorization flow as the
+- `onequery auth login` uses the same self-hosted device-authorization flow as the
   browser-facing server.
 
 ## Config Files
@@ -70,7 +70,7 @@ Files under those roots:
 - `run/server.pid`
 - `run/server.lock`
 
-The CLI creates these paths on first `oneq serve`.
+The CLI creates these paths on first `onequery serve`.
 
 ## Reverse Proxy And Public Origin
 
@@ -103,7 +103,7 @@ Default mode is SQLite:
 Optional Postgres mode:
 
 ```bash
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery oneq serve
+DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
 ```
 
 Runtime behavior:
@@ -141,23 +141,23 @@ password = "replace-me"
 Serve lifecycle:
 
 ```bash
-oneq serve
-oneq serve status
-oneq serve logs
-oneq serve stop
+onequery serve
+onequery serve status
+onequery serve logs
+onequery serve stop
 ```
 
 Backups:
 
 ```bash
-oneq backup --archive-path ./onequery-backup.tar.gz
-oneq backup --include-secrets --archive-path ./onequery-backup-with-secrets.tar.gz
+onequery backup --archive-path ./onequery-backup.tar.gz
+onequery backup --include-secrets --archive-path ./onequery-backup-with-secrets.tar.gz
 ```
 
 Restore:
 
 ```bash
-oneq restore ./onequery-backup.tar.gz
+onequery restore ./onequery-backup.tar.gz
 ```
 
 Rules:
@@ -169,10 +169,10 @@ Rules:
 Upgrade flow:
 
 ```bash
-oneq serve stop
-oneq backup --include-secrets --archive-path ./pre-upgrade.tar.gz
+onequery serve stop
+onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
 curl -fsSL https://onequery.wordbricks.ai/ | sh
-oneq serve
+onequery serve
 ```
 
 The hosted installer refreshes the stable release assets in place. `npx`/`bunx`
@@ -198,8 +198,8 @@ Important covered surfaces:
 
 The Phase 7 smoke path also verifies:
 
-- `oneq serve` starts a fresh temp runtime
-- `oneq serve status` reports a running server
-- `oneq serve stop` clears runtime markers
-- `oneq backup --include-secrets --archive-path ...` creates a restorable archive
-- `oneq restore ...` restores config and data into place
+- `onequery serve` starts a fresh temp runtime
+- `onequery serve status` reports a running server
+- `onequery serve stop` clears runtime markers
+- `onequery backup --include-secrets --archive-path ...` creates a restorable archive
+- `onequery restore ...` restores config and data into place

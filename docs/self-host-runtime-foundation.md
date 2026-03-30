@@ -5,7 +5,7 @@ for the OSS self-host distribution.
 
 ## What Phase 2 Guarantees
 
-- `oneq serve` bootstraps a valid self-host config area if one does not exist.
+- `onequery serve` bootstraps a valid self-host config area if one does not exist.
 - Self-host config and mutable runtime data live in separate platform-standard
   roots.
 - One data directory may have only one live Bun runtime lease at a time.
@@ -15,8 +15,8 @@ for the OSS self-host distribution.
 Historical note:
 
 - Early OSS self-host work introduced the runtime layout and lifecycle lease.
-- The current CLI now also provides `oneq serve status`, `oneq serve logs`,
-  `oneq serve stop`, `oneq backup`, and `oneq restore`.
+- The current CLI now also provides `onequery serve status`, `onequery serve logs`,
+  `onequery serve stop`, `onequery backup`, and `onequery restore`.
 - For operator-facing guidance, use [`self-host.md`](./self-host.md).
 
 ## Filesystem Layout
@@ -61,7 +61,7 @@ The Bun runtime owns the process-local guarantees:
 The runtime contract is currently proven by the repo checks below:
 
 - `cargo test -p onequery-cli`
-  proves `oneq serve` bootstrap creates `self-host/config.toml`,
+  proves `onequery serve` bootstrap creates `self-host/config.toml`,
   `self-host/secrets.toml`, and the self-host runtime directories from the
   CLI-owned path contract.
 - `bun run --cwd packages/bun-server test`

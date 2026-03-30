@@ -11,10 +11,10 @@ describe("source connect guide", () => {
     const guide = buildCliSourceConnectGuide("postgres");
 
     expect(guide.command).toBe(
-      "oneq source connect --source postgres --input '<json>'"
+      "onequery source connect --source postgres --input '<json>'"
     );
     expect(guide.content).toContain(
-      "Run: `oneq source connect --source postgres --input '<json>'`"
+      "Run: `onequery source connect --source postgres --input '<json>'`"
     );
   });
 
@@ -27,7 +27,7 @@ describe("source connect guide", () => {
       status: "active",
     });
 
-    expect(result.nextCommand).toBe("oneq source show warehouse");
+    expect(result.nextCommand).toBe("onequery source show warehouse");
   });
 
   it("covers every persisted provider type with a connect guide", () => {
@@ -40,7 +40,7 @@ describe("source connect guide", () => {
     const guide = buildCliSourceConnectGuide("supabase");
 
     expect(guide.command).toBe(
-      "oneq source connect --source supabase --input '<json>'"
+      "onequery source connect --source supabase --input '<json>'"
     );
     expect(guide.content).toContain("Set `credentials.type` to `postgres`.");
     expect(guide.providers[0]?.credentialTemplate).toMatchObject({

@@ -25,8 +25,8 @@ Runtime config:
 - On Windows, the user config file is `%APPDATA%\\onequery\\config.toml`.
 - `config.toml` stores `[org].active`, `[api].server_url`, and `[api].request_timeout_sec`.
 - Runtime config is resolved in this order: built-in defaults -> user config file -> internal typed runtime overrides.
-- `oneq org use <org>` persists `active_org`. Passing `--org <org>` for a command takes precedence over the stored `active_org` value for that invocation.
-- `oneq auth logout` clears both the stored auth session and the stored `active_org`, so later org-scoped commands fail explicitly until a new org is selected.
+- `onequery org use <org>` persists `active_org`. Passing `--org <org>` for a command takes precedence over the stored `active_org` value for that invocation.
+- `onequery auth logout` clears both the stored auth session and the stored `active_org`, so later org-scoped commands fail explicitly until a new org is selected.
 
 Credential storage:
 
@@ -45,10 +45,10 @@ Install:
 
 - `curl -fsSL https://onequery.wordbricks.ai/ | sh`
 - `bun install -g @wordbricks/onequery`
-- `bunx @wordbricks/oneq --help`
-- `npx @wordbricks/oneq --help`
+- `bunx @wordbricks/onequery --help`
+- `npx @wordbricks/onequery --help`
 - The published npm package currently supports macOS and Linux only.
-- Packaged `oneq serve` uses a bundled native server executable and does not require `bun` on `PATH`.
+- Packaged `onequery serve` uses a bundled native server executable and does not require `bun` on `PATH`.
 - Linux npm installs ship musl-linked binaries so the CLI runs on both glibc and musl-based distributions, including Alpine.
 
 Release:

@@ -118,7 +118,7 @@ jobs:
         run: |
           # COMMENT: Keep the musl path on plain cargo so target installation,
           # linker wiring, and C toolchain setup are visible in workflow logs.
-          cargo build --locked --release --bin oneq --target ${{ matrix.target }}
+          cargo build --locked --release --bin onequery --target ${{ matrix.target }}
 
       - name: Build self-host server executable
         run: |
@@ -131,9 +131,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          binary_name="oneq"
+          binary_name="onequery"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            binary_name="oneq.exe"
+            binary_name="onequery.exe"
           fi
 
           mkdir -p "dist/vendor/${{ matrix.target }}/onequery"

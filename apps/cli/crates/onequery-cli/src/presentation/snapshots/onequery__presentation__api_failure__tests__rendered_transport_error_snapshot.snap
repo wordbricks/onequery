@@ -3,8 +3,8 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: org list failed
-Command: oneq org list
+Command: onequery org list
 Stage: http
 Why: failed to reach org list endpoint: operation timed out
 Try:
-  - retry oneq org list
+  - retry onequery org list

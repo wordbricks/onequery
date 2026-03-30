@@ -4,10 +4,10 @@ expression: rendered
 ---
 Validate a query without executing it
 
-Usage: oneq query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       oneq query validate [OPTIONS] --source <SOURCE_KEY> --stdin
+Usage: onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin
 
 Options:
       --source <SOURCE_KEY>  Validate the query against this source key

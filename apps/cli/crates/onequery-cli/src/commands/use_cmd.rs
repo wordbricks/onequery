@@ -49,7 +49,7 @@ pub(super) async fn execute<B, T>(
                 transport_why_prefix: "failed to reach use endpoint",
                 decode_why_prefix: "failed to decode use response",
                 fallback_try_next: vec![format!(
-                    "retry oneq use --source {}",
+                    "retry onequery use --source {}",
                     args.source.as_str()
                 )],
                 unauthorized_try_next: None,
@@ -88,10 +88,10 @@ async fn execute_use_input<B, T>(
                 transport_why_prefix: "failed to reach provider relay endpoint",
                 decode_why_prefix: "failed to decode provider relay response",
                 fallback_try_next: vec![
-                    format!("oneq use --source {}", args.source.as_str()),
+                    format!("onequery use --source {}", args.source.as_str()),
                     format!("retry {}", context.command_line),
                 ],
-                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         )
     })?;
@@ -114,15 +114,15 @@ fn parse_use_input(
 
 fn use_input_examples(source: &str) -> Vec<String> {
     vec![
-        format!("oneq use --source {source}"),
+        format!("onequery use --source {source}"),
         format!(
-            "oneq --org <org_slug> use --source {source} --input '{{\"method\":\"fetch_api\",\"request\":{{\"endpoint\":\"/user\"}}}}'"
+            "onequery --org <org_slug> use --source {source} --input '{{\"method\":\"fetch_api\",\"request\":{{\"endpoint\":\"/user\"}}}}'"
         ),
     ]
 }
 
 fn render_use_output(skill: UseSkill) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&skill, "oneq use")?;
+    let data = serialize_command_data(&skill, "onequery use")?;
     let lines = skill.content.lines().map(ToOwned::to_owned).collect();
     Ok(CommandOutput::structured(lines, data))
 }

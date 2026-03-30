@@ -51,10 +51,10 @@ function buildRelaySkillContent(input: RelaySkillDefinition): string {
   return [
     `# OneQuery ${input.providerLabel} Relay Skill`,
     "",
-    "Use this when a OneQuery-connected source is visible in the product but `oneq query` does not support SQL for that provider.",
+    "Use this when a OneQuery-connected source is visible in the product but `onequery query` does not support SQL for that provider.",
     "",
     "## Preferred CLI Workflow",
-    "1. Resolve the target org slug and set it with `oneq org use <slug>` or pass `--org <slug>`.",
+    "1. Resolve the target org slug and set it with `onequery org use <slug>` or pass `--org <slug>`.",
     `2. Inspect this skill with \`${buildCliUseInspectCommand(input.source)}\`.`,
     `3. Execute the relay with \`${buildCliUseExecuteCommand(input.source)}\`.`,
     "4. The CLI injects `organizationSlug` automatically. Do not include `organizationId` or `organizationSlug` in `--input`.",
@@ -72,7 +72,7 @@ function buildRelaySkillContent(input: RelaySkillDefinition): string {
     "- Prefer the smallest useful read and widen only if needed.",
     "- Treat `404` as missing or inactive source configuration inside OneQuery.",
     "- Treat `409` as a OneQuery configuration problem: multiple active/default sources need cleanup.",
-    "- Do not fall back to `oneq query` SQL for this provider unless OneQuery explicitly marks it queryable later.",
+    "- Do not fall back to `onequery query` SQL for this provider unless OneQuery explicitly marks it queryable later.",
     notes,
   ].join("\n");
 }
@@ -145,11 +145,11 @@ const CLI_USE_SKILL_REGISTRY: Record<CliUseSource, CliUseSkill> = {
     content: [
       "# OneQuery GitHub Relay Skill",
       "",
-      "Use this when a OneQuery-connected GitHub source is visible in the product but `oneq query` does not support SQL for GitHub.",
+      "Use this when a OneQuery-connected GitHub source is visible in the product but `onequery query` does not support SQL for GitHub.",
       "",
       "## Preferred CLI Workflow",
       "1. Confirm the org already has an active GitHub integration in OneQuery. If not, stop and ask the user to connect GitHub from the Integrations page first.",
-      "2. Resolve the target org slug and set it with `oneq org use <slug>` or pass `--org <slug>`.",
+      "2. Resolve the target org slug and set it with `onequery org use <slug>` or pass `--org <slug>`.",
       `3. Inspect this skill with \`${buildCliUseInspectCommand("github")}\`.`,
       `4. Execute the relay with \`${buildCliUseExecuteCommand("github")}\`.`,
       "5. The CLI injects `organizationSlug` automatically. Do not include `organizationId` or `organizationSlug` in `--input`.",

@@ -251,7 +251,7 @@ mod tests {
             terminal: NoopTerminal,
         };
         let context = CommandContext {
-            command_line: "oneq debug config".to_owned(),
+            command_line: "onequery debug config".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -284,7 +284,7 @@ mod tests {
                     issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
                     expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
                 },
-                "oneq debug auth-session",
+                "onequery debug auth-session",
             )
             .unwrap_or_else(|error| panic!("expected test auth session persistence: {error}"));
 

@@ -77,7 +77,7 @@ fn parse_frontmatter(path: &str, content: &str) -> Result<BTreeMap<String, Strin
     let Some(rest) = content.strip_prefix("---\n") else {
         return Err(CliError::new(
             "failed to parse embedded skill",
-            "oneq schema skills".to_owned(),
+            "onequery schema skills".to_owned(),
             ErrorStage::Render,
             format!("{path} is missing YAML frontmatter"),
             vec!["restore the embedded skill bundle".to_owned()],
@@ -86,7 +86,7 @@ fn parse_frontmatter(path: &str, content: &str) -> Result<BTreeMap<String, Strin
     let Some((frontmatter, _body)) = rest.split_once("\n---\n") else {
         return Err(CliError::new(
             "failed to parse embedded skill",
-            "oneq schema skills".to_owned(),
+            "onequery schema skills".to_owned(),
             ErrorStage::Render,
             format!("{path} is missing a closing YAML frontmatter marker"),
             vec!["restore the embedded skill bundle".to_owned()],
@@ -118,7 +118,7 @@ fn extract_guardrails(content: &str) -> Vec<String> {
 fn missing_skill_frontmatter(path: &str, field: &str) -> CliError {
     CliError::new(
         "failed to parse embedded skill",
-        "oneq schema skills".to_owned(),
+        "onequery schema skills".to_owned(),
         ErrorStage::Render,
         format!("{path} is missing frontmatter field {field}"),
         vec!["restore the embedded skill bundle".to_owned()],

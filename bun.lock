@@ -27,7 +27,7 @@
       "name": "@wordbricks/onequery",
       "version": "0.0.0-dev",
       "bin": {
-        "oneq": "bin/oneq.js",
+        "onequery": "bin/onequery.js",
       },
     },
     "apps/connector": {

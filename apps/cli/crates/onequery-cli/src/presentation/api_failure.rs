@@ -103,14 +103,17 @@ pub(crate) fn present_api_client_build_failure(
             command.to_owned(),
             ErrorStage::LoadConfig,
             format!("{message}: {base_url}"),
-            vec!["rebuild oneq with a valid default base URL".to_owned()],
+            vec!["rebuild onequery with a valid default base URL".to_owned()],
         ),
         ApiClientBuildFailure::InvalidAuthToken { message } => CliError::new(
             "invalid auth token",
             command.to_owned(),
             ErrorStage::Auth,
             message,
-            vec!["oneq auth logout".to_owned(), "oneq auth login".to_owned()],
+            vec![
+                "onequery auth logout".to_owned(),
+                "onequery auth login".to_owned(),
+            ],
         ),
         ApiClientBuildFailure::InvalidRequestId { message } => CliError::new(
             "invalid request ID",
@@ -219,17 +222,17 @@ mod tests {
                 base_url: "invalid-url".to_owned(),
                 message: "relative URL without a base".to_owned(),
             },
-            "oneq org list",
+            "onequery org list",
         );
 
         assert_eq!(
             error_summary(&error),
             json!({
                 "title": "invalid base URL",
-                "command": "oneq org list",
+                "command": "onequery org list",
                 "stage": "load_config",
                 "why": "relative URL without a base: invalid-url",
-                "tryNext": ["rebuild oneq with a valid default base URL"],
+                "tryNext": ["rebuild onequery with a valid default base URL"],
                 "requestId": null,
                 "hint": null,
                 "problemType": null,
@@ -248,17 +251,17 @@ mod tests {
             ApiClientBuildFailure::InvalidAuthToken {
                 message: "invalid bearer token".to_owned(),
             },
-            "oneq auth whoami",
+            "onequery auth whoami",
         );
 
         assert_eq!(
             error_summary(&error),
             json!({
                 "title": "invalid auth token",
-                "command": "oneq auth whoami",
+                "command": "onequery auth whoami",
                 "stage": "auth",
                 "why": "invalid bearer token",
-                "tryNext": ["oneq auth logout", "oneq auth login"],
+                "tryNext": ["onequery auth logout", "onequery auth login"],
                 "requestId": null,
                 "hint": null,
                 "problemType": null,
@@ -277,14 +280,14 @@ mod tests {
             ApiClientBuildFailure::InvalidRequestId {
                 message: "failed to parse header value".to_owned(),
             },
-            "oneq org list",
+            "onequery org list",
         );
 
         assert_eq!(
             error_summary(&error),
             json!({
                 "title": "invalid request ID",
-                "command": "oneq org list",
+                "command": "onequery org list",
                 "stage": "http",
                 "why": "failed to parse header value",
                 "tryNext": [
@@ -309,14 +312,14 @@ mod tests {
             ApiClientBuildFailure::HttpClient {
                 message: "tls backend initialization failed".to_owned(),
             },
-            "oneq query execute --source warehouse --sql \"select 1\"",
+            "onequery query execute --source warehouse --sql \"select 1\"",
         );
 
         assert_eq!(
             error_summary(&error),
             json!({
                 "title": "failed to create HTTP client",
-                "command": "oneq query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query execute --source warehouse --sql \"select 1\"",
                 "stage": "http",
                 "why": "tls backend initialization failed",
                 "tryNext": ["retry command"],
@@ -345,17 +348,17 @@ mod tests {
                 code: Some("source_not_found".to_owned()),
                 retryable: false,
                 stage: ErrorStage::ResolveSource,
-                hint: Some("run `oneq source list`".to_owned()),
+                hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
                 validation_issues: Vec::new(),
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq source show warehouse",
+                command: "onequery source show warehouse",
                 title: "source show failed",
                 transport_why_prefix: "failed to reach source show endpoint",
                 decode_why_prefix: "failed to decode source show response",
-                fallback_try_next: vec!["retry oneq source show warehouse".to_owned()],
+                fallback_try_next: vec!["retry onequery source show warehouse".to_owned()],
                 unauthorized_try_next: None,
             },
         );
@@ -364,12 +367,12 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "Source Not Found",
-                "command": "oneq source show warehouse",
+                "command": "onequery source show warehouse",
                 "stage": "resolve_source",
                 "why": "no source named \"warehouse\" exists",
-                "tryNext": ["run `oneq source list`"],
+                "tryNext": ["run `onequery source list`"],
                 "requestId": "req_123",
-                "hint": "run `oneq source list`",
+                "hint": "run `onequery source list`",
                 "problemType": "https://onequery.invalid/problems/cli/source-not-found",
                 "code": "source_not_found",
                 "status": 404,
@@ -389,12 +392,12 @@ mod tests {
                 request_id: Some("req_fallback".to_owned()),
             }),
             ApiErrorPresentation {
-                command: "oneq query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query execute --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry oneq query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: None,
             },
@@ -404,10 +407,10 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "query failed",
-                "command": "oneq query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query execute --source warehouse --sql \"select 1\"",
                 "stage": "execute_query",
                 "why": "failed to decode query response: expected value at line 1 column 1",
-                "tryNext": ["retry oneq query execute --source warehouse --sql \"select 1\""],
+                "tryNext": ["retry onequery query execute --source warehouse --sql \"select 1\""],
                 "requestId": "req_fallback",
                 "hint": null,
                 "problemType": null,
@@ -433,17 +436,17 @@ mod tests {
                 code: Some("source_not_found".to_owned()),
                 retryable: false,
                 stage: ErrorStage::ResolveSource,
-                hint: Some("run `oneq source list`".to_owned()),
+                hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_problem".to_owned()),
                 validation_issues: Vec::new(),
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq source show warehouse",
+                command: "onequery source show warehouse",
                 title: "source show failed",
                 transport_why_prefix: "failed to reach source show endpoint",
                 decode_why_prefix: "failed to decode source show response",
-                fallback_try_next: vec!["retry oneq source show warehouse".to_owned()],
+                fallback_try_next: vec!["retry onequery source show warehouse".to_owned()],
                 unauthorized_try_next: None,
             },
         );
@@ -461,11 +464,11 @@ mod tests {
                 retryable: true,
             }),
             ApiErrorPresentation {
-                command: "oneq org list",
+                command: "onequery org list",
                 title: "org list failed",
                 transport_why_prefix: "failed to reach org list endpoint",
                 decode_why_prefix: "failed to decode org list response",
-                fallback_try_next: vec!["retry oneq org list".to_owned()],
+                fallback_try_next: vec!["retry onequery org list".to_owned()],
                 unauthorized_try_next: None,
             },
         );
@@ -482,12 +485,12 @@ mod tests {
                 request_id: Some("req_decode".to_owned()),
             }),
             ApiErrorPresentation {
-                command: "oneq query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query execute --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry oneq query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: None,
             },
@@ -515,14 +518,14 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query execute --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry oneq query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         );
 
@@ -530,10 +533,10 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "Not Logged In",
-                "command": "oneq query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query execute --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
-                "tryNext": ["oneq auth login"],
+                "tryNext": ["onequery auth login"],
                 "requestId": "req_reauth",
                 "hint": "login via the OneQuery web app and retry",
                 "problemType": "https://onequery.invalid/problems/cli/not-logged-in",
@@ -565,14 +568,14 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query execute --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry oneq query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         );
 
@@ -598,15 +601,15 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq org list",
+                command: "onequery org list",
                 title: "org list failed",
                 transport_why_prefix: "failed to reach org list endpoint",
                 decode_why_prefix: "failed to decode org list response",
                 fallback_try_next: vec![
-                    "run oneq auth login".to_owned(),
-                    "retry oneq org list".to_owned(),
+                    "run onequery auth login".to_owned(),
+                    "retry onequery org list".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         );
 
@@ -632,15 +635,15 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq source show warehouse",
+                command: "onequery source show warehouse",
                 title: "source show failed",
                 transport_why_prefix: "failed to reach source show endpoint",
                 decode_why_prefix: "failed to decode source show response",
                 fallback_try_next: vec![
-                    "oneq source list".to_owned(),
-                    "retry oneq source show warehouse".to_owned(),
+                    "onequery source list".to_owned(),
+                    "retry onequery source show warehouse".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         );
 
@@ -677,11 +680,11 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "oneq query execute --source '' --sql \"delete from events\"",
+                command: "onequery query execute --source '' --sql \"delete from events\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
-                fallback_try_next: vec!["retry oneq query".to_owned()],
+                fallback_try_next: vec!["retry onequery query".to_owned()],
                 unauthorized_try_next: None,
             },
         );

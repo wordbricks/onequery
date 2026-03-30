@@ -118,10 +118,10 @@ fn login_output_includes_bootstrap_warning() {
         None,
         &[CliError::new(
             "bootstrap failed",
-            "oneq auth login",
+            "onequery auth login",
             ErrorStage::ResolveOrg,
             "timeout",
-            vec!["retry oneq auth login".to_owned()],
+            vec!["retry onequery auth login".to_owned()],
         )],
     );
 
@@ -143,7 +143,7 @@ fn whoami_output_snapshot_uses_server_org_when_context_is_unresolved() {
             expires_at: None,
         },
         &CommandContext {
-            command_line: "oneq auth whoami".to_owned(),
+            command_line: "onequery auth whoami".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: None,
@@ -172,7 +172,7 @@ fn whoami_output_snapshot_projects_selected_fields() {
             expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
         },
         &CommandContext {
-            command_line: "oneq auth whoami --fields user.email,effectiveOrg".to_owned(),
+            command_line: "onequery auth whoami --fields user.email,effectiveOrg".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: None,
@@ -227,7 +227,7 @@ fn logout_dry_run_output_snapshot_reports_local_state() {
 
 #[test]
 fn logout_transitions_to_explicit_active_org_cleanup() {
-    let context = auth_context("oneq auth logout");
+    let context = auth_context("onequery auth logout");
     let transition = reduce(
         AuthState::RemovingCredentials,
         AuthEvent::LogoutCompleted,
@@ -247,7 +247,7 @@ fn logout_transitions_to_explicit_active_org_cleanup() {
 
 #[test]
 fn logout_dry_run_completes_without_running_remove_credentials_effect() {
-    let context = auth_context("oneq auth logout --dry-run");
+    let context = auth_context("onequery auth logout --dry-run");
     let transition = reduce(
         AuthState::Idle {
             mode: AuthMode::Logout {
@@ -288,7 +288,7 @@ fn logout_dry_run_completes_without_running_remove_credentials_effect() {
 
 #[test]
 fn device_authorization_transitions_to_identity_resolution() {
-    let context = auth_context("oneq auth login");
+    let context = auth_context("onequery auth login");
     let transition = reduce(
         AuthState::PollingLogin,
         AuthEvent::LoginAuthorized {
@@ -310,7 +310,7 @@ fn device_authorization_transitions_to_identity_resolution() {
 
 #[test]
 fn unauthorized_whoami_failure_transitions_to_explicit_reauth_terminal_state() {
-    let context = auth_context("oneq auth whoami");
+    let context = auth_context("onequery auth whoami");
     let transition = reduce(
         AuthState::FetchingWhoami {
             read: ReadArgs::default(),
@@ -321,7 +321,7 @@ fn unauthorized_whoami_failure_transitions_to_explicit_reauth_terminal_state() {
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "stored credentials are no longer authorized",
-                vec!["oneq auth login".to_owned()],
+                vec!["onequery auth login".to_owned()],
             ),
             outcome: AuthFailureOutcome::NeedsReauth,
         },
@@ -361,7 +361,7 @@ async fn logout_clears_stored_credentials_and_active_org_selection() {
         terminal: NoopTerminal,
     };
 
-    let logout_context = auth_context("oneq auth logout");
+    let logout_context = auth_context("onequery auth logout");
     execute_effect(AuthEffect::RemoveCredentials, &logout_context, &mut runtime).await;
     execute_effect(AuthEffect::ClearActiveOrg, &logout_context, &mut runtime).await;
 
@@ -423,7 +423,7 @@ async fn auth_import_persists_auth_session_from_file_payload() {
             input: import_path.clone(),
             dry_run: false,
         }),
-        &auth_context("oneq auth import --input import-auth.json"),
+        &auth_context("onequery auth import --input import-auth.json"),
         &mut runtime,
     )
     .await
@@ -516,7 +516,7 @@ async fn auth_import_dry_run_validates_payload_without_persisting_session() {
             input: import_path.clone(),
             dry_run: true,
         }),
-        &auth_context("oneq auth import --input import-auth.json --dry-run"),
+        &auth_context("onequery auth import --input import-auth.json --dry-run"),
         &mut runtime,
     )
     .await
@@ -585,11 +585,11 @@ async fn login_after_logout_marks_the_next_identity_for_org_bootstrap() {
         terminal: NoopTerminal,
     };
 
-    let logout_context = auth_context("oneq auth logout");
+    let logout_context = auth_context("onequery auth logout");
     execute_effect(AuthEffect::RemoveCredentials, &logout_context, &mut runtime).await;
     execute_effect(AuthEffect::ClearActiveOrg, &logout_context, &mut runtime).await;
 
-    let login_context = auth_context("oneq auth login");
+    let login_context = auth_context("onequery auth login");
     let completion = LoginCompletion {
         access_token: "pat_new".to_owned(),
         auth_mode: None,
@@ -681,7 +681,7 @@ async fn run_device_denied_poll_login_effect() -> (AuthEvent, String) {
         terminal: NoopTerminal,
     };
     let context = CommandContext {
-        command_line: "oneq auth login".to_owned(),
+        command_line: "onequery auth login".to_owned(),
         base_url: format!("http://{address}"),
         request_id: None,
         resolved_org: None,
@@ -737,10 +737,10 @@ async fn poll_login_effect_device_denial_returns_a_failed_login_completion_event
         },
         (
             "login denied".to_owned(),
-            "oneq auth login".to_owned(),
+            "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization was denied before token exchange completed".to_owned(),
-            vec!["run oneq auth login again".to_owned()],
+            vec!["run onequery auth login again".to_owned()],
         )
     );
 }
@@ -877,10 +877,10 @@ async fn auth_workflow_login_device_denial_stops_after_poll_login_effect() {
                 AuthEvent::LoginCompletionFailed {
                     error: CliError::new(
                         "login denied",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization was denied before token exchange completed",
-                        vec!["run oneq auth login again".to_owned()],
+                        vec!["run onequery auth login again".to_owned()],
                     ),
                 },
             ),
@@ -916,10 +916,10 @@ async fn auth_workflow_login_device_denial_returns_failed_terminal_state() {
                 AuthEvent::LoginCompletionFailed {
                     error: CliError::new(
                         "login denied",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization was denied before token exchange completed",
-                        vec!["run oneq auth login again".to_owned()],
+                        vec!["run onequery auth login again".to_owned()],
                     ),
                 },
             ),
@@ -943,10 +943,10 @@ async fn auth_workflow_login_device_denial_returns_failed_terminal_state() {
         },
         (
             "login denied".to_owned(),
-            "oneq auth login".to_owned(),
+            "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization was denied before token exchange completed".to_owned(),
-            vec!["run oneq auth login again".to_owned()],
+            vec!["run onequery auth login again".to_owned()],
             None,
             None,
             Vec::new(),
@@ -976,10 +976,10 @@ async fn auth_workflow_login_expired_session_stops_after_poll_login_effect() {
                 AuthEvent::LoginCompletionFailed {
                     error: CliError::new(
                         "login session expired",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization session expired before token exchange completed",
-                        vec!["run oneq auth login again".to_owned()],
+                        vec!["run onequery auth login again".to_owned()],
                     ),
                 },
             ),
@@ -1015,10 +1015,10 @@ async fn auth_workflow_login_expired_session_returns_failed_terminal_state() {
                 AuthEvent::LoginCompletionFailed {
                     error: CliError::new(
                         "login session expired",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization session expired before token exchange completed",
-                        vec!["run oneq auth login again".to_owned()],
+                        vec!["run onequery auth login again".to_owned()],
                     ),
                 },
             ),
@@ -1042,10 +1042,10 @@ async fn auth_workflow_login_expired_session_returns_failed_terminal_state() {
         },
         (
             "login session expired".to_owned(),
-            "oneq auth login".to_owned(),
+            "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization session expired before token exchange completed".to_owned(),
-            vec!["run oneq auth login again".to_owned()],
+            vec!["run onequery auth login again".to_owned()],
             None,
             None,
             Vec::new(),
@@ -1088,10 +1088,10 @@ async fn auth_workflow_login_token_persist_failure_runs_effects_through_persist_
                 AuthEvent::TokenPersistFailed {
                     error: CliError::new(
                         "persist credentials failed",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::LoadCredentials,
                         "failed to write stored auth session",
-                        vec!["retry oneq auth login".to_owned()],
+                        vec!["retry onequery auth login".to_owned()],
                     ),
                 },
             ),
@@ -1146,10 +1146,10 @@ async fn auth_workflow_login_token_persist_failure_returns_failed_terminal_state
                 AuthEvent::TokenPersistFailed {
                     error: CliError::new(
                         "persist credentials failed",
-                        "oneq auth login",
+                        "onequery auth login",
                         ErrorStage::LoadCredentials,
                         "failed to write stored auth session",
-                        vec!["retry oneq auth login".to_owned()],
+                        vec!["retry onequery auth login".to_owned()],
                     ),
                 },
             ),
@@ -1173,10 +1173,10 @@ async fn auth_workflow_login_token_persist_failure_returns_failed_terminal_state
         },
         (
             "persist credentials failed".to_owned(),
-            "oneq auth login".to_owned(),
+            "onequery auth login".to_owned(),
             ErrorStage::LoadCredentials,
             "failed to write stored auth session".to_owned(),
-            vec!["retry oneq auth login".to_owned()],
+            vec!["retry onequery auth login".to_owned()],
             None,
             None,
             Vec::new(),
@@ -1231,10 +1231,10 @@ async fn run_scripted_auth_workflow(
     scripted_steps: Vec<ScriptedAuthStep>,
 ) -> (AuthTerminalState, Vec<&'static str>) {
     let context = auth_context(match mode {
-        AuthMode::Login => "oneq auth login",
-        AuthMode::Import { .. } => "oneq auth import --input ./auth.json",
-        AuthMode::Logout { .. } => "oneq auth logout",
-        AuthMode::Whoami { .. } => "oneq auth whoami",
+        AuthMode::Login => "onequery auth login",
+        AuthMode::Import { .. } => "onequery auth import --input ./auth.json",
+        AuthMode::Logout { .. } => "onequery auth logout",
+        AuthMode::Whoami { .. } => "onequery auth whoami",
     });
     let mut runtime = ();
     let mut effect_log = Vec::new();

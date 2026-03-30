@@ -63,7 +63,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "login_denied",
     stage: "auth",
     retryable: false,
-    hint: "run `oneq auth login` again",
+    hint: "run `onequery auth login` again",
   },
   LOGIN_RATE_LIMITED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-rate-limited`,
@@ -72,7 +72,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "login_rate_limited",
     stage: "auth",
     retryable: true,
-    hint: "wait briefly, then retry `oneq auth login`",
+    hint: "wait briefly, then retry `onequery auth login`",
   },
   LOGIN_SESSION_EXPIRED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-session-expired`,
@@ -81,7 +81,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "login_session_expired",
     stage: "auth",
     retryable: false,
-    hint: "run `oneq auth login` again",
+    hint: "run `onequery auth login` again",
   },
   MALFORMED_JSON: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/malformed-json`,
@@ -108,7 +108,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "org_not_found",
     stage: "resolve_org",
     retryable: false,
-    hint: "run `oneq org list`",
+    hint: "run `onequery org list`",
   },
   QUERY_EXECUTION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-failed`,
@@ -117,7 +117,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "query_execution_failed",
     stage: "execute_query",
     retryable: false,
-    hint: 'retry `oneq query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_TIMED_OUT: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-timed-out`,
@@ -126,7 +126,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "query_execution_timed_out",
     stage: "execute_query",
     retryable: true,
-    hint: 'retry `oneq query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_UNAVAILABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-unavailable`,
@@ -135,7 +135,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "query_execution_unavailable",
     stage: "execute_query",
     retryable: true,
-    hint: 'retry `oneq query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_PREPARATION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-preparation-failed`,
@@ -144,7 +144,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "query_preparation_failed",
     stage: "execute_query",
     retryable: false,
-    hint: 'retry `oneq query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_REJECTED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-rejected`,
@@ -162,7 +162,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "source_not_found",
     stage: "resolve_source",
     retryable: false,
-    hint: "run `oneq source list`",
+    hint: "run `onequery source list`",
   },
   SOURCE_NAME_CONFLICT: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-name-conflict`,
@@ -180,7 +180,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: "source_not_queryable",
     stage: "resolve_source",
     retryable: false,
-    hint: "run `oneq source list` and choose a source where QUERY is yes",
+    hint: "run `onequery source list` and choose a source where QUERY is yes",
   },
 } as const satisfies Record<string, CliProblemCatalogEntry>;
 

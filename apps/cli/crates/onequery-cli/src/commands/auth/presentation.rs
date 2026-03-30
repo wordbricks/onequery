@@ -251,19 +251,19 @@ fn project_whoami_output(data: &Value, read: &ReadArgs) -> Result<Value, CliErro
     let root = data.as_object().ok_or_else(|| {
         CliError::new(
             "failed to render auth whoami output",
-            "oneq auth whoami",
+            "onequery auth whoami",
             ErrorStage::Render,
             "auth whoami output payload was not an object",
-            vec!["retry oneq auth whoami".to_owned()],
+            vec!["retry onequery auth whoami".to_owned()],
         )
     })?;
     let user = root.get("user").and_then(Value::as_object).ok_or_else(|| {
         CliError::new(
             "failed to render auth whoami output",
-            "oneq auth whoami",
+            "onequery auth whoami",
             ErrorStage::Render,
             "auth whoami output payload did not include a user object",
-            vec!["retry oneq auth whoami".to_owned()],
+            vec!["retry onequery auth whoami".to_owned()],
         )
     })?;
 
@@ -314,7 +314,7 @@ fn project_whoami_output(data: &Value, read: &ReadArgs) -> Result<Value, CliErro
             other => {
                 return Err(CliError::new(
                     "invalid fields selection",
-                    "oneq auth whoami",
+                    "onequery auth whoami",
                     ErrorStage::Auth,
                     format!("unsupported auth whoami field selection: {other}"),
                     vec![

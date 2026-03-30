@@ -21,7 +21,7 @@ describe("cli domain model", () => {
   it("keeps CLI problem metadata in the canonical catalog", () => {
     expect(CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND).toMatchObject({
       code: "source_not_found",
-      hint: "run `oneq source list`",
+      hint: "run `onequery source list`",
       stage: "resolve_source",
       status: 404,
       title: "Source Not Found",

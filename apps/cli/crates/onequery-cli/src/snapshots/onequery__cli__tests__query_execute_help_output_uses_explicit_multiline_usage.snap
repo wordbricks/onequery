@@ -4,10 +4,10 @@ expression: rendered
 ---
 Execute a query and return rows
 
-Usage: oneq query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       oneq query execute [OPTIONS] --source <SOURCE_KEY> --stdin
+Usage: onequery query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query execute [OPTIONS] --source <SOURCE_KEY> --stdin
 
 Options:
       --source <SOURCE_KEY>  Execute the query against this source key

@@ -306,7 +306,10 @@ pub(super) fn reduce(
                                 format!(
                                     "no organization with slug \"{next_org}\" is available to this account."
                                 ),
-                                vec!["oneq org list".to_owned(), "oneq org use <org>".to_owned()],
+                                vec![
+                                    "onequery org list".to_owned(),
+                                    "onequery org use <org>".to_owned(),
+                                ],
                             ),
                         });
                     }
@@ -511,10 +514,10 @@ where
                                 transport_why_prefix: "failed to reach org list endpoint",
                                 decode_why_prefix: "failed to decode org list response",
                                 fallback_try_next: vec![
-                                    "run oneq auth login".to_owned(),
+                                    "run onequery auth login".to_owned(),
                                     format!("retry {}", context.command_line),
                                 ],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         retry,
@@ -602,7 +605,7 @@ pub(super) fn normalize_org_slug<'a>(
             context.command_line.clone(),
             ErrorStage::ResolveOrg,
             "org must be a slug like acme-west",
-            vec!["oneq org use <org_slug>".to_owned()],
+            vec!["onequery org use <org_slug>".to_owned()],
         )
     })
 }

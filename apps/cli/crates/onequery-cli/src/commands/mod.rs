@@ -69,7 +69,7 @@ impl Runtime<SystemBrowserLauncher, StderrTerminal> {
         // CONTEXT: docs/core/SPEC.md recommends a Rust crate layout while the monorepo runtime is
         // Bun-first.
         // Keep Rust state isolated in apps/cli and avoid hidden cross-runtime coupling.
-        let startup_command = "oneq";
+        let startup_command = "onequery";
         let config = ConfigStore::load_with_overrides(
             startup_command,
             raw_config_overrides,
@@ -122,7 +122,7 @@ pub(crate) fn resolve_context<B, T>(
             invocation.raw_command.clone(),
             ErrorStage::LoadConfig,
             "compiled default base URL is empty",
-            vec!["rebuild oneq with a valid default base URL".to_owned()],
+            vec!["rebuild onequery with a valid default base URL".to_owned()],
         ));
     }
 
@@ -132,7 +132,7 @@ pub(crate) fn resolve_context<B, T>(
             invocation.raw_command.clone(),
             ErrorStage::LoadConfig,
             format!("{url_error}: {base_url}"),
-            vec!["rebuild oneq with a valid default base URL".to_owned()],
+            vec!["rebuild onequery with a valid default base URL".to_owned()],
         )
     })?;
 
@@ -203,7 +203,7 @@ pub(crate) fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(
         ErrorStage::Internal,
         "the published self-host runtime currently supports macOS and Linux only".to_owned(),
         vec![
-            "run oneq serve, backup, and restore on macOS or Linux".to_owned(),
+            "run onequery serve, backup, and restore on macOS or Linux".to_owned(),
             "use a supported host and point remote clients at that server".to_owned(),
         ],
     ))
@@ -217,7 +217,7 @@ pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
                 context.command_line.clone(),
                 ErrorStage::ResolveOrg,
                 "org must be a slug like acme-west",
-                vec!["oneq org use <org_slug>".to_owned()],
+                vec!["onequery org use <org_slug>".to_owned()],
             )
         }),
         None => Err(CliError::new(
@@ -225,7 +225,10 @@ pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
             context.command_line.clone(),
             ErrorStage::ResolveOrg,
             "no org was passed with --org and no active org is stored in config.toml.",
-            vec!["oneq org list".to_owned(), "oneq org use <org>".to_owned()],
+            vec![
+                "onequery org list".to_owned(),
+                "onequery org use <org>".to_owned(),
+            ],
         )),
     }
 }

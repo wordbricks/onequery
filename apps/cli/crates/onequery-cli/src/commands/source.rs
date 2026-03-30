@@ -163,7 +163,7 @@ fn reduce(
                                 context.command_line.clone(),
                                 ErrorStage::ParseCommand,
                                 "source key must use only letters, numbers, dots, underscores, or hyphens",
-                                vec!["retry oneq source show <source_key>".to_owned()],
+                                vec!["retry onequery source show <source_key>".to_owned()],
                             ),
                         });
                     };
@@ -350,10 +350,10 @@ async fn execute_effect<B, T>(
                                 transport_why_prefix: "failed to reach source list endpoint",
                                 decode_why_prefix: "failed to decode source list response",
                                 fallback_try_next: vec![
-                                    "run oneq auth login".to_owned(),
+                                    "run onequery auth login".to_owned(),
                                     format!("retry {}", context.command_line),
                                 ],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         outcome,
@@ -401,10 +401,10 @@ async fn execute_effect<B, T>(
                                 transport_why_prefix: "failed to reach source show endpoint",
                                 decode_why_prefix: "failed to decode source show response",
                                 fallback_try_next: vec![
-                                    "oneq source list".to_owned(),
+                                    "onequery source list".to_owned(),
                                     format!("retry {}", context.command_line),
                                 ],
-                                unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                             },
                         ),
                         outcome,
@@ -473,7 +473,7 @@ fn render_source_list_output(
     read: &ListReadArgs,
 ) -> Result<CommandOutput, CliError> {
     if read.has_field_selection() {
-        let data = serialize_command_data(&payload, "oneq source list")?;
+        let data = serialize_command_data(&payload, "onequery source list")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
@@ -481,7 +481,7 @@ fn render_source_list_output(
     if sources.is_empty() {
         return Ok(CommandOutput::try_deferred(
             vec!["No connected sources found.".to_owned()],
-            move || serialize_command_data(&payload, "oneq source list"),
+            move || serialize_command_data(&payload, "onequery source list"),
         ));
     }
 
@@ -554,7 +554,7 @@ fn render_source_list_output(
     );
 
     Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&payload, "oneq source list")
+        serialize_command_data(&payload, "onequery source list")
     }))
 }
 
@@ -563,7 +563,7 @@ fn render_source_show_output(
     read: &ReadArgs,
 ) -> Result<CommandOutput, CliError> {
     if read.has_field_selection() {
-        let data = serialize_command_data(&source, "oneq source show")?;
+        let data = serialize_command_data(&source, "onequery source show")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
@@ -590,13 +590,13 @@ fn render_source_show_output(
 
     if source.queryable.unwrap_or(false) {
         lines.push(format!(
-            "Sample query: oneq query execute --source {} --sql \"select 1\"",
+            "Sample query: onequery query execute --source {} --sql \"select 1\"",
             source.name.as_deref().unwrap_or("<source>")
         ));
     }
 
     Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&source, "oneq source show")
+        serialize_command_data(&source, "onequery source show")
     }))
 }
 
@@ -717,7 +717,7 @@ mod tests {
     #[test]
     fn unauthorized_source_list_failure_transitions_to_explicit_reauth_terminal_state() {
         let context = CommandContext {
-            command_line: "oneq source list".to_owned(),
+            command_line: "onequery source list".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -733,7 +733,7 @@ mod tests {
                     context.command_line.clone(),
                     ErrorStage::Auth,
                     "stored credentials are no longer authorized",
-                    vec!["oneq auth login".to_owned()],
+                    vec!["onequery auth login".to_owned()],
                 ),
                 outcome: SourceFailureOutcome::NeedsReauth,
             },
@@ -751,7 +751,7 @@ mod tests {
     #[test]
     fn source_show_rejects_unsafe_source_keys_before_authentication() {
         let context = CommandContext {
-            command_line: "oneq source show warehouse/main".to_owned(),
+            command_line: "onequery source show warehouse/main".to_owned(),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),

@@ -16,6 +16,6 @@ This leaf skill extends `apps/cli/docs/skills/SKILL.md`.
 
 ## Workflow
 
-1. Confirm the source is queryable with `oneq source show <source_key>`.
+1. Confirm the source is queryable with `onequery source show <source_key>`.
 2. Start with a bounded read-only SQL statement.
 3. Tighten filters or reduce result width before widening scope.

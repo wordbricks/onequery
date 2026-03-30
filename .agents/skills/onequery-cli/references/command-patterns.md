@@ -5,7 +5,7 @@ Use these sequences when the user asks to query company data, inspect a source, 
 ## Confirm CLI Availability
 
 ```bash
-command -v oneq
+command -v onequery
 ```
 
 Interpretation:
@@ -15,25 +15,25 @@ Interpretation:
 ## Establish Protected Access Context
 
 ```bash
-oneq auth whoami
-oneq org current
-oneq org list
-oneq org use acme
+onequery auth whoami
+onequery org current
+onequery org list
+onequery org use acme
 ```
 
 Interpretation:
 
-- `oneq auth whoami` confirms the current identity and the effective org source for
+- `onequery auth whoami` confirms the current identity and the effective org source for
   protected commands.
-- `oneq org current` shows whether org resolution came from `--org`, config, or is
+- `onequery org current` shows whether org resolution came from `--org`, config, or is
   unresolved.
-- `oneq org list` is the recovery path when org access or org selection is unclear.
+- `onequery org list` is the recovery path when org access or org selection is unclear.
 
 ## Inspect Sources Before Querying
 
 ```bash
-oneq source list
-oneq source show warehouse
+onequery source list
+onequery source show warehouse
 ```
 
 Use the source list to pick a source where `QUERY` is `yes`. Use `source show` to confirm the canonical `source_key`, provider, and org before writing SQL.
@@ -41,7 +41,7 @@ Use the source list to pick a source where `QUERY` is `yes`. Use `source show` t
 ## Run A Short Validation Query
 
 ```bash
-oneq query --source warehouse --sql "select 1"
+onequery query --source warehouse --sql "select 1"
 ```
 
 Use this first when you want to verify auth, org, source selection, and queryability without spending time on a large query.
@@ -49,7 +49,7 @@ Use this first when you want to verify auth, org, source selection, and queryabi
 ## Run A Real Analysis Query
 
 ```bash
-oneq query --source warehouse --sql "select date_trunc('day', created_at) as day, count(*) as signups from users where created_at >= current_date - interval '7 days' group by 1 order by 1 desc"
+onequery query --source warehouse --sql "select date_trunc('day', created_at) as day, count(*) as signups from users where created_at >= current_date - interval '7 days' group by 1 order by 1 desc"
 ```
 
 Guidance:
@@ -57,14 +57,14 @@ Guidance:
 - Add explicit date bounds.
 - Add `limit` where it makes sense.
 - Start with aggregate checks before wide row dumps or heavy joins.
-- Tailor SQL dialect to the provider shown by `oneq source show`.
+- Tailor SQL dialect to the provider shown by `onequery source show`.
 
 ## Use File Or Stdin For Longer SQL
 
 ```bash
-oneq query --source warehouse --file ./analysis.sql
-cat ./analysis.sql | oneq query --source warehouse --stdin
-oneq --org acme query --source warehouse --file ./analysis.sql
+onequery query --source warehouse --file ./analysis.sql
+cat ./analysis.sql | onequery query --source warehouse --stdin
+onequery --org acme query --source warehouse --file ./analysis.sql
 ```
 
 Prefer `--file` or `--stdin` for multi-line SQL so the query can be inspected, revised, and rerun cleanly.
@@ -73,7 +73,7 @@ Prefer `--file` or `--stdin` for multi-line SQL so the query can be inspected, r
 
 - Resolve the org first, then inspect sources in that org.
 - Narrow source selection by the most relevant product name or provider before inspecting multiple candidates.
-- Confirm the source with `oneq source show <source_key>`.
+- Confirm the source with `onequery source show <source_key>`.
 - Start with a bounded aggregate or `select 1` before wider inspection.
 
 ## Validate A Metric
@@ -85,8 +85,8 @@ Prefer `--file` or `--stdin` for multi-line SQL so the query can be inspected, r
 ## Inspect The CLI Schema Surface
 
 ```bash
-oneq schema commands --output json
-oneq schema command query execute --output json
+onequery schema commands --output json
+onequery schema command query execute --output json
 ```
 
 Use `schema commands` to discover the current public command grammar and `schema command <path>` when you need the exact current contract for one command.
@@ -95,12 +95,12 @@ These discovery commands are available without browser auth or org setup.
 ## Work Across Orgs
 
 ```bash
-oneq --org acme source list
-oneq --org acme query --source warehouse --sql "select 1"
-oneq org use acme
+onequery --org acme source list
+onequery --org acme query --source warehouse --sql "select 1"
+onequery org use acme
 ```
 
-Use `--org <slug>` for one-off checks. Use `oneq org use <slug>` only when the rest of the session should stay pinned to that org.
+Use `--org <slug>` for one-off checks. Use `onequery org use <slug>` only when the rest of the session should stay pinned to that org.
 
 ## Resolve Informal Source Names
 
@@ -111,15 +111,15 @@ Use `--org <slug>` for one-off checks. Use `oneq org use <slug>` only when the r
 ## Common Recovery Moves
 
 ```bash
-oneq auth login
-oneq org list
-oneq source list
-oneq source show warehouse
+onequery auth login
+onequery org list
+onequery source list
+onequery source show warehouse
 ```
 
 Map failures to the smallest recovery step first:
 
-- Auth problems: `oneq auth login`
-- Org problems: `oneq org list`
-- Source lookup problems: `oneq source list`
+- Auth problems: `onequery auth login`
+- Org problems: `onequery org list`
+- Source lookup problems: `onequery source list`
 - Queryability problems: pick a source with `QUERY` set to `yes`

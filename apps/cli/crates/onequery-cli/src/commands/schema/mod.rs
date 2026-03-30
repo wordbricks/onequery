@@ -217,11 +217,11 @@ pub(super) async fn execute(command: &SchemaSubcommand) -> Result<CommandOutput,
                 .ok_or_else(|| {
                     CliError::new(
                         "unknown command schema",
-                        format!("oneq schema command {}", args.path.join(" ")),
+                        format!("onequery schema command {}", args.path.join(" ")),
                         ErrorStage::ParseCommand,
                         format!("no public command schema exists for \"{requested_command}\""),
                         vec![
-                            "oneq schema commands --output json".to_owned(),
+                            "onequery schema commands --output json".to_owned(),
                             "use one of the listed command paths verbatim".to_owned(),
                         ],
                     )
@@ -230,10 +230,10 @@ pub(super) async fn execute(command: &SchemaSubcommand) -> Result<CommandOutput,
                 serde_json::to_value(command_schema).map_err(|serialize_error| {
                     CliError::new(
                         "failed to render schema command output",
-                        format!("oneq schema command {}", args.path.join(" ")),
+                        format!("onequery schema command {}", args.path.join(" ")),
                         ErrorStage::Render,
                         serialize_error.to_string(),
-                        vec!["retry oneq schema command with the same path".to_owned()],
+                        vec!["retry onequery schema command with the same path".to_owned()],
                     )
                 })?,
             )
@@ -248,10 +248,10 @@ fn render_json_output(data: Value) -> Result<CommandOutput, CliError> {
     let rendered = serde_json::to_string_pretty(&data).map_err(|serialize_error| {
         CliError::new(
             "failed to render schema output",
-            "oneq schema".to_owned(),
+            "onequery schema".to_owned(),
             ErrorStage::Render,
             serialize_error.to_string(),
-            vec!["retry oneq schema with the same arguments".to_owned()],
+            vec!["retry onequery schema with the same arguments".to_owned()],
         )
     })?;
 
@@ -265,10 +265,10 @@ fn openapi_document() -> Result<Value, CliError> {
     serde_json::from_str(CLI_OPENAPI_JSON).map_err(|parse_error| {
         CliError::new(
             "failed to load embedded OpenAPI document",
-            "oneq schema openapi".to_owned(),
+            "onequery schema openapi".to_owned(),
             ErrorStage::Render,
             parse_error.to_string(),
-            vec!["rebuild oneq with a valid checked-in OpenAPI document".to_owned()],
+            vec!["rebuild onequery with a valid checked-in OpenAPI document".to_owned()],
         )
     })
 }
@@ -327,10 +327,10 @@ fn ensure_unique_public_command_paths(commands: &[CommandSchema]) -> Result<(), 
         if !seen.insert(command.command.as_str()) {
             return Err(CliError::new(
                 "failed to derive command schemas",
-                "oneq schema commands".to_owned(),
+                "onequery schema commands".to_owned(),
                 ErrorStage::Render,
                 format!("duplicate public command schema for {}", command.command),
-                vec!["rebuild oneq with a consistent command contract".to_owned()],
+                vec!["rebuild onequery with a consistent command contract".to_owned()],
             ));
         }
     }

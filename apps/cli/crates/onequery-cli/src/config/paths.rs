@@ -255,8 +255,13 @@ mod tests {
 
     #[test]
     fn app_home_dir_returns_none_when_unset() {
-        let resolved = app_home_dir(None, APP_HOME_CONFIG_DIR_NAME, "oneq org list", "config")
-            .unwrap_or_else(|error| panic!("expected unset app-home override handling: {error}"));
+        let resolved = app_home_dir(
+            None,
+            APP_HOME_CONFIG_DIR_NAME,
+            "onequery org list",
+            "config",
+        )
+        .unwrap_or_else(|error| panic!("expected unset app-home override handling: {error}"));
 
         assert_eq!(resolved, None);
     }
@@ -271,14 +276,14 @@ mod tests {
         let config_dir = app_home_dir(
             Some(app_home.join(".")),
             APP_HOME_CONFIG_DIR_NAME,
-            "oneq org list",
+            "onequery org list",
             "config",
         )
         .unwrap_or_else(|error| panic!("expected ONEQUERY_HOME config resolution: {error}"));
         let data_dir = app_home_dir(
             Some(app_home.clone()),
             APP_HOME_DATA_DIR_NAME,
-            "oneq serve",
+            "onequery serve",
             "data",
         )
         .unwrap_or_else(|error| panic!("expected ONEQUERY_HOME data resolution: {error}"));
@@ -299,7 +304,7 @@ mod tests {
         let error = app_home_dir(
             Some(missing_app_home),
             APP_HOME_CONFIG_DIR_NAME,
-            "oneq auth whoami",
+            "onequery auth whoami",
             "config",
         )
         .expect_err("expected missing ONEQUERY_HOME resolution to fail");
@@ -329,7 +334,7 @@ mod tests {
         let error = app_home_dir(
             Some(file_path),
             APP_HOME_CONFIG_DIR_NAME,
-            "oneq auth whoami",
+            "onequery auth whoami",
             "config",
         )
         .expect_err("expected file ONEQUERY_HOME resolution to fail");
@@ -356,7 +361,7 @@ mod tests {
         let resolved = unix_config_root(
             Some(xdg_config_home.join(".")),
             Some(PathBuf::from("/Users/alice")),
-            "oneq auth whoami",
+            "onequery auth whoami",
         )
         .unwrap_or_else(|error| panic!("expected XDG config home resolution: {error}"));
 
@@ -376,7 +381,7 @@ mod tests {
         let error = unix_config_root(
             Some(missing_xdg_config_home),
             Some(PathBuf::from("/Users/alice")),
-            "oneq auth whoami",
+            "onequery auth whoami",
         )
         .expect_err("expected missing XDG config home resolution to fail");
 
@@ -398,7 +403,7 @@ mod tests {
         let error = unix_config_root(
             Some(file_path),
             Some(PathBuf::from("/Users/alice")),
-            "oneq auth whoami",
+            "onequery auth whoami",
         )
         .expect_err("expected file XDG config home resolution to fail");
 
@@ -413,15 +418,19 @@ mod tests {
 
     #[test]
     fn unix_config_root_falls_back_to_home_dot_config() {
-        let resolved = unix_config_root(None, Some(PathBuf::from("/Users/alice")), "oneq org list")
-            .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
+        let resolved = unix_config_root(
+            None,
+            Some(PathBuf::from("/Users/alice")),
+            "onequery org list",
+        )
+        .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
 
         assert_eq!(resolved, PathBuf::from("/Users/alice/.config"));
     }
 
     #[test]
     fn unix_config_root_reports_missing_directories() {
-        let error = unix_config_root(None, None, "oneq auth whoami")
+        let error = unix_config_root(None, None, "onequery auth whoami")
             .expect_err("expected missing config directory resolution to fail");
 
         assert_eq!(
@@ -442,7 +451,7 @@ mod tests {
     fn windows_config_root_uses_platform_config_directory() {
         let resolved = windows_config_root(
             Some(PathBuf::from(r"C:\Users\alice\AppData\Roaming")),
-            "oneq auth whoami",
+            "onequery auth whoami",
         )
         .unwrap_or_else(|error| panic!("expected Windows config directory resolution: {error}"));
 
@@ -451,7 +460,7 @@ mod tests {
 
     #[test]
     fn windows_config_root_reports_missing_appdata() {
-        let error = windows_config_root(None, "oneq auth whoami")
+        let error = windows_config_root(None, "onequery auth whoami")
             .expect_err("expected missing APPDATA resolution to fail");
 
         assert_eq!(
@@ -474,7 +483,7 @@ mod tests {
         let resolved = unix_data_root(
             Some(xdg_data_home.join(".")),
             Some(PathBuf::from("/Users/alice")),
-            "oneq serve",
+            "onequery serve",
         )
         .unwrap_or_else(|error| panic!("expected XDG data home resolution: {error}"));
 
@@ -494,7 +503,7 @@ mod tests {
         let error = unix_data_root(
             Some(missing_xdg_data_home),
             Some(PathBuf::from("/Users/alice")),
-            "oneq serve",
+            "onequery serve",
         )
         .expect_err("expected missing XDG data home resolution to fail");
 
@@ -516,7 +525,7 @@ mod tests {
         let error = unix_data_root(
             Some(file_path),
             Some(PathBuf::from("/Users/alice")),
-            "oneq serve",
+            "onequery serve",
         )
         .expect_err("expected file XDG data home resolution to fail");
 
@@ -531,7 +540,7 @@ mod tests {
 
     #[test]
     fn unix_data_root_falls_back_to_home_local_share() {
-        let resolved = unix_data_root(None, Some(PathBuf::from("/Users/alice")), "oneq serve")
+        let resolved = unix_data_root(None, Some(PathBuf::from("/Users/alice")), "onequery serve")
             .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
 
         assert_eq!(resolved, PathBuf::from("/Users/alice/.local/share"));
@@ -540,7 +549,7 @@ mod tests {
     #[test]
     fn unix_data_root_reports_missing_directories() {
         let error =
-            unix_data_root(None, None, "oneq serve").expect_err("expected missing data root");
+            unix_data_root(None, None, "onequery serve").expect_err("expected missing data root");
 
         assert_eq!(
             (
@@ -560,7 +569,7 @@ mod tests {
     fn windows_data_root_uses_platform_data_directory() {
         let resolved = windows_data_root(
             Some(PathBuf::from(r"C:\Users\alice\AppData\Local")),
-            "oneq serve",
+            "onequery serve",
         )
         .unwrap_or_else(|error| panic!("expected Windows data directory resolution: {error}"));
 
@@ -570,7 +579,7 @@ mod tests {
     #[test]
     fn windows_data_root_reports_missing_localappdata() {
         let error =
-            windows_data_root(None, "oneq serve").expect_err("expected missing LOCALAPPDATA");
+            windows_data_root(None, "onequery serve").expect_err("expected missing LOCALAPPDATA");
 
         assert_eq!(
             (

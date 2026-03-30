@@ -10,7 +10,7 @@ import {
   LANDING_SECTION_IDS,
 } from "./landing-config";
 
-const querySnippet = `oneq query execute \\
+const querySnippet = `onequery query execute \\
   --source postgres-prod \\
   --sql "select team, sum(cost) as spend from monthly_costs group by 1 order by 2 desc"`;
 
@@ -28,7 +28,7 @@ const cards = [
   {
     label: "RUN LOCALLY",
     title: "Start the control plane on your machine",
-    body: "Use `oneq serve` to bring up the local runtime, then point the browser UI and CLI at the same instance.",
+    body: "Use `onequery serve` to bring up the local runtime, then point the browser UI and CLI at the same instance.",
   },
   {
     label: "AUTH CLEARLY",
@@ -51,7 +51,7 @@ const explicitItems = [
 
 const timeline = [
   "Install the published `onequery` package with curl, bunx, or npx.",
-  "Run `oneq serve` and open the local browser UI.",
+  "Run `onequery serve` and open the local browser UI.",
   "Bootstrap the instance once, then point the CLI at it.",
   "Use the same runtime for authentication, organization context, and query workflows.",
 ];

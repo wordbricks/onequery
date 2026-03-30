@@ -58,7 +58,7 @@ fn resolve_http_command_schema(
     let summary = required_non_empty_string_field(
         operation,
         "description",
-        format!("oneq schema command {command}"),
+        format!("onequery schema command {command}"),
     )?;
     let selector_schema = selector_schema_from_operation(operation, components)?;
     let input_schema = input_schema_from_operation(operation, components)?;
@@ -221,7 +221,7 @@ fn ensure_unique_command_names(commands: &[CommandSchema]) -> Result<(), CliErro
         if !seen.insert(command.command.as_str()) {
             return Err(CliError::new(
                 "failed to derive HTTP command schema",
-                format!("oneq schema command {}", command.command),
+                format!("onequery schema command {}", command.command),
                 ErrorStage::Render,
                 format!(
                     "multiple OpenAPI operations expose the same public command schema: {}",
@@ -239,7 +239,7 @@ fn openapi_paths(spec: &Value) -> Result<&Map<String, Value>, CliError> {
     spec.get("paths").and_then(Value::as_object).ok_or_else(|| {
         CliError::new(
             "failed to load embedded OpenAPI document",
-            "oneq schema openapi".to_owned(),
+            "onequery schema openapi".to_owned(),
             ErrorStage::Render,
             "paths is missing from the embedded OpenAPI document",
             vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -254,7 +254,7 @@ fn openapi_components(spec: &Value) -> Result<&Map<String, Value>, CliError> {
         .ok_or_else(|| {
             CliError::new(
                 "failed to load OpenAPI schemas",
-                "oneq schema commands".to_owned(),
+                "onequery schema commands".to_owned(),
                 ErrorStage::Render,
                 "components.schemas is missing from the embedded OpenAPI document",
                 vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -331,7 +331,7 @@ fn output_schema_from_operation(
         .ok_or_else(|| {
             CliError::new(
                 "failed to derive HTTP command schema",
-                "oneq schema commands".to_owned(),
+                "onequery schema commands".to_owned(),
                 ErrorStage::Render,
                 "OpenAPI operation is missing a 200 application/json success schema",
                 vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -360,7 +360,7 @@ fn auth_requirements_from_operation(
         .ok_or_else(|| {
             CliError::new(
                 "failed to derive HTTP command schema",
-                "oneq schema commands".to_owned(),
+                "onequery schema commands".to_owned(),
                 ErrorStage::Render,
                 "x-onequery-auth-requirements is missing from an embedded OpenAPI operation",
                 vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -370,7 +370,7 @@ fn auth_requirements_from_operation(
     serde_json::from_value(raw).map_err(|parse_error| {
         CliError::new(
             "failed to derive HTTP command schema",
-            "oneq schema commands".to_owned(),
+            "onequery schema commands".to_owned(),
             ErrorStage::Render,
             parse_error.to_string(),
             vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -394,7 +394,7 @@ fn stable_error_codes_from_operation(
             code.as_str().map(ToOwned::to_owned).ok_or_else(|| {
                 CliError::new(
                     "failed to derive HTTP command schema",
-                    "oneq schema commands".to_owned(),
+                    "onequery schema commands".to_owned(),
                     ErrorStage::Render,
                     "x-onequery-stable-error-codes contained a non-string value",
                     vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -469,7 +469,7 @@ fn nullable_string_field(
         Some(Value::Null) | None => Ok(None),
         Some(_) => Err(CliError::new(
             "failed to derive HTTP command schema",
-            "oneq schema commands".to_owned(),
+            "onequery schema commands".to_owned(),
             ErrorStage::Render,
             format!("{key} contained a non-string value"),
             vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -559,7 +559,7 @@ fn retryable_statuses_from_operation(operation: &Map<String, Value>) -> Result<V
                 .ok_or_else(|| {
                     CliError::new(
                         "failed to derive HTTP command schema",
-                        "oneq schema commands".to_owned(),
+                        "onequery schema commands".to_owned(),
                         ErrorStage::Render,
                         "x-onequery-retryable-statuses contained a non-integer value",
                         vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -583,7 +583,7 @@ fn string_array_from_operation(
             value.as_str().map(ToOwned::to_owned).ok_or_else(|| {
                 CliError::new(
                     "failed to derive HTTP command schema",
-                    "oneq schema commands".to_owned(),
+                    "onequery schema commands".to_owned(),
                     ErrorStage::Render,
                     format!("{key} contained a non-string value"),
                     vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -597,7 +597,7 @@ fn resolve_reference(reference: &str, components: &Map<String, Value>) -> Result
     let Some(schema_name) = reference.strip_prefix("#/components/schemas/") else {
         return Err(CliError::new(
             "failed to resolve OpenAPI reference",
-            "oneq schema commands".to_owned(),
+            "onequery schema commands".to_owned(),
             ErrorStage::Render,
             format!("unsupported OpenAPI reference {reference}"),
             vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -607,7 +607,7 @@ fn resolve_reference(reference: &str, components: &Map<String, Value>) -> Result
     let referenced = components.get(schema_name).ok_or_else(|| {
         CliError::new(
             "failed to resolve OpenAPI reference",
-            "oneq schema commands".to_owned(),
+            "onequery schema commands".to_owned(),
             ErrorStage::Render,
             format!("missing components.schemas.{schema_name}"),
             vec!["regenerate the CLI OpenAPI document".to_owned()],
@@ -618,5 +618,5 @@ fn resolve_reference(reference: &str, components: &Map<String, Value>) -> Result
 }
 
 fn schema_derivation_command(method: &str, path: &str) -> String {
-    format!("oneq schema derive {method} {path}")
+    format!("onequery schema derive {method} {path}")
 }

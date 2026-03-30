@@ -394,7 +394,7 @@ function readAuthErrorDescription(error: unknown) {
     return error.message;
   }
 
-  return "The device code is invalid or expired. Start `oneq auth login` again.";
+  return "The device code is invalid or expired. Start `onequery auth login` again.";
 }
 
 function readAuthErrorStatus(

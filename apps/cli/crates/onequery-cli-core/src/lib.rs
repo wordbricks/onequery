@@ -9,10 +9,10 @@
 //!
 //! let error = CliError::new(
 //!     "not logged in",
-//!     "oneq org list",
+//!     "onequery org list",
 //!     ErrorStage::Auth,
 //!     "no stored OneQuery token was found.",
-//!     vec!["oneq auth login".to_owned()],
+//!     vec!["onequery auth login".to_owned()],
 //! );
 //!
 //! assert_eq!(error.exit_code(), 3);

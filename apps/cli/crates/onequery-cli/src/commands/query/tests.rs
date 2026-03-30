@@ -61,7 +61,7 @@ fn with_legacy_snapshot_path(test: impl FnOnce()) {
 
 fn sample_context() -> CommandContext {
     CommandContext {
-        command_line: "oneq query execute --source warehouse --sql \"select 1\"".to_owned(),
+        command_line: "onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
         base_url: "https://example.com".to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -335,7 +335,7 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
         context.command_line.clone(),
         ErrorStage::Http,
         "temporary network timeout",
-        vec!["retry oneq query execute --source warehouse --sql \"select 1\"".to_owned()],
+        vec!["retry onequery query execute --source warehouse --sql \"select 1\"".to_owned()],
     );
 
     let transition = reduce_executing_query(
@@ -402,7 +402,7 @@ fn retryable_query_failure_exhausts_after_max_attempts() {
         context.command_line.clone(),
         ErrorStage::Http,
         "temporary network timeout",
-        vec!["retry oneq query execute --source warehouse --sql \"select 1\"".to_owned()],
+        vec!["retry onequery query execute --source warehouse --sql \"select 1\"".to_owned()],
     );
 
     let transition = reduce_executing_query(
@@ -440,7 +440,7 @@ fn unauthorized_query_failure_transitions_to_explicit_reauth_terminal_state() {
         context.command_line.clone(),
         ErrorStage::Auth,
         "stored credentials are no longer authorized",
-        vec!["oneq auth login".to_owned()],
+        vec!["onequery auth login".to_owned()],
     );
 
     let transition = reduce_executing_query(
@@ -475,7 +475,7 @@ fn validate_unauthorized_failure_transitions_to_explicit_reauth_terminal_state()
         context.command_line.clone(),
         ErrorStage::ReadQueryInput,
         "stored credentials are no longer authorized",
-        vec!["oneq auth login".to_owned()],
+        vec!["onequery auth login".to_owned()],
     );
 
     let transition = reduce_validating_query(

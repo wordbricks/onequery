@@ -75,7 +75,7 @@ deviceAuthorizations:
               detail: too many login attempts from this client
               code: login_rate_limited
               stage: auth
-              hint: wait briefly, then retry `oneq auth login`
+              hint: wait briefly, then retry `onequery auth login`
               requestId: req_device_start_rate_limited_01
               retryable: true
               retryAfterMs: 60000
@@ -168,7 +168,7 @@ deviceAuthorizationsPoll:
               detail: device authorization was denied by the user
               code: login_denied
               stage: auth
-              hint: run `oneq auth login` again
+              hint: run `onequery auth login` again
               requestId: req_device_poll_denied_01
               retryable: false
       "410":

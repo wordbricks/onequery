@@ -136,7 +136,7 @@ mod tests {
             terminal: NoopTerminal,
         };
         let context = CommandContext {
-            command_line: format!("oneq config set server {DEFAULT_BASE_URL}"),
+            command_line: format!("onequery config set server {DEFAULT_BASE_URL}"),
             base_url: DEFAULT_BASE_URL.to_owned(),
             request_id: None,
             resolved_org: None,

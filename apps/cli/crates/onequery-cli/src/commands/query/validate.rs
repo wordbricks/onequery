@@ -333,7 +333,7 @@ async fn execute_validate_effect<B, T>(
                             transport_why_prefix: "failed to reach query validation endpoint",
                             decode_why_prefix: "failed to decode query validation response",
                             fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                         },
                     ),
                 },

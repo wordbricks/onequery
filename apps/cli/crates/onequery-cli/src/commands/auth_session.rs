@@ -167,8 +167,8 @@ fn reduce_auth_session(
                         ErrorStage::Auth,
                         "no OneQuery token was found in the environment or local auth store.",
                         vec![
-                            "oneq auth login".to_owned(),
-                            "oneq auth import --input <path|->".to_owned(),
+                            "onequery auth login".to_owned(),
+                            "onequery auth import --input <path|->".to_owned(),
                         ],
                     ),
                 })
@@ -274,7 +274,7 @@ async fn execute_auth_session_effect<B, T>(
                             transport_why_prefix: "failed to reach auth session refresh endpoint",
                             decode_why_prefix: "failed to decode auth session refresh response",
                             fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["oneq auth login".to_owned()]),
+                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                         },
                     ),
                 },
@@ -386,8 +386,8 @@ fn missing_stored_session_error(context: &CommandContext) -> CliError {
         ErrorStage::Auth,
         "no OneQuery token was found in the environment or local auth store.",
         vec![
-            "oneq auth login".to_owned(),
-            "oneq auth import --input <path|->".to_owned(),
+            "onequery auth login".to_owned(),
+            "onequery auth import --input <path|->".to_owned(),
         ],
     )
 }
@@ -538,7 +538,7 @@ mod tests {
     #[tokio::test]
     async fn ensure_authenticated_fails_when_no_token_is_stored() {
         let base_url = DEFAULT_BASE_URL.to_owned();
-        let context = test_context(base_url.clone(), "oneq org list");
+        let context = test_context(base_url.clone(), "onequery org list");
         let mut runtime = test_runtime(auth_session_store_for_test(None));
 
         let error = ensure_authenticated(&context, &mut runtime)
@@ -555,12 +555,12 @@ mod tests {
             ),
             (
                 "not logged in",
-                "oneq org list",
+                "onequery org list",
                 ErrorStage::Auth,
                 "no OneQuery token was found in the environment or local auth store.",
                 vec![
-                    "oneq auth login".to_owned(),
-                    "oneq auth import --input <path|->".to_owned(),
+                    "onequery auth login".to_owned(),
+                    "onequery auth import --input <path|->".to_owned(),
                 ],
             )
         );
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn authenticated_api_client_fails_when_no_token_is_stored() {
-        let context = test_context(DEFAULT_BASE_URL.to_owned(), "oneq org list");
+        let context = test_context(DEFAULT_BASE_URL.to_owned(), "onequery org list");
         let runtime = test_runtime(auth_session_store_for_test(None));
 
         let error = authenticated_api_client(&context, &runtime)
@@ -584,12 +584,12 @@ mod tests {
             ),
             (
                 "not logged in",
-                "oneq org list",
+                "onequery org list",
                 ErrorStage::Auth,
                 "no OneQuery token was found in the environment or local auth store.",
                 vec![
-                    "oneq auth login".to_owned(),
-                    "oneq auth import --input <path|->".to_owned(),
+                    "onequery auth login".to_owned(),
+                    "onequery auth import --input <path|->".to_owned(),
                 ],
             )
         );
@@ -637,7 +637,7 @@ mod tests {
         });
 
         let base_url = format!("http://{address}");
-        let context = test_context(base_url.clone(), "oneq org list");
+        let context = test_context(base_url.clone(), "onequery org list");
         let credentials_path = std::env::temp_dir()
             .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
             .join("auth.json");
@@ -646,7 +646,7 @@ mod tests {
         auth_session
             .persist_login_completion(
                 &sample_login_completion("token_old", "alice@example.com"),
-                "oneq auth login",
+                "onequery auth login",
             )
             .unwrap_or_else(|error| panic!("expected test auth session persistence: {error}"));
         let mut runtime = test_runtime(auth_session);
@@ -719,7 +719,7 @@ mod tests {
         });
 
         let base_url = format!("http://{address}");
-        let context = test_context(base_url, "oneq org list");
+        let context = test_context(base_url, "onequery org list");
         let credentials_path = std::env::temp_dir()
             .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
             .join("auth.json");
@@ -804,7 +804,7 @@ mod tests {
         });
 
         let base_url = format!("http://{address}");
-        let context = test_context(base_url.clone(), "oneq org list");
+        let context = test_context(base_url.clone(), "onequery org list");
         let credentials_path = std::env::temp_dir()
             .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
             .join("auth.json");
@@ -813,7 +813,7 @@ mod tests {
         auth_session
             .persist_login_completion(
                 &sample_login_completion("token_old", "alice@example.com"),
-                "oneq auth login",
+                "onequery auth login",
             )
             .unwrap_or_else(|error| panic!("expected initial auth session persistence: {error}"));
 
@@ -822,7 +822,7 @@ mod tests {
         external_store
             .persist_login_completion(
                 &sample_login_completion("token_reloaded", "alice@example.com"),
-                "oneq auth login",
+                "onequery auth login",
             )
             .unwrap_or_else(|error| panic!("expected external auth session persistence: {error}"));
 
@@ -894,7 +894,7 @@ mod tests {
 
         let context = test_context_with_request_id(
             format!("http://{address}"),
-            "oneq org list --request-id req_cli_123",
+            "onequery org list --request-id req_cli_123",
             "req_cli_123",
         );
         let mut runtime = test_runtime(AuthSessionStore::with_env_access_token_for_test(

@@ -128,7 +128,7 @@ sources:
               detail: org `acme-missing` was not found
               code: org_not_found
               stage: resolve_org
-              hint: run `oneq org list`
+              hint: run `onequery org list`
               requestId: req_source_list_org_not_found_01
               retryable: false
       "422":
@@ -236,7 +236,7 @@ source:
               detail: source `warehouse_missing` does not exist in org `acme`
               code: source_not_found
               stage: resolve_source
-              hint: run `oneq source list`
+              hint: run `onequery source list`
               requestId: req_source_show_not_found_01
               retryable: false
       "422":
@@ -308,9 +308,9 @@ sourceConnect:
                   1. Choose a CLI-safe source name such as `warehouse`.
                   2. Retrieve postgres credentials using the provider-specific steps.
                   3. Build one JSON payload with `name` and `credentials`.
-                  4. Run `oneq source connect --source postgres --input '<json>'`.
-                  5. Verify the result with `oneq source show <name>`.
-                command: oneq source connect --source postgres --input '<json>'
+                  4. Run `onequery source connect --source postgres --input '<json>'`.
+                  5. Verify the result with `onequery source show <name>`.
+                command: onequery source connect --source postgres --input '<json>'
                 inputSchema:
                   type: object
                   required:
@@ -461,7 +461,7 @@ sourceConnect:
                   provider: postgres
                   queryable: true
                   status: active
-                nextCommand: oneq source show warehouse
+                nextCommand: onequery source show warehouse
               warnings: []
       "401":
         description: No authenticated session is available

@@ -15,19 +15,19 @@ import {
 describe("cli defaults", () => {
   it("builds canonical CLI command strings for discovery surfaces", () => {
     expect(buildCliSourceConnectCommand("postgres")).toBe(
-      "oneq source connect --source postgres --input '<json>'"
+      "onequery source connect --source postgres --input '<json>'"
     );
     expect(buildCliSourceShowCommand("warehouse")).toBe(
-      "oneq source show warehouse"
+      "onequery source show warehouse"
     );
     expect(buildCliUseInspectCommand("github")).toBe(
-      "oneq use --source github"
+      "onequery use --source github"
     );
     expect(buildCliUseExecuteCommand("github")).toBe(
-      "oneq use --source github --input '<json>'"
+      "onequery use --source github --input '<json>'"
     );
     expect(buildCliUseIntegrationReminder("GitHub", "github")).toBe(
-      "You should connect GitHub in OneQuery before using `oneq use --source github`."
+      "You should connect GitHub in OneQuery before using `onequery use --source github`."
     );
   });
 

@@ -41,7 +41,7 @@ fn with_legacy_snapshot_path(test: impl FnOnce()) {
 #[test]
 fn current_output_snapshot_from_flag() {
     let output = current(&CommandContext {
-        command_line: "oneq --org acme org current".to_owned(),
+        command_line: "onequery --org acme org current".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -57,7 +57,7 @@ fn current_output_snapshot_from_flag() {
 #[test]
 fn current_output_snapshot_unresolved() {
     let output = current(&CommandContext {
-        command_line: "oneq org current".to_owned(),
+        command_line: "onequery org current".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: None,
@@ -73,7 +73,7 @@ fn current_output_snapshot_unresolved() {
 #[test]
 fn current_output_uses_config_source_label() {
     let output = current(&CommandContext {
-        command_line: "oneq org current".to_owned(),
+        command_line: "onequery org current".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -201,7 +201,7 @@ fn org_get_output_with_field_selection_renders_pretty_json() {
 #[test]
 fn org_use_dry_run_completes_after_validation_without_persisting() {
     let context = CommandContext {
-        command_line: "oneq org use globex --dry-run".to_owned(),
+        command_line: "onequery org use globex --dry-run".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -265,7 +265,7 @@ fn org_use_dry_run_completes_after_validation_without_persisting() {
 #[test]
 fn retryable_org_load_failure_transitions_to_explicit_wait_state() {
     let context = CommandContext {
-        command_line: "oneq org list".to_owned(),
+        command_line: "onequery org list".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -285,7 +285,7 @@ fn retryable_org_load_failure_transitions_to_explicit_wait_state() {
                 context.command_line.clone(),
                 ErrorStage::Http,
                 "temporary gateway timeout",
-                vec!["retry oneq org list".to_owned()],
+                vec!["retry onequery org list".to_owned()],
             ),
             retry: RetryTransition::RetryScheduled {
                 next_attempt: 2,
@@ -315,7 +315,7 @@ fn retryable_org_load_failure_transitions_to_explicit_wait_state() {
 #[test]
 fn unauthorized_org_load_failure_transitions_to_explicit_reauth_terminal_state() {
     let context = CommandContext {
-        command_line: "oneq org list".to_owned(),
+        command_line: "onequery org list".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -335,7 +335,7 @@ fn unauthorized_org_load_failure_transitions_to_explicit_reauth_terminal_state()
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "stored credentials are no longer authorized",
-                vec!["oneq auth login".to_owned()],
+                vec!["onequery auth login".to_owned()],
             ),
             retry: RetryTransition::NeedsReauth,
         },
@@ -456,7 +456,7 @@ fn org_list_output_snapshot_empty_state() {
 #[test]
 fn normalize_org_slug_rejects_whitespace() {
     let context = CommandContext {
-        command_line: "oneq org use \"acme west\"".to_owned(),
+        command_line: "onequery org use \"acme west\"".to_owned(),
         base_url: DEFAULT_BASE_URL.to_owned(),
         request_id: None,
         resolved_org: None,

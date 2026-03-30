@@ -200,7 +200,7 @@ mod tests {
             "description": "Create one source connection.",
             "format": "markdown",
             "content": "1. Gather credentials.\n2. Run the command.",
-            "command": "oneq source connect --source postgres --input '<json>'",
+            "command": "onequery source connect --source postgres --input '<json>'",
             "inputSchema": {
                 "type": "object",
                 "required": ["name", "credentials"],
@@ -236,7 +236,7 @@ mod tests {
                 description: "Create one source connection.".to_owned(),
                 format: "markdown".to_owned(),
                 content: "1. Gather credentials.\n2. Run the command.".to_owned(),
-                command: "oneq source connect --source postgres --input '<json>'".to_owned(),
+                command: "onequery source connect --source postgres --input '<json>'".to_owned(),
                 input_schema: SourceConnectInputSchema {
                     field_type: "object".to_owned(),
                     required: vec!["name".to_owned(), "credentials".to_owned()],
@@ -298,7 +298,7 @@ mod tests {
                 "queryable": true,
                 "status": "active"
             },
-            "nextCommand": "oneq source show warehouse"
+            "nextCommand": "onequery source show warehouse"
         });
 
         let parsed = serde_json::from_value::<SourceConnectResult>(payload)
@@ -313,7 +313,7 @@ mod tests {
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 },
-                next_command: "oneq source show warehouse".to_owned(),
+                next_command: "onequery source show warehouse".to_owned(),
             }
         );
     }

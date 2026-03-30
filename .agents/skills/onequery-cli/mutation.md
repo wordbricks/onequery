@@ -15,6 +15,6 @@ This leaf skill extends `.agents/skills/onequery-cli/SKILL.md`.
 
 ## Workflow
 
-1. Distinguish local state changes such as `oneq auth import`, `oneq auth logout`, or `oneq org use` from remote data mutations.
+1. Distinguish local state changes such as `onequery auth import`, `onequery auth logout`, or `onequery org use` from remote data mutations.
 2. Confirm why the state change is needed before applying it.
 3. Report the resulting local state clearly after the command completes.

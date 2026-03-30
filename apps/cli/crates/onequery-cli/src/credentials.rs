@@ -131,7 +131,7 @@ pub(crate) struct ImportedAuthSession {
 
 impl ImportedAuthSession {
     pub(crate) fn from_raw_json(raw: &str, command_line: &str) -> Result<Self, CliError> {
-        // Comment: `oneq auth import` accepts the checked-in `auth.json` shape on purpose so
+        // Comment: `onequery auth import` accepts the checked-in `auth.json` shape on purpose so
         // headless agents can round-trip explicit credentials without a second local session format.
         let auth = serde_json::from_str::<AuthDotJson>(raw).map_err(|parse_error| {
             CliError::new(
@@ -423,7 +423,7 @@ fn normalize_optional_import_field(value: Option<String>) -> Option<String> {
 
 fn auth_import_examples() -> Vec<String> {
     vec![
-        "cat auth.json | oneq auth import --input -".to_owned(),
-        "oneq auth import --input auth.json".to_owned(),
+        "cat auth.json | onequery auth import --input -".to_owned(),
+        "onequery auth import --input auth.json".to_owned(),
     ]
 }

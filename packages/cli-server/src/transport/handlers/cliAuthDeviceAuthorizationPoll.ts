@@ -46,7 +46,7 @@ export function buildAuthorizedDeviceAuthorizationResponse(input: {
     throwCliProblem({
       detail:
         "device authorization completed, but no authenticated session could be resolved",
-      hint: "run `oneq auth login` again",
+      hint: "run `onequery auth login` again",
       key: "NOT_LOGGED_IN",
     });
   }

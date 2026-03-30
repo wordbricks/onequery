@@ -188,7 +188,7 @@ organization:
               detail: org `acme-missing` was not found
               code: org_not_found
               stage: resolve_org
-              hint: run `oneq org list`
+              hint: run `onequery org list`
               requestId: req_org_get_not_found_01
               retryable: false
       "422":

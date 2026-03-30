@@ -35,7 +35,7 @@ pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
 #[cfg(not(debug_assertions))]
 pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
 pub(crate) const CONFIG_SET_SERVER_COMMAND_EXAMPLE: &str =
-    "oneq config set server http://127.0.0.1:4545";
+    "onequery config set server http://127.0.0.1:4545";
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
 
@@ -305,7 +305,7 @@ impl ConfigStore {
 
     #[cfg(test)]
     pub(crate) fn with_state_for_test(path: PathBuf, data: AppConfig) -> Self {
-        let layer_stack = layer_stack_for_persisted_state(&path, &data, "oneq test")
+        let layer_stack = layer_stack_for_persisted_state(&path, &data, "onequery test")
             .unwrap_or_else(|error| {
                 panic!("expected test config layer stack build to succeed: {error}")
             });
@@ -468,7 +468,8 @@ mod tests {
             },
         );
 
-        let error = match store.set_active_org(Some("globex".to_owned()), "oneq org use globex") {
+        let error = match store.set_active_org(Some("globex".to_owned()), "onequery org use globex")
+        {
             Ok(()) => panic!("expected config persistence failure"),
             Err(error) => error,
         };
@@ -504,7 +505,7 @@ mod tests {
         );
 
         store
-            .clear_active_org("oneq auth logout")
+            .clear_active_org("onequery auth logout")
             .unwrap_or_else(|error| panic!("expected clear_active_org to succeed: {error}"));
 
         assert_eq!(
@@ -543,7 +544,7 @@ active = "acme"
         )
         .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let store = ConfigStore::load_from_path(config_path, "oneq org current")
+        let store = ConfigStore::load_from_path(config_path, "onequery org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
         assert_eq!(
@@ -584,7 +585,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path,
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "oneq query execute --source acme --sql \"select 1\"",
+            "onequery query execute --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -615,13 +616,13 @@ active = "acme"
         fs::write(&config_path, "[org]\nactive = \"acme\"\n")
             .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let store = ConfigStore::load_from_path(config_path.clone(), "oneq org current")
+        let store = ConfigStore::load_from_path(config_path.clone(), "onequery org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
         assert_eq!(
             store.layer_stack().clone(),
             ConfigLayerStack::new(vec![
-                super::layers::default_config_layer("oneq org current")
+                super::layers::default_config_layer("onequery org current")
                     .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
                 ConfigLayer::enabled(
                     ConfigLayerSource::UserFile { path: config_path },
@@ -643,13 +644,13 @@ active = "acme"
         let test_dir =
             std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_path = test_dir.join("config.toml");
-        let store = ConfigStore::load_from_path(config_path.clone(), "oneq org current")
+        let store = ConfigStore::load_from_path(config_path.clone(), "onequery org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
         assert_eq!(
             store.layer_stack().clone(),
             ConfigLayerStack::new(vec![
-                super::layers::default_config_layer("oneq org current")
+                super::layers::default_config_layer("onequery org current")
                     .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
                 ConfigLayer::disabled(
                     ConfigLayerSource::UserFile { path: config_path },
@@ -681,7 +682,7 @@ active = "acme"
             .with(EventCollectorLayer::new(event_collector.clone()));
         let _guard = tracing::subscriber::set_default(subscriber);
         tracing::callsite::rebuild_interest_cache();
-        let store = ConfigStore::load_from_path(config_path, "oneq org current")
+        let store = ConfigStore::load_from_path(config_path, "onequery org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
         tracing::callsite::rebuild_interest_cache();
 
@@ -771,7 +772,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path,
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "oneq query execute --source acme --sql \"select 1\"",
+            "onequery query execute --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -841,7 +842,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path.clone(),
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "oneq query execute --source acme --sql \"select 1\"",
+            "onequery query execute --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -854,7 +855,7 @@ active = "acme"
             (
                 ConfigLayerStack::new(vec![
                     super::layers::default_config_layer(
-                        "oneq query execute --source acme --sql \"select 1\"",
+                        "onequery query execute --source acme --sql \"select 1\"",
                     )
                     .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
                     ConfigLayer::enabled(
@@ -961,7 +962,7 @@ active = "acme"
     fn materialize_runtime_config_validates_after_applying_typed_overrides() {
         let layer_stack = ConfigLayerStack::new(vec![
             super::layers::default_config_layer(
-                "oneq query execute --source acme --sql \"select 1\"",
+                "onequery query execute --source acme --sql \"select 1\"",
             )
             .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
         ]);
@@ -973,7 +974,7 @@ active = "acme"
             .expect("expected config TOML serialization to succeed"),
             ConfigOrigins::defaults(),
             &TypedConfigOverrides::with_request_timeout_sec(0),
-            "oneq query execute --source acme --sql \"select 1\"",
+            "onequery query execute --source acme --sql \"select 1\"",
             Path::new("/tmp/onequery/config.toml"),
         )
         .map(|_| ())
@@ -1001,7 +1002,7 @@ active = "acme"
         fs::write(&config_path, "[api]\nrequest_timeout_sec = 0\n")
             .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let error = ConfigStore::load_from_path(config_path.clone(), "oneq org current")
+        let error = ConfigStore::load_from_path(config_path.clone(), "onequery org current")
             .expect_err("expected invalid user config to fail");
 
         assert_eq!(
@@ -1035,7 +1036,7 @@ active = "acme"
         )
         .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let error = ConfigStore::load_from_path(config_path.clone(), "oneq auth whoami")
+        let error = ConfigStore::load_from_path(config_path.clone(), "onequery auth whoami")
             .expect_err("expected invalid TOML config to fail");
 
         assert_eq!(
@@ -1072,7 +1073,7 @@ active = "acme"
         fs::write(&config_path, "[api]\nrequest_timeout_sec = \"slow\"\n")
             .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let error = ConfigStore::load_from_path(config_path.clone(), "oneq auth whoami")
+        let error = ConfigStore::load_from_path(config_path.clone(), "onequery auth whoami")
             .expect_err("expected schema-invalid config to fail");
 
         assert_eq!(
@@ -1184,7 +1185,7 @@ flag = true
         )
         .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
 
-        let store = ConfigStore::load_from_path(config_path, "oneq org current")
+        let store = ConfigStore::load_from_path(config_path, "onequery org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
         assert_eq!(

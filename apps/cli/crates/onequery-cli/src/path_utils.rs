@@ -687,7 +687,7 @@ mod tests {
         atomic_write_private_file(
             &symlink_path,
             "{\"after\":true}\n",
-            "oneq auth import --input auth.json",
+            "onequery auth import --input auth.json",
             ErrorStage::LoadCredentials,
             "credentials",
         )
@@ -712,7 +712,7 @@ mod tests {
 
         create_private_dir(
             &private_dir,
-            "oneq auth login",
+            "onequery auth login",
             ErrorStage::LoadCredentials,
             "auth",
         )

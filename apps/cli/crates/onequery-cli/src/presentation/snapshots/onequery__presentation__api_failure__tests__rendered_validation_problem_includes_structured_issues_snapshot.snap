@@ -3,7 +3,7 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Invalid Request
-Command: oneq query execute --source '' --sql "delete from events"
+Command: onequery query execute --source '' --sql "delete from events"
 Stage: execute_query
 Why: request body contains invalid fields
 Request ID: req_validation

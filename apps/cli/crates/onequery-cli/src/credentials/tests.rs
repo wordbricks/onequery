@@ -35,7 +35,7 @@ fn file_storage_load_returns_none_when_auth_file_is_missing() {
     });
     let auth_path = test_dir.join("auth.json");
 
-    let snapshot = read_persisted_auth_session_record(&auth_path, "oneq auth whoami")
+    let snapshot = read_persisted_auth_session_record(&auth_path, "onequery auth whoami")
         .unwrap_or_else(|error| panic!("expected missing auth file load to succeed: {error}"));
 
     assert_eq!(snapshot, None);
@@ -56,7 +56,7 @@ fn file_storage_reports_parse_errors_for_malformed_auth_json() {
         panic!("expected malformed auth file write to succeed: {error}");
     });
 
-    let error = read_persisted_auth_session_record(&auth_path, "oneq auth whoami")
+    let error = read_persisted_auth_session_record(&auth_path, "onequery auth whoami")
         .expect_err("expected malformed auth file parse to fail");
 
     assert_eq!(error.title, "failed to parse auth file");
@@ -82,7 +82,7 @@ fn file_storage_persist_preserves_in_memory_state_when_write_fails() {
     let error = store
         .persist_login_completion(
             &sample_login_completion("access_token_new", "alice@example.com"),
-            "oneq auth login",
+            "onequery auth login",
         )
         .expect_err("expected auth persistence failure");
 
@@ -116,7 +116,7 @@ fn file_storage_clear_preserves_in_memory_state_when_delete_fails() {
     );
 
     let error = store
-        .clear_session("oneq auth logout")
+        .clear_session("onequery auth logout")
         .expect_err("expected auth delete failure");
 
     assert_eq!(
@@ -161,7 +161,7 @@ fn file_storage_clear_removes_persisted_state_and_in_memory_state() {
     );
 
     store
-        .clear_session("oneq auth logout")
+        .clear_session("onequery auth logout")
         .unwrap_or_else(|error| panic!("expected file clear to succeed: {error}"));
 
     assert_eq!(
@@ -201,7 +201,7 @@ fn file_storage_loads_current_auth_json_shape() {
     fs::write(&auth_path, serialized)
         .unwrap_or_else(|error| panic!("expected auth file write to succeed: {error}"));
 
-    let snapshot = read_persisted_auth_session_record(&auth_path, "oneq auth whoami")
+    let snapshot = read_persisted_auth_session_record(&auth_path, "onequery auth whoami")
         .unwrap_or_else(|error| panic!("expected auth load to succeed: {error}"))
         .expect("expected persisted auth record");
     let snapshot = AuthSessionSnapshot::from_auth_json(snapshot);
@@ -245,7 +245,7 @@ fn import_payload_parses_current_auth_json_shape() {
     })
     .unwrap_or_else(|error| panic!("expected auth serialization to succeed: {error}"));
 
-    let imported = ImportedAuthSession::from_raw_json(&raw, "oneq auth import --input -")
+    let imported = ImportedAuthSession::from_raw_json(&raw, "onequery auth import --input -")
         .unwrap_or_else(|error| panic!("expected auth import parse to succeed: {error}"));
 
     assert_eq!(
@@ -275,7 +275,7 @@ fn import_payload_rejects_missing_user_identity() {
     })
     .unwrap_or_else(|error| panic!("expected auth serialization to succeed: {error}"));
 
-    let error = ImportedAuthSession::from_raw_json(&raw, "oneq auth import --input -")
+    let error = ImportedAuthSession::from_raw_json(&raw, "onequery auth import --input -")
         .expect_err("expected auth import to reject payloads without user identity");
 
     assert_eq!(error.title, "invalid auth import payload");
@@ -293,7 +293,7 @@ fn file_storage_persist_records_user_and_session_metadata() {
     store
         .persist_login_completion(
             &sample_login_completion("pat_file", "alice@example.com"),
-            "oneq auth login",
+            "onequery auth login",
         )
         .unwrap_or_else(|error| panic!("expected auth persistence to succeed: {error}"));
 
@@ -364,7 +364,7 @@ fn file_storage_persist_imported_session_preserves_import_metadata() {
 
     let mut store = AuthSessionStore::with_file_access_token_for_test(auth_path.clone(), None);
     store
-        .persist_imported_session(&imported, "oneq auth import --input auth.json")
+        .persist_imported_session(&imported, "onequery auth import --input auth.json")
         .unwrap_or_else(|error| panic!("expected auth import persistence to succeed: {error}"));
 
     let serialized = fs::read_to_string(&auth_path)
