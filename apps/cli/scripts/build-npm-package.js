@@ -155,7 +155,7 @@ async function stageSources({ stagingDir, packageName, version }) {
     packageJson.version = version;
     packageJson.files = ["bin", PACKAGED_RUNTIME_DIR, "README.md"];
     // CONTEXT: optional dependency keys stay unscoped because they are npm
-    // alias names. The published package backing each alias is @wordbricks/onequery.
+    // alias names. The published package backing each alias is @onequery/cli.
     packageJson.optionalDependencies = Object.fromEntries(
       Object.values(PLATFORM_PACKAGES).map((platformPackage) => [
         platformPackage.optionalDependencyName,

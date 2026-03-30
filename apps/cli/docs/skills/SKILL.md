@@ -52,7 +52,7 @@ workflows that stay within the public OSS surface.
 ### Step 1: Confirm CLI availability
 
 1. Run `command -v onequery`.
-2. If `onequery` is missing, install it with `npm install -g @wordbricks/onequery`.
+2. If `onequery` is missing, install it with `npm install -g @onequery/cli`.
 
 ### Step 2: Branch on schema-only discovery vs. protected access
 
