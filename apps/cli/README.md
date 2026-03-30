@@ -27,15 +27,15 @@ Credential storage:
 
 Version cache:
 
-- Release builds refresh `${XDG_CONFIG_HOME:-~/.config}/onequery/version.json` on Unix-like systems and `%APPDATA%\\onequery\\version.json` on Windows as a cached latest-version record sourced from the npm dist-tags for `@wordbricks/onequery`.
+- Release builds refresh `${XDG_CONFIG_HOME:-~/.config}/onequery/version.json` on Unix-like systems and `%APPDATA%\\onequery\\version.json` on Windows as a cached latest-version record sourced from the npm dist-tags for `@onequery/cli`.
 - The cache format mirrors Codex: `latest_version`, `last_checked_at`, and `dismissed_version`.
 
 Install:
 
 - `curl -fsSL https://onequery.wordbricks.ai/ | sh`
-- `bun install -g @wordbricks/onequery`
-- `bunx @wordbricks/onequery --help`
-- `npx @wordbricks/onequery --help`
+- `bun install -g @onequery/cli`
+- `bunx @onequery/cli --help`
+- `npx @onequery/cli --help`
 - The published npm package currently supports macOS and Linux only.
 - Packaged `onequery serve` uses a bundled native server executable and does not require `bun` on `PATH`.
 - Linux npm installs ship musl-linked binaries so the CLI runs on both glibc and musl-based distributions, including Alpine.
@@ -46,7 +46,7 @@ Release:
 - Keep `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` at `0.0.0` on normal development commits.
 - Only temporary `release/...` branches should change `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` to the real release version before tagging.
 - After the release is tagged, close or delete that temporary release branch/PR so `origin/main` stays at `0.0.0`.
-- Configure npm trusted publishing for `@wordbricks/onequery` with GitHub Actions using the workflow filename `cli-release.yml`.
+- Configure npm trusted publishing for `@onequery/cli` with GitHub Actions using the workflow filename `cli-release.yml`.
 - Push a tag like `cli-v0.1.0` or `cli-v0.1.0-alpha.1`.
 - The `cli-release` workflow validates `cli-v<version>` against `apps/cli/Cargo.toml`, builds the CLI binaries plus per-target self-host server executables, stages versioned npm tarballs plus stable installer asset names, creates a GitHub release, and publishes the versioned tarballs to npm with `npm publish --provenance`.
 - Linux npm platform tarballs are staged from musl artifacts for the broadest runtime compatibility.

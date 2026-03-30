@@ -24,7 +24,7 @@
       },
     },
     "apps/cli": {
-      "name": "@wordbricks/onequery",
+      "name": "@onequery/cli",
       "version": "0.0.0-dev",
       "bin": {
         "onequery": "bin/onequery.js",
@@ -1187,7 +1187,7 @@
 
     "@vitest/utils": ["@vitest/utils@4.1.1", "", { "dependencies": { "@vitest/pretty-format": "4.1.1", "convert-source-map": "^2.0.0", "tinyrainbow": "^3.0.3" } }, "sha512-cNxAlaB3sHoCdL6pj6yyUXv9Gry1NHNg0kFTXdvSIZXLHsqKH7chiWOkwJ5s5+d/oMwcoG9T0bKU38JZWKusrQ=="],
 
-    "@wordbricks/onequery": ["@wordbricks/onequery@workspace:apps/cli"],
+    "@onequery/cli": ["@onequery/cli@workspace:apps/cli"],
 
     "@xstate/react": ["@xstate/react@6.0.0", "", { "dependencies": { "use-isomorphic-layout-effect": "^1.1.2", "use-sync-external-store": "^1.2.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "xstate": "^5.20.0" }, "optionalPeers": ["xstate"] }, "sha512-xXlLpFJxqLhhmecAXclBECgk+B4zYSrDTl8hTfPZBogkn82OHKbm9zJxox3Z/YXoOhAQhKFTRLMYGdlbhc6T9A=="],
 

@@ -20,19 +20,19 @@ Prerequisites:
 Install directly with npm:
 
 ```bash
-npm install -g @wordbricks/onequery
+npm install -g @onequery/cli
 ```
 
 ```bash
-bun install -g @wordbricks/onequery
+bun install -g @onequery/cli
 ```
 
 Other package-manager entrypoints still work:
 
 ```bash
-bunx @wordbricks/onequery --help
+bunx @onequery/cli --help
 # or
-npx @wordbricks/onequery --help
+npx @onequery/cli --help
 ```
 
 ## Quick Start

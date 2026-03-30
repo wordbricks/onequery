@@ -134,8 +134,8 @@ jobs:
           # Keep detection lightweight by using the repo-pinned Turbo CLI
           # without installing the full workspace dependencies first.
           TURBO_VERSION="$(bun -e 'process.stdout.write(require("./package.json").devDependencies.turbo)')"
-          json="$(bunx "turbo@$TURBO_VERSION" run typecheck build test --dry=json --filter="...[$BASE_SHA...$HEAD_SHA]" --filter='!@wordbricks/onequery')"
-          count="$(printf '%s\n' "$json" | bun -e 'const fs = require("fs"); const input = fs.readFileSync(0, "utf8"); const data = JSON.parse(input.slice(input.indexOf("{"))); const count = data.tasks.filter((task) => task.package !== "//" && task.package !== "@wordbricks/onequery" && task.command !== "<NONEXISTENT>").length; process.stdout.write(String(count));')"
+          json="$(bunx "turbo@$TURBO_VERSION" run typecheck build test --dry=json --filter="...[$BASE_SHA...$HEAD_SHA]" --filter='!@onequery/cli')"
+          count="$(printf '%s\n' "$json" | bun -e 'const fs = require("fs"); const input = fs.readFileSync(0, "utf8"); const data = JSON.parse(input.slice(input.indexOf("{"))); const count = data.tasks.filter((task) => task.package !== "//" && task.package !== "@onequery/cli" && task.command !== "<NONEXISTENT>").length; process.stdout.write(String(count));')"
 
           if [[ "$count" -gt 0 ]]; then
             echo "has_tasks=true" >> "$GITHUB_OUTPUT"
@@ -189,27 +189,27 @@ jobs:
 
       - name: Type check (affected)
         if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
-        run: bunx turbo run typecheck --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+        run: bunx turbo run typecheck --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@onequery/cli'
 
       - name: Type check (full)
         if: github.event_name != 'pull_request'
-        run: bunx turbo run typecheck --filter=!@wordbricks/onequery
+        run: bunx turbo run typecheck --filter=!@onequery/cli
 
       - name: Build (affected)
         if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
-        run: bunx turbo run build --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+        run: bunx turbo run build --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@onequery/cli'
 
       - name: Build (full)
         if: github.event_name != 'pull_request'
-        run: bunx turbo run build --filter=!@wordbricks/onequery
+        run: bunx turbo run build --filter=!@onequery/cli
 
       - name: Test (affected)
         if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
-        run: bunx turbo run test --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@wordbricks/onequery'
+        run: bunx turbo run test --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@onequery/cli'
 
       - name: Test (full)
         if: github.event_name != 'pull_request'
-        run: bunx turbo run test --filter=!@wordbricks/onequery
+        run: bunx turbo run test --filter=!@onequery/cli
 
       # - name: Check unused code
       #   run: bun run knip

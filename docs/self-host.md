@@ -21,14 +21,14 @@ curl -fsSL https://onequery.wordbricks.ai/ | sh
 Or install it directly with Bun:
 
 ```bash
-bun install -g @wordbricks/onequery
+bun install -g @onequery/cli
 ```
 
 Other package-manager entrypoints still work:
 
 ```bash
-bunx @wordbricks/onequery --help
-npx @wordbricks/onequery --help
+bunx @onequery/cli --help
+npx @onequery/cli --help
 ```
 
 Start the server:

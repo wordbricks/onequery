@@ -1,5 +1,5 @@
 {
-  "name": "@wordbricks/onequery",
+  "name": "@onequery/cli",
   "version": "0.0.0-dev",
   "private": true,
   "description": "OneQuery CLI",
