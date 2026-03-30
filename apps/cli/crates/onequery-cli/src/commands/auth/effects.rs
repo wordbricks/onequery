@@ -2,12 +2,12 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 use tokio::time::Duration;
 use tokio::time::sleep;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::credentials::ImportedAuthSession;
 use crate::path_utils::resolve_user_path_for_cli;

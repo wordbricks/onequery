@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
+import { parse as parseToml } from "smol-toml";
 import type { ZodObject } from "zod";
 import type { SyncAdapter } from "zod-config";
 import { loadConfigSync } from "zod-config";
@@ -20,6 +21,8 @@ export interface LiteralConfigAdapterOptions {
   readonly name: string;
 }
 
+export type TomlFileData = Record<string, unknown>;
+
 export function literalConfigAdapter({
   data,
   name,
@@ -28,6 +31,29 @@ export function literalConfigAdapter({
     name,
     read: () => data,
   };
+}
+
+export function readTomlFileSync(path: string): Readonly<TomlFileData> {
+  try {
+    const parsed = parseToml(readFileSync(path, "utf8"));
+
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return Object.freeze({});
+    }
+
+    return Object.freeze(parsed as TomlFileData);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse / read TOML file at ${path}: ${
+        error instanceof Error ? error.message : error
+      }`,
+      { cause: error }
+    );
+  }
 }
 
 export function loadConfigFromSourcesSync<Schema extends ZodObject>(

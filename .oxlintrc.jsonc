@@ -172,7 +172,6 @@
     "react-hooks/exhaustive-deps": "off", // TEMP ~16 — fix hook dependency arrays
     "max-classes-per-file": "off", // TEMP ~14 — split files with multiple classes
     "react/jsx-handler-names": "off", // TEMP ~13 — prefix handlers with handle/on
-    "typescript/parameter-properties": "off", // TEMP ~11 — use class property declarations
     "no-promise-executor-return": "off", // TEMP ~10 — don't return in Promise executor
     "react/jsx-pascal-case": "off", // TEMP ~9 — use PascalCase for JSX components
     "typescript/no-invalid-void-type": "off", // TEMP ~8 — restrict void to return types
@@ -184,18 +183,12 @@
     "oxc/no-barrel-file": "off", // TEMP ~4 — eliminate barrel/index re-exports
     "no-warning-comments": "off", // TEMP ~3 — resolve TODO/FIXME comments
     "react/no-array-index-key": "off", // TEMP ~3 — don't use array index as key
-    "promise/prefer-catch": "off", // TEMP ~2 — use .catch() for error handling
     "promise/no-promise-in-callback": "off", // TEMP ~2 — avoid promises in callbacks
     "typescript/triple-slash-reference": "off", // TEMP ~1
-    "typescript/no-extraneous-class": "off", // TEMP ~1
-    "typescript/no-dynamic-delete": "off", // TEMP ~1
-    "typescript/ban-ts-comment": "off", // TEMP ~1
     "no-useless-return": "off", // TEMP ~1
     "no-script-url": "off", // TEMP ~1
     "no-redeclare": "off", // TEMP ~1
     "no-new": "off", // TEMP ~1
-    "react/no-set-state": "off", // TEMP ~1
-    "jsx-a11y/prefer-tag-over-role": "off", // TEMP ~1
   },
   "ignorePatterns": [
     "**/node_modules",

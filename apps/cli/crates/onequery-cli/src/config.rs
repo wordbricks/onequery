@@ -6,12 +6,12 @@ pub(crate) mod self_host;
 use std::path::Path;
 use std::path::PathBuf;
 
-use serde::Deserialize;
-use serde::Serialize;
-use toml::Value as TomlValue;
 pub(crate) use onequery_config::ConfigLayerSource;
 pub(crate) use onequery_config::ConfigLayerStack;
 pub(crate) use onequery_config::ConfigLayerStatus;
+use serde::Deserialize;
+use serde::Serialize;
+use toml::Value as TomlValue;
 
 use self::layers::ConfigOrigins;
 use self::layers::ConfigValueOrigin;
@@ -329,6 +329,11 @@ mod tests {
     use std::sync::Arc;
     use std::sync::Mutex;
 
+    use onequery_config::ConfigLayer;
+    use onequery_config::ConfigLayerStack;
+    use onequery_config::build_cli_overrides_layer;
+    use onequery_config::config_fingerprint;
+    use onequery_config::merge_toml_values;
     use pretty_assertions::assert_eq;
     use toml::Value as TomlValue;
     use tracing::Subscriber;
@@ -339,11 +344,6 @@ mod tests {
     use tracing_subscriber::layer::Layer;
     use tracing_subscriber::layer::SubscriberExt;
     use uuid::Uuid;
-    use onequery_config::ConfigLayer;
-    use onequery_config::ConfigLayerStack;
-    use onequery_config::build_cli_overrides_layer;
-    use onequery_config::config_fingerprint;
-    use onequery_config::merge_toml_values;
 
     use super::AppConfig;
     use super::ConfigLayerSource;
@@ -452,7 +452,8 @@ mod tests {
 
     #[test]
     fn set_active_org_preserves_in_memory_state_when_persist_fails() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let invalid_config_path = test_dir.join("config-target");
         fs::create_dir_all(&invalid_config_path).unwrap_or_else(|error| {
             panic!("expected temp config directory creation to succeed: {error}");
@@ -491,7 +492,8 @@ mod tests {
 
     #[test]
     fn clear_active_org_does_not_create_config_when_no_org_is_selected() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_path = test_dir.join("config.toml");
         let mut store = ConfigStore::with_state_for_test(
             config_path.clone(),
@@ -521,7 +523,8 @@ mod tests {
 
     #[test]
     fn load_merges_user_file_layer_over_defaults() {
-        let home_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let home_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_dir = home_dir.join(".config").join("onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
@@ -559,7 +562,8 @@ active = "acme"
 
     #[test]
     fn load_applies_defaults_then_user_file_then_typed_overrides() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
         });
@@ -600,7 +604,8 @@ active = "acme"
 
     #[test]
     fn load_records_default_and_user_config_layers() {
-        let home_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let home_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_dir = home_dir.join(".config").join("onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
@@ -635,7 +640,8 @@ active = "acme"
 
     #[test]
     fn load_records_missing_user_config_layer_as_disabled() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_path = test_dir.join("config.toml");
         let store = ConfigStore::load_from_path(config_path.clone(), "oneq org current")
             .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
@@ -657,7 +663,8 @@ active = "acme"
     #[test]
     fn load_emits_structured_logs_for_config_source_resolution() {
         let _subscriber_lock = crate::test_support::lock_tracing_subscriber();
-        let home_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let home_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         let config_dir = home_dir.join(".config").join("onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
@@ -751,7 +758,8 @@ active = "acme"
 
     #[test]
     fn load_applies_typed_overrides_after_user_file_layer() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -786,7 +794,8 @@ active = "acme"
 
     #[test]
     fn load_applies_raw_cli_overrides_before_typed_overrides() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -819,7 +828,8 @@ active = "acme"
 
     #[test]
     fn typed_overrides_do_not_expand_raw_layer_stack() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -873,7 +883,8 @@ active = "acme"
 
     #[test]
     fn raw_cli_overrides_expand_layer_stack_and_origin_tracking() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -980,7 +991,8 @@ active = "acme"
 
     #[test]
     fn load_reports_user_file_origin_for_invalid_request_timeout() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -1010,7 +1022,8 @@ active = "acme"
 
     #[test]
     fn load_reports_invalid_toml_with_actionable_diagnostics() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -1049,7 +1062,8 @@ active = "acme"
 
     #[test]
     fn load_reports_schema_errors_after_merging_raw_toml_layers() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -1085,7 +1099,8 @@ active = "acme"
 
     #[test]
     fn load_reports_cli_raw_override_origin_for_invalid_request_timeout() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -1115,7 +1130,8 @@ active = "acme"
 
     #[test]
     fn load_reports_cli_raw_override_origin_for_schema_errors() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });
@@ -1149,7 +1165,8 @@ active = "acme"
 
     #[test]
     fn load_keeps_unknown_tables_while_materializing_known_config_fields() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
             panic!("expected config test directory creation to succeed: {error}");
         });

@@ -60,10 +60,10 @@ pub(super) fn render_query_output(
             || read.pagination.cursor().is_some(),
     );
 
-    Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&result, "oneq query")
-    })
-    .with_untrusted_output_metadata(output_metadata))
+    Ok(
+        CommandOutput::try_deferred(lines, move || serialize_command_data(&result, "oneq query"))
+            .with_untrusted_output_metadata(output_metadata),
+    )
 }
 
 pub(super) fn render_query_validation_output(

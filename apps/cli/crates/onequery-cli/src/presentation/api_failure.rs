@@ -1,7 +1,7 @@
-use reqwest::StatusCode;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
+use reqwest::StatusCode;
 
 use crate::transport::client::ApiClientBuildFailure;
 use crate::transport::http::ApiFailure;
@@ -110,10 +110,7 @@ pub(crate) fn present_api_client_build_failure(
             command.to_owned(),
             ErrorStage::Auth,
             message,
-            vec![
-                "oneq auth logout".to_owned(),
-                "oneq auth login".to_owned(),
-            ],
+            vec!["oneq auth logout".to_owned(), "oneq auth login".to_owned()],
         ),
         ApiClientBuildFailure::InvalidRequestId { message } => CliError::new(
             "invalid request ID",
@@ -157,12 +154,12 @@ fn humanize_error_code(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
+    use onequery_cli_core::error::CliError;
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
     use serde_json::Value;
     use serde_json::json;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
 
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
@@ -504,7 +501,9 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-logged-in".to_owned()),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
+                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -552,7 +551,9 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-logged-in".to_owned()),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
+                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -583,7 +584,9 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::FORBIDDEN,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-authorized".to_owned()),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-authorized".to_owned(),
+                ),
                 title: Some("Forbidden".to_owned()),
                 detail: Some("this account can no longer access the org list".to_owned()),
                 code: Some("forbidden".to_owned()),
@@ -615,7 +618,9 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-logged-in".to_owned()),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
+                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -647,7 +652,9 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::BAD_REQUEST,
-                problem_type: Some("https://onequery.invalid/problems/cli/invalid-request".to_owned()),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/invalid-request".to_owned(),
+                ),
                 title: Some("Invalid Request".to_owned()),
                 detail: Some("request body contains invalid fields".to_owned()),
                 code: Some("invalid_request".to_owned()),

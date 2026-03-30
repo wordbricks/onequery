@@ -1,0 +1,28 @@
+{
+  "name": "@onequery/config-loader",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outfile ./dist/index.js --target node --format esm --packages external",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "smol-toml": "1.6.1",
+    "zod": "catalog:",
+    "zod-config": "1.4.0"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

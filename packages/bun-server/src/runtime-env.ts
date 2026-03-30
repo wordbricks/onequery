@@ -1,7 +1,7 @@
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadConfigFromSourcesSync } from "@onequery/config";
+import { loadConfigFromSourcesSync } from "@onequery/config-loader";
 import { createLocalProcessEnv } from "@onequery/dev-config/local-env";
 import type { RuntimeRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { z } from "zod";

@@ -1,7 +1,7 @@
 import {
   literalConfigAdapter,
   loadConfigFromSourcesSync,
-} from "@onequery/config";
+} from "@onequery/config-loader";
 import { z } from "zod";
 
 function createHttpOrigin(host: string, port: number): string {

@@ -1,0 +1,24 @@
+{
+  "name": "@onequery/github-rulesets",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check": "bun run ./src/cli.ts --check",
+    "plan": "bun run ./src/cli.ts --plan",
+    "apply": "bun run ./src/cli.ts --apply",
+    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

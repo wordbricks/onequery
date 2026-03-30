@@ -2,15 +2,18 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { loadConfigFromSourcesSync } from "@onequery/config";
+import {
+  loadConfigFromSourcesSync,
+  readTomlFileSync,
+} from "@onequery/config-loader";
+import { z } from "zod";
+
 import {
   LOCAL_AGENT_ORIGIN,
   LOCAL_DATABASE_URL,
   LOCAL_WEB_DOCKER_ORIGIN,
   LOCAL_WEB_ORIGIN,
-} from "@onequery/dev-config/topology";
-import { parse as parseToml } from "smol-toml";
-import { z } from "zod";
+} from "./topology";
 
 const DOCKER_URL = LOCAL_WEB_DOCKER_ORIGIN;
 const LOCAL_CONFIG_RELATIVE_PATH = "onequery.local.env.toml";
@@ -427,10 +430,7 @@ export function readLocalConfigFile(
     return {};
   }
 
-  const parsed = parseToml(readFileSync(filePath, "utf8"));
-  return typeof parsed === "object" && parsed !== null
-    ? (parsed as ManagedLocalConfigSource)
-    : {};
+  return readTomlFileSync(filePath) as ManagedLocalConfigSource;
 }
 
 export function createLocalProcessEnv(

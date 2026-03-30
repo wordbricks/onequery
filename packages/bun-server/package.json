@@ -21,7 +21,7 @@
     "@hono/zod-validator": "catalog:",
     "@onequery/base": "workspace:*",
     "@onequery/cli-server": "workspace:*",
-    "@onequery/config": "workspace:*",
+    "@onequery/config-loader": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/dev-config": "workspace:*",
     "@onequery/server": "workspace:*",

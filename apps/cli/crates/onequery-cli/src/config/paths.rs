@@ -413,9 +413,8 @@ mod tests {
 
     #[test]
     fn unix_config_root_falls_back_to_home_dot_config() {
-        let resolved =
-            unix_config_root(None, Some(PathBuf::from("/Users/alice")), "oneq org list")
-                .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
+        let resolved = unix_config_root(None, Some(PathBuf::from("/Users/alice")), "oneq org list")
+            .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
 
         assert_eq!(resolved, PathBuf::from("/Users/alice/.config"));
     }

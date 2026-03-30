@@ -2,9 +2,6 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use serde::Deserialize;
-use serde::Serialize;
-use toml::Value as TomlValue;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use onequery_config::ConfigLayer;
@@ -16,6 +13,9 @@ use onequery_config::config_error_from_toml;
 use onequery_config::config_fingerprint;
 use onequery_config::deserialize_typed_toml;
 use onequery_config::format_config_error;
+use serde::Deserialize;
+use serde::Serialize;
+use toml::Value as TomlValue;
 
 use super::AppConfig;
 use super::DEFAULT_REQUEST_TIMEOUT_SEC;

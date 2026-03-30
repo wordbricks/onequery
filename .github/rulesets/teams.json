@@ -1,0 +1,10 @@
+{
+  "teams": [
+    {
+      "slug": "onequery-maintainers",
+      "name": "OneQuery Maintainers",
+      "privacy": "closed",
+      "members": ["siisee11", "ysm-dev", "lentil32"]
+    }
+  ]
+}

@@ -357,10 +357,10 @@ mod tests {
     use std::sync::mpsc;
 
     use insta::assert_snapshot;
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use uuid::Uuid;
-    use onequery_cli_core::error::ErrorStage;
 
     use crate::credentials::AuthSessionStore;
     use crate::platform::BrowserLaunchError;
@@ -554,7 +554,8 @@ mod tests {
                 .unwrap_or_else(|error| panic!("expected response write: {error}"));
         });
 
-        let test_dir = std::env::temp_dir().join(format!("onequery-refresh-env-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-refresh-env-{}", Uuid::new_v4()));
         let auth_path = test_dir.join("auth.json");
         let mut runtime = test_runtime(AuthSessionStore::with_env_access_token_for_test(
             auth_path.clone(),
@@ -587,7 +588,8 @@ mod tests {
 
     #[tokio::test]
     async fn execute_refresh_reports_missing_credentials_as_not_logged_in() {
-        let test_dir = std::env::temp_dir().join(format!("onequery-refresh-none-{}", Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-refresh-none-{}", Uuid::new_v4()));
         let auth_path = test_dir.join("auth.json");
         let mut runtime = test_runtime(AuthSessionStore::with_file_access_token_for_test(
             auth_path, None,

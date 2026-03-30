@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { loadConfigFromSourcesSync } from "@onequery/config";
+import { loadConfigFromSourcesSync } from "@onequery/config-loader";
 import { z } from "zod";
 
 const DEFAULT_POLL_INTERVAL_MS = 3000;

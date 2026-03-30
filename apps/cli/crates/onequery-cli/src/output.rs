@@ -1,12 +1,12 @@
 use std::fmt;
 
 use clap::ValueEnum;
+use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use crate::output_metadata::UntrustedOutputMetadata;
 

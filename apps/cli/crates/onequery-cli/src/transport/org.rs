@@ -411,7 +411,9 @@ mod tests {
             error,
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some("https://onequery.invalid/problems/cli/not-logged-in".to_owned(),),
+                problem_type: Some(
+                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
+                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("no authenticated session was found".to_owned()),
                 code: Some("not_logged_in".to_owned()),

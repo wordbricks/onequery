@@ -415,9 +415,9 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use uuid::Uuid;
-    use onequery_cli_core::error::ErrorStage;
 
     use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;

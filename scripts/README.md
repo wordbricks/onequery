@@ -72,8 +72,41 @@ For a higher-level overview, see
 
 - `scripts/dev-setup.ts`: local Postgres bootstrap plus managed config syncing and
   validation.
+- `packages/github-rulesets`: package that owns the repo-tracked GitHub
+  ruleset planner and sync CLI for `.github/rulesets/`.
 - `scripts/sync-local-env.ts`: refreshes the tracked TOML template and syncs
   the managed local TOML file.
 - `scripts/run-local-env-command.ts`: runs a command with the managed local config
   projected from TOML at process launch.
 - `scripts/upload-image.ts`: uploads local images into the app’s asset flow.
+
+## GitHub Rulesets
+
+The GitHub repository rulesets for OSS governance are tracked in
+`.github/rulesets/`:
+
+- `main.json`: the `main` branch protection ruleset. The
+  `onequery-maintainers` team can bypass pull request review requirements from
+  the PR UI without bypassing CI or branch-history protections.
+- `cli-release-tags.json`: the protected CLI release tag ruleset.
+- `teams.json`: org team state required by the tag ruleset.
+
+Use the Bun scripts below to check or apply the GitHub state:
+
+```bash
+bun run github:rulesets:check
+bun run github:rulesets:plan
+bun run github:rulesets:apply
+```
+
+`github:rulesets:plan` prints the exact team/ruleset changes that
+`github:rulesets:apply` would make without mutating GitHub state.
+
+The root commands delegate to `packages/github-rulesets`, which can also be run
+directly:
+
+```bash
+bun run --cwd packages/github-rulesets check
+bun run --cwd packages/github-rulesets plan
+bun run --cwd packages/github-rulesets apply
+```

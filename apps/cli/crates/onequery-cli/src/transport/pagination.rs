@@ -31,8 +31,8 @@ pub(crate) fn optional_page_size(
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
     use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
 
     use crate::transport::http::conversion_failure;
 
