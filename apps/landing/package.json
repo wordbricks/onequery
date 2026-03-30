@@ -1,7 +1,7 @@
 {
   "name": "@onequery/landing",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "scripts": {
     "dev": "vite",

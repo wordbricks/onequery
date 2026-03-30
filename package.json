@@ -1,6 +1,6 @@
 {
   "name": "onequery-workspace",
-  "private": true,
+  "private": false,
   "workspaces": {
     "packages": [
       "apps/*",

@@ -1,7 +1,7 @@
 {
   "name": "@onequery/config-loader",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "sideEffects": false,
   "exports": {
