@@ -2,17 +2,6 @@
 
 Rust CLI workspace for `onequery` and the companion CLI API contract.
 
-Experimental binaries:
-
-- `cargo run -p onequery-wtl --bin wtl -- run`
-  - Reads the initial request from stdin.
-  - Drives Codex App Server with a minimal WhatTheLoop engine/policy loop.
-  - Honors `WTL_CODEX_BIN`, `WTL_CODEX_MODEL`, and `WTL_TURN_TIMEOUT_SEC`.
-- `cargo run -p onequery-wtl --bin ralph-loop -- "<task prompt>"`
-  - Runs the Ralph Loop workflow on top of the shared WTL engine.
-  - Supports `init` and the main three-phase loop.
-  - Honors the same `WTL_*` runtime environment variables and exposes CLI flags for model, sandbox, approval policy, and timeouts.
-
 Key references:
 
 - CLI workflow architecture note: `docs/ARCHITECTURE.md`

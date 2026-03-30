@@ -1,8 +1,0 @@
----
-source: crates/onequery-wtl/src/observer.rs
-assertion_line: 115
-expression: rendered
----
-[turn 1] running...
-hello ##WTL_DONE##
-Done: your request was completed successfully.
