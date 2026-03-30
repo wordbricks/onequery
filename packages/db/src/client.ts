@@ -1,11 +1,12 @@
-// Comment: Phase 3 keeps the public @onequery/db surface stable while the runtime
-// can now select SQLite or Postgres once at startup.
-import { createRequire } from "node:module";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
-import BetterSqliteClient from "better-sqlite3";
-import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
+// Comment: The public @onequery/db surface stays stable while the runtime now
+// selects either a remote Postgres connection or a local PGlite data dir.
+import { PGlite } from "@electric-sql/pglite";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle } from "drizzle-orm/postgres-js";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import * as authSchema from "./schema/auth";
@@ -19,10 +20,6 @@ import * as dataSourcesSchema from "./schema/data-sources";
 import * as organizationProfilesSchema from "./schema/organization-profiles";
 import * as relationsSchema from "./schema/relations";
 import * as userProfilesSchema from "./schema/user-profiles";
-import { bootstrapSqliteDatabase } from "./sqlite-bootstrap";
-import { sqliteSchema } from "./sqlite-schema";
-
-const require = createRequire(import.meta.url);
 
 export const postgresSchema = {
   ...authSchema,
@@ -43,9 +40,9 @@ export const schema = postgresSchema;
 const DB_CACHE_SYMBOL = Symbol.for("onequery.db.instance-cache");
 const DB_RUNTIME_SCHEMA_SYMBOL = Symbol.for("onequery.db.runtime-schema");
 
-export type DatabaseEngine = "postgres" | "sqlite";
+export type DatabaseEngine = "postgres" | "pglite";
 export type DatabaseSchema = typeof postgresSchema;
-export type Database = PostgresJsDatabase<typeof postgresSchema>;
+export type Database = PgDatabase<PgQueryResultHKT, typeof postgresSchema>;
 export type DatabaseRuntime = {
   db: Database;
   engine: DatabaseEngine;
@@ -53,12 +50,6 @@ export type DatabaseRuntime = {
 };
 
 type DbCache = Map<string, Database>;
-type BunSqliteModule = typeof import("bun:sqlite");
-type BunSqliteDrizzleModule = typeof import("drizzle-orm/bun-sqlite");
-
-function isBunRuntime(): boolean {
-  return typeof Bun !== "undefined";
-}
 
 function getDbCache(): DbCache {
   const globalWithCache = globalThis as typeof globalThis & {
@@ -85,42 +76,49 @@ function attachRuntimeSchema(
   return db;
 }
 
-function isSqliteConnectionString(connectionString: string): boolean {
+function isPgliteConnectionString(connectionString: string): boolean {
   return (
-    connectionString === ":memory:" ||
-    connectionString.startsWith("sqlite:") ||
-    connectionString.endsWith(".sqlite") ||
-    connectionString.endsWith(".db")
+    connectionString === "memory://" ||
+    connectionString.startsWith("pglite:") ||
+    connectionString.startsWith("pglite://")
   );
 }
 
-function resolveSqlitePath(connectionString: string): string {
-  if (connectionString === ":memory:") {
+function resolvePgliteDataDir(connectionString: string): string {
+  if (connectionString === "memory://") {
     return connectionString;
   }
 
-  if (connectionString.startsWith("sqlite://")) {
-    return connectionString.slice("sqlite://".length - 1);
+  if (connectionString.startsWith("pglite://")) {
+    return connectionString.slice("pglite://".length - 1);
   }
 
-  if (connectionString.startsWith("sqlite:")) {
-    return connectionString.slice("sqlite:".length);
+  if (connectionString.startsWith("pglite:")) {
+    return connectionString.slice("pglite:".length);
   }
 
-  return connectionString;
+  throw new Error(`Unsupported PGlite connection string: ${connectionString}`);
+}
+
+function ensurePgliteDataDir(connectionString: string): string {
+  const dataDir = resolvePgliteDataDir(connectionString);
+
+  if (dataDir !== "memory://") {
+    mkdirSync(dirname(dataDir), {
+      recursive: true,
+    });
+  }
+
+  return dataDir;
 }
 
 export function getDatabaseEngine(connectionString: string): DatabaseEngine {
-  return isSqliteConnectionString(connectionString) ? "sqlite" : "postgres";
+  return isPgliteConnectionString(connectionString) ? "pglite" : "postgres";
 }
 
 export function getDatabaseSchemaForEngine(
-  engine: DatabaseEngine
+  _engine: DatabaseEngine
 ): DatabaseSchema {
-  if (engine === "sqlite") {
-    return sqliteSchema as unknown as DatabaseSchema;
-  }
-
   return postgresSchema;
 }
 
@@ -161,10 +159,6 @@ export function createDatabaseRuntime(
 }
 
 export function createDb(connectionString: string): Database {
-  const runtimeSchema = isSqliteConnectionString(connectionString)
-    ? (sqliteSchema as unknown as DatabaseSchema)
-    : postgresSchema;
-
   const cache = getDbCache();
   const cachedDb = cache.get(connectionString);
   if (cachedDb) {
@@ -173,8 +167,8 @@ export function createDb(connectionString: string): Database {
 
   let db: Database;
 
-  if (isSqliteConnectionString(connectionString)) {
-    db = createSqliteDb(connectionString);
+  if (isPgliteConnectionString(connectionString)) {
+    db = createPgliteDb(connectionString);
   } else {
     const client = postgres(connectionString, {
       max: 5,
@@ -185,34 +179,17 @@ export function createDb(connectionString: string): Database {
     db = drizzle(client, { schema: postgresSchema });
   }
 
-  db = attachRuntimeSchema(db, runtimeSchema);
+  db = attachRuntimeSchema(db, postgresSchema);
   cache.set(connectionString, db);
 
   return db;
 }
 
-function createSqliteDb(connectionString: string): Database {
-  const sqlitePath = resolveSqlitePath(connectionString);
-
-  if (isBunRuntime()) {
-    // CONTEXT: Bun self-host runtime cannot load better-sqlite3, so use the
-    // native bun:sqlite driver with Drizzle's Bun adapter instead.
-    const { Database: BunSqliteDatabase } =
-      require("bun:sqlite") as BunSqliteModule;
-    const { drizzle: drizzleBunSqlite } =
-      require("drizzle-orm/bun-sqlite") as BunSqliteDrizzleModule;
-    const client = new BunSqliteDatabase(sqlitePath);
-    bootstrapSqliteDatabase(client);
-    return drizzleBunSqlite(client, {
-      schema: sqliteSchema,
-    }) as unknown as Database;
-  }
-
-  const client = new BetterSqliteClient(sqlitePath);
-  bootstrapSqliteDatabase(client);
-  return drizzleSqlite(client, {
-    schema: sqliteSchema,
-  }) as unknown as Database;
+function createPgliteDb(connectionString: string): Database {
+  const client = new PGlite(ensurePgliteDataDir(connectionString));
+  return drizzlePglite(client, {
+    schema: postgresSchema,
+  });
 }
 
 export * from "./schema/auth";

@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { createDb, eq, getDatabaseSchema } from "@onequery/db/server";
+import {
+  createDb,
+  eq,
+  getDatabaseSchema,
+  prepareSelfHostDatabase,
+} from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -22,7 +28,7 @@ type ClosableDatabase = {
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
   if (client && typeof client.close === "function") {
-    client.close();
+    await client.close();
     return;
   }
 
@@ -31,8 +37,17 @@ async function closeDatabase(db: ClosableDatabase): Promise<void> {
   }
 }
 
-function createTestDb() {
-  return createDb(`sqlite:${join(tmpdir(), `${randomUUID()}.sqlite`)}`);
+const migrationsFolder = fileURLToPath(
+  new URL("../../../db/src/migrations", import.meta.url)
+);
+
+async function createTestDb() {
+  const connectionString = `pglite:${join(tmpdir(), "pglite", randomUUID())}`;
+  await prepareSelfHostDatabase({
+    connectionString,
+    migrationsFolder,
+  });
+  return createDb(connectionString);
 }
 
 async function seedQueryFixtures(db: ReturnType<typeof createDb>) {
@@ -94,7 +109,7 @@ describe("cli query action trail", () => {
   });
 
   it("folds the latest query action state while appending immutable events", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions } =
@@ -316,7 +331,7 @@ describe("cli query action trail", () => {
   });
 
   it("treats duplicate workflow event delivery as idempotent", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions } =
@@ -381,7 +396,7 @@ describe("cli query action trail", () => {
   });
 
   it("completes validate actions and persists failure hints", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions } =
@@ -513,7 +528,7 @@ describe("cli query action trail", () => {
   });
 
   it("rejects impossible workflow transitions", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     await seedQueryFixtures(db);

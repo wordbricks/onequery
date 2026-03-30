@@ -30,6 +30,6 @@ export function resolveDefaultPublicHost(listenHost: string): string {
   return listenHost;
 }
 
-export function toSqliteConnectionString(sqlitePath: string): string {
-  return `sqlite:${sqlitePath}`;
+export function toPgliteConnectionString(pgliteDir: string): string {
+  return `pglite:${pgliteDir}`;
 }

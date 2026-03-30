@@ -2,11 +2,17 @@ import { mkdtempSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createDatabaseRuntime, getDatabaseSchema, sql } from "./server";
+import {
+  createDatabaseRuntime,
+  getDatabaseSchema,
+  prepareSelfHostDatabase,
+  sql,
+} from "./server";
 
 type ClosableDatabase = {
   $client?: {
@@ -18,7 +24,7 @@ type ClosableDatabase = {
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
   if (client && typeof client.close === "function") {
-    client.close();
+    await client.close();
     return;
   }
 
@@ -54,6 +60,9 @@ async function isTcpPortReachable(
 
 const liveDockerDatabaseReachable = await isTcpPortReachable("127.0.0.1", 5454);
 const liveDatabaseTest = liveDockerDatabaseReachable ? it : it.skip;
+const migrationsFolder = fileURLToPath(
+  new URL("./migrations", import.meta.url)
+);
 
 describe("database runtime", () => {
   const openedDatabases: ClosableDatabase[] = [];
@@ -64,14 +73,17 @@ describe("database runtime", () => {
     }
   });
 
-  it("boots the SQLite runtime and keeps a stable runtime schema marker", async () => {
+  it("boots the PGlite runtime and keeps a stable runtime schema marker", async () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-db-runtime-test-"));
-    const runtime = createDatabaseRuntime(
-      `sqlite:${join(root, "onequery.sqlite")}`
-    );
+    const connectionString = `pglite:${join(root, "pglite", "onequery")}`;
+    await prepareSelfHostDatabase({
+      connectionString,
+      migrationsFolder,
+    });
+    const runtime = createDatabaseRuntime(connectionString);
     openedDatabases.push(runtime.db as ClosableDatabase);
 
-    expect(runtime.engine).toBe("sqlite");
+    expect(runtime.engine).toBe("pglite");
     expect(runtime.schema.organization).toBeDefined();
     expect(getDatabaseSchema(runtime.db)).toBe(runtime.schema);
 

@@ -126,7 +126,7 @@ describe("bun runtime app", () => {
     expect(env.SPA_ASSETS.fetch).not.toHaveBeenCalled();
   });
 
-  it("defaults the runtime database URL to the self-host SQLite path", () => {
+  it("defaults the runtime database URL to the self-host PGlite path", () => {
     const assetDir = createTempSpaBuildDir();
     const env = buildRuntimeEnv({
       processEnv: {
@@ -148,13 +148,12 @@ describe("bun runtime app", () => {
         secretsPath: "/tmp/onequery-config/onequery/self-host/secrets.toml",
         configPath: "/tmp/onequery-config/onequery/self-host/config.toml",
         serverLogPath: "/tmp/onequery-data/onequery/logs/server.log",
-        sqliteDir: "/tmp/onequery-data/onequery/sqlite",
-        sqlitePath: "/tmp/onequery-data/onequery/sqlite/onequery.sqlite",
+        pgliteDir: "/tmp/onequery-data/onequery/pglite/onequery",
       },
     });
 
     expect(env.DATABASE_URL).toBe(
-      "sqlite:/tmp/onequery-data/onequery/sqlite/onequery.sqlite"
+      "pglite:/tmp/onequery-data/onequery/pglite/onequery"
     );
   });
 
@@ -216,8 +215,7 @@ describe("bun runtime app", () => {
         secretsPath: join(configDir, "secrets.toml"),
         configPath: join(configDir, "config.toml"),
         serverLogPath: join(dataDir, "logs", "server.log"),
-        sqliteDir: join(dataDir, "sqlite"),
-        sqlitePath: join(dataDir, "sqlite", "onequery.sqlite"),
+        pgliteDir: join(dataDir, "pglite", "onequery"),
       },
     });
 
@@ -259,8 +257,7 @@ describe("bun runtime app", () => {
           secretsPath: "/tmp/onequery-config/onequery/self-host/secrets.toml",
           configPath: "/tmp/onequery-config/onequery/self-host/config.toml",
           serverLogPath: "/tmp/onequery-data/onequery/logs/server.log",
-          sqliteDir: "/tmp/onequery-data/onequery/sqlite",
-          sqlitePath: "/tmp/onequery-data/onequery/sqlite/onequery.sqlite",
+          pgliteDir: "/tmp/onequery-data/onequery/pglite/onequery",
         },
       })
     ).toThrow("Invalid PORT value: 4545abc");

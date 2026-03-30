@@ -1,8 +1,9 @@
 import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { eq } from "@onequery/db/server";
+import { eq, prepareSelfHostDatabase } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { verifyOrgAccess } from "./lib/verify-org-access";
@@ -18,7 +19,7 @@ type ClosableDatabase = {
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
   if (client && typeof client.close === "function") {
-    client.close();
+    await client.close();
     return;
   }
 
@@ -27,16 +28,25 @@ async function closeDatabase(db: ClosableDatabase): Promise<void> {
   }
 }
 
-function createSqliteStorage() {
+const migrationsFolder = fileURLToPath(
+  new URL("../../db/src/migrations", import.meta.url)
+);
+
+async function createPgliteStorage() {
   const root = mkdtempSync(join(tmpdir(), "onequery-storage-test-"));
-  const sqlitePath = join(root, "onequery.sqlite");
+  const pgliteDir = join(root, "pglite", "onequery");
+  const databaseUrl = `pglite:${pgliteDir}`;
+  await prepareSelfHostDatabase({
+    connectionString: databaseUrl,
+    migrationsFolder,
+  });
 
   return {
-    sqlitePath,
+    pgliteDir,
     storage: getServerStorage({
       BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
       BETTER_AUTH_URL: "http://localhost:4545",
-      DATABASE_URL: `sqlite:${sqlitePath}`,
+      DATABASE_URL: databaseUrl,
       DISABLE_RATE_LIMIT: true,
       MASTER_ENCRYPTION_KEY: "sample-encryption-key",
       WEB_URL: "http://localhost:4545",
@@ -53,11 +63,11 @@ describe("server storage", () => {
     }
   });
 
-  it("boots SQLite storage and persists auth, org, and data-source state", async () => {
-    const { sqlitePath, storage } = createSqliteStorage();
+  it("boots PGlite storage and persists auth, org, and data-source state", async () => {
+    const { pgliteDir, storage } = await createPgliteStorage();
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    expect(storage.engine).toBe("sqlite");
+    expect(storage.engine).toBe("pglite");
 
     const signupResponse = await storage.auth.handler(
       new Request("http://localhost:4545/api/auth/sign-up/email", {
@@ -75,7 +85,7 @@ describe("server storage", () => {
     );
 
     expect(signupResponse.status).toBe(200);
-    expect(existsSync(sqlitePath)).toBe(true);
+    expect(existsSync(pgliteDir)).toBe(true);
 
     const users = await storage.db.query.user.findMany({
       columns: {

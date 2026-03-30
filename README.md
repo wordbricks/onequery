@@ -28,14 +28,14 @@ OneQuery is a Bun/Turbo monorepo with three main layers:
          ┌─────────┴─────────┐
          ▼                   ▼
 ┌────────────────┐  ┌────────────────────┐
-│  Postgres/     │  │  Connector Agent   │
-│  SQLite (ORM)  │  │  (customer infra)  │
+│ Postgres /     │  │  Connector Agent   │
+│ PGlite (ORM)   │  │  (customer infra)  │
 └────────────────┘  └────────────────────┘
 ```
 
 **CLI** — a Rust binary (`onequery`) that authenticates via OAuth2 device flow and sends queries to the API. It uses a reducer/state-machine pattern for workflows like login, polling, and retries.
 
-**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or SQLite. The `packages/bun-server` runtime serves both the API and the React SPA.
+**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or PGlite. The `packages/bun-server` runtime serves both the API and the React SPA.
 
 **Web UI** — a React 19 SPA with TanStack Router, TanStack Query, and XState for complex state. Provides data source management, team admin, budget dashboards, and audit logs.
 

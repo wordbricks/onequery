@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createDb, eq, getDatabaseSchema } from "../server";
+import {
+  createDb,
+  eq,
+  getDatabaseSchema,
+  prepareSelfHostDatabase,
+} from "../server";
 
 type ClosableDatabase = {
   $client?: {
@@ -16,7 +22,7 @@ type ClosableDatabase = {
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
   if (client && typeof client.close === "function") {
-    client.close();
+    await client.close();
     return;
   }
 
@@ -25,8 +31,17 @@ async function closeDatabase(db: ClosableDatabase): Promise<void> {
   }
 }
 
-function createTestDb() {
-  return createDb(`sqlite:${join(tmpdir(), `${randomUUID()}.sqlite`)}`);
+const migrationsFolder = fileURLToPath(
+  new URL("../migrations", import.meta.url)
+);
+
+async function createTestDb() {
+  const connectionString = `pglite:${join(tmpdir(), "pglite", randomUUID())}`;
+  await prepareSelfHostDatabase({
+    connectionString,
+    migrationsFolder,
+  });
+  return createDb(connectionString);
 }
 
 const ACTOR = {
@@ -45,8 +60,8 @@ describe("cli query action schema", () => {
     }
   });
 
-  it("applies action defaults for sqlite runtime parity", async () => {
-    const db = createTestDb();
+  it("applies action defaults for the pglite runtime", async () => {
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActions, organization } = getDatabaseSchema(db);
@@ -83,7 +98,7 @@ describe("cli query action schema", () => {
   });
 
   it("rejects invalid event values and impossible causation links", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions, organization } =
@@ -142,7 +157,7 @@ describe("cli query action schema", () => {
   });
 
   it("rejects cross-action pointers and mismatched action snapshots", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions, organization } =
@@ -244,7 +259,7 @@ describe("cli query action schema", () => {
   });
 
   it("rejects duplicate event types for the same action", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions, organization } =
@@ -327,7 +342,7 @@ describe("cli query action schema", () => {
   });
 
   it("rejects folded last-event pointers that do not reference an event", async () => {
-    const db = createDb(":memory:");
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions, organization } =
@@ -418,7 +433,7 @@ describe("cli query action schema", () => {
   });
 
   it("rejects impossible lifecycle payloads and terminal aggregate states", async () => {
-    const db = createTestDb();
+    const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
     const { cliQueryActionEvents, cliQueryActions, organization } =

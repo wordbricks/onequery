@@ -74,40 +74,6 @@ type CliQueryActionSnapshot = Pick<
   | "version"
 >;
 
-type SyncQueryBuilder = {
-  where(condition: unknown): {
-    limit(count: number): {
-      get(): unknown;
-    };
-  };
-};
-
-type SyncTransaction = {
-  insert(table: unknown): {
-    values(values: unknown): {
-      run(): unknown;
-    };
-  };
-  select(selection?: unknown): {
-    from(table: unknown): SyncQueryBuilder;
-  };
-  update(table: unknown): {
-    set(values: unknown): {
-      where(condition: unknown): {
-        run(): unknown;
-      };
-    };
-  };
-};
-
-type SyncEventLookup = {
-  id: string;
-};
-
-type SynchronousDatabase = {
-  transaction<TResult>(transaction: (tx: SyncTransaction) => TResult): TResult;
-};
-
 class CliQueryActionConflictError extends Error {
   constructor(actionId: string) {
     super(`cli query action ${actionId} changed while appending an event`);
@@ -140,130 +106,63 @@ export async function createCliQueryActionTrail(input: {
   const eventId = ulid();
   const occurredAt = new Date();
 
-  if (usesSynchronousTransaction(input.db)) {
-    // CONTEXT: The shared `Database` type is Postgres-shaped, but the same
-    // runtime API also supports SQLite in tests where Drizzle exposes sync
-    // builders with `.run()`/`.get()`.
-    runSynchronousTransaction(input.db, (tx) => {
-      tx.insert(cliQueryActions)
-        .values({
-          actionType: input.actionType,
-          actorAuthMode: input.actor.authMode,
-          actorEmail: input.actor.email,
-          actorMembershipRoles: input.actor.membershipRoles,
-          actorUserId: input.actor.userId,
-          cellMaxChars: input.cellMaxChars,
-          createdAt: occurredAt,
-          id: actionId,
-          lastEventAt: occurredAt,
-          maxBytes: input.maxBytes,
-          maxRows: input.maxRows,
-          organizationId: input.organizationId,
-          requestId: input.requestId,
-          sourceKey: input.sourceKey,
-          sql: input.sql,
-          stage: "received",
-          status: "pending",
-          timeoutMs: input.timeoutMs,
-          updatedAt: occurredAt,
-          usagePersistenceStatus: "not_started",
-          version: 1,
-        })
-        .run();
-
-      tx.insert(cliQueryActionEvents)
-        .values({
-          actionType: input.actionType,
-          actorAuthMode: input.actor.authMode,
-          actorEmail: input.actor.email,
-          actorMembershipRoles: input.actor.membershipRoles,
-          actorUserId: input.actor.userId,
-          cellMaxChars: input.cellMaxChars,
-          eventType: "action_received",
-          id: eventId,
-          maxBytes: input.maxBytes,
-          maxRows: input.maxRows,
-          occurredAt,
-          organizationId: input.organizationId,
-          queryActionId: actionId,
-          requestId: input.requestId,
-          sourceKey: input.sourceKey,
-          sql: input.sql,
-          stage: "received",
-          status: "pending",
-          timeoutMs: input.timeoutMs,
-          usagePersistenceStatus: "not_started",
-        })
-        .run();
-
-      tx.update(cliQueryActions)
-        .set({
-          lastEventAt: occurredAt,
-          lastEventId: eventId,
-          updatedAt: occurredAt,
-        })
-        .where(eq(cliQueryActions.id, actionId))
-        .run();
+  await input.db.transaction(async (tx) => {
+    await tx.insert(cliQueryActions).values({
+      actionType: input.actionType,
+      actorAuthMode: input.actor.authMode,
+      actorEmail: input.actor.email,
+      actorMembershipRoles: input.actor.membershipRoles,
+      actorUserId: input.actor.userId,
+      cellMaxChars: input.cellMaxChars,
+      createdAt: occurredAt,
+      id: actionId,
+      lastEventAt: occurredAt,
+      maxBytes: input.maxBytes,
+      maxRows: input.maxRows,
+      organizationId: input.organizationId,
+      requestId: input.requestId,
+      sourceKey: input.sourceKey,
+      sql: input.sql,
+      stage: "received",
+      status: "pending",
+      timeoutMs: input.timeoutMs,
+      updatedAt: occurredAt,
+      usagePersistenceStatus: "not_started",
+      version: 1,
     });
-  } else {
-    await input.db.transaction(async (tx) => {
-      await tx.insert(cliQueryActions).values({
-        actionType: input.actionType,
-        actorAuthMode: input.actor.authMode,
-        actorEmail: input.actor.email,
-        actorMembershipRoles: input.actor.membershipRoles,
-        actorUserId: input.actor.userId,
-        cellMaxChars: input.cellMaxChars,
-        createdAt: occurredAt,
-        id: actionId,
+
+    await tx.insert(cliQueryActionEvents).values({
+      actionType: input.actionType,
+      actorAuthMode: input.actor.authMode,
+      actorEmail: input.actor.email,
+      actorMembershipRoles: input.actor.membershipRoles,
+      actorUserId: input.actor.userId,
+      cellMaxChars: input.cellMaxChars,
+      eventType: "action_received",
+      id: eventId,
+      maxBytes: input.maxBytes,
+      maxRows: input.maxRows,
+      occurredAt,
+      organizationId: input.organizationId,
+      queryActionId: actionId,
+      requestId: input.requestId,
+      sourceKey: input.sourceKey,
+      sql: input.sql,
+      stage: "received",
+      status: "pending",
+      timeoutMs: input.timeoutMs,
+      usagePersistenceStatus: "not_started",
+    });
+
+    await tx
+      .update(cliQueryActions)
+      .set({
         lastEventAt: occurredAt,
-        maxBytes: input.maxBytes,
-        maxRows: input.maxRows,
-        organizationId: input.organizationId,
-        requestId: input.requestId,
-        sourceKey: input.sourceKey,
-        sql: input.sql,
-        stage: "received",
-        status: "pending",
-        timeoutMs: input.timeoutMs,
+        lastEventId: eventId,
         updatedAt: occurredAt,
-        usagePersistenceStatus: "not_started",
-        version: 1,
-      });
-
-      await tx.insert(cliQueryActionEvents).values({
-        actionType: input.actionType,
-        actorAuthMode: input.actor.authMode,
-        actorEmail: input.actor.email,
-        actorMembershipRoles: input.actor.membershipRoles,
-        actorUserId: input.actor.userId,
-        cellMaxChars: input.cellMaxChars,
-        eventType: "action_received",
-        id: eventId,
-        maxBytes: input.maxBytes,
-        maxRows: input.maxRows,
-        occurredAt,
-        organizationId: input.organizationId,
-        queryActionId: actionId,
-        requestId: input.requestId,
-        sourceKey: input.sourceKey,
-        sql: input.sql,
-        stage: "received",
-        status: "pending",
-        timeoutMs: input.timeoutMs,
-        usagePersistenceStatus: "not_started",
-      });
-
-      await tx
-        .update(cliQueryActions)
-        .set({
-          lastEventAt: occurredAt,
-          lastEventId: eventId,
-          updatedAt: occurredAt,
-        })
-        .where(eq(cliQueryActions.id, actionId));
-    });
-  }
+      })
+      .where(eq(cliQueryActions.id, actionId));
+  });
 
   return { actionId, eventId };
 }
@@ -492,143 +391,6 @@ async function appendCliQueryActionEvent(input: {
   const eventId = ulid();
   const occurredAt = new Date();
 
-  if (usesSynchronousTransaction(input.db)) {
-    // CONTEXT: See `createCliQueryActionTrail`; the shared DB surface is typed
-    // for Postgres, but SQLite tests legitimately execute this sync branch.
-    return runSynchronousTransaction(input.db, (tx) => {
-      const action = tx
-        .select()
-        .from(cliQueryActions)
-        .where(eq(cliQueryActions.id, input.actionId))
-        .limit(1)
-        .get() as CliQueryActionSnapshot | undefined;
-
-      if (!action) {
-        throw new Error(`cli query action ${input.actionId} not found`);
-      }
-
-      const existingEvent = tx
-        .select({
-          id: cliQueryActionEvents.id,
-        })
-        .from(cliQueryActionEvents)
-        .where(
-          and(
-            eq(cliQueryActionEvents.queryActionId, action.id),
-            eq(cliQueryActionEvents.eventType, input.eventType)
-          )
-        )
-        .limit(1)
-        .get() as SyncEventLookup | undefined;
-
-      if (existingEvent) {
-        return {
-          eventId: existingEvent.id,
-        };
-      }
-
-      assertCliQueryActionTransitionAllowed(action, input.eventType);
-      const next = mergeCliQueryActionSnapshot(action, input.update);
-
-      try {
-        // Keep raw SQL on the aggregate and immutable received event only.
-        tx.insert(cliQueryActionEvents)
-          .values({
-            actionType: action.actionType,
-            actorAuthMode: action.actorAuthMode,
-            actorEmail: action.actorEmail,
-            actorMembershipRoles: action.actorMembershipRoles,
-            actorUserId: action.actorUserId,
-            causationEventId: action.lastEventId,
-            cellMaxChars: action.cellMaxChars,
-            elapsedMs: next.elapsedMs,
-            errorDetail: next.errorDetail,
-            errorHint: next.errorHint,
-            eventType: input.eventType,
-            id: eventId,
-            maxBytes: action.maxBytes,
-            maxRows: action.maxRows,
-            normalizedSql: next.normalizedSql,
-            normalizedSqlChanged: next.normalizedSqlChanged,
-            occurredAt,
-            organizationId: action.organizationId,
-            orgSlug: input.orgSlug ?? null,
-            provider: next.provider,
-            queryActionId: action.id,
-            requestId: action.requestId,
-            retryable: next.retryable,
-            rowCount: next.rowCount,
-            sourceId: next.sourceId,
-            sourceKey: action.sourceKey,
-            sourceStatus: next.sourceStatus,
-            sql: null,
-            stage: next.stage,
-            status: next.status,
-            timeoutMs: action.timeoutMs,
-            usagePersistenceStatus: next.usagePersistenceStatus,
-          })
-          .run();
-      } catch (error) {
-        if (!isCliQueryActionEventDuplicateError(error)) {
-          throw error;
-        }
-
-        const existingEvent = tx
-          .select({
-            id: cliQueryActionEvents.id,
-          })
-          .from(cliQueryActionEvents)
-          .where(
-            and(
-              eq(cliQueryActionEvents.queryActionId, action.id),
-              eq(cliQueryActionEvents.eventType, input.eventType)
-            )
-          )
-          .limit(1)
-          .get() as SyncEventLookup | undefined;
-
-        if (!existingEvent) {
-          throw error;
-        }
-
-        return {
-          eventId: existingEvent.id,
-        };
-      }
-
-      const updateResult = tx
-        .update(cliQueryActions)
-        .set({
-          completedAt: next.completedAt,
-          elapsedMs: next.elapsedMs,
-          errorDetail: next.errorDetail,
-          errorHint: next.errorHint,
-          lastEventAt: occurredAt,
-          lastEventId: eventId,
-          normalizedSql: next.normalizedSql,
-          normalizedSqlChanged: next.normalizedSqlChanged,
-          provider: next.provider,
-          retryable: next.retryable,
-          rowCount: next.rowCount,
-          sourceId: next.sourceId,
-          sourceStatus: next.sourceStatus,
-          stage: next.stage,
-          status: next.status,
-          updatedAt: occurredAt,
-          usagePersistenceStatus: next.usagePersistenceStatus,
-          version: action.version + 1,
-        })
-        .where(buildCliQueryActionUpdateWhere(cliQueryActions, action))
-        .run();
-
-      if (getAffectedRowCount(updateResult) !== 1) {
-        throw new CliQueryActionConflictError(action.id);
-      }
-
-      return { eventId };
-    });
-  }
-
   return input.db.transaction(async (tx) => {
     const [rawAction] = await tx
       .select()
@@ -763,26 +525,6 @@ async function appendCliQueryActionEvent(input: {
   });
 }
 
-function usesSynchronousTransaction(db: Database): boolean {
-  const client = (
-    db as Database & {
-      $client?: {
-        transaction?: unknown;
-      };
-    }
-  ).$client;
-
-  return typeof client?.transaction === "function";
-}
-
-function runSynchronousTransaction<T>(
-  db: Database,
-  callback: (tx: SyncTransaction) => T
-): T {
-  const sqliteDb = db as unknown as SynchronousDatabase;
-  return sqliteDb.transaction(callback);
-}
-
 function assertCliQueryActionTransitionAllowed(
   action: CliQueryActionSnapshot,
   eventType: CliQueryActionEventType
@@ -854,27 +596,10 @@ function buildCliQueryActionUpdateWhere(
   );
 }
 
-function getAffectedRowCount(result: unknown): number | null {
-  if (typeof result !== "object" || result === null) {
-    return null;
-  }
-
-  if (!("changes" in result)) {
-    return null;
-  }
-
-  const changes = result.changes;
-  return typeof changes === "number" ? changes : null;
-}
-
 function isCliQueryActionEventDuplicateError(error: unknown): boolean {
   const code = getStringProperty(error, "code");
 
-  if (
-    code === "23505" ||
-    code === "SQLITE_CONSTRAINT_UNIQUE" ||
-    code === "SQLITE_CONSTRAINT_PRIMARYKEY"
-  ) {
+  if (code === "23505") {
     return true;
   }
 

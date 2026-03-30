@@ -32,7 +32,7 @@ The runtime-managed files under those roots are:
 - `self-host/config.toml`: self-host listen, public origin, logging, and SMTP settings
 - `self-host/secrets.toml`: generated Better Auth, encryption, agent, and enrollment
   secrets
-- `sqlite/onequery.sqlite`: reserved SQLite path for later storage milestones
+- `pglite/onequery/`: embedded PGlite data directory
 - `logs/server.log`: Bun lifecycle log
 - `backups/`: reserved backup target directory
 - `run/server.pid`: operator-facing process marker

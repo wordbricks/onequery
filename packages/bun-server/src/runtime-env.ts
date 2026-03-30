@@ -13,7 +13,7 @@ import {
   RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
   resolveDefaultPublicHost,
   resolveDefaultPublicOrigin,
-  toSqliteConnectionString,
+  toPgliteConnectionString,
 } from "./constants";
 import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
 import { resolveSelfHostRuntimePaths } from "./self-host/paths";
@@ -154,7 +154,7 @@ export function createRuntimeConfig(
         secretsConfig.connectors.enrollment_token,
       DATABASE_URL:
         processEnv.DATABASE_URL ??
-        toSqliteConnectionString(selfHostPaths.sqlitePath),
+        toPgliteConnectionString(selfHostPaths.pgliteDir),
       DISABLE_RATE_LIMIT:
         processEnv.DISABLE_RATE_LIMIT ?? env.DISABLE_RATE_LIMIT,
       MASTER_ENCRYPTION_KEY:

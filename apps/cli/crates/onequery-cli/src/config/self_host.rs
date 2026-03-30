@@ -16,7 +16,7 @@ use crate::path_utils;
 const SELF_HOST_CONFIG_DIR_NAME: &str = "self-host";
 const CONFIG_FILENAME: &str = "config.toml";
 const SECRETS_CONFIG_FILENAME: &str = "secrets.toml";
-const SQLITE_FILENAME: &str = "onequery.sqlite";
+const PGLITE_DIRNAME: &str = "onequery";
 const SERVER_LOG_FILENAME: &str = "server.log";
 const PID_FILENAME: &str = "server.pid";
 const LOCK_FILENAME: &str = "server.lock";
@@ -27,7 +27,7 @@ pub(crate) struct SelfHostRuntimePaths {
     pub(crate) data_dir: PathBuf,
     pub(crate) config_path: PathBuf,
     pub(crate) secrets_path: PathBuf,
-    pub(crate) sqlite_path: PathBuf,
+    pub(crate) pglite_dir: PathBuf,
     pub(crate) logs_dir: PathBuf,
     pub(crate) server_log_path: PathBuf,
     pub(crate) backups_dir: PathBuf,
@@ -40,7 +40,7 @@ impl SelfHostRuntimePaths {
     fn from_dirs(config_dir: PathBuf, data_dir: PathBuf) -> Self {
         let config_path = config_dir.join(CONFIG_FILENAME);
         let secrets_path = config_dir.join(SECRETS_CONFIG_FILENAME);
-        let sqlite_path = data_dir.join("sqlite").join(SQLITE_FILENAME);
+        let pglite_dir = data_dir.join("pglite").join(PGLITE_DIRNAME);
         let logs_dir = data_dir.join("logs");
         let server_log_path = logs_dir.join(SERVER_LOG_FILENAME);
         let backups_dir = data_dir.join("backups");
@@ -53,7 +53,7 @@ impl SelfHostRuntimePaths {
             data_dir,
             config_path,
             secrets_path,
-            sqlite_path,
+            pglite_dir,
             logs_dir,
             server_log_path,
             backups_dir,
@@ -269,10 +269,10 @@ fn bootstrap_self_host_foundation_with_paths(
         "data",
     )?;
     path_utils::create_private_dir(
-        sqlite_dir(&paths),
+        &paths.pglite_dir,
         command_line,
         ErrorStage::LoadConfig,
-        "sqlite",
+        "pglite",
     )?;
     path_utils::create_private_dir(
         &paths.logs_dir,
@@ -384,13 +384,6 @@ where
     })
 }
 
-fn sqlite_dir(paths: &SelfHostRuntimePaths) -> &Path {
-    paths
-        .sqlite_path
-        .parent()
-        .unwrap_or(paths.data_dir.as_path())
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -425,8 +418,8 @@ mod tests {
             PathBuf::from("/config/onequery/self-host/secrets.toml")
         );
         assert_eq!(
-            paths.sqlite_path,
-            PathBuf::from("/data/onequery/sqlite/onequery.sqlite")
+            paths.pglite_dir,
+            PathBuf::from("/data/onequery/pglite/onequery")
         );
         assert_eq!(paths.logs_dir, PathBuf::from("/data/onequery/logs"));
         assert_eq!(
@@ -464,10 +457,7 @@ mod tests {
         assert_eq!(paths.logs_dir.is_dir(), true);
         assert_eq!(paths.backups_dir.is_dir(), true);
         assert_eq!(paths.run_dir.is_dir(), true);
-        assert_eq!(
-            paths.sqlite_path.parent().expect("sqlite parent").is_dir(),
-            true
-        );
+        assert_eq!(paths.pglite_dir.is_dir(), true);
 
         let loaded = load_self_host_config_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected load to succeed after bootstrap: {error}"));
