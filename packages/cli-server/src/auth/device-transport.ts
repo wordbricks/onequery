@@ -9,8 +9,9 @@ const BetterAuthDeviceCodeResponseSchema = z
     expires_in: z.number().int().positive().optional(),
     interval: z.number().int().positive().optional(),
     user_code: z.string().min(1),
-    // Comment: the CLI server rebuilds verification links from BETTER_AUTH_URL
-    // so upstream Better Auth payloads do not need to echo the browser-facing
+    // Comment: the CLI server rebuilds verification links from the configured
+    // public origin, so upstream Better Auth payloads do not need to echo the
+    // browser-facing
     // URLs back to the client for this flow to stay valid.
     verification_uri: z.string().url().optional(),
     verification_uri_complete: z.string().url().optional(),

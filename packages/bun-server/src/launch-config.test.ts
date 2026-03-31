@@ -160,9 +160,9 @@ describe("launch config", () => {
     const launchConfig = createSelfHostLaunchConfig({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
-        BETTER_AUTH_URL: "http://localhost:4545",
         CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
         MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
+        ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
         ONEQUERY_WEB_DIST_DIR: assetDir,
       },
       selfHostPaths,
@@ -187,9 +187,9 @@ describe("launch config", () => {
     const launchConfig = createSelfHostLaunchConfig({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
-        BETTER_AUTH_URL: "http://localhost:4545",
         CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
         MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
+        ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
         ONEQUERY_RUNTIME_ROOT: runtimeRoot,
         ONEQUERY_WEB_DIST_DIR: "runtime/web",
       },
@@ -276,9 +276,9 @@ describe("launch config", () => {
       createSelfHostLaunchConfig({
         processEnv: {
           BETTER_AUTH_SECRET: "test-better-auth-secret",
-          BETTER_AUTH_URL: "http://localhost:4545",
           CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
           MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
+          ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
           ONEQUERY_WEB_DIST_DIR: assetDir,
           PORT: "4545abc",
         },

@@ -54,14 +54,13 @@ function createWorkspaceDevProcessEnv(
   return {
     ...baseEnv,
     BETTER_AUTH_SECRET: workspaceDev.auth.secret,
-    BETTER_AUTH_URL: workspaceDev.publicOrigin,
     CONNECTOR_ENROLLMENT_TOKEN: workspaceDev.connectors.enrollmentToken,
     DATABASE_URL: workspaceDev.postgres.url,
     DISABLE_RATE_LIMIT: workspaceDev.flags.disableRateLimit ? "true" : "false",
     HOST: workspaceDev.api.listen.host,
     MASTER_ENCRYPTION_KEY: workspaceDev.crypto.masterEncryptionKey,
+    ONEQUERY_PUBLIC_ORIGIN: workspaceDev.publicOrigin,
     PORT: String(workspaceDev.api.listen.port),
-    WEB_URL: workspaceDev.publicOrigin,
   };
 }
 

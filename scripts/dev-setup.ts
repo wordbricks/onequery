@@ -273,7 +273,7 @@ async function provisionLocalTestDatabase(): Promise<void> {
   const testProfile = getTestProfile();
   const config = getDatabaseConfig(testProfile.database.url);
 
-  // Comment: Route tests default to LOCAL_TEST_DATABASE_URL, so dev bootstrap
+  // Comment: Route tests use the derived local test profile, so dev bootstrap
   // must provision that database too; otherwise `bun run db:reset` leaves the
   // main dev DB healthy while server tests still fail against missing creds.
   console.log(`Provisioning local test database (${config.databaseName})...`);

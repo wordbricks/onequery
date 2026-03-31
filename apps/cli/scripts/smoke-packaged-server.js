@@ -167,13 +167,12 @@ export async function smokePackagedServer({
     const env = {
       ...process.env,
       BETTER_AUTH_SECRET: "test-better-auth-secret",
-      BETTER_AUTH_URL: publicOrigin,
       HOST: "127.0.0.1",
       MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
+      ONEQUERY_PUBLIC_ORIGIN: publicOrigin,
       ONEQUERY_SELF_HOST_CONFIG_DIR: configDir,
       ONEQUERY_SELF_HOST_DATA_DIR: dataDir,
       PORT: String(resolvedPort),
-      WEB_URL: publicOrigin,
     };
     delete env.ONEQUERY_NPM_ROOT;
     delete env.ONEQUERY_PGLITE_ASSET_DIR;

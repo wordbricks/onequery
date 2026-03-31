@@ -8,6 +8,7 @@ import { DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS } from "./constants";
 import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
 import { prepareRuntimeDatabase } from "./database";
 import { createLaunchConfig } from "./launch-config";
+import { PUBLIC_ORIGIN_ENV_VAR } from "./launch-config";
 import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
 import {
   acquireRuntimeLifecycleLease,
@@ -20,11 +21,10 @@ function resolveStartupLaunchMode(processEnv: NodeJS.ProcessEnv) {
   const hasWorkspaceDevListener =
     typeof processEnv.HOST === "string" || typeof processEnv.PORT === "string";
   const hasWorkspaceDevOrigin =
-    typeof processEnv.WEB_URL === "string" ||
-    typeof processEnv.BETTER_AUTH_URL === "string";
+    typeof processEnv[PUBLIC_ORIGIN_ENV_VAR] === "string";
 
   // Comment: Until every startup path passes an explicit launch contract file,
-  // workspace-dev is still detected from its legacy env projection.
+  // workspace-dev is still detected from its startup env projection.
   return processEnv.DATABASE_URL && (hasWorkspaceDevListener || hasWorkspaceDevOrigin)
     ? "workspace-dev"
     : "self-host";

@@ -12,6 +12,7 @@ import { resolveSelfHostRuntimePaths } from "./self-host/paths";
 
 const defaultRootDir = fileURLToPath(new URL("../../..", import.meta.url));
 const PGLITE_URL_PREFIX = "pglite:";
+export const PUBLIC_ORIGIN_ENV_VAR = "ONEQUERY_PUBLIC_ORIGIN";
 
 export const DEFAULT_SELF_HOST_LISTEN_HOST = "127.0.0.1";
 export const DEFAULT_SELF_HOST_PORT = 5656;
@@ -219,8 +220,8 @@ export function createWorkspaceDevLaunchConfig(
   const processEnv = input.processEnv ?? process.env;
   const rootDir = resolveRuntimeRootDir(input.rootDir, processEnv);
   const publicOrigin = requireConfiguredString(
-    processEnv.WEB_URL ?? processEnv.BETTER_AUTH_URL,
-    "WEB_URL"
+    processEnv[PUBLIC_ORIGIN_ENV_VAR],
+    PUBLIC_ORIGIN_ENV_VAR
   );
   const databaseUrl = requireConfiguredString(
     processEnv.DATABASE_URL,
@@ -287,8 +288,7 @@ export function createSelfHostLaunchConfig(
   const listenHost = processEnv.HOST ?? config.server.listen_host;
   const port = parsePortValue(processEnv.PORT, config.server.port);
   const publicOrigin =
-    processEnv.BETTER_AUTH_URL ??
-    processEnv.WEB_URL ??
+    processEnv[PUBLIC_ORIGIN_ENV_VAR] ??
     config.server.public_origin ??
     resolveDefaultPublicOrigin({
       listenHost,
