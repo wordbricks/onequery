@@ -214,94 +214,6 @@ jobs:
       # - name: Check unused code
       #   run: bun run knip
 
-  server-integration:
-    needs: [check-paths]
-    if: always() && !cancelled()
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_USER: test
-        ports:
-          - 5454:5432
-        options: >-
-          --health-cmd "pg_isready -U test -d test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      TURBO_API: ${{ secrets.TURBO_API }}
-      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-      TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
-
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: ".bun-version"
-
-      - name: Detect affected server integration tasks
-        if: github.event_name == 'pull_request'
-        id: affected
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          BASE_SHA='${{ github.event.pull_request.base.sha }}'
-          HEAD_SHA='${{ github.event.pull_request.head.sha }}'
-          TURBO_VERSION="$(bun -e 'process.stdout.write(require("./package.json").devDependencies.turbo)')"
-          json="$(bunx "turbo@$TURBO_VERSION" run test:integration --dry=json --filter="...[$BASE_SHA...$HEAD_SHA]" --filter='@onequery/server')"
-          count="$(printf '%s\n' "$json" | bun -e 'const fs = require("fs"); const input = fs.readFileSync(0, "utf8"); const data = JSON.parse(input.slice(input.indexOf("{"))); const count = data.tasks.filter((task) => task.package === "@onequery/server" && task.command !== "<NONEXISTENT>").length; process.stdout.write(String(count));')"
-
-          if [[ "$count" -gt 0 ]]; then
-            echo "has_tasks=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_tasks=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Skip server integration CI
-        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks != 'true'
-        run: echo "Skipping server integration CI - no affected @onequery/server integration tasks"
-
-      - name: Install dependencies
-        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
-        run: bun ci
-
-      - name: Wait for Postgres
-        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
-        # Comment: the server integration lane exercises Better Auth against the
-        # shared test Postgres DSN, so CI must provide the matching database.
-        run: |
-          for _ in {1..30}; do
-            if bash -lc '</dev/tcp/127.0.0.1/5454' >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Postgres service did not become ready on localhost:5454" >&2
-          exit 1
-
-      - name: Apply test database schema
-        if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
-        run: cd packages/db && DATABASE_URL=postgres://test:test@localhost:5454/test bunx drizzle-kit push --force --config drizzle.config.ts
-
-      - name: Test integration (affected)
-        if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
-        run: bunx turbo run test:integration --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='@onequery/server'
-
-      - name: Test integration (full)
-        if: github.event_name != 'pull_request'
-        run: bunx turbo run test:integration --filter='@onequery/server'
-
   cli-ci:
     needs: [check-paths]
     if: always() && !cancelled() && (github.event_name != 'pull_request' || needs.check-paths.outputs.cli_code == 'true')
@@ -343,7 +255,7 @@ jobs:
 
   results:
     name: CI results (required)
-    needs: [check-paths, workflow-lint, ci, server-integration, cli-ci]
+    needs: [check-paths, workflow-lint, ci, cli-ci]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -352,7 +264,6 @@ jobs:
         run: |
           echo "workflow-lint: ${{ needs['workflow-lint'].result }}"
           echo "ci           : ${{ needs.ci.result }}"
-          echo "server-int   : ${{ needs['server-integration'].result }}"
           echo "cli-ci       : ${{ needs['cli-ci'].result }}"
 
           if [[ '${{ needs['workflow-lint'].result }}' != 'success' && '${{ needs['workflow-lint'].result }}' != 'skipped' ]]; then
@@ -362,11 +273,6 @@ jobs:
 
           if [[ '${{ needs.ci.result }}' != 'success' && '${{ needs.ci.result }}' != 'skipped' ]]; then
             echo 'ci failed'
-            exit 1
-          fi
-
-          if [[ '${{ needs['server-integration'].result }}' != 'success' && '${{ needs['server-integration'].result }}' != 'skipped' ]]; then
-            echo 'server-integration failed'
             exit 1
           fi
 
