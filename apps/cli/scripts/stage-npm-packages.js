@@ -4,7 +4,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { packageStagingDirPrefix } from "../bin/package-constants.js";
+import {
+  packageStagingDirPrefix,
+  PLATFORM_PACKAGES,
+} from "../bin/package-constants.js";
 import {
   buildPackage,
   PACKAGE_EXPANSIONS,
@@ -83,11 +86,17 @@ export function parseArgs(argv) {
   return args;
 }
 
-function expandPackages(packages) {
+export function expandPackages(packages) {
+  const hasExplicitPlatformPackage = packages.some(
+    (packageName) => packageName in PLATFORM_PACKAGES
+  );
   const expandedPackages = [];
 
   for (const packageName of packages) {
-    const packageGroup = PACKAGE_EXPANSIONS[packageName] ?? [packageName];
+    const packageGroup =
+      packageName === "cli" && hasExplicitPlatformPackage
+        ? ["cli"]
+        : PACKAGE_EXPANSIONS[packageName] ?? [packageName];
     for (const expandedPackage of packageGroup) {
       if (!expandedPackages.includes(expandedPackage)) {
         expandedPackages.push(expandedPackage);

@@ -9,7 +9,6 @@ import {
   mkdtemp,
   readdir,
   readFile,
-  rename,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -331,7 +330,8 @@ async function runNpmPack({ stagingDir, packOutput }) {
     const tarballName = parseNpmPackTarballName(result.stdout, stagingDir);
 
     const stagedTarballPath = path.join(packDir, tarballName);
-    await rename(stagedTarballPath, resolvedPackOutput);
+    await copyFile(stagedTarballPath, resolvedPackOutput);
+    await rm(stagedTarballPath, { force: true });
   } finally {
     await rm(packDir, { force: true, recursive: true });
   }
