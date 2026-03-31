@@ -78,6 +78,7 @@
     "@types/nodemailer": "7.0.11",
     "@typescript/native-preview": "7.0.0-dev.20260318.1",
     "@vitest/coverage-v8": "catalog:",
+    "eslint-plugin-turbo": "2.9.1",
     "happy-dom": "20.3.3",
     "knip": "6.0.5",
     "lefthook": "2.0.15",

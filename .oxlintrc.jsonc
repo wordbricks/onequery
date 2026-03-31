@@ -14,7 +14,7 @@
     "react-perf",
     "typescript",
   ],
-  "jsPlugins": ["./scripts/oxlint/plugin.mjs"],
+  "jsPlugins": ["./scripts/oxlint/plugin.mjs", "eslint-plugin-turbo"],
   "categories": {
     "correctness": "error",
     "perf": "error",
@@ -117,6 +117,7 @@
     "typescript/no-unnecessary-template-expression": "off", // TEMP ~1
 
     "node/no-process-env": "off",
+    "turbo/no-undeclared-env-vars": "error",
 
     "oxc/no-map-spread": "off",
     "oxc/no-async-await": "off",

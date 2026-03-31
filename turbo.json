@@ -3,6 +3,19 @@
   "remoteCache": {
     "signature": true
   },
+  "globalEnv": [
+    "CONNECTOR_ABORT_ON_AUTH_FAILURE",
+    "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
+    "DATABASE_URL",
+    "GITHUB_ACTIONS_INTEGRATION_ID",
+    "NODE_ENV",
+    "ONEQUERY_LANDING_DEV_PORT",
+    "ONEQUERY_NPM_ROOT",
+    "ONEQUERY_PGLITE_ASSET_DIR",
+    "ONEQUERY_RUNTIME_ROOT",
+    "WEB_URL"
+  ],
+  "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
