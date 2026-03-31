@@ -160,7 +160,6 @@ INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 export ONEQUERY_NPM_ROOT="\${ONEQUERY_NPM_ROOT:-$INSTALL_DIR}"
 export ONEQUERY_PGLITE_ASSET_DIR="\${ONEQUERY_PGLITE_ASSET_DIR:-$INSTALL_DIR/runtime/pglite}"
 export ONEQUERY_RUNTIME_ROOT="\${ONEQUERY_RUNTIME_ROOT:-$INSTALL_DIR}"
-export ONEQUERY_SERVER_EXECUTABLE="\${ONEQUERY_SERVER_EXECUTABLE:-$INSTALL_DIR/vendor/\${target_triple}/server/onequery-server}"
 exec "$INSTALL_DIR/vendor/\${target_triple}/onequery/onequery" "$@"
 EOF
   chmod 755 "$launcher_path"

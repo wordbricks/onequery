@@ -24,6 +24,10 @@ use super::Runtime;
 use super::ensure_self_host_runtime_supported;
 
 const PACKAGED_RUNTIME_DIR: &str = "runtime";
+const PACKAGED_SERVER_DIR: &str = "server";
+const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
+const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
+const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
 const PACKAGED_WEB_DIR: &str = "web";
 const REPO_SERVER_ENTRYPOINT: &[&str] = &["packages", "bun-server", "src", "index.ts"];
 const REPO_WEB_CLIENT_DIR: &[&str] = &["apps", "web", "dist", "client"];
@@ -46,6 +50,15 @@ const ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_CONFIG_D
 const ONEQUERY_SELF_HOST_DATA_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_DATA_DIR";
 const ONEQUERY_RUNTIME_ROOT_ENV_VAR: &str = "ONEQUERY_RUNTIME_ROOT";
 const ONEQUERY_WEB_DIST_DIR_ENV_VAR: &str = "ONEQUERY_WEB_DIST_DIR";
+const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] =
+    &["/lib64/ld-linux-x86-64.so.2", "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"];
+const LINUX_X64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-x86_64.so.1"];
+const LINUX_ARM64_GLIBC_LOADER_PATHS: &[&str] = &[
+    "/lib/ld-linux-aarch64.so.1",
+    "/lib64/ld-linux-aarch64.so.1",
+    "/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1",
+];
+const LINUX_ARM64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-aarch64.so.1"];
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum ServeStateAccessMode {
@@ -86,6 +99,12 @@ struct ServeLaunchPlan {
     runtime_entry_path: PathBuf,
     runtime_root: PathBuf,
     web_dist_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct PackagedServerCandidate {
+    path: PathBuf,
+    required_loader_paths: &'static [&'static str],
 }
 
 pub(super) async fn execute<B, T>(
@@ -375,22 +394,115 @@ fn resolve_launch_plan(
 }
 
 fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, CliError> {
-    let server_executable = env::var_os(ONEQUERY_SERVER_EXECUTABLE_ENV_VAR)
+    if let Some(server_executable) = env::var_os(ONEQUERY_SERVER_EXECUTABLE_ENV_VAR)
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
-        .ok_or_else(|| {
-            CliError::new(
-                "packaged self-host runtime is incomplete",
-                command_line,
-                ErrorStage::LoadConfig,
+    {
+        return resolve_explicit_packaged_server_executable(server_executable.as_path(), command_line);
+    }
+
+    let current_executable = env::current_exe().map_err(|error| {
+        CliError::new(
+            "failed to resolve packaged self-host server executable",
+            command_line,
+            ErrorStage::LoadConfig,
+            format!("failed to read current executable path: {error}"),
+            vec![
+                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
                 format!(
-                    "expected {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to point to the packaged server executable"
+                    "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
                 ),
-                vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
-            )
-        })?;
+            ],
+        )
+    })?;
+    let server_dir =
+        resolve_packaged_server_dir_from_current_executable(current_executable.as_path()).ok_or_else(
+            || {
+                CliError::new(
+                    "failed to resolve packaged self-host server executable",
+                    command_line,
+                    ErrorStage::LoadConfig,
+                    format!(
+                        "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}",
+                        current_executable.display()
+                    ),
+                    vec![
+                        REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+                        format!(
+                            "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
+                        ),
+                    ],
+                )
+            },
+        )?;
+    let candidates = packaged_server_candidates(
+        server_dir.as_path(),
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    )
+    .map_err(|detail| {
+        CliError::new(
+            "failed to resolve packaged self-host server executable",
+            command_line,
+            ErrorStage::LoadConfig,
+            detail,
+            vec![
+                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+                format!(
+                    "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
+                ),
+            ],
+        )
+    })?;
+    let existing_candidates = candidates
+        .iter()
+        .filter(|candidate| candidate.path.is_file())
+        .collect::<Vec<_>>();
+
+    if existing_candidates.is_empty() {
+        return Err(CliError::new(
+            "packaged self-host runtime is incomplete",
+            command_line,
+            ErrorStage::LoadConfig,
+            format!(
+                "expected one of {} inside {}",
+                render_packaged_server_candidate_paths(&candidates),
+                server_dir.display()
+            ),
+            vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
+        ));
+    }
+
+    if let Some(candidate) = select_packaged_server_candidate(&existing_candidates, |loader_path| {
+        loader_path.exists()
+    }) {
+        return Ok(candidate.path.clone());
+    }
+
+    Err(CliError::new(
+        "packaged self-host runtime is incomplete",
+        command_line,
+        ErrorStage::LoadConfig,
+        format!(
+            "none of the packaged server executables inside {} match an available runtime loader; checked {}",
+            server_dir.display(),
+            render_required_loader_paths(&existing_candidates)
+        ),
+        vec![
+            REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+            format!(
+                "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
+            ),
+        ],
+    ))
+}
+
+fn resolve_explicit_packaged_server_executable(
+    server_executable: &std::path::Path,
+    command_line: &str,
+) -> Result<PathBuf, CliError> {
     let resolved_server_executable = resolve_user_path_for_cli(
-        server_executable.as_path(),
+        server_executable,
         command_line,
         ErrorStage::LoadConfig,
         "failed to resolve packaged self-host server executable",
@@ -426,6 +538,101 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
     }
 
     Ok(resolved_server_executable)
+}
+
+fn resolve_packaged_server_dir_from_current_executable(
+    current_executable: &std::path::Path,
+) -> Option<PathBuf> {
+    let cli_dir = current_executable.parent()?;
+    if cli_dir.file_name()? != std::ffi::OsStr::new(PACKAGED_VENDOR_CLI_DIR) {
+        return None;
+    }
+
+    let target_dir = cli_dir.parent()?;
+    Some(target_dir.join(PACKAGED_SERVER_DIR))
+}
+
+fn packaged_server_candidates(
+    server_dir: &std::path::Path,
+    os: &str,
+    arch: &str,
+) -> Result<Vec<PackagedServerCandidate>, String> {
+    let default_candidate = PackagedServerCandidate {
+        path: server_dir.join(PACKAGED_SERVER_FILENAME),
+        required_loader_paths: &[],
+    };
+
+    if os != "linux" {
+        return Ok(vec![default_candidate]);
+    }
+
+    let glibc_loader_paths = match arch {
+        "x86_64" => LINUX_X64_GLIBC_LOADER_PATHS,
+        "aarch64" => LINUX_ARM64_GLIBC_LOADER_PATHS,
+        _ => {
+            return Err(format!(
+                "unsupported Linux architecture {arch} for packaged self-host runtime"
+            ))
+        }
+    };
+    let musl_loader_paths = match arch {
+        "x86_64" => LINUX_X64_MUSL_LOADER_PATHS,
+        "aarch64" => LINUX_ARM64_MUSL_LOADER_PATHS,
+        _ => {
+            return Err(format!(
+                "unsupported Linux architecture {arch} for packaged self-host runtime"
+            ))
+        }
+    };
+
+    // Comment: Bun's Linux musl executable requires the musl runtime loader at
+    // startup, so package both glibc and musl server executables and select
+    // the one whose loader exists on the host.
+    Ok(vec![
+        PackagedServerCandidate {
+            path: default_candidate.path,
+            required_loader_paths: glibc_loader_paths,
+        },
+        PackagedServerCandidate {
+            path: server_dir.join(PACKAGED_SERVER_MUSL_FILENAME),
+            required_loader_paths: musl_loader_paths,
+        },
+    ])
+}
+
+fn select_packaged_server_candidate<'a, F>(
+    candidates: &'a [&PackagedServerCandidate],
+    loader_exists: F,
+) -> Option<&'a PackagedServerCandidate>
+where
+    F: Fn(&std::path::Path) -> bool,
+{
+    candidates.iter().copied().find(|candidate| {
+        candidate.required_loader_paths.is_empty()
+            || candidate
+                .required_loader_paths
+                .iter()
+                .map(std::path::Path::new)
+                .any(&loader_exists)
+    })
+}
+
+fn render_packaged_server_candidate_paths(candidates: &[PackagedServerCandidate]) -> String {
+    candidates
+        .iter()
+        .map(|candidate| candidate.path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_required_loader_paths(candidates: &[&PackagedServerCandidate]) -> String {
+    candidates
+        .iter()
+        .flat_map(|candidate| candidate.required_loader_paths.iter().copied())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn join_path_segments(root: &std::path::Path, segments: &[&str]) -> PathBuf {
@@ -829,18 +1036,27 @@ fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
 
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
+    use tempfile::tempdir;
     use uuid::Uuid;
 
     use super::LogPreview;
+    use super::PACKAGED_SERVER_DIR;
+    use super::PACKAGED_SERVER_FILENAME;
+    use super::PACKAGED_SERVER_MUSL_FILENAME;
+    use super::PACKAGED_VENDOR_CLI_DIR;
     use super::ServeRuntimeState;
     use super::ServeStateAccessMode;
+    use super::packaged_server_candidates;
     use super::render_serve_logs_output;
     use super::render_serve_output;
     use super::render_serve_start_output;
     use super::render_serve_status_output;
+    use super::resolve_packaged_server_dir_from_current_executable;
+    use super::select_packaged_server_candidate;
     use crate::config::self_host::SelfHostConfig;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
@@ -925,6 +1141,79 @@ mod tests {
                 .and_then(serde_json::Value::as_str),
             Some("stale_markers")
         );
+    }
+
+    #[test]
+    fn resolve_packaged_server_dir_from_current_executable_uses_sibling_server_dir() {
+        let temp_dir = tempdir().unwrap();
+        let current_executable = temp_dir
+            .path()
+            .join("vendor")
+            .join("x86_64-unknown-linux-musl")
+            .join(PACKAGED_VENDOR_CLI_DIR)
+            .join("onequery");
+
+        fs::create_dir_all(current_executable.parent().unwrap())
+            .unwrap_or_else(|error| panic!("expected current executable parent dir: {error}"));
+        fs::write(&current_executable, b"")
+            .unwrap_or_else(|error| panic!("expected fake current executable: {error}"));
+
+        assert_eq!(
+            resolve_packaged_server_dir_from_current_executable(current_executable.as_path()),
+            Some(
+                temp_dir
+                    .path()
+                    .join("vendor")
+                    .join("x86_64-unknown-linux-musl")
+                    .join(PACKAGED_SERVER_DIR)
+            )
+        );
+    }
+
+    #[test]
+    fn select_packaged_server_candidate_prefers_glibc_binary_when_loader_exists() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+        fs::create_dir_all(&server_dir)
+            .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
+        fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
+            .unwrap_or_else(|error| panic!("expected glibc server binary: {error}"));
+        fs::write(server_dir.join(PACKAGED_SERVER_MUSL_FILENAME), b"")
+            .unwrap_or_else(|error| panic!("expected musl server binary: {error}"));
+
+        let candidates =
+            packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
+        let existing_candidates = candidates.iter().collect::<Vec<_>>();
+        let selected =
+            select_packaged_server_candidate(&existing_candidates, |loader_path| {
+                loader_path == Path::new("/lib64/ld-linux-x86-64.so.2")
+            })
+            .unwrap_or_else(|| panic!("expected glibc packaged server executable"));
+
+        assert_eq!(selected.path, server_dir.join(PACKAGED_SERVER_FILENAME));
+    }
+
+    #[test]
+    fn select_packaged_server_candidate_falls_back_to_musl_binary() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+        fs::create_dir_all(&server_dir)
+            .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
+        fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
+            .unwrap_or_else(|error| panic!("expected glibc server binary: {error}"));
+        fs::write(server_dir.join(PACKAGED_SERVER_MUSL_FILENAME), b"")
+            .unwrap_or_else(|error| panic!("expected musl server binary: {error}"));
+
+        let candidates =
+            packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
+        let existing_candidates = candidates.iter().collect::<Vec<_>>();
+        let selected =
+            select_packaged_server_candidate(&existing_candidates, |loader_path| {
+                loader_path == Path::new("/lib/ld-musl-x86_64.so.1")
+            })
+            .unwrap_or_else(|| panic!("expected musl packaged server executable"));
+
+        assert_eq!(selected.path, server_dir.join(PACKAGED_SERVER_MUSL_FILENAME));
     }
 
     #[test]
