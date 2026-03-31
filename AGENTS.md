@@ -5,6 +5,7 @@ We treat workflows as explicit, deterministic state machines.
 - Failure and retry are modeled as normal lifecycle transitions, not exceptions.
 
 If you encounter something surprising or confusing in this project, flag it as a comment.
+Don't add redundant guards.
 
 - Runtime: Bun
 - For type checking, use `bun run typecheck`.
