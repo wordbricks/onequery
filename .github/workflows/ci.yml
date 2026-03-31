@@ -205,7 +205,7 @@ jobs:
 
       - name: Test (affected)
         if: github.event_name == 'pull_request' && steps.affected.outputs.has_tasks == 'true'
-        run: bunx turbo run test --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@onequery/cli'
+        run: bunx turbo run test --concurrency=2 --filter='...[${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}]' --filter='!@onequery/cli'
 
       - name: Test (full)
         if: github.event_name != 'pull_request'
