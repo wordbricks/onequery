@@ -7,31 +7,19 @@ import { createSpaAssetBinding } from "./assets";
 import { DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS } from "./constants";
 import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
 import { prepareRuntimeDatabase } from "./database";
-import { createLaunchConfig } from "./launch-config";
-import { PUBLIC_ORIGIN_ENV_VAR } from "./launch-config";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { loadStartupLaunchConfig } from "./startup";
+import { resolveStartupInputFromArgv } from "./startup";
 import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
 import {
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
 } from "./self-host/lifecycle";
-import { resolveSelfHostRuntimePaths } from "./self-host/paths";
-
-function resolveStartupLaunchMode(processEnv: NodeJS.ProcessEnv) {
-  const hasWorkspaceDevListener =
-    typeof processEnv.HOST === "string" || typeof processEnv.PORT === "string";
-  const hasWorkspaceDevOrigin =
-    typeof processEnv[PUBLIC_ORIGIN_ENV_VAR] === "string";
-
-  // Comment: Until every startup path passes an explicit launch contract file,
-  // workspace-dev is still detected from its startup env projection.
-  return processEnv.DATABASE_URL && (hasWorkspaceDevListener || hasWorkspaceDevOrigin)
-    ? "workspace-dev"
-    : "self-host";
-}
+import { toLifecyclePaths } from "./self-host/lifecycle";
 
 function createRuntimeRateLimitStorage(
-  launchConfig: ReturnType<typeof createLaunchConfig>
+  launchConfig: ServerLaunchConfig
 ) {
   if (launchConfig.rateLimit.storage !== "persistent") {
     return undefined;
@@ -51,71 +39,79 @@ function createRuntimeRateLimitStorage(
   );
 }
 
-const launchMode = resolveStartupLaunchMode(process.env);
-const selfHostPaths =
-  launchMode === "self-host" ? resolveSelfHostRuntimePaths(process.env) : null;
-const lifecycleLogWriter = {
-  append(message: string) {
-    if (!selfHostPaths) {
-      return Promise.resolve();
+export async function startBunServer(
+  startupInput: Parameters<typeof loadStartupLaunchConfig>[0]
+) {
+  const launchConfig = loadStartupLaunchConfig(startupInput);
+  const selfHostPaths =
+    launchConfig.mode === "self-host" ? toLifecyclePaths(launchConfig) : null;
+  const lifecycleLogWriter = {
+    append(message: string) {
+      if (!selfHostPaths) {
+        return Promise.resolve();
+      }
+
+      return appendLifecycleLog(selfHostPaths, message);
+    },
+  };
+  const lifecycleLease = selfHostPaths
+    ? await acquireRuntimeLifecycleLease(selfHostPaths, {
+        logWriter: lifecycleLogWriter,
+      })
+    : null;
+
+  try {
+    const runtime = createServerRuntimeConfig(launchConfig, {
+      rateLimitStorage: createRuntimeRateLimitStorage(launchConfig),
+    });
+    // Comment: The Bun runtime is the single owner of main application schema
+    // convergence; local bootstrap only guarantees the shared Postgres container.
+    await prepareRuntimeDatabase({
+      databaseUrl: runtime.storage.connectionString,
+    });
+    const app = createApp({
+      runtime,
+      spaAssets: createSpaAssetBinding({
+        assetDir: launchConfig.assets.distDir,
+      }),
+    });
+
+    const server = Bun.serve({
+      fetch(request) {
+        return app.fetch(request);
+      },
+      hostname: launchConfig.listen.host,
+      idleTimeout: DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS,
+      port: launchConfig.listen.port,
+    });
+
+    const listenAddress = `http://${server.hostname}:${server.port}`;
+
+    if (lifecycleLease) {
+      attachGracefulShutdownHandlers({
+        lease: lifecycleLease,
+        logWriter: lifecycleLogWriter,
+        server,
+      });
     }
 
-    return appendLifecycleLog(selfHostPaths, message);
-  },
-};
-const lifecycleLease = selfHostPaths
-  ? await acquireRuntimeLifecycleLease(selfHostPaths, {
-      logWriter: lifecycleLogWriter,
-    })
-  : null;
+    await lifecycleLogWriter.append(
+      `[bun-server] listening on ${listenAddress}`
+    );
+    console.log(`[bun-server] listening on ${listenAddress}`);
 
-try {
-  const launchConfig = createLaunchConfig({
-    mode: launchMode,
-    selfHostPaths: selfHostPaths ?? undefined,
-  });
-  const runtime = createServerRuntimeConfig(launchConfig, {
-    rateLimitStorage: createRuntimeRateLimitStorage(launchConfig),
-  });
-  // Comment: The Bun runtime is the single owner of main application schema
-  // convergence; local bootstrap only guarantees the shared Postgres container.
-  await prepareRuntimeDatabase({
-    databaseUrl: runtime.storage.connectionString,
-  });
-  const app = createApp({
-    runtime,
-    spaAssets: createSpaAssetBinding({
-      assetDir: launchConfig.assets.distDir,
-    }),
-  });
-
-  const server = Bun.serve({
-    fetch(request) {
-      return app.fetch(request);
-    },
-    hostname: launchConfig.listen.host,
-    idleTimeout: DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS,
-    port: launchConfig.listen.port,
-  });
-
-  const listenAddress = `http://${server.hostname}:${server.port}`;
-
-  if (lifecycleLease) {
-    attachGracefulShutdownHandlers({
-      lease: lifecycleLease,
-      logWriter: lifecycleLogWriter,
-      server,
-    });
+    return server;
+  } catch (error) {
+    if (lifecycleLease) {
+      await lifecycleLease.release({
+        reason: "startup_failure",
+        stopServer: false,
+      });
+    }
+    throw error;
   }
+}
 
-  await lifecycleLogWriter.append(`[bun-server] listening on ${listenAddress}`);
-  console.log(`[bun-server] listening on ${listenAddress}`);
-} catch (error) {
-  if (lifecycleLease) {
-    await lifecycleLease.release({
-      reason: "startup_failure",
-      stopServer: false,
-    });
-  }
-  throw error;
+if (import.meta.main) {
+  await startBunServer(resolveStartupInputFromArgv(process.argv));
 }

@@ -1,8 +1,16 @@
 import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { resolveWorkspaceDev } from "@onequery/config";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+
+import {
+  createSelfHostLaunchConfig,
+  createWorkspaceDevLaunchConfig,
+} from "../packages/bun-server/src/launch-config";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
@@ -64,39 +72,68 @@ function createWorkspaceDevProcessEnv(
   };
 }
 
-function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
-  // Comment: Self-host mode should inherit only the caller's explicit process
-  // env, not the workspace-dev projection generated from repo config.
-  const baseEnv: NodeJS.ProcessEnv =
+function createLaunchConfig(mode: RunMode): ServerLaunchConfig {
+  const processEnv =
     mode === "dev" ? createWorkspaceDevProcessEnv(process.env) : process.env;
+
+  if (mode === "dev") {
+    return createWorkspaceDevLaunchConfig({
+      processEnv,
+      rootDir,
+    });
+  }
+
+  return createSelfHostLaunchConfig({
+    processEnv,
+    rootDir,
+  });
+}
+
+function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
+  launchConfigPath: string;
+  tempDir: string;
+} {
+  const tempDir = mkdtempSync(join(tmpdir(), "onequery-bun-server-"));
+  const launchConfigPath = join(tempDir, "launch.json");
+
+  writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
+
+  return {
+    launchConfigPath,
+    tempDir,
+  };
+}
+
+function createChildEnv(): NodeJS.ProcessEnv {
   const childEnv: NodeJS.ProcessEnv = {
-    ...baseEnv,
+    ...process.env,
     ONEQUERY_RUNTIME_ROOT: rootDir,
     PATH: prependPathEntries(
       [
         join(bunServerDir, "node_modules/.bin"),
         join(rootDir, "node_modules/.bin"),
       ],
-      baseEnv.PATH
+      process.env.PATH
     ),
   };
 
   return childEnv;
 }
 
-function createBunArgs(mode: RunMode): string[] {
+function createBunArgs(mode: RunMode, launchConfigPath: string): string[] {
   if (mode === "dev") {
-    return ["--watch", "src/index.ts"];
+    return ["--watch", "src/index.ts", launchConfigPath];
   }
 
-  return ["src/index.ts"];
+  return ["src/index.ts", launchConfigPath];
 }
 
 function main(): void {
   const mode = parseRunMode(process.argv.slice(2));
-  const child = spawn("bun", createBunArgs(mode), {
+  const launchConfig = writeLaunchConfigFile(createLaunchConfig(mode));
+  const child = spawn("bun", createBunArgs(mode, launchConfig.launchConfigPath), {
     cwd: bunServerDir,
-    env: createChildEnv(mode),
+    env: createChildEnv(),
     shell: process.platform === "win32",
     stdio: "inherit",
   });
@@ -110,6 +147,11 @@ function main(): void {
   }
 
   child.on("exit", (code, signal) => {
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
+
     if (signal) {
       process.kill(process.pid, signal);
       return;
@@ -119,6 +161,10 @@ function main(): void {
   });
 
   child.on("error", (error) => {
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
     console.error(`Failed to start bun-server (${mode}): ${error.message}`);
     process.exit(1);
   });

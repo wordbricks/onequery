@@ -6,15 +6,22 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
-import type { SelfHostRuntimePaths } from "./paths";
-import { runtimeDirPaths } from "./paths";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+
+export interface SelfHostLifecyclePaths {
+  dataDir: string;
+  lockPath: string;
+  logsDir: string;
+  pidPath: string;
+}
 
 export class DuplicateRuntimeStartError extends Error {
   readonly dataDir: string;
   readonly existingPid: number | null;
 
-  constructor(paths: SelfHostRuntimePaths, existingPid: number | null) {
+  constructor(paths: SelfHostLifecyclePaths, existingPid: number | null) {
     super(
       existingPid === null
         ? `Self-host runtime is already locked for ${paths.dataDir}`
@@ -58,7 +65,7 @@ interface CleanupOptions {
 }
 
 export interface RuntimeLifecycleLease {
-  paths: SelfHostRuntimePaths;
+  paths: SelfHostLifecyclePaths;
   release(options: CleanupOptions): Promise<void>;
 }
 
@@ -74,7 +81,7 @@ const defaultLifecycleOptions: Required<LifecycleOptions> = {
 };
 
 export async function acquireRuntimeLifecycleLease(
-  paths: SelfHostRuntimePaths,
+  paths: SelfHostLifecyclePaths,
   options: LifecycleOptions = {}
 ): Promise<RuntimeLifecycleLease> {
   const resolved = {
@@ -150,23 +157,23 @@ export function attachGracefulShutdownHandlers(args: {
 }
 
 export async function appendLifecycleLog(
-  paths: SelfHostRuntimePaths,
+  paths: SelfHostLifecyclePaths,
   message: string,
   now: () => Date = () => new Date()
 ): Promise<void> {
   await mkdir(paths.logsDir, { recursive: true });
   await appendFile(
-    paths.serverLogPath,
+    join(paths.logsDir, "server.log"),
     `${formatTimestamp(now())} ${message}\n`,
     "utf8"
   );
 }
 
 async function ensureRuntimeDirectories(
-  paths: SelfHostRuntimePaths
+  paths: SelfHostLifecyclePaths
 ): Promise<void> {
   await Promise.all(
-    runtimeDirPaths(paths).map((path) =>
+    [paths.dataDir, paths.logsDir, dirname(paths.pidPath), dirname(paths.lockPath)].map((path) =>
       mkdir(path, {
         recursive: true,
         mode: 0o700,
@@ -176,7 +183,7 @@ async function ensureRuntimeDirectories(
 }
 
 async function acquireLock(
-  paths: SelfHostRuntimePaths,
+  paths: SelfHostLifecyclePaths,
   options: Required<LifecycleOptions>
 ): Promise<RuntimeLockRecord> {
   const record: RuntimeLockRecord = {
@@ -258,6 +265,25 @@ function defaultIsProcessRunning(pid: number): boolean {
 
 function formatTimestamp(value: Date): string {
   return value.toISOString();
+}
+
+export function toLifecyclePaths(
+  launchConfig: Pick<ServerLaunchConfig, "mode" | "runtimePaths">
+): SelfHostLifecyclePaths | null {
+  if (launchConfig.mode !== "self-host") {
+    return null;
+  }
+
+  if (!launchConfig.runtimePaths) {
+    throw new Error("Self-host launch config requires runtimePaths.");
+  }
+
+  return {
+    dataDir: launchConfig.runtimePaths.dataDir,
+    lockPath: launchConfig.runtimePaths.lockPath,
+    logsDir: launchConfig.runtimePaths.logsDir,
+    pidPath: launchConfig.runtimePaths.pidPath,
+  };
 }
 
 function isAlreadyExistsError(error: unknown): boolean {

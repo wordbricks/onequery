@@ -321,7 +321,7 @@ Done when:
 ## Phase 6 — simplify the Bun runtime startup boundary
 
 - [x] Replace `packages/bun-server/src/runtime-env.ts` with a startup loader for one launch contract.
-- [ ] Make `packages/bun-server/src/index.ts` read one input only:
+- [x] Make `packages/bun-server/src/index.ts` read one input only:
   - either an in-memory object in tests
   - or a launch-config file path in real startup
 - [x] Add `packages/bun-server/src/launch-config.ts` (or similar) to load and validate `ServerLaunchConfig` once.
@@ -386,7 +386,7 @@ There must not be a third independent config resolver.
 - [ ] If it remains, make it a **thin delegate** to the self-host path only.
 - [ ] If it cannot delegate 100%, delete it.
 - [ ] Remove `scripts/run-bun-server.ts` if it still contains config logic after migration.
-- [ ] If a dev helper is still needed, let it generate a launch contract and then start Bun; do not let it invent its own config semantics.
+- [x] If a dev helper is still needed, let it generate a launch contract and then start Bun; do not let it invent its own config semantics.
 
 Done when:
 

@@ -10,7 +10,7 @@
   "scripts": {
     "build:web": "bun run --cwd ../../apps/web build",
     "dev": "bun run ../../scripts/run-bun-server.ts --dev",
-    "start": "bun src/index.ts",
+    "start": "bun run start:local",
     "start:local": "bun run ../../scripts/run-bun-server.ts --local",
     "serve": "bun run build:web && bun run start:local",
     "test": "vitest run",

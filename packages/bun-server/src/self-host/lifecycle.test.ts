@@ -14,25 +14,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DuplicateRuntimeStartError,
+  type SelfHostLifecyclePaths,
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
 } from "./lifecycle";
-import type { SelfHostRuntimePaths } from "./paths";
 
-function createPaths(root: string): SelfHostRuntimePaths {
+function createPaths(root: string): SelfHostLifecyclePaths & {
+  runDir: string;
+  serverLogPath: string;
+} {
+  const dataDir = join(root, "data");
+  const logsDir = join(dataDir, "logs");
+  const runDir = join(dataDir, "run");
+
   return {
-    configDir: join(root, "config", "self-host"),
-    dataDir: join(root, "data"),
-    configPath: join(root, "config", "self-host", "config.toml"),
-    secretsPath: join(root, "config", "self-host", "secrets.toml"),
-    pgliteDir: join(root, "data", "pglite", "onequery"),
-    logsDir: join(root, "data", "logs"),
-    serverLogPath: join(root, "data", "logs", "server.log"),
-    backupsDir: join(root, "data", "backups"),
-    runDir: join(root, "data", "run"),
-    pidPath: join(root, "data", "run", "server.pid"),
-    lockPath: join(root, "data", "run", "server.lock"),
+    dataDir,
+    lockPath: join(runDir, "server.lock"),
+    logsDir,
+    pidPath: join(runDir, "server.pid"),
+    runDir,
+    serverLogPath: join(logsDir, "server.log"),
   };
 }
 
