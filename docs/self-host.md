@@ -190,7 +190,7 @@ Current repo validation for the self-host path includes:
 Important covered surfaces:
 
 - self-host bootstrap and invite-only signup:
-  [`packages/server/src/bootstrap.test.ts`](../packages/server/src/bootstrap.test.ts)
+  [`packages/server/src/bootstrap.integration.test.ts`](../packages/server/src/bootstrap.integration.test.ts)
 - CLI device auth workflow:
   [`apps/cli/crates/onequery-cli/src/commands/auth/tests.rs`](../apps/cli/crates/onequery-cli/src/commands/auth/tests.rs)
 - Bun runtime lifecycle:
