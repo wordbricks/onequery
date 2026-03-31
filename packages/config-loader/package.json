@@ -18,9 +18,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "smol-toml": "1.6.1",
-    "zod": "catalog:",
-    "zod-config": "1.4.0"
+    "smol-toml": "1.6.1"
   },
   "devDependencies": {
     "vitest": "catalog:"

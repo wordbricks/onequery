@@ -197,7 +197,7 @@ Recommendation: repurpose the currently-unused `packages/config` package and del
 - [x] Add `packages/config/src/projections/vite.ts`.
 - [x] Add `packages/config/src/projections/drizzle.ts`.
 - [x] Add `packages/config/src/projections/docker.ts`.
-- [ ] Keep `@onequery/config-loader` only as a TOML decoding helper; do not re-introduce env-shaped config there.
+- [x] Keep `@onequery/config-loader` only as a TOML decoding helper; do not re-introduce env-shaped config there.
 - [x] Add unit tests for the new package before migrating consumers.
 
 Recommended workspace-dev authored shape:
