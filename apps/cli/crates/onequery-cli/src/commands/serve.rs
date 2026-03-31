@@ -809,7 +809,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
         use windows_sys::Win32::System::Threading::TerminateProcess;
 
         let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
-        if handle == 0 {
+        if handle.is_null() {
             return Err(CliError::new(
                 "failed to stop self-host runtime",
                 command_line,

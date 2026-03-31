@@ -218,13 +218,13 @@ pub(crate) fn is_process_running(pid: u32) -> bool {
     #[cfg(windows)]
     {
         use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
         use windows_sys::Win32::System::Threading::OpenProcess;
-        use windows_sys::Win32::System::Threading::SYNCHRONIZE;
-        use windows_sys::Win32::System::Threading::WAIT_TIMEOUT;
+        use windows_sys::Win32::System::Threading::PROCESS_SYNCHRONIZE;
         use windows_sys::Win32::System::Threading::WaitForSingleObject;
 
-        let handle = unsafe { OpenProcess(SYNCHRONIZE, 0, pid) };
-        if handle == 0 {
+        let handle = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, 0, pid) };
+        if handle.is_null() {
             return false;
         }
 
