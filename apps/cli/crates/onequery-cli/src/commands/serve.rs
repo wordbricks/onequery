@@ -1199,7 +1199,10 @@ mod tests {
             },
             &LogPreview {
                 lines: vec![
-                    "[bun-server] listening on http://127.0.0.1:5656".to_owned(),
+                    format!(
+                        "[bun-server] listening on {}",
+                        crate::config::self_host::default_public_origin()
+                    ),
                     "[api] GET /api/health 200".to_owned(),
                 ],
                 truncated: false,
@@ -1409,7 +1412,7 @@ mod tests {
         assert_eq!(
             launch_config.get("publicOrigin"),
             Some(&serde_json::Value::String(
-                "http://127.0.0.1:5656".to_owned()
+                crate::config::self_host::default_public_origin(),
             ))
         );
 
