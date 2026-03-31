@@ -382,9 +382,9 @@ Desired command model:
 
 There must not be a third independent config resolver.
 
-- [ ] Decide whether root `bun run serve` remains.
+- [x] Decide whether root `bun run serve` remains.
 - [x] If it remains, make it a **thin delegate** to the self-host path only.
-- [ ] If it cannot delegate 100%, delete it.
+- [x] If it cannot delegate 100%, delete it.
 - [ ] Remove `scripts/run-bun-server.ts` if it still contains config logic after migration.
 - [x] If a dev helper is still needed, let it generate a launch contract and then start Bun; do not let it invent its own config semantics.
 

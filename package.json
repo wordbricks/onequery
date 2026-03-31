@@ -40,7 +40,6 @@
     "prepare": "test -d .git && lefthook install || true",
     "dev": "bun run dev:setup && turbo dev --filter='!@onequery/connector'",
     "dev:with-connector": "bun run dev:setup && turbo dev",
-    "serve": "bun run dev:setup && bun run --cwd packages/bun-server serve",
     "dev:setup": "bun run scripts/dev-setup.ts",
     "github:rulesets:check": "bun run --cwd packages/github-rulesets check",
     "github:rulesets:plan": "bun run --cwd packages/github-rulesets plan",
