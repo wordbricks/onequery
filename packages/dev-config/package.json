@@ -9,11 +9,6 @@
       "bun": "./src/local-env.ts",
       "default": "./dist/local-env.js"
     },
-    "./runtime": {
-      "types": "./src/runtime.ts",
-      "bun": "./src/runtime.ts",
-      "default": "./dist/runtime.js"
-    },
     "./topology": {
       "types": "./src/topology.ts",
       "bun": "./src/topology.ts",
@@ -21,7 +16,7 @@
     }
   },
   "scripts": {
-    "build": "bun build ./src/local-env.ts ./src/runtime.ts ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
+    "build": "bun build ./src/local-env.ts ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"

@@ -360,7 +360,7 @@ Done when:
 ## Phase 8 — remove the old package and legacy scripts
 
 - [ ] Delete `packages/dev-config/src/topology.ts`.
-- [ ] Delete `packages/dev-config/src/runtime.ts`.
+- [x] Delete `packages/dev-config/src/runtime.ts`.
 - [ ] Delete `packages/dev-config/src/local-env.ts`.
 - [x] Delete `packages/dev-config` tests.
 - [x] Delete `scripts/sync-local-env.ts`.
