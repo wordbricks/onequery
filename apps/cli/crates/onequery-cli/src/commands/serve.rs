@@ -1138,6 +1138,7 @@ mod tests {
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
     use crate::config::self_host::load_self_host_config_for_test;
+    use crate::config::self_host::write_self_host_launch_config_for_test;
 
     fn sample_paths() -> SelfHostRuntimePaths {
         SelfHostRuntimePaths {
@@ -1360,6 +1361,56 @@ mod tests {
             data.pointer("/runtimeState/status")
                 .and_then(serde_json::Value::as_str),
             Some("not_running")
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected serve proof temp dir cleanup: {error}"));
+    }
+
+    #[test]
+    fn serve_writes_launch_contract_with_default_self_host_port() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-serve-launch-{}", Uuid::new_v4()));
+        let paths = SelfHostRuntimePaths::for_test(
+            test_dir.join("config").join("self-host"),
+            test_dir.join("data"),
+        );
+        let asset_dir = test_dir.join("runtime").join("web");
+
+        fs::create_dir_all(&asset_dir)
+            .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
+
+        let state = resolve_runtime_state_with_paths_for_test(
+            paths.clone(),
+            ServeStateAccessMode::BootstrapIfMissing,
+            "onequery serve",
+        )
+        .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
+
+        let launch_config_path = write_self_host_launch_config_for_test(
+            state.paths.clone(),
+            &asset_dir,
+            "onequery serve",
+        )
+        .unwrap_or_else(|error| panic!("expected serve launch config write to succeed: {error}"));
+        let launch_config_contents = fs::read_to_string(&launch_config_path)
+            .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
+        let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
+            .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
+
+        assert_eq!(
+            launch_config.pointer("/listen/host"),
+            Some(&serde_json::Value::String("127.0.0.1".to_owned()))
+        );
+        assert_eq!(
+            launch_config.pointer("/listen/port"),
+            Some(&serde_json::Value::Number(5656.into()))
+        );
+        assert_eq!(
+            launch_config.get("publicOrigin"),
+            Some(&serde_json::Value::String(
+                "http://127.0.0.1:5656".to_owned()
+            ))
         );
 
         fs::remove_dir_all(test_dir)

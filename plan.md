@@ -414,11 +414,11 @@ Done when:
 - [x] Unit tests for the derived test profile.
 - [x] Rust tests for self-host config resolution and launch-contract generation.
 - [x] Bun tests for reading a launch contract and starting from it.
-- [ ] Integration test that `bun dev` uses separate browser/API ports.
-- [ ] Integration test that `onequery serve` uses the bundled self-host port.
+- [x] Integration test that `bun dev` uses separate browser/API ports.
+- [x] Integration test that `onequery serve` uses the bundled self-host port.
 - [x] Negative test proving self-host startup does **not** read `onequery.dev.toml`.
 - [x] Negative test proving Bun server startup fails cleanly if launch config is missing or malformed.
-- [ ] Update CLI snapshots affected by the new default URL.
+- [x] Update CLI snapshots affected by the new default URL.
 
 ## Final search-based acceptance checklist
 

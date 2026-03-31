@@ -1,16 +1,13 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { delimiter, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  projectWorkspaceDevServerLaunchConfig,
-  resolveWorkspaceDev,
-} from "@onequery/config";
-import type { ServerLaunchConfig } from "@onequery/config/server-launch";
-
 import { getDefaultSpaBuildDir } from "../packages/bun-server/src/assets";
+import { projectWorkspaceDevServerLaunchConfig } from "../packages/config/src/projections/server-launch";
+import type { ServerLaunchConfig } from "../packages/config/src/server-launch";
+import { resolveWorkspaceDev } from "../packages/config/src/workspace-dev";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
@@ -34,7 +31,7 @@ function prependPathEntries(
   return merged.join(delimiter);
 }
 
-function parseRunMode(argv: readonly string[]): "dev" {
+export function parseRunMode(argv: readonly string[]): "dev" {
   const modeFlag = argv[0];
 
   if (modeFlag === "--dev" || modeFlag === undefined) {
@@ -46,18 +43,20 @@ function parseRunMode(argv: readonly string[]): "dev" {
   );
 }
 
-function createLaunchConfig(): ServerLaunchConfig {
+export function createLaunchConfig(
+  configRootDir: string = rootDir
+): ServerLaunchConfig {
   return projectWorkspaceDevServerLaunchConfig(
     resolveWorkspaceDev({
-      rootDir,
+      rootDir: configRootDir,
     }),
     {
-      assetDir: getDefaultSpaBuildDir(rootDir),
+      assetDir: getDefaultSpaBuildDir(configRootDir),
     }
   );
 }
 
-function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
+export function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
   launchConfigPath: string;
   tempDir: string;
 } {
@@ -72,7 +71,7 @@ function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
   };
 }
 
-function createChildEnv(): NodeJS.ProcessEnv {
+export function createChildEnv(): NodeJS.ProcessEnv {
   const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
     ONEQUERY_RUNTIME_ROOT: rootDir,
@@ -88,11 +87,11 @@ function createChildEnv(): NodeJS.ProcessEnv {
   return childEnv;
 }
 
-function createBunArgs(launchConfigPath: string): string[] {
+export function createBunArgs(launchConfigPath: string): string[] {
   return ["--watch", "src/index.ts", launchConfigPath];
 }
 
-function main(): void {
+export function main(): void {
   parseRunMode(process.argv.slice(2));
   const launchConfig = writeLaunchConfigFile(createLaunchConfig());
   const child = spawn("bun", createBunArgs(launchConfig.launchConfigPath), {
@@ -134,4 +133,6 @@ function main(): void {
   });
 }
 
-main();
+if (import.meta.main) {
+  main();
+}
