@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { projectDockerComposeConfig } from "./projections/docker";
 import { projectDrizzleConfig } from "./projections/drizzle";
+import { projectWorkspaceDevServerLaunchConfig } from "./projections/server-launch";
 import { projectViteDevServerConfig } from "./projections/vite";
 import { deriveTestProfile } from "./test-profile";
 import {
@@ -146,6 +147,38 @@ describe("@onequery/config workspace-dev", () => {
           containerPort: 5433,
           hostPort: 6500,
           portBinding: "6500:5433",
+        },
+      });
+      expect(
+        projectWorkspaceDevServerLaunchConfig(workspaceDev, {
+          assetDir: "/tmp/workspace-web",
+        })
+      ).toEqual({
+        assets: {
+          distDir: "/tmp/workspace-web",
+        },
+        auth: {
+          secret: "workspace-auth-secret",
+        },
+        connectors: {
+          enrollmentToken: "workspace-connector-token",
+        },
+        crypto: {
+          masterEncryptionKey: "custom-master-key",
+        },
+        listen: {
+          host: "127.0.0.1",
+          port: 4601,
+        },
+        mode: "workspace-dev",
+        publicOrigin: "http://127.0.0.1:4600",
+        rateLimit: {
+          enabled: true,
+          storage: "memory",
+        },
+        storage: {
+          kind: "postgres",
+          url: "postgres://workspace:secret@localhost:6500/workspace",
         },
       });
       expect(deriveTestProfile(workspaceDev)).toEqual({

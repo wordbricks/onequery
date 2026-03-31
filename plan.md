@@ -385,7 +385,7 @@ There must not be a third independent config resolver.
 - [x] Decide whether root `bun run serve` remains.
 - [x] If it remains, make it a **thin delegate** to the self-host path only.
 - [x] If it cannot delegate 100%, delete it.
-- [ ] Remove `scripts/run-bun-server.ts` if it still contains config logic after migration.
+- [x] Keep `scripts/run-bun-server.ts` only as a workspace-dev launch-contract writer and Bun process wrapper; it no longer owns config semantics.
 - [x] If a dev helper is still needed, let it generate a launch contract and then start Bun; do not let it invent its own config semantics.
 
 Done when:

@@ -4,10 +4,13 @@ import { delimiter, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { resolveWorkspaceDev } from "@onequery/config";
+import {
+  projectWorkspaceDevServerLaunchConfig,
+  resolveWorkspaceDev,
+} from "@onequery/config";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
-import { createWorkspaceDevLaunchConfig } from "../packages/bun-server/src/launch-config";
+import { getDefaultSpaBuildDir } from "../packages/bun-server/src/assets";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
@@ -43,31 +46,15 @@ function parseRunMode(argv: readonly string[]): "dev" {
   );
 }
 
-function createWorkspaceDevProcessEnv(
-  baseEnv: NodeJS.ProcessEnv
-): NodeJS.ProcessEnv {
-  const workspaceDev = resolveWorkspaceDev({
-    rootDir,
-  });
-
-  return {
-    ...baseEnv,
-    BETTER_AUTH_SECRET: workspaceDev.auth.secret,
-    CONNECTOR_ENROLLMENT_TOKEN: workspaceDev.connectors.enrollmentToken,
-    DATABASE_URL: workspaceDev.postgres.url,
-    DISABLE_RATE_LIMIT: workspaceDev.flags.disableRateLimit ? "true" : "false",
-    HOST: workspaceDev.api.listen.host,
-    MASTER_ENCRYPTION_KEY: workspaceDev.crypto.masterEncryptionKey,
-    ONEQUERY_PUBLIC_ORIGIN: workspaceDev.publicOrigin,
-    PORT: String(workspaceDev.api.listen.port),
-  };
-}
-
 function createLaunchConfig(): ServerLaunchConfig {
-  return createWorkspaceDevLaunchConfig({
-    processEnv: createWorkspaceDevProcessEnv(process.env),
-    rootDir,
-  });
+  return projectWorkspaceDevServerLaunchConfig(
+    resolveWorkspaceDev({
+      rootDir,
+    }),
+    {
+      assetDir: getDefaultSpaBuildDir(rootDir),
+    }
+  );
 }
 
 function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
