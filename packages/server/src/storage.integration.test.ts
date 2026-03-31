@@ -1,46 +1,20 @@
-import { existsSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 
-import { eq, prepareSelfHostDatabase } from "@onequery/db/server";
+import { eq } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { verifyOrgAccess } from "./lib/verify-org-access";
 import { getServerStorage } from "./storage";
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => void;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../db/src/migrations", import.meta.url)
-);
+import {
+  closeDatabase,
+  createPgliteDatabaseUrl,
+} from "./test/integration-helpers";
+import type { ClosableDatabase } from "./test/integration-helpers";
 
 async function createPgliteStorage() {
-  const root = mkdtempSync(join(tmpdir(), "onequery-storage-test-"));
-  const pgliteDir = join(root, "pglite", "onequery");
-  const databaseUrl = `pglite:${pgliteDir}`;
-  await prepareSelfHostDatabase({
-    connectionString: databaseUrl,
-    migrationsFolder,
-  });
+  const databaseUrl = await createPgliteDatabaseUrl("onequery-storage-test-");
+  const pgliteDir = databaseUrl.replace("pglite:", "");
 
   return {
     pgliteDir,

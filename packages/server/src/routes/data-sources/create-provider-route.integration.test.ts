@@ -1,13 +1,4 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import {
-  createDatabaseRuntime,
-  eq,
-  prepareSelfHostDatabase,
-} from "@onequery/db/server";
+import { createDatabaseRuntime, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -20,30 +11,13 @@ import {
   generateMasterKey,
 } from "../../services/crypto/credential-encryption";
 import type { StorageVariables } from "../../storage";
+import {
+  closeDatabase,
+  createPgliteDatabaseUrl,
+} from "../../test/integration-helpers";
+import type { ClosableDatabase } from "../../test/integration-helpers";
+import { createTestEnv } from "../test-env";
 import { createProviderRoute } from "./create-provider-route";
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../../../db/src/migrations", import.meta.url)
-);
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => void;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
 
 function createSession(userId: string): SessionData {
   return {
@@ -73,15 +47,13 @@ describe("createProviderRoute", () => {
   });
 
   it("decrypts credentials, executes the handler, and updates lastUsedAt", async () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-provider-route-test-"));
-    const dbUrl = `pglite:${join(root, "db")}`;
+    const dbUrl = await createPgliteDatabaseUrl(
+      "onequery-provider-route-test-",
+      ["db"]
+    );
     const masterKeyBase64 = generateMasterKey();
     const masterKey = deriveKeyFromBase64(masterKeyBase64);
 
-    await prepareSelfHostDatabase({
-      connectionString: dbUrl,
-      migrationsFolder,
-    });
     const runtime = createDatabaseRuntime(dbUrl);
     openedDatabases.push(runtime.db as ClosableDatabase);
 
@@ -178,9 +150,10 @@ describe("createProviderRoute", () => {
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
-      {
+      createTestEnv({
+        DATABASE_URL: dbUrl,
         MASTER_ENCRYPTION_KEY: masterKeyBase64,
-      } as ServerEnv
+      })
     );
 
     expect(response.status).toBe(200);

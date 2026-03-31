@@ -3,7 +3,6 @@ import {
   bigqueryQueryCosts,
   connectorJobs,
   connectors,
-  createDb,
   dataSourceQueryCosts,
   dataSourceTableUsage,
   dataSources,
@@ -12,43 +11,16 @@ import {
   organizationProfiles,
   session as authSessionTable,
 } from "@onequery/db/server";
-import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
-import { serverApiRoutes } from "../app";
-import { createAuth } from "../auth";
-import { createTestEnv } from "./test-env";
-
-function createRunId() {
-  return crypto.randomUUID().replaceAll("-", "");
-}
+import {
+  createRouteIntegrationHarness,
+  createRunId,
+} from "../test/integration-helpers";
 
 describe("auth route organization deletion guardrails", () => {
   it("blocks self-serve org deletion and preserves org-owned state", async () => {
-    const env = createTestEnv({ DISABLE_RATE_LIMIT: true });
-    const databaseUrl = env.DATABASE_URL;
-
-    if (!databaseUrl) {
-      throw new Error("Test environment must provide DATABASE_URL");
-    }
-
-    const db = createDb(databaseUrl);
-    const auth = createAuth({
-      baseURL: env.BETTER_AUTH_URL,
-      databaseUrl,
-      disableRateLimit: true,
-      enableTestUtils: true,
-      secret: env.BETTER_AUTH_SECRET,
-    });
-    const app = new Hono().route("/api", serverApiRoutes);
-    const authContext = await auth.$context;
-    const test = authContext.test;
-
-    if (!test.createOrganization || !test.saveOrganization || !test.addMember) {
-      throw new Error(
-        "Better Auth test utilities must expose organization helpers"
-      );
-    }
+    const { app, auth, db, env, test } = await createRouteIntegrationHarness();
 
     const runId = createRunId();
     const user = test.createUser({

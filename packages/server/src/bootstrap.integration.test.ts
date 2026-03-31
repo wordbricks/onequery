@@ -1,21 +1,14 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { and, eq, prepareSelfHostDatabase } from "@onequery/db/server";
+import { and, eq } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { serverApiRoutes } from "./app";
 import { getServerStorage } from "./storage";
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => void;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
+import {
+  closeDatabase,
+  createPgliteDatabaseUrl,
+} from "./test/integration-helpers";
+import type { ClosableDatabase } from "./test/integration-helpers";
 
 function getSetCookieValues(headers: Headers): string[] {
   const headersWithGetSetCookie = headers as Headers & {
@@ -49,30 +42,11 @@ function buildSessionHeaders(
   return headers;
 }
 
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../db/src/migrations", import.meta.url)
-);
-
-function createTestEnv() {
-  const root = mkdtempSync(join(tmpdir(), "onequery-bootstrap-test-"));
-  const pgliteDir = join(root, "pglite", "onequery");
-
+async function createTestEnv() {
   return {
     BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
     BETTER_AUTH_URL: "http://localhost:4545",
-    DATABASE_URL: `pglite:${pgliteDir}`,
+    DATABASE_URL: await createPgliteDatabaseUrl("onequery-bootstrap-test-"),
     DISABLE_RATE_LIMIT: true,
     MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
     WEB_URL: "http://localhost:4545",
@@ -106,11 +80,7 @@ describe("self-host bootstrap", () => {
   });
 
   it("completes the first-run bootstrap flow and creates the initial owner organization", async () => {
-    const env = createTestEnv();
-    await prepareSelfHostDatabase({
-      connectionString: env.DATABASE_URL,
-      migrationsFolder,
-    });
+    const env = await createTestEnv();
     const storage = getServerStorage(env);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -171,11 +141,7 @@ describe("self-host bootstrap", () => {
   });
 
   it("blocks public signup after bootstrap but allows signup for pending invitation emails", async () => {
-    const env = createTestEnv();
-    await prepareSelfHostDatabase({
-      connectionString: env.DATABASE_URL,
-      migrationsFolder,
-    });
+    const env = await createTestEnv();
     const storage = getServerStorage(env);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -283,11 +249,7 @@ describe("self-host bootstrap", () => {
   });
 
   it("cleans up partially created bootstrap organizations when the auth response is malformed", async () => {
-    const env = createTestEnv();
-    await prepareSelfHostDatabase({
-      connectionString: env.DATABASE_URL,
-      migrationsFolder,
-    });
+    const env = await createTestEnv();
     const storage = getServerStorage(env);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -347,11 +309,7 @@ describe("self-host bootstrap", () => {
   });
 
   it("allows zero-org users to create a new organization after invite-only signup", async () => {
-    const env = createTestEnv();
-    await prepareSelfHostDatabase({
-      connectionString: env.DATABASE_URL,
-      migrationsFolder,
-    });
+    const env = await createTestEnv();
     const storage = getServerStorage(env);
     openedDatabases.push(storage.db as ClosableDatabase);
 

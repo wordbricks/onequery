@@ -1,17 +1,12 @@
 import { ORGANIZATION_INVITATION_EXPIRES_IN_SECONDS } from "@onequery/base";
-import {
-  and,
-  createDb,
-  eq,
-  invitation as invitationTable,
-} from "@onequery/db/server";
-import { Hono } from "hono";
+import { and, eq, invitation as invitationTable } from "@onequery/db/server";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { serverApiRoutes } from "../app";
-import { createAuth } from "../auth";
-import { createTestEnv } from "./test-env";
+import {
+  createRouteIntegrationHarness,
+  createRunId,
+} from "../test/integration-helpers";
 
 const TeamInvitationResponseSchema = z.object({
   createdAt: z.coerce.date(),
@@ -23,10 +18,6 @@ const TeamInvitationResponseSchema = z.object({
   role: z.string().nullable().optional(),
   status: z.string(),
 });
-
-function createRunId() {
-  return crypto.randomUUID().replaceAll("-", "");
-}
 
 function expectExpiryToMatchPolicy(expiresAt: Date, createdAtMs: number) {
   const expectedExpiryMs =
@@ -40,30 +31,7 @@ function expectExpiryToMatchPolicy(expiresAt: Date, createdAtMs: number) {
 
 describe("team invitation expiry alignment", () => {
   it("returns 7-day expirations, rejects expired invites, and reuses pending invites on re-invite", async () => {
-    const env = createTestEnv({ DISABLE_RATE_LIMIT: true });
-    const databaseUrl = env.DATABASE_URL;
-
-    if (!databaseUrl) {
-      throw new Error("Test environment must provide DATABASE_URL");
-    }
-
-    const db = createDb(databaseUrl);
-    const auth = createAuth({
-      baseURL: env.BETTER_AUTH_URL,
-      databaseUrl,
-      disableRateLimit: true,
-      enableTestUtils: true,
-      secret: env.BETTER_AUTH_SECRET,
-    });
-    const app = new Hono().route("/api", serverApiRoutes);
-    const authContext = await auth.$context;
-    const test = authContext.test;
-
-    if (!test.createOrganization || !test.saveOrganization || !test.addMember) {
-      throw new Error(
-        "Better Auth test utilities must expose organization helpers"
-      );
-    }
+    const { app, auth, db, env, test } = await createRouteIntegrationHarness();
 
     const runId = createRunId();
     const adminUser = test.createUser({
