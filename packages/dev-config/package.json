@@ -4,11 +4,6 @@
   "private": false,
   "type": "module",
   "exports": {
-    "./local-env": {
-      "types": "./src/local-env.ts",
-      "bun": "./src/local-env.ts",
-      "default": "./dist/local-env.js"
-    },
     "./topology": {
       "types": "./src/topology.ts",
       "bun": "./src/topology.ts",
@@ -16,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "bun build ./src/local-env.ts ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
+    "build": "bun build ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"
