@@ -10,6 +10,7 @@ import {
   renderManagedLocalConfigFile,
   syncManagedLocalConfigFile,
 } from "./local-env";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./master-encryption-key";
 
 const GENERATED_BETTER_AUTH_SECRET_PLACEHOLDER = "generated-by-config-sync";
 
@@ -75,7 +76,7 @@ describe("local config sync", () => {
           'BETTER_AUTH_URL = "http://127.0.0.1:3000"',
           'WEB_URL = "http://127.0.0.1:3000"',
           'CONNECTOR_ENROLLMENT_TOKEN = "connector-token"',
-          'MASTER_ENCRYPTION_KEY = "sample-encryption-key"',
+          `MASTER_ENCRYPTION_KEY = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
           "DISABLE_RATE_LIMIT = true",
         ].join("\n")
       );
@@ -105,7 +106,7 @@ describe("local config sync", () => {
           'WEB_URL = "http://localhost:4545"',
           'BETTER_AUTH_SECRET = "toml-secret"',
           'CONNECTOR_ENROLLMENT_TOKEN = "connector-token"',
-          'MASTER_ENCRYPTION_KEY = "config-key"',
+          `MASTER_ENCRYPTION_KEY = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
           "DISABLE_RATE_LIMIT = false",
         ].join("\n")
       );

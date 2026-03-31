@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { eq, prepareSelfHostDatabase } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { verifyOrgAccess } from "./lib/verify-org-access";
 import { getServerStorage } from "./storage";
 
@@ -48,7 +49,7 @@ async function createPgliteStorage() {
       BETTER_AUTH_URL: "http://localhost:4545",
       DATABASE_URL: databaseUrl,
       DISABLE_RATE_LIMIT: true,
-      MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+      MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
       WEB_URL: "http://localhost:4545",
     }),
   };

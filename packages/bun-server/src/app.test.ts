@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { app } from "./app";
 import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
 import {
@@ -22,7 +23,7 @@ function createTestRuntimeEnv(
     CONNECTOR_ENROLLMENT_TOKEN: "test-connector-token",
     DATABASE_URL: LOCAL_TEST_DATABASE_URL,
     DISABLE_RATE_LIMIT: true,
-    MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+    MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
     RATE_LIMIT_STORAGE: createPersistentRuntimeRateLimitStorage(
       mkdtempSync(join(tmpdir(), "onequery-rate-limit-test-"))
     ),
@@ -132,7 +133,7 @@ describe("bun runtime app", () => {
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
         BETTER_AUTH_URL: "http://localhost:4545",
-        MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+        MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
         ONEQUERY_WEB_DIST_DIR: assetDir,
         ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
         WEB_URL: "http://localhost:4545",
@@ -170,7 +171,7 @@ describe("bun runtime app", () => {
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
         BETTER_AUTH_URL: "http://localhost:4545",
-        MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+        MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
         ONEQUERY_RUNTIME_ROOT: runtimeRoot,
         ONEQUERY_WEB_DIST_DIR: "runtime/web",
         ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
@@ -229,7 +230,7 @@ describe("bun runtime app", () => {
         'better_auth_secret = "secret-from-file"',
         "",
         "[crypto]",
-        'master_encryption_key = "sample-encryption-key"',
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
         "",
         "[connectors]",
         'enrollment_token = "connector-from-file"',
@@ -281,7 +282,7 @@ describe("bun runtime app", () => {
         processEnv: {
           BETTER_AUTH_SECRET: "test-better-auth-secret",
           BETTER_AUTH_URL: "http://localhost:4545",
-          MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+          MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
           PORT: "4545abc",
           ONEQUERY_WEB_DIST_DIR: assetDir,
           ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",

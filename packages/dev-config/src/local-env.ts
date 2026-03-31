@@ -8,6 +8,7 @@ import {
 } from "@onequery/config-loader";
 import { z } from "zod";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./master-encryption-key";
 import {
   LOCAL_AGENT_ORIGIN,
   LOCAL_DATABASE_URL,
@@ -106,9 +107,9 @@ export const MANAGED_LOCAL_CONFIG_FIELDS = [
   },
   {
     consumers: ["web", "server"],
-    defaultValue: "sample-encryption-key",
+    defaultValue: SAMPLE_MASTER_ENCRYPTION_KEY,
     description:
-      "Sample placeholder for the key used to encrypt stored credentials.",
+      "Development-only sample key used to encrypt stored credentials.",
     group: "core-runtime",
     key: "MASTER_ENCRYPTION_KEY",
     optional: false,
