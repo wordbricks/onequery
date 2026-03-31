@@ -60,6 +60,6 @@ describe("install script surface", () => {
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
     );
-    expect(script).toContain("export ONEQUERY_SERVER_EXECUTABLE=");
+    expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
   });
 });
