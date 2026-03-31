@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../packages/dev-config/src/master-encryption-key.ts";
+
 const SMOKE_PACKAGED_SERVER_OPTIONS = new Set([
   "--help",
   "-h",
@@ -154,7 +156,7 @@ export async function smokePackagedServer({
       BETTER_AUTH_SECRET: "test-better-auth-secret",
       BETTER_AUTH_URL: publicOrigin,
       HOST: "127.0.0.1",
-      MASTER_ENCRYPTION_KEY: "sample-encryption-key",
+      MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
       ONEQUERY_SELF_HOST_CONFIG_DIR: configDir,
       ONEQUERY_SELF_HOST_DATA_DIR: dataDir,
       PORT: String(resolvedPort),
