@@ -46,22 +46,25 @@ function parseRunMode(argv: readonly string[]): RunMode {
 }
 
 function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
-  const localEnv = createLocalProcessEnv(rootDir);
+  // Comment: Self-host mode should inherit only the caller's explicit process
+  // env, not the workspace-dev projection generated from repo config.
+  const baseEnv: NodeJS.ProcessEnv =
+    mode === "dev" ? createLocalProcessEnv(rootDir) : process.env;
   const childEnv: NodeJS.ProcessEnv = {
-    ...localEnv,
+    ...baseEnv,
     ONEQUERY_RUNTIME_ROOT: rootDir,
     PATH: prependPathEntries(
       [
         join(bunServerDir, "node_modules/.bin"),
         join(rootDir, "node_modules/.bin"),
       ],
-      localEnv.PATH
+      baseEnv.PATH
     ),
   };
 
   if (mode === "dev") {
     const runtime = loadLocalDevRuntimeSync({
-      env: localEnv,
+      env: baseEnv,
       rootDir,
     });
     childEnv.BETTER_AUTH_URL = runtime.auth.origin;

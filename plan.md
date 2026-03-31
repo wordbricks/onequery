@@ -320,15 +320,15 @@ Done when:
 
 ## Phase 6 — simplify the Bun runtime startup boundary
 
-- [ ] Replace `packages/bun-server/src/runtime-env.ts` with a startup loader for one launch contract.
+- [x] Replace `packages/bun-server/src/runtime-env.ts` with a startup loader for one launch contract.
 - [ ] Make `packages/bun-server/src/index.ts` read one input only:
   - either an in-memory object in tests
   - or a launch-config file path in real startup
-- [ ] Add `packages/bun-server/src/launch-config.ts` (or similar) to load and validate `ServerLaunchConfig` once.
+- [x] Add `packages/bun-server/src/launch-config.ts` (or similar) to load and validate `ServerLaunchConfig` once.
 - [x] Change `packages/bun-server/src/app.ts` to accept constructed runtime/services instead of parsing `c.env`.
 - [x] Remove the per-request `parseCoreServerEnv(c.env)` guard.
-- [ ] Keep route constants in `packages/bun-server/src/constants.ts`, but move listen/public-origin defaults out of that file.
-- [ ] If Bun still needs asset bindings or persistent storage handles, derive them from the loaded launch config once.
+- [x] Keep route constants in `packages/bun-server/src/constants.ts`, but move listen/public-origin defaults out of that file.
+- [x] If Bun still needs asset bindings or persistent storage handles, derive them from the loaded launch config once.
 
 Done when:
 

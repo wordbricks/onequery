@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { prepareSelfHostDatabase } from "@onequery/db/server";
+
+const defaultRootDir = fileURLToPath(new URL("../../..", import.meta.url));
 
 function resolveMigrationsDir(
   rootDir: string,
@@ -22,11 +25,12 @@ function resolveMigrationsDir(
 export async function prepareRuntimeDatabase(options: {
   databaseUrl: string;
   processEnv?: NodeJS.ProcessEnv;
-  rootDir: string;
+  rootDir?: string;
 }) {
   const processEnv = options.processEnv ?? process.env;
+  const rootDir = options.rootDir ?? defaultRootDir;
   return prepareSelfHostDatabase({
     connectionString: options.databaseUrl,
-    migrationsFolder: resolveMigrationsDir(options.rootDir, processEnv),
+    migrationsFolder: resolveMigrationsDir(rootDir, processEnv),
   });
 }
