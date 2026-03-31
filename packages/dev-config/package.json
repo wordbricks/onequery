@@ -3,22 +3,12 @@
   "version": "0.0.0",
   "private": false,
   "type": "module",
-  "exports": {
-    "./topology": {
-      "types": "./src/topology.ts",
-      "bun": "./src/topology.ts",
-      "default": "./dist/topology.js"
-    }
-  },
+  "exports": {},
   "scripts": {
-    "build": "bun build ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
+    "build": "bun build ./src/master-encryption-key.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"
-  },
-  "dependencies": {
-    "@onequery/config-loader": "workspace:*",
-    "zod": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:"
