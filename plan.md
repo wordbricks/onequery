@@ -260,11 +260,11 @@ Done when:
 
 ## Phase 3 — move workspace-dev consumers to the new resolver
 
-- [ ] Replace `apps/web/src/lib/vite-dev-server-config.ts` so it reads `resolveWorkspaceDev()` from `packages/config`.
-- [ ] Remove the compatibility-shim comment there; after migration it is not a shim.
+- [x] Replace `apps/web/src/lib/vite-dev-server-config.ts` so it reads `resolveWorkspaceDev()` from `packages/config`.
+- [x] Remove the compatibility-shim comment there; after migration it is not a shim.
 - [ ] Update `scripts/dev-setup.ts` to use the structured workspace-dev config.
-- [ ] Update `scripts/run-local-env-command.ts` to use projection helpers from `packages/config`.
-- [ ] Update any DB tooling wrappers to consume `drizzle` projection values from `packages/config`.
+- [x] Update `scripts/run-local-env-command.ts` to use projection helpers from `packages/config`.
+- [x] Update any DB tooling wrappers to consume `drizzle` projection values from `packages/config`.
 - [ ] Update Docker local startup to consume config from one place.
 
 Recommended Docker approach:

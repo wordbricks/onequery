@@ -9,7 +9,7 @@ import { resolveViteDevServerConfig } from "./src/lib/vite-dev-server-config";
 const isE2E = process.env.ONEQUERY_E2E === "1";
 
 export default defineConfig(() => {
-  const { apiProxyTarget, port } = resolveViteDevServerConfig(process.env);
+  const { apiProxyTarget, port } = resolveViteDevServerConfig();
 
   return {
     define: {
@@ -36,7 +36,7 @@ export default defineConfig(() => {
     },
     server: {
       host: "0.0.0.0",
-      // Comment: Keep the browser on the managed WEB_URL origin and proxy only
+      // Comment: Keep the browser on the workspace-dev browser origin and proxy only
       // `/api` in dev so auth/cookie behavior stays same-origin while the Bun
       // server can restart independently under Vite HMR.
       port,

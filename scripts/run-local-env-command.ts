@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createLocalProcessEnv } from "@onequery/dev-config/local-env";
+import { projectDrizzleConfig, resolveWorkspaceDev } from "@onequery/config";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -63,14 +63,19 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function main(): void {
   const { command, commandArgs, cwd } = parseArgs(process.argv.slice(2));
-  const localEnv = createLocalProcessEnv(rootDir);
+  const drizzle = projectDrizzleConfig(
+    resolveWorkspaceDev({
+      rootDir,
+    })
+  );
   const env = {
-    ...localEnv,
+    ...process.env,
+    DATABASE_URL: drizzle.databaseUrl,
     // Child commands like drizzle-kit often live in the target package's local
     // node_modules/.bin rather than the workspace root.
     PATH: prependPathEntries(
       [join(cwd, "node_modules/.bin"), join(rootDir, "node_modules/.bin")],
-      localEnv.PATH
+      process.env.PATH
     ),
   };
   const result = spawnSync(command, commandArgs, {
