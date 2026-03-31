@@ -202,7 +202,7 @@ mod tests {
 
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::credentials::AuthSessionStore;
     use crate::transport::auth::LoginCompletion;
     use crate::transport::auth::UserProfile;
@@ -239,7 +239,7 @@ mod tests {
                 PathBuf::from("/tmp/onequery-debug-config/config.toml"),
                 AppConfig {
                     active_org: Some("acme".to_owned()),
-                    server_url: Some(DEFAULT_BASE_URL.to_owned()),
+                    server_url: Some(default_base_url()),
                     request_timeout_sec: 90,
                 },
             ),
@@ -252,7 +252,7 @@ mod tests {
         };
         let context = CommandContext {
             command_line: "onequery debug config".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,

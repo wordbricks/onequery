@@ -349,9 +349,9 @@ This is the cleanest way to eliminate the Rust/TS self-host duplication.
 
 Also clean up Rust-local duplication:
 
-- [ ] Remove the hardcoded `DEFAULT_BASE_URL` literal from `apps/cli/crates/onequery-cli/src/config.rs`.
-- [ ] Derive CLI default base URL from the same Rust helper that defines self-host listen/public-origin defaults.
-- [ ] Update CLI tests and snapshots for the new self-host default port.
+- [x] Remove the hardcoded `DEFAULT_BASE_URL` literal from `apps/cli/crates/onequery-cli/src/config.rs`.
+- [x] Derive CLI default base URL from the same Rust helper that defines self-host listen/public-origin defaults.
+- [x] Update CLI tests and snapshots for the new self-host default port.
 
 Done when:
 

@@ -294,7 +294,7 @@ mod tests {
     use crate::cli::BackupArgs;
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::config::self_host::SelfHostRuntimePaths;
 
     #[test]
@@ -400,7 +400,7 @@ mod tests {
     fn sample_context(command_line: &str) -> CommandContext {
         CommandContext {
             command_line: command_line.to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: None,
             resolved_org_source: ResolvedOrgSource::None,
@@ -424,7 +424,7 @@ mod tests {
 
         fs::write(
             &paths.config_path,
-            "[server]\nlisten_host = \"127.0.0.1\"\nport = 4545\nlog_level = \"info\"\n",
+            "[server]\nlisten_host = \"127.0.0.1\"\nport = 5656\nlog_level = \"info\"\n",
         )
         .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
         if include_secrets {

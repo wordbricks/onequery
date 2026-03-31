@@ -422,7 +422,7 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::credentials::AuthSessionStore;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
@@ -537,7 +537,7 @@ mod tests {
 
     #[tokio::test]
     async fn ensure_authenticated_fails_when_no_token_is_stored() {
-        let base_url = DEFAULT_BASE_URL.to_owned();
+        let base_url = default_base_url();
         let context = test_context(base_url.clone(), "onequery org list");
         let mut runtime = test_runtime(auth_session_store_for_test(None));
 
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn authenticated_api_client_fails_when_no_token_is_stored() {
-        let context = test_context(DEFAULT_BASE_URL.to_owned(), "onequery org list");
+        let context = test_context(default_base_url(), "onequery org list");
         let runtime = test_runtime(auth_session_store_for_test(None));
 
         let error = authenticated_api_client(&context, &runtime)

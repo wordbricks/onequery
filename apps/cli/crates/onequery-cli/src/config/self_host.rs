@@ -21,6 +21,8 @@ const SERVER_LOG_FILENAME: &str = "server.log";
 const PID_FILENAME: &str = "server.pid";
 const LOCK_FILENAME: &str = "server.lock";
 const STOP_REQUEST_FILENAME: &str = "server.stop";
+pub(crate) const DEFAULT_SELF_HOST_LISTEN_HOST: &str = "127.0.0.1";
+pub(crate) const DEFAULT_SELF_HOST_PORT: u16 = 5656;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SelfHostRuntimePaths {
@@ -145,15 +147,23 @@ impl SmtpConfig {
 }
 
 fn default_listen_host() -> String {
-    "127.0.0.1".to_owned()
+    DEFAULT_SELF_HOST_LISTEN_HOST.to_owned()
 }
 
-fn default_port() -> u16 {
-    4545
+pub(crate) fn default_port() -> u16 {
+    DEFAULT_SELF_HOST_PORT
 }
 
 fn default_log_level() -> String {
     "info".to_owned()
+}
+
+pub(crate) fn default_public_origin() -> String {
+    format!(
+        "http://{}:{}",
+        DEFAULT_SELF_HOST_LISTEN_HOST,
+        DEFAULT_SELF_HOST_PORT
+    )
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]

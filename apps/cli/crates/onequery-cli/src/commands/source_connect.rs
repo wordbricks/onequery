@@ -502,7 +502,7 @@ mod tests {
 
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::transport::source::SourceSummary;
     use crate::transport::source_connect::SourceConnectGuide;
     use crate::transport::source_connect::SourceConnectInputSchema;
@@ -583,7 +583,7 @@ mod tests {
             &CommandContext {
                 command_line: "onequery source connect --source postgres --input <excerpt>"
                     .to_owned(),
-                base_url: DEFAULT_BASE_URL.to_owned(),
+                base_url: default_base_url(),
                 request_id: None,
                 resolved_org: Some("acme".to_owned()),
                 resolved_org_source: ResolvedOrgSource::Config,
@@ -600,7 +600,7 @@ mod tests {
     fn unauthorized_source_connect_failure_transitions_to_explicit_reauth_terminal_state() {
         let context = CommandContext {
             command_line: "onequery source connect --source postgres".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,
@@ -634,7 +634,7 @@ mod tests {
     fn source_connect_starts_in_guide_mode_without_input() {
         let context = CommandContext {
             command_line: "onequery source connect --source postgres".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,

@@ -21,8 +21,8 @@ use crate::cli::ListReadArgs;
 use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::config::ConfigStore;
-use crate::config::DEFAULT_BASE_URL;
 use crate::config::TypedConfigOverrides;
+use crate::config::default_base_url;
 use crate::credentials::AuthSessionStore;
 use crate::output::CommandOutput;
 use crate::platform::BrowserLauncher;
@@ -163,7 +163,7 @@ fn resolved_base_url(config: &ConfigStore) -> String {
         }
     }
 
-    DEFAULT_BASE_URL.to_owned()
+    default_base_url()
 }
 
 pub(crate) async fn execute<B, T>(

@@ -323,7 +323,7 @@ mod tests {
     use super::execute_with_paths;
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
 
@@ -378,7 +378,7 @@ mod tests {
             fs::read_to_string(&paths.config_path).unwrap_or_else(|error| panic!(
                 "expected restored self-host config to load: {error}"
             )),
-            "[server]\nlisten_host = \"0.0.0.0\"\nport = 4545\nlog_level = \"debug\"\n"
+            "[server]\nlisten_host = \"0.0.0.0\"\nport = 5656\nlog_level = \"debug\"\n"
         );
 
         fs::remove_dir_all(temp_root)
@@ -427,7 +427,7 @@ mod tests {
     fn sample_context(command_line: &str) -> CommandContext {
         CommandContext {
             command_line: command_line.to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: None,
             resolved_org_source: ResolvedOrgSource::None,
@@ -471,7 +471,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected source state dir creation: {error}"));
         fs::write(
             config_dir.join("config.toml"),
-            "[server]\nlisten_host = \"0.0.0.0\"\nport = 4545\nlog_level = \"debug\"\n",
+            "[server]\nlisten_host = \"0.0.0.0\"\nport = 5656\nlog_level = \"debug\"\n",
         )
         .unwrap_or_else(|error| panic!("expected source server config write: {error}"));
         if include_secrets {

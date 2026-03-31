@@ -25,19 +25,22 @@ use self::layers::raw_cli_overrides_layer;
 pub(crate) use self::paths::config_dir;
 use self::paths::config_path;
 pub(crate) use self::paths::data_dir;
+use self::self_host::default_public_origin;
 
 use crate::path_utils;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
-#[cfg(debug_assertions)]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
-#[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
-pub(crate) const CONFIG_SET_SERVER_COMMAND_EXAMPLE: &str =
-    "onequery config set server http://127.0.0.1:4545";
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
+
+pub(crate) fn default_base_url() -> String {
+    default_public_origin()
+}
+
+pub(crate) fn config_set_server_command_example() -> String {
+    format!("onequery config set server {}", default_base_url())
+}
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct AppConfig {

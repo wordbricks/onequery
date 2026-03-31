@@ -628,7 +628,7 @@ mod tests {
     use crate::cli::ReadArgs;
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceListPayload;
     use crate::workflows::runner::TransitionProgress;
@@ -718,7 +718,7 @@ mod tests {
     fn unauthorized_source_list_failure_transitions_to_explicit_reauth_terminal_state() {
         let context = CommandContext {
             command_line: "onequery source list".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,
@@ -752,7 +752,7 @@ mod tests {
     fn source_show_rejects_unsafe_source_keys_before_authentication() {
         let context = CommandContext {
             command_line: "onequery source show warehouse/main".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,

@@ -1205,7 +1205,7 @@ mod tests {
             },
             &LogPreview {
                 lines: vec![
-                    "[bun-server] listening on http://127.0.0.1:4545".to_owned(),
+                    "[bun-server] listening on http://127.0.0.1:5656".to_owned(),
                     "[api] GET /api/health 200".to_owned(),
                 ],
                 truncated: false,

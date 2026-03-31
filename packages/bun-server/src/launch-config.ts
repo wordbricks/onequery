@@ -14,7 +14,7 @@ const defaultRootDir = fileURLToPath(new URL("../../..", import.meta.url));
 const PGLITE_URL_PREFIX = "pglite:";
 
 export const DEFAULT_SELF_HOST_LISTEN_HOST = "127.0.0.1";
-export const DEFAULT_SELF_HOST_PORT = 4545;
+export const DEFAULT_SELF_HOST_PORT = 5656;
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
