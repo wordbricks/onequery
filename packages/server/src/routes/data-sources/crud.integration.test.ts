@@ -2,15 +2,15 @@ import { createDatabaseRuntime, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { ServerEnv } from "../../env";
 import type { SessionData } from "../../middleware/session";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import type { StorageVariables } from "../../storage";
 import {
   closeDatabase,
   createPgliteDatabaseUrl,
 } from "../../test/integration-helpers";
 import type { ClosableDatabase } from "../../test/integration-helpers";
-import { createTestEnv } from "../test-env";
+import { createTestRuntimeConfigFromDatabaseUrl } from "../test-env";
 import { dataSourcesCrudRoute } from "./crud";
 
 function createSession(userId: string): SessionData {
@@ -45,9 +45,7 @@ describe("dataSourcesCrudRoute", () => {
       "onequery-data-sources-crud-test-",
       ["db"]
     );
-    const env = createTestEnv({
-      DATABASE_URL: dbUrl,
-    });
+    const runtimeConfig = createTestRuntimeConfigFromDatabaseUrl(dbUrl);
     const runtime = createDatabaseRuntime(dbUrl);
     openedDatabases.push(runtime.db as ClosableDatabase);
 
@@ -69,14 +67,17 @@ describe("dataSourcesCrudRoute", () => {
     });
 
     const app = new Hono<{
-      Bindings: ServerEnv;
-      Variables: StorageVariables & { session: SessionData | null };
+      Variables:
+        & ServerRuntimeVariables
+        & StorageVariables
+        & { session: SessionData | null };
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {
           db: runtime.db,
           schema: runtime.schema,
         } as StorageVariables["storage"]);
+        c.set("runtime", runtimeConfig);
         c.set("session", createSession("user-1"));
         await next();
       })
@@ -103,7 +104,6 @@ describe("dataSourcesCrudRoute", () => {
         },
         method: "POST",
       }),
-      env
     );
 
     expect(response.status).toBe(201);

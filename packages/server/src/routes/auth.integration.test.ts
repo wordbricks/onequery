@@ -20,7 +20,7 @@ import {
 
 describe("auth route organization deletion guardrails", () => {
   it("blocks self-serve org deletion and preserves org-owned state", async () => {
-    const { app, auth, db, env, test } = await createRouteIntegrationHarness();
+    const { app, auth, db, test } = await createRouteIntegrationHarness();
 
     const runId = createRunId();
     const user = test.createUser({
@@ -120,8 +120,7 @@ describe("auth route organization deletion guardrails", () => {
             cookie: login.headers.get("cookie") ?? "",
           },
           method: "POST",
-        },
-        env
+        }
       );
 
       const responseText = await response.text();

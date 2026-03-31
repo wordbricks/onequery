@@ -2,10 +2,10 @@ import { zValidator } from "@hono/zod-validator";
 import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import { Hono } from "hono";
 
-import type { ServerEnv } from "../../env";
 import { requireOrgAccess } from "../../middleware/require-org-access";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import { prepareDataSourceCredentials } from "../../services/data-source-credentials/prepare-data-source-credentials";
 import {
   LEGACY_UNSUPPORTED_TEST_PREFIX,
@@ -14,8 +14,7 @@ import {
 import { OrgQuerySchema } from "./schemas";
 
 export const dataSourcesTestRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .post(
@@ -40,7 +39,7 @@ export const dataSourcesTestRoute = new Hono<{
 
       const preparedCredentials = await prepareDataSourceCredentials({
         dataSource,
-        masterEncryptionKey: c.env.MASTER_ENCRYPTION_KEY,
+        masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
       });
       if (!preparedCredentials.ok) {
         return c.json({ error: preparedCredentials.error }, 500);

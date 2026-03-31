@@ -173,7 +173,7 @@ export const cliSourceConnectHandlers = factory.createHandlers(
         organizationId: c.var.authorizedOrg.org.id,
         provider: query.source as ProviderType,
       },
-      masterEncryptionKey: c.env.MASTER_ENCRYPTION_KEY,
+      masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
     });
 
     if (result.kind === "name_conflict") {

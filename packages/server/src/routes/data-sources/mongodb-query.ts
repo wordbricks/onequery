@@ -9,9 +9,9 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { ServerEnv } from "../../env";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
   decryptCredentialsObject,
   deriveKeyFromBase64,
@@ -55,8 +55,7 @@ const findDocumentsRequestSchema = z.object({
 });
 
 export const dataSourcesMongoDbQueryRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 }>().post(
   "/mongodb/query",
   zValidator("json", mongodbQuerySchema, zodProblemHook()),
@@ -111,7 +110,9 @@ export const dataSourcesMongoDbQueryRoute = new Hono<{
       );
     }
 
-    const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+    const masterKey = deriveKeyFromBase64(
+      c.var.runtime.crypto.masterEncryptionKey
+    );
     const credentialsOutcome = await Promise.resolve()
       .then(() =>
         decryptCredentialsObject(

@@ -10,7 +10,6 @@ import {
 import type { ProviderType } from "@onequery/db/server";
 import { Hono } from "hono";
 
-import type { ServerEnv } from "../../env";
 import {
   DATA_SOURCE_NAME_CONFLICT_MESSAGE,
   isDataSourceNameConflict,
@@ -19,6 +18,7 @@ import { verifyOrgAccess } from "../../lib/verify-org-access";
 import { requireOrgAccess } from "../../middleware/require-org-access";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import { ensureConnectorOrganization } from "../../services/connectors/broker";
 import {
   decryptCredentialsObject,
@@ -107,8 +107,7 @@ async function revokeLinearToken(input: {
 }
 
 export const dataSourcesCrudRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 }>()
   .get(
     "/",
@@ -282,7 +281,9 @@ export const dataSourcesCrudRoute = new Hono<{
         return c.json({ error: "Name is required" }, 400);
       }
 
-      const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+      const masterKey = deriveKeyFromBase64(
+        c.var.runtime.crypto.masterEncryptionKey
+      );
       const encrypted = encryptCredentialsObject(body.credentials, masterKey);
       const providerType: ProviderType = body.provider;
 
@@ -417,7 +418,9 @@ export const dataSourcesCrudRoute = new Hono<{
           }
         }
 
-        const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+        const masterKey = deriveKeyFromBase64(
+          c.var.runtime.crypto.masterEncryptionKey
+        );
         const encrypted = encryptCredentialsObject(body.credentials, masterKey);
         updates.credentialsEncrypted = encrypted.ciphertext;
         updates.credentialsIv = encrypted.iv;
@@ -479,7 +482,9 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       if (existing.provider === "linear") {
-        const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+        const masterKey = deriveKeyFromBase64(
+          c.var.runtime.crypto.masterEncryptionKey
+        );
         const decryptOutcome = await Promise.resolve()
           .then(() =>
             decryptCredentialsObject(

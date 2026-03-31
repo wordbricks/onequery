@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import type { ServerEnv } from "../../env";
 import type { SessionData } from "../../middleware/session";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
   deriveKeyFromBase64,
   encryptCredentialsObject,
@@ -16,7 +16,7 @@ import {
   createPgliteDatabaseUrl,
 } from "../../test/integration-helpers";
 import type { ClosableDatabase } from "../../test/integration-helpers";
-import { createTestEnv } from "../test-env";
+import { createTestRuntimeConfigFromDatabaseUrl } from "../test-env";
 import { createProviderRoute } from "./create-provider-route";
 
 function createSession(userId: string): SessionData {
@@ -127,14 +127,24 @@ describe("createProviderRoute", () => {
     });
 
     const app = new Hono<{
-      Bindings: ServerEnv;
-      Variables: StorageVariables & { session: SessionData | null };
+      Variables:
+        & ServerRuntimeVariables
+        & StorageVariables
+        & { session: SessionData | null };
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {
           db: runtime.db,
           schema: runtime.schema,
         } as StorageVariables["storage"]);
+        c.set(
+          "runtime",
+          createTestRuntimeConfigFromDatabaseUrl(dbUrl, {
+            crypto: {
+              masterEncryptionKey: masterKeyBase64,
+            },
+          })
+        );
         c.set("session", createSession("user-1"));
         await next();
       })
@@ -149,10 +159,6 @@ describe("createProviderRoute", () => {
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
-      }),
-      createTestEnv({
-        DATABASE_URL: dbUrl,
-        MASTER_ENCRYPTION_KEY: masterKeyBase64,
       })
     );
 

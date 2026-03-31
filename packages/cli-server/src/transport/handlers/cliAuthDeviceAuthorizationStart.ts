@@ -45,7 +45,7 @@ export const cliAuthDeviceAuthorizationStartHandlers = factory.createHandlers(
             deviceCode: rawPayload.device_code,
             userCode: rawPayload.user_code,
             ...buildDeviceVerificationUrls(
-              c.env.BETTER_AUTH_URL,
+              c.var.runtime.auth.baseURL,
               rawPayload.user_code
             ),
             pollAfterMs,

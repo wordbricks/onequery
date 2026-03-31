@@ -2,8 +2,8 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { ServerEnv } from "../env";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../runtime-context";
 import {
   findConnectorIdByAuthToken,
   pollConnectorJob,
@@ -88,21 +88,16 @@ function requireBearerAuthToken(c: {
 }
 
 export const connectorsRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: StorageVariables;
+  Variables: ServerRuntimeVariables & StorageVariables;
 }>()
   .post(
     "/register",
     zValidator("json", connectorRegisterSchema, zodProblemHook()),
     async (c) => {
       const payload = c.req.valid("json");
-      const configuredEnrollmentToken = c.env.CONNECTOR_ENROLLMENT_TOKEN;
+      const configuredEnrollmentToken =
+        c.var.runtime.connectors.enrollmentToken;
       const db = c.var.storage.db;
-
-      if (!configuredEnrollmentToken) {
-        console.error("CONNECTOR_ENROLLMENT_TOKEN is not configured");
-        return c.json({ error: "Connector enrollment is not configured" }, 503);
-      }
 
       if (payload.enrollmentToken !== configuredEnrollmentToken) {
         return c.json({ error: "Invalid enrollment token" }, 401);
@@ -171,8 +166,7 @@ export const connectorsRoute = new Hono<{
   });
 
 export const connectorJobsRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: StorageVariables;
+  Variables: ServerRuntimeVariables & StorageVariables;
 }>()
   .post(
     "/:jobId/result",

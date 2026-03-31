@@ -165,7 +165,9 @@ function resolveBaseURL(
     return new URL(request.url).origin;
   }
 
-  return "http://127.0.0.1:4545";
+  throw new Error(
+    "Email delivery requires a configured public origin or request URL"
+  );
 }
 
 async function sendSmtpMessage(

@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ServerEnv } from "../env";
 import type { SessionData, SessionVariables } from "../middleware/session";
 import type { StorageVariables } from "../storage";
 import { teamRoute } from "./team";
@@ -60,7 +59,6 @@ describe("team route", () => {
       role: "owner",
     }));
     const app = new Hono<{
-      Bindings: ServerEnv;
       Variables: SessionVariables;
     }>()
       .use("*", async (c, next) => {

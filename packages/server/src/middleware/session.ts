@@ -1,7 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import { z } from "zod";
 
-import type { AuthEnv } from "../env";
 import type { StorageVariables } from "../storage";
 
 const AuthUserSchema = z.object({
@@ -88,13 +87,16 @@ async function readSessionData(input: {
  * Does not block requests - just makes session data accessible via c.get('session').
  */
 export function sessionMiddleware<
-  Env extends AuthEnv = AuthEnv,
+  Variables extends Record<string, unknown> = Record<string, never>,
 >(): MiddlewareHandler<{
-  Bindings: Env;
-  Variables: SessionVariables;
+  Variables: SessionVariables & Variables;
 }> {
   return async (c, next) => {
-    c.set(
+    (
+      c as typeof c & {
+        set: (key: "session", value: SessionData | null) => void;
+      }
+    ).set(
       "session",
       await readSessionData({
         auth: c.var.storage.auth,

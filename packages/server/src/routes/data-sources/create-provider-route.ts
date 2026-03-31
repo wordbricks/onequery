@@ -10,9 +10,9 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import type { z } from "zod";
 
-import type { ServerEnv } from "../../env";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
   decryptCredentialsObject,
   deriveKeyFromBase64,
@@ -64,8 +64,7 @@ export interface ProviderRouteOptions<
 }
 
 type RouteContext = {
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 };
 
 function buildConflictMessage(input: {
@@ -168,7 +167,9 @@ export function createProviderRoute<
         );
       }
 
-      const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+      const masterKey = deriveKeyFromBase64(
+        c.var.runtime.crypto.masterEncryptionKey
+      );
       const credentialsOutcome = await Promise.resolve()
         .then(() =>
           decryptCredentialsObject(

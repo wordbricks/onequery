@@ -1,6 +1,5 @@
 import type { MiddlewareHandler } from "hono";
 
-import type { ServerEnv } from "../env";
 import { verifyOrgAccess } from "../lib/verify-org-access";
 import type { SessionVariables } from "./session";
 
@@ -14,7 +13,6 @@ import type { SessionVariables } from "./session";
  * query string.
  */
 export function requireOrgAccess(): MiddlewareHandler<{
-  Bindings: ServerEnv;
   Variables: SessionVariables;
 }> {
   return async (c, next) => {

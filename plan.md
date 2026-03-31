@@ -287,15 +287,15 @@ Done when:
 This is the biggest code-quality step.
 
 - [x] Add a typed runtime module in `packages/server`, for example `packages/server/src/runtime.ts`.
-- [ ] Change `packages/server` APIs to accept `ServerLaunchConfig` / `ServerRuntimeConfig` instead of env.
-- [ ] Replace `createAuthFromEnv()` with `createAuthFromConfig()`.
-- [ ] Replace `getServerStorage(env)` with startup-time service construction from typed config.
-- [ ] Create services once at app startup instead of keying caches by stringified env values.
-- [ ] Remove the global env-keyed caches in:
+- [x] Change `packages/server` APIs to accept `ServerLaunchConfig` / `ServerRuntimeConfig` instead of env.
+- [x] Replace `createAuthFromEnv()` with `createAuthFromConfig()`.
+- [x] Replace `getServerStorage(env)` with startup-time service construction from typed config.
+- [x] Create services once at app startup instead of keying caches by stringified env values.
+- [x] Remove the global env-keyed caches in:
   - `packages/server/src/auth.ts`
   - `packages/server/src/storage.ts`
-- [ ] Replace `parseBooleanEnvFlag()` use in rate limiting with a startup boolean from runtime config.
-- [ ] Remove hardcoded fallback origin in `packages/server/src/lib/email-delivery.ts`; use `publicOrigin` from runtime config or request origin only.
+- [x] Replace `parseBooleanEnvFlag()` use in rate limiting with a startup boolean from runtime config.
+- [x] Remove hardcoded fallback origin in `packages/server/src/lib/email-delivery.ts`; use `publicOrigin` from runtime config or request origin only.
 
 Important design rule:
 
@@ -308,11 +308,11 @@ Done when:
 
 ## Phase 5 — make Hono app creation typed and explicit
 
-- [ ] Change `packages/server/src/app.ts` to export a factory like `createServerApi(runtime)`.
-- [ ] Stop using `Bindings: ServerEnv` as the main way routes access config.
-- [ ] Prefer closure injection or `Variables` for process-owned runtime/services.
-- [ ] Update route modules and middleware that currently import `ServerEnv` / `AuthEnv` types.
-- [ ] Update `packages/server/src/routes/test-env.ts` and test helpers to build typed runtime fixtures instead of env bags.
+- [x] Change `packages/server/src/app.ts` to export a factory like `createServerApi(runtime)`.
+- [x] Stop using `Bindings: ServerEnv` as the main way routes access config.
+- [x] Prefer closure injection or `Variables` for process-owned runtime/services.
+- [x] Update route modules and middleware that currently import `ServerEnv` / `AuthEnv` types.
+- [x] Update `packages/server/src/routes/test-env.ts` and test helpers to build typed runtime fixtures instead of env bags.
 
 Done when:
 
@@ -325,8 +325,8 @@ Done when:
   - either an in-memory object in tests
   - or a launch-config file path in real startup
 - [ ] Add `packages/bun-server/src/launch-config.ts` (or similar) to load and validate `ServerLaunchConfig` once.
-- [ ] Change `packages/bun-server/src/app.ts` to accept constructed runtime/services instead of parsing `c.env`.
-- [ ] Remove the per-request `parseCoreServerEnv(c.env)` guard.
+- [x] Change `packages/bun-server/src/app.ts` to accept constructed runtime/services instead of parsing `c.env`.
+- [x] Remove the per-request `parseCoreServerEnv(c.env)` guard.
 - [ ] Keep route constants in `packages/bun-server/src/constants.ts`, but move listen/public-origin defaults out of that file.
 - [ ] If Bun still needs asset bindings or persistent storage handles, derive them from the loaded launch config once.
 
@@ -351,7 +351,7 @@ Also clean up Rust-local duplication:
 
 - [ ] Remove the hardcoded `DEFAULT_BASE_URL` literal from `apps/cli/crates/onequery-cli/src/config.rs`.
 - [ ] Derive CLI default base URL from the same Rust helper that defines self-host listen/public-origin defaults.
-- [ ] Update CLI tests and snapshots for the new self-host default port (recommended `8080`).
+- [ ] Update CLI tests and snapshots for the new self-host default port.
 
 Done when:
 

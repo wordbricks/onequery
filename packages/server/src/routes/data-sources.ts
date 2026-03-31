@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
-import type { ServerEnv } from "../env";
 import type { SessionVariables } from "../middleware/session";
+import type { ServerRuntimeVariables } from "../runtime-context";
 import { dataSourcesAmplitudeQueryRoute } from "./data-sources/amplitude-query";
 import { dataSourcesCrudRoute } from "./data-sources/crud";
 import { dataSourcesGaQueryRoute } from "./data-sources/ga-query";
@@ -28,8 +28,7 @@ import { dataSourcesTestRoute } from "./data-sources/test";
  * - test.ts: Test data source connection
  */
 export const dataSourcesRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 }>()
   .route("/", dataSourcesCrudRoute)
   .route("/", dataSourcesAmplitudeQueryRoute)

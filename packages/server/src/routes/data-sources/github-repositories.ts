@@ -9,10 +9,10 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { ServerEnv } from "../../env";
 import { requireOrgAccess } from "../../middleware/require-org-access";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
   decryptCredentialsObject,
   deriveKeyFromBase64,
@@ -39,8 +39,7 @@ const GitHubRepositorySchema = z.object({
 const GitHubRepositoriesSchema = z.array(GitHubRepositorySchema);
 
 export const dataSourcesGitHubRepositoriesRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
+  Variables: ServerRuntimeVariables & SessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .get(
@@ -81,7 +80,9 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         );
       }
 
-      const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+      const masterKey = deriveKeyFromBase64(
+        c.var.runtime.crypto.masterEncryptionKey
+      );
       const credentials = decryptCredentialsObject(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,
@@ -151,7 +152,9 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         return c.json({ error: "Data source is not GitHub" }, 400);
       }
 
-      const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
+      const masterKey = deriveKeyFromBase64(
+        c.var.runtime.crypto.masterEncryptionKey
+      );
       const credentials = decryptCredentialsObject(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,

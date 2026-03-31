@@ -18,12 +18,11 @@ import {
   organizationRoles,
 } from "./auth/organization-permissions";
 import { authorizeSelfHostSignUp } from "./auth/self-host";
-import { parseAuthEnv } from "./env";
-import type { AuthEnv } from "./env";
 import { createBetterAuthRateLimitStorage } from "./lib/better-auth-rate-limit-storage";
 import { deliverPasswordResetEmail } from "./lib/email-delivery";
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
 import type { RuntimeRateLimitStorage } from "./lib/rate-limit-storage";
+import type { ServerRuntimeConfig } from "./runtime";
 
 type AuthConfig = {
   databaseUrl?: string;
@@ -38,22 +37,6 @@ type AuthConfig = {
   enableTestUtils?: boolean;
   rateLimitStorage?: RuntimeRateLimitStorage;
 };
-
-const AUTH_CACHE_SYMBOL = Symbol.for("onequery.auth.instance-cache");
-
-type AuthCache = Map<string, ReturnType<typeof createAuth>>;
-
-function getAuthCache(): AuthCache {
-  const globalWithCache = globalThis as typeof globalThis & {
-    [AUTH_CACHE_SYMBOL]?: AuthCache;
-  };
-
-  if (!globalWithCache[AUTH_CACHE_SYMBOL]) {
-    globalWithCache[AUTH_CACHE_SYMBOL] = new Map();
-  }
-
-  return globalWithCache[AUTH_CACHE_SYMBOL];
-}
 
 type DbInstance = ReturnType<typeof createDb>;
 
@@ -269,35 +252,36 @@ export function createAuth(config: AuthConfig) {
   });
 }
 
-export function createAuthFromEnv(env: AuthEnv) {
-  const parsedConfig = parseAuthEnv(env);
-  const config: AuthConfig = {
-    ...parsedConfig,
-    authRateLimitStorage: parsedConfig.rateLimitStorage?.auth,
-  };
+export interface CreateAuthFromConfigOptions {
+  authRateLimitStorage?: ReturnType<typeof createBetterAuthRateLimitStorage>;
+  db?: DbInstance;
+  enableTestUtils?: boolean;
+  provider?: "pg";
+  schema?: DatabaseSchema;
+}
 
-  const cacheKey = [
-    config.databaseUrl,
-    config.secret,
-    config.baseURL ?? "",
-    config.rateLimitStorage ? "persistent" : "memory",
-    config.disableRateLimit ? "rate-limit-disabled" : "rate-limit-enabled",
-    config.emailDelivery?.smtp?.host ?? "manual-link",
-    config.emailDelivery?.smtp?.port ?? "no-port",
-    config.emailDelivery?.smtp?.fromEmail ?? "no-from",
-  ].join("|");
-
-  const cache = getAuthCache();
-  const cachedAuth = cache.get(cacheKey);
-  if (cachedAuth) {
-    return cachedAuth;
-  }
-
+export function createAuthFromConfig(
+  runtime: ServerRuntimeConfig,
+  input: CreateAuthFromConfigOptions = {}
+) {
   console.info("[auth] Using stateless JWE session cache (15 min TTL)");
-  const auth = createAuth(config);
-  cache.set(cacheKey, auth);
 
-  return auth;
+  return createAuth({
+    authRateLimitStorage:
+      input.authRateLimitStorage ??
+      runtime.rateLimit.runtimeStorage?.auth ??
+      createBetterAuthRateLimitStorage(),
+    baseURL: runtime.auth.baseURL,
+    databaseUrl: runtime.storage.connectionString,
+    db: input.db,
+    disableRateLimit: !runtime.rateLimit.enabled,
+    emailDelivery: runtime.auth.emailDelivery,
+    enableTestUtils: input.enableTestUtils,
+    provider: input.provider,
+    rateLimitStorage: runtime.rateLimit.runtimeStorage,
+    schema: input.schema,
+    secret: runtime.auth.secret,
+  });
 }
 
 export type Auth = ReturnType<typeof createAuth>;

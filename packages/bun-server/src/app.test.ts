@@ -3,42 +3,34 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
+import { createTestRuntimeConfigFromDatabaseUrl } from "@onequery/server/routes/test-env";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
-import { app } from "./app";
-import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
+import { createApp } from "./app";
 import {
   createRuntimeConfig,
   createRuntimeEnv as buildRuntimeEnv,
 } from "./runtime-env";
-import type { BunRuntimeEnv } from "./runtime-env";
 
-function createTestRuntimeEnv(
-  overrides: Partial<BunRuntimeEnv> = {}
-): BunRuntimeEnv {
-  return {
-    BETTER_AUTH_SECRET: "test-better-auth-secret",
-    BETTER_AUTH_URL: "http://localhost:4545",
-    CONNECTOR_ENROLLMENT_TOKEN: "test-connector-token",
-    DATABASE_URL: LOCAL_TEST_DATABASE_URL,
-    DISABLE_RATE_LIMIT: true,
-    MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-    RATE_LIMIT_STORAGE: createPersistentRuntimeRateLimitStorage(
-      mkdtempSync(join(tmpdir(), "onequery-rate-limit-test-"))
+function createTestApp() {
+  const spaAssets = {
+    fetch: vi.fn(
+      async () =>
+        new Response("<!doctype html><title>spa</title>", {
+          headers: {
+            "content-type": "text/html;charset=utf-8",
+          },
+        })
     ),
-    SPA_ASSETS: {
-      fetch: vi.fn(
-        async () =>
-          new Response("<!doctype html><title>spa</title>", {
-            headers: {
-              "content-type": "text/html;charset=utf-8",
-            },
-          })
-      ),
-    },
-    WEB_URL: "http://localhost:4545",
-    ...overrides,
+  };
+
+  return {
+    app: createApp({
+      runtime: createTestRuntimeConfigFromDatabaseUrl(LOCAL_TEST_DATABASE_URL),
+      spaAssets,
+    }),
+    spaAssets,
   };
 }
 
@@ -60,12 +52,9 @@ describe("bun runtime app", () => {
 
   it("serves the SPA shell and API routes from the same app", async () => {
     console.log = () => {};
-    const env = createTestRuntimeEnv();
-    const rootResponse = await app.fetch(new Request("http://local/"), env);
-    const healthResponse = await app.fetch(
-      new Request("http://local/api/health"),
-      env
-    );
+    const { app, spaAssets } = createTestApp();
+    const rootResponse = await app.fetch(new Request("http://local/"));
+    const healthResponse = await app.fetch(new Request("http://local/api/health"));
 
     expect(rootResponse.status).toBe(200);
     expect(rootResponse.headers.get("content-type")).toContain("text/html");
@@ -76,45 +65,38 @@ describe("bun runtime app", () => {
       status: "ok",
     });
 
-    expect(env.SPA_ASSETS.fetch).toHaveBeenCalledTimes(1);
+    expect(spaAssets.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("returns an API 404 instead of the SPA shell for missing API paths", async () => {
     console.log = () => {};
-    const env = createTestRuntimeEnv();
-    const response = await app.fetch(
-      new Request("http://local/api/missing"),
-      env
-    );
+    const { app, spaAssets } = createTestApp();
+    const response = await app.fetch(new Request("http://local/api/missing"));
 
     expect(response.status).toBe(404);
     await expect(response.text()).resolves.toBe("404 Not Found");
-    expect(env.SPA_ASSETS.fetch).not.toHaveBeenCalled();
+    expect(spaAssets.fetch).not.toHaveBeenCalled();
   });
 
   it("falls back to the SPA shell for non-api client routes", async () => {
     console.log = () => {};
-    const env = createTestRuntimeEnv();
-    const response = await app.fetch(
-      new Request("http://local/settings/profile"),
-      env
-    );
+    const { app, spaAssets } = createTestApp();
+    const response = await app.fetch(new Request("http://local/settings/profile"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
-    expect(env.SPA_ASSETS.fetch).toHaveBeenCalledTimes(1);
+    expect(spaAssets.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("serves the installer script for curl-like root requests before the SPA shell", async () => {
     console.log = () => {};
-    const env = createTestRuntimeEnv();
+    const { app, spaAssets } = createTestApp();
     const response = await app.fetch(
       new Request("http://local/", {
         headers: {
           "user-agent": "curl/8.7.1",
         },
-      }),
-      env
+      })
     );
 
     expect(response.status).toBe(200);
@@ -124,7 +106,7 @@ describe("bun runtime app", () => {
     await expect(response.text()).resolves.toContain(
       'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
     );
-    expect(env.SPA_ASSETS.fetch).not.toHaveBeenCalled();
+    expect(spaAssets.fetch).not.toHaveBeenCalled();
   });
 
   it("defaults the runtime database URL to the self-host PGlite path", () => {
