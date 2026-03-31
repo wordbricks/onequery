@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../config/src/testing";
 import { createSpaAssetBinding } from "./assets";
 import {
   createWorkspaceDevLaunchConfig,

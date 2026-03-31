@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../packages/dev-config/src/master-encryption-key.ts";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../packages/config/src/testing.ts";
 import {
   CLI_BINARY_NAME,
   CLI_SERVER_BINARY_NAME,

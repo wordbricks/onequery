@@ -120,7 +120,6 @@
         "@onequery/base": "workspace:*",
         "@onequery/cli-server": "workspace:*",
         "@onequery/config": "workspace:*",
-        "@onequery/config-loader": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/server": "workspace:*",
         "hono": "catalog:",
@@ -209,17 +208,6 @@
         "drizzle-kit": "0.31.10",
       },
     },
-    "packages/dev-config": {
-      "name": "@onequery/dev-config",
-      "version": "0.0.0",
-      "dependencies": {
-        "@onequery/config-loader": "workspace:*",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "vitest": "catalog:",
-      },
-    },
     "packages/github-rulesets": {
       "name": "@onequery/github-rulesets",
       "version": "0.0.0",
@@ -237,7 +225,6 @@
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/config": "workspace:*",
-        "@onequery/config-loader": "workspace:*",
         "@onequery/contracts": "workspace:*",
         "@onequery/db": "workspace:*",
         "@types/pg": "8.16.0",
@@ -657,8 +644,6 @@
     "@onequery/datetime": ["@onequery/datetime@workspace:packages/datetime"],
 
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
-
-    "@onequery/dev-config": ["@onequery/dev-config@workspace:packages/dev-config"],
 
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
 

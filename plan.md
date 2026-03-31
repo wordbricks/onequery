@@ -409,11 +409,11 @@ Done when:
 
 ## Required tests before calling this done
 
-- [ ] Unit tests for `resolveWorkspaceDev()`.
-- [ ] Unit tests for workspace-dev projections (`vite`, `docker`, `drizzle`).
-- [ ] Unit tests for the derived test profile.
+- [x] Unit tests for `resolveWorkspaceDev()`.
+- [x] Unit tests for workspace-dev projections (`vite`, `docker`, `drizzle`).
+- [x] Unit tests for the derived test profile.
 - [x] Rust tests for self-host config resolution and launch-contract generation.
-- [ ] Bun tests for reading a launch contract and starting from it.
+- [x] Bun tests for reading a launch contract and starting from it.
 - [ ] Integration test that `bun dev` uses separate browser/API ports.
 - [ ] Integration test that `onequery serve` uses the bundled self-host port.
 - [x] Negative test proving self-host startup does **not** read `onequery.dev.toml`.
