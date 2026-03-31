@@ -1,13 +1,12 @@
 [tools]
-"aqua:astral-sh/uv" = "latest"
-"aqua:casey/just" = "latest"
-"aqua:rhysd/actionlint" = "latest"
-"aqua:mitsuhiko/insta" = "latest"
-"cargo:cargo-expand" = "latest"
-"cargo:cargo-nextest" = "latest"
-"npm:turbo" = "latest"
-"npm:@antfu/ni" = "latest"
-"npm:@hono/cli" = "latest"
+"aqua:casey/just" = "1.48.1"
+"aqua:rhysd/actionlint" = "1.7.11"
+"aqua:mitsuhiko/insta" = "1.47.1"
+"cargo:cargo-expand" = "1.0.121"
+"cargo:cargo-nextest" = "0.9.132"
+"npm:turbo" = "2.8.20"
+"npm:@antfu/ni" = "30.0.0"
+"npm:@hono/cli" = "0.1.10"
 
 [settings]
 npm.bun = true

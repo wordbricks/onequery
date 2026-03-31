@@ -131,9 +131,7 @@ jobs:
       - name: Build self-host server executable
         run: |
           set -euo pipefail
-          bun scripts/build-server-executable.js \
-            --target-triple "${{ matrix.target }}" \
-            --outfile "dist/vendor/${{ matrix.target }}/server/onequery-server"
+          bun scripts/build-server-executable.js --target-triple "${{ matrix.target }}"
 
       - name: Stage vendor payload
         run: |
