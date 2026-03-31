@@ -51,7 +51,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 
   const command = args.shift();
   if (!command) {
-    throw new Error("Missing command. Example: bun run env:sync");
+    throw new Error("Missing command. Example: bun run db:migrate");
   }
 
   return {

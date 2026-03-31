@@ -245,9 +245,9 @@ Done when:
 - [x] Add `onequery.dev.secrets.toml` at repo root.
 - [x] Add ignore rules for `onequery.dev.secrets.toml` and any generated runtime files.
 - [x] Create one small initializer in TS that seeds `onequery.dev.secrets.toml` if missing.
-- [ ] Delete `onequery.local.env.toml.template`.
-- [ ] Stop treating `onequery.local.env.toml` as the repo’s editable config surface.
-- [ ] Remove the idea of “syncing” config into a generated committed template.
+- [x] Delete `onequery.local.env.toml.template`.
+- [x] Stop treating `onequery.local.env.toml` as the repo’s editable config surface.
+- [x] Remove the idea of “syncing” config into a generated committed template.
 
 Do not do this:
 
@@ -262,10 +262,10 @@ Done when:
 
 - [x] Replace `apps/web/src/lib/vite-dev-server-config.ts` so it reads `resolveWorkspaceDev()` from `packages/config`.
 - [x] Remove the compatibility-shim comment there; after migration it is not a shim.
-- [ ] Update `scripts/dev-setup.ts` to use the structured workspace-dev config.
+- [x] Update `scripts/dev-setup.ts` to use the structured workspace-dev config.
 - [x] Update `scripts/run-local-env-command.ts` to use projection helpers from `packages/config`.
 - [x] Update any DB tooling wrappers to consume `drizzle` projection values from `packages/config`.
-- [ ] Update Docker local startup to consume config from one place.
+- [x] Update Docker local startup to consume config from one place.
 
 Recommended Docker approach:
 
@@ -274,9 +274,9 @@ Recommended Docker approach:
 
 That means `docker-compose.yml` stops being another source of truth.
 
-- [ ] Delete `scripts/check-dev-topology.ts`.
-- [ ] Delete `scripts/lib/dev-topology-check.ts`.
-- [ ] Remove `dev:topology:check` from root scripts.
+- [x] Delete `scripts/check-dev-topology.ts`.
+- [x] Delete `scripts/lib/dev-topology-check.ts`.
+- [x] Remove `dev:topology:check` from root scripts.
 
 Done when:
 
@@ -363,8 +363,8 @@ Done when:
 - [ ] Delete `packages/dev-config/src/runtime.ts`.
 - [ ] Delete `packages/dev-config/src/local-env.ts`.
 - [ ] Delete `packages/dev-config` tests.
-- [ ] Delete `scripts/sync-local-env.ts`.
-- [ ] Delete `env:sync` from `package.json`.
+- [x] Delete `scripts/sync-local-env.ts`.
+- [x] Delete `env:sync` from `package.json`.
 - [ ] Remove any code still importing `@onequery/dev-config/*`.
 - [ ] Remove any code still reading `onequery.local.env.toml`.
 - [ ] Remove any code still depending on `WEB_URL`, `BETTER_AUTH_URL`, or `LOCAL_TEST_DATABASE_URL` as first-class concepts.

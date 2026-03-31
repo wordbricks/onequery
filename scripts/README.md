@@ -2,33 +2,29 @@
 
 ## Local Bootstrap
 
-`onequery.local.env.toml` is the editable source of truth for managed OSS
-web/server local config. Child processes receive projected env vars in memory at
-launch time; there is no generated local env file on disk.
+`onequery.dev.toml` is the tracked workspace-dev config for browser, API, and
+local Postgres settings. `onequery.dev.secrets.toml` is the local untracked
+secrets file. Child tooling still gets env-style values when needed, but those
+values are projected from `@onequery/config` at process launch rather than
+authored as env-shaped config.
 
 `bun dev` runs `scripts/dev-setup.ts` before starting the workspace. That setup
 step now does three things:
 
-1. Creates `onequery.local.env.toml` from the managed config contract if it is
-   missing.
-2. Appends newly managed keys to `onequery.local.env.toml` without overwriting
-   existing values, and seeds a random `BETTER_AUTH_SECRET` when that key is
-   missing.
-3. Starts the local Postgres container and syncs the Drizzle schema.
+1. Creates `onequery.dev.secrets.toml` if it is missing.
+2. Resolves the structured workspace-dev config from `@onequery/config`.
+3. Starts the local Postgres container from the Docker projection and prepares
+   the shared test database.
 
 ## Quick Start
 
 ```bash
 # First run: bootstrap local state and run the one-port Bun runtime
 bun run serve
-
-# Refresh tracked local config artifacts
-bun run env:sync
 ```
 
-After the first run, edit `onequery.local.env.toml` for managed local defaults.
-Scripts that spawn local tooling project those managed values into process env
-at launch time.
+After the first run, edit `onequery.dev.toml` for local defaults. Keep
+`onequery.dev.secrets.toml` for machine-local secrets only.
 
 ## Runtime Commands
 
@@ -51,33 +47,29 @@ bun run --cwd packages/bun-server start:local
 bun dev
 ```
 
-`bun run serve` is still the normal one-port runtime path. `bun dev` now keeps
-the browser on the managed `WEB_URL` origin while Vite proxies `/api` to a
+`bun run serve` is still the normal one-port runtime path. `bun dev` keeps the
+browser on the workspace-dev browser origin while Vite proxies `/api` to a
 separate local Bun listener for HMR-friendly full-stack work.
 
 ## Environment Files
 
-- `packages/dev-config/src/local-env.ts` is the single source of truth for managed local
-  development config.
-- `onequery.local.env.toml.template` is the generated committed TOML artifact.
-- `onequery.local.env.toml` is a local machine file and stays untracked.
-- `bun run env:sync` refreshes the tracked TOML template, appends any newly
-  managed keys to `onequery.local.env.toml`, seeds a random
-  `BETTER_AUTH_SECRET` only when missing.
+- `packages/config/src/workspace-dev.ts` owns the workspace-dev authored shape
+  and resolver.
+- `packages/config/src/workspace-dev-init.ts` seeds the local secrets file.
+- `onequery.dev.toml` is the tracked repo config for local dev defaults.
+- `onequery.dev.secrets.toml` is a local machine file and stays untracked.
 
 For a higher-level overview, see
 [`docs/env-secrets-management.md`](../docs/env-secrets-management.md).
 
 ## Remaining Scripts
 
-- `scripts/dev-setup.ts`: local Postgres bootstrap plus managed config syncing and
+- `scripts/dev-setup.ts`: local Postgres bootstrap plus workspace-dev config
   validation.
 - `packages/github-rulesets`: package that owns the repo-tracked GitHub
   ruleset planner and sync CLI for `.github/rulesets/`.
-- `scripts/sync-local-env.ts`: refreshes the tracked TOML template and syncs
-  the managed local TOML file.
-- `scripts/run-local-env-command.ts`: runs a command with the managed local config
-  projected from TOML at process launch.
+- `scripts/run-local-env-command.ts`: runs a command with config projected from
+  the workspace-dev resolver at process launch.
 - `scripts/upload-image.ts`: uploads local images into the app’s asset flow.
 
 ## GitHub Rulesets

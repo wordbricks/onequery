@@ -73,11 +73,10 @@ bun run dev:setup
 bun dev
 ```
 
-The first run creates `onequery.local.env.toml` from the committed template. Edit it to configure your local environment. To apply config changes:
-
-```bash
-bun run env:sync
-```
+Workspace dev now reads the tracked [`onequery.dev.toml`](./onequery.dev.toml)
+file plus a local `onequery.dev.secrets.toml` file that `bun run dev:setup`
+seeds automatically if it is missing. Edit `onequery.dev.toml` for browser/API
+ports and local Postgres settings.
 
 **Database commands:**
 
