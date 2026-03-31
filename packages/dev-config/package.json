@@ -23,8 +23,8 @@
   "scripts": {
     "build": "bun build ./src/local-env.ts ./src/runtime.ts ./src/topology.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[name].js'",
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
     "@onequery/config-loader": "workspace:*",
