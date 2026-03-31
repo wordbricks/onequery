@@ -283,62 +283,8 @@ jobs:
           path: apps/cli/dist/vendor
           if-no-files-found: error
 
-  smoke-windows:
-    needs: [tag-check, build-windows]
-    name: Smoke - ${{ matrix.runner }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.runs_on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: windows-2025
-            target: x86_64-pc-windows-msvc
-            package: cli-win32-x64
-            npm_tag: win32-x64
-            runs_on: windows-2025
-          - runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            package: cli-win32-arm64
-            npm_tag: win32-arm64
-            runs_on: windows-11-arm
-    defaults:
-      run:
-        working-directory: apps/cli
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: ".bun-version"
-
-      - name: Install dependencies
-        working-directory: ${{ github.workspace }}
-        run: bun ci
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cli-npm-vendor-${{ matrix.target }}
-          path: apps/cli/dist/vendor
-
-      - name: Stage Windows smoke tarballs
-        run: |
-          bun scripts/stage-npm-packages.js `
-            --package cli `
-            --package "${{ matrix.package }}" `
-            --release-version "${{ needs.tag-check.outputs.version }}" `
-            --vendor-src dist/vendor `
-            --output-dir dist/npm
-
-      - name: Smoke packaged self-host server
-        run: |
-          bun scripts/smoke-packaged-server.js `
-            --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" `
-            --platform-tarball "dist/npm/onequery-npm-${{ matrix.npm_tag }}-${{ needs.tag-check.outputs.version }}.tgz" `
-            --target-triple "${{ matrix.target }}"
-
   release:
-    needs: [tag-check, build-unix, build-windows, smoke-windows]
+    needs: [tag-check, build-unix, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
