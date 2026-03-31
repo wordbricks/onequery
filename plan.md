@@ -365,7 +365,7 @@ Done when:
 - [ ] Delete `packages/dev-config` tests.
 - [x] Delete `scripts/sync-local-env.ts`.
 - [x] Delete `env:sync` from `package.json`.
-- [ ] Remove any code still importing `@onequery/dev-config/*`.
+- [x] Remove any code still importing `@onequery/dev-config/*`.
 - [ ] Remove any code still reading `onequery.local.env.toml`.
 - [ ] Remove any code still depending on `WEB_URL`, `BETTER_AUTH_URL`, or `LOCAL_TEST_DATABASE_URL` as first-class concepts.
 

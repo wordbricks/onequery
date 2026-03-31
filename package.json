@@ -71,7 +71,6 @@
   "devDependencies": {
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
-    "@onequery/dev-config": "workspace:*",
     "@testing-library/jest-dom": "6.9.1",
     "@types/bun": "catalog:",
     "@types/nodemailer": "7.0.11",

@@ -49,7 +49,6 @@
     "@onequery/config-loader": "workspace:*",
     "@onequery/contracts": "workspace:*",
     "@onequery/db": "workspace:*",
-    "@onequery/dev-config": "workspace:*",
     "@types/pg": "8.16.0",
     "better-auth": "catalog:",
     "hono": "catalog:",

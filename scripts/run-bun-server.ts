@@ -2,8 +2,7 @@ import { spawn } from "node:child_process";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createLocalProcessEnv } from "@onequery/dev-config/local-env";
-import { loadLocalDevRuntimeSync } from "@onequery/dev-config/runtime";
+import { resolveWorkspaceDev } from "@onequery/config";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
@@ -45,11 +44,32 @@ function parseRunMode(argv: readonly string[]): RunMode {
   );
 }
 
+function createWorkspaceDevProcessEnv(
+  baseEnv: NodeJS.ProcessEnv
+): NodeJS.ProcessEnv {
+  const workspaceDev = resolveWorkspaceDev({
+    rootDir,
+  });
+
+  return {
+    ...baseEnv,
+    BETTER_AUTH_SECRET: workspaceDev.auth.secret,
+    BETTER_AUTH_URL: workspaceDev.publicOrigin,
+    CONNECTOR_ENROLLMENT_TOKEN: workspaceDev.connectors.enrollmentToken,
+    DATABASE_URL: workspaceDev.postgres.url,
+    DISABLE_RATE_LIMIT: workspaceDev.flags.disableRateLimit ? "true" : "false",
+    HOST: workspaceDev.api.listen.host,
+    MASTER_ENCRYPTION_KEY: workspaceDev.crypto.masterEncryptionKey,
+    PORT: String(workspaceDev.api.listen.port),
+    WEB_URL: workspaceDev.publicOrigin,
+  };
+}
+
 function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
   // Comment: Self-host mode should inherit only the caller's explicit process
   // env, not the workspace-dev projection generated from repo config.
   const baseEnv: NodeJS.ProcessEnv =
-    mode === "dev" ? createLocalProcessEnv(rootDir) : process.env;
+    mode === "dev" ? createWorkspaceDevProcessEnv(process.env) : process.env;
   const childEnv: NodeJS.ProcessEnv = {
     ...baseEnv,
     ONEQUERY_RUNTIME_ROOT: rootDir,
@@ -61,18 +81,6 @@ function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
       baseEnv.PATH
     ),
   };
-
-  if (mode === "dev") {
-    const runtime = loadLocalDevRuntimeSync({
-      env: baseEnv,
-      rootDir,
-    });
-    childEnv.BETTER_AUTH_URL = runtime.auth.origin;
-    childEnv.DATABASE_URL = runtime.database.development.url;
-    childEnv.HOST = runtime.api.host;
-    childEnv.PORT = String(runtime.api.port);
-    childEnv.WEB_URL = runtime.web.origin;
-  }
 
   return childEnv;
 }

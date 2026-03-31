@@ -1,5 +1,4 @@
-import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
-import { createTestRuntimeConfigFromDatabaseUrl } from "@onequery/server/routes/test-env";
+import { createTestRuntimeConfig } from "@onequery/server/routes/test-env";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "./app";
@@ -18,7 +17,7 @@ function createTestApp() {
 
   return {
     app: createApp({
-      runtime: createTestRuntimeConfigFromDatabaseUrl(LOCAL_TEST_DATABASE_URL),
+      runtime: createTestRuntimeConfig(),
       spaAssets,
     }),
     spaAssets,
