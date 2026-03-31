@@ -152,16 +152,16 @@ For repo-local dev, that place should be the authored file committed in the repo
 
 ### Checklist
 
-- [ ] Pick the single owner for `workspace-dev` defaults. Recommended owner: tracked `onequery.dev.toml`.
-- [ ] Remove duplicated default objects from the resolver implementation, e.g. `workspaceDevDefaults` or equivalent.
-- [ ] Keep resolver code responsible only for:
+- [x] Pick the single owner for `workspace-dev` defaults. Recommended owner: tracked `onequery.dev.toml`.
+- [x] Remove duplicated default objects from the resolver implementation, e.g. `workspaceDevDefaults` or equivalent.
+- [x] Keep resolver code responsible only for:
   - loading files
   - validating shape
   - deriving computed values
   - projecting to consumers
-- [ ] Do not let the resolver silently invent missing non-secret values that are already supposed to be present in the tracked dev config.
-- [ ] Keep secret seeding behavior separate from non-secret defaults.
-- [ ] Add tests proving that changing the tracked dev file changes all projections without any code change.
+- [x] Do not let the resolver silently invent missing non-secret values that are already supposed to be present in the tracked dev config.
+- [x] Keep secret seeding behavior separate from non-secret defaults.
+- [x] Add tests proving that changing the tracked dev file changes all projections without any code change.
 
 ### Done when
 

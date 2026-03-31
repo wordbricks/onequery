@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +16,8 @@ import {
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "./workspace-dev";
 
+const repoRootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
 function createTempRootDir(): string {
   return mkdtempSync(join(tmpdir(), "onequery-config-"));
 }
@@ -28,10 +31,15 @@ function writeToml(
 }
 
 describe("@onequery/config workspace-dev", () => {
-  it("resolves workspace-dev defaults from the new TOML files", () => {
+  it("resolves workspace-dev values from the tracked dev config file", () => {
     const rootDir = createTempRootDir();
 
     try {
+      writeFileSync(
+        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
+        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
+        "utf8"
+      );
       writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
         "[auth]",
         'secret = "better-auth-secret"',
@@ -201,6 +209,11 @@ describe("@onequery/config workspace-dev", () => {
     const rootDir = createTempRootDir();
 
     try {
+      writeFileSync(
+        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
+        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
+        "utf8"
+      );
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         "Invalid workspace-dev config."
       );
@@ -214,12 +227,29 @@ describe("@onequery/config workspace-dev", () => {
     const rootDir = createTempRootDir();
 
     try {
+      writeFileSync(
+        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
+        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
+        "utf8"
+      );
       writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
         "[browser]",
+        'host = "localhost"',
         "port = 4545",
         "",
         "[api]",
+        'host = "127.0.0.1"',
         "port = 4545",
+        "",
+        "[postgres]",
+        "host_port = 5454",
+        "container_port = 5432",
+        'database = "onequery"',
+        'user = "onequery"',
+        'password = "onequery"',
+        "",
+        "[flags]",
+        "disable_rate_limit = true",
       ]);
       writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
         "[auth]",
@@ -235,6 +265,30 @@ describe("@onequery/config workspace-dev", () => {
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         'Workspace-dev host ports must be unique. "api.port" conflicts with "browser.port" on 4545.'
       );
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects a missing tracked dev config file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
+        "Invalid workspace-dev config."
+      );
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }

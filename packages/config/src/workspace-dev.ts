@@ -106,27 +106,6 @@ const workspaceDevSourceSchema = z
   })
   .superRefine(validateUniqueHostPorts);
 
-const workspaceDevDefaults = {
-  api: {
-    host: "127.0.0.1",
-    port: 4555,
-  },
-  browser: {
-    host: "localhost",
-    port: 4545,
-  },
-  flags: {
-    disable_rate_limit: true,
-  },
-  postgres: {
-    container_port: 5432,
-    database: "onequery",
-    host_port: 5454,
-    password: "onequery",
-    user: "onequery",
-  },
-} satisfies z.output<typeof workspaceDevConfigSchema>;
-
 export const WORKSPACE_DEV_CONFIG_FILENAME = "onequery.dev.toml";
 export const WORKSPACE_DEV_SECRETS_FILENAME = "onequery.dev.secrets.toml";
 
@@ -265,7 +244,7 @@ export function resolveWorkspaceDev(
 ): ResolvedWorkspaceDevConfig {
   const paths = resolveWorkspaceDevPaths(input.rootDir);
   const mergedSource = mergeTomlRecords(
-    mergeTomlRecords(workspaceDevDefaults, readOptionalTomlFile(paths.configPath)),
+    readOptionalTomlFile(paths.configPath),
     readOptionalTomlFile(paths.secretsPath)
   );
   const parsed = workspaceDevSourceSchema.safeParse(mergedSource);
