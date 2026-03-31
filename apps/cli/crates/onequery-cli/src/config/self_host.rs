@@ -89,7 +89,7 @@ pub(crate) fn self_host_runtime_paths(
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 #[derive(Default)]
 pub(crate) struct SelfHostConfig {
     #[serde(default)]
@@ -99,7 +99,7 @@ pub(crate) struct SelfHostConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub(crate) struct ServerSection {
     #[serde(default = "default_listen_host")]
     pub(crate) listen_host: String,
@@ -123,7 +123,7 @@ impl Default for ServerSection {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub(crate) struct SmtpConfig {
     #[serde(default)]
     pub(crate) from_email: Option<String>,
@@ -167,6 +167,7 @@ pub(crate) fn default_public_origin() -> String {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SecretsConfig {
     #[serde(default, skip_serializing_if = "SmtpSecrets::is_empty")]
     pub(crate) smtp: SmtpSecrets,
@@ -176,22 +177,25 @@ pub(crate) struct SecretsConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct AuthSecrets {
     pub(crate) better_auth_secret: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct CryptoSecrets {
     pub(crate) master_encryption_key: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ConnectorSecrets {
     pub(crate) enrollment_token: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub(crate) struct SmtpSecrets {
     #[serde(default)]
     pub(crate) password: Option<String>,
@@ -667,6 +671,42 @@ mod tests {
     use super::load_self_host_config_with_paths;
     use super::write_self_host_launch_config_for_test;
 
+    fn create_test_paths(label: &str) -> (PathBuf, SelfHostRuntimePaths) {
+        let test_dir = std::env::temp_dir().join(format!("onequery-{label}-{}", Uuid::new_v4()));
+        let paths = SelfHostRuntimePaths::for_test(
+            test_dir.join("config").join("self-host"),
+            test_dir.join("data"),
+        );
+
+        (test_dir, paths)
+    }
+
+    fn write_valid_self_host_files(paths: &SelfHostRuntimePaths) {
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(
+            &paths.config_path,
+            r#"[server]
+listen_host = "127.0.0.1"
+port = 5656
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            r#"[auth]
+better_auth_secret = "better"
+
+[crypto]
+master_encryption_key = "master"
+
+[connectors]
+enrollment_token = "connector"
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+    }
+
     #[test]
     fn runtime_paths_follow_the_phase_two_layout_contract() {
         let paths = SelfHostRuntimePaths::for_test(
@@ -817,6 +857,120 @@ enrollment_token = "connector"
                 },
             }
         );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_unknown_keys_in_self_host_config_file() {
+        let (test_dir, paths) = create_test_paths("self-host-config-unknown");
+
+        write_valid_self_host_files(&paths);
+        fs::write(
+            &paths.config_path,
+            r#"[server]
+listen_host = "127.0.0.1"
+port = 5656
+unexpected = true
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths, "onequery serve")
+            .expect_err("expected unknown config key to fail");
+
+        assert_eq!(error.title, "failed to parse self-host config");
+        assert_eq!(error.why.contains("unexpected"), true);
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_unknown_keys_in_self_host_secrets_file() {
+        let (test_dir, paths) = create_test_paths("self-host-secrets-unknown");
+
+        write_valid_self_host_files(&paths);
+        fs::write(
+            &paths.secrets_path,
+            r#"[auth]
+better_auth_secret = "better"
+unexpected = true
+
+[crypto]
+master_encryption_key = "master"
+
+[connectors]
+enrollment_token = "connector"
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths, "onequery serve")
+            .expect_err("expected unknown secrets key to fail");
+
+        assert_eq!(error.title, "failed to parse secrets config");
+        assert_eq!(error.why.contains("unexpected"), true);
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_secret_keys_in_self_host_config_file() {
+        let (test_dir, paths) = create_test_paths("self-host-config-secret-key");
+
+        write_valid_self_host_files(&paths);
+        fs::write(
+            &paths.config_path,
+            r#"[server]
+listen_host = "127.0.0.1"
+port = 5656
+
+[auth]
+better_auth_secret = "wrong-file"
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths, "onequery serve")
+            .expect_err("expected misplaced secret key to fail");
+
+        assert_eq!(error.title, "failed to parse self-host config");
+        assert_eq!(error.why.contains("auth"), true);
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_config_keys_in_self_host_secrets_file() {
+        let (test_dir, paths) = create_test_paths("self-host-secrets-config-key");
+
+        write_valid_self_host_files(&paths);
+        fs::write(
+            &paths.secrets_path,
+            r#"[auth]
+better_auth_secret = "better"
+
+[crypto]
+master_encryption_key = "master"
+
+[connectors]
+enrollment_token = "connector"
+
+[server]
+port = 5656
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths, "onequery serve")
+            .expect_err("expected misplaced config key to fail");
+
+        assert_eq!(error.title, "failed to parse secrets config");
+        assert_eq!(error.why.contains("server"), true);
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));

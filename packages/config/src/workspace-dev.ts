@@ -13,20 +13,22 @@ const defaultRootDir = resolve(
 const WORKSPACE_DEV_DATABASE_HOST = "localhost";
 const nonEmptyStringSchema = z.string().trim().min(1);
 const portSchema = z.number().int().min(1).max(65535);
+const strictObject = <Shape extends z.ZodRawShape>(shape: Shape) =>
+  z.object(shape).strict();
 
 const workspaceDevBaseShape = {
-  api: z.object({
+  api: strictObject({
     host: nonEmptyStringSchema,
     port: portSchema,
   }),
-  browser: z.object({
+  browser: strictObject({
     host: nonEmptyStringSchema,
     port: portSchema,
   }),
-  flags: z.object({
+  flags: strictObject({
     disable_rate_limit: z.boolean(),
   }),
-  postgres: z.object({
+  postgres: strictObject({
     container_port: portSchema,
     database: nonEmptyStringSchema,
     host_port: portSchema,
@@ -83,28 +85,20 @@ function validateUniqueHostPorts(
 
 export const workspaceDevConfigSchema = z
   .object(workspaceDevBaseShape)
+  .strict()
   .superRefine(validateUniqueHostPorts);
 
-export const workspaceDevSecretsSchema = z.object({
-  auth: z.object({
+export const workspaceDevSecretsSchema = strictObject({
+  auth: strictObject({
     secret: nonEmptyStringSchema,
   }),
-  connectors: z.object({
+  connectors: strictObject({
     enrollment_token: nonEmptyStringSchema,
   }),
-  crypto: z.object({
+  crypto: strictObject({
     master_encryption_key: nonEmptyStringSchema,
   }),
 });
-
-const workspaceDevSourceSchema = z
-  .object({
-    ...workspaceDevBaseShape,
-    auth: workspaceDevSecretsSchema.shape.auth,
-    connectors: workspaceDevSecretsSchema.shape.connectors,
-    crypto: workspaceDevSecretsSchema.shape.crypto,
-  })
-  .superRefine(validateUniqueHostPorts);
 
 export const WORKSPACE_DEV_CONFIG_FILENAME = "onequery.dev.toml";
 export const WORKSPACE_DEV_SECRETS_FILENAME = "onequery.dev.secrets.toml";
@@ -181,30 +175,6 @@ function createPostgresUrl(input: {
   return `postgres://${input.user}:${input.password}@${input.host}:${input.port}/${input.database}`;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function mergeTomlRecords(
-  base: Readonly<Record<string, unknown>>,
-  overlay: Readonly<Record<string, unknown>>
-): Record<string, unknown> {
-  const merged: Record<string, unknown> = {
-    ...base,
-  };
-
-  for (const [key, value] of Object.entries(overlay)) {
-    const currentValue = merged[key];
-
-    merged[key] =
-      isPlainObject(currentValue) && isPlainObject(value)
-        ? mergeTomlRecords(currentValue, value)
-        : value;
-  }
-
-  return merged;
-}
-
 function readOptionalTomlFile(path: string): TomlFileData {
   return existsSync(path) ? readTomlFileSync(path) : {};
 }
@@ -215,7 +185,11 @@ function formatIssuePath(path: readonly PropertyKey[]): string {
 
 function buildWorkspaceDevError(
   error: z.ZodError,
-  paths: WorkspaceDevPaths
+  input: {
+    readonly paths: WorkspaceDevPaths;
+    readonly sourceLabel: "Config" | "Secrets";
+    readonly sourcePath: string;
+  }
 ): Error {
   const issues = error.issues.map(
     (issue) => `- ${formatIssuePath(issue.path)}: ${issue.message}`
@@ -224,8 +198,9 @@ function buildWorkspaceDevError(
   return new Error(
     [
       "Invalid workspace-dev config.",
-      `Config: ${paths.configPath}`,
-      `Secrets: ${paths.secretsPath}`,
+      `Config: ${input.paths.configPath}`,
+      `Secrets: ${input.paths.secretsPath}`,
+      `${input.sourceLabel}: ${input.sourcePath}`,
       ...issues,
     ].join("\n")
   );
@@ -243,61 +218,80 @@ export function resolveWorkspaceDev(
   input: ResolveWorkspaceDevOptions = {}
 ): ResolvedWorkspaceDevConfig {
   const paths = resolveWorkspaceDevPaths(input.rootDir);
-  const mergedSource = mergeTomlRecords(
-    readOptionalTomlFile(paths.configPath),
-    readOptionalTomlFile(paths.secretsPath)
+  const parsedConfig = workspaceDevConfigSchema.safeParse(
+    readOptionalTomlFile(paths.configPath)
   );
-  const parsed = workspaceDevSourceSchema.safeParse(mergedSource);
 
-  if (!parsed.success) {
-    throw buildWorkspaceDevError(parsed.error, paths);
+  if (!parsedConfig.success) {
+    throw buildWorkspaceDevError(parsedConfig.error, {
+      paths,
+      sourceLabel: "Config",
+      sourcePath: paths.configPath,
+    });
   }
 
+  const parsedSecrets = workspaceDevSecretsSchema.safeParse(
+    readOptionalTomlFile(paths.secretsPath)
+  );
+
+  if (!parsedSecrets.success) {
+    throw buildWorkspaceDevError(parsedSecrets.error, {
+      paths,
+      sourceLabel: "Secrets",
+      sourcePath: paths.secretsPath,
+    });
+  }
+
+  const parsed = {
+    ...parsedConfig.data,
+    ...parsedSecrets.data,
+  };
+
   const browser = {
-    host: parsed.data.browser.host,
-    origin: createHttpOrigin(parsed.data.browser.host, parsed.data.browser.port),
-    port: parsed.data.browser.port,
+    host: parsed.browser.host,
+    origin: createHttpOrigin(parsed.browser.host, parsed.browser.port),
+    port: parsed.browser.port,
   };
   const api = {
-    host: parsed.data.api.host,
+    host: parsed.api.host,
     listen: {
-      host: parsed.data.api.host,
-      port: parsed.data.api.port,
+      host: parsed.api.host,
+      port: parsed.api.port,
     },
-    origin: createHttpOrigin(parsed.data.api.host, parsed.data.api.port),
-    port: parsed.data.api.port,
+    origin: createHttpOrigin(parsed.api.host, parsed.api.port),
+    port: parsed.api.port,
   };
   const postgres = {
-    containerPort: parsed.data.postgres.container_port,
-    database: parsed.data.postgres.database,
+    containerPort: parsed.postgres.container_port,
+    database: parsed.postgres.database,
     host: WORKSPACE_DEV_DATABASE_HOST,
-    hostPort: parsed.data.postgres.host_port,
-    password: parsed.data.postgres.password,
-    portBinding: `${parsed.data.postgres.host_port}:${parsed.data.postgres.container_port}`,
+    hostPort: parsed.postgres.host_port,
+    password: parsed.postgres.password,
+    portBinding: `${parsed.postgres.host_port}:${parsed.postgres.container_port}`,
     url: createPostgresUrl({
-      database: parsed.data.postgres.database,
+      database: parsed.postgres.database,
       host: WORKSPACE_DEV_DATABASE_HOST,
-      password: parsed.data.postgres.password,
-      port: parsed.data.postgres.host_port,
-      user: parsed.data.postgres.user,
+      password: parsed.postgres.password,
+      port: parsed.postgres.host_port,
+      user: parsed.postgres.user,
     }),
-    user: parsed.data.postgres.user,
+    user: parsed.postgres.user,
   };
 
   return {
     api,
     auth: {
-      secret: parsed.data.auth.secret,
+      secret: parsed.auth.secret,
     },
     browser,
     connectors: {
-      enrollmentToken: parsed.data.connectors.enrollment_token,
+      enrollmentToken: parsed.connectors.enrollment_token,
     },
     crypto: {
-      masterEncryptionKey: parsed.data.crypto.master_encryption_key,
+      masterEncryptionKey: parsed.crypto.master_encryption_key,
     },
     flags: {
-      disableRateLimit: parsed.data.flags.disable_rate_limit,
+      disableRateLimit: parsed.flags.disable_rate_limit,
     },
     paths,
     postgres,

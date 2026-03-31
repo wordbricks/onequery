@@ -30,16 +30,20 @@ function writeToml(
   writeFileSync(join(rootDir, filename), `${lines.join("\n")}\n`, "utf8");
 }
 
+function writeTrackedWorkspaceDevConfig(rootDir: string): void {
+  writeFileSync(
+    join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
+    readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
+    "utf8"
+  );
+}
+
 describe("@onequery/config workspace-dev", () => {
   it("resolves workspace-dev values from the tracked dev config file", () => {
     const rootDir = createTempRootDir();
 
     try {
-      writeFileSync(
-        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
-        "utf8"
-      );
+      writeTrackedWorkspaceDevConfig(rootDir);
       writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
         "[auth]",
         'secret = "better-auth-secret"',
@@ -209,11 +213,7 @@ describe("@onequery/config workspace-dev", () => {
     const rootDir = createTempRootDir();
 
     try {
-      writeFileSync(
-        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
-        "utf8"
-      );
+      writeTrackedWorkspaceDevConfig(rootDir);
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         "Invalid workspace-dev config."
       );
@@ -227,11 +227,6 @@ describe("@onequery/config workspace-dev", () => {
     const rootDir = createTempRootDir();
 
     try {
-      writeFileSync(
-        join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-        readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
-        "utf8"
-      );
       writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
         "[browser]",
         'host = "localhost"',
@@ -265,6 +260,183 @@ describe("@onequery/config workspace-dev", () => {
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         'Workspace-dev host ports must be unique. "api.port" conflicts with "browser.port" on 4545.'
       );
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects unknown keys in the config file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
+        "[browser]",
+        'host = "localhost"',
+        "port = 4545",
+        'extra = "nope"',
+        "",
+        "[api]",
+        'host = "127.0.0.1"',
+        "port = 4555",
+        "",
+        "[postgres]",
+        "host_port = 5454",
+        "container_port = 5432",
+        'database = "onequery"',
+        'user = "onequery"',
+        'password = "onequery"',
+        "",
+        "[flags]",
+        "disable_rate_limit = true",
+      ]);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("extra");
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects unknown keys in the secrets file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeTrackedWorkspaceDevConfig(rootDir);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        'unexpected = "nope"',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("unexpected");
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Secrets:");
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects secret keys in the config file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
+        "[browser]",
+        'host = "localhost"',
+        "port = 4545",
+        "",
+        "[api]",
+        'host = "127.0.0.1"',
+        "port = 4555",
+        "",
+        "[postgres]",
+        "host_port = 5454",
+        "container_port = 5432",
+        'database = "onequery"',
+        'user = "onequery"',
+        'password = "onequery"',
+        "",
+        "[flags]",
+        "disable_rate_limit = true",
+        "",
+        "[auth]",
+        'secret = "wrong-file"',
+      ]);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("auth");
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects config keys in the secrets file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeTrackedWorkspaceDevConfig(rootDir);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+        "",
+        "[browser]",
+        "port = 4545",
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Secrets:");
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects misspelled nested keys in the config file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
+        "[browser]",
+        'host = "localhost"',
+        "prt = 4545",
+        "",
+        "[api]",
+        'host = "127.0.0.1"',
+        "port = 4555",
+        "",
+        "[postgres]",
+        "host_port = 5454",
+        "container_port = 5432",
+        'database = "onequery"',
+        'user = "onequery"',
+        'password = "onequery"',
+        "",
+        "[flags]",
+        "disable_rate_limit = true",
+      ]);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("prt");
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser.port");
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }

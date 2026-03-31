@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -16,9 +17,11 @@ function createTempRootDir(): string {
 }
 
 function writeWorkspaceDevConfig(rootDir: string): void {
+  const repoRootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
   writeFileSync(
     join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-    ["[browser]", 'host = "localhost"', "port = 4545"].join("\n"),
+    readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
     "utf8"
   );
 }

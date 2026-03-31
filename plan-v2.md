@@ -195,19 +195,19 @@ Only after both succeed should they be combined into one resolved `workspace-dev
 
 ### Checklist
 
-- [ ] Parse `onequery.dev.toml` with a **config-only** schema.
-- [ ] Parse `onequery.dev.secrets.toml` with a **secrets-only** schema.
-- [ ] Combine the validated results only after both succeed.
-- [ ] Make both schemas strict / fail-closed in TS.
-- [ ] Add tests that explicitly fail when:
-  - [ ] a secret key appears in the config file
-  - [ ] a config key appears in the secrets file
-  - [ ] an unknown key appears in either file
-  - [ ] a misspelled nested key appears in either file
-- [ ] Keep the same rule on the Rust side for self-host files:
-  - [ ] config TOML parsed with config structs only
-  - [ ] secrets TOML parsed with secrets structs only
-  - [ ] `deny_unknown_fields` (or equivalent) added to top-level and nested structs
+- [x] Parse `onequery.dev.toml` with a **config-only** schema.
+- [x] Parse `onequery.dev.secrets.toml` with a **secrets-only** schema.
+- [x] Combine the validated results only after both succeed.
+- [x] Make both schemas strict / fail-closed in TS.
+- [x] Add tests that explicitly fail when:
+  - [x] a secret key appears in the config file
+  - [x] a config key appears in the secrets file
+  - [x] an unknown key appears in either file
+  - [x] a misspelled nested key appears in either file
+- [x] Keep the same rule on the Rust side for self-host files:
+  - [x] config TOML parsed with config structs only
+  - [x] secrets TOML parsed with secrets structs only
+  - [x] `deny_unknown_fields` (or equivalent) added to top-level and nested structs
 
 ### Recommended implementation notes
 
