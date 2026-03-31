@@ -8,6 +8,11 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../packages/dev-config/src/master-encryption-key.ts";
+import {
+  CLI_BINARY_NAME,
+  CLI_SERVER_BINARY_NAME,
+  binaryNameForTargetTriple,
+} from "../bin/package-constants.js";
 
 const SMOKE_PACKAGED_SERVER_OPTIONS = new Set([
   "--help",
@@ -110,12 +115,20 @@ export async function smokePackagedServer({
   const runtimeRoot = path.join(rootExtractDir, "package");
   const launcherPath = path.join(runtimeRoot, "bin", "onequery.js");
   const platformVendorRoot = path.join(platformExtractDir, "package", "vendor");
+  const packagedServerExecutableName = binaryNameForTargetTriple(
+    targetTriple,
+    CLI_SERVER_BINARY_NAME
+  );
+  const packagedCliExecutableName = binaryNameForTargetTriple(
+    targetTriple,
+    CLI_BINARY_NAME
+  );
   const packagedServerExecutable = path.join(
     runtimeRoot,
     "vendor",
     targetTriple,
     "server",
-    "onequery-server"
+    packagedServerExecutableName
   );
   const packagedCliExecutable = path.join(
     platformExtractDir,
@@ -123,7 +136,7 @@ export async function smokePackagedServer({
     "vendor",
     targetTriple,
     "onequery",
-    "onequery"
+    packagedCliExecutableName
   );
 
   try {
@@ -167,7 +180,7 @@ export async function smokePackagedServer({
     delete env.ONEQUERY_RUNTIME_ROOT;
     delete env.ONEQUERY_SERVER_EXECUTABLE;
 
-    const child = spawn(launcherPath, ["serve"], {
+    const child = spawn(...launcherInvocation(launcherPath, ["serve"]), {
       cwd: runtimeRoot,
       env,
       stdio: ["ignore", "pipe", "pipe"],
@@ -263,7 +276,8 @@ function renderServerFailure(outputChunks, exitCode) {
 }
 
 function stopPackagedRuntime({ env, launcherPath, runtimeRoot }) {
-  const result = spawnSync(launcherPath, ["serve", "stop"], {
+  const [command, args] = launcherInvocation(launcherPath, ["serve", "stop"]);
+  const result = spawnSync(command, args, {
     cwd: runtimeRoot,
     encoding: "utf8",
     env,
@@ -284,6 +298,16 @@ function stopPackagedRuntime({ env, launcherPath, runtimeRoot }) {
 
     throw new Error(message);
   }
+}
+
+function launcherInvocation(launcherPath, args) {
+  if (process.platform === "win32") {
+    // COMMENT: npm installs provide a `.cmd` shim on Windows, but the tarball
+    // smoke test only has the raw JS entrypoint. Re-run it through Bun there.
+    return [process.execPath, [launcherPath, ...args]];
+  }
+
+  return [launcherPath, args];
 }
 
 async function reserveFreePort() {

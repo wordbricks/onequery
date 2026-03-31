@@ -8,7 +8,9 @@ type TargetTriple =
   | "x86_64-unknown-linux-musl"
   | "aarch64-unknown-linux-musl"
   | "x86_64-apple-darwin"
-  | "aarch64-apple-darwin";
+  | "aarch64-apple-darwin"
+  | "x86_64-pc-windows-msvc"
+  | "aarch64-pc-windows-msvc";
 
 type RuntimePlatform = "linux" | "android" | "darwin" | "win32";
 type RuntimeArch = "x64" | "arm64";
@@ -17,7 +19,7 @@ type PlatformPackage = {
   optionalDependencyName: string;
   npmTag: string;
   targetTriple: TargetTriple;
-  os: "linux" | "darwin";
+  os: "linux" | "darwin" | "win32";
   cpu: "x64" | "arm64";
 };
 

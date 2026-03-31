@@ -20,6 +20,7 @@ use crate::path_utils::resolve_user_path_for_cli;
 use super::CommandContext;
 use super::Runtime;
 use super::ensure_self_host_runtime_supported;
+use super::is_process_running;
 
 pub(crate) async fn execute<B, T>(
     args: &RestoreArgs,
@@ -305,19 +306,6 @@ fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
             vec!["remove the stale pid file and retry".to_owned()],
         )
     })
-}
-
-fn is_process_running(pid: u32) -> bool {
-    #[cfg(unix)]
-    {
-        unsafe { libc::kill(pid as i32, 0) == 0 }
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = pid;
-        false
-    }
 }
 
 #[cfg(test)]

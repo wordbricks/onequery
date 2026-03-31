@@ -36,6 +36,45 @@ export const PLATFORM_PACKAGES = {
     os: "linux",
     cpu: "x64",
   },
+  "cli-win32-arm64": {
+    optionalDependencyName: "onequery-win32-arm64",
+    npmTag: "win32-arm64",
+    targetTriple: "aarch64-pc-windows-msvc",
+    os: "win32",
+    cpu: "arm64",
+  },
+  "cli-win32-x64": {
+    optionalDependencyName: "onequery-win32-x64",
+    npmTag: "win32-x64",
+    targetTriple: "x86_64-pc-windows-msvc",
+    os: "win32",
+    cpu: "x64",
+  },
+};
+
+export const EXTRA_RELEASE_PLATFORM_PACKAGES = {
+  // COMMENT: Keep GNU Linux release tarballs available on GitHub Releases
+  // without adding glibc-specific optional dependencies to the npm install
+  // path. The launcher falls back to these local vendor payloads when present.
+  "cli-linux-arm64-gnu": {
+    optionalDependencyName: null,
+    npmTag: "linux-arm64-gnu",
+    targetTriple: "aarch64-unknown-linux-gnu",
+    os: "linux",
+    cpu: "arm64",
+  },
+  "cli-linux-x64-gnu": {
+    optionalDependencyName: null,
+    npmTag: "linux-x64-gnu",
+    targetTriple: "x86_64-unknown-linux-gnu",
+    os: "linux",
+    cpu: "x64",
+  },
+};
+
+export const RELEASE_PLATFORM_PACKAGES = {
+  ...PLATFORM_PACKAGES,
+  ...EXTRA_RELEASE_PLATFORM_PACKAGES,
 };
 
 export const PLATFORM_PACKAGE_BY_TARGET = Object.fromEntries(
@@ -65,6 +104,23 @@ export function serverBuildsForTargetTriple(targetTriple) {
           filename: CLI_SERVER_MUSL_BINARY_NAME,
         },
       ];
+    case "aarch64-unknown-linux-gnu":
+      return [
+        {
+          compileTarget: "bun-linux-arm64",
+          filename: CLI_SERVER_BINARY_NAME,
+        },
+      ];
+    case "aarch64-pc-windows-msvc":
+      return [
+        {
+          compileTarget: "bun-windows-arm64",
+          filename: binaryNameForTargetTriple(
+            targetTriple,
+            CLI_SERVER_BINARY_NAME
+          ),
+        },
+      ];
     case "x86_64-apple-darwin":
       return [
         {
@@ -83,6 +139,23 @@ export function serverBuildsForTargetTriple(targetTriple) {
           filename: CLI_SERVER_MUSL_BINARY_NAME,
         },
       ];
+    case "x86_64-unknown-linux-gnu":
+      return [
+        {
+          compileTarget: "bun-linux-x64",
+          filename: CLI_SERVER_BINARY_NAME,
+        },
+      ];
+    case "x86_64-pc-windows-msvc":
+      return [
+        {
+          compileTarget: "bun-windows-x64",
+          filename: binaryNameForTargetTriple(
+            targetTriple,
+            CLI_SERVER_BINARY_NAME
+          ),
+        },
+      ];
     default:
       throw new Error(`Unsupported server target triple '${targetTriple}'.`);
   }
@@ -92,15 +165,23 @@ export function packageStagingDirPrefix(packageName) {
   return `${CLI_STAGE_PACKAGE_DIR_PREFIX}${packageName}-`;
 }
 
-export function resolveTargetTriple(platform, arch) {
+export function binaryNameForPlatform(platform, baseName) {
+  return platform === "win32" ? `${baseName}.exe` : baseName;
+}
+
+export function binaryNameForTargetTriple(targetTriple, baseName) {
+  return targetTriple.includes("-windows-") ? `${baseName}.exe` : baseName;
+}
+
+export function resolveTargetTripleCandidates(platform, arch) {
   switch (platform) {
     case "linux":
     case "android": {
       switch (arch) {
         case "x64":
-          return "x86_64-unknown-linux-musl";
+          return ["x86_64-unknown-linux-musl", "x86_64-unknown-linux-gnu"];
         case "arm64":
-          return "aarch64-unknown-linux-musl";
+          return ["aarch64-unknown-linux-musl", "aarch64-unknown-linux-gnu"];
         default:
           break;
       }
@@ -109,9 +190,20 @@ export function resolveTargetTriple(platform, arch) {
     case "darwin": {
       switch (arch) {
         case "x64":
-          return "x86_64-apple-darwin";
+          return ["x86_64-apple-darwin"];
         case "arm64":
-          return "aarch64-apple-darwin";
+          return ["aarch64-apple-darwin"];
+        default:
+          break;
+      }
+      break;
+    }
+    case "win32": {
+      switch (arch) {
+        case "x64":
+          return ["x86_64-pc-windows-msvc"];
+        case "arm64":
+          return ["aarch64-pc-windows-msvc"];
         default:
           break;
       }
@@ -122,11 +214,9 @@ export function resolveTargetTriple(platform, arch) {
     }
   }
 
-  if (platform === "win32") {
-    throw new Error(
-      "Unsupported platform: win32. The published OneQuery package currently supports macOS and Linux only."
-    );
-  }
-
   throw new Error(`Unsupported platform: ${platform} (${arch})`);
+}
+
+export function resolveTargetTriple(platform, arch) {
+  return resolveTargetTripleCandidates(platform, arch)[0];
 }

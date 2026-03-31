@@ -28,6 +28,8 @@ import {
   CLI_NPM_TARBALL_PREFIX,
   CLI_PACKAGE_NAME,
   PLATFORM_PACKAGES,
+  RELEASE_PLATFORM_PACKAGES,
+  EXTRA_RELEASE_PLATFORM_PACKAGES,
 } from "../bin/package-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,6 +58,7 @@ const PACKAGED_WEB_DIR = path.join(PACKAGED_RUNTIME_DIR, "web");
 
 export const PACKAGE_EXPANSIONS = {
   cli: ["cli", ...Object.keys(PLATFORM_PACKAGES)],
+  "cli-release-extras": Object.keys(EXTRA_RELEASE_PLATFORM_PACKAGES),
 };
 const BUILD_NPM_PACKAGE_OPTIONS = new Set([
   "--package",
@@ -73,7 +76,7 @@ export function tarballNameForPackage(packageName, version) {
     return `${CLI_NPM_TARBALL_PREFIX}-${version}.tgz`;
   }
 
-  const platformPackage = PLATFORM_PACKAGES[packageName];
+  const platformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
   if (!platformPackage) {
     throw new Error(`Unknown package '${packageName}'.`);
   }
@@ -106,14 +109,14 @@ export async function buildPackage({
     version,
   });
 
-  if (packageName in PLATFORM_PACKAGES) {
+  if (packageName in RELEASE_PLATFORM_PACKAGES) {
     if (!vendorSrc) {
       throw new Error(
         `Package '${packageName}' requires --vendor-src pointing to staged release binaries.`
       );
     }
 
-    const platformPackage = PLATFORM_PACKAGES[packageName];
+    const platformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
     await copyPlatformVendor({
       stagingDir: resolvedStagingDir,
       targetTriple: platformPackage.targetTriple,
@@ -157,8 +160,8 @@ async function stageSources({ stagingDir, packageName, version }) {
     await copyFile(readmePath, path.join(stagingDir, "README.md"));
 
     // CONTEXT: apps/cli is both the Rust workspace root and the npm package
-    // source. Keep release-only optional dependencies in the staged copy so
-    // repo-local bun installs do not try to resolve unpublished platform builds.
+    // source. Only published platform aliases belong in optionalDependencies;
+    // GNU Linux extras stay as GitHub-release-only tarballs.
     delete packageJson.private;
     delete packageJson.scripts;
     packageJson.version = version;
@@ -176,7 +179,7 @@ async function stageSources({ stagingDir, packageName, version }) {
     return;
   }
 
-  const platformPackage = PLATFORM_PACKAGES[packageName];
+  const platformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
   if (!platformPackage) {
     throw new Error(`Unknown package '${packageName}'.`);
   }

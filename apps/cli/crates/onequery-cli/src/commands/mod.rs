@@ -193,7 +193,7 @@ where
 }
 
 pub(crate) fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(), CliError> {
-    if cfg!(unix) {
+    if cfg!(unix) || cfg!(windows) {
         return Ok(());
     }
 
@@ -201,12 +201,43 @@ pub(crate) fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(
         "self-host runtime is not supported on this platform",
         command_line,
         ErrorStage::Internal,
-        "the published self-host runtime currently supports macOS and Linux only".to_owned(),
+        "the published self-host runtime currently supports macOS, Linux, and Windows".to_owned(),
         vec![
-            "run onequery serve, backup, and restore on macOS or Linux".to_owned(),
+            "run onequery serve, backup, and restore on macOS, Linux, or Windows".to_owned(),
             "use a supported host and point remote clients at that server".to_owned(),
         ],
     ))
+}
+
+pub(crate) fn is_process_running(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::OpenProcess;
+        use windows_sys::Win32::System::Threading::SYNCHRONIZE;
+        use windows_sys::Win32::System::Threading::WAIT_TIMEOUT;
+        use windows_sys::Win32::System::Threading::WaitForSingleObject;
+
+        let handle = unsafe { OpenProcess(SYNCHRONIZE, 0, pid) };
+        if handle == 0 {
+            return false;
+        }
+
+        let wait_result = unsafe { WaitForSingleObject(handle, 0) };
+        let _ = unsafe { CloseHandle(handle) };
+        wait_result == WAIT_TIMEOUT
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = pid;
+        false
+    }
 }
 
 pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
