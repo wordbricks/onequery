@@ -2,20 +2,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadConfigFromSourcesSync } from "@onequery/config-loader";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { z } from "zod";
 
 import { getDefaultSpaBuildDir } from "./assets";
-import type { SelfHostRuntimePaths } from "./self-host/paths";
-import { resolveSelfHostRuntimePaths } from "./self-host/paths";
 
 const defaultRootDir = fileURLToPath(new URL("../../..", import.meta.url));
-const PGLITE_URL_PREFIX = "pglite:";
-export const PUBLIC_ORIGIN_ENV_VAR = "ONEQUERY_PUBLIC_ORIGIN";
 
-export const DEFAULT_SELF_HOST_LISTEN_HOST = "127.0.0.1";
-export const DEFAULT_SELF_HOST_PORT = 5656;
+export const PUBLIC_ORIGIN_ENV_VAR = "ONEQUERY_PUBLIC_ORIGIN";
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
@@ -98,65 +92,12 @@ const serverLaunchConfigSchema = z
     }
   });
 
-const serverSectionSchema = z.object({
-  listen_host: nonEmptyStringSchema.default(DEFAULT_SELF_HOST_LISTEN_HOST),
-  log_level: nonEmptyStringSchema.default("info"),
-  port: portSchema.default(DEFAULT_SELF_HOST_PORT),
-  public_origin: originSchema.optional(),
-});
-
-const smtpConfigSectionSchema = z.object({
-  from_email: optionalStringSchema,
-  from_name: optionalStringSchema,
-  host: optionalStringSchema,
-  port: portSchema.optional(),
-  secure: z.boolean().optional(),
-  username: optionalStringSchema,
-});
-
-function withEmptyObjectDefault<T extends z.ZodTypeAny>(schema: T) {
-  return z.preprocess((value) => value ?? {}, schema);
-}
-
-const selfHostConfigTomlSchema = z.object({
-  server: withEmptyObjectDefault(serverSectionSchema),
-  smtp: withEmptyObjectDefault(smtpConfigSectionSchema),
-});
-
-const selfHostSecretsTomlSchema = z.object({
-  auth: withEmptyObjectDefault(
-    z.object({
-      better_auth_secret: optionalStringSchema,
-    })
-  ),
-  crypto: withEmptyObjectDefault(
-    z.object({
-      master_encryption_key: optionalStringSchema,
-    })
-  ),
-  connectors: withEmptyObjectDefault(
-    z.object({
-      enrollment_token: optionalStringSchema,
-    })
-  ),
-  smtp: withEmptyObjectDefault(
-    z.object({
-      password: optionalStringSchema,
-    })
-  ),
-});
-
-export interface CreateLaunchConfigOptions {
-  mode: ServerLaunchConfig["mode"];
+export interface CreateWorkspaceDevLaunchConfigOptions {
   processEnv?: NodeJS.ProcessEnv;
   rootDir?: string;
-  selfHostPaths?: SelfHostRuntimePaths;
 }
 
-function buildLaunchConfigError(
-  source: string,
-  error: z.ZodError
-): Error {
+function buildLaunchConfigError(source: string, error: z.ZodError): Error {
   const issues = error.issues.map((issue) => {
     const path =
       issue.path.length === 0
@@ -165,7 +106,9 @@ function buildLaunchConfigError(
     return `- ${path}: ${issue.message}`;
   });
 
-  return new Error([`Invalid launch config from ${source}.`, ...issues].join("\n"));
+  return new Error(
+    [`Invalid launch config from ${source}.`, ...issues].join("\n")
+  );
 }
 
 export function validateLaunchConfig(
@@ -204,18 +147,8 @@ export function loadLaunchConfigFile(path: string): ServerLaunchConfig {
   return validateLaunchConfig(parsed, `file ${resolvedPath}`);
 }
 
-export function createLaunchConfig(
-  input: CreateLaunchConfigOptions
-): ServerLaunchConfig {
-  if (input.mode === "workspace-dev") {
-    return createWorkspaceDevLaunchConfig(input);
-  }
-
-  return createSelfHostLaunchConfig(input);
-}
-
 export function createWorkspaceDevLaunchConfig(
-  input: Omit<CreateLaunchConfigOptions, "mode"> = {}
+  input: CreateWorkspaceDevLaunchConfigOptions = {}
 ): ServerLaunchConfig {
   const processEnv = input.processEnv ?? process.env;
   const rootDir = resolveRuntimeRootDir(input.rootDir, processEnv);
@@ -276,101 +209,6 @@ export function createWorkspaceDevLaunchConfig(
   );
 }
 
-export function createSelfHostLaunchConfig(
-  input: Omit<CreateLaunchConfigOptions, "mode"> = {}
-): ServerLaunchConfig {
-  const processEnv = input.processEnv ?? process.env;
-  const rootDir = resolveRuntimeRootDir(input.rootDir, processEnv);
-  const selfHostPaths =
-    input.selfHostPaths ?? resolveSelfHostRuntimePaths(processEnv);
-  const config = readSelfHostConfig(selfHostPaths);
-  const secretsConfig = readSecretsConfig(selfHostPaths);
-  const listenHost = processEnv.HOST ?? config.server.listen_host;
-  const port = parsePortValue(processEnv.PORT, config.server.port);
-  const publicOrigin =
-    processEnv[PUBLIC_ORIGIN_ENV_VAR] ??
-    config.server.public_origin ??
-    resolveDefaultPublicOrigin({
-      listenHost,
-      port,
-    });
-
-  return validateLaunchConfig(
-    {
-      assets: {
-        distDir: resolveSpaAssetDir(rootDir, processEnv),
-      },
-      auth: {
-        secret:
-          processEnv.BETTER_AUTH_SECRET ??
-          secretsConfig.auth.better_auth_secret ??
-          "",
-      },
-      connectors: {
-        enrollmentToken:
-          processEnv.CONNECTOR_ENROLLMENT_TOKEN ??
-          secretsConfig.connectors.enrollment_token ??
-          "",
-      },
-      crypto: {
-        masterEncryptionKey:
-          processEnv.MASTER_ENCRYPTION_KEY ??
-          secretsConfig.crypto.master_encryption_key ??
-          "",
-      },
-      listen: {
-        host: listenHost,
-        port,
-      },
-      mode: "self-host",
-      publicOrigin,
-      rateLimit: {
-        enabled: !parseBooleanEnvValue(processEnv.DISABLE_RATE_LIMIT),
-        storage: "persistent",
-      },
-      runtimePaths: {
-        backupsDir: selfHostPaths.backupsDir,
-        dataDir: selfHostPaths.dataDir,
-        lockPath: selfHostPaths.lockPath,
-        logsDir: selfHostPaths.logsDir,
-        pidPath: selfHostPaths.pidPath,
-        runDir: selfHostPaths.runDir,
-      },
-      smtp: resolveSmtpConfig({
-        fromEmail: processEnv.SMTP_FROM_EMAIL ?? config.smtp.from_email,
-        fromName: processEnv.SMTP_FROM_NAME ?? config.smtp.from_name,
-        host: processEnv.SMTP_HOST ?? config.smtp.host,
-        password: processEnv.SMTP_PASSWORD ?? secretsConfig.smtp.password,
-        port:
-          parseOptionalPort(processEnv.SMTP_PORT) ?? config.smtp.port,
-        secure:
-          parseOptionalBooleanEnvValue(processEnv.SMTP_SECURE) ??
-          config.smtp.secure,
-        username: processEnv.SMTP_USERNAME ?? config.smtp.username,
-      }),
-      storage: resolveStorageConfig(
-        processEnv.DATABASE_URL ?? toPgliteConnectionString(selfHostPaths.pgliteDir)
-      ),
-    },
-    "self-host config"
-  );
-}
-
-export function resolveDefaultPublicOrigin(input: {
-  listenHost: string;
-  port: number;
-}): string {
-  return `http://${resolveDefaultPublicHost(input.listenHost)}:${input.port}`;
-}
-
-export function resolveDefaultPublicHost(listenHost: string): string {
-  if (listenHost === "0.0.0.0") {
-    return DEFAULT_SELF_HOST_LISTEN_HOST;
-  }
-
-  return listenHost;
-}
-
 export function resolveRuntimeRootDir(
   rootDir: string | undefined,
   processEnv: NodeJS.ProcessEnv
@@ -397,26 +235,12 @@ function resolveSpaAssetDir(
   return getDefaultSpaBuildDir(rootDir);
 }
 
-function readSelfHostConfig(selfHostPaths: SelfHostRuntimePaths) {
-  return loadConfigFromSourcesSync({
-    schema: selfHostConfigTomlSchema,
-    tomlPath: selfHostPaths.configPath,
-  });
-}
-
-function readSecretsConfig(selfHostPaths: SelfHostRuntimePaths) {
-  return loadConfigFromSourcesSync({
-    schema: selfHostSecretsTomlSchema,
-    tomlPath: selfHostPaths.secretsPath,
-  });
-}
-
 function resolveStorageConfig(
   databaseUrl: string
 ): ServerLaunchConfig["storage"] {
-  if (databaseUrl.startsWith(PGLITE_URL_PREFIX)) {
+  if (databaseUrl.startsWith("pglite:")) {
     return {
-      dir: databaseUrl.slice(PGLITE_URL_PREFIX.length),
+      dir: databaseUrl.slice("pglite:".length),
       kind: "pglite",
     };
   }
@@ -490,34 +314,22 @@ function parseOptionalBooleanEnvValue(
   return parseBooleanEnvValue(value);
 }
 
-function parsePortValue(value: string | undefined, fallback: number): number {
-  if (!value) {
-    return fallback;
-  }
-
-  const normalized = value.trim();
-  if (normalized.length === 0) {
-    return fallback;
-  }
-  if (!/^\d+$/u.test(normalized)) {
-    throw new Error(`Invalid PORT value: ${value}`);
-  }
-
-  const parsed = Number.parseInt(normalized, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`Invalid PORT value: ${value}`);
-  }
-
-  return parsed;
-}
-
 function parseRequiredPortValue(value: string | undefined, name: string): number {
   const normalized = value?.trim();
   if (!normalized) {
     throw new Error(`Missing required runtime value: ${name}`);
   }
 
-  return parsePortValue(normalized, Number.NaN);
+  if (!/^\d+$/u.test(normalized)) {
+    throw new Error(`Invalid ${name} value: ${value}`);
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${name} value: ${value}`);
+  }
+
+  return parsed;
 }
 
 function requireConfiguredString(
@@ -530,8 +342,4 @@ function requireConfiguredString(
   }
 
   return normalized;
-}
-
-function toPgliteConnectionString(pgliteDir: string): string {
-  return `${PGLITE_URL_PREFIX}${pgliteDir}`;
 }

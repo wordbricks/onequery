@@ -343,9 +343,9 @@ This is the cleanest way to eliminate the Rust/TS self-host duplication.
 - [x] Resolve `config.toml` + `secrets.toml` + runtime paths entirely in Rust.
 - [x] Write the resolved launch contract to a private file, for example `run/launch.json`.
 - [x] Pass only the launch-config path to the Bun server process.
-- [ ] Delete self-host TOML parsing from TS.
-- [ ] Delete `packages/bun-server/src/self-host/paths.ts`; runtime paths should be passed in the launch contract from Rust.
-- [ ] Keep `packages/bun-server/src/self-host/lifecycle.ts` only as Bun-side runtime lease logic, consuming paths from the launch contract.
+- [x] Delete self-host TOML parsing from TS.
+- [x] Delete `packages/bun-server/src/self-host/paths.ts`; runtime paths should be passed in the launch contract from Rust.
+- [x] Keep `packages/bun-server/src/self-host/lifecycle.ts` only as Bun-side runtime lease logic, consuming paths from the launch contract.
 
 Also clean up Rust-local duplication:
 
@@ -383,7 +383,7 @@ Desired command model:
 There must not be a third independent config resolver.
 
 - [ ] Decide whether root `bun run serve` remains.
-- [ ] If it remains, make it a **thin delegate** to the self-host path only.
+- [x] If it remains, make it a **thin delegate** to the self-host path only.
 - [ ] If it cannot delegate 100%, delete it.
 - [ ] Remove `scripts/run-bun-server.ts` if it still contains config logic after migration.
 - [x] If a dev helper is still needed, let it generate a launch contract and then start Bun; do not let it invent its own config semantics.

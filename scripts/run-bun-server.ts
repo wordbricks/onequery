@@ -7,15 +7,10 @@ import { fileURLToPath } from "node:url";
 import { resolveWorkspaceDev } from "@onequery/config";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
-import {
-  createSelfHostLaunchConfig,
-  createWorkspaceDevLaunchConfig,
-} from "../packages/bun-server/src/launch-config";
+import { createWorkspaceDevLaunchConfig } from "../packages/bun-server/src/launch-config";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
-
-type RunMode = "dev" | "local";
 
 function prependPathEntries(
   entries: readonly string[],
@@ -36,19 +31,15 @@ function prependPathEntries(
   return merged.join(delimiter);
 }
 
-function parseRunMode(argv: readonly string[]): RunMode {
+function parseRunMode(argv: readonly string[]): "dev" {
   const modeFlag = argv[0];
 
-  if (modeFlag === "--dev") {
+  if (modeFlag === "--dev" || modeFlag === undefined) {
     return "dev";
   }
 
-  if (modeFlag === "--local" || modeFlag === undefined) {
-    return "local";
-  }
-
   throw new Error(
-    `Unknown mode: ${modeFlag}. Use --local or --dev when running scripts/run-bun-server.ts.`
+    `Unknown mode: ${modeFlag}. Use --dev when running scripts/run-bun-server.ts.`
   );
 }
 
@@ -72,19 +63,9 @@ function createWorkspaceDevProcessEnv(
   };
 }
 
-function createLaunchConfig(mode: RunMode): ServerLaunchConfig {
-  const processEnv =
-    mode === "dev" ? createWorkspaceDevProcessEnv(process.env) : process.env;
-
-  if (mode === "dev") {
-    return createWorkspaceDevLaunchConfig({
-      processEnv,
-      rootDir,
-    });
-  }
-
-  return createSelfHostLaunchConfig({
-    processEnv,
+function createLaunchConfig(): ServerLaunchConfig {
+  return createWorkspaceDevLaunchConfig({
+    processEnv: createWorkspaceDevProcessEnv(process.env),
     rootDir,
   });
 }
@@ -120,18 +101,14 @@ function createChildEnv(): NodeJS.ProcessEnv {
   return childEnv;
 }
 
-function createBunArgs(mode: RunMode, launchConfigPath: string): string[] {
-  if (mode === "dev") {
-    return ["--watch", "src/index.ts", launchConfigPath];
-  }
-
-  return ["src/index.ts", launchConfigPath];
+function createBunArgs(launchConfigPath: string): string[] {
+  return ["--watch", "src/index.ts", launchConfigPath];
 }
 
 function main(): void {
-  const mode = parseRunMode(process.argv.slice(2));
-  const launchConfig = writeLaunchConfigFile(createLaunchConfig(mode));
-  const child = spawn("bun", createBunArgs(mode, launchConfig.launchConfigPath), {
+  parseRunMode(process.argv.slice(2));
+  const launchConfig = writeLaunchConfigFile(createLaunchConfig());
+  const child = spawn("bun", createBunArgs(launchConfig.launchConfigPath), {
     cwd: bunServerDir,
     env: createChildEnv(),
     shell: process.platform === "win32",
@@ -165,7 +142,7 @@ function main(): void {
       force: true,
       recursive: true,
     });
-    console.error(`Failed to start bun-server (${mode}): ${error.message}`);
+    console.error(`Failed to start bun-server (dev): ${error.message}`);
     process.exit(1);
   });
 }

@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { createSpaAssetBinding } from "./assets";
 import {
-  createSelfHostLaunchConfig,
+  createWorkspaceDevLaunchConfig,
   loadLaunchConfigFile,
 } from "./launch-config";
 
@@ -20,27 +20,8 @@ function createTempSpaBuildDir(): string {
   return assetDir;
 }
 
-function createSelfHostPaths(root: string) {
-  const configDir = join(root, "config", "self-host");
-  const dataDir = join(root, "data");
-
-  return {
-    backupsDir: join(dataDir, "backups"),
-    configDir,
-    configPath: join(configDir, "config.toml"),
-    dataDir,
-    lockPath: join(dataDir, "run", "server.lock"),
-    logsDir: join(dataDir, "logs"),
-    pidPath: join(dataDir, "run", "server.pid"),
-    pgliteDir: join(dataDir, "pglite", "onequery"),
-    runDir: join(dataDir, "run"),
-    secretsPath: join(configDir, "secrets.toml"),
-    serverLogPath: join(dataDir, "logs", "server.log"),
-  };
-}
-
 describe("launch config", () => {
-  it("loads and validates a serialized launch config file", () => {
+  it("loads and validates a serialized workspace-dev launch config file", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
     const assetDir = createTempSpaBuildDir();
     const launchConfigPath = join(root, "launch.json");
@@ -111,6 +92,105 @@ describe("launch config", () => {
     });
   });
 
+  it("loads and validates a serialized self-host launch config file", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
+    const assetDir = createTempSpaBuildDir();
+    const launchConfigPath = join(root, "launch.json");
+
+    writeFileSync(
+      launchConfigPath,
+      JSON.stringify(
+        {
+          assets: {
+            distDir: assetDir,
+          },
+          auth: {
+            secret: "self-host-auth-secret",
+          },
+          connectors: {
+            enrollmentToken: "connector-token",
+          },
+          crypto: {
+            masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
+          },
+          listen: {
+            host: "127.0.0.1",
+            port: 5656,
+          },
+          mode: "self-host",
+          publicOrigin: "http://127.0.0.1:5656",
+          rateLimit: {
+            enabled: true,
+            storage: "persistent",
+          },
+          runtimePaths: {
+            backupsDir: "/tmp/onequery/backups",
+            dataDir: "/tmp/onequery/data",
+            lockPath: "/tmp/onequery/run/server.lock",
+            logsDir: "/tmp/onequery/logs",
+            pidPath: "/tmp/onequery/run/server.pid",
+            runDir: "/tmp/onequery/run",
+          },
+          smtp: {
+            fromEmail: "hello@example.com",
+            host: "smtp.example.com",
+            password: "smtp-pass",
+            port: 587,
+          },
+          storage: {
+            dir: "/tmp/onequery/pglite",
+            kind: "pglite",
+          },
+        },
+        null,
+        2
+      )
+    );
+
+    expect(loadLaunchConfigFile(launchConfigPath)).toEqual({
+      assets: {
+        distDir: assetDir,
+      },
+      auth: {
+        secret: "self-host-auth-secret",
+      },
+      connectors: {
+        enrollmentToken: "connector-token",
+      },
+      crypto: {
+        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
+      },
+      listen: {
+        host: "127.0.0.1",
+        port: 5656,
+      },
+      mode: "self-host",
+      publicOrigin: "http://127.0.0.1:5656",
+      rateLimit: {
+        enabled: true,
+        storage: "persistent",
+      },
+      runtimePaths: {
+        backupsDir: "/tmp/onequery/backups",
+        dataDir: "/tmp/onequery/data",
+        lockPath: "/tmp/onequery/run/server.lock",
+        logsDir: "/tmp/onequery/logs",
+        pidPath: "/tmp/onequery/run/server.pid",
+        runDir: "/tmp/onequery/run",
+      },
+      smtp: {
+        fromEmail: "hello@example.com",
+        host: "smtp.example.com",
+        password: "smtp-pass",
+        port: 587,
+      },
+      storage: {
+        dir: "/tmp/onequery/pglite",
+        kind: "pglite",
+      },
+    });
+  });
+
   it("rejects invalid launch config files", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
     const launchConfigPath = join(root, "launch.json");
@@ -152,24 +232,24 @@ describe("launch config", () => {
     );
   });
 
-  it("defaults the self-host database URL to the self-host PGlite path", () => {
+  it("defaults the workspace-dev database URL to a pglite storage config when prefixed", () => {
     const assetDir = createTempSpaBuildDir();
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-config-"));
-    const selfHostPaths = createSelfHostPaths(root);
 
-    const launchConfig = createSelfHostLaunchConfig({
+    const launchConfig = createWorkspaceDevLaunchConfig({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
         CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
+        DATABASE_URL: "pglite:/tmp/onequery/workspace-dev",
+        HOST: "127.0.0.1",
         MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
         ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
         ONEQUERY_WEB_DIST_DIR: assetDir,
+        PORT: "4555",
       },
-      selfHostPaths,
     });
 
     expect(launchConfig.storage).toEqual({
-      dir: selfHostPaths.pgliteDir,
+      dir: "/tmp/onequery/workspace-dev",
       kind: "pglite",
     });
   });
@@ -183,17 +263,18 @@ describe("launch config", () => {
       "<!doctype html><title>rooted spa</title>"
     );
 
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-config-"));
-    const launchConfig = createSelfHostLaunchConfig({
+    const launchConfig = createWorkspaceDevLaunchConfig({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
         CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
+        DATABASE_URL: "postgres://onequery:onequery@localhost:5454/onequery",
+        HOST: "127.0.0.1",
         MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
         ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
         ONEQUERY_RUNTIME_ROOT: runtimeRoot,
         ONEQUERY_WEB_DIST_DIR: "runtime/web",
+        PORT: "4555",
       },
-      selfHostPaths: createSelfHostPaths(root),
     });
 
     const response = await createSpaAssetBinding({
@@ -203,86 +284,21 @@ describe("launch config", () => {
     await expect(response.text()).resolves.toContain("rooted spa");
   });
 
-  it("loads auth, public origin, and SMTP settings from self-host TOML config", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-config-"));
-    const selfHostPaths = createSelfHostPaths(root);
-    const assetDir = createTempSpaBuildDir();
-    mkdirSync(selfHostPaths.configDir, { recursive: true });
-    mkdirSync(selfHostPaths.dataDir, { recursive: true });
-    writeFileSync(
-      selfHostPaths.configPath,
-      [
-        "[server]",
-        'listen_host = "127.0.0.1"',
-        "port = 4848",
-        'public_origin = "https://onequery.example.com"',
-        "",
-        "[smtp]",
-        'host = "smtp.example.com"',
-        "port = 587",
-        'from_email = "hello@example.com"',
-        'from_name = "OneQuery OSS"',
-        'username = "smtp-user"',
-        "secure = false",
-      ].join("\n")
-    );
-    writeFileSync(
-      selfHostPaths.secretsPath,
-      [
-        "[auth]",
-        'better_auth_secret = "secret-from-file"',
-        "",
-        "[crypto]",
-        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-from-file"',
-        "",
-        "[smtp]",
-        'password = "smtp-pass-from-file"',
-      ].join("\n")
-    );
-
-    const launchConfig = createSelfHostLaunchConfig({
-      processEnv: {
-        ONEQUERY_WEB_DIST_DIR: assetDir,
-      },
-      selfHostPaths,
-    });
-
-    expect(launchConfig.listen).toEqual({
-      host: "127.0.0.1",
-      port: 4848,
-    });
-    expect(launchConfig.auth.secret).toBe("secret-from-file");
-    expect(launchConfig.publicOrigin).toBe("https://onequery.example.com");
-    expect(launchConfig.connectors.enrollmentToken).toBe("connector-from-file");
-    expect(launchConfig.smtp).toEqual({
-      fromEmail: "hello@example.com",
-      fromName: "OneQuery OSS",
-      host: "smtp.example.com",
-      password: "smtp-pass-from-file",
-      port: 587,
-      secure: false,
-      username: "smtp-user",
-    });
-  });
-
   it("rejects invalid PORT values with junk suffixes", () => {
     const assetDir = createTempSpaBuildDir();
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-config-"));
 
     expect(() =>
-      createSelfHostLaunchConfig({
+      createWorkspaceDevLaunchConfig({
         processEnv: {
           BETTER_AUTH_SECRET: "test-better-auth-secret",
           CONNECTOR_ENROLLMENT_TOKEN: "connector-token",
+          DATABASE_URL: "postgres://onequery:onequery@localhost:5454/onequery",
+          HOST: "127.0.0.1",
           MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
           ONEQUERY_PUBLIC_ORIGIN: "http://localhost:4545",
           ONEQUERY_WEB_DIST_DIR: assetDir,
           PORT: "4545abc",
         },
-        selfHostPaths: createSelfHostPaths(root),
       })
     ).toThrow("Invalid PORT value: 4545abc");
   });
