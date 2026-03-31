@@ -10,6 +10,7 @@ import {
   renderManagedLocalConfigFile,
   syncManagedLocalConfigFile,
 } from "./local-env";
+import { LOCAL_TOPOLOGY } from "./topology";
 
 const GENERATED_BETTER_AUTH_SECRET_PLACEHOLDER = "generated-by-config-sync";
 
@@ -101,8 +102,8 @@ describe("local config sync", () => {
         rootDir,
         [
           'DATABASE_URL = "postgres://config:secret@127.0.0.1:5454/app"',
-          'BETTER_AUTH_URL = "http://localhost:4545"',
-          'WEB_URL = "http://localhost:4545"',
+          `BETTER_AUTH_URL = "${LOCAL_TOPOLOGY.web.bundled.origin}"`,
+          `WEB_URL = "${LOCAL_TOPOLOGY.web.bundled.origin}"`,
           'BETTER_AUTH_SECRET = "toml-secret"',
           'CONNECTOR_ENROLLMENT_TOKEN = "connector-token"',
           'MASTER_ENCRYPTION_KEY = "config-key"',

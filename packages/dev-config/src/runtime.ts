@@ -14,13 +14,8 @@ import {
 } from "./local-env";
 import {
   LOCAL_DATABASE_URL,
-  LOCAL_DEV_LOOPBACK_HOST,
-  LOCAL_POSTGRES_CONTAINER_PORT,
-  LOCAL_POSTGRES_HOST_PORT,
   LOCAL_TEST_DATABASE_URL,
-  LOCAL_WEB_API_DEV_ORIGIN,
-  LOCAL_WEB_API_DEV_PORT,
-  LOCAL_WEB_PORT,
+  LOCAL_TOPOLOGY,
 } from "./topology";
 
 const defaultRootDir = resolve(
@@ -90,7 +85,7 @@ function parseConfiguredUrl(
 
   if (options.expectedPort !== undefined && port !== options.expectedPort) {
     throw new Error(
-      `${key} must use local dev web port ${options.expectedPort}. ${ENV_SYNC_HINT}`
+      `${key} must use local bundled web port ${options.expectedPort}. ${ENV_SYNC_HINT}`
     );
   }
 
@@ -151,13 +146,13 @@ const localDevRuntimeManagedSourceSchema = managedLocalConfigSourceSchema.pick({
 const localDevRuntimeSchema = localDevRuntimeManagedSourceSchema.transform(
   (value) => {
     const web = parseConfiguredUrl(value.WEB_URL ?? "", MANAGED_WEB_URL_KEY, {
-      expectedPort: LOCAL_WEB_PORT,
+      expectedPort: LOCAL_TOPOLOGY.web.bundled.port,
     });
     const auth = parseConfiguredUrl(
       value.BETTER_AUTH_URL ?? value.WEB_URL ?? "",
       MANAGED_BETTER_AUTH_URL_KEY,
       {
-        expectedPort: LOCAL_WEB_PORT,
+        expectedPort: LOCAL_TOPOLOGY.web.bundled.port,
       }
     );
 
@@ -169,9 +164,9 @@ const localDevRuntimeSchema = localDevRuntimeManagedSourceSchema.transform(
 
     return {
       api: {
-        host: LOCAL_DEV_LOOPBACK_HOST,
-        origin: LOCAL_WEB_API_DEV_ORIGIN,
-        port: LOCAL_WEB_API_DEV_PORT,
+        host: LOCAL_TOPOLOGY.loopbackHost,
+        origin: LOCAL_TOPOLOGY.web.api.origin,
+        port: LOCAL_TOPOLOGY.web.api.port,
       },
       auth: {
         origin: auth.origin,
@@ -187,12 +182,18 @@ const localDevRuntimeSchema = localDevRuntimeManagedSourceSchema.transform(
         ),
       },
       postgres: {
-        containerPort: LOCAL_POSTGRES_CONTAINER_PORT,
-        hostPort: LOCAL_POSTGRES_HOST_PORT,
+        containerPort: LOCAL_TOPOLOGY.postgres.containerPort,
+        hostPort: LOCAL_TOPOLOGY.postgres.hostPort,
       },
       web: {
-        origin: web.origin,
-        port: web.port,
+        bundled: {
+          origin: web.origin,
+          port: web.port,
+        },
+        devBrowser: {
+          origin: LOCAL_TOPOLOGY.web.devBrowser.origin,
+          port: LOCAL_TOPOLOGY.web.devBrowser.port,
+        },
       },
     } as const;
   }

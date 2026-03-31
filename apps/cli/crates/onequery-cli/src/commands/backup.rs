@@ -307,6 +307,8 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::config::DEFAULT_BASE_URL;
+    use crate::config::DEFAULT_SELF_HOST_LISTEN_HOST;
+    use crate::config::DEFAULT_SELF_HOST_PORT;
     use crate::config::self_host::SelfHostRuntimePaths;
 
     #[test]
@@ -436,7 +438,10 @@ mod tests {
 
         fs::write(
             &paths.config_path,
-            "[server]\nlisten_host = \"127.0.0.1\"\nport = 4545\nlog_level = \"info\"\n",
+            format!(
+                "[server]\nlisten_host = \"{}\"\nport = {}\nlog_level = \"info\"\n",
+                DEFAULT_SELF_HOST_LISTEN_HOST, DEFAULT_SELF_HOST_PORT
+            ),
         )
         .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
         if include_secrets {

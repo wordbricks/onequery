@@ -4,7 +4,7 @@ expression: "output.lines.join(\"\\n\")"
 ---
 Serve status
 Bootstrapped: yes
-Listen: 127.0.0.1:4545
+Listen: 127.0.0.1:4615
 Runtime: not_running
 PGlite directory present: no
 Log file present: no

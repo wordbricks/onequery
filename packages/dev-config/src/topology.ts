@@ -1,7 +1,3 @@
-import {
-  literalConfigAdapter,
-  loadConfigFromSourcesSync,
-} from "@onequery/config-loader";
 import { z } from "zod";
 
 function createHttpOrigin(host: string, port: number): string {
@@ -37,6 +33,7 @@ export const localDevConfigSchema = z
         host: fourDigitPortSchema,
       }),
       webApi: fourDigitPortSchema,
+      webDev: fourDigitPortSchema,
       web: fourDigitPortSchema,
     }),
     postgres: z.object({
@@ -52,6 +49,7 @@ export const localDevConfigSchema = z
       port: number;
     }> = [
       { name: "web", path: ["ports", "web"], port: value.ports.web },
+      { name: "webDev", path: ["ports", "webDev"], port: value.ports.webDev },
       { name: "agent", path: ["ports", "agent"], port: value.ports.agent },
       {
         name: "postgres.host",
@@ -93,7 +91,8 @@ const LOCAL_DEV_DEFAULTS = {
       host: 5454,
     },
     webApi: 4547,
-    web: 4545,
+    webDev: 5515,
+    web: 4615,
   },
   postgres: {
     database: "onequery",
@@ -102,50 +101,43 @@ const LOCAL_DEV_DEFAULTS = {
   },
 } satisfies LocalDevConfig;
 
-export interface LoadLocalDevConfigOptions {
-  readonly env?: Record<string, unknown> | object;
-}
+export const LOCAL_DEV = localDevConfigSchema.parse(LOCAL_DEV_DEFAULTS);
 
-export function loadLocalDevConfigSync(
-  input: LoadLocalDevConfigOptions = {}
-): Readonly<LocalDevConfig> {
-  return loadConfigFromSourcesSync({
-    adapters: [
-      literalConfigAdapter({
-        data: LOCAL_DEV_DEFAULTS,
-        name: "@onequery/dev-config defaults",
-      }),
-    ],
-    env: input.env,
-    schema: localDevConfigSchema,
-  });
-}
-
-export const LOCAL_DEV = loadLocalDevConfigSync();
-
-export const LOCAL_WEB_PORT = LOCAL_DEV.ports.web;
-export const LOCAL_WEB_API_DEV_PORT = LOCAL_DEV.ports.webApi;
-export const LOCAL_AGENT_PORT = LOCAL_DEV.ports.agent;
-export const LOCAL_POSTGRES_HOST_PORT = LOCAL_DEV.ports.postgres.host;
-export const LOCAL_POSTGRES_CONTAINER_PORT = LOCAL_DEV.ports.postgres.container;
-
-export const LOCAL_WEB_ORIGIN = createHttpOrigin(
-  LOCAL_DEV.host,
-  LOCAL_WEB_PORT
-);
-export const LOCAL_WEB_DOCKER_ORIGIN = createHttpOrigin(
-  LOCAL_DEV.dockerHost,
-  LOCAL_WEB_PORT
-);
-export const LOCAL_WEB_API_DEV_ORIGIN = createHttpOrigin(
-  LOCAL_DEV_LOOPBACK_HOST,
-  LOCAL_WEB_API_DEV_PORT
-);
-export const LOCAL_AGENT_ORIGIN = createHttpOrigin(
-  LOCAL_DEV.host,
-  LOCAL_AGENT_PORT
-);
-export const LOCAL_POSTGRES_PORT_BINDING = `${LOCAL_POSTGRES_HOST_PORT}:${LOCAL_POSTGRES_CONTAINER_PORT}`;
+// Comment: Treat this object as the local topology SSoT. Other packages should
+// derive ports and origins from here instead of re-encoding literals.
+export const LOCAL_TOPOLOGY = {
+  agent: {
+    origin: createHttpOrigin(LOCAL_DEV.host, LOCAL_DEV.ports.agent),
+    port: LOCAL_DEV.ports.agent,
+  },
+  dockerHost: LOCAL_DEV.dockerHost,
+  host: LOCAL_DEV.host,
+  loopbackHost: LOCAL_DEV_LOOPBACK_HOST,
+  postgres: {
+    containerPort: LOCAL_DEV.ports.postgres.container,
+    hostPort: LOCAL_DEV.ports.postgres.host,
+    portBinding: `${LOCAL_DEV.ports.postgres.host}:${LOCAL_DEV.ports.postgres.container}`,
+  },
+  web: {
+    api: {
+      origin: createHttpOrigin(LOCAL_DEV_LOOPBACK_HOST, LOCAL_DEV.ports.webApi),
+      port: LOCAL_DEV.ports.webApi,
+    },
+    bundled: {
+      dockerOrigin: createHttpOrigin(LOCAL_DEV.dockerHost, LOCAL_DEV.ports.web),
+      loopbackOrigin: createHttpOrigin(
+        LOCAL_DEV_LOOPBACK_HOST,
+        LOCAL_DEV.ports.web
+      ),
+      origin: createHttpOrigin(LOCAL_DEV.host, LOCAL_DEV.ports.web),
+      port: LOCAL_DEV.ports.web,
+    },
+    devBrowser: {
+      origin: createHttpOrigin(LOCAL_DEV.host, LOCAL_DEV.ports.webDev),
+      port: LOCAL_DEV.ports.webDev,
+    },
+  },
+} as const;
 
 export function createLocalDatabaseUrl(
   options: Partial<DatabaseUrlOptions> = {}
@@ -154,7 +146,7 @@ export function createLocalDatabaseUrl(
     database: options.database ?? LOCAL_DEV.postgres.database,
     host: options.host ?? LOCAL_DEV.host,
     password: options.password ?? LOCAL_DEV.postgres.password,
-    port: options.port ?? LOCAL_POSTGRES_HOST_PORT,
+    port: options.port ?? LOCAL_TOPOLOGY.postgres.hostPort,
     user: options.user ?? LOCAL_DEV.postgres.user,
   });
 }

@@ -5,43 +5,58 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { loadLocalDevRuntimeSync } from "./runtime";
+import {
+  LOCAL_DATABASE_URL,
+  LOCAL_TEST_DATABASE_URL,
+  LOCAL_TOPOLOGY,
+} from "./topology";
 
 describe("loadLocalDevRuntimeSync", () => {
+  const bundledOrigin = LOCAL_TOPOLOGY.web.bundled.origin;
+  const bundledLoopbackOrigin = LOCAL_TOPOLOGY.web.bundled.loopbackOrigin;
+  const devBrowserOrigin = LOCAL_TOPOLOGY.web.devBrowser.origin;
+
   it("resolves the local dev runtime from managed defaults", () => {
     const rootDir = mkdtempSync(join(tmpdir(), "onequery-dev-runtime-"));
 
     expect(loadLocalDevRuntimeSync({ rootDir })).toMatchObject({
       api: {
-        host: "127.0.0.1",
-        origin: "http://127.0.0.1:4547",
-        port: 4547,
+        host: LOCAL_TOPOLOGY.loopbackHost,
+        origin: LOCAL_TOPOLOGY.web.api.origin,
+        port: LOCAL_TOPOLOGY.web.api.port,
       },
       auth: {
-        origin: "http://localhost:4545",
+        origin: bundledOrigin,
       },
       database: {
         development: {
           database: "onequery",
           host: "localhost",
-          port: 5454,
-          url: "postgres://onequery:onequery@localhost:5454/onequery",
+          port: LOCAL_TOPOLOGY.postgres.hostPort,
+          url: LOCAL_DATABASE_URL,
           user: "onequery",
         },
         test: {
           database: "test",
           host: "localhost",
-          port: 5454,
-          url: "postgres://test:test@localhost:5454/test",
+          port: LOCAL_TOPOLOGY.postgres.hostPort,
+          url: LOCAL_TEST_DATABASE_URL,
           user: "test",
         },
       },
       postgres: {
-        containerPort: 5432,
-        hostPort: 5454,
+        containerPort: LOCAL_TOPOLOGY.postgres.containerPort,
+        hostPort: LOCAL_TOPOLOGY.postgres.hostPort,
       },
       web: {
-        origin: "http://localhost:4545",
-        port: 4545,
+        bundled: {
+          origin: bundledOrigin,
+          port: LOCAL_TOPOLOGY.web.bundled.port,
+        },
+        devBrowser: {
+          origin: devBrowserOrigin,
+          port: LOCAL_TOPOLOGY.web.devBrowser.port,
+        },
       },
     });
   });
@@ -52,18 +67,24 @@ describe("loadLocalDevRuntimeSync", () => {
     expect(
       loadLocalDevRuntimeSync({
         env: {
-          BETTER_AUTH_URL: "http://127.0.0.1:4545",
-          WEB_URL: "http://127.0.0.1:4545/",
+          BETTER_AUTH_URL: bundledLoopbackOrigin,
+          WEB_URL: `${bundledLoopbackOrigin}/`,
         },
         rootDir,
       })
     ).toMatchObject({
       auth: {
-        origin: "http://127.0.0.1:4545",
+        origin: bundledLoopbackOrigin,
       },
       web: {
-        origin: "http://127.0.0.1:4545",
-        port: 4545,
+        bundled: {
+          origin: bundledLoopbackOrigin,
+          port: LOCAL_TOPOLOGY.web.bundled.port,
+        },
+        devBrowser: {
+          origin: devBrowserOrigin,
+          port: LOCAL_TOPOLOGY.web.devBrowser.port,
+        },
       },
     });
   });
@@ -73,29 +94,35 @@ describe("loadLocalDevRuntimeSync", () => {
     writeFileSync(
       join(rootDir, "onequery.local.env.toml"),
       [
-        'BETTER_AUTH_URL = "http://127.0.0.1:4545"',
-        'DATABASE_URL = "postgres://runtime:secret@127.0.0.1:5454/runtime"',
-        'WEB_URL = "http://127.0.0.1:4545"',
+        `BETTER_AUTH_URL = "${bundledLoopbackOrigin}"`,
+        `DATABASE_URL = "postgres://runtime:secret@127.0.0.1:${LOCAL_TOPOLOGY.postgres.hostPort}/runtime"`,
+        `WEB_URL = "${bundledLoopbackOrigin}"`,
       ].join("\n")
     );
 
     expect(loadLocalDevRuntimeSync({ rootDir })).toMatchObject({
       auth: {
-        origin: "http://127.0.0.1:4545",
+        origin: bundledLoopbackOrigin,
       },
       database: {
         development: {
           database: "runtime",
           host: "127.0.0.1",
           password: "secret",
-          port: 5454,
-          url: "postgres://runtime:secret@127.0.0.1:5454/runtime",
+          port: LOCAL_TOPOLOGY.postgres.hostPort,
+          url: `postgres://runtime:secret@127.0.0.1:${LOCAL_TOPOLOGY.postgres.hostPort}/runtime`,
           user: "runtime",
         },
       },
       web: {
-        origin: "http://127.0.0.1:4545",
-        port: 4545,
+        bundled: {
+          origin: bundledLoopbackOrigin,
+          port: LOCAL_TOPOLOGY.web.bundled.port,
+        },
+        devBrowser: {
+          origin: devBrowserOrigin,
+          port: LOCAL_TOPOLOGY.web.devBrowser.port,
+        },
       },
     });
   });
@@ -125,7 +152,9 @@ describe("loadLocalDevRuntimeSync", () => {
         },
         rootDir,
       })
-    ).toThrow("WEB_URL must use local dev web port 4545.");
+    ).toThrow(
+      `WEB_URL must use local bundled web port ${LOCAL_TOPOLOGY.web.bundled.port}.`
+    );
   });
 
   it("rejects local dev web URLs with a path, query, or hash", () => {
@@ -134,8 +163,8 @@ describe("loadLocalDevRuntimeSync", () => {
     expect(() =>
       loadLocalDevRuntimeSync({
         env: {
-          BETTER_AUTH_URL: "http://localhost:4545",
-          WEB_URL: "http://localhost:4545/app?debug=1#hash",
+          BETTER_AUTH_URL: bundledOrigin,
+          WEB_URL: `${bundledOrigin}/app?debug=1#hash`,
         },
         rootDir,
       })
@@ -148,8 +177,8 @@ describe("loadLocalDevRuntimeSync", () => {
     expect(() =>
       loadLocalDevRuntimeSync({
         env: {
-          BETTER_AUTH_URL: "http://127.0.0.1:4545",
-          WEB_URL: "http://localhost:4545",
+          BETTER_AUTH_URL: bundledLoopbackOrigin,
+          WEB_URL: bundledOrigin,
         },
         rootDir,
       })

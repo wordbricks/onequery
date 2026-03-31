@@ -4,7 +4,7 @@ expression: "output.lines.join(\"\\n\")"
 ---
 Serve start is wired as a Phase 2 skeleton.
 Bootstrapped: yes
-Listen: 127.0.0.1:4545
+Listen: 127.0.0.1:4615
 Log path: /tmp/onequery/data/logs/server.log
 Running markers present: no
 No server process was launched in this milestone.

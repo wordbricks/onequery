@@ -1,33 +1,30 @@
-import {
-  LOCAL_WEB_API_DEV_ORIGIN,
-  LOCAL_WEB_PORT,
-} from "@onequery/dev-config/topology";
+import { LOCAL_TOPOLOGY } from "@onequery/dev-config/topology";
 import { describe, expect, it } from "vitest";
 
 import { resolveViteDevServerConfig } from "@/lib/vite-dev-server-config";
 
 describe("resolveViteDevServerConfig", () => {
-  it("uses the explicit port from the managed web URL", () => {
+  it("uses the dedicated dev browser port instead of the bundled web URL", () => {
     expect(
       resolveViteDevServerConfig({
-        BETTER_AUTH_URL: `http://127.0.0.1:${LOCAL_WEB_PORT}`,
-        WEB_URL: `http://127.0.0.1:${LOCAL_WEB_PORT}`,
+        BETTER_AUTH_URL: LOCAL_TOPOLOGY.web.bundled.loopbackOrigin,
+        WEB_URL: LOCAL_TOPOLOGY.web.bundled.loopbackOrigin,
       })
     ).toEqual({
-      apiProxyTarget: LOCAL_WEB_API_DEV_ORIGIN,
-      port: LOCAL_WEB_PORT,
+      apiProxyTarget: LOCAL_TOPOLOGY.web.api.origin,
+      port: LOCAL_TOPOLOGY.web.devBrowser.port,
     });
   });
 
   it("trims surrounding whitespace from the managed web URL", () => {
     expect(
       resolveViteDevServerConfig({
-        BETTER_AUTH_URL: `http://localhost:${LOCAL_WEB_PORT}`,
-        WEB_URL: `  http://localhost:${LOCAL_WEB_PORT}/  `,
+        BETTER_AUTH_URL: LOCAL_TOPOLOGY.web.bundled.origin,
+        WEB_URL: `  ${LOCAL_TOPOLOGY.web.bundled.origin}/  `,
       })
     ).toEqual({
-      apiProxyTarget: LOCAL_WEB_API_DEV_ORIGIN,
-      port: LOCAL_WEB_PORT,
+      apiProxyTarget: LOCAL_TOPOLOGY.web.api.origin,
+      port: LOCAL_TOPOLOGY.web.devBrowser.port,
     });
   });
 });

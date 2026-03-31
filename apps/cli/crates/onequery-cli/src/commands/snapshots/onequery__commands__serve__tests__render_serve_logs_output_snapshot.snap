@@ -6,5 +6,5 @@ Serve logs
 Log path: /tmp/onequery/data/logs/server.log
 Log file present: yes
 Preview:
-[bun-server] listening on http://127.0.0.1:4545
+[bun-server] listening on http://127.0.0.1:4615
 [api] GET /api/health 200

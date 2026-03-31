@@ -8,14 +8,9 @@ import {
 } from "@onequery/config-loader";
 import { z } from "zod";
 
-import {
-  LOCAL_AGENT_ORIGIN,
-  LOCAL_DATABASE_URL,
-  LOCAL_WEB_DOCKER_ORIGIN,
-  LOCAL_WEB_ORIGIN,
-} from "./topology";
+import { LOCAL_DATABASE_URL, LOCAL_TOPOLOGY } from "./topology";
 
-const DOCKER_URL = LOCAL_WEB_DOCKER_ORIGIN;
+const DOCKER_URL = LOCAL_TOPOLOGY.web.bundled.dockerOrigin;
 const LOCAL_CONFIG_RELATIVE_PATH = "onequery.local.env.toml";
 const LOCAL_CONFIG_TEMPLATE_RELATIVE_PATH = "onequery.local.env.toml.template";
 const LOCAL_CONFIG_HEADER = [
@@ -69,7 +64,7 @@ export const MANAGED_LOCAL_CONFIG_FIELDS = [
   },
   {
     consumers: ["web", "server"],
-    defaultValue: LOCAL_WEB_ORIGIN,
+    defaultValue: LOCAL_TOPOLOGY.web.bundled.origin,
     description: "Base URL used for Better Auth callbacks and links.",
     group: "core-runtime",
     key: "BETTER_AUTH_URL",
@@ -78,7 +73,7 @@ export const MANAGED_LOCAL_CONFIG_FIELDS = [
   },
   {
     consumers: ["web", "server"],
-    defaultValue: LOCAL_WEB_ORIGIN,
+    defaultValue: LOCAL_TOPOLOGY.web.bundled.origin,
     description: "Public web origin used for local callbacks and asset links.",
     group: "core-runtime",
     key: "WEB_URL",
@@ -553,9 +548,9 @@ export function getWebUrl(): string {
     return webUrl;
   }
 
-  return isDocker() ? DOCKER_URL : LOCAL_WEB_ORIGIN;
+  return isDocker() ? DOCKER_URL : LOCAL_TOPOLOGY.web.bundled.origin;
 }
 
 export function getAgentUrl(): string {
-  return LOCAL_AGENT_ORIGIN;
+  return LOCAL_TOPOLOGY.agent.origin;
 }

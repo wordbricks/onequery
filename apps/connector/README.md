@@ -38,7 +38,7 @@ AWS_REGION=us-east-1 bun run dev
 Required variables for local development:
 
 ```toml
-ONEQUERY_BASE_URL = "http://localhost:4545/api"
+ONEQUERY_BASE_URL = "http://localhost:4615/api"
 ONEQUERY_ENROLLMENT_TOKEN = "replace-with-enrollment-token"
 ORGANIZATION_ID = "org_123"
 CONNECTOR_NAME = "customer-prod-apne2"

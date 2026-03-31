@@ -1,10 +1,15 @@
+import {
+  LOCAL_DEV_LOOPBACK_HOST,
+  LOCAL_TOPOLOGY,
+} from "@onequery/dev-config/topology";
+
 export const API_ROUTE_PREFIX = "/api";
 export const BUDGET_API_ROUTE_PREFIX = `${API_ROUTE_PREFIX}/budget`;
 export const CLI_API_ROUTE_PREFIX = `${API_ROUTE_PREFIX}/cli`;
 export const DEVICE_AUTHORIZATION_API_ROUTE_PREFIX = `${API_ROUTE_PREFIX}/device`;
 
-export const DEFAULT_BUN_RUNTIME_LISTEN_HOST = "127.0.0.1";
-export const DEFAULT_BUN_RUNTIME_PORT = 4545;
+export const DEFAULT_BUN_RUNTIME_LISTEN_HOST = LOCAL_DEV_LOOPBACK_HOST;
+export const DEFAULT_BUN_RUNTIME_PORT = LOCAL_TOPOLOGY.web.bundled.port;
 export const DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS = 30;
 
 export const RUNTIME_RATE_LIMIT_STORAGE_DIRNAME = "rate-limit";

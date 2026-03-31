@@ -9,6 +9,8 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
+use super::DEFAULT_SELF_HOST_LISTEN_HOST;
+use super::DEFAULT_SELF_HOST_PORT;
 use super::config_dir;
 use super::data_dir;
 use crate::path_utils;
@@ -141,11 +143,11 @@ impl SmtpConfig {
 }
 
 fn default_listen_host() -> String {
-    "127.0.0.1".to_owned()
+    DEFAULT_SELF_HOST_LISTEN_HOST.to_owned()
 }
 
 fn default_port() -> u16 {
-    4545
+    DEFAULT_SELF_HOST_PORT
 }
 
 fn default_log_level() -> String {

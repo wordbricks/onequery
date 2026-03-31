@@ -37,12 +37,12 @@ Start the server:
 onequery serve
 ```
 
-Then open `http://127.0.0.1:4545` and complete the first-user bootstrap.
+Then open `http://127.0.0.1:4615` and complete the first-user bootstrap.
 
 Point the CLI at that server:
 
 ```bash
-onequery config set server http://127.0.0.1:4545
+onequery config set server http://127.0.0.1:4615
 onequery auth login
 ```
 
@@ -80,7 +80,7 @@ When the server is reachable through a reverse proxy, set `public_origin` in
 ```toml
 [server]
 listen_host = "127.0.0.1"
-port = 4545
+port = 4615
 public_origin = "https://onequery.example.com"
 ```
 

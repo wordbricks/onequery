@@ -64,11 +64,11 @@ function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
       env: localEnv,
       rootDir,
     });
-    childEnv.BETTER_AUTH_URL = runtime.auth.origin;
+    childEnv.BETTER_AUTH_URL = runtime.web.devBrowser.origin;
     childEnv.DATABASE_URL = runtime.database.development.url;
     childEnv.HOST = runtime.api.host;
     childEnv.PORT = String(runtime.api.port);
-    childEnv.WEB_URL = runtime.web.origin;
+    childEnv.WEB_URL = runtime.web.devBrowser.origin;
   }
 
   return childEnv;

@@ -17,6 +17,6 @@ export function resolveViteDevServerConfig(
     // dev server config still has a stable call site while the local runtime
     // truth now lives in @onequery/dev-config.
     apiProxyTarget: runtime.api.origin,
-    port: runtime.web.port,
+    port: runtime.web.devBrowser.port,
   };
 }

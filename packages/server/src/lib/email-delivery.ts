@@ -1,3 +1,5 @@
+import { LOCAL_TOPOLOGY } from "@onequery/dev-config/topology";
+
 export type EmailDeliveryMode = "manual-link" | "smtp";
 
 export type SmtpConfig = {
@@ -165,7 +167,7 @@ function resolveBaseURL(
     return new URL(request.url).origin;
   }
 
-  return "http://127.0.0.1:4545";
+  return LOCAL_TOPOLOGY.web.bundled.loopbackOrigin;
 }
 
 async function sendSmtpMessage(

@@ -30,12 +30,13 @@ use crate::path_utils;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
-#[cfg(debug_assertions)]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
-#[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
+pub(crate) const DEFAULT_SELF_HOST_LISTEN_HOST: &str = "127.0.0.1";
+pub(crate) const DEFAULT_SELF_HOST_PORT: u16 = 4615;
+pub(crate) const DEFAULT_SELF_HOST_BASE_URL: &str = "http://localhost:4615";
+pub(crate) const DEFAULT_SELF_HOST_LOOPBACK_BASE_URL: &str = "http://127.0.0.1:4615";
+pub(crate) const DEFAULT_BASE_URL: &str = DEFAULT_SELF_HOST_BASE_URL;
 pub(crate) const CONFIG_SET_SERVER_COMMAND_EXAMPLE: &str =
-    "onequery config set server http://127.0.0.1:4545";
+    "onequery config set server http://127.0.0.1:4615";
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
 

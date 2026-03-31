@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { eq, prepareSelfHostDatabase } from "@onequery/db/server";
+import { LOCAL_TOPOLOGY } from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { verifyOrgAccess } from "./lib/verify-org-access";
@@ -36,6 +37,7 @@ async function createPgliteStorage() {
   const root = mkdtempSync(join(tmpdir(), "onequery-storage-test-"));
   const pgliteDir = join(root, "pglite", "onequery");
   const databaseUrl = `pglite:${pgliteDir}`;
+  const bundledWebOrigin = LOCAL_TOPOLOGY.web.bundled.origin;
   await prepareSelfHostDatabase({
     connectionString: databaseUrl,
     migrationsFolder,
@@ -45,11 +47,11 @@ async function createPgliteStorage() {
     pgliteDir,
     storage: getServerStorage({
       BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
-      BETTER_AUTH_URL: "http://localhost:4545",
+      BETTER_AUTH_URL: bundledWebOrigin,
       DATABASE_URL: databaseUrl,
       DISABLE_RATE_LIMIT: true,
       MASTER_ENCRYPTION_KEY: "sample-encryption-key",
-      WEB_URL: "http://localhost:4545",
+      WEB_URL: bundledWebOrigin,
     }),
   };
 }
@@ -70,18 +72,21 @@ describe("server storage", () => {
     expect(storage.engine).toBe("pglite");
 
     const signupResponse = await storage.auth.handler(
-      new Request("http://localhost:4545/api/auth/sign-up/email", {
-        body: JSON.stringify({
-          email: "owner@example.com",
-          name: "Owner",
-          password: "password123",
-        }),
-        headers: {
-          "content-type": "application/json",
-          origin: "http://localhost:4545",
-        },
-        method: "POST",
-      })
+      new Request(
+        `${LOCAL_TOPOLOGY.web.bundled.origin}/api/auth/sign-up/email`,
+        {
+          body: JSON.stringify({
+            email: "owner@example.com",
+            name: "Owner",
+            password: "password123",
+          }),
+          headers: {
+            "content-type": "application/json",
+            origin: LOCAL_TOPOLOGY.web.bundled.origin,
+          },
+          method: "POST",
+        }
+      )
     );
 
     expect(signupResponse.status).toBe(200);

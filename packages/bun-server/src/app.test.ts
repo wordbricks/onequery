@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
+import {
+  LOCAL_TEST_DATABASE_URL,
+  LOCAL_TOPOLOGY,
+} from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "./app";
@@ -16,9 +19,11 @@ import type { BunRuntimeEnv } from "./runtime-env";
 function createTestRuntimeEnv(
   overrides: Partial<BunRuntimeEnv> = {}
 ): BunRuntimeEnv {
+  const bundledWebOrigin = LOCAL_TOPOLOGY.web.bundled.origin;
+
   return {
     BETTER_AUTH_SECRET: "test-better-auth-secret",
-    BETTER_AUTH_URL: "http://localhost:4545",
+    BETTER_AUTH_URL: bundledWebOrigin,
     CONNECTOR_ENROLLMENT_TOKEN: "test-connector-token",
     DATABASE_URL: LOCAL_TEST_DATABASE_URL,
     DISABLE_RATE_LIMIT: true,
@@ -36,7 +41,7 @@ function createTestRuntimeEnv(
           })
       ),
     },
-    WEB_URL: "http://localhost:4545",
+    WEB_URL: bundledWebOrigin,
     ...overrides,
   };
 }
@@ -131,11 +136,11 @@ describe("bun runtime app", () => {
     const env = buildRuntimeEnv({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
-        BETTER_AUTH_URL: "http://localhost:4545",
+        BETTER_AUTH_URL: LOCAL_TOPOLOGY.web.bundled.origin,
         MASTER_ENCRYPTION_KEY: "sample-encryption-key",
         ONEQUERY_WEB_DIST_DIR: assetDir,
         ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
-        WEB_URL: "http://localhost:4545",
+        WEB_URL: LOCAL_TOPOLOGY.web.bundled.origin,
       },
       selfHostPaths: {
         backupsDir: "/tmp/onequery-data/onequery/backups",
@@ -169,12 +174,12 @@ describe("bun runtime app", () => {
     const runtime = createRuntimeConfig({
       processEnv: {
         BETTER_AUTH_SECRET: "test-better-auth-secret",
-        BETTER_AUTH_URL: "http://localhost:4545",
+        BETTER_AUTH_URL: LOCAL_TOPOLOGY.web.bundled.origin,
         MASTER_ENCRYPTION_KEY: "sample-encryption-key",
         ONEQUERY_RUNTIME_ROOT: runtimeRoot,
         ONEQUERY_WEB_DIST_DIR: "runtime/web",
         ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
-        WEB_URL: "http://localhost:4545",
+        WEB_URL: LOCAL_TOPOLOGY.web.bundled.origin,
       },
       selfHostPaths: {
         backupsDir: "/tmp/onequery-data/onequery/backups",
@@ -192,7 +197,7 @@ describe("bun runtime app", () => {
     });
 
     const response = await runtime.env.SPA_ASSETS.fetch(
-      new Request("http://localhost:4545/")
+      new Request(`${LOCAL_TOPOLOGY.web.bundled.origin}/`)
     );
 
     await expect(response.text()).resolves.toContain("rooted spa");
@@ -280,12 +285,12 @@ describe("bun runtime app", () => {
       createRuntimeConfig({
         processEnv: {
           BETTER_AUTH_SECRET: "test-better-auth-secret",
-          BETTER_AUTH_URL: "http://localhost:4545",
+          BETTER_AUTH_URL: LOCAL_TOPOLOGY.web.bundled.origin,
           MASTER_ENCRYPTION_KEY: "sample-encryption-key",
-          PORT: "4545abc",
+          PORT: `${LOCAL_TOPOLOGY.web.bundled.port}abc`,
           ONEQUERY_WEB_DIST_DIR: assetDir,
           ONEQUERY_SELF_HOST_DATA_DIR: "/tmp/onequery-data/onequery",
-          WEB_URL: "http://localhost:4545",
+          WEB_URL: LOCAL_TOPOLOGY.web.bundled.origin,
         },
         selfHostPaths: {
           backupsDir: "/tmp/onequery-data/onequery/backups",
@@ -301,6 +306,6 @@ describe("bun runtime app", () => {
           pgliteDir: "/tmp/onequery-data/onequery/pglite/onequery",
         },
       })
-    ).toThrow("Invalid PORT value: 4545abc");
+    ).toThrow(`Invalid PORT value: ${LOCAL_TOPOLOGY.web.bundled.port}abc`);
   });
 });

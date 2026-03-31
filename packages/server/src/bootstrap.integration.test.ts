@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { and, eq, prepareSelfHostDatabase } from "@onequery/db/server";
+import { LOCAL_TOPOLOGY } from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { serverApiRoutes } from "./app";
@@ -15,6 +16,8 @@ type ClosableDatabase = {
     end?: (options?: Record<string, unknown>) => Promise<unknown>;
   };
 };
+
+const bundledWebOrigin = LOCAL_TOPOLOGY.web.bundled.origin;
 
 function getSetCookieValues(headers: Headers): string[] {
   const headersWithGetSetCookie = headers as Headers & {
@@ -32,7 +35,7 @@ function getSetCookieValues(headers: Headers): string[] {
 
 function buildSessionHeaders(
   authResponseHeaders: Headers,
-  origin = "http://localhost:4545"
+  origin = bundledWebOrigin
 ): Headers {
   const headers = new Headers({
     origin,
@@ -70,16 +73,16 @@ function createTestEnv() {
 
   return {
     BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
-    BETTER_AUTH_URL: "http://localhost:4545",
+    BETTER_AUTH_URL: bundledWebOrigin,
     DATABASE_URL: `pglite:${pgliteDir}`,
     DISABLE_RATE_LIMIT: true,
     MASTER_ENCRYPTION_KEY: "sample-encryption-key",
-    WEB_URL: "http://localhost:4545",
+    WEB_URL: bundledWebOrigin,
   };
 }
 
 function createBootstrapRequest() {
-  return new Request("http://localhost:4545/bootstrap/complete", {
+  return new Request(`${bundledWebOrigin}/bootstrap/complete`, {
     body: JSON.stringify({
       email: "owner@example.com",
       name: "Owner",
@@ -89,7 +92,7 @@ function createBootstrapRequest() {
     }),
     headers: {
       "content-type": "application/json",
-      origin: "http://localhost:4545",
+      origin: bundledWebOrigin,
     },
     method: "POST",
   });
@@ -114,7 +117,7 @@ describe("self-host bootstrap", () => {
     openedDatabases.push(storage.db as ClosableDatabase);
 
     const initialStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/bootstrap"),
+      new Request(`${bundledWebOrigin}/bootstrap`),
       env
     );
     expect(initialStateResponse.status).toBe(200);
@@ -160,7 +163,7 @@ describe("self-host bootstrap", () => {
     expect(ownerMember?.role).toBe("owner");
 
     const finalStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/bootstrap"),
+      new Request(`${bundledWebOrigin}/bootstrap`),
       env
     );
     await expect(finalStateResponse.json()).resolves.toMatchObject({
@@ -186,7 +189,7 @@ describe("self-host bootstrap", () => {
     expect(bootstrapResponse.status).toBe(201);
 
     const signupStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/auth/bootstrap-state"),
+      new Request(`${bundledWebOrigin}/auth/bootstrap-state`),
       env
     );
     await expect(signupStateResponse.json()).resolves.toMatchObject({
@@ -196,7 +199,7 @@ describe("self-host bootstrap", () => {
     });
 
     const blockedSignupResponse = await storage.auth.handler(
-      new Request("http://localhost:4545/api/auth/sign-up/email", {
+      new Request(`${bundledWebOrigin}/api/auth/sign-up/email`, {
         body: JSON.stringify({
           email: "outsider@example.com",
           name: "Outsider",
@@ -204,7 +207,7 @@ describe("self-host bootstrap", () => {
         }),
         headers: {
           "content-type": "application/json",
-          origin: "http://localhost:4545",
+          origin: bundledWebOrigin,
         },
         method: "POST",
       })
@@ -243,7 +246,7 @@ describe("self-host bootstrap", () => {
     });
 
     const allowedSignupResponse = await storage.auth.handler(
-      new Request("http://localhost:4545/api/auth/sign-up/email", {
+      new Request(`${bundledWebOrigin}/api/auth/sign-up/email`, {
         body: JSON.stringify({
           email: "invitee@example.com",
           name: "Invitee",
@@ -251,7 +254,7 @@ describe("self-host bootstrap", () => {
         }),
         headers: {
           "content-type": "application/json",
-          origin: "http://localhost:4545",
+          origin: bundledWebOrigin,
         },
         method: "POST",
       })
@@ -388,7 +391,7 @@ describe("self-host bootstrap", () => {
     });
 
     const invitedSignupResponse = await storage.auth.handler(
-      new Request("http://localhost:4545/api/auth/sign-up/email", {
+      new Request(`${bundledWebOrigin}/api/auth/sign-up/email`, {
         body: JSON.stringify({
           email: "invitee@example.com",
           name: "Invitee",
@@ -396,7 +399,7 @@ describe("self-host bootstrap", () => {
         }),
         headers: {
           "content-type": "application/json",
-          origin: "http://localhost:4545",
+          origin: bundledWebOrigin,
         },
         method: "POST",
       })

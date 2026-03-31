@@ -65,9 +65,9 @@ packages/dev-config/src/local-env.ts
   `BETTER_AUTH_SECRET` only when that key is missing.
 - The standard local OSS runtime path is `bun run serve`, which builds the
   frontend bundle and serves web + api from `packages/bun-server` on one port.
-- `bun dev` keeps Vite on the managed `WEB_URL` origin and proxies `/api` to a
-  separate local Bun listener, so it now supports HMR-friendly full-stack
-  development without changing browser-facing origins.
+- `bun dev` keeps Vite on a dedicated local browser origin and proxies `/api`
+  to a separate local Bun listener, so it supports HMR-friendly full-stack
+  development without colliding with the bundled server origin.
 - Optional secrets for OAuth providers, OpenAI, and telemetry can remain blank
   until you need the corresponding integration locally.
 

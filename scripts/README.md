@@ -52,7 +52,7 @@ bun dev
 ```
 
 `bun run serve` is still the normal one-port runtime path. `bun dev` now keeps
-the browser on the managed `WEB_URL` origin while Vite proxies `/api` to a
+the browser on a dedicated local dev origin while Vite proxies `/api` to a
 separate local Bun listener for HMR-friendly full-stack work.
 
 ## Environment Files

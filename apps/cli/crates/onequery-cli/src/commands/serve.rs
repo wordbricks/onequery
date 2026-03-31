@@ -1054,6 +1054,7 @@ mod tests {
     use super::render_serve_status_output;
     use super::resolve_packaged_server_dir_from_current_executable;
     use super::select_packaged_server_candidate;
+    use crate::config::DEFAULT_SELF_HOST_LOOPBACK_BASE_URL;
     use crate::config::self_host::SelfHostConfig;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
@@ -1116,7 +1117,7 @@ mod tests {
             },
             &LogPreview {
                 lines: vec![
-                    "[bun-server] listening on http://127.0.0.1:4545".to_owned(),
+                    format!("[bun-server] listening on {DEFAULT_SELF_HOST_LOOPBACK_BASE_URL}"),
                     "[api] GET /api/health 200".to_owned(),
                 ],
                 truncated: false,

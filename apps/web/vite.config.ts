@@ -36,9 +36,9 @@ export default defineConfig(() => {
     },
     server: {
       host: "0.0.0.0",
-      // Comment: Keep the browser on the managed WEB_URL origin and proxy only
-      // `/api` in dev so auth/cookie behavior stays same-origin while the Bun
-      // server can restart independently under Vite HMR.
+      // Comment: Dev browser traffic lives on its own dedicated origin while
+      // Vite proxies `/api` to the separate Bun listener so auth/cookie
+      // behavior still stays same-origin under HMR.
       port,
       proxy: {
         "/api": apiProxyTarget,
