@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, statSync } from "node:fs";
+import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 import {
   CLI_BINARY_NAME,
   CLI_PACKAGE_NAME,
-  CLI_SERVER_BINARY_NAME,
   PLATFORM_PACKAGE_BY_TARGET,
   resolveTargetTriple,
 } from "./package-constants.js";
@@ -62,17 +61,10 @@ const binaryPath = path.join(
   "onequery",
   CLI_BINARY_NAME
 );
-const serverBinaryPath = path.join(
-  vendorRoot,
-  targetTriple,
-  "server",
-  CLI_SERVER_BINARY_NAME
-);
+const serverBinaryDir = path.join(vendorRoot, targetTriple, "server");
 
 ensureExecutable(binaryPath);
-if (existsSync(serverBinaryPath)) {
-  ensureExecutable(serverBinaryPath);
-}
+ensureExecutablesInDir(serverBinaryDir);
 
 const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
@@ -82,8 +74,6 @@ const child = spawn(binaryPath, process.argv.slice(2), {
       process.env.ONEQUERY_PGLITE_ASSET_DIR ??
       path.join(packageRoot, "runtime", "pglite"),
     ONEQUERY_RUNTIME_ROOT: process.env.ONEQUERY_RUNTIME_ROOT ?? packageRoot,
-    ONEQUERY_SERVER_EXECUTABLE:
-      process.env.ONEQUERY_SERVER_EXECUTABLE ?? serverBinaryPath,
   },
   stdio: "inherit",
 });
@@ -156,4 +146,18 @@ function ensureExecutable(filePath) {
   // CONTEXT: npm tarballs store vendored native binaries without execute bits,
   // so restore the expected mode before spawning the packaged CLI binary.
   chmodSync(filePath, currentMode | 0o755);
+}
+
+function ensureExecutablesInDir(dirPath) {
+  if (!existsSync(dirPath)) {
+    return;
+  }
+
+  for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    ensureExecutable(path.join(dirPath, entry.name));
+  }
 }
