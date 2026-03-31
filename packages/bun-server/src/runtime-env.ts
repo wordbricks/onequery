@@ -122,7 +122,7 @@ export function createRuntimeConfig(
   } = {}
 ): BunRuntimeConfig {
   const processEnv = input.processEnv ?? process.env;
-  const rootDir = input.rootDir ?? defaultRootDir;
+  const rootDir = resolveRuntimeRootDir(input.rootDir, processEnv);
   const env = createLocalProcessEnv(rootDir, processEnv);
   const selfHostPaths =
     input.selfHostPaths ?? resolveSelfHostRuntimePaths(processEnv);
@@ -198,6 +198,21 @@ export function createRuntimeConfig(
     listenHost,
     port,
   };
+}
+
+function resolveRuntimeRootDir(
+  rootDir: string | undefined,
+  processEnv: NodeJS.ProcessEnv
+): string {
+  if (rootDir) {
+    return resolve(rootDir);
+  }
+
+  if (processEnv.ONEQUERY_RUNTIME_ROOT) {
+    return resolve(processEnv.ONEQUERY_RUNTIME_ROOT);
+  }
+
+  return defaultRootDir;
 }
 
 function readSelfHostConfig(selfHostPaths: SelfHostRuntimePaths) {

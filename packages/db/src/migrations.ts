@@ -1,6 +1,3 @@
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
@@ -9,6 +6,7 @@ import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
 import { getDatabaseEngine, postgresSchema } from "./client";
+import { ensurePgliteDataDir, resolvePgliteRuntimeOptions } from "./pglite";
 
 export type DatabasePreparationResult =
   | {
@@ -20,40 +18,15 @@ export type DatabasePreparationResult =
       mode: "migrate";
     };
 
-function resolvePgliteDataDir(connectionString: string): string {
-  if (connectionString === "memory://") {
-    return connectionString;
-  }
-
-  if (connectionString.startsWith("pglite://")) {
-    return connectionString.slice("pglite://".length - 1);
-  }
-
-  if (connectionString.startsWith("pglite:")) {
-    return connectionString.slice("pglite:".length);
-  }
-
-  throw new Error(`Unsupported PGlite connection string: ${connectionString}`);
-}
-
-function ensurePgliteDataDir(connectionString: string): string {
-  const dataDir = resolvePgliteDataDir(connectionString);
-
-  if (dataDir !== "memory://") {
-    mkdirSync(dirname(dataDir), {
-      recursive: true,
-    });
-  }
-
-  return dataDir;
-}
-
 export async function prepareSelfHostDatabase(options: {
   connectionString: string;
   migrationsFolder: string;
 }): Promise<DatabasePreparationResult> {
   if (getDatabaseEngine(options.connectionString) === "pglite") {
-    const client = new PGlite(ensurePgliteDataDir(options.connectionString));
+    const client = new PGlite(
+      ensurePgliteDataDir(options.connectionString),
+      resolvePgliteRuntimeOptions()
+    );
 
     try {
       const db = drizzlePglite(client, { schema: postgresSchema });

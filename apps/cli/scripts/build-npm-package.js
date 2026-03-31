@@ -13,10 +13,15 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  PACKAGED_PGLITE_DIR_SEGMENTS,
+  PGLITE_RUNTIME_ASSET_FILENAMES,
+} from "../../../packages/db/src/pglite.ts";
 import {
   CLI_NPM_PACK_DIR_PREFIX,
   CLI_NPM_STAGE_DIR_PREFIX,
@@ -30,6 +35,9 @@ const __dirname = path.dirname(__filename);
 
 const CLI_ROOT = path.resolve(__dirname, "..");
 const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
+const dbPackageRequire = createRequire(
+  path.join(WORKSPACE_ROOT, "packages", "db", "package.json")
+);
 const WEB_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "web");
 const WEB_DIST_DIR = path.join(WEB_BUILD_ROOT, "dist");
 const WEB_CLIENT_DIST_DIR = path.join(WEB_DIST_DIR, "client");
@@ -43,6 +51,7 @@ const DB_MIGRATIONS_DIR = path.join(
 );
 const PACKAGED_RUNTIME_DIR = "runtime";
 const PACKAGED_MIGRATIONS_DIR = path.join(PACKAGED_RUNTIME_DIR, "migrations");
+const PACKAGED_PGLITE_DIR = path.join(...PACKAGED_PGLITE_DIR_SEGMENTS);
 const PACKAGED_WEB_DIR = path.join(PACKAGED_RUNTIME_DIR, "web");
 
 export const PACKAGE_EXPANSIONS = {
@@ -215,12 +224,36 @@ async function stagePackagedRuntime({ stagingDir }) {
 
   const runtimeRoot = path.join(stagingDir, PACKAGED_RUNTIME_DIR);
   const migrationsOutDir = path.join(stagingDir, PACKAGED_MIGRATIONS_DIR);
+  const pgliteOutDir = path.join(stagingDir, PACKAGED_PGLITE_DIR);
   const webOutDir = path.join(stagingDir, PACKAGED_WEB_DIR);
   const builtWebDistDir = await resolveBuiltWebDistDir();
+  const pgliteDistDir = await resolvePgliteDistDir();
 
   await mkdir(runtimeRoot, { recursive: true });
   await cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true });
+  await mkdir(pgliteOutDir, { recursive: true });
+  await Promise.all(
+    PGLITE_RUNTIME_ASSET_FILENAMES.map((filename) =>
+      copyFile(
+        path.join(pgliteDistDir, filename),
+        path.join(pgliteOutDir, filename)
+      )
+    )
+  );
   await cp(builtWebDistDir, webOutDir, { recursive: true });
+}
+
+async function resolvePgliteDistDir() {
+  const packageEntrypoint = dbPackageRequire.resolve("@electric-sql/pglite");
+  const distDir = path.dirname(packageEntrypoint);
+
+  await Promise.all(
+    PGLITE_RUNTIME_ASSET_FILENAMES.map((filename) =>
+      access(path.join(distDir, filename))
+    )
+  );
+
+  return distDir;
 }
 
 async function buildWebAssets() {

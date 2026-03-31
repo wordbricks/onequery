@@ -12,7 +12,8 @@
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'src/**/*.integration.test.ts'",
+    "test:integration": "vitest run integration.test.ts",
     "test:watch": "vitest",
     "db:generate": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit generate",
     "db:migrate": "bun run ../../scripts/run-local-env-command.ts -- drizzle-kit migrate",

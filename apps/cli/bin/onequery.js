@@ -78,6 +78,9 @@ const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
     ...process.env,
     ONEQUERY_NPM_ROOT: process.env.ONEQUERY_NPM_ROOT ?? packageRoot,
+    ONEQUERY_PGLITE_ASSET_DIR:
+      process.env.ONEQUERY_PGLITE_ASSET_DIR ??
+      path.join(packageRoot, "runtime", "pglite"),
     ONEQUERY_RUNTIME_ROOT: process.env.ONEQUERY_RUNTIME_ROOT ?? packageRoot,
     ONEQUERY_SERVER_EXECUTABLE:
       process.env.ONEQUERY_SERVER_EXECUTABLE ?? serverBinaryPath,
