@@ -296,8 +296,8 @@ Anything executable or user-facing should either:
 
 ### Checklist
 
-- [ ] Remove fallback literals from `docker-compose.yml` that duplicate `workspace-dev` defaults.
-- [ ] Feed Docker from one derived projection path only.
+- [x] Remove fallback literals from `docker-compose.yml` that duplicate `workspace-dev` defaults.
+- [x] Feed Docker from one derived projection path only.
 - [ ] Audit onboarding/docs/landing/README copy for stale port numbers or old commands.
 - [ ] Update any stale references such as `4545` if the real self-host default is now something else.
 - [ ] Remove separately hardcoded CLI base URL strings and derive them from the same self-host default helper.

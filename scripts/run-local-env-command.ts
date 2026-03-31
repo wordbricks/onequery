@@ -2,7 +2,11 @@ import { spawnSync } from "node:child_process";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { projectDrizzleConfig, resolveWorkspaceDev } from "@onequery/config";
+import {
+  projectDockerComposeConfig,
+  projectDrizzleConfig,
+  resolveWorkspaceDev,
+} from "@onequery/config";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -63,14 +67,19 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function main(): void {
   const { command, commandArgs, cwd } = parseArgs(process.argv.slice(2));
-  const drizzle = projectDrizzleConfig(
-    resolveWorkspaceDev({
-      rootDir,
-    })
-  );
+  const workspaceDev = resolveWorkspaceDev({
+    rootDir,
+  });
+  const drizzle = projectDrizzleConfig(workspaceDev);
+  const docker = projectDockerComposeConfig(workspaceDev);
   const env = {
     ...process.env,
     DATABASE_URL: drizzle.databaseUrl,
+    ONEQUERY_POSTGRES_CONTAINER_PORT: String(docker.postgres.containerPort),
+    ONEQUERY_POSTGRES_DB: docker.environment.POSTGRES_DB,
+    ONEQUERY_POSTGRES_HOST_PORT: String(docker.postgres.hostPort),
+    ONEQUERY_POSTGRES_PASSWORD: docker.environment.POSTGRES_PASSWORD,
+    ONEQUERY_POSTGRES_USER: docker.environment.POSTGRES_USER,
     // Child commands like drizzle-kit often live in the target package's local
     // node_modules/.bin rather than the workspace root.
     PATH: prependPathEntries(
