@@ -1,0 +1,57 @@
+{
+  "name": "@onequery/config",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./server-launch": {
+      "types": "./src/server-launch.ts",
+      "bun": "./src/server-launch.ts",
+      "default": "./dist/server-launch.js"
+    },
+    "./workspace-dev": {
+      "types": "./src/workspace-dev.ts",
+      "bun": "./src/workspace-dev.ts",
+      "default": "./dist/workspace-dev.js"
+    },
+    "./test-profile": {
+      "types": "./src/test-profile.ts",
+      "bun": "./src/test-profile.ts",
+      "default": "./dist/test-profile.js"
+    },
+    "./projections/docker": {
+      "types": "./src/projections/docker.ts",
+      "bun": "./src/projections/docker.ts",
+      "default": "./dist/projections/docker.js"
+    },
+    "./projections/drizzle": {
+      "types": "./src/projections/drizzle.ts",
+      "bun": "./src/projections/drizzle.ts",
+      "default": "./dist/projections/drizzle.js"
+    },
+    "./projections/vite": {
+      "types": "./src/projections/vite.ts",
+      "bun": "./src/projections/vite.ts",
+      "default": "./dist/projections/vite.js"
+    }
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts ./src/server-launch.ts ./src/workspace-dev.ts ./src/test-profile.ts ./src/projections/vite.ts ./src/projections/drizzle.ts ./src/projections/docker.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[dir]/[name].js'",
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@onequery/config-loader": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}

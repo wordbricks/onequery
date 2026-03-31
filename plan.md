@@ -190,15 +190,15 @@ Done when:
 
 Recommendation: repurpose the currently-unused `packages/config` package and delete `packages/dev-config` later.
 
-- [ ] Create a real `packages/config/package.json`.
-- [ ] Add `packages/config/src/server-launch.ts` with the TS runtime contract types.
-- [ ] Add `packages/config/src/workspace-dev.ts` with the domain-shaped workspace-dev authored schema and resolver.
-- [ ] Add `packages/config/src/test-profile.ts` for the derived test database profile.
-- [ ] Add `packages/config/src/projections/vite.ts`.
-- [ ] Add `packages/config/src/projections/drizzle.ts`.
-- [ ] Add `packages/config/src/projections/docker.ts`.
+- [x] Create a real `packages/config/package.json`.
+- [x] Add `packages/config/src/server-launch.ts` with the TS runtime contract types.
+- [x] Add `packages/config/src/workspace-dev.ts` with the domain-shaped workspace-dev authored schema and resolver.
+- [x] Add `packages/config/src/test-profile.ts` for the derived test database profile.
+- [x] Add `packages/config/src/projections/vite.ts`.
+- [x] Add `packages/config/src/projections/drizzle.ts`.
+- [x] Add `packages/config/src/projections/docker.ts`.
 - [ ] Keep `@onequery/config-loader` only as a TOML decoding helper; do not re-introduce env-shaped config there.
-- [ ] Add unit tests for the new package before migrating consumers.
+- [x] Add unit tests for the new package before migrating consumers.
 
 Recommended workspace-dev authored shape:
 

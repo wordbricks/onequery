@@ -158,6 +158,17 @@
         "zod": "catalog:",
       },
     },
+    "packages/config": {
+      "name": "@onequery/config",
+      "version": "0.0.0",
+      "dependencies": {
+        "@onequery/config-loader": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "vitest": "catalog:",
+      },
+    },
     "packages/config-loader": {
       "name": "@onequery/config-loader",
       "version": "0.0.0",
@@ -634,6 +645,8 @@
     "@onequery/cli-server": ["@onequery/cli-server@workspace:packages/cli-server"],
 
     "@onequery/codecs": ["@onequery/codecs@workspace:packages/codecs"],
+
+    "@onequery/config": ["@onequery/config@workspace:packages/config"],
 
     "@onequery/config-loader": ["@onequery/config-loader@workspace:packages/config-loader"],
 
