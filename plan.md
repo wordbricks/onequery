@@ -286,7 +286,7 @@ Done when:
 
 This is the biggest code-quality step.
 
-- [ ] Add a typed runtime module in `packages/server`, for example `packages/server/src/runtime.ts`.
+- [x] Add a typed runtime module in `packages/server`, for example `packages/server/src/runtime.ts`.
 - [ ] Change `packages/server` APIs to accept `ServerLaunchConfig` / `ServerRuntimeConfig` instead of env.
 - [ ] Replace `createAuthFromEnv()` with `createAuthFromConfig()`.
 - [ ] Replace `getServerStorage(env)` with startup-time service construction from typed config.
