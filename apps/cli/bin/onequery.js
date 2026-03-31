@@ -10,7 +10,9 @@ import {
   CLI_BINARY_NAME,
   CLI_PACKAGE_NAME,
   PLATFORM_PACKAGE_BY_TARGET,
+  binaryNameForPlatform,
   resolveTargetTriple,
+  resolveTargetTripleCandidates,
 } from "./package-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,52 +21,51 @@ const require = createRequire(import.meta.url);
 
 const { platform, arch } = process;
 const targetTriple = resolveTargetTriple(platform, arch);
-
-const platformPackage = PLATFORM_PACKAGE_BY_TARGET[targetTriple];
-if (!platformPackage) {
-  throw new Error(`Unsupported target triple: ${targetTriple}`);
-}
+const targetTripleCandidates = resolveTargetTripleCandidates(platform, arch);
+const binaryName = binaryNameForPlatform(platform, CLI_BINARY_NAME);
 
 // CONTEXT: platform packages are installed through npm alias names so the
 // launcher resolves the alias folder, not the underlying published package id.
 const localVendorRoot = path.join(__dirname, "..", "vendor");
-const localBinaryPath = path.join(
-  localVendorRoot,
-  targetTriple,
-  "onequery",
-  CLI_BINARY_NAME
-);
 const packageRoot = path.resolve(__dirname, "..");
 
-let vendorRoot;
-try {
-  const packageJsonPath = require.resolve(`${platformPackage}/package.json`);
-  vendorRoot = path.join(path.dirname(packageJsonPath), "vendor");
-} catch {
-  if (existsSync(localBinaryPath)) {
-    vendorRoot = localVendorRoot;
-  } else {
-    const packageManager = detectPackageManager();
-    const reinstallCommand =
-      packageManager === "bun"
-        ? `bun install -g ${CLI_PACKAGE_NAME}@latest`
-        : `npm install -g ${CLI_PACKAGE_NAME}@latest`;
+const resolvedVendor = resolveVendorPayload({
+  binaryName,
+  localVendorRoot,
+  targetTripleCandidates,
+});
+
+if (!resolvedVendor) {
+  const preferredPackage = PLATFORM_PACKAGE_BY_TARGET[targetTriple];
+  const packageManager = detectPackageManager();
+  const reinstallCommand =
+    packageManager === "bun"
+      ? `bun install -g ${CLI_PACKAGE_NAME}@latest`
+      : `npm install -g ${CLI_PACKAGE_NAME}@latest`;
+
+  if (preferredPackage) {
     throw new Error(
-      `Missing optional dependency ${platformPackage}. Reinstall OneQuery CLI: ${reinstallCommand}`
+      `Missing optional dependency ${preferredPackage}. Reinstall OneQuery CLI: ${reinstallCommand}`
     );
   }
+
+  throw new Error(`Unsupported target triple: ${targetTriple}`);
 }
+
+const { resolvedTargetTriple, vendorRoot } = resolvedVendor;
 
 const binaryPath = path.join(
   vendorRoot,
-  targetTriple,
+  resolvedTargetTriple,
   "onequery",
-  CLI_BINARY_NAME
+  binaryName
 );
-const serverBinaryDir = path.join(vendorRoot, targetTriple, "server");
+const serverBinaryDir = path.join(vendorRoot, resolvedTargetTriple, "server");
 
-ensureExecutable(binaryPath);
-ensureExecutablesInDir(serverBinaryDir);
+if (platform !== "win32") {
+  ensureExecutable(binaryPath);
+  ensureExecutablesInDir(serverBinaryDir);
+}
 
 const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
@@ -135,6 +136,57 @@ function detectPackageManager() {
   }
 
   return userAgent ? "npm" : null;
+}
+
+function resolveVendorPayload({
+  binaryName,
+  localVendorRoot,
+  targetTripleCandidates,
+}) {
+  for (const candidateTargetTriple of targetTripleCandidates) {
+    const localBinaryPath = path.join(
+      localVendorRoot,
+      candidateTargetTriple,
+      "onequery",
+      binaryName
+    );
+
+    const platformPackage = PLATFORM_PACKAGE_BY_TARGET[candidateTargetTriple];
+    if (platformPackage) {
+      try {
+        const packageJsonPath = require.resolve(
+          `${platformPackage}/package.json`
+        );
+        const resolvedVendorRoot = path.join(
+          path.dirname(packageJsonPath),
+          "vendor"
+        );
+        const packagedBinaryPath = path.join(
+          resolvedVendorRoot,
+          candidateTargetTriple,
+          "onequery",
+          binaryName
+        );
+        if (existsSync(packagedBinaryPath)) {
+          return {
+            resolvedTargetTriple: candidateTargetTriple,
+            vendorRoot: resolvedVendorRoot,
+          };
+        }
+      } catch {
+        // Keep checking fallback targets and local vendor payloads.
+      }
+    }
+
+    if (existsSync(localBinaryPath)) {
+      return {
+        resolvedTargetTriple: candidateTargetTriple,
+        vendorRoot: localVendorRoot,
+      };
+    }
+  }
+
+  return null;
 }
 
 function ensureExecutable(filePath) {

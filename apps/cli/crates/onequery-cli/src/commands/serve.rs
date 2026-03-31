@@ -22,10 +22,12 @@ use crate::path_utils::resolve_user_path_for_cli;
 use super::CommandContext;
 use super::Runtime;
 use super::ensure_self_host_runtime_supported;
+use super::is_process_running;
 
 const PACKAGED_RUNTIME_DIR: &str = "runtime";
 const PACKAGED_SERVER_DIR: &str = "server";
 const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
+const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
 const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
 const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
 const PACKAGED_WEB_DIR: &str = "web";
@@ -225,6 +227,7 @@ fn run_serve_foreground(
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let launch_plan = resolve_launch_plan(state, command_line)?;
+    remove_if_exists(state.paths.stop_request_path.as_path());
     let mut child = match launch_plan.launch_kind {
         ServeLaunchKind::PackagedExecutable => ProcessCommand::new(&launch_plan.runtime_entry_path),
         ServeLaunchKind::RepoBunEntry => {
@@ -277,6 +280,7 @@ fn run_serve_foreground(
             try_next,
         )
     })?;
+    let child_pid = child.id();
 
     let status = child.wait().map_err(|wait_error| {
         CliError::new(
@@ -287,8 +291,10 @@ fn run_serve_foreground(
             vec![RETRY_SERVE_COMMAND.to_owned()],
         )
     })?;
+    let stop_requested = stop_request_matches(state.paths.stop_request_path.as_path(), child_pid);
+    remove_if_exists(state.paths.stop_request_path.as_path());
 
-    if status.success() || is_expected_termination(status) {
+    if status.success() || is_expected_termination(status) || stop_requested {
         return Ok(CommandOutput::structured(
             Vec::new(),
             json!({
@@ -555,7 +561,7 @@ fn packaged_server_candidates(
     arch: &str,
 ) -> Result<Vec<PackagedServerCandidate>, String> {
     let default_candidate = PackagedServerCandidate {
-        path: server_dir.join(PACKAGED_SERVER_FILENAME),
+        path: server_dir.join(packaged_server_filename_for_os(os)),
         required_loader_paths: &[],
     };
 
@@ -595,6 +601,14 @@ fn packaged_server_candidates(
             required_loader_paths: musl_loader_paths,
         },
     ])
+}
+
+fn packaged_server_filename_for_os(os: &str) -> &'static str {
+    if os == "windows" {
+        return PACKAGED_SERVER_WINDOWS_FILENAME;
+    }
+
+    PACKAGED_SERVER_FILENAME
 }
 
 fn select_packaged_server_candidate<'a, F>(
@@ -661,13 +675,20 @@ fn stop_runtime(state: &ServeRuntimeState, command_line: &str) -> Result<Command
     let running_pid = pid.filter(|pid| is_process_running(*pid));
 
     if let Some(pid) = running_pid {
-        terminate_process(pid, command_line)?;
-        wait_for_runtime_stop(
+        mark_stop_requested(state.paths.stop_request_path.as_path(), pid, command_line)?;
+        if let Err(error) = terminate_process(pid, command_line) {
+            remove_if_exists(state.paths.stop_request_path.as_path());
+            return Err(error);
+        }
+        if let Err(error) = wait_for_runtime_stop(
             state.paths.pid_path.as_path(),
             state.paths.lock_path.as_path(),
             pid,
             command_line,
-        )?;
+        ) {
+            remove_if_exists(state.paths.stop_request_path.as_path());
+            return Err(error);
+        }
         let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
         return Ok(CommandOutput::structured(
             vec![
@@ -692,6 +713,7 @@ fn stop_runtime(state: &ServeRuntimeState, command_line: &str) -> Result<Command
 
     remove_if_exists(state.paths.pid_path.as_path());
     remove_if_exists(state.paths.lock_path.as_path());
+    remove_if_exists(state.paths.stop_request_path.as_path());
     let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
     Ok(CommandOutput::structured(
         vec![
@@ -719,6 +741,11 @@ fn wait_for_runtime_stop(
     command_line: &str,
 ) -> Result<(), CliError> {
     for _ in 0..SERVE_STOP_POLL_ATTEMPTS {
+        if !is_process_running(pid) {
+            remove_if_exists(pid_path);
+            remove_if_exists(lock_path);
+        }
+
         if !is_process_running(pid) && !pid_path.exists() && !lock_path.exists() {
             return Ok(());
         }
@@ -757,19 +784,6 @@ fn read_runtime_pid(path: &std::path::Path, command_line: &str) -> Result<Option
     })
 }
 
-fn is_process_running(pid: u32) -> bool {
-    #[cfg(unix)]
-    {
-        unsafe { libc::kill(pid as i32, 0) == 0 }
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = pid;
-        false
-    }
-}
-
 fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
     #[cfg(unix)]
     {
@@ -787,7 +801,44 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
         ))
     }
 
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::OpenProcess;
+        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
+        use windows_sys::Win32::System::Threading::TerminateProcess;
+
+        let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
+        if handle == 0 {
+            return Err(CliError::new(
+                "failed to stop self-host runtime",
+                command_line,
+                ErrorStage::Internal,
+                format!("unable to open pid {pid} for termination"),
+                vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            ));
+        }
+
+        // Comment: Windows release builds do not yet expose a graceful
+        // cross-process shutdown channel, so `serve stop` terminates the
+        // helper process and then clears lifecycle markers once it exits.
+        let result = unsafe { TerminateProcess(handle, 1) };
+        let _ = unsafe { CloseHandle(handle) };
+
+        if result != 0 {
+            return Ok(());
+        }
+
+        Err(CliError::new(
+            "failed to stop self-host runtime",
+            command_line,
+            ErrorStage::Internal,
+            format!("unable to terminate pid {pid}"),
+            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+        ))
+    }
+
+    #[cfg(not(any(unix, windows)))]
     {
         let _ = pid;
         Err(CliError::new(
@@ -802,6 +853,41 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
 
 fn remove_if_exists(path: &std::path::Path) {
     let _ = fs::remove_file(path);
+}
+
+#[cfg(windows)]
+fn mark_stop_requested(
+    path: &std::path::Path,
+    pid: u32,
+    command_line: &str,
+) -> Result<(), CliError> {
+    fs::write(path, format!("{pid}\n")).map_err(|error| {
+        CliError::new(
+            "failed to prepare self-host stop request",
+            command_line,
+            ErrorStage::Internal,
+            format!("{error} ({})", path.display()),
+            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+        )
+    })
+}
+
+#[cfg(not(windows))]
+fn mark_stop_requested(
+    path: &std::path::Path,
+    pid: u32,
+    command_line: &str,
+) -> Result<(), CliError> {
+    let _ = (path, pid, command_line);
+    Ok(())
+}
+
+fn stop_request_matches(path: &std::path::Path, pid: u32) -> bool {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return false;
+    };
+
+    contents.trim().parse::<u32>().ok() == Some(pid)
 }
 
 fn exit_signal_label(status: ExitStatus) -> Option<String> {
@@ -1027,6 +1113,7 @@ fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
         "runDir": paths.run_dir.display().to_string(),
         "pidPath": paths.pid_path.display().to_string(),
         "lockPath": paths.lock_path.display().to_string(),
+        "stopRequestPath": paths.stop_request_path.display().to_string(),
     })
 }
 
@@ -1044,6 +1131,7 @@ mod tests {
     use super::PACKAGED_SERVER_DIR;
     use super::PACKAGED_SERVER_FILENAME;
     use super::PACKAGED_SERVER_MUSL_FILENAME;
+    use super::PACKAGED_SERVER_WINDOWS_FILENAME;
     use super::PACKAGED_VENDOR_CLI_DIR;
     use super::ServeRuntimeState;
     use super::ServeStateAccessMode;
@@ -1072,6 +1160,7 @@ mod tests {
             run_dir: "/tmp/onequery/data/run".into(),
             pid_path: "/tmp/onequery/data/run/server.pid".into(),
             lock_path: "/tmp/onequery/data/run/server.lock".into(),
+            stop_request_path: "/tmp/onequery/data/run/server.stop".into(),
         }
     }
 
@@ -1211,6 +1300,23 @@ mod tests {
         assert_eq!(
             selected.path,
             server_dir.join(PACKAGED_SERVER_MUSL_FILENAME)
+        );
+    }
+
+    #[test]
+    fn packaged_server_candidates_use_windows_executable_name() {
+        let temp_dir = tempdir().unwrap();
+        let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+        fs::create_dir_all(&server_dir)
+            .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
+
+        let candidates =
+            packaged_server_candidates(server_dir.as_path(), "windows", "x86_64").unwrap();
+
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(
+            candidates[0].path,
+            server_dir.join(PACKAGED_SERVER_WINDOWS_FILENAME)
         );
     }
 

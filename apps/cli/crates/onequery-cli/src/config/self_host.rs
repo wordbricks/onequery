@@ -20,6 +20,7 @@ const PGLITE_DIRNAME: &str = "onequery";
 const SERVER_LOG_FILENAME: &str = "server.log";
 const PID_FILENAME: &str = "server.pid";
 const LOCK_FILENAME: &str = "server.lock";
+const STOP_REQUEST_FILENAME: &str = "server.stop";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SelfHostRuntimePaths {
@@ -34,6 +35,7 @@ pub(crate) struct SelfHostRuntimePaths {
     pub(crate) run_dir: PathBuf,
     pub(crate) pid_path: PathBuf,
     pub(crate) lock_path: PathBuf,
+    pub(crate) stop_request_path: PathBuf,
 }
 
 impl SelfHostRuntimePaths {
@@ -47,6 +49,7 @@ impl SelfHostRuntimePaths {
         let run_dir = data_dir.join("run");
         let pid_path = run_dir.join(PID_FILENAME);
         let lock_path = run_dir.join(LOCK_FILENAME);
+        let stop_request_path = run_dir.join(STOP_REQUEST_FILENAME);
 
         Self {
             config_dir,
@@ -60,6 +63,7 @@ impl SelfHostRuntimePaths {
             run_dir,
             pid_path,
             lock_path,
+            stop_request_path,
         }
     }
 
@@ -434,6 +438,10 @@ mod tests {
         assert_eq!(
             paths.lock_path,
             PathBuf::from("/data/onequery/run/server.lock")
+        );
+        assert_eq!(
+            paths.stop_request_path,
+            PathBuf::from("/data/onequery/run/server.stop")
         );
     }
 

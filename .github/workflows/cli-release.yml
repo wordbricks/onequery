@@ -61,10 +61,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # COMMENT: Keep GNU targets in the release matrix for parity with the
+          # Codex release flow, but Linux npm packages still publish musl
+          # payloads so installs keep the current broad compatibility shape.
           - runner: ubuntu-24.04
             target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
           # COMMENT: Keep the current macOS runner classes for OneQuery. Unlike
           # Codex, this CLI only builds one binary per macOS target and does
           # not need the larger xlarge runner shape.
@@ -137,13 +144,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          binary_name="onequery"
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            binary_name="onequery.exe"
-          fi
-
           mkdir -p "dist/vendor/${{ matrix.target }}/onequery"
-          cp "target/${{ matrix.target }}/release/${binary_name}" "dist/vendor/${{ matrix.target }}/onequery/${binary_name}"
+          cp "target/${{ matrix.target }}/release/onequery" "dist/vendor/${{ matrix.target }}/onequery/onequery"
 
       - uses: actions/upload-artifact@v6
         with:
@@ -151,8 +153,192 @@ jobs:
           path: apps/cli/dist/vendor
           if-no-files-found: error
 
+  build-windows-binaries:
+    needs: tag-check
+    name: Build Windows binaries - ${{ matrix.runner }} - ${{ matrix.target }} - ${{ matrix.bundle }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # COMMENT: We do not maintain dedicated Windows builders, so keep the
+          # Windows release path on standard GitHub-hosted runner images.
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            bundle: primary
+            runs_on: windows-2025
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            bundle: primary
+            runs_on: windows-11-arm
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            bundle: helpers
+            runs_on: windows-2025
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            bundle: helpers
+            runs_on: windows-11-arm
+    defaults:
+      run:
+        working-directory: apps/cli
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ matrix.bundle == 'helpers' }}
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Install dependencies
+        if: ${{ matrix.bundle == 'helpers' }}
+        working-directory: ${{ github.workspace }}
+        run: bun ci
+
+      - uses: dtolnay/rust-toolchain@1.93.0
+        if: ${{ matrix.bundle == 'primary' }}
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cargo build (Windows binaries)
+        if: ${{ matrix.bundle == 'primary' }}
+        run: cargo build --locked --release --bin onequery --target ${{ matrix.target }}
+
+      - name: Verify Windows CLI binary
+        if: ${{ matrix.bundle == 'primary' }}
+        run: |
+          & "target/${{ matrix.target }}/release/onequery.exe" --help | Out-Null
+
+      - name: Build self-host server executable
+        if: ${{ matrix.bundle == 'helpers' }}
+        run: |
+          bun scripts/build-server-executable.js --target-triple "${{ matrix.target }}"
+
+      - name: Stage Windows binaries
+        run: |
+          $outputDir = "target/${{ matrix.target }}/release/staged-${{ matrix.bundle }}"
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+          if ("${{ matrix.bundle }}" -eq "primary") {
+            Copy-Item "target/${{ matrix.target }}/release/onequery.exe" "$outputDir/onequery.exe"
+          } else {
+            Copy-Item "dist/vendor/${{ matrix.target }}/server/*" "$outputDir/"
+          }
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: windows-binaries-${{ matrix.target }}-${{ matrix.bundle }}
+          path: apps/cli/target/${{ matrix.target }}/release/staged-${{ matrix.bundle }}/*
+          if-no-files-found: error
+
+  build-windows:
+    needs: [tag-check, build-windows-binaries]
+    name: Build - ${{ matrix.runner }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            runs_on: windows-2025
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            runs_on: windows-11-arm
+    defaults:
+      run:
+        working-directory: apps/cli
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download prebuilt Windows primary binaries
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-binaries-${{ matrix.target }}-primary
+          path: apps/cli/target/${{ matrix.target }}/release
+
+      - name: Download prebuilt Windows helper binaries
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-binaries-${{ matrix.target }}-helpers
+          path: apps/cli/target/${{ matrix.target }}/release
+
+      - name: Verify Windows binaries
+        run: |
+          Get-Item "target/${{ matrix.target }}/release/onequery.exe" | Out-Null
+          Get-Item "target/${{ matrix.target }}/release/onequery-server.exe" | Out-Null
+
+      - name: Stage vendor payload
+        run: |
+          New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/onequery" | Out-Null
+          New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/server" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/onequery.exe" "dist/vendor/${{ matrix.target }}/onequery/onequery.exe"
+          Copy-Item "target/${{ matrix.target }}/release/onequery-server.exe" "dist/vendor/${{ matrix.target }}/server/onequery-server.exe"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: cli-npm-vendor-${{ matrix.target }}
+          path: apps/cli/dist/vendor
+          if-no-files-found: error
+
+  smoke-windows:
+    needs: [tag-check, build-windows]
+    name: Smoke - ${{ matrix.runner }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            package: cli-win32-x64
+            npm_tag: win32-x64
+            runs_on: windows-2025
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            package: cli-win32-arm64
+            npm_tag: win32-arm64
+            runs_on: windows-11-arm
+    defaults:
+      run:
+        working-directory: apps/cli
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
+
+      - name: Install dependencies
+        working-directory: ${{ github.workspace }}
+        run: bun ci
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cli-npm-vendor-${{ matrix.target }}
+          path: apps/cli/dist/vendor
+
+      - name: Stage Windows smoke tarballs
+        run: |
+          bun scripts/stage-npm-packages.js `
+            --package cli `
+            --package "${{ matrix.package }}" `
+            --release-version "${{ needs.tag-check.outputs.version }}" `
+            --vendor-src dist/vendor `
+            --output-dir dist/npm
+
+      - name: Smoke packaged self-host server
+        run: |
+          bun scripts/smoke-packaged-server.js `
+            --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" `
+            --platform-tarball "dist/npm/onequery-npm-${{ matrix.npm_tag }}-${{ needs.tag-check.outputs.version }}.tgz" `
+            --target-triple "${{ matrix.target }}"
+
   release:
-    needs: [tag-check, build-unix]
+    needs: [tag-check, build-unix, build-windows, smoke-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,12 +374,27 @@ jobs:
             --vendor-src dist/vendor \
             --output-dir dist/npm
 
-      - name: Smoke packaged self-host server
+      - name: Stage release-only tarballs
+        run: |
+          bun apps/cli/scripts/stage-npm-packages.js \
+            --package cli-release-extras \
+            --release-version "${{ needs.tag-check.outputs.version }}" \
+            --vendor-src dist/vendor \
+            --output-dir dist/release
+
+      - name: Smoke packaged self-host server (musl)
         run: |
           bun apps/cli/scripts/smoke-packaged-server.js \
             --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" \
             --platform-tarball "dist/npm/onequery-npm-linux-x64-${{ needs.tag-check.outputs.version }}.tgz" \
             --target-triple "x86_64-unknown-linux-musl"
+
+      - name: Smoke packaged self-host server (GNU Linux)
+        run: |
+          bun apps/cli/scripts/smoke-packaged-server.js \
+            --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" \
+            --platform-tarball "dist/release/onequery-npm-linux-x64-gnu-${{ needs.tag-check.outputs.version }}.tgz" \
+            --target-triple "x86_64-unknown-linux-gnu"
 
       - name: Stage stable installer assets
         shell: bash
@@ -222,11 +423,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          shopt -s nullglob
 
           # COMMENT: Keep the release step rerunnable without depending on
           # softprops/action-gh-release, whose current v2 line still executes on
           # the deprecated Node 20 runtime.
-          release_assets=(dist/npm/*.tgz)
+          release_assets=(dist/npm/*.tgz dist/release/*.tgz)
+          [[ ${#release_assets[@]} -gt 0 ]] || {
+            echo "No release assets were staged"
+            exit 1
+          }
 
           if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
             edit_args=(gh release edit "${TAG_NAME}" --title "${VERSION}")

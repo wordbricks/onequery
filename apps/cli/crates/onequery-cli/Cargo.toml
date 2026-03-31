@@ -43,6 +43,12 @@ uuid = { workspace = true, features = ["v4"] }
 onequery-cli-core = { workspace = true }
 onequery-config = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_System_Threading",
+] }
+
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 insta = { workspace = true }
