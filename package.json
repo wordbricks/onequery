@@ -53,6 +53,7 @@
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
     "test": "turbo test",
+    "test:integration": "turbo run test:integration",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "turbo run test:e2e",
