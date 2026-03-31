@@ -247,16 +247,16 @@ Remove the old surface so there is no plausible way for contributors to think th
 
 ### Checklist
 
-- [ ] Delete `onequery.local.env.toml` from the repo surface.
-- [ ] Delete `onequery.local.env.toml.template`.
-- [ ] Delete `packages/dev-config` after all imports are gone.
-- [ ] Delete `scripts/sync-local-env.ts`.
-- [ ] Delete drift-check scripts such as `check-dev-topology` / `dev-topology-check` if any remain.
-- [ ] Remove `env:sync` and other obsolete scripts from root `package.json`.
-- [ ] Remove stale `WEB_URL` / `BETTER_AUTH_URL` from `turbo.json` `globalEnv` if they no longer belong there.
-- [ ] Remove old compatibility comments in Vite/dev tooling that still describe the repo in terms of managed `WEB_URL`.
-- [ ] Rewrite docs that still explain the old env workflow.
-- [ ] Search for old filenames and delete or rewrite every remaining reference.
+- [x] Delete `onequery.local.env.toml` from the repo surface.
+- [x] Delete `onequery.local.env.toml.template`.
+- [x] Delete `packages/dev-config` after all imports are gone.
+- [x] Delete `scripts/sync-local-env.ts`.
+- [x] Delete drift-check scripts such as `check-dev-topology` / `dev-topology-check` if any remain.
+- [x] Remove `env:sync` and other obsolete scripts from root `package.json`.
+- [x] Remove stale `WEB_URL` / `BETTER_AUTH_URL` from `turbo.json` `globalEnv` if they no longer belong there.
+- [x] Remove old compatibility comments in Vite/dev tooling that still describe the repo in terms of managed `WEB_URL`.
+- [x] Rewrite docs that still explain the old env workflow.
+- [x] Search for old filenames and delete or rewrite every remaining reference.
 
 ### Done when
 

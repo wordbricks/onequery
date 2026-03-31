@@ -5,15 +5,11 @@ OneQuery now has two distinct config owners:
 - `workspace-dev` for `bun dev`
 - `self-host` for `onequery serve`
 
-The repo does not use a generated `onequery.local.env.toml` surface anymore,
-and startup does not round-trip config through committed env-shaped files.
+The repo does not use a generated env-shaped local config file anymore, and
+startup does not round-trip config through committed env-shaped files.
 
-Deprecated and removed surfaces for this rewrite:
-
-- `@onequery/dev-config`
-- `env:sync`
-- `onequery.local.env.toml`
-- `dev-topology-check`
+The rewrite removed the old env-shaped local sync workflow. Repo-local
+development now starts from authored config files and derived projections only.
 
 ## Profile Ownership
 
@@ -23,7 +19,7 @@ Workspace development is owned by `@onequery/config`:
 
 - `onequery.dev.toml`: tracked browser/API/Postgres defaults
 - `onequery.dev.secrets.toml`: untracked local secrets
-- `packages/config/src/workspace-dev.ts`: resolver and defaults
+- `packages/config/src/workspace-dev.ts`: resolver and validation
 - `packages/config/src/projections/*`: Vite, Docker, and Drizzle projections
 
 `bun dev` uses this profile only.
@@ -88,8 +84,8 @@ self-host/config.toml + self-host/secrets.toml
   split on purpose.
 - `onequery serve` ignores `onequery.dev.toml` and starts from the resolved
   self-host launch contract.
-- `publicOrigin` is the canonical public URL. Do not author separate
-  `WEB_URL` and `BETTER_AUTH_URL` config values.
+- `publicOrigin` is the canonical public URL. Do not introduce separate public
+  URL aliases alongside it.
 - `DATABASE_URL` is a projection for consumers that need it. It is not the
   authored source of truth for workspace dev.
 - Optional secrets for integrations can stay unset until you need them locally.

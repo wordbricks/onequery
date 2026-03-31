@@ -12,8 +12,7 @@
     "ONEQUERY_LANDING_DEV_PORT",
     "ONEQUERY_NPM_ROOT",
     "ONEQUERY_PGLITE_ASSET_DIR",
-    "ONEQUERY_RUNTIME_ROOT",
-    "WEB_URL"
+    "ONEQUERY_RUNTIME_ROOT"
   ],
   "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath"],
   "tasks": {
