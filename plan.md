@@ -241,10 +241,10 @@ Done when:
 
 ## Phase 2 — replace the repo-authored local config files
 
-- [ ] Add `onequery.dev.toml` at repo root.
-- [ ] Add `onequery.dev.secrets.toml` at repo root.
-- [ ] Add ignore rules for `onequery.dev.secrets.toml` and any generated runtime files.
-- [ ] Create one small initializer in TS that seeds `onequery.dev.secrets.toml` if missing.
+- [x] Add `onequery.dev.toml` at repo root.
+- [x] Add `onequery.dev.secrets.toml` at repo root.
+- [x] Add ignore rules for `onequery.dev.secrets.toml` and any generated runtime files.
+- [x] Create one small initializer in TS that seeds `onequery.dev.secrets.toml` if missing.
 - [ ] Delete `onequery.local.env.toml.template`.
 - [ ] Stop treating `onequery.local.env.toml` as the repo’s editable config surface.
 - [ ] Remove the idea of “syncing” config into a generated committed template.

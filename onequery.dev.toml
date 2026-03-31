@@ -1,0 +1,19 @@
+# Canonical workspace-dev config for `bun dev` and local tooling.
+
+[browser]
+host = "localhost"
+port = 4545
+
+[api]
+host = "127.0.0.1"
+port = 4555
+
+[postgres]
+host_port = 5454
+container_port = 5432
+database = "onequery"
+user = "onequery"
+password = "onequery"
+
+[flags]
+disable_rate_limit = true

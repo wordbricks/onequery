@@ -5,6 +5,7 @@
     "": {
       "name": "onequery-workspace",
       "devDependencies": {
+        "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/dev-config": "workspace:*",
         "@testing-library/jest-dom": "6.9.1",

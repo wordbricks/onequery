@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 
+import { ensureWorkspaceDevSecretsFileSync } from "@onequery/config";
 import { prepareSelfHostDatabase } from "@onequery/db/server";
 import { syncManagedLocalConfigFile } from "@onequery/dev-config/local-env";
 import { loadLocalDevRuntimeSync } from "@onequery/dev-config/runtime";
@@ -279,11 +280,24 @@ function syncLocalConfigFile(): void {
   process.exit(1);
 }
 
+function ensureWorkspaceDevSecretsFile(): void {
+  const result = ensureWorkspaceDevSecretsFileSync({
+    rootDir: process.cwd(),
+  });
+
+  if (!result.created) {
+    return;
+  }
+
+  console.log(`Created ${result.path} with generated local secrets.`);
+}
+
 async function main(): Promise<void> {
   console.log("\n========================================");
   console.log("  OneQuery Development Environment Setup");
   console.log("========================================\n");
 
+  ensureWorkspaceDevSecretsFile();
   assertDevTopologyArtifactsInSync();
   syncLocalConfigFile();
 

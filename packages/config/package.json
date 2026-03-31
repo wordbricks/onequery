@@ -20,6 +20,11 @@
       "bun": "./src/workspace-dev.ts",
       "default": "./dist/workspace-dev.js"
     },
+    "./workspace-dev-init": {
+      "types": "./src/workspace-dev-init.ts",
+      "bun": "./src/workspace-dev-init.ts",
+      "default": "./dist/workspace-dev-init.js"
+    },
     "./test-profile": {
       "types": "./src/test-profile.ts",
       "bun": "./src/test-profile.ts",
@@ -42,7 +47,7 @@
     }
   },
   "scripts": {
-    "build": "bun build ./src/index.ts ./src/server-launch.ts ./src/workspace-dev.ts ./src/test-profile.ts ./src/projections/vite.ts ./src/projections/drizzle.ts ./src/projections/docker.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[dir]/[name].js'",
+    "build": "bun build ./src/index.ts ./src/server-launch.ts ./src/workspace-dev.ts ./src/workspace-dev-init.ts ./src/test-profile.ts ./src/projections/vite.ts ./src/projections/drizzle.ts ./src/projections/docker.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[dir]/[name].js'",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
