@@ -1,32 +1,17 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import {
-  createDatabaseRuntime,
-  eq,
-  prepareSelfHostDatabase,
-} from "@onequery/db/server";
+import { createDatabaseRuntime, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../../dev-config/src/master-encryption-key";
 import type { ServerEnv } from "../../env";
 import type { SessionData } from "../../middleware/session";
 import type { StorageVariables } from "../../storage";
+import {
+  closeDatabase,
+  createPgliteDatabaseUrl,
+} from "../../test/integration-helpers";
+import type { ClosableDatabase } from "../../test/integration-helpers";
+import { createTestEnv } from "../test-env";
 import { dataSourcesCrudRoute } from "./crud";
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../../../db/src/migrations", import.meta.url)
-);
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => void;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
 
 function createSession(userId: string): SessionData {
   return {
@@ -46,18 +31,6 @@ function createSession(userId: string): SessionData {
   };
 }
 
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
-
 describe("dataSourcesCrudRoute", () => {
   const openedDatabases: ClosableDatabase[] = [];
 
@@ -68,21 +41,12 @@ describe("dataSourcesCrudRoute", () => {
   });
 
   it("creates a postgres data source with the default test env encryption key", async () => {
-    const root = mkdtempSync(
-      join(tmpdir(), "onequery-data-sources-crud-test-")
+    const dbUrl = await createPgliteDatabaseUrl(
+      "onequery-data-sources-crud-test-",
+      ["db"]
     );
-    const dbUrl = `pglite:${join(root, "db")}`;
-    const env: ServerEnv = {
-      BETTER_AUTH_SECRET: "test-better-auth-secret",
-      BETTER_AUTH_URL: "http://localhost:4545",
+    const env = createTestEnv({
       DATABASE_URL: dbUrl,
-      MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-      WEB_URL: "http://localhost:4545",
-    };
-
-    await prepareSelfHostDatabase({
-      connectionString: dbUrl,
-      migrationsFolder,
     });
     const runtime = createDatabaseRuntime(dbUrl);
     openedDatabases.push(runtime.db as ClosableDatabase);

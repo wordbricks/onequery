@@ -1,21 +1,14 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import {
-  createDb,
-  eq,
-  getDatabaseSchema,
-  prepareSelfHostDatabase,
-} from "@onequery/db/server";
-import { Hono } from "hono";
+import { createDb, eq, getDatabaseSchema } from "@onequery/db/server";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { serverApiRoutes } from "../app";
-import { createAuth } from "../auth";
-import { createTestEnv } from "./test-env";
+import {
+  closeDatabase,
+  createPgliteDatabaseUrl,
+  createRouteIntegrationHarness,
+  createRunId,
+} from "../test/integration-helpers";
+import type { ClosableDatabase } from "../test/integration-helpers";
 
 const AuditListItemSchema = z.object({
   action: z.object({
@@ -66,44 +59,6 @@ const AuditResponseSchema = z.object({
   items: z.array(AuditListItemSchema),
   nextCursor: z.string().nullable(),
 });
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => void;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
-function createRunId() {
-  return crypto.randomUUID().replaceAll("-", "");
-}
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../../db/src/migrations", import.meta.url)
-);
-
-async function createPgliteDatabaseUrl(prefix: string): Promise<string> {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  const databaseUrl = `pglite:${join(root, "pglite", "onequery")}`;
-  await prepareSelfHostDatabase({
-    connectionString: databaseUrl,
-    migrationsFolder,
-  });
-  return databaseUrl;
-}
-
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
 
 async function seedAuditAction(input: {
   actorEmail: string;
@@ -205,33 +160,9 @@ async function seedAuditAction(input: {
 
 describe("organizations audit route", () => {
   it("lists org audit entries newest-first, paginates them, and applies filters", async () => {
-    const env = createTestEnv({
+    const { app, db, env, test } = await createRouteIntegrationHarness({
       DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-"),
-      DISABLE_RATE_LIMIT: true,
     });
-    const databaseUrl = env.DATABASE_URL;
-
-    if (!databaseUrl) {
-      throw new Error("Test environment must provide DATABASE_URL");
-    }
-
-    const db = createDb(databaseUrl);
-    const auth = createAuth({
-      baseURL: env.BETTER_AUTH_URL,
-      databaseUrl,
-      disableRateLimit: true,
-      enableTestUtils: true,
-      secret: env.BETTER_AUTH_SECRET,
-    });
-    const app = new Hono().route("/api", serverApiRoutes);
-    const authContext = await auth.$context;
-    const test = authContext.test;
-
-    if (!test.createOrganization || !test.saveOrganization || !test.addMember) {
-      throw new Error(
-        "Better Auth test utilities must expose organization helpers"
-      );
-    }
 
     const runId = createRunId();
     const owner = test.createUser({
@@ -365,33 +296,9 @@ describe("organizations audit route", () => {
   });
 
   it("rejects unauthenticated and unauthorized audit reads and returns 404 for unknown orgs", async () => {
-    const env = createTestEnv({
+    const { app, db, env, test } = await createRouteIntegrationHarness({
       DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
-      DISABLE_RATE_LIMIT: true,
     });
-    const databaseUrl = env.DATABASE_URL;
-
-    if (!databaseUrl) {
-      throw new Error("Test environment must provide DATABASE_URL");
-    }
-
-    const db = createDb(databaseUrl);
-    const auth = createAuth({
-      baseURL: env.BETTER_AUTH_URL,
-      databaseUrl,
-      disableRateLimit: true,
-      enableTestUtils: true,
-      secret: env.BETTER_AUTH_SECRET,
-    });
-    const app = new Hono().route("/api", serverApiRoutes);
-    const authContext = await auth.$context;
-    const test = authContext.test;
-
-    if (!test.createOrganization || !test.saveOrganization || !test.addMember) {
-      throw new Error(
-        "Better Auth test utilities must expose organization helpers"
-      );
-    }
 
     const runId = createRunId();
     const owner = test.createUser({
