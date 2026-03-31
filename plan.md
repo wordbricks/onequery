@@ -177,10 +177,10 @@ Notes:
 
 ## Phase 0 — freeze the old surface
 
-- [ ] Stop adding any new keys to `onequery.local.env.toml`.
-- [ ] Stop adding any new `process.env.WEB_URL`, `process.env.BETTER_AUTH_URL`, or `process.env.DATABASE_URL` reads outside startup/tool adapters.
-- [ ] Declare the old surface deprecated in the branch: `@onequery/dev-config`, `env:sync`, `onequery.local.env.toml`, and `dev-topology-check` are being removed, not migrated.
-- [ ] Pick the final default ports and keep them fixed for the rewrite.
+- [x] Stop adding any new keys to `onequery.local.env.toml`.
+- [x] Stop adding any new `process.env.WEB_URL`, `process.env.BETTER_AUTH_URL`, or `process.env.DATABASE_URL` reads outside startup/tool adapters.
+- [x] Declare the old surface deprecated in the branch: `@onequery/dev-config`, `env:sync`, `onequery.local.env.toml`, and `dev-topology-check` are being removed, not migrated.
+- [x] Pick the final default ports and keep them fixed for the rewrite.
 
 Done when:
 

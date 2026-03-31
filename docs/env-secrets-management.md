@@ -8,6 +8,13 @@ OneQuery now has two distinct config owners:
 The repo does not use a generated `onequery.local.env.toml` surface anymore,
 and startup does not round-trip config through committed env-shaped files.
 
+Deprecated and removed surfaces for this rewrite:
+
+- `@onequery/dev-config`
+- `env:sync`
+- `onequery.local.env.toml`
+- `dev-topology-check`
+
 ## Profile Ownership
 
 ### Workspace Dev
