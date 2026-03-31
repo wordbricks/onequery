@@ -50,8 +50,10 @@ const ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_CONFIG_D
 const ONEQUERY_SELF_HOST_DATA_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_DATA_DIR";
 const ONEQUERY_RUNTIME_ROOT_ENV_VAR: &str = "ONEQUERY_RUNTIME_ROOT";
 const ONEQUERY_WEB_DIST_DIR_ENV_VAR: &str = "ONEQUERY_WEB_DIST_DIR";
-const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] =
-    &["/lib64/ld-linux-x86-64.so.2", "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"];
+const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] = &[
+    "/lib64/ld-linux-x86-64.so.2",
+    "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+];
 const LINUX_X64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-x86_64.so.1"];
 const LINUX_ARM64_GLIBC_LOADER_PATHS: &[&str] = &[
     "/lib/ld-linux-aarch64.so.1",
@@ -398,7 +400,10 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
     {
-        return resolve_explicit_packaged_server_executable(server_executable.as_path(), command_line);
+        return resolve_explicit_packaged_server_executable(
+            server_executable.as_path(),
+            command_line,
+        );
     }
 
     let current_executable = env::current_exe().map_err(|error| {
@@ -409,32 +414,28 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
             format!("failed to read current executable path: {error}"),
             vec![
                 REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                format!(
-                    "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
-                ),
+                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
             ],
         )
     })?;
-    let server_dir =
-        resolve_packaged_server_dir_from_current_executable(current_executable.as_path()).ok_or_else(
-            || {
-                CliError::new(
-                    "failed to resolve packaged self-host server executable",
-                    command_line,
-                    ErrorStage::LoadConfig,
-                    format!(
-                        "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}",
-                        current_executable.display()
-                    ),
-                    vec![
-                        REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                        format!(
-                            "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
-                        ),
-                    ],
-                )
-            },
-        )?;
+    let server_dir = resolve_packaged_server_dir_from_current_executable(
+        current_executable.as_path(),
+    )
+    .ok_or_else(|| {
+        CliError::new(
+            "failed to resolve packaged self-host server executable",
+            command_line,
+            ErrorStage::LoadConfig,
+            format!(
+                "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}",
+                current_executable.display()
+            ),
+            vec![
+                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
+            ],
+        )
+    })?;
     let candidates = packaged_server_candidates(
         server_dir.as_path(),
         std::env::consts::OS,
@@ -448,9 +449,7 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
             detail,
             vec![
                 REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                format!(
-                    "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
-                ),
+                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
             ],
         )
     })?;
@@ -473,9 +472,9 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
         ));
     }
 
-    if let Some(candidate) = select_packaged_server_candidate(&existing_candidates, |loader_path| {
-        loader_path.exists()
-    }) {
+    if let Some(candidate) =
+        select_packaged_server_candidate(&existing_candidates, |loader_path| loader_path.exists())
+    {
         return Ok(candidate.path.clone());
     }
 
@@ -490,9 +489,7 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
         ),
         vec![
             REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-            format!(
-                "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
-            ),
+            format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
         ],
     ))
 }
@@ -572,7 +569,7 @@ fn packaged_server_candidates(
         _ => {
             return Err(format!(
                 "unsupported Linux architecture {arch} for packaged self-host runtime"
-            ))
+            ));
         }
     };
     let musl_loader_paths = match arch {
@@ -581,7 +578,7 @@ fn packaged_server_candidates(
         _ => {
             return Err(format!(
                 "unsupported Linux architecture {arch} for packaged self-host runtime"
-            ))
+            ));
         }
     };
 
@@ -1184,11 +1181,10 @@ mod tests {
         let candidates =
             packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
         let existing_candidates = candidates.iter().collect::<Vec<_>>();
-        let selected =
-            select_packaged_server_candidate(&existing_candidates, |loader_path| {
-                loader_path == Path::new("/lib64/ld-linux-x86-64.so.2")
-            })
-            .unwrap_or_else(|| panic!("expected glibc packaged server executable"));
+        let selected = select_packaged_server_candidate(&existing_candidates, |loader_path| {
+            loader_path == Path::new("/lib64/ld-linux-x86-64.so.2")
+        })
+        .unwrap_or_else(|| panic!("expected glibc packaged server executable"));
 
         assert_eq!(selected.path, server_dir.join(PACKAGED_SERVER_FILENAME));
     }
@@ -1207,13 +1203,15 @@ mod tests {
         let candidates =
             packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
         let existing_candidates = candidates.iter().collect::<Vec<_>>();
-        let selected =
-            select_packaged_server_candidate(&existing_candidates, |loader_path| {
-                loader_path == Path::new("/lib/ld-musl-x86_64.so.1")
-            })
-            .unwrap_or_else(|| panic!("expected musl packaged server executable"));
+        let selected = select_packaged_server_candidate(&existing_candidates, |loader_path| {
+            loader_path == Path::new("/lib/ld-musl-x86_64.so.1")
+        })
+        .unwrap_or_else(|| panic!("expected musl packaged server executable"));
 
-        assert_eq!(selected.path, server_dir.join(PACKAGED_SERVER_MUSL_FILENAME));
+        assert_eq!(
+            selected.path,
+            server_dir.join(PACKAGED_SERVER_MUSL_FILENAME)
+        );
     }
 
     #[test]
