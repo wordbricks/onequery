@@ -161,6 +161,7 @@ export async function smokePackagedServer({
       WEB_URL: publicOrigin,
     };
     delete env.ONEQUERY_NPM_ROOT;
+    delete env.ONEQUERY_PGLITE_ASSET_DIR;
     delete env.ONEQUERY_RUNTIME_ROOT;
     delete env.ONEQUERY_SERVER_EXECUTABLE;
 

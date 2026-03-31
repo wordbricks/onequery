@@ -17,6 +17,16 @@ type PGliteRuntimeOptions = Pick<
   "fsBundle" | "initdbWasmModule" | "pgliteWasmModule"
 >;
 
+type PgliteAssetLookup =
+  | {
+      kind: "resolved";
+      assetDir: string;
+    }
+  | {
+      kind: "unavailable";
+      message: string;
+    };
+
 let cachedAssetDir: string | null | undefined;
 let cachedOptions: PGliteRuntimeOptions | undefined;
 
@@ -63,20 +73,14 @@ export function resolvePackagedPgliteAssetDir(runtimeRoot: string): string {
 export function resolvePgliteRuntimeOptions(
   processEnv: NodeJS.ProcessEnv = process.env
 ): PGliteRuntimeOptions | undefined {
-  const explicitAssetDir = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_ASSET_DIR_ENV_VAR]
-  );
-  const runtimeRoot = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_RUNTIME_ROOT_ENV_VAR]
-  );
-
-  if (!explicitAssetDir && !runtimeRoot) {
+  const assetLookup = lookupPgliteAssetDir(processEnv);
+  if (assetLookup.kind === "unavailable") {
     cachedAssetDir = null;
     cachedOptions = undefined;
     return undefined;
   }
 
-  const assetDir = resolvePgliteAssetDir(processEnv);
+  const { assetDir } = assetLookup;
   if (cachedAssetDir === assetDir && cachedOptions) {
     return cachedOptions;
   }
@@ -101,30 +105,12 @@ export function resolvePgliteRuntimeOptions(
 export function resolvePgliteAssetDir(
   processEnv: NodeJS.ProcessEnv = process.env
 ): string {
-  const explicitAssetDir = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_ASSET_DIR_ENV_VAR]
-  );
-  if (explicitAssetDir) {
-    return requirePgliteAssets(
-      resolve(explicitAssetDir),
-      `${PGLITE_ASSET_DIR_ENV_VAR}=${explicitAssetDir}`
-    );
+  const assetLookup = lookupPgliteAssetDir(processEnv);
+  if (assetLookup.kind === "resolved") {
+    return assetLookup.assetDir;
   }
 
-  const runtimeRoot = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_RUNTIME_ROOT_ENV_VAR]
-  );
-  if (!runtimeRoot) {
-    throw new Error(
-      "PGlite runtime assets are unavailable because no packaged runtime root was provided"
-    );
-  }
-
-  const packagedAssetDir = resolvePackagedPgliteAssetDir(runtimeRoot);
-  return requirePgliteAssets(
-    packagedAssetDir,
-    `${PGLITE_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot}`
-  );
+  throw new Error(assetLookup.message);
 }
 
 function normalizeNonEmptyEnvValue(value: string | undefined): string | null {
@@ -134,6 +120,50 @@ function normalizeNonEmptyEnvValue(value: string | undefined): string | null {
 
   const trimmedValue = value.trim();
   return trimmedValue.length > 0 ? trimmedValue : null;
+}
+
+function lookupPgliteAssetDir(
+  processEnv: NodeJS.ProcessEnv
+): PgliteAssetLookup {
+  const explicitAssetDir = normalizeNonEmptyEnvValue(
+    processEnv[PGLITE_ASSET_DIR_ENV_VAR]
+  );
+  if (explicitAssetDir) {
+    return {
+      assetDir: requirePgliteAssets(
+        resolve(explicitAssetDir),
+        `${PGLITE_ASSET_DIR_ENV_VAR}=${explicitAssetDir}`
+      ),
+      kind: "resolved",
+    };
+  }
+
+  const runtimeRoot = normalizeNonEmptyEnvValue(
+    processEnv[PGLITE_RUNTIME_ROOT_ENV_VAR]
+  );
+  if (!runtimeRoot) {
+    return {
+      kind: "unavailable",
+      message:
+        "PGlite runtime assets are unavailable because no explicit asset directory or packaged runtime root was provided",
+    };
+  }
+
+  const packagedAssetDir = resolvePackagedPgliteAssetDir(runtimeRoot);
+  if (!existsSync(packagedAssetDir)) {
+    return {
+      kind: "unavailable",
+      message: `PGlite runtime assets are unavailable because ${PGLITE_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot} does not contain ${PACKAGED_PGLITE_DIR_SEGMENTS.join("/")}`,
+    };
+  }
+
+  return {
+    assetDir: requirePgliteAssets(
+      packagedAssetDir,
+      `${PGLITE_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot}`
+    ),
+    kind: "resolved",
+  };
 }
 
 function requirePgliteAssets(assetDir: string, source: string): string {

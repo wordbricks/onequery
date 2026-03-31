@@ -63,8 +63,19 @@ describe("PGlite runtime assets", () => {
     ).toBe(assetDir);
   });
 
-  it("fails fast when ONEQUERY_RUNTIME_ROOT points at an incomplete packaged runtime", () => {
+  it("returns no runtime options when ONEQUERY_RUNTIME_ROOT has no packaged PGlite assets", () => {
     const runtimeRoot = mkdtempSync(join(tmpdir(), "onequery-runtime-root-"));
+
+    expect(
+      resolvePgliteRuntimeOptions({
+        ONEQUERY_RUNTIME_ROOT: runtimeRoot,
+      })
+    ).toBeUndefined();
+  });
+
+  it("fails fast when an existing packaged asset directory is incomplete", () => {
+    const runtimeRoot = mkdtempSync(join(tmpdir(), "onequery-runtime-root-"));
+    mkdirSync(join(runtimeRoot, "runtime", "pglite"), { recursive: true });
 
     expect(() =>
       resolvePgliteRuntimeOptions({
