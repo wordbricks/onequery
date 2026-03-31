@@ -19,6 +19,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  PACKAGED_PGLITE_DIR_SEGMENTS,
+  PGLITE_RUNTIME_ASSET_FILENAMES,
+} from "../../../packages/db/src/pglite.ts";
+import {
   CLI_NPM_PACK_DIR_PREFIX,
   CLI_NPM_STAGE_DIR_PREFIX,
   CLI_NPM_TARBALL_PREFIX,
@@ -47,13 +51,8 @@ const DB_MIGRATIONS_DIR = path.join(
 );
 const PACKAGED_RUNTIME_DIR = "runtime";
 const PACKAGED_MIGRATIONS_DIR = path.join(PACKAGED_RUNTIME_DIR, "migrations");
-const PACKAGED_PGLITE_DIR = path.join(PACKAGED_RUNTIME_DIR, "pglite");
+const PACKAGED_PGLITE_DIR = path.join(...PACKAGED_PGLITE_DIR_SEGMENTS);
 const PACKAGED_WEB_DIR = path.join(PACKAGED_RUNTIME_DIR, "web");
-const PGLITE_RUNTIME_ASSET_FILENAMES = [
-  "initdb.wasm",
-  "pglite.data",
-  "pglite.wasm",
-];
 
 export const PACKAGE_EXPANSIONS = {
   cli: ["cli", ...Object.keys(PLATFORM_PACKAGES)],

@@ -4,10 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  resolvePgliteAssetDir,
-  resolvePgliteRuntimeOptions,
-} from "./pglite-assets";
+import { resolvePgliteAssetDir, resolvePgliteRuntimeOptions } from "./pglite";
 
 const MINIMAL_WASM_MODULE = new Uint8Array([
   0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
@@ -66,13 +63,17 @@ describe("PGlite runtime assets", () => {
     ).toBe(assetDir);
   });
 
-  it("returns no runtime options when no packaged assets are available", () => {
+  it("fails fast when ONEQUERY_RUNTIME_ROOT points at an incomplete packaged runtime", () => {
     const runtimeRoot = mkdtempSync(join(tmpdir(), "onequery-runtime-root-"));
 
-    expect(
+    expect(() =>
       resolvePgliteRuntimeOptions({
         ONEQUERY_RUNTIME_ROOT: runtimeRoot,
       })
-    ).toBeUndefined();
+    ).toThrow(/Incomplete packaged PGlite runtime/u);
+  });
+
+  it("returns no runtime options when no packaged runtime env is configured", () => {
+    expect(resolvePgliteRuntimeOptions({})).toBeUndefined();
   });
 });
