@@ -473,7 +473,7 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
     }
 
     if let Some(candidate) =
-        select_packaged_server_candidate(&existing_candidates, |loader_path| loader_path.exists())
+        select_packaged_server_candidate(&existing_candidates, std::path::Path::exists)
     {
         return Ok(candidate.path.clone());
     }
