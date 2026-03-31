@@ -1,7 +1,6 @@
 import {
   and,
   asc,
-  createDb,
   eq,
   getDatabaseSchema,
   or,
@@ -165,31 +164,15 @@ function getTestStoreOverride(): ConnectorStore | null {
   return testStoreOverride;
 }
 
-function readProcessDatabaseUrl(): string | null {
-  if (typeof process === "undefined") {
-    return null;
-  }
-
-  const value = process.env.DATABASE_URL;
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 function resolveBrokerDb(db: Database | undefined): Database {
   if (db) {
     return db;
   }
 
-  const databaseUrl = readProcessDatabaseUrl();
-  if (!databaseUrl) {
-    throw new ConnectorBrokerError(
-      "Connector broker database is not configured.",
-      503
-    );
-  }
-
-  // Comment: Node callers may omit db and rely on DATABASE_URL, but Worker callers
-  // should pass a request-scoped db explicitly so connector state uses the right env.
-  return createDb(databaseUrl);
+  throw new ConnectorBrokerError(
+    "Connector broker database is not configured.",
+    503
+  );
 }
 
 async function hashAuthToken(authToken: string): Promise<string> {
