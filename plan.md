@@ -426,8 +426,8 @@ Run these before declaring victory:
 
 - [x] `rg -n 'WEB_URL|BETTER_AUTH_URL' packages apps scripts` only finds deliberate boundary adapters or deleted-history comments.
 - [x] `rg -n 'parseCoreServerEnv|parseAuthEnv|createLocalProcessEnv|loadLocalDevRuntimeSync' packages apps scripts` returns nothing.
-- [ ] `rg -n 'DEFAULT_BUN_RUNTIME_PORT|default_port\(|DEFAULT_BASE_URL' apps/cli packages/bun-server` shows only one owner per concept.
-- [ ] `rg -n 'onequery\.local\.env\.toml|onequery\.local\.env\.toml\.template' .` returns nothing useful.
+- [x] `rg -n 'DEFAULT_BUN_RUNTIME_PORT|default_port\(|DEFAULT_BASE_URL' apps/cli packages/bun-server` shows only one owner per concept.
+- [x] `rg -n 'onequery\.local\.env\.toml|onequery\.local\.env\.toml\.template' .` returns nothing useful.
 - [x] `rg -n 'process\.env\.' packages/server packages/bun-server` only finds startup-boundary reads, not app/runtime logic.
 
 ## Smells that mean the rewrite failed
