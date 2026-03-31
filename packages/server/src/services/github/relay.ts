@@ -1,10 +1,9 @@
 import { base64ToBytes } from "@onequery/codecs/base64";
 import type { GitHubCredentials } from "@onequery/db/server";
 
-import {
-  MAX_PROVIDER_ERROR_DETAIL_LENGTH,
-  normalizeProviderRequestTimeout,
-} from "../provider-http";
+import { MAX_PROVIDER_ERROR_DETAIL_LENGTH } from "../provider-http";
+import { ProviderHttpClient } from "../provider-http-client";
+import { hasControlCharacters, serializeQueryParam } from "../provider-utils";
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
 const GITHUB_UPLOADS_API_BASE_URL = "https://uploads.github.com";
@@ -131,31 +130,6 @@ function sanitizeGitHubText(
     return text;
   }
   return text.split(credentials.accessToken).join("***");
-}
-
-function serializeGitHubValue(value: unknown): string | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-function containsHttpControlCharacters(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0);
-    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
-  });
 }
 
 function normalizeGitHubMethod(method: string | undefined): string {
@@ -339,7 +313,7 @@ function buildGitHubUrl(input: {
       throw new Error(`GitHub request param "${key}" is not allowed`);
     }
 
-    const serialized = serializeGitHubValue(value);
+    const serialized = serializeQueryParam(value);
     if (serialized === null) {
       continue;
     }
@@ -362,10 +336,7 @@ function normalizeGitHubHeaders(
       continue;
     }
 
-    if (
-      containsHttpControlCharacters(normalizedKey) ||
-      containsHttpControlCharacters(value)
-    ) {
+    if (hasControlCharacters(normalizedKey) || hasControlCharacters(value)) {
       throw new Error(`Invalid GitHub header: ${normalizedKey}`);
     }
 
@@ -450,91 +421,71 @@ async function executeGitHubRequest(input: {
   url: string;
   userAgent?: string;
 }): Promise<GitHubRelayResponse> {
-  const controller = new AbortController();
-  const timeoutMs = normalizeProviderRequestTimeout(input.options?.timeoutMs);
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": input.userAgent ?? "onequery-app",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...normalizeGitHubHeaders(input.options?.headers),
+  };
+  const body = buildGitHubRequestBody({
+    headers,
+    method: input.method,
+    options: input.options,
+  });
+  const client = new ProviderHttpClient({
+    auth: {
+      token: input.credentials.accessToken,
+      type: "bearer",
+    },
+    baseUrl: GITHUB_API_BASE_URL,
+    blockedParams: BLOCKED_QUERY_PARAM_NAMES,
+    providerName: "GitHub",
+    sanitize: (text) =>
+      parseGitHubErrorDetail(sanitizeGitHubText(text, input.credentials)),
+  });
+  const response = await client.send({
+    body,
+    endpoint: input.url,
+    headers,
+    method: input.method,
+    timeoutMs: input.options?.timeoutMs,
+  });
 
-  try {
-    const headers: Record<string, string> = {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${input.credentials.accessToken}`,
-      "User-Agent": input.userAgent ?? "onequery-app",
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...normalizeGitHubHeaders(input.options?.headers),
-    };
-    const body = buildGitHubRequestBody({
-      headers,
-      method: input.method,
-      options: input.options,
-    });
-
-    const response = await fetch(input.url, {
-      body,
-      headers,
-      method: input.method,
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      const rawError = await response.text().catch(() => "");
-      const detail = parseGitHubErrorDetail(
-        sanitizeGitHubText(rawError, input.credentials)
-      );
-      throw new Error(`GitHub API error (${response.status}): ${detail}`);
-    }
-
-    if (response.status === 204) {
-      return {};
-    }
-
-    const contentType = response.headers.get("content-type");
-    if (
-      contentType?.includes("application/json") ||
-      contentType?.includes("+json")
-    ) {
-      return (await response.json()) as GitHubRelayResponse;
-    }
-
-    if (
-      contentType?.startsWith("text/") ||
-      contentType?.includes("application/xml") ||
-      contentType?.includes("application/x-www-form-urlencoded")
-    ) {
-      const raw = await response.text().catch(() => "");
-      const trimmed = raw.trim();
-      return trimmed.length === 0
-        ? {}
-        : sanitizeGitHubText(raw, input.credentials);
-    }
-
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length === 0) {
-      return {};
-    }
-
-    return {
-      bodyBase64: base64ToBytes.encode(bytes),
-      contentType,
-      size: bytes.byteLength,
-      type: "binary",
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`GitHub request timeout after ${timeoutMs}ms`, {
-        cause: error,
-      });
-    }
-    if (error instanceof Error) {
-      throw new TypeError(
-        sanitizeGitHubText(error.message, input.credentials),
-        { cause: error }
-      );
-    }
-    throw new Error(sanitizeGitHubText(String(error), input.credentials), {
-      cause: error,
-    });
-  } finally {
-    clearTimeout(timeoutId);
+  if (response.status === 204) {
+    return {};
   }
+
+  const contentType = response.headers.get("content-type");
+  if (
+    contentType?.includes("application/json") ||
+    contentType?.includes("+json")
+  ) {
+    return (await response.json()) as GitHubRelayResponse;
+  }
+
+  if (
+    contentType?.startsWith("text/") ||
+    contentType?.includes("application/xml") ||
+    contentType?.includes("application/x-www-form-urlencoded")
+  ) {
+    const raw = await response.text().catch(() => "");
+    const trimmed = raw.trim();
+    return trimmed.length === 0
+      ? {}
+      : sanitizeGitHubText(raw, input.credentials);
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.length === 0) {
+    return {};
+  }
+
+  return {
+    bodyBase64: base64ToBytes.encode(bytes),
+    contentType,
+    size: bytes.byteLength,
+    type: "binary",
+  };
 }
 
 export async function fetchGitHubApi(input: {

@@ -4,6 +4,8 @@ import {
   MAX_PROVIDER_ERROR_DETAIL_LENGTH,
   normalizeProviderRequestTimeout,
 } from "../provider-http";
+import { ProviderHttpClient } from "../provider-http-client";
+import { hasControlCharacters } from "../provider-utils";
 
 const DEFAULT_SENTRY_API_BASE_URL = "https://sentry.io/api/0";
 const BLOCKED_SENTRY_QUERY_PARAM_NAMES = new Set([
@@ -34,13 +36,6 @@ function normalizeOptionalString(value: string | undefined): string | null {
   }
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
-}
-
-function hasControlCharacters(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0);
-    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
-  });
 }
 
 function normalizeSentryMethod(method: string | undefined): string {
@@ -168,112 +163,20 @@ function sanitizeSentryText(
     .slice(0, MAX_PROVIDER_ERROR_DETAIL_LENGTH);
 }
 
-function serializeSentryValue(value: unknown): string | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-function buildSentryUrl(input: {
-  credentials: SentryCredentials;
-  endpoint: string;
-  params?: Record<string, unknown>;
-}): string {
-  const baseUrl = normalizeApiBaseUrl(input.credentials);
-  const resolvedEndpoint = resolveSentryEndpoint(
-    input.endpoint,
-    input.credentials
-  );
-  const url = new URL(`${baseUrl}${resolvedEndpoint}`);
-
-  for (const [key, value] of Object.entries(input.params ?? {})) {
-    if (BLOCKED_SENTRY_QUERY_PARAM_NAMES.has(key.toLowerCase())) {
-      throw new Error(`Sentry query param "${key}" is not allowed`);
-    }
-    const serialized = serializeSentryValue(value);
-    if (serialized === null) {
-      continue;
-    }
-    url.searchParams.set(key, serialized);
-  }
-
-  return url.toString();
-}
-
-async function executeSentryRequest(input: {
-  url: string;
-  method: string;
-  timeoutMs: number;
-  body?: string;
-  credentials: SentryCredentials;
-}): Promise<SentryRelayResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), input.timeoutMs);
-  const authToken = normalizeSentryAuthToken(input.credentials);
-
-  try {
-    const headers: Record<string, string> = {
+function createSentryHttpClient(credentials: SentryCredentials) {
+  return new ProviderHttpClient({
+    auth: {
+      token: normalizeSentryAuthToken(credentials),
+      type: "bearer",
+    },
+    baseUrl: normalizeApiBaseUrl(credentials),
+    blockedParams: BLOCKED_SENTRY_QUERY_PARAM_NAMES,
+    defaultHeaders: {
       Accept: "application/json",
-      Authorization: `Bearer ${authToken}`,
-    };
-    if (input.body !== undefined) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const response = await fetch(input.url, {
-      body: input.body,
-      headers,
-      method: input.method,
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const rawError = await response.text().catch(() => "Unknown error");
-      const detail = sanitizeSentryText(rawError, input.credentials);
-      throw new Error(`Sentry API error (${response.status}): ${detail}`);
-    }
-
-    const raw = await response.text().catch(() => "");
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
-      return {};
-    }
-
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return sanitizeSentryText(raw, input.credentials);
-    }
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`Sentry request timeout after ${input.timeoutMs}ms`, {
-        cause: error,
-      });
-    }
-    if (error instanceof Error) {
-      throw new TypeError(
-        sanitizeSentryText(error.message, input.credentials),
-        { cause: error }
-      );
-    }
-    throw new Error(sanitizeSentryText(String(error), input.credentials), {
-      cause: error,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+    },
+    providerName: "Sentry",
+    sanitize: (text) => sanitizeSentryText(text, credentials),
+  });
 }
 
 export async function fetchSentryApi(input: {
@@ -283,11 +186,11 @@ export async function fetchSentryApi(input: {
 }): Promise<SentryRelayResponse> {
   const method = normalizeSentryMethod(input.options?.method);
   const timeoutMs = normalizeProviderRequestTimeout(input.options?.timeoutMs);
-  const url = buildSentryUrl({
-    credentials: input.credentials,
-    endpoint: input.endpoint,
-    params: input.options?.params,
-  });
+  for (const key of Object.keys(input.options?.params ?? {})) {
+    if (BLOCKED_SENTRY_QUERY_PARAM_NAMES.has(key.toLowerCase())) {
+      throw new Error(`Sentry query param "${key}" is not allowed`);
+    }
+  }
   const body =
     input.options?.body &&
     method !== "GET" &&
@@ -296,13 +199,13 @@ export async function fetchSentryApi(input: {
       ? JSON.stringify(input.options.body)
       : undefined;
 
-  return executeSentryRequest({
-    body,
-    credentials: input.credentials,
+  return (await createSentryHttpClient(input.credentials).request({
+    body: body ? input.options?.body : undefined,
+    endpoint: resolveSentryEndpoint(input.endpoint, input.credentials),
     method,
+    params: input.options?.params,
     timeoutMs,
-    url,
-  });
+  })) as SentryRelayResponse;
 }
 
 export async function listSentryProjects(input: {

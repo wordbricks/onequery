@@ -2,19 +2,13 @@ import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
 
 import { getServiceAccountAccessToken } from "../oauth/service-account-token";
 import { DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS } from "../provider-http";
+import { hasControlCharacters } from "../provider-utils";
 
 const GA_READONLY_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 const GA_DATA_API_BASE_URL = "https://analyticsdata.googleapis.com";
 const MAX_PROPERTY_SEGMENT_LENGTH = 128;
 
 type GaRelayMethod = "run_report" | "run_realtime_report";
-
-function hasControlCharacters(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0);
-    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
-  });
-}
 
 function normalizePropertyPath(propertyIdOrPath: string): string | null {
   const trimmed = propertyIdOrPath.trim();

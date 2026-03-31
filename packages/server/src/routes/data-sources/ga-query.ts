@@ -1,126 +1,42 @@
-import { zValidator } from "@hono/zod-validator";
 import { isRecord } from "@onequery/base";
-import {
-  and,
-  CredentialsSchema,
-  eq,
-  getDatabaseSchema,
-} from "@onequery/db/server";
-import { Hono } from "hono";
+import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
 import { z } from "zod";
 
-import type { ServerEnv } from "../../env";
-import type { SessionVariables } from "../../middleware/session";
-import { zodProblemHook } from "../../problem-details/zod-problem-hook";
-import {
-  decryptCredentialsObject,
-  deriveKeyFromBase64,
-} from "../../services/crypto/credential-encryption";
 import {
   resolveGoogleAnalyticsAccessToken,
   resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "../../services/google-analytics/relay";
-import {
-  createCredentialTypeQueryError,
-  createPrefixedQueryError,
-  createQueryError,
-} from "./query-errors";
-import { resolveAccessibleOrganizationId } from "./query-organization";
-import { createProviderQuerySchema } from "./query-validation";
+import { createProviderRoute } from "./create-provider-route";
+import { createPrefixedQueryError, createQueryError } from "./query-errors";
 
 const methodSchema = z.enum(["run_report", "run_realtime_report"]);
 
-const gaQuerySchema = createProviderQuerySchema(methodSchema);
+function isGoogleAnalyticsCredentials(
+  value: unknown
+): value is GoogleAnalyticsCredentials {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === "ga"
+  );
+}
 
-export const dataSourcesGaQueryRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
-}>().post(
-  "/ga/query",
-  zValidator("json", gaQuerySchema, zodProblemHook()),
-  async (c) => {
-    const input = c.req.valid("json");
-    const db = c.var.storage.db;
-    const { dataSources } = getDatabaseSchema(db);
-    const organizationAccess = await resolveAccessibleOrganizationId(
-      c,
-      db,
-      input
-    );
-    if (!organizationAccess.ok) {
-      return organizationAccess.response;
-    }
-    const { organizationId } = organizationAccess;
-
-    const gaDataSources = await db.query.dataSources.findMany({
-      where: and(
-        eq(dataSources.organizationId, organizationId),
-        eq(dataSources.provider, "ga"),
-        eq(dataSources.status, "active")
-      ),
-    });
-    if (gaDataSources.length === 0) {
-      return c.json(
-        { error: "Active Google Analytics data source not found" },
-        404
-      );
-    }
-    const defaultDataSources = gaDataSources.filter(
-      (dataSource: { useAsDataSource: boolean }) => dataSource.useAsDataSource
-    );
-    if (defaultDataSources.length > 1) {
-      return c.json(
-        {
-          error:
-            "Multiple default Google Analytics data sources found. Keep only one GA data source with useAsDataSource=true.",
-        },
-        409
-      );
-    }
-
-    const dataSource =
-      defaultDataSources[0] ??
-      (gaDataSources.length === 1 ? gaDataSources[0] : null);
-    if (!dataSource) {
-      return c.json(
-        {
-          error:
-            "Multiple active Google Analytics data sources found. Set exactly one as default (useAsDataSource=true).",
-        },
-        409
-      );
-    }
-
-    const masterKey = deriveKeyFromBase64(c.env.MASTER_ENCRYPTION_KEY);
-    const decryptOutcome = await Promise.resolve()
-      .then(() =>
-        decryptCredentialsObject(
-          dataSource.credentialsEncrypted,
-          dataSource.credentialsIv,
-          masterKey,
-          CredentialsSchema
-        )
-      )
-      .then((credentials) => ({ credentials, ok: true as const }))
-      .catch((error: unknown) => ({ error, ok: false as const }));
-    if (!decryptOutcome.ok) {
-      return c.json(
-        createPrefixedQueryError(
-          "Failed to decrypt credentials",
-          decryptOutcome.error
-        ),
-        500
-      );
-    }
-
-    if (decryptOutcome.credentials.type !== "ga") {
-      return c.json(createCredentialTypeQueryError("Google Analytics"), 400);
-    }
-
+export const dataSourcesGaQueryRoute = createProviderRoute<
+  GoogleAnalyticsCredentials,
+  typeof methodSchema,
+  Record<string, unknown>
+>({
+  buildConflictMessage: ({ multipleDefaults }) =>
+    multipleDefaults
+      ? "Multiple default Google Analytics data sources found. Keep only one GA data source with useAsDataSource=true."
+      : "Multiple active Google Analytics data sources found. Set exactly one as default (useAsDataSource=true).",
+  credentialsGuard: isGoogleAnalyticsCredentials,
+  execute: async ({ c, credentials, method, request }) => {
     const propertyPath = resolveGoogleAnalyticsPropertyPath({
-      credentials: decryptOutcome.credentials,
-      request: input.request,
+      credentials,
+      request,
     });
     if (!propertyPath) {
       return c.json(
@@ -133,7 +49,7 @@ export const dataSourcesGaQueryRoute = new Hono<{
     }
 
     const tokenOutcome = await resolveGoogleAnalyticsAccessToken({
-      credentials: decryptOutcome.credentials,
+      credentials,
     })
       .then((value) => ({ ok: true as const, value }))
       .catch((error: unknown) => ({ error, ok: false as const }));
@@ -147,16 +63,11 @@ export const dataSourcesGaQueryRoute = new Hono<{
       );
     }
 
-    await db
-      .update(dataSources)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(dataSources.id, dataSource.id));
-
-    const requestBody = { ...input.request };
+    const requestBody = { ...request };
     delete requestBody.property;
     const gaResponse = await runGoogleAnalyticsDataRequest({
       accessToken: tokenOutcome.value.accessToken,
-      method: input.method,
+      method,
       propertyPath,
       requestBody,
     });
@@ -199,5 +110,11 @@ export const dataSourcesGaQueryRoute = new Hono<{
         resolvedPropertyPath: propertyPath,
       },
     });
-  }
-);
+  },
+  methodSchema,
+  missingDataSourceMessage: "Active Google Analytics data source not found",
+  parseRequest: (input) => ({ data: input.request, ok: true }),
+  provider: "ga",
+  providerLabel: "Google Analytics",
+  routePath: "/ga/query",
+});

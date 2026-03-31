@@ -4,6 +4,8 @@ import {
   MAX_PROVIDER_ERROR_DETAIL_LENGTH,
   normalizeProviderRequestTimeout,
 } from "../provider-http";
+import { ProviderHttpClient } from "../provider-http-client";
+import { hasControlCharacters } from "../provider-utils";
 
 type PostHogRelayResponse =
   | Record<string, unknown>
@@ -12,13 +14,6 @@ type PostHogRelayResponse =
   | number
   | boolean
   | null;
-
-function hasControlCharacters(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0);
-    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
-  });
-}
 
 function sanitizePostHogText(
   text: string,
@@ -107,64 +102,33 @@ export async function runPostHogQuery(input: {
   timeoutMs?: number;
 }): Promise<PostHogRelayResponse> {
   const timeoutMs = normalizeProviderRequestTimeout(input.timeoutMs);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const personalApiKey = normalizePersonalApiKey(
     input.credentials.personalApiKey
   );
   const refresh = normalizeRefresh(input.refresh);
-  const url = buildPostHogProjectUrl({
+  const endpoint = buildPostHogProjectUrl({
     credentials: input.credentials,
     endpoint: "/query/",
   });
+  const client = new ProviderHttpClient({
+    auth: {
+      token: personalApiKey,
+      type: "bearer",
+    },
+    baseUrl: normalizePostHogBaseUrl(input.credentials.hostUrl),
+    defaultHeaders: {
+      Accept: "application/json",
+    },
+    providerName: "PostHog",
+    sanitize: (text) => sanitizePostHogText(text, input.credentials),
+  });
 
-  try {
-    const response = await fetch(url, {
-      body: JSON.stringify({
-        query: input.query,
-        ...(refresh ? { refresh } : {}),
-      }),
-      headers: {
-        Authorization: `Bearer ${personalApiKey}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const rawError = await response.text().catch(() => "Unknown error");
-      const detail = sanitizePostHogText(rawError, input.credentials);
-      throw new Error(`PostHog API error (${response.status}): ${detail}`);
-    }
-
-    const raw = await response.text().catch(() => "");
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
-      return {};
-    }
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return sanitizePostHogText(raw, input.credentials);
-    }
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`PostHog request timeout after ${timeoutMs}ms`, {
-        cause: error,
-      });
-    }
-    if (error instanceof Error) {
-      throw new TypeError(
-        sanitizePostHogText(error.message, input.credentials),
-        { cause: error }
-      );
-    }
-    throw new Error(sanitizePostHogText(String(error), input.credentials), {
-      cause: error,
-    });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return (await client.post(
+    endpoint,
+    {
+      query: input.query,
+      ...(refresh ? { refresh } : {}),
+    },
+    timeoutMs
+  )) as PostHogRelayResponse;
 }
