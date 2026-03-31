@@ -5,16 +5,12 @@ import {
   resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "../google-analytics/relay";
-import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
-import type { ConnectionTestResult } from "./postgres-tester";
+import { createHttpTester } from "./create-http-tester";
+import { parseHttpStatusError } from "./parse-http-error";
 
 const REQUEST_TIMEOUT_PREFIX = "Google Analytics request timeout after ";
 
-type TestGoogleAnalyticsConnectionOptions = {
-  timeoutSeconds?: number;
-};
-
-async function withTimeout<T>(
+function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
   timeoutMessage: string
@@ -24,6 +20,7 @@ async function withTimeout<T>(
       () => reject(new Error(timeoutMessage)),
       timeoutMs
     );
+
     promise
       .then((value) => {
         clearTimeout(timeoutId);
@@ -36,101 +33,65 @@ async function withTimeout<T>(
   });
 }
 
-export async function testGoogleAnalyticsConnection(
-  credentials: GoogleAnalyticsCredentials,
-  options: TestGoogleAnalyticsConnectionOptions = {}
-): Promise<ConnectionTestResult> {
-  const timeoutSeconds =
-    options.timeoutSeconds ?? DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS;
-  const timeoutMs = Math.max(1, Math.round(timeoutSeconds * 1000));
-  const startTime = Date.now();
-  const timeoutMessage = `${REQUEST_TIMEOUT_PREFIX}${timeoutMs}ms`;
+export const testGoogleAnalyticsConnection =
+  createHttpTester<GoogleAnalyticsCredentials>({
+    parseError: (error, latencyMs, timeoutSeconds) => {
+      if (error.message.startsWith(REQUEST_TIMEOUT_PREFIX)) {
+        return {
+          error: `Connection timed out after ${timeoutSeconds} seconds`,
+          latencyMs,
+          message: "Connection timed out",
+          success: false,
+        };
+      }
 
-  const propertyPath = resolveGoogleAnalyticsPropertyPath({
-    credentials,
-    request: {},
-  });
-  if (!propertyPath) {
-    return {
-      error: "Property ID is required in saved data source credentials",
-      latencyMs: Date.now() - startTime,
-      message: "Connection failed",
-      success: false,
-    };
-  }
-
-  try {
-    const tokenResult = await withTimeout(
-      resolveGoogleAnalyticsAccessToken({
+      return parseHttpStatusError(error, latencyMs, timeoutSeconds, {
+        accessDeniedError:
+          "Google credentials do not have access to this property",
+        authenticationError: "Invalid or expired Google Analytics credentials",
+      });
+    },
+    probe: async (credentials, timeoutMs) => {
+      const propertyPath = resolveGoogleAnalyticsPropertyPath({
         credentials,
-      }),
-      timeoutMs,
-      timeoutMessage
-    );
-    const response = await withTimeout(
-      runGoogleAnalyticsDataRequest({
-        accessToken: tokenResult.accessToken,
-        method: "run_report",
-        propertyPath,
-        requestBody: {
-          dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
-          metrics: [{ name: "activeUsers" }],
-          limit: 1,
-        },
-      }),
-      timeoutMs,
-      timeoutMessage
-    );
-    const latencyMs = Date.now() - startTime;
+        request: {},
+      });
+      if (!propertyPath) {
+        throw new Error(
+          "Property ID is required in saved data source credentials"
+        );
+      }
 
-    if (response.ok) {
-      return {
-        latencyMs,
-        message: `Connection successful (${latencyMs}ms)`,
-        success: true,
-      };
-    }
+      const timeoutMessage = `${REQUEST_TIMEOUT_PREFIX}${timeoutMs}ms`;
+      const tokenResult = await withTimeout(
+        resolveGoogleAnalyticsAccessToken({
+          credentials,
+        }),
+        timeoutMs,
+        timeoutMessage
+      );
+      const response = await withTimeout(
+        runGoogleAnalyticsDataRequest({
+          accessToken: tokenResult.accessToken,
+          method: "run_report",
+          propertyPath,
+          requestBody: {
+            dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+            limit: 1,
+            metrics: [{ name: "activeUsers" }],
+          },
+        }),
+        timeoutMs,
+        timeoutMessage
+      );
 
-    const errorText = await response.text().catch(() => "Unknown error");
-    if (response.status === 401) {
-      return {
-        error: "Invalid or expired Google Analytics credentials",
-        latencyMs,
-        message: "Authentication failed",
-        success: false,
-      };
-    }
-    if (response.status === 403) {
-      return {
-        error: "Google credentials do not have access to this property",
-        latencyMs,
-        message: "Access denied",
-        success: false,
-      };
-    }
+      if (response.ok) {
+        return response;
+      }
 
-    return {
-      error: `HTTP ${response.status}: ${errorText}`,
-      latencyMs,
-      message: "Connection failed",
-      success: false,
-    };
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.startsWith(REQUEST_TIMEOUT_PREFIX)) {
-      return {
-        error: `Connection timed out after ${timeoutSeconds} seconds`,
-        latencyMs,
-        message: "Connection timed out",
-        success: false,
-      };
-    }
-    return {
-      error: errorMessage,
-      latencyMs,
-      message: "Connection failed",
-      success: false,
-    };
-  }
-}
+      const detail = await response.text().catch(() => "Unknown error");
+      throw new Error(
+        `Google Analytics API error (${response.status}): ${detail}`
+      );
+    },
+  });

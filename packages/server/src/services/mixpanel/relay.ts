@@ -1,10 +1,11 @@
 import type { MixpanelCredentials } from "@onequery/db/server";
 
-import { encodeBasicAuthHeader } from "../../lib/base64";
 import {
   MAX_PROVIDER_ERROR_DETAIL_LENGTH,
   normalizeProviderRequestTimeout,
 } from "../provider-http";
+import { ProviderHttpClient } from "../provider-http-client";
+import { hasControlCharacters, serializeQueryParam } from "../provider-utils";
 
 const MIXPANEL_QUERY_API_URLS = {
   eu: "https://eu.mixpanel.com/api",
@@ -70,13 +71,6 @@ function normalizeOptionalString(value: string | undefined): string | null {
   }
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
-}
-
-function hasControlCharacters(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0);
-    return codePoint !== undefined && (codePoint <= 0x1f || codePoint === 0x7f);
-  });
 }
 
 function normalizeMethod(method: string | undefined): string {
@@ -156,24 +150,6 @@ function normalizeEngagePage(page: number | undefined): number {
   return page;
 }
 
-function serializeMixpanelValue(value: MixpanelParamValue): string | null {
-  if (value === undefined || value === null) {
-    return null;
-  }
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
 function sanitizeMixpanelText(
   text: string,
   credentials: MixpanelCredentials
@@ -188,44 +164,14 @@ function sanitizeMixpanelText(
   return sanitized.slice(0, MAX_PROVIDER_ERROR_DETAIL_LENGTH);
 }
 
-function buildMixpanelAuthHeader(credentials: MixpanelCredentials): string {
-  return encodeBasicAuthHeader(credentials.username, credentials.secret);
-}
-
-function buildMixpanelUrl(input: {
-  baseUrl: string;
-  endpoint: string;
-  params?: Record<string, MixpanelParamValue>;
-  defaults?: Record<string, MixpanelParamValue>;
-}): string {
-  const normalizedEndpoint = normalizeEndpoint(input.endpoint);
-  assertNoReservedKeys(input.params, "params");
-  const url = new URL(`${input.baseUrl}${normalizedEndpoint}`);
-  for (const [key, value] of Object.entries(input.params ?? {})) {
-    const serialized = serializeMixpanelValue(value);
-    if (serialized === null) {
-      continue;
-    }
-    url.searchParams.set(key, serialized);
-  }
-  for (const [key, value] of Object.entries(input.defaults ?? {})) {
-    if (url.searchParams.has(key)) {
-      continue;
-    }
-    const serialized = serializeMixpanelValue(value);
-    if (serialized === null) {
-      continue;
-    }
-    url.searchParams.set(key, serialized);
-  }
-  return url.toString();
-}
-
 function buildMixpanelRequestBody(input: {
   method: string;
   body?: Record<string, MixpanelParamValue>;
   bodyFormat: "form" | "json";
-}): { body?: string; contentType?: string } {
+}): {
+  body?: Record<string, MixpanelParamValue> | string;
+  contentType?: string;
+} {
   const normalizedMethod = normalizeMethod(input.method);
   if (
     !input.body ||
@@ -237,13 +183,13 @@ function buildMixpanelRequestBody(input: {
   assertNoReservedKeys(input.body, "body");
   if (input.bodyFormat === "json") {
     return {
-      body: JSON.stringify(input.body),
+      body: input.body,
       contentType: "application/json",
     };
   }
   const formBody = new URLSearchParams();
   for (const [key, value] of Object.entries(input.body)) {
-    const serialized = serializeMixpanelValue(value);
+    const serialized = serializeQueryParam(value);
     if (serialized === null) {
       continue;
     }
@@ -255,78 +201,72 @@ function buildMixpanelRequestBody(input: {
   };
 }
 
-async function executeMixpanelRequest(input: {
-  url: string;
-  method: string;
-  authHeader: string;
-  timeoutMs: number;
-  body?: string;
-  contentType?: string;
-  credentials: MixpanelCredentials;
-}): Promise<MixpanelRelayResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), input.timeoutMs);
-  try {
-    const headers: Record<string, string> = {
+function createMixpanelHttpClient(
+  credentials: MixpanelCredentials,
+  baseUrl: string
+) {
+  return new ProviderHttpClient({
+    auth: {
+      password: credentials.secret,
+      type: "basic",
+      username: credentials.username,
+    },
+    baseUrl,
+    defaultHeaders: {
       Accept: "application/json",
-      Authorization: input.authHeader,
+    },
+    providerName: "Mixpanel",
+    sanitize: (text) => sanitizeMixpanelText(text, credentials),
+  });
+}
+
+function buildMixpanelParams(input: {
+  params?: Record<string, MixpanelParamValue>;
+  defaults?: Record<string, MixpanelParamValue>;
+}): Record<string, unknown> | undefined {
+  assertNoReservedKeys(input.params, "params");
+  const params = new Map<string, MixpanelParamValue>();
+
+  for (const [key, value] of Object.entries(input.params ?? {})) {
+    params.set(key, value);
+  }
+  for (const [key, value] of Object.entries(input.defaults ?? {})) {
+    if (!params.has(key)) {
+      params.set(key, value);
+    }
+  }
+
+  return Object.fromEntries(params.entries());
+}
+
+async function readMixpanelResponse(
+  response: Response,
+  credentials: MixpanelCredentials
+): Promise<MixpanelRelayResponse> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (
+    contentType.includes("application/gzip") ||
+    contentType.includes("application/zip")
+  ) {
+    const buffer = await response.arrayBuffer();
+    return {
+      contentType,
+      note: "Binary data received. Download and unpack this export outside the SDK.",
+      size: buffer.byteLength,
+      type: "binary",
     };
-    if (input.body !== undefined) {
-      headers["Content-Type"] = input.contentType ?? "application/json";
-    }
+  }
 
-    const response = await fetch(input.url, {
-      body: input.body,
-      headers,
-      method: input.method,
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      const rawError = await response.text().catch(() => "Unknown error");
-      const detail = sanitizeMixpanelText(rawError, input.credentials);
-      throw new Error(`Mixpanel API error (${response.status}): ${detail}`);
-    }
+  const raw = await response.text().catch(() => "");
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return {};
+  }
 
-    const contentType = response.headers.get("content-type") ?? "";
-    if (
-      contentType.includes("application/gzip") ||
-      contentType.includes("application/zip")
-    ) {
-      const buffer = await response.arrayBuffer();
-      return {
-        contentType,
-        note: "Binary data received. Download and unpack this export outside the SDK.",
-        size: buffer.byteLength,
-        type: "binary",
-      };
-    }
-    const raw = await response.text().catch(() => "");
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) {
-      return {};
-    }
-    try {
-      return JSON.parse(raw) as MixpanelRelayResponse;
-    } catch {
-      return sanitizeMixpanelText(raw, input.credentials);
-    }
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`Mixpanel request timeout after ${input.timeoutMs}ms`, {
-        cause: error,
-      });
-    }
-    if (error instanceof Error) {
-      throw new TypeError(
-        sanitizeMixpanelText(error.message, input.credentials),
-        { cause: error }
-      );
-    }
-    throw new Error(sanitizeMixpanelText(String(error), input.credentials), {
-      cause: error,
-    });
-  } finally {
-    clearTimeout(timeoutId);
+  try {
+    return JSON.parse(raw) as MixpanelRelayResponse;
+  } catch {
+    return sanitizeMixpanelText(raw, credentials);
   }
 }
 
@@ -342,28 +282,30 @@ export async function fetchMixpanelQueryApi(input: {
     project_id: input.credentials.projectId,
     workspace_id: input.credentials.workspaceId,
   };
-  const baseUrl = MIXPANEL_QUERY_API_URLS[input.credentials.region];
-  const url = buildMixpanelUrl({
-    baseUrl,
-    defaults,
-    endpoint: input.endpoint,
-    params: input.options?.params,
-  });
+  const client = createMixpanelHttpClient(
+    input.credentials,
+    MIXPANEL_QUERY_API_URLS[input.credentials.region]
+  );
   const requestBody = buildMixpanelRequestBody({
     body: input.options?.body,
     bodyFormat,
     method,
   });
-
-  return executeMixpanelRequest({
-    authHeader: buildMixpanelAuthHeader(input.credentials),
+  const response = await client.send({
     body: requestBody.body,
-    contentType: requestBody.contentType,
-    credentials: input.credentials,
+    endpoint: normalizeEndpoint(input.endpoint),
+    headers: requestBody.contentType
+      ? { "Content-Type": requestBody.contentType }
+      : undefined,
     method,
+    params: buildMixpanelParams({
+      defaults,
+      params: input.options?.params,
+    }),
     timeoutMs,
-    url,
   });
+
+  return readMixpanelResponse(response, input.credentials);
 }
 
 export async function exportMixpanelEvents(input: {
@@ -373,28 +315,30 @@ export async function exportMixpanelEvents(input: {
   const method = normalizeMethod(input.options?.method);
   const bodyFormat = input.options?.bodyFormat ?? "form";
   const timeoutMs = normalizeProviderRequestTimeout(input.options?.timeoutMs);
-  const baseUrl = MIXPANEL_EXPORT_API_URLS[input.credentials.region];
-  const url = buildMixpanelUrl({
-    baseUrl,
-    defaults: { project_id: input.credentials.projectId },
-    endpoint: "",
-    params: input.options?.params,
-  });
+  const client = createMixpanelHttpClient(
+    input.credentials,
+    MIXPANEL_EXPORT_API_URLS[input.credentials.region]
+  );
   const requestBody = buildMixpanelRequestBody({
     body: input.options?.body,
     bodyFormat,
     method,
   });
-
-  return executeMixpanelRequest({
-    authHeader: buildMixpanelAuthHeader(input.credentials),
+  const response = await client.send({
     body: requestBody.body,
-    contentType: requestBody.contentType,
-    credentials: input.credentials,
+    endpoint: "/",
+    headers: requestBody.contentType
+      ? { "Content-Type": requestBody.contentType }
+      : undefined,
     method,
+    params: buildMixpanelParams({
+      defaults: { project_id: input.credentials.projectId },
+      params: input.options?.params,
+    }),
     timeoutMs,
-    url,
   });
+
+  return readMixpanelResponse(response, input.credentials);
 }
 
 export async function queryMixpanelEngage(input: {

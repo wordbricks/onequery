@@ -35,82 +35,149 @@ type DataSourceTestOptions = {
   db?: Database;
 };
 
+const DIRECT_CONNECTION_TESTERS: Partial<
+  Record<
+    Credentials["type"],
+    (
+      credentials: Credentials,
+      options: DataSourceTestOptions
+    ) => Promise<DataSourceTestResult>
+  >
+> = {
+  amplitude: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testAmplitudeConnection(
+      credentials as Extract<Credentials, { type: "amplitude" }>,
+      options.timeoutSeconds
+    ),
+  }),
+  mixpanel: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testMixpanelConnection(
+      credentials as Extract<Credentials, { type: "mixpanel" }>,
+      options.timeoutSeconds
+    ),
+  }),
+  mongodb: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => {
+    const { testMongoConnection } = await import("./testers/mongodb-tester");
+    return {
+      kind: "supported",
+      result: await testMongoConnection(
+        credentials as Extract<Credentials, { type: "mongodb" }>,
+        options.timeoutSeconds
+      ),
+    };
+  },
+  mysql: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testMySQLConnection(
+      credentials as Extract<Credentials, { type: "mysql" }>,
+      options.timeoutSeconds
+    ),
+  }),
+  postgres: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testPostgresConnection(
+      credentials as Extract<Credentials, { type: "postgres" }>,
+      options.timeoutSeconds
+    ),
+  }),
+  posthog: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testPostHogConnection(
+      credentials as Extract<Credentials, { type: "posthog" }>,
+      options.timeoutSeconds
+    ),
+  }),
+  sentry: async (
+    credentials,
+    options: DataSourceTestOptions
+  ): Promise<DataSourceTestResult> => ({
+    kind: "supported",
+    result: await testSentryConnection(
+      credentials as Extract<Credentials, { type: "sentry" }>,
+      options.timeoutSeconds
+    ),
+  }),
+};
+
 export async function testDataSource(
   credentials: Credentials,
   options: DataSourceTestOptions = {}
 ): Promise<DataSourceTestResult> {
-  const timeoutSeconds = options.timeoutSeconds;
+  const directTester =
+    DIRECT_CONNECTION_TESTERS[
+      credentials.type as keyof typeof DIRECT_CONNECTION_TESTERS
+    ];
+  if (directTester) {
+    return directTester(credentials, options);
+  }
 
-  switch (credentials.type) {
-    case "postgres": {
-      const result = await testPostgresConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
+  if (credentials.type === "ga") {
+    if (credentials.authType === "oauth") {
+      return {
+        kind: "unsupported",
+        message: OAUTH_UNSUPPORTED_MESSAGE,
+        reason: "oauth",
+      };
     }
-    case "mysql": {
-      const result = await testMySQLConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
+    return {
+      kind: "supported",
+      result: await testGoogleAnalyticsConnection(
+        credentials,
+        options.timeoutSeconds
+      ),
+    };
+  }
+
+  if (credentials.type === "bigquery") {
+    if (credentials.authType === "oauth") {
+      return {
+        kind: "unsupported",
+        message: OAUTH_UNSUPPORTED_MESSAGE,
+        reason: "oauth",
+      };
     }
-    case "mongodb": {
-      const { testMongoConnection } = await import("./testers/mongodb-tester");
-      const result = await testMongoConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
-    }
-    case "ga": {
-      if (credentials.authType === "oauth") {
-        return {
-          kind: "unsupported",
-          message: OAUTH_UNSUPPORTED_MESSAGE,
-          reason: "oauth",
-        };
-      }
-      const result = await testGoogleAnalyticsConnection(credentials, {
-        timeoutSeconds,
-      });
-      return { kind: "supported", result };
-    }
-    case "bigquery": {
-      if (credentials.authType === "oauth") {
-        return {
-          kind: "unsupported",
-          message: OAUTH_UNSUPPORTED_MESSAGE,
-          reason: "oauth",
-        };
-      }
-      const result = await testBigQueryConnection(credentials, {
-        timeoutSeconds,
-      });
-      return { kind: "supported", result };
-    }
-    case "amplitude": {
-      const result = await testAmplitudeConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
-    }
-    case "mixpanel": {
-      const result = await testMixpanelConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
-    }
-    case "posthog": {
-      const result = await testPostHogConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
-    }
-    case "sentry": {
-      const result = await testSentryConnection(credentials, timeoutSeconds);
-      return { kind: "supported", result };
-    }
-    case "aws_athena_connector": {
-      const result = await testConnectorConnection(credentials, {
+    return {
+      kind: "supported",
+      result: await testBigQueryConnection(credentials, {
+        timeoutSeconds: options.timeoutSeconds,
+      }),
+    };
+  }
+
+  if (credentials.type === "aws_athena_connector") {
+    return {
+      kind: "supported",
+      result: await testConnectorConnection(credentials, {
         db: options.db,
         organizationId: options.organizationId,
-        timeoutSeconds,
-      });
-      return { kind: "supported", result };
-    }
-    default: {
-      const reason = getUnsupportedReason(credentials);
-      const message = buildUnsupportedMessage(reason);
-      return { kind: "unsupported", message, reason };
-    }
+        timeoutSeconds: options.timeoutSeconds,
+      }),
+    };
   }
+
+  const reason = getUnsupportedReason(credentials);
+  const message = buildUnsupportedMessage(reason);
+  return { kind: "unsupported", message, reason };
 }
 
 function getUnsupportedReason(credentials: Credentials): UnsupportedTestReason {
