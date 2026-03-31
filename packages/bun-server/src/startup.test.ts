@@ -10,6 +10,44 @@ import {
   resolveStartupInputFromArgv,
 } from "./startup";
 
+function writeWorkspaceDevLaunchConfig(launchConfigPath: string): void {
+  writeFileSync(
+    launchConfigPath,
+    JSON.stringify(
+      {
+        assets: {
+          distDir: "/tmp/web",
+        },
+        auth: {
+          secret: "workspace-auth-secret",
+        },
+        connectors: {
+          enrollmentToken: "connector-token",
+        },
+        crypto: {
+          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
+        },
+        listen: {
+          host: "127.0.0.1",
+          port: 4555,
+        },
+        mode: "workspace-dev",
+        publicOrigin: "http://localhost:4545",
+        rateLimit: {
+          enabled: false,
+          storage: "memory",
+        },
+        storage: {
+          kind: "postgres",
+          url: "postgres://onequery:onequery@localhost:5454/onequery",
+        },
+      },
+      null,
+      2
+    )
+  );
+}
+
 describe("bun-server startup", () => {
   it("accepts an in-memory launch config object", () => {
     const launchConfig = {
@@ -48,41 +86,7 @@ describe("bun-server startup", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify(
-        {
-          assets: {
-            distDir: "/tmp/web",
-          },
-          auth: {
-            secret: "workspace-auth-secret",
-          },
-          connectors: {
-            enrollmentToken: "connector-token",
-          },
-          crypto: {
-            masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-          },
-          listen: {
-            host: "127.0.0.1",
-            port: 4555,
-          },
-          mode: "workspace-dev",
-          publicOrigin: "http://localhost:4545",
-          rateLimit: {
-            enabled: false,
-            storage: "memory",
-          },
-          storage: {
-            kind: "postgres",
-            url: "postgres://onequery:onequery@localhost:5454/onequery",
-          },
-        },
-        null,
-        2
-      )
-    );
+    writeWorkspaceDevLaunchConfig(launchConfigPath);
 
     const startupInput = resolveStartupInputFromArgv([
       "bun",
@@ -118,6 +122,43 @@ describe("bun-server startup", () => {
         url: "postgres://onequery:onequery@localhost:5454/onequery",
       },
     });
+  });
+
+  it("does not read onequery.dev.toml during self-host startup", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const launchConfigPath = join(root, "launch.json");
+
+    writeFileSync(join(root, "onequery.dev.toml"), 'port = "not json"\n');
+    writeWorkspaceDevLaunchConfig(launchConfigPath);
+
+    expect(loadStartupLaunchConfig({ launchConfigPath })).toMatchObject({
+      mode: "workspace-dev",
+      publicOrigin: "http://localhost:4545",
+    });
+  });
+
+  it("fails cleanly when the launch config file is missing", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const launchConfigPath = join(root, "missing.json");
+
+    expect(() =>
+      loadStartupLaunchConfig({
+        launchConfigPath,
+      })
+    ).toThrow("Failed to read launch config file");
+  });
+
+  it("fails cleanly when the launch config file is malformed", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const launchConfigPath = join(root, "launch.json");
+
+    writeFileSync(launchConfigPath, "{not valid json");
+
+    expect(() =>
+      loadStartupLaunchConfig({
+        launchConfigPath,
+      })
+    ).toThrow("Invalid launch config JSON");
   });
 
   it("fails fast when no launch config path is provided", () => {

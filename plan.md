@@ -416,8 +416,8 @@ Done when:
 - [ ] Bun tests for reading a launch contract and starting from it.
 - [ ] Integration test that `bun dev` uses separate browser/API ports.
 - [ ] Integration test that `onequery serve` uses the bundled self-host port.
-- [ ] Negative test proving self-host startup does **not** read `onequery.dev.toml`.
-- [ ] Negative test proving Bun server startup fails cleanly if launch config is missing or malformed.
+- [x] Negative test proving self-host startup does **not** read `onequery.dev.toml`.
+- [x] Negative test proving Bun server startup fails cleanly if launch config is missing or malformed.
 - [ ] Update CLI snapshots affected by the new default URL.
 
 ## Final search-based acceptance checklist
