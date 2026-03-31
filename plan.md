@@ -338,11 +338,11 @@ Done when:
 
 This is the cleanest way to eliminate the Rust/TS self-host duplication.
 
-- [ ] Keep self-host config parsing/defaults in `apps/cli/crates/onequery-cli/src/config/self_host.rs`.
-- [ ] Add a Rust `ServerLaunchConfig` struct for the launch contract.
-- [ ] Resolve `config.toml` + `secrets.toml` + runtime paths entirely in Rust.
-- [ ] Write the resolved launch contract to a private file, for example `run/launch.json`.
-- [ ] Pass only the launch-config path to the Bun server process.
+- [x] Keep self-host config parsing/defaults in `apps/cli/crates/onequery-cli/src/config/self_host.rs`.
+- [x] Add a Rust `ServerLaunchConfig` struct for the launch contract.
+- [x] Resolve `config.toml` + `secrets.toml` + runtime paths entirely in Rust.
+- [x] Write the resolved launch contract to a private file, for example `run/launch.json`.
+- [x] Pass only the launch-config path to the Bun server process.
 - [ ] Delete self-host TOML parsing from TS.
 - [ ] Delete `packages/bun-server/src/self-host/paths.ts`; runtime paths should be passed in the launch contract from Rust.
 - [ ] Keep `packages/bun-server/src/self-host/lifecycle.ts` only as Bun-side runtime lease logic, consuming paths from the launch contract.
@@ -412,7 +412,7 @@ Done when:
 - [ ] Unit tests for `resolveWorkspaceDev()`.
 - [ ] Unit tests for workspace-dev projections (`vite`, `docker`, `drizzle`).
 - [ ] Unit tests for the derived test profile.
-- [ ] Rust tests for self-host config resolution and launch-contract generation.
+- [x] Rust tests for self-host config resolution and launch-contract generation.
 - [ ] Bun tests for reading a launch contract and starting from it.
 - [ ] Integration test that `bun dev` uses separate browser/API ports.
 - [ ] Integration test that `onequery serve` uses the bundled self-host port.

@@ -21,6 +21,7 @@ const SERVER_LOG_FILENAME: &str = "server.log";
 const PID_FILENAME: &str = "server.pid";
 const LOCK_FILENAME: &str = "server.lock";
 const STOP_REQUEST_FILENAME: &str = "server.stop";
+const LAUNCH_CONFIG_FILENAME: &str = "launch.json";
 pub(crate) const DEFAULT_SELF_HOST_LISTEN_HOST: &str = "127.0.0.1";
 pub(crate) const DEFAULT_SELF_HOST_PORT: u16 = 5656;
 
@@ -38,6 +39,7 @@ pub(crate) struct SelfHostRuntimePaths {
     pub(crate) pid_path: PathBuf,
     pub(crate) lock_path: PathBuf,
     pub(crate) stop_request_path: PathBuf,
+    pub(crate) launch_config_path: PathBuf,
 }
 
 impl SelfHostRuntimePaths {
@@ -52,6 +54,7 @@ impl SelfHostRuntimePaths {
         let pid_path = run_dir.join(PID_FILENAME);
         let lock_path = run_dir.join(LOCK_FILENAME);
         let stop_request_path = run_dir.join(STOP_REQUEST_FILENAME);
+        let launch_config_path = run_dir.join(LAUNCH_CONFIG_FILENAME);
 
         Self {
             config_dir,
@@ -66,6 +69,7 @@ impl SelfHostRuntimePaths {
             pid_path,
             lock_path,
             stop_request_path,
+            launch_config_path,
         }
     }
 
@@ -159,11 +163,7 @@ fn default_log_level() -> String {
 }
 
 pub(crate) fn default_public_origin() -> String {
-    format!(
-        "http://{}:{}",
-        DEFAULT_SELF_HOST_LISTEN_HOST,
-        DEFAULT_SELF_HOST_PORT
-    )
+    resolve_default_public_origin(DEFAULT_SELF_HOST_LISTEN_HOST, DEFAULT_SELF_HOST_PORT)
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -238,6 +238,102 @@ pub(crate) struct SelfHostBootstrapResult {
     pub(crate) secrets_created: bool,
 }
 
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchConfig {
+    pub(crate) assets: ServerLaunchAssetsConfig,
+    pub(crate) auth: ServerLaunchAuthConfig,
+    pub(crate) connectors: ServerLaunchConnectorsConfig,
+    pub(crate) crypto: ServerLaunchCryptoConfig,
+    pub(crate) listen: ServerLaunchListenConfig,
+    pub(crate) mode: ServerLaunchMode,
+    pub(crate) public_origin: String,
+    pub(crate) rate_limit: ServerLaunchRateLimitConfig,
+    pub(crate) runtime_paths: ServerLaunchRuntimePathsConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) smtp: Option<ServerLaunchSmtpConfig>,
+    pub(crate) storage: ServerLaunchStorageConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchAssetsConfig {
+    pub(crate) dist_dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct ServerLaunchAuthConfig {
+    pub(crate) secret: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct ServerLaunchConnectorsConfig {
+    pub(crate) enrollment_token: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct ServerLaunchCryptoConfig {
+    pub(crate) master_encryption_key: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct ServerLaunchListenConfig {
+    pub(crate) host: String,
+    pub(crate) port: u16,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ServerLaunchMode {
+    SelfHost,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchRateLimitConfig {
+    pub(crate) enabled: bool,
+    pub(crate) storage: ServerLaunchRateLimitStorage,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ServerLaunchRateLimitStorage {
+    Persistent,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchRuntimePathsConfig {
+    pub(crate) backups_dir: String,
+    pub(crate) data_dir: String,
+    pub(crate) lock_path: String,
+    pub(crate) logs_dir: String,
+    pub(crate) pid_path: String,
+    pub(crate) run_dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchSmtpConfig {
+    pub(crate) from_email: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) from_name: Option<String>,
+    pub(crate) host: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) password: Option<String>,
+    pub(crate) port: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) secure: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) username: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub(crate) enum ServerLaunchStorageConfig {
+    Pglite { dir: String },
+}
+
 pub(crate) fn bootstrap_self_host_foundation(
     command_line: &str,
 ) -> Result<SelfHostBootstrapResult, CliError> {
@@ -248,6 +344,14 @@ pub(crate) fn bootstrap_self_host_foundation(
 pub(crate) fn load_self_host_config(command_line: &str) -> Result<SelfHostConfigBundle, CliError> {
     let paths = self_host_runtime_paths(command_line)?;
     load_self_host_config_with_paths(paths, command_line)
+}
+
+pub(crate) fn write_self_host_launch_config(
+    command_line: &str,
+    assets_dist_dir: &Path,
+) -> Result<PathBuf, CliError> {
+    let paths = self_host_runtime_paths(command_line)?;
+    write_self_host_launch_config_with_paths(paths, assets_dist_dir, command_line)
 }
 
 #[cfg(test)]
@@ -264,6 +368,15 @@ pub(crate) fn load_self_host_config_for_test(
     command_line: &str,
 ) -> Result<SelfHostConfigBundle, CliError> {
     load_self_host_config_with_paths(paths, command_line)
+}
+
+#[cfg(test)]
+pub(crate) fn write_self_host_launch_config_for_test(
+    paths: SelfHostRuntimePaths,
+    assets_dist_dir: &Path,
+    command_line: &str,
+) -> Result<PathBuf, CliError> {
+    write_self_host_launch_config_with_paths(paths, assets_dist_dir, command_line)
 }
 
 fn bootstrap_self_host_foundation_with_paths(
@@ -340,6 +453,142 @@ fn load_self_host_config_with_paths(
     })
 }
 
+fn write_self_host_launch_config_with_paths(
+    paths: SelfHostRuntimePaths,
+    assets_dist_dir: &Path,
+    command_line: &str,
+) -> Result<PathBuf, CliError> {
+    let bundle = load_self_host_config_with_paths(paths, command_line)?;
+    let launch_config = resolve_self_host_launch_config(&bundle, assets_dist_dir);
+    let serialized = serde_json::to_string_pretty(&launch_config).map_err(|serialize_error| {
+        CliError::new(
+            "failed to serialize self-host launch config",
+            command_line,
+            ErrorStage::LoadConfig,
+            serialize_error.to_string(),
+            vec!["retry command".to_owned()],
+        )
+    })?;
+
+    path_utils::atomic_write_private_file(
+        &bundle.paths.launch_config_path,
+        &serialized,
+        command_line,
+        ErrorStage::LoadConfig,
+        "self-host launch config",
+    )?;
+
+    Ok(bundle.paths.launch_config_path)
+}
+
+fn resolve_self_host_launch_config(
+    bundle: &SelfHostConfigBundle,
+    assets_dist_dir: &Path,
+) -> ServerLaunchConfig {
+    let public_origin = bundle
+        .config
+        .server
+        .public_origin
+        .clone()
+        .unwrap_or_else(|| {
+            resolve_default_public_origin(
+                &bundle.config.server.listen_host,
+                bundle.config.server.port,
+            )
+        });
+
+    ServerLaunchConfig {
+        assets: ServerLaunchAssetsConfig {
+            dist_dir: assets_dist_dir.display().to_string(),
+        },
+        auth: ServerLaunchAuthConfig {
+            secret: bundle.secrets.auth.better_auth_secret.clone(),
+        },
+        connectors: ServerLaunchConnectorsConfig {
+            enrollment_token: bundle.secrets.connectors.enrollment_token.clone(),
+        },
+        crypto: ServerLaunchCryptoConfig {
+            master_encryption_key: bundle.secrets.crypto.master_encryption_key.clone(),
+        },
+        listen: ServerLaunchListenConfig {
+            host: bundle.config.server.listen_host.clone(),
+            port: bundle.config.server.port,
+        },
+        mode: ServerLaunchMode::SelfHost,
+        public_origin,
+        rate_limit: ServerLaunchRateLimitConfig {
+            enabled: true,
+            storage: ServerLaunchRateLimitStorage::Persistent,
+        },
+        runtime_paths: ServerLaunchRuntimePathsConfig {
+            backups_dir: bundle.paths.backups_dir.display().to_string(),
+            data_dir: bundle.paths.data_dir.display().to_string(),
+            lock_path: bundle.paths.lock_path.display().to_string(),
+            logs_dir: bundle.paths.logs_dir.display().to_string(),
+            pid_path: bundle.paths.pid_path.display().to_string(),
+            run_dir: bundle.paths.run_dir.display().to_string(),
+        },
+        smtp: resolve_self_host_launch_smtp(bundle),
+        storage: ServerLaunchStorageConfig::Pglite {
+            dir: bundle.paths.pglite_dir.display().to_string(),
+        },
+    }
+}
+
+fn resolve_self_host_launch_smtp(bundle: &SelfHostConfigBundle) -> Option<ServerLaunchSmtpConfig> {
+    let host = bundle.config.smtp.host.as_ref()?.trim();
+    let from_email = bundle.config.smtp.from_email.as_ref()?.trim();
+    let port = bundle.config.smtp.port?;
+
+    if host.is_empty() || from_email.is_empty() {
+        return None;
+    }
+
+    Some(ServerLaunchSmtpConfig {
+        from_email: from_email.to_owned(),
+        from_name: bundle
+            .config
+            .smtp
+            .from_name
+            .as_ref()
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty()),
+        host: host.to_owned(),
+        password: bundle
+            .secrets
+            .smtp
+            .password
+            .as_ref()
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty()),
+        port,
+        secure: bundle.config.smtp.secure,
+        username: bundle
+            .config
+            .smtp
+            .username
+            .as_ref()
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty()),
+    })
+}
+
+fn resolve_default_public_origin(listen_host: &str, port: u16) -> String {
+    format!(
+        "http://{}:{}",
+        resolve_default_public_host(listen_host),
+        port
+    )
+}
+
+fn resolve_default_public_host(listen_host: &str) -> &str {
+    if listen_host == "0.0.0.0" {
+        return DEFAULT_SELF_HOST_LISTEN_HOST;
+    }
+
+    listen_host
+}
+
 fn write_default_toml_if_absent<T>(
     path: &Path,
     value: &T,
@@ -410,11 +659,13 @@ mod tests {
     use super::SecretsConfig;
     use super::SelfHostConfig;
     use super::SelfHostRuntimePaths;
+    use super::ServerLaunchConfig;
     use super::ServerSection;
     use super::SmtpConfig;
     use super::SmtpSecrets;
     use super::bootstrap_self_host_foundation_with_paths;
     use super::load_self_host_config_with_paths;
+    use super::write_self_host_launch_config_for_test;
 
     #[test]
     fn runtime_paths_follow_the_phase_two_layout_contract() {
@@ -452,6 +703,10 @@ mod tests {
         assert_eq!(
             paths.stop_request_path,
             PathBuf::from("/data/onequery/run/server.stop")
+        );
+        assert_eq!(
+            paths.launch_config_path,
+            PathBuf::from("/data/onequery/run/launch.json")
         );
     }
 
@@ -561,6 +816,103 @@ enrollment_token = "connector"
                     enrollment_token: "connector".to_owned(),
                 },
             }
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn write_self_host_launch_config_serializes_runtime_contract() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-self-host-launch-{}", Uuid::new_v4()));
+        let paths = SelfHostRuntimePaths::for_test(
+            test_dir.join("config").join("self-host"),
+            test_dir.join("data"),
+        );
+        let asset_dir = test_dir.join("runtime").join("web");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::create_dir_all(&paths.run_dir)
+            .unwrap_or_else(|error| panic!("expected run dir creation to succeed: {error}"));
+        fs::create_dir_all(&asset_dir)
+            .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
+        fs::write(
+            &paths.config_path,
+            r#"[server]
+listen_host = "0.0.0.0"
+port = 7777
+
+[smtp]
+host = "smtp.example.com"
+port = 587
+from_email = "hello@example.com"
+from_name = "OneQuery OSS"
+username = "smtp-user"
+secure = false
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            r#"[auth]
+better_auth_secret = "better"
+
+[crypto]
+master_encryption_key = "master"
+
+[connectors]
+enrollment_token = "connector"
+
+[smtp]
+password = "smtp-pass"
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
+
+        let launch_config_path =
+            write_self_host_launch_config_for_test(paths.clone(), &asset_dir, "onequery serve")
+                .unwrap_or_else(|error| {
+                    panic!("expected self-host launch config write to succeed: {error}")
+                });
+        let launch_config_contents = fs::read_to_string(&launch_config_path)
+            .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
+        let launch_config: ServerLaunchConfig = serde_json::from_str(&launch_config_contents)
+            .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
+
+        assert_eq!(launch_config_path, paths.launch_config_path);
+        assert_eq!(
+            launch_config.assets.dist_dir,
+            asset_dir.display().to_string()
+        );
+        assert_eq!(launch_config.listen.host, "0.0.0.0".to_owned());
+        assert_eq!(launch_config.listen.port, 7777);
+        assert_eq!(
+            launch_config.public_origin,
+            "http://127.0.0.1:7777".to_owned()
+        );
+        assert_eq!(
+            launch_config.runtime_paths.run_dir,
+            paths.run_dir.display().to_string()
+        );
+        assert_eq!(
+            launch_config.storage,
+            super::ServerLaunchStorageConfig::Pglite {
+                dir: paths.pglite_dir.display().to_string(),
+            }
+        );
+        assert_eq!(
+            launch_config.smtp,
+            Some(super::ServerLaunchSmtpConfig {
+                from_email: "hello@example.com".to_owned(),
+                from_name: Some("OneQuery OSS".to_owned()),
+                host: "smtp.example.com".to_owned(),
+                password: Some("smtp-pass".to_owned()),
+                port: 587,
+                secure: Some(false),
+                username: Some("smtp-user".to_owned()),
+            })
         );
 
         fs::remove_dir_all(test_dir)
