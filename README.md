@@ -57,7 +57,8 @@ packages/
   db/           # Drizzle schema and migrations
   contracts/    # Zod-validated API types
   ui/           # React component library
-  config-loader/ # Config and environment management
+  config/       # Workspace-dev resolver and projections
+  config-loader/ # TOML decoding helper
 ```
 
 ## Getting started
@@ -69,7 +70,7 @@ packages/
 bun install --frozen-lockfile
 bun run dev:setup
 
-# Start the server and web UI
+# Start the workspace-dev stack
 bun dev
 ```
 
@@ -77,6 +78,15 @@ Workspace dev now reads the tracked [`onequery.dev.toml`](./onequery.dev.toml)
 file plus a local `onequery.dev.secrets.toml` file that `bun run dev:setup`
 seeds automatically if it is missing. Edit `onequery.dev.toml` for browser/API
 ports and local Postgres settings.
+
+Default local ports:
+
+- browser (Vite): `http://localhost:4545`
+- Bun API listener: `http://127.0.0.1:4555`
+- self-host bundled runtime: `http://127.0.0.1:5656`
+
+Use `bun dev` for workspace development only. Use `onequery serve` for the
+bundled self-host runtime.
 
 **Database commands:**
 
@@ -106,6 +116,10 @@ curl -fsSL https://onequery.wordbricks.ai/ | sh
 ```
 
 CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
+
+The self-host runtime writes operator-managed files under the standard config
+and data roots, including `self-host/config.toml`, `self-host/secrets.toml`,
+and the resolved startup contract at `run/launch.json`.
 
 ## License
 

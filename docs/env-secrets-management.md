@@ -1,24 +1,33 @@
 # Environment and Secrets Management
 
-This repository now uses a workspace-dev config pair for OSS development:
+OneQuery now has two distinct config owners:
 
-- `onequery.dev.toml`: tracked local browser/API/Postgres defaults
+- `workspace-dev` for `bun dev`
+- `self-host` for `onequery serve`
+
+The repo does not use a generated `onequery.local.env.toml` surface anymore,
+and startup does not round-trip config through committed env-shaped files.
+
+## Profile Ownership
+
+### Workspace Dev
+
+Workspace development is owned by `@onequery/config`:
+
+- `onequery.dev.toml`: tracked browser/API/Postgres defaults
 - `onequery.dev.secrets.toml`: untracked local secrets
+- `packages/config/src/workspace-dev.ts`: resolver and defaults
+- `packages/config/src/projections/*`: Vite, Docker, and Drizzle projections
 
-Private secret-management tooling is intentionally out of scope for the OSS
-repo.
+`bun dev` uses this profile only.
 
-## Ownership Model
+Default local ports:
 
-- `packages/config/src/workspace-dev.ts` owns the workspace-dev authored schema,
-  defaults, and resolver.
-- `packages/config/src/workspace-dev-init.ts` seeds local secrets when missing.
-- `onequery.dev.toml` is the repo-authored local dev config surface.
-- `onequery.dev.secrets.toml` is a local machine file for secrets only.
-- Deployment secrets live in the target deployment platform and are managed
-  outside this repository.
+- browser origin: `http://localhost:4545`
+- Bun API listener: `http://127.0.0.1:4555`
+- local Postgres host port: `5454`
 
-## Local Development Flow
+Flow:
 
 ```text
 onequery.dev.toml + onequery.dev.secrets.toml
@@ -26,46 +35,73 @@ onequery.dev.toml + onequery.dev.secrets.toml
                 v
     packages/config resolveWorkspaceDev()
                 |
-                +--> Vite dev-server projection
-                |
-                +--> Drizzle DATABASE_URL projection
-                |
-                +--> Docker Compose projection
-                |
-                +--> derived local test database profile
+                +--> Vite projection
+                +--> Docker projection
+                +--> Drizzle projection
+                +--> derived test profile
                 |
                 v
-      bun run dev:setup / bun dev / bun run serve
+          bun dev startup
+```
+
+### Self Host
+
+Self-host is owned by the Rust CLI, not by the repo-local dev resolver:
+
+- `self-host/config.toml`: authored operator config
+- `self-host/secrets.toml`: generated/operator secrets
+- `run/launch.json`: resolved startup contract written by the CLI
+- `apps/cli/.../config/self_host.rs`: defaults, validation, and path rules
+
+`onequery serve` uses this profile only.
+
+Default self-host port:
+
+- bundled public origin: `http://127.0.0.1:5656`
+
+Flow:
+
+```text
+self-host/config.toml + self-host/secrets.toml
+                     |
+                     v
+       Rust resolve_self_host_config()
+                     |
+                     v
+              run/launch.json
+                     |
+                     v
+      packages/bun-server startup reads it once
 ```
 
 ## Practical Rules
 
-- `bun run serve`, `bun dev`, and `bun run dev:setup` will create
-  `onequery.dev.secrets.toml` if it is missing.
-- `onequery.dev.toml` is the editable local source of truth for browser/API
-  ports and local Postgres defaults.
-- Child processes that still need env syntax should receive projected values
-  from `@onequery/config` at launch time rather than via a generated file.
-- The standard local OSS runtime path is `bun run serve`, which builds the
-  frontend bundle and serves web + api from `packages/bun-server` on one port.
-- `bun dev` keeps Vite on the workspace-dev browser origin and proxies `/api` to a
-  separate local Bun listener, so it now supports HMR-friendly full-stack
-  development without changing browser-facing origins.
-- Optional secrets for OAuth providers, OpenAI, and telemetry can remain blank
-  until you need the corresponding integration locally.
+- `bun run dev:setup` creates `onequery.dev.secrets.toml` when it is missing.
+- `bun dev` reads repo-local workspace config and keeps browser/API listeners
+  split on purpose.
+- `onequery serve` ignores `onequery.dev.toml` and starts from the resolved
+  self-host launch contract.
+- `publicOrigin` is the canonical public URL. Do not author separate
+  `WEB_URL` and `BETTER_AUTH_URL` config values.
+- `DATABASE_URL` is a projection for consumers that need it. It is not the
+  authored source of truth for workspace dev.
+- Optional secrets for integrations can stay unset until you need them locally.
 
-## Related Commands
+## Commands
 
 ```bash
-# First-run local bootstrap plus one-port runtime
-bun run serve
-
-# Re-run local bootstrap without starting the full dev workspace
+# Seed local workspace secrets and validate the workspace-dev config
 bun run dev:setup
 
-# Start the Bun runtime against an existing frontend build
-bun run --cwd packages/bun-server start:local
+# Run the split browser/API workspace-dev flow
+bun dev
 
-# Reset Postgres volume and re-bootstrap
-bun run db:reset
+# Start the bundled self-host runtime from the Rust-owned config roots
+onequery serve
+```
+
+For direct CLI development without a global install:
+
+```bash
+cargo run --manifest-path apps/cli/Cargo.toml --bin onequery -- serve
 ```

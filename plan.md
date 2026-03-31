@@ -394,14 +394,14 @@ Done when:
 
 ## Phase 10 — docs and proof surface
 
-- [ ] Rewrite `docs/env-secrets-management.md` around the new model.
-- [ ] Rewrite `docs/self-host-runtime-foundation.md` to describe launch-contract ownership.
-- [ ] Update README local-dev instructions.
-- [ ] Document the port split clearly:
+- [x] Rewrite `docs/env-secrets-management.md` around the new model.
+- [x] Rewrite `docs/self-host-runtime-foundation.md` to describe launch-contract ownership.
+- [x] Update README local-dev instructions.
+- [x] Document the port split clearly:
   - `bun dev` browser port
   - `bun dev` API port
   - `onequery serve` bundled port
-- [ ] Add a short operator note describing `config.toml`, `secrets.toml`, and the resolved launch file.
+- [x] Add a short operator note describing `config.toml`, `secrets.toml`, and the resolved launch file.
 
 Done when:
 

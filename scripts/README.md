@@ -19,8 +19,9 @@ step now does three things:
 ## Quick Start
 
 ```bash
-# First run: bootstrap local state and run the one-port Bun runtime
-bun run serve
+# First run: bootstrap local state and start the split workspace-dev flow
+bun run dev:setup
+bun dev
 ```
 
 After the first run, edit `onequery.dev.toml` for local defaults. Keep
@@ -28,28 +29,29 @@ After the first run, edit `onequery.dev.toml` for local defaults. Keep
 
 ## Runtime Commands
 
-Phase 1 now has two distinct local workflows:
+There are now two distinct local workflows:
 
 ```bash
-# Standard OSS runtime path: build apps/web and serve web + api from Bun
-bun run serve
-
 # Start only the managed local bootstrap
 bun run dev:setup
 
-# Rebuild the frontend bundle
-bun run --cwd apps/web build
-
-# Start the Bun-owned runtime against an existing build
-bun run --cwd packages/bun-server start:local
-
-# Vite web/landing dev plus a proxied Bun API server
+# Workspace dev: Vite browser + Bun API on separate ports
 bun dev
+
+# Self-host dev path through the Rust-owned runtime contract
+cargo run --manifest-path apps/cli/Cargo.toml --bin onequery -- serve
 ```
 
-`bun run serve` is still the normal one-port runtime path. `bun dev` keeps the
-browser on the workspace-dev browser origin while Vite proxies `/api` to a
-separate local Bun listener for HMR-friendly full-stack work.
+Default ports:
+
+- `bun dev` browser origin: `http://localhost:4545`
+- `bun dev` API listener: `http://127.0.0.1:4555`
+- `onequery serve` bundled runtime: `http://127.0.0.1:5656`
+
+`bun dev` keeps the browser on the workspace-dev browser origin while Vite
+proxies `/api` to a separate local Bun listener for HMR-friendly full-stack
+work. `onequery serve` uses the self-host config roots and writes a resolved
+launch contract before Bun starts.
 
 ## Environment Files
 
@@ -66,6 +68,8 @@ For a higher-level overview, see
 
 - `scripts/dev-setup.ts`: local Postgres bootstrap plus workspace-dev config
   validation.
+- `scripts/run-bun-server.ts`: workspace-dev helper that writes a temporary
+  launch contract and starts the Bun API runtime for `bun dev`.
 - `packages/github-rulesets`: package that owns the repo-tracked GitHub
   ruleset planner and sync CLI for `.github/rulesets/`.
 - `scripts/run-local-env-command.ts`: runs a command with config projected from
