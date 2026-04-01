@@ -12,18 +12,6 @@ export type ConnectionTestResult = {
 
 const CONNECTION_TEST_QUERY = "SELECT 1 as result";
 
-export function buildPostgresConnectionString(
-  credentials: PostgresCredentials
-): string {
-  const { host, port, database, username, password } = credentials;
-
-  const encodedUsername = encodeURIComponent(username);
-  const encodedPassword = encodeURIComponent(password);
-  const baseUrl = `postgres://${encodedUsername}:${encodedPassword}@${host}:${port}/${database}`;
-
-  return `${baseUrl}?sslmode=prefer`;
-}
-
 export async function testPostgresConnection(
   credentials: PostgresCredentials,
   timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS

@@ -27,6 +27,13 @@ import {
   resolveBigQueryPricingModel,
 } from "./bigquery-pricing";
 import type { BigQueryPricingModel } from "./bigquery-pricing";
+import {
+  buildPostgresClientConfig,
+  isTlsVerificationError,
+  resolveInitialPostgresTransportState,
+  resolvePostgresFailureTransitions,
+} from "./postgres-transport";
+import type { PostgresClientConfig } from "./postgres-transport";
 import { MAX_LIMIT, validateAndNormalizeReadOnlyQuery } from "./validate-sql";
 
 const DEFAULT_LAMINAR_API_BASE_URL = "https://api.lmnr.ai";
@@ -44,8 +51,6 @@ const TRANSIENT_ERROR_CODES = new Set([
 ]);
 const TRANSIENT_BIGQUERY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
-type SslMode = PostgresCredentials["sslMode"];
-type PostgresSslConfig = false | { rejectUnauthorized: boolean };
 type MySQLSslConfig = { rejectUnauthorized: boolean } | undefined;
 type BigQueryQueryOptions = {
   timeoutMs?: number | null;
@@ -102,14 +107,6 @@ export type DatabaseQueryExecution = {
   rows: Record<string, unknown>[];
   stats?: DatabaseQueryExecutionStats;
 };
-
-const TLS_VERIFICATION_ERRORS = [
-  "self signed certificate",
-  "unable to verify the first certificate",
-  "hostname/ip does not match certificate's altnames",
-  "certificate has expired",
-  "certificate is not yet valid",
-];
 
 export class DataSourceQueryExecutionError extends Error {
   readonly retryable: boolean;
@@ -406,41 +403,26 @@ async function executeBigQueryJob(
   };
 }
 
-function shouldUseSsl(sslMode: SslMode): boolean {
+type NegotiatedSslMode =
+  | PostgresCredentials["sslMode"]
+  | MySQLCredentials["sslMode"];
+
+function shouldUseSsl(sslMode: NegotiatedSslMode): boolean {
   return sslMode !== "disable";
 }
 
-function shouldFallbackToPlaintext(sslMode: SslMode): boolean {
+function shouldFallbackToPlaintext(sslMode: NegotiatedSslMode): boolean {
   return sslMode === "prefer";
 }
 
-function buildPostgresSslConfig(
-  useSsl: boolean,
-  rejectUnauthorized: boolean
-): PostgresSslConfig {
-  return useSsl ? { rejectUnauthorized } : false;
-}
-
-function buildPostgresClientConfig(
-  creds: PostgresCredentials,
-  ssl: PostgresSslConfig,
-  timeoutMs: number
-) {
-  return {
-    connectionTimeoutMillis: timeoutMs,
-    database: creds.database,
-    host: creds.host,
-    options: `-c statement_timeout=${timeoutMs}`,
-    password: creds.password,
-    port: creds.port,
-    ssl,
-    user: creds.username,
-  };
-}
+type PostgresQueryRunner = (
+  config: PostgresClientConfig,
+  query: string
+) => Promise<Record<string, unknown>[]>;
 
 async function runPostgresQuery(
   pg: typeof import("pg"),
-  config: ReturnType<typeof buildPostgresClientConfig>,
+  config: PostgresClientConfig,
   query: string
 ): Promise<Record<string, unknown>[]> {
   const client = new pg.Client(config);
@@ -450,6 +432,11 @@ async function runPostgresQuery(
     .query(query)
     .then((result) => normalizeRecordRows("PostgreSQL", result.rows))
     .finally(async () => client.end());
+}
+
+async function resolvePostgresQueryRunner(): Promise<PostgresQueryRunner> {
+  const pg = await import("pg");
+  return (config, query) => runPostgresQuery(pg, config, query);
 }
 
 function buildMySQLConnectionConfig(
@@ -493,56 +480,40 @@ async function runMySQLQuery(
 export async function executePostgresQuery(
   creds: PostgresCredentials,
   query: string,
-  timeoutMs = QUERY_TIMEOUT_MS
+  timeoutMs = QUERY_TIMEOUT_MS,
+  runner?: PostgresQueryRunner
 ): Promise<Record<string, unknown>[]> {
-  const pg = await import("pg");
-  const sslMode = creds.sslMode;
-  const initialUseSsl = shouldUseSsl(sslMode);
-  const initialAttempt = runPostgresQuery(
-    pg,
-    buildPostgresClientConfig(
-      creds,
-      buildPostgresSslConfig(initialUseSsl, true),
-      timeoutMs
-    ),
-    query
-  );
+  const queryRunner = runner ?? (await resolvePostgresQueryRunner());
+  const initialState = resolveInitialPostgresTransportState(creds.sslMode);
 
-  if (!shouldFallbackToPlaintext(sslMode)) {
-    return initialAttempt;
-  }
-
-  const attemptPlaintext = async (error: unknown) =>
-    runPostgresQuery(
-      pg,
-      buildPostgresClientConfig(
-        creds,
-        buildPostgresSslConfig(false, false),
-        timeoutMs
-      ),
+  try {
+    return await queryRunner(
+      buildPostgresClientConfig(creds, initialState, timeoutMs),
       query
-    ).catch(() => {
-      throw error;
-    });
+    );
+  } catch (initialError) {
+    let priorError = initialError;
 
-  return initialAttempt.catch(async (error: unknown) => {
-    if (!isTlsVerificationError(error)) {
-      return attemptPlaintext(error);
+    for (const transition of resolvePostgresFailureTransitions(
+      creds.sslMode,
+      initialError
+    )) {
+      try {
+        return await queryRunner(
+          buildPostgresClientConfig(creds, transition.nextState, timeoutMs),
+          query
+        );
+      } catch (transitionError) {
+        if (transition.preservePriorErrorOnFailure) {
+          throw priorError;
+        }
+
+        priorError = transitionError;
+      }
     }
 
-    const relaxedAttempt = runPostgresQuery(
-      pg,
-      buildPostgresClientConfig(
-        creds,
-        buildPostgresSslConfig(true, false),
-        timeoutMs
-      ),
-      query
-    );
-    return relaxedAttempt.catch(async (relaxedError: unknown) =>
-      attemptPlaintext(relaxedError)
-    );
-  });
+    throw priorError;
+  }
 }
 
 export async function executeMySQLQuery(
@@ -906,11 +877,6 @@ function createTimeoutSignal(timeoutMs: number): AbortSignal | undefined {
   }
 
   return AbortSignal.timeout(timeoutMs);
-}
-
-function isTlsVerificationError(error: unknown): boolean {
-  const message = toErrorMessage(error).toLowerCase();
-  return TLS_VERIFICATION_ERRORS.some((fragment) => message.includes(fragment));
 }
 
 function toExecutionError(error: unknown): DataSourceQueryExecutionError {

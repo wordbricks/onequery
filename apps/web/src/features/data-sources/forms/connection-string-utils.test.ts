@@ -30,6 +30,43 @@ describe("connection-string-utils", () => {
     });
   });
 
+  it("normalizes postgres-family URLs independently of provider branding", () => {
+    expect(
+      parseConnectionString(
+        "postgres://user:secret@db.example.com/app",
+        "postgres"
+      )
+    ).toEqual(
+      parseConnectionString(
+        "postgres://user:secret@db.example.com/app",
+        "supabase"
+      )
+    );
+    expect(
+      parseConnectionString(
+        "postgres://user:secret@db.example.com/app",
+        "supabase"
+      )
+    ).toMatchObject({
+      sslMode: "prefer",
+    });
+  });
+
+  it("preserves postgres-family sslmode query params from the URL", () => {
+    expect(
+      parseConnectionString(
+        "postgresql://user:secret@db.example.com/app?sslmode=prefer",
+        "supabase"
+      )
+    ).toMatchObject({
+      database: "app",
+      host: "db.example.com",
+      port: 5432,
+      sslMode: "prefer",
+      username: "user",
+    });
+  });
+
   it("rejects unsupported protocols for the selected provider", () => {
     expect(
       parseConnectionString(
