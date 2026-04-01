@@ -57,8 +57,6 @@
     }
   },
   "scripts": {
-    "build": "bun run ./scripts/build-dist.mjs",
-    "check:surface": "bun run ./scripts/check-package-surface.mjs",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

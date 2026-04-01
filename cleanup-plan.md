@@ -75,12 +75,12 @@ Choose one model and delete the other.
 
 Use this if `@onequery/config` is only consumed inside the Bun/TS monorepo.
 
-- [ ] delete the `dist` build pipeline from `packages/config`
-- [ ] remove `build-dist.mjs`
-- [ ] remove `check-package-surface.mjs`
-- [ ] change `packages/config/package.json` scripts so they no longer imply a second runtime artifact
-- [ ] remove any Turbo assumptions that `packages/config` must output `dist/**`
-- [ ] keep `package-surface.test.ts` if you still want the package-surface import check
+- [x] delete the `dist` build pipeline from `packages/config`
+- [x] remove `build-dist.mjs`
+- [x] remove `check-package-surface.mjs`
+- [x] change `packages/config/package.json` scripts so they no longer imply a second runtime artifact
+- [x] remove any Turbo assumptions that `packages/config` must output `dist/**`
+- [x] keep `package-surface.test.ts` if you still want the package-surface import check
 
 #### Option B — real built package surface (only if actually needed)
 
@@ -100,6 +100,9 @@ The current source-only exports strongly suggest that `dist/*` is now dead weigh
 
 - there is only one real runtime surface for `@onequery/config`
 - the repo does not generate unused `dist/*` output for that package anymore
+
+Status:
+- [x] Complete. `@onequery/config` is now source-only, and the old `dist` pipeline was removed instead of being kept as a dead second artifact.
 
 ---
 
