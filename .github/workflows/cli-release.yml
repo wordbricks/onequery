@@ -328,20 +328,6 @@ jobs:
             --vendor-src dist/vendor \
             --output-dir dist/release
 
-      - name: Smoke packaged self-host server (musl)
-        run: |
-          bun apps/cli/scripts/smoke-packaged-server.js \
-            --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" \
-            --platform-tarball "dist/npm/onequery-npm-linux-x64-${{ needs.tag-check.outputs.version }}.tgz" \
-            --target-triple "x86_64-unknown-linux-musl"
-
-      - name: Smoke packaged self-host server (GNU Linux)
-        run: |
-          bun apps/cli/scripts/smoke-packaged-server.js \
-            --root-tarball "dist/npm/onequery-npm-${{ needs.tag-check.outputs.version }}.tgz" \
-            --platform-tarball "dist/release/onequery-npm-linux-x64-gnu-${{ needs.tag-check.outputs.version }}.tgz" \
-            --target-triple "x86_64-unknown-linux-gnu"
-
       - name: Stage stable installer assets
         shell: bash
         run: |

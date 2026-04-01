@@ -1,16 +1,16 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json"
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "bun": true,
   "github-actions": true,
   "oxlint": {
-    "config": [".oxlintrc.jsonc"]
+    "config": [".oxlintrc.jsonc"],
   },
   "treatConfigHintsAsErrors": true,
   "ignoreDependencies": ["eslint-plugin-turbo"],
   "ignoreIssues": {
     "apps/web/src/server/auth-rate-limit.ts": ["unlisted"],
     ".github/workflows/cli-release.yml": ["binaries"],
-    "packages/cli-server/generated/**/*.ts": ["exports", "types"]
+    "packages/cli-server/generated/**/*.ts": ["exports", "types"],
   },
   "ignoreBinaries": ["just"],
   "workspaces": {
@@ -19,48 +19,48 @@
         "turbo.json",
         "scripts/run-local-env-command.ts",
         "scripts/upload-image.ts",
-        "scripts/oxlint/plugin.mjs"
+        "scripts/oxlint/plugin.mjs",
       ],
-      "project": ["*.json", "scripts/**/*.ts", "scripts/**/*.mjs"]
+      "project": ["*.json", "scripts/**/*.ts", "scripts/**/*.mjs"],
     },
     "apps/*": {
-      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"],
     },
     "apps/cli": {
       "entry": [
         "bin/*.js",
         "scripts/build-server-executable.js",
-        "scripts/stage-npm-packages.js"
+        "scripts/stage-npm-packages.js",
       ],
-      "project": ["bin/*.js", "scripts/*.js", "src/**/*.ts"]
+      "project": ["bin/*.js", "scripts/*.js", "src/**/*.ts"],
     },
     "apps/web": {
       "project": [
         "src/**/*.{ts,tsx}",
         "scripts/*.ts",
         "!src/**/*.test.{ts,tsx}",
-        "!src/vite-env.d.ts"
+        "!src/vite-env.d.ts",
       ],
-      "ignoreDependencies": ["tailwindcss"]
+      "ignoreDependencies": ["tailwindcss"],
     },
     "packages/*": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"],
     },
     "packages/cli-server": {
-      "project": ["generated/**/*.ts", "src/**/*.ts", "!src/**/*.test.ts"]
+      "project": ["generated/**/*.ts", "src/**/*.ts", "!src/**/*.test.ts"],
     },
     "packages/server": {
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"],
     },
     "packages/cli-contract": {
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
     },
     "packages/ui": {
-      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
+      "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"],
     },
     "packages/db": {
       "entry": ["src/scripts/seed-dev.ts"],
-      "project": ["src/**/*.ts", "!src/**/*.test.ts"]
-    }
-  }
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"],
+    },
+  },
 }
