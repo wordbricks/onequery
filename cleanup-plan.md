@@ -304,14 +304,17 @@ This is not architecture-breaking, but it is still duplication.
 
 ### Checklist
 
-- [ ] decide whether a shared test constant surface is actually worth it
+- [x] decide whether a shared test constant surface is actually worth it
 - [ ] if yes, move only the genuinely shared test fixtures/constants to one test-helper location
-- [ ] if no, leave them local and stop here
+- [x] if no, leave them local and stop here
 
 ### Recommendation
 
 Keep this optional.
 Do not over-centralize test literals if it makes package ownership worse.
+
+Status:
+- [x] Complete. The remaining duplicated literals are test-only and intentionally left local to preserve package ownership.
 
 ---
 
@@ -329,10 +332,10 @@ Do not over-centralize test literals if it makes package ownership worse.
 
 You can call this “fully done” when all of the following are true:
 
-- [ ] `@onequery/config` has one real package/runtime surface and no unused artifact path
-- [ ] no cross-package production code imports another package’s private `src/*`
-- [ ] the packaged smoke path uses only supported runtime knobs
-- [ ] the repo has one explicit final answer for launch-contract ownership
-- [ ] any remaining duplication is consciously accepted and documented, not accidental
+- [x] `@onequery/config` has one real package/runtime surface and no unused artifact path
+- [x] no cross-package production code imports another package’s private `src/*`
+- [x] the packaged smoke path uses only supported runtime knobs
+- [x] the repo has one explicit final answer for launch-contract ownership
+- [x] any remaining duplication is consciously accepted and documented, not accidental
 
 At that point, the repo is not just architecturally good; it is also cleaned up enough to reasonably answer “yes” to the question of whether the remaining redundancy is gone or deliberately bounded.
