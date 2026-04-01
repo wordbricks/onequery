@@ -183,6 +183,9 @@ describe("startBunServer", () => {
         host: "127.0.0.1",
         port: 4555,
       },
+      migrations: {
+        dir: "/tmp/migrations",
+      },
       mode: "workspace-dev",
       publicOrigin: "http://localhost:4545",
       rateLimit: {
@@ -210,6 +213,7 @@ describe("startBunServer", () => {
     );
     expect(mocks.prepareRuntimeDatabase).toHaveBeenCalledWith({
       databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
+      migrationsDir: "/tmp/migrations",
     });
     expect(mocks.serve).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -250,6 +254,9 @@ describe("startBunServer", () => {
       listen: {
         host: "127.0.0.1",
         port: 5656,
+      },
+      migrations: {
+        dir: "/tmp/migrations",
       },
       mode: "self-host",
       publicOrigin: "http://127.0.0.1:5656",

@@ -21,6 +21,9 @@ describe("createServerRuntimeConfig", () => {
         host: "127.0.0.1",
         port: 4555,
       },
+      migrations: {
+        dir: "/tmp/migrations",
+      },
       mode: "workspace-dev",
       publicOrigin: "http://localhost:4545",
       rateLimit: {
@@ -85,6 +88,9 @@ describe("createServerRuntimeConfig", () => {
       listen: {
         host: "127.0.0.1",
         port: 5656,
+      },
+      migrations: {
+        dir: "/tmp/migrations",
       },
       mode: "self-host",
       publicOrigin: "https://onequery.example.com",

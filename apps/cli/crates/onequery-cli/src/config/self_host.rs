@@ -251,6 +251,7 @@ pub(crate) struct ServerLaunchConfig {
     pub(crate) crypto: ServerLaunchCryptoConfig,
     pub(crate) listen: ServerLaunchListenConfig,
     pub(crate) mode: ServerLaunchMode,
+    pub(crate) migrations: ServerLaunchMigrationsConfig,
     pub(crate) public_origin: String,
     pub(crate) rate_limit: ServerLaunchRateLimitConfig,
     pub(crate) runtime_paths: ServerLaunchRuntimePathsConfig,
@@ -263,6 +264,12 @@ pub(crate) struct ServerLaunchConfig {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchAssetsConfig {
     pub(crate) dist_dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchMigrationsConfig {
+    pub(crate) dir: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -355,9 +362,10 @@ pub(crate) fn load_self_host_config(command_line: &str) -> Result<SelfHostConfig
 pub(crate) fn write_self_host_launch_config(
     command_line: &str,
     assets_dist_dir: &Path,
+    migrations_dir: &Path,
 ) -> Result<PathBuf, CliError> {
     let paths = self_host_runtime_paths(command_line)?;
-    write_self_host_launch_config_with_paths(paths, assets_dist_dir, command_line)
+    write_self_host_launch_config_with_paths(paths, assets_dist_dir, migrations_dir, command_line)
 }
 
 #[cfg(test)]
@@ -380,9 +388,10 @@ pub(crate) fn load_self_host_config_for_test(
 pub(crate) fn write_self_host_launch_config_for_test(
     paths: SelfHostRuntimePaths,
     assets_dist_dir: &Path,
+    migrations_dir: &Path,
     command_line: &str,
 ) -> Result<PathBuf, CliError> {
-    write_self_host_launch_config_with_paths(paths, assets_dist_dir, command_line)
+    write_self_host_launch_config_with_paths(paths, assets_dist_dir, migrations_dir, command_line)
 }
 
 fn bootstrap_self_host_foundation_with_paths(
@@ -462,10 +471,11 @@ fn load_self_host_config_with_paths(
 fn write_self_host_launch_config_with_paths(
     paths: SelfHostRuntimePaths,
     assets_dist_dir: &Path,
+    migrations_dir: &Path,
     command_line: &str,
 ) -> Result<PathBuf, CliError> {
     let bundle = load_self_host_config_with_paths(paths, command_line)?;
-    let launch_config = resolve_self_host_launch_config(&bundle, assets_dist_dir);
+    let launch_config = resolve_self_host_launch_config(&bundle, assets_dist_dir, migrations_dir);
     let serialized = serde_json::to_string_pretty(&launch_config).map_err(|serialize_error| {
         CliError::new(
             "failed to serialize self-host launch config",
@@ -490,6 +500,7 @@ fn write_self_host_launch_config_with_paths(
 fn resolve_self_host_launch_config(
     bundle: &SelfHostConfigBundle,
     assets_dist_dir: &Path,
+    migrations_dir: &Path,
 ) -> ServerLaunchConfig {
     let public_origin = bundle
         .config
@@ -521,6 +532,9 @@ fn resolve_self_host_launch_config(
             port: bundle.config.server.port,
         },
         mode: ServerLaunchMode::SelfHost,
+        migrations: ServerLaunchMigrationsConfig {
+            dir: migrations_dir.display().to_string(),
+        },
         public_origin,
         rate_limit: ServerLaunchRateLimitConfig {
             enabled: true,
@@ -1029,11 +1043,15 @@ password = "smtp-pass"
         )
         .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
 
-        let launch_config_path =
-            write_self_host_launch_config_for_test(paths.clone(), &asset_dir, "onequery serve")
-                .unwrap_or_else(|error| {
-                    panic!("expected self-host launch config write to succeed: {error}")
-                });
+        let launch_config_path = write_self_host_launch_config_for_test(
+            paths.clone(),
+            &asset_dir,
+            Path::new("/tmp/onequery/runtime/migrations"),
+            "onequery serve",
+        )
+        .unwrap_or_else(|error| {
+            panic!("expected self-host launch config write to succeed: {error}")
+        });
         let launch_config_contents = fs::read_to_string(&launch_config_path)
             .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
         let launch_config: ServerLaunchConfig = serde_json::from_str(&launch_config_contents)
@@ -1046,6 +1064,12 @@ password = "smtp-pass"
         );
         assert_eq!(launch_config.listen.host, "0.0.0.0".to_owned());
         assert_eq!(launch_config.listen.port, 7777);
+        assert_eq!(
+            launch_config.migrations,
+            super::ServerLaunchMigrationsConfig {
+                dir: "/tmp/onequery/runtime/migrations".to_owned(),
+            }
+        );
         assert_eq!(
             launch_config.public_origin,
             "http://127.0.0.1:7777".to_owned()
@@ -1123,6 +1147,7 @@ password = "smtp-pass"
         let emitted_json = serde_json::to_value(resolve_self_host_launch_config(
             &bundle,
             Path::new("/tmp/onequery/runtime/web"),
+            Path::new("/tmp/onequery/runtime/migrations"),
         ))
         .unwrap_or_else(|error| panic!("expected emitted launch contract to serialize: {error}"));
 

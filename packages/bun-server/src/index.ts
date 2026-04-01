@@ -155,6 +155,7 @@ export function createStartBunServer(
       // convergence; local bootstrap only guarantees the shared Postgres container.
       await dependencies.prepareRuntimeDatabase({
         databaseUrl: runtime.storage.connectionString,
+        migrationsDir: launchConfig.migrations.dir,
       });
       const app = dependencies.createApp({
         runtime,

@@ -166,6 +166,7 @@ describe("@onequery/config workspace-dev", () => {
       expect(
         projectWorkspaceDevServerLaunchConfig(workspaceDev, {
           assetDir: "/tmp/workspace-web",
+          migrationsDir: "/tmp/workspace-migrations",
         })
       ).toEqual({
         assets: {
@@ -183,6 +184,9 @@ describe("@onequery/config workspace-dev", () => {
         listen: {
           host: "127.0.0.1",
           port: 4601,
+        },
+        migrations: {
+          dir: "/tmp/workspace-migrations",
         },
         mode: "workspace-dev",
         publicOrigin: "http://127.0.0.1:4600",
