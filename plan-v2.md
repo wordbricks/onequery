@@ -298,11 +298,11 @@ Anything executable or user-facing should either:
 
 - [x] Remove fallback literals from `docker-compose.yml` that duplicate `workspace-dev` defaults.
 - [x] Feed Docker from one derived projection path only.
-- [ ] Audit onboarding/docs/landing/README copy for stale port numbers or old commands.
-- [ ] Update any stale references such as `4545` if the real self-host default is now something else.
+- [x] Audit onboarding/docs/landing/README copy for stale port numbers or old commands.
+- [x] Update any stale references such as `4545` if the real self-host default is now something else.
 - [x] Remove separately hardcoded CLI base URL strings and derive them from the same self-host default helper.
 - [ ] Check smoke tests and snapshots for copied literals that should come from config helpers.
-- [ ] Audit comments, README examples, and shell snippets for outdated URLs.
+- [x] Audit comments, README examples, and shell snippets for outdated URLs.
 
 ### Recommended approach
 

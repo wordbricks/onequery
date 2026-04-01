@@ -9,8 +9,7 @@ with the same CLI.
 Prerequisites:
 
 - `curl` and `tar`
-- Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
-- current packaged support: macOS and Linux only
+- a supported published CLI package for macOS, Linux, or Windows
 
 Install the CLI:
 
@@ -30,6 +29,9 @@ Other package-manager entrypoints still work:
 bunx @onequery/cli --help
 npx @onequery/cli --help
 ```
+
+Published `onequery serve` packages include the bundled self-host runtime and
+do not require Bun on `PATH`.
 
 Start the server:
 
