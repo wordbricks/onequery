@@ -21,6 +21,9 @@ Have one clean answer to “who migrates the application schema?” and “what 
 - [ ] Remove self-host `DATABASE_URL` documentation from `docs/self-host.md` for now.
 - [ ] Audit the repo for any lingering suggestion that self-host Postgres is supported via ambient env.
 - [ ] If self-host Postgres is desired later, add it as explicit self-host config, for example a `[storage]` section, and project it into the launch contract.
+- [ ] Document the actual self-host secrets file path from code:
+  - default Unix path: `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml`
+  - or `$ONEQUERY_HOME/config/self-host/secrets.toml`
 
 ### Suggested self-host storage policy
 
