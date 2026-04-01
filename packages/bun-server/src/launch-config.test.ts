@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -123,93 +123,48 @@ describe("launch config", () => {
     );
   });
 
-  it("rejects self-host launch config files without runtimePaths", () => {
+  it("wraps missing file errors", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const assetDir = createTempSpaBuildDir();
+
+    expect(() => loadLaunchConfigFile(join(root, "missing.json"))).toThrow(
+      "Failed to read launch config file"
+    );
+  });
+
+  it("wraps filesystem read errors", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
+    const launchConfigPath = join(root, "launch-dir");
+
+    mkdirSync(launchConfigPath, { recursive: true });
+
+    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
+      "Failed to read launch config file"
+    );
+  });
+
+  it("wraps invalid JSON syntax", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
+    const launchConfigPath = join(root, "launch.json");
+
+    writeFileSync(launchConfigPath, "{");
+
+    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
+      "Invalid launch config JSON"
+    );
+  });
+
+  it("surfaces validator errors from the contract owner", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
     const launchConfigPath = join(root, "launch.json");
 
     writeFileSync(
       launchConfigPath,
       JSON.stringify({
-        ...createSelfHostLaunchConfig(assetDir),
+        ...createSelfHostLaunchConfig(createTempSpaBuildDir()),
         runtimePaths: undefined,
       })
     );
 
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
-      "runtimePaths"
-    );
-  });
-
-  it("rejects launch config files with unknown keys", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const assetDir = createTempSpaBuildDir();
-    const launchConfigPath = join(root, "launch.json");
-
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify({
-        ...createWorkspaceDevLaunchConfig(assetDir),
-        unexpected: true,
-      })
-    );
-
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("unexpected");
-  });
-
-  it("rejects launch config files with missing required keys", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const assetDir = createTempSpaBuildDir();
-    const launchConfigPath = join(root, "launch.json");
-    const launchConfig = createWorkspaceDevLaunchConfig(assetDir);
-
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify({
-        ...launchConfig,
-        auth: undefined,
-      })
-    );
-
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("auth");
-  });
-
-  it("rejects launch config files with invalid storage union members", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const assetDir = createTempSpaBuildDir();
-    const launchConfigPath = join(root, "launch.json");
-
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify({
-        ...createWorkspaceDevLaunchConfig(assetDir),
-        storage: {
-          kind: "sqlite",
-          path: "/tmp/onequery.sqlite",
-        },
-      })
-    );
-
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("storage.kind");
-  });
-
-  it("rejects launch config files with wrong scalar types", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const assetDir = createTempSpaBuildDir();
-    const launchConfigPath = join(root, "launch.json");
-    const launchConfig = createWorkspaceDevLaunchConfig(assetDir);
-
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify({
-        ...launchConfig,
-        listen: {
-          ...launchConfig.listen,
-          port: "4555",
-        },
-      })
-    );
-
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("listen.port");
+    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("runtimePaths");
   });
 });

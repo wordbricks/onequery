@@ -23,51 +23,38 @@ function writeToml(
 }
 
 describe("resolveViteDevServerConfig", () => {
-  it("reads the default workspace-dev projection", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "test-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "test-master-key"',
-        "",
-        "[connectors]",
-        'enrollment_token = "test-enrollment-token"',
-      ]);
-
-      expect(resolveViteDevServerConfig({ rootDir })).toEqual({
-        apiProxyTarget: "http://127.0.0.1:4555",
-        port: 4545,
-      });
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("reads browser and api overrides from onequery.dev.toml", () => {
+  it("projects a full valid workspace-dev fixture through the wrapper", () => {
     const rootDir = createTempRootDir();
 
     try {
       writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
         "[browser]",
+        'host = "127.0.0.1"',
         "port = 4600",
         "",
         "[api]",
         'host = "127.0.0.1"',
         "port = 4601",
+        "",
+        "[postgres]",
+        "host_port = 6500",
+        "container_port = 5433",
+        'database = "workspace"',
+        'user = "workspace"',
+        'password = "secret"',
+        "",
+        "[flags]",
+        "disable_rate_limit = false",
       ]);
       writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
         "[auth]",
-        'secret = "test-auth-secret"',
+        'secret = "workspace-auth-secret"',
         "",
         "[crypto]",
-        'master_encryption_key = "test-master-key"',
+        'master_encryption_key = "custom-master-key"',
         "",
         "[connectors]",
-        'enrollment_token = "test-enrollment-token"',
+        'enrollment_token = "workspace-connector-token"',
       ]);
 
       expect(resolveViteDevServerConfig({ rootDir })).toEqual({

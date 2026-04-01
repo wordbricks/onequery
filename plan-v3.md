@@ -279,17 +279,17 @@ Keep wrapper packages focused on boundary wiring, not on re-specifying the confi
 
 ### Checklist
 
-- [ ] Rewrite or delete `apps/web/src/lib/vite-dev-server-config.test.ts`.
-- [ ] If kept, reduce it to a minimal boundary smoke test that uses a full valid workspace-dev fixture, not partial/default assumptions.
-- [ ] Move launch-contract invalid-shape tests to the owner package if they are really contract-shape tests.
-- [ ] Keep `packages/bun-server/src/launch-config.test.ts` focused on boundary concerns such as:
-  - [ ] missing file
-  - [ ] unreadable file
-  - [ ] invalid JSON syntax
-  - [ ] one or two validation smoke cases proving the loader delegates to the contract validator
-- [ ] Add or expand owner-level tests in `packages/config/src/server-launch.test.ts` so the contract owner carries the shape matrix.
-- [ ] Remove duplicated negative-case matrices from consumers once the owner-level suite exists.
-- [ ] Ensure no test still assumes that secrets-only files or partial config files are enough for strict workspace-dev resolution.
+- [x] Rewrite or delete `apps/web/src/lib/vite-dev-server-config.test.ts`.
+- [x] If kept, reduce it to a minimal boundary smoke test that uses a full valid workspace-dev fixture, not partial/default assumptions.
+- [x] Move launch-contract invalid-shape tests to the owner package if they are really contract-shape tests.
+- [x] Keep `packages/bun-server/src/launch-config.test.ts` focused on boundary concerns such as:
+  - [x] missing file
+  - [x] unreadable file
+  - [x] invalid JSON syntax
+  - [x] one validation smoke case proving the loader delegates to the contract validator
+- [x] Add or expand owner-level tests in `packages/config/src/server-launch.test.ts` so the contract owner carries the shape matrix.
+- [x] Remove duplicated negative-case matrices from consumers once the owner-level suite exists.
+- [x] Ensure no test still assumes that secrets-only files or partial config files are enough for strict workspace-dev resolution.
 
 ### Recommended split for launch tests
 
