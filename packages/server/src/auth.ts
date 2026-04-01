@@ -45,17 +45,19 @@ type DbInstance = ReturnType<typeof createDb>;
 const CLI_DEVICE_AUTH_CLIENT_ID = "onequery-cli";
 
 // ============================================================================
-// Stateless JWE Session Configuration
+// Database-Backed Session Cache Configuration
 // ============================================================================
-// Uses encrypted cookie cache (JWE) to eliminate DB round-trips for session
-// validation. Session data is encrypted and stored directly in the cookie.
+// Uses an encrypted JWE cookie cache to avoid most session reads while keeping
+// the database as the canonical session store.
 //
 // Flow:
-// 1. Cookie cache (JWE encrypted) - instant, no I/O
-// 2. Database (fallback on cache miss/expiry) - ~10-20ms with Hyperdrive
+// 1. Cookie cache (JWE encrypted) - serves cached session reads for 15 minutes
+// 2. Database - source of truth after cache expiry and for server-side session
+//    lifecycle operations
 //
-// Trade-off: Revoked sessions remain valid until cookie expires (15 min max).
-// To invalidate all sessions immediately, increment the version number.
+// Trade-off: Revoked sessions may remain active until the cookie cache expires.
+// The cookie cache version only invalidates cached payloads, not database
+// sessions.
 // ============================================================================
 
 function resolveAuthDb(config: AuthConfig): DbInstance {
@@ -117,8 +119,8 @@ export function createAuth(config: AuthConfig) {
     secret: config.secret,
     baseURL: config.baseURL,
     trustedOrigins,
-    // Stateless JWE session: encrypted cookie cache eliminates DB round-trips
-    // See comment block above for architecture details
+    // Database-backed session cache: encrypted cookie payloads avoid most
+    // session reads while revocation still lives in the database.
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
       updateAge: 60 * 60 * 24, // 1 day
@@ -126,8 +128,7 @@ export function createAuth(config: AuthConfig) {
         enabled: true,
         maxAge: 15 * 60, // 15 minutes - security/performance balance (SuperAdmin consideration)
         strategy: "jwe", // Encrypted session data (hidden from client)
-        version: "1", // Increment to invalidate all sessions on deploy
-        refreshCache: true, // Auto-refresh at 80% of maxAge (~12 min)
+        version: "1", // Increment to invalidate cached session payloads on deploy
       },
       storeSessionInDatabase: true, // Keep DB for session revocation capability
     },
@@ -264,7 +265,7 @@ export function createAuthFromConfig(
   runtime: ServerRuntimeConfig,
   input: CreateAuthFromConfigOptions = {}
 ) {
-  console.info("[auth] Using stateless JWE session cache (15 min TTL)");
+  console.info("[auth] Using database-backed JWE session cache (15 min TTL)");
 
   return createAuth({
     authRateLimitStorage:
