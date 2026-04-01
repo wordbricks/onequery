@@ -116,6 +116,7 @@ pub(crate) struct ConfigOrigins {
 }
 
 impl ConfigOrigins {
+    #[cfg(test)]
     pub(super) fn defaults() -> Self {
         Self {
             active_org: ConfigValueOrigin::Defaults,

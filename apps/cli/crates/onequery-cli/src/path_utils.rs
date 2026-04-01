@@ -82,6 +82,7 @@ impl AbsolutePathBuf {
         })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn as_path(&self) -> &Path {
         &self.0
     }
