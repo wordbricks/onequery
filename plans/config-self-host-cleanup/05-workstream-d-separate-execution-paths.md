@@ -4,6 +4,8 @@
 
 Keep the profiles separate in behavior **and** in executable architecture.
 
+This workstream owns command behavior and profile separation. The runtime bundle manifest itself is owned by Workstream E.
+
 ### Current smell
 
 `onequery serve` currently acts like two commands hidden behind auto-detection:

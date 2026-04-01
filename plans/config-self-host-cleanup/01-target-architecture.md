@@ -2,9 +2,11 @@
 
 The target architecture should follow these rules.
 
-### Rule 1: same concept, same name, everywhere
+### Rule 1: same concept, same schema, in both profiles
 
-Shared secret keys must be identical across workspace-dev and self-host:
+The single source of truth should be the shared secret schema and encoding rules, not one profile reusing another profile's values.
+
+`onequery.dev.secrets.toml` and self-host `secrets.toml` remain separate files with independently generated values, but shared secret keys must be identical across workspace-dev and self-host:
 
 ```toml
 [auth]
@@ -49,7 +51,9 @@ Keep the good separation that already exists conceptually:
 - `workspace-dev` for repo-local `bun dev`
 - `self-host` for `onequery serve`
 
-But make the shared parts explicit and mechanically enforced, not just “similar”.
+Each profile keeps its own config/secrets files and lifecycle.
+
+But make the shared schema for overlapping secrets explicit and mechanically enforced, not just “similar”.
 
 ### Rule 4: self-host runtime assets are a bundle, not path folklore
 

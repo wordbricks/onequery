@@ -4,6 +4,8 @@
 
 Make runtime assets and migrations discoverable from one place.
 
+This workstream owns the runtime bundle contract. Command behavior such as "`onequery serve` is self-host only" is owned by Workstream D.
+
 ### Current duplication to remove
 
 The following all know too much about runtime layout:

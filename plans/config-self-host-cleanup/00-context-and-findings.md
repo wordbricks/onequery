@@ -102,9 +102,9 @@ So the test suite currently encodes the bug instead of defending against it.
 
 ## Main architecture problems found
 
-### 1) Shared secret concepts are not actually shared
+### 1) Shared secret concepts are not actually standardized
 
-`onequery.dev.secrets.toml` and self-host `secrets.toml` are supposed to carry many of the same conceptual secrets, but they currently drift in both **naming** and **generation semantics**.
+`onequery.dev.secrets.toml` and self-host `secrets.toml` should stay as separate profile-owned files, but they are supposed to agree on the same secret schema for shared concepts. Today they drift in both **naming** and **generation semantics**.
 
 Current workspace-dev shape:
 
@@ -140,8 +140,11 @@ Problems:
 - same concept, different key name: `auth.secret` vs `auth.better_auth_secret`
 - same concept, different generation rules: workspace-dev master key is valid; self-host master key is invalid
 - same concept, different validation rigor: both are effectively just “non-empty string” today
+- same concept, different source of truth: server-side TS and `apps/cli` Rust each define their own field names and secret formats
 
-This is not SSoT. It is only superficially separated.
+The problem is not that the two files hold different secret values. They should. The problem is that the schema and encoding rules are not owned in one place.
+
+This is the inverse of the SSoT boundary we actually want.
 
 ### 2) The runtime launch contract is “canonical” only by convention
 
