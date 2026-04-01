@@ -363,7 +363,7 @@ The key rule is:
 - [x] Choose the canonical owner for the launch contract definition.
 - [x] Move Bun validation to consume that owner directly.
 - [x] Remove duplicate launch-shape declarations that no longer need to exist.
-- [ ] Add round-trip tests proving the Rust-emitted launch JSON validates against the canonical contract.
+- [x] Add round-trip tests proving the Rust-emitted launch JSON validates against the canonical contract.
 - [x] Add fixture tests for malformed launch files:
   - [x] unknown key
   - [x] missing required key

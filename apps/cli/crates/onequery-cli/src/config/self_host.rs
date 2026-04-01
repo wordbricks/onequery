@@ -271,11 +271,13 @@ pub(crate) struct ServerLaunchAuthConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchConnectorsConfig {
     pub(crate) enrollment_token: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchCryptoConfig {
     pub(crate) master_encryption_key: String,
 }
@@ -654,14 +656,18 @@ where
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
 
     use pretty_assertions::assert_eq;
+    use uuid::Uuid;
 
     use super::AuthSecrets;
     use super::ConnectorSecrets;
     use super::CryptoSecrets;
     use super::SecretsConfig;
     use super::SelfHostConfig;
+    use super::SelfHostConfigBundle;
     use super::SelfHostRuntimePaths;
     use super::ServerLaunchConfig;
     use super::ServerSection;
@@ -669,6 +675,7 @@ mod tests {
     use super::SmtpSecrets;
     use super::bootstrap_self_host_foundation_with_paths;
     use super::load_self_host_config_with_paths;
+    use super::resolve_self_host_launch_config;
     use super::write_self_host_launch_config_for_test;
 
     fn create_test_paths(label: &str) -> (PathBuf, SelfHostRuntimePaths) {
@@ -705,6 +712,11 @@ enrollment_token = "connector"
 "#,
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+    }
+
+    fn shared_self_host_launch_fixture_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../../packages/config/src/fixtures/self-host-launch.json")
     }
 
     #[test]
@@ -1073,6 +1085,55 @@ password = "smtp-pass"
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
     }
 
-    use std::path::PathBuf;
-    use uuid::Uuid;
+    #[test]
+    fn self_host_launch_fixture_matches_rust_emitted_contract() {
+        let fixture_path = shared_self_host_launch_fixture_path();
+        let fixture = fs::read_to_string(&fixture_path)
+            .unwrap_or_else(|error| panic!("expected shared launch fixture to load: {error}"));
+        let fixture_json: serde_json::Value = serde_json::from_str(&fixture)
+            .unwrap_or_else(|error| panic!("expected shared launch fixture to parse: {error}"));
+        let bundle = SelfHostConfigBundle {
+            paths: SelfHostRuntimePaths::for_test(
+                PathBuf::from("/tmp/onequery/config/self-host"),
+                PathBuf::from("/tmp/onequery/data"),
+            ),
+            config: SelfHostConfig {
+                server: ServerSection {
+                    listen_host: "0.0.0.0".to_owned(),
+                    port: 7777,
+                    log_level: "info".to_owned(),
+                    public_origin: None,
+                },
+                smtp: SmtpConfig {
+                    from_email: Some("hello@example.com".to_owned()),
+                    from_name: Some("OneQuery OSS".to_owned()),
+                    host: Some("smtp.example.com".to_owned()),
+                    port: Some(587),
+                    secure: Some(false),
+                    username: Some("smtp-user".to_owned()),
+                },
+            },
+            secrets: SecretsConfig {
+                smtp: SmtpSecrets {
+                    password: Some("smtp-pass".to_owned()),
+                },
+                auth: AuthSecrets {
+                    better_auth_secret: "better".to_owned(),
+                },
+                crypto: CryptoSecrets {
+                    master_encryption_key: "master".to_owned(),
+                },
+                connectors: ConnectorSecrets {
+                    enrollment_token: "connector".to_owned(),
+                },
+            },
+        };
+        let emitted_json = serde_json::to_value(resolve_self_host_launch_config(
+            &bundle,
+            Path::new("/tmp/onequery/runtime/web"),
+        ))
+        .unwrap_or_else(|error| panic!("expected emitted launch contract to serialize: {error}"));
+
+        assert_eq!(emitted_json, fixture_json);
+    }
 }
