@@ -163,15 +163,16 @@ Accept either of these, but choose one explicitly:
 
 ### Checklist
 
-- [ ] Decide whether `packages/config/dist` stays committed or is removed from the repo surface.
-- [ ] If `dist` stays committed, regenerate it from current `src` before doing anything else.
-- [ ] Fix the current broken export/build mismatch:
-  - [ ] `packages/config/dist/server-launch.js` must not be empty
-  - [ ] `packages/config/dist/projections/server-launch.js` must exist if `./projections/server-launch` remains exported
-- [ ] Investigate and fix the current build/output collision around `server-launch.ts` vs `projections/server-launch.ts`.
-- [ ] Add an artifact-integrity test or script that verifies every exported subpath in `packages/config/package.json` resolves to a non-broken target.
-- [ ] Add a freshness gate so `src` and `dist` cannot silently diverge again.
-- [ ] Add a targeted regression test proving `resolveWorkspaceDev()` behaves the same through the supported package surface regardless of resolver condition.
+- [x] Decide whether `packages/config/dist` stays committed or is removed from the repo surface.
+  Chosen: remove `dist` from the workspace package surface and keep it as a generated artifact only.
+- [x] Remove `dist` as a workspace runtime source of truth so default and Bun package resolution both land on `src/*`.
+- [x] Fix the current broken export/build mismatch:
+  - [x] `packages/config` build output now regenerates a non-empty `dist/server-launch.js`.
+  - [x] `packages/config` build output now regenerates `dist/projections/server-launch.js`.
+- [x] Investigate and fix the current build/output collision around `server-launch.ts` vs `projections/server-launch.ts`.
+- [x] Add an artifact-integrity test or script that verifies every exported subpath in `packages/config/package.json` resolves to a non-broken target.
+- [x] Add a freshness gate so `src` and `dist` cannot silently diverge again.
+- [x] Add a targeted regression test proving `resolveWorkspaceDev()` behaves the same through the supported package surface regardless of resolver condition.
 
 ### Recommended implementation notes
 

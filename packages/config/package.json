@@ -8,51 +8,57 @@
     ".": {
       "types": "./src/index.ts",
       "bun": "./src/index.ts",
-      "default": "./dist/index.js"
+      "default": "./src/index.ts"
     },
     "./server-launch": {
       "types": "./src/server-launch.ts",
       "bun": "./src/server-launch.ts",
-      "default": "./dist/server-launch.js"
+      "default": "./src/server-launch.ts"
     },
     "./workspace-dev": {
       "types": "./src/workspace-dev.ts",
       "bun": "./src/workspace-dev.ts",
-      "default": "./dist/workspace-dev.js"
+      "default": "./src/workspace-dev.ts"
     },
     "./workspace-dev-init": {
       "types": "./src/workspace-dev-init.ts",
       "bun": "./src/workspace-dev-init.ts",
-      "default": "./dist/workspace-dev-init.js"
+      "default": "./src/workspace-dev-init.ts"
     },
     "./test-profile": {
       "types": "./src/test-profile.ts",
       "bun": "./src/test-profile.ts",
-      "default": "./dist/test-profile.js"
+      "default": "./src/test-profile.ts"
+    },
+    "./testing": {
+      "types": "./src/testing.ts",
+      "bun": "./src/testing.ts",
+      "default": "./src/testing.ts"
     },
     "./projections/docker": {
       "types": "./src/projections/docker.ts",
       "bun": "./src/projections/docker.ts",
-      "default": "./dist/projections/docker.js"
+      "default": "./src/projections/docker.ts"
     },
     "./projections/drizzle": {
       "types": "./src/projections/drizzle.ts",
       "bun": "./src/projections/drizzle.ts",
-      "default": "./dist/projections/drizzle.js"
+      "default": "./src/projections/drizzle.ts"
     },
     "./projections/server-launch": {
       "types": "./src/projections/server-launch.ts",
       "bun": "./src/projections/server-launch.ts",
-      "default": "./dist/projections/server-launch.js"
+      "default": "./src/projections/server-launch.ts"
     },
     "./projections/vite": {
       "types": "./src/projections/vite.ts",
       "bun": "./src/projections/vite.ts",
-      "default": "./dist/projections/vite.js"
+      "default": "./src/projections/vite.ts"
     }
   },
   "scripts": {
-    "build": "bun build ./src/index.ts ./src/server-launch.ts ./src/workspace-dev.ts ./src/workspace-dev-init.ts ./src/test-profile.ts ./src/projections/vite.ts ./src/projections/drizzle.ts ./src/projections/docker.ts ./src/projections/server-launch.ts --outdir ./dist --target node --format esm --packages external --root ./src --entry-naming '[dir]/[name].js'",
+    "build": "bun run ./scripts/build-dist.mjs",
+    "check:surface": "bun run ./scripts/check-package-surface.mjs",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
