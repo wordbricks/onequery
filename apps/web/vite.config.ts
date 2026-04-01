@@ -8,10 +8,8 @@ import { resolveViteDevServerConfig } from "./src/lib/vite-dev-server-config";
 
 const isE2E = process.env.ONEQUERY_E2E === "1";
 
-export default defineConfig(() => {
-  const { apiProxyTarget, port } = resolveViteDevServerConfig();
-
-  return {
+export default defineConfig(({ command }) => {
+  const config = {
     define: {
       "globalThis.__ONEQUERY_E2E__": JSON.stringify(isE2E),
     },
@@ -34,6 +32,16 @@ export default defineConfig(() => {
     resolve: {
       tsconfigPaths: true,
     },
+  };
+
+  if (command !== "serve") {
+    return config;
+  }
+
+  const { apiProxyTarget, port } = resolveViteDevServerConfig();
+
+  return {
+    ...config,
     server: {
       host: "0.0.0.0",
       // Comment: Keep the browser on the workspace-dev browser origin and proxy only
