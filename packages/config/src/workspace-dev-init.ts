@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-import { resolveWorkspaceDevPaths } from "./workspace-dev";
+import { resolveWorkspaceDevPaths } from "@onequery/config/workspace-dev";
 
 export interface WorkspaceDevSecretsInitResult {
   readonly created: boolean;
