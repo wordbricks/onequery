@@ -1,8 +1,15 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json"
+  "bun": true,
+  "github-actions": true,
+  "oxlint": {
+    "config": [".oxlintrc.jsonc"]
+  },
   "treatConfigHintsAsErrors": true,
+  "ignoreDependencies": ["eslint-plugin-turbo"],
   "ignoreIssues": {
     "apps/web/src/server/auth-rate-limit.ts": ["unlisted"],
+    ".github/workflows/cli-release.yml": ["binaries"],
     "packages/cli-server/generated/**/*.ts": ["exports", "types"]
   },
   "ignoreBinaries": ["just"],
@@ -20,7 +27,11 @@
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"]
     },
     "apps/cli": {
-      "entry": ["bin/*.js", "scripts/stage-npm-packages.js"],
+      "entry": [
+        "bin/*.js",
+        "scripts/build-server-executable.js",
+        "scripts/stage-npm-packages.js"
+      ],
       "project": ["bin/*.js", "scripts/*.js", "src/**/*.ts"]
     },
     "apps/web": {
