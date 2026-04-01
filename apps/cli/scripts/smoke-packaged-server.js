@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { spawn, spawnSync } from "node:child_process";
-import { access, cp, mkdtemp, mkdir, rm } from "node:fs/promises";
+import { access, cp, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -111,6 +111,7 @@ export async function smokePackagedServer({
   const workspace = await mkdtemp(
     path.join(tmpdir(), "onequery-packaged-server-smoke-")
   );
+  const onequeryHome = path.join(workspace, "onequery-home");
   const rootExtractDir = path.join(workspace, "root");
   const platformExtractDir = path.join(workspace, "platform");
   const runtimeRoot = path.join(rootExtractDir, "package");
@@ -157,23 +158,17 @@ export async function smokePackagedServer({
     });
     await access(packagedServerExecutable);
 
-    const dataDir = path.join(workspace, "data");
-    const configDir = path.join(workspace, "config");
-    await Promise.all([
-      mkdir(dataDir, { recursive: true }),
-      mkdir(configDir, { recursive: true }),
-    ]);
-
     const publicOrigin = `http://127.0.0.1:${resolvedPort}`;
+    await writeSelfHostFixture({
+      onequeryHome,
+      port: resolvedPort,
+      publicOrigin,
+    });
     const env = {
       ...process.env,
-      BETTER_AUTH_SECRET: "test-better-auth-secret",
-      HOST: "127.0.0.1",
-      MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-      ONEQUERY_PUBLIC_ORIGIN: publicOrigin,
-      ONEQUERY_SELF_HOST_CONFIG_DIR: configDir,
-      ONEQUERY_SELF_HOST_DATA_DIR: dataDir,
-      PORT: String(resolvedPort),
+      // Comment: packaged smoke should override only the CLI home root; the
+      // launcher owns packaged runtime env like ONEQUERY_NPM_ROOT.
+      ONEQUERY_HOME: onequeryHome,
     };
     delete env.ONEQUERY_NPM_ROOT;
     delete env.ONEQUERY_PGLITE_ASSET_DIR;
@@ -221,6 +216,40 @@ export async function smokePackagedServer({
   } finally {
     await rm(workspace, { force: true, recursive: true });
   }
+}
+
+async function writeSelfHostFixture({ onequeryHome, port, publicOrigin }) {
+  const selfHostConfigDir = path.join(onequeryHome, "config", "self-host");
+  await mkdir(selfHostConfigDir, { recursive: true });
+
+  await Promise.all([
+    writeFile(
+      path.join(selfHostConfigDir, "config.toml"),
+      [
+        "[server]",
+        'listen_host = "127.0.0.1"',
+        `port = ${port}`,
+        `public_origin = "${publicOrigin}"`,
+        "",
+      ].join("\n"),
+      "utf8"
+    ),
+    writeFile(
+      path.join(selfHostConfigDir, "secrets.toml"),
+      [
+        "[auth]",
+        'better_auth_secret = "test-better-auth-secret"',
+        "",
+        "[crypto]",
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+        "",
+      ].join("\n"),
+      "utf8"
+    ),
+  ]);
 }
 
 async function waitForHealthyResponse({

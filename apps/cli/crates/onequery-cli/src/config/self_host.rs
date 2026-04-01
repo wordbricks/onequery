@@ -717,6 +717,8 @@ enrollment_token = "connector"
     }
 
     fn shared_self_host_launch_fixture_path() -> PathBuf {
+        // Comment: TS owns the canonical launch-contract schema and fixture;
+        // Rust keeps a local struct plus parity coverage against that artifact.
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../../packages/config/fixtures/self-host-launch.json")
     }

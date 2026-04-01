@@ -215,12 +215,12 @@ Make the smoke test configure the packaged runtime **the same way real runtime s
 
 ### Checklist
 
-- [ ] confirm the supported current override surface for packaged CLI/runtime startup
-- [ ] stop setting env vars that are no longer read by the current implementation
-- [ ] use one supported root override only (likely `ONEQUERY_HOME`, or platform/XDG overrides if preferred)
-- [ ] materialize actual self-host config/secrets files where the runtime expects them
-- [ ] keep only packaging/runtime env vars that the launcher actually reads (`ONEQUERY_NPM_ROOT`, `ONEQUERY_RUNTIME_ROOT`, `ONEQUERY_PGLITE_ASSET_DIR`, etc.)
-- [ ] add one assertion or comment explaining why each remaining env var is necessary
+- [x] confirm the supported current override surface for packaged CLI/runtime startup
+- [x] stop setting env vars that are no longer read by the current implementation
+- [x] use one supported root override only (likely `ONEQUERY_HOME`, or platform/XDG overrides if preferred)
+- [x] materialize actual self-host config/secrets files where the runtime expects them
+- [x] keep only packaging/runtime env vars that the launcher actually reads (`ONEQUERY_NPM_ROOT`, `ONEQUERY_RUNTIME_ROOT`, `ONEQUERY_PGLITE_ASSET_DIR`, etc.)
+- [x] add one assertion or comment explaining why each remaining env var is necessary
 
 ### Recommendation
 
@@ -236,6 +236,9 @@ That means:
 
 - every env var in the smoke script has an actual reader in the current runtime path
 - the smoke test no longer depends on historical config knobs that are not part of the current design
+
+Status:
+- [x] Complete. The packaged smoke harness now writes real `self-host` config/secrets files under `ONEQUERY_HOME` and leaves packaged runtime env ownership to the launcher.
 
 ---
 
@@ -260,9 +263,9 @@ Treat this as **optional** unless you specifically want the highest possible bar
 
 #### Option A — accept current TS-owner + Rust-parity model
 
-- [ ] document clearly that TS schema is the canonical launch-contract owner
-- [ ] keep the Rust parity test mandatory
-- [ ] stop treating this as an open design question
+- [x] document clearly that TS schema is the canonical launch-contract owner
+- [x] keep the Rust parity test mandatory
+- [x] stop treating this as an open design question
 
 #### Option B — move to one neutral contract artifact
 
@@ -278,6 +281,9 @@ The current fixture + parity approach is already strong enough for most teams.
 ### Done when
 
 - the repo has one explicit final answer to “what owns the launch contract?”
+
+Status:
+- [x] Complete. The repo now explicitly treats `packages/config/src/server-launch.ts` as the canonical launch-contract owner, with Rust maintaining parity against the shared fixture.
 
 ---
 
