@@ -7,17 +7,18 @@
   },
   "treatConfigHintsAsErrors": true,
   "ignoreDependencies": ["eslint-plugin-turbo"],
+  // `apps/cli/package.json` intentionally shells out to the system `just` binary.
+  // The full Knip run reports it as unlisted without this ignore.
+  "ignoreBinaries": ["just"],
   "ignoreIssues": {
     "apps/web/src/server/auth-rate-limit.ts": ["unlisted"],
     ".github/workflows/cli-release.yml": ["binaries"],
     "packages/cli-server/generated/**/*.ts": ["exports", "types"],
   },
-  "ignoreBinaries": ["just"],
   "workspaces": {
     ".": {
       "entry": [
         "turbo.json",
-        "scripts/run-local-env-command.ts",
         "scripts/upload-image.ts",
         "scripts/oxlint/plugin.mjs",
       ],
@@ -32,12 +33,11 @@
         "scripts/build-server-executable.js",
         "scripts/stage-npm-packages.js",
       ],
-      "project": ["bin/*.js", "scripts/*.js", "src/**/*.ts"],
+      "project": ["bin/*.js", "scripts/*.js"],
     },
     "apps/web": {
       "project": [
         "src/**/*.{ts,tsx}",
-        "scripts/*.ts",
         "!src/**/*.test.{ts,tsx}",
         "!src/vite-env.d.ts",
       ],
