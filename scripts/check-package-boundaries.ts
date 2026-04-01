@@ -60,10 +60,7 @@ function getPackageOwner(filePath: string): PackageOwner | null {
   const relativePath = normalizePath(relative(repoRootDir, filePath));
   const segments = relativePath.split("/");
 
-  if (
-    segments.length < 2 ||
-    !packageRootDirs.includes(segments[0] ?? "")
-  ) {
+  if (segments.length < 2 || !packageRootDirs.includes(segments[0] ?? "")) {
     return null;
   }
 
