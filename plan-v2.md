@@ -360,16 +360,16 @@ The key rule is:
 
 ### Checklist
 
-- [ ] Choose the canonical owner for the launch contract definition.
-- [ ] Move Bun validation to consume that owner directly.
-- [ ] Remove duplicate launch-shape declarations that no longer need to exist.
+- [x] Choose the canonical owner for the launch contract definition.
+- [x] Move Bun validation to consume that owner directly.
+- [x] Remove duplicate launch-shape declarations that no longer need to exist.
 - [ ] Add round-trip tests proving the Rust-emitted launch JSON validates against the canonical contract.
-- [ ] Add fixture tests for malformed launch files:
-  - [ ] unknown key
-  - [ ] missing required key
-  - [ ] invalid discriminated union member
-  - [ ] wrong scalar type
-- [ ] Keep launch config validation only at startup/load boundaries, not during request handling.
+- [x] Add fixture tests for malformed launch files:
+  - [x] unknown key
+  - [x] missing required key
+  - [x] invalid discriminated union member
+  - [x] wrong scalar type
+- [x] Keep launch config validation only at startup/load boundaries, not during request handling.
 
 ### Important note
 

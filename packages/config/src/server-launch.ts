@@ -1,64 +1,132 @@
-export type ServerLaunchMode = "workspace-dev" | "self-host";
+import { z } from "zod";
 
-export interface ServerLaunchListenConfig {
-  readonly host: string;
-  readonly port: number;
-}
+const nonEmptyStringSchema = z.string().trim().min(1);
+const optionalStringSchema = nonEmptyStringSchema.optional();
+const portSchema = z.number().int().min(1).max(65535);
+const originSchema = z.string().trim().url();
 
-export type ServerLaunchStorageConfig =
-  | {
-      readonly kind: "postgres";
-      readonly url: string;
+export const serverLaunchRuntimePathsSchema = z
+  .object({
+    backupsDir: nonEmptyStringSchema,
+    dataDir: nonEmptyStringSchema,
+    lockPath: nonEmptyStringSchema,
+    logsDir: nonEmptyStringSchema,
+    pidPath: nonEmptyStringSchema,
+    runDir: nonEmptyStringSchema,
+  })
+  .strict();
+
+export const serverLaunchStorageSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("postgres"),
+      url: nonEmptyStringSchema,
+    })
+    .strict(),
+  z
+    .object({
+      dir: nonEmptyStringSchema,
+      kind: z.literal("pglite"),
+    })
+    .strict(),
+]);
+
+export const serverLaunchSmtpSchema = z
+  .object({
+    fromEmail: nonEmptyStringSchema,
+    fromName: optionalStringSchema,
+    host: nonEmptyStringSchema,
+    password: optionalStringSchema,
+    port: portSchema,
+    secure: z.boolean().optional(),
+    username: optionalStringSchema,
+  })
+  .strict();
+
+export const serverLaunchConfigSchema = z
+  .object({
+    assets: z
+      .object({
+        distDir: nonEmptyStringSchema,
+      })
+      .strict(),
+    auth: z
+      .object({
+        secret: nonEmptyStringSchema,
+      })
+      .strict(),
+    connectors: z
+      .object({
+        enrollmentToken: nonEmptyStringSchema,
+      })
+      .strict(),
+    crypto: z
+      .object({
+        masterEncryptionKey: nonEmptyStringSchema,
+      })
+      .strict(),
+    listen: z
+      .object({
+        host: nonEmptyStringSchema,
+        port: portSchema,
+      })
+      .strict(),
+    mode: z.enum(["workspace-dev", "self-host"]),
+    publicOrigin: originSchema,
+    rateLimit: z
+      .object({
+        enabled: z.boolean(),
+        storage: z.enum(["memory", "persistent"]),
+      })
+      .strict(),
+    runtimePaths: serverLaunchRuntimePathsSchema.optional(),
+    smtp: serverLaunchSmtpSchema.optional(),
+    storage: serverLaunchStorageSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.rateLimit.storage === "persistent" && !value.runtimePaths) {
+      context.addIssue({
+        code: "custom",
+        message: "Persistent rate limiting requires runtimePaths.",
+        path: ["runtimePaths"],
+      });
     }
-  | {
-      readonly dir: string;
-      readonly kind: "pglite";
-    };
 
-export interface ServerLaunchRateLimitConfig {
-  readonly enabled: boolean;
-  readonly storage: "memory" | "persistent";
+    if (value.mode === "self-host" && !value.runtimePaths) {
+      context.addIssue({
+        code: "custom",
+        message: "Self-host launch config requires runtimePaths.",
+        path: ["runtimePaths"],
+      });
+    }
+  });
+
+export type ServerLaunchConfig = z.infer<typeof serverLaunchConfigSchema>;
+export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
+
+function buildServerLaunchConfigError(source: string, error: z.ZodError): Error {
+  const issues = error.issues.map((issue) => {
+    const path =
+      issue.path.length === 0
+        ? "(root)"
+        : issue.path.map((entry) => String(entry)).join(".");
+    return `- ${path}: ${issue.message}`;
+  });
+
+  return new Error(
+    [`Invalid launch config from ${source}.`, ...issues].join("\n")
+  );
 }
 
-export interface ServerLaunchSmtpConfig {
-  readonly fromEmail: string;
-  readonly fromName?: string;
-  readonly host: string;
-  readonly password?: string;
-  readonly port: number;
-  readonly secure?: boolean;
-  readonly username?: string;
-}
+export function validateServerLaunchConfig(
+  value: unknown,
+  source: string
+): ServerLaunchConfig {
+  const parsed = serverLaunchConfigSchema.safeParse(value);
+  if (!parsed.success) {
+    throw buildServerLaunchConfigError(source, parsed.error);
+  }
 
-export interface ServerLaunchAssetsConfig {
-  readonly distDir: string;
-}
-
-export interface ServerLaunchRuntimePaths {
-  readonly backupsDir: string;
-  readonly dataDir: string;
-  readonly lockPath: string;
-  readonly logsDir: string;
-  readonly pidPath: string;
-  readonly runDir: string;
-}
-
-export interface ServerLaunchConfig {
-  readonly assets: ServerLaunchAssetsConfig;
-  readonly auth: {
-    readonly secret: string;
-  };
-  readonly connectors: {
-    readonly enrollmentToken: string;
-  };
-  readonly crypto: {
-    readonly masterEncryptionKey: string;
-  };
-  readonly listen: ServerLaunchListenConfig;
-  readonly mode: ServerLaunchMode;
-  readonly publicOrigin: string;
-  readonly rateLimit: ServerLaunchRateLimitConfig;
-  readonly runtimePaths?: ServerLaunchRuntimePaths;
-  readonly smtp?: ServerLaunchSmtpConfig;
-  readonly storage: ServerLaunchStorageConfig;
+  return parsed.data;
 }
