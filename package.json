@@ -62,7 +62,7 @@
     "db:push": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit push",
     "db:seed:dev": "bun run scripts/run-local-env-command.ts --cwd packages/db -- bun src/scripts/seed-dev.ts",
     "db:studio": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit studio",
-    "db:reset": "bun run scripts/run-local-env-command.ts -- docker compose down -v && bun run dev:setup",
+    "db:reset": "bun run scripts/run-local-env-command.ts -- docker compose down -v && bun run dev:setup && bun run db:migrate && bun run db:seed:dev",
     "clean": "find . -type d \\( -name 'node_modules' -o -name 'dist' -o -name 'dist-worker' -o -name '.turbo' -o -name 'coverage' -o -name '.cache' \\) -prune -exec rm -rf {} + 2>/dev/null; rm -rf .turbo bun.lock",
     "bump": "ncu -u",
     "knip": "knip"

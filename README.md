@@ -94,7 +94,7 @@ bundled self-host runtime.
 bun run db:migrate      # Run pending migrations
 bun run db:seed:dev     # Seed development data
 bun run db:studio       # Open Drizzle Studio
-bun run db:reset        # Wipe and restart Docker volumes
+bun run db:reset        # Wipe volumes, re-bootstrap, migrate, and seed dev DB
 ```
 
 **Validation:**
