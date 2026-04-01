@@ -133,6 +133,7 @@ impl ConfigStore {
         )
     }
 
+    #[cfg(test)]
     fn load_from_path_with_overrides(
         path: PathBuf,
         typed_overrides: TypedConfigOverrides,
