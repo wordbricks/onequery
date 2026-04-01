@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@hono/zod-validator": "catalog:",
-    "@onequery/base": "workspace:*",
     "@onequery/cli-server": "workspace:*",
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",

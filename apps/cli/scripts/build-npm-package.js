@@ -342,7 +342,7 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-export function parseNpmPackTarballName(stdout, stagingDir) {
+function parseNpmPackTarballName(stdout, stagingDir) {
   let parsedOutput;
   try {
     parsedOutput = JSON.parse(stdout);
@@ -386,7 +386,7 @@ function readOptionValue(argv, index, optionName) {
   return value;
 }
 
-export function parseArgs(argv) {
+function parseArgs(argv) {
   const args = {
     packOutput: null,
     packageName: null,

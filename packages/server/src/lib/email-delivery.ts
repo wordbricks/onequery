@@ -15,20 +15,6 @@ export type AuthEmailDeliveryConfig = {
   smtp?: SmtpConfig;
 };
 
-export type InvitationDeliveryInput = {
-  email: string;
-  id: string;
-  inviter: {
-    email: string;
-    name: string;
-  };
-  organization: {
-    id: string;
-    name: string;
-  };
-  role: string;
-};
-
 export type PasswordResetDeliveryInput = {
   token: string;
   url: string;
@@ -47,65 +33,6 @@ export function getEmailDeliveryMode(
   config: AuthEmailDeliveryConfig | undefined
 ): EmailDeliveryMode {
   return config?.smtp ? "smtp" : "manual-link";
-}
-
-export function buildInvitationUrl(
-  baseURL: string,
-  invitationId: string
-): string {
-  return new URL(`/invite/${invitationId}`, baseURL).toString();
-}
-
-export async function deliverInvitationEmail(
-  config: AuthEmailDeliveryConfig | undefined,
-  input: InvitationDeliveryInput,
-  request?: Request
-): Promise<DeliveryResult> {
-  const baseURL = resolveBaseURL(config, request);
-  const inviteUrl = buildInvitationUrl(baseURL, input.id);
-  const mode = getEmailDeliveryMode(config);
-
-  if (!config?.smtp) {
-    console.info("[auth] invitation manual link", {
-      email: input.email,
-      invitationId: input.id,
-      inviteUrl,
-      organizationId: input.organization.id,
-      organizationName: input.organization.name,
-      role: input.role,
-    });
-
-    return {
-      mode,
-      url: inviteUrl,
-    };
-  }
-
-  const inviterName =
-    input.inviter.name.trim().length > 0
-      ? input.inviter.name
-      : input.inviter.email;
-  await sendSmtpMessage(config.smtp, {
-    html: [
-      `<p>${escapeHtml(inviterName)} invited you to join ${escapeHtml(
-        input.organization.name
-      )} in OneQuery.</p>`,
-      `<p>Role: ${escapeHtml(input.role)}</p>`,
-      `<p><a href="${escapeHtml(inviteUrl)}">Accept invitation</a></p>`,
-    ].join(""),
-    subject: `Join ${input.organization.name} on OneQuery`,
-    text: [
-      `${inviterName} invited you to join ${input.organization.name} in OneQuery.`,
-      `Role: ${input.role}`,
-      `Accept invitation: ${inviteUrl}`,
-    ].join("\n"),
-    to: input.email,
-  });
-
-  return {
-    mode,
-    url: inviteUrl,
-  };
 }
 
 export async function deliverPasswordResetEmail(

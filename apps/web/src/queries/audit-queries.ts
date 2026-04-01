@@ -1,5 +1,4 @@
 import {
-  DEFAULT_AUDIT_LIMIT,
   auditListResponseSchema,
   auditSearchSchema,
 } from "@onequery/contracts/audit";
@@ -15,7 +14,7 @@ import { getApiErrorMessage } from "@/queries/api-error";
 import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
 
-export { DEFAULT_AUDIT_LIMIT, auditSearchSchema };
+export { auditSearchSchema };
 export type { AuditListItem, AuditListResponse, AuditSearch };
 
 const client = createApiClient();

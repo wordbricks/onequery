@@ -2,8 +2,6 @@ export {
   hasOrganizationAdminAccess,
   hasOrganizationPermission,
   hasOrganizationRole,
-  isOrganizationRoleName,
-  organizationRoleNames,
   resolveOrganizationRoleNames,
   serializeOrganizationRoleNames,
 } from "@onequery/base/organization-permissions";

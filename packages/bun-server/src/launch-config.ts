@@ -4,13 +4,6 @@ import { resolve } from "node:path";
 import { validateServerLaunchConfig } from "@onequery/config/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
-export function validateLaunchConfig(
-  value: unknown,
-  source: string
-): ServerLaunchConfig {
-  return validateServerLaunchConfig(value, source);
-}
-
 export function loadLaunchConfigFile(path: string): ServerLaunchConfig {
   const resolvedPath = resolve(path);
   let contents: string;

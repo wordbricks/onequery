@@ -42,7 +42,7 @@ function getRoleLabel(role: MemberRole): string {
   }
 }
 
-export function RoleBadge({ role }: RoleBadgeProps) {
+function RoleBadge({ role }: RoleBadgeProps) {
   return <Badge variant={getRoleVariant(role)}>{getRoleLabel(role)}</Badge>;
 }
 

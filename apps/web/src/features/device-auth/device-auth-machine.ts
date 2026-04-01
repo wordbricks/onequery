@@ -586,7 +586,7 @@ export function readSessionEmail(snapshot: DeviceAuthSnapshot) {
     : null;
 }
 
-export function normalizeUserCode(value: string | null) {
+function normalizeUserCode(value: string | null) {
   return normalizeDeviceUserCode(value) ?? null;
 }
 
