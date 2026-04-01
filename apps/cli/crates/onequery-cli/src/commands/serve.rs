@@ -1386,14 +1386,14 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
 
         let state = resolve_runtime_state_with_paths_for_test(
-            paths.clone(),
+            paths,
             ServeStateAccessMode::BootstrapIfMissing,
             "onequery serve",
         )
         .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
 
         let launch_config_path = write_self_host_launch_config_for_test(
-            state.paths.clone(),
+            state.paths,
             &asset_dir,
             "onequery serve",
         )
