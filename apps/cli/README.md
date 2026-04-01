@@ -27,12 +27,12 @@ Credential storage:
 
 Version cache:
 
-- Release builds refresh `${XDG_CONFIG_HOME:-~/.config}/onequery/version.json` on Unix-like systems and `%APPDATA%\\onequery\\version.json` on Windows as a cached latest-version record sourced from the npm dist-tags for `@onequery/cli`.
+- Release builds refresh `${XDG_CONFIG_HOME:-~/.config}/onequery/version.json` on Unix-like systems and `%APPDATA%\\onequery\\version.json` on Windows as a cached latest-version record sourced from the latest GitHub release tag for `wordbricks/onequery`.
 - The cache format mirrors Codex: `latest_version`, `last_checked_at`, and `dismissed_version`.
 
 Install:
 
-- `curl -fsSL https://onequery.wordbricks.ai/ | sh`
+- `npm install -g @onequery/cli`
 - `bun install -g @onequery/cli`
 - `bunx @onequery/cli --help`
 - `npx @onequery/cli --help`

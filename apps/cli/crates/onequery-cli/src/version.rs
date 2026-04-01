@@ -1,20 +1,22 @@
 #[cfg(not(debug_assertions))]
 use std::path::Path;
-#[cfg(not(debug_assertions))]
+#[cfg(any(test, not(debug_assertions)))]
 use std::path::PathBuf;
 
+#[cfg(any(test, not(debug_assertions)))]
+use chrono::DateTime;
+#[cfg(not(debug_assertions))]
+use chrono::Duration;
+#[cfg(any(test, not(debug_assertions)))]
+use chrono::Utc;
 #[cfg(not(debug_assertions))]
 use reqwest::header::USER_AGENT;
 #[cfg(any(test, not(debug_assertions)))]
 use serde::Deserialize;
 #[cfg(any(test, not(debug_assertions)))]
 use serde::Serialize;
-#[cfg(not(debug_assertions))]
+#[cfg(any(test, not(debug_assertions)))]
 use thiserror::Error;
-#[cfg(any(test, not(debug_assertions)))]
-use time::OffsetDateTime;
-#[cfg(any(test, not(debug_assertions)))]
-use time::format_description::well_known::Rfc3339;
 
 #[cfg(not(debug_assertions))]
 use crate::config::config_dir;
@@ -22,15 +24,16 @@ use crate::config::config_dir;
 #[cfg(not(debug_assertions))]
 const CLI_VERSION_CACHE_FILENAME: &str = "version.json";
 #[cfg(not(debug_assertions))]
-const CLI_NPM_DIST_TAGS_URL: &str =
-    "https://registry.npmjs.org/-/package/@wordbricks%2fonequery/dist-tags";
+const CLI_LATEST_RELEASE_URL: &str =
+    "https://api.github.com/repos/wordbricks/onequery/releases/latest";
 #[cfg(not(debug_assertions))]
 const CLI_VERSION_REFRESH_INTERVAL_HOURS: i64 = 20;
 
-#[cfg(not(debug_assertions))]
+#[cfg(any(test, not(debug_assertions)))]
 type VersionResult<T> = Result<T, VersionError>;
 
-#[cfg(not(debug_assertions))]
+#[cfg(any(test, not(debug_assertions)))]
+#[cfg_attr(test, allow(dead_code))]
 #[derive(Debug, Error)]
 enum VersionError {
     #[error("failed to read version cache at {path}: {source}")]
@@ -45,16 +48,13 @@ enum VersionError {
         #[source]
         source: serde_json::Error,
     },
-    #[error("failed to fetch latest CLI version from npm: {source}")]
+    #[error("failed to fetch latest CLI version from GitHub releases: {source}")]
     FetchLatest {
         #[source]
         source: reqwest::Error,
     },
-    #[error("failed to format version cache timestamp: {source}")]
-    FormatTimestamp {
-        #[source]
-        source: time::error::Format,
-    },
+    #[error("failed to parse latest CLI release tag '{tag_name}'")]
+    ParseLatestTag { tag_name: String },
     #[error("failed to serialize version cache: {source}")]
     SerializeCache {
         #[source]
@@ -78,15 +78,15 @@ enum VersionError {
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 struct VersionInfo {
     latest_version: String,
-    last_checked_at: String,
+    last_checked_at: DateTime<Utc>,
     #[serde(default)]
     dismissed_version: Option<String>,
 }
 
 #[cfg(any(test, not(debug_assertions)))]
 #[derive(Deserialize, Debug, Clone)]
-struct DistTagsInfo {
-    latest: String,
+struct ReleaseInfo {
+    tag_name: String,
 }
 
 pub(crate) fn refresh_cache_on_startup(command_line: &str) {
@@ -108,14 +108,10 @@ pub(crate) fn refresh_cache_on_startup(command_line: &str) {
         let info = read_version_info_if_present(&version_file);
         let should_refresh = match &info {
             None => true,
-            Some(info) => info
-                .parsed_last_checked_at()
-                .map(|timestamp| {
-                    timestamp
-                        < OffsetDateTime::now_utc()
-                            - time::Duration::hours(CLI_VERSION_REFRESH_INTERVAL_HOURS)
-                })
-                .unwrap_or(true),
+            Some(info) => {
+                info.last_checked_at
+                    < Utc::now() - Duration::hours(CLI_VERSION_REFRESH_INTERVAL_HOURS)
+            }
         };
 
         if !should_refresh {
@@ -177,8 +173,8 @@ fn read_version_info_if_present(version_file: &Path) -> Option<VersionInfo> {
 #[cfg(not(debug_assertions))]
 async fn check_for_update(version_file: &Path) -> VersionResult<()> {
     let client = reqwest::Client::new();
-    let latest_version = client
-        .get(CLI_NPM_DIST_TAGS_URL)
+    let latest_tag_name = client
+        .get(CLI_LATEST_RELEASE_URL)
         .header(
             USER_AGENT,
             format!("onequery/{}", env!("CARGO_PKG_VERSION")),
@@ -188,16 +184,16 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
         .map_err(|source| VersionError::FetchLatest { source })?
         .error_for_status()
         .map_err(|source| VersionError::FetchLatest { source })?
-        .json::<DistTagsInfo>()
+        .json::<ReleaseInfo>()
         .await
         .map_err(|source| VersionError::FetchLatest { source })?
-        .latest;
+        .tag_name;
+
+    let latest_version = extract_version_from_latest_tag(&latest_tag_name)?;
 
     let info = VersionInfo {
         latest_version,
-        last_checked_at: OffsetDateTime::now_utc()
-            .format(&Rfc3339)
-            .map_err(|source| VersionError::FormatTimestamp { source })?,
+        last_checked_at: Utc::now(),
         dismissed_version: read_version_info_if_present(version_file)
             .and_then(|info| info.dismissed_version),
     };
@@ -224,42 +220,66 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
 }
 
 #[cfg(any(test, not(debug_assertions)))]
-impl VersionInfo {
-    fn parsed_last_checked_at(&self) -> Option<OffsetDateTime> {
-        OffsetDateTime::parse(&self.last_checked_at, &Rfc3339).ok()
-    }
+fn extract_version_from_latest_tag(latest_tag_name: &str) -> VersionResult<String> {
+    latest_tag_name
+        .strip_prefix("cli-v")
+        .map(str::to_owned)
+        .ok_or_else(|| VersionError::ParseLatestTag {
+            tag_name: latest_tag_name.to_owned(),
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use super::DistTagsInfo;
+    use super::ReleaseInfo;
     use super::VersionInfo;
+    use chrono::DateTime;
+    use chrono::Utc;
 
     #[test]
-    fn parses_latest_version_from_npm_dist_tags_payload() {
+    fn parses_latest_version_from_latest_release_payload() {
         assert_eq!(
-            serde_json::from_str::<DistTagsInfo>(r#"{"latest":"1.5.0","next":"1.6.0-beta.1"}"#,)
-                .expect("failed to parse dist-tags payload")
-                .latest,
+            serde_json::from_str::<ReleaseInfo>(
+                r#"{"tag_name":"cli-v1.5.0","name":"onequery v1.5.0"}"#,
+            )
+            .expect("failed to parse latest release payload")
+            .tag_name,
+            "cli-v1.5.0"
+        );
+    }
+
+    #[test]
+    fn extracts_version_from_latest_release_tag() {
+        assert_eq!(
+            super::extract_version_from_latest_tag("cli-v1.5.0")
+                .expect("failed to parse release tag"),
             "1.5.0"
         );
     }
 
     #[test]
-    fn dist_tags_payload_without_latest_is_invalid() {
-        assert!(serde_json::from_str::<DistTagsInfo>(r#"{"next":"1.6.0-beta.1"}"#).is_err());
+    fn release_tag_without_cli_prefix_is_invalid() {
+        assert!(super::extract_version_from_latest_tag("v1.5.0").is_err());
     }
 
     #[test]
-    fn version_info_parses_rfc3339_timestamps() {
-        let info = VersionInfo {
-            latest_version: "0.1.2".to_owned(),
-            last_checked_at: "2026-03-10T00:00:00Z".to_owned(),
-            dismissed_version: None,
-        };
+    fn version_info_deserializes_rfc3339_timestamps() {
+        let info = serde_json::from_str::<VersionInfo>(
+            r#"{
+                "latest_version":"0.1.2",
+                "last_checked_at":"2026-03-10T00:00:00Z",
+                "dismissed_version":null
+            }"#,
+        )
+        .expect("failed to parse version info");
 
-        assert!(info.parsed_last_checked_at().is_some());
+        assert_eq!(
+            info.last_checked_at,
+            DateTime::parse_from_rfc3339("2026-03-10T00:00:00Z")
+                .expect("failed to parse expected timestamp")
+                .with_timezone(&Utc)
+        );
     }
 }
