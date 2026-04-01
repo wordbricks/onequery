@@ -26,7 +26,7 @@ import {
 import type { BunServerStartupInput } from "./startup";
 
 type AppFetchHandler = {
-  fetch(request: Request): Promise<Response>;
+  fetch(request: Request): Response | Promise<Response>;
 };
 
 type StartBunServerHandle = {
@@ -57,7 +57,7 @@ export interface StartBunServerDependencies {
   loadStartupLaunchConfig: typeof loadStartupLaunchConfig;
   prepareRuntimeDatabase: typeof prepareRuntimeDatabase;
   serve(options: {
-    fetch(request: Request): Promise<Response>;
+    fetch(request: Request): Response | Promise<Response>;
     hostname: string;
     idleTimeout: number;
     port: number;
@@ -76,7 +76,15 @@ const defaultStartBunServerDependencies: StartBunServerDependencies = {
   loadStartupLaunchConfig,
   prepareRuntimeDatabase,
   serve(options) {
-    return Bun.serve(options);
+    const server = Bun.serve(options);
+
+    return {
+      hostname: server.hostname ?? options.hostname,
+      port: server.port ?? options.port,
+      stop(closeActiveConnections) {
+        server.stop(closeActiveConnections);
+      },
+    };
   },
   toLifecyclePaths,
 };
@@ -164,7 +172,7 @@ export function createStartBunServer(
         port: launchConfig.listen.port,
       });
 
-      const listenAddress = `http://${server.hostname}:${server.port}`;
+      const listenAddress = `http://${launchConfig.listen.host}:${server.port}`;
 
       if (lifecycleLease) {
         dependencies.attachGracefulShutdownHandlers({

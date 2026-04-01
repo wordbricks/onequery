@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+import type { DatabasePreparationResult } from "@onequery/db/server";
+import type { RuntimeRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
+import type { ServerRuntimeConfig } from "@onequery/server/runtime";
+import { createStorage } from "unstorage";
+import memoryDriver from "unstorage/drivers/memory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
@@ -28,7 +33,7 @@ function createMocks() {
       fetch: vi.fn(async () => new Response("ok")),
     }));
   const createServerRuntimeConfig: StartBunServerDependencies["createServerRuntimeConfig"] =
-    vi.fn((launchConfig, services) => ({
+    vi.fn((launchConfig, services): ServerRuntimeConfig => ({
       auth: {
         baseURL: launchConfig.publicOrigin,
         emailDelivery: {
@@ -65,16 +70,32 @@ function createMocks() {
             },
     }));
   const prepareRuntimeDatabase: StartBunServerDependencies["prepareRuntimeDatabase"] =
-    vi.fn(async () => undefined);
+    vi.fn(
+      async (): Promise<DatabasePreparationResult> => ({
+        engine: "postgres",
+        mode: "migrate",
+      })
+    );
   const createPersistentRuntimeRateLimitStorage: StartBunServerDependencies["createPersistentRuntimeRateLimitStorage"] =
-    vi.fn((dir: string) => ({
-      api: {
-        dir,
-      },
-      auth: {
-        dir,
-      },
-    }));
+    vi.fn(
+      (dir: string): RuntimeRateLimitStorage => ({
+        api: createStorage({
+          driver: memoryDriver(),
+        }),
+        auth: {
+          async get(key) {
+            return key === dir
+              ? {
+                  count: 1,
+                  key,
+                  lastRequest: 0,
+                }
+              : undefined;
+          },
+          async set() {},
+        },
+      })
+    );
   const releaseLifecycleLease = vi.fn(async () => undefined);
   const acquireRuntimeLifecycleLease: StartBunServerDependencies["acquireRuntimeLifecycleLease"] =
     vi.fn(async () => ({
