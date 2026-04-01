@@ -1,8 +1,8 @@
 import type { ProviderType } from "@onequery/db/server";
+import { CreateDataSourceSchema } from "@onequery/server/routes/data-sources/schemas";
+import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
 import { createFactory } from "hono/factory";
 
-import { CreateDataSourceSchema } from "../../../../server/src/routes/data-sources/schemas";
-import { ensureConnectorOrganization } from "../../../../server/src/services/connectors/broker";
 import type { CliSourceConnectContext } from "../../../generated/cli.context";
 import { zValidator } from "../../../generated/cli.validator";
 import {
@@ -173,7 +173,7 @@ export const cliSourceConnectHandlers = factory.createHandlers(
         organizationId: c.var.authorizedOrg.org.id,
         provider: query.source as ProviderType,
       },
-      masterEncryptionKey: c.env.MASTER_ENCRYPTION_KEY,
+      masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
     });
 
     if (result.kind === "name_conflict") {

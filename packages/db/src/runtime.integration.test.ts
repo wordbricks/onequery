@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LOCAL_TEST_DATABASE_URL } from "@onequery/dev-config/topology";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -16,10 +15,12 @@ import {
 
 type ClosableDatabase = {
   $client?: {
-    close?: () => void;
+    close?: () => Promise<unknown>;
     end?: (options?: Record<string, unknown>) => Promise<unknown>;
   };
 };
+
+const DEFAULT_TEST_DATABASE_URL = "postgres://test:test@localhost:5454/test";
 
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
@@ -116,7 +117,7 @@ describe("database runtime", () => {
   liveDatabaseTest(
     "boots the Postgres runtime against the live docker database",
     async () => {
-      const runtime = createDatabaseRuntime(LOCAL_TEST_DATABASE_URL);
+      const runtime = createDatabaseRuntime(DEFAULT_TEST_DATABASE_URL);
       openedDatabases.push(runtime.db as ClosableDatabase);
 
       expect(runtime.engine).toBe("postgres");

@@ -383,7 +383,7 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
 
     #[derive(Debug)]
     struct NoopBrowser;
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn reduce_refresh_command_persists_after_remote_success() {
-        let context = test_context(DEFAULT_BASE_URL.to_owned());
+        let context = test_context(default_base_url());
         let transition = reduce(
             SessionRefreshState::RefreshingRemote,
             SessionRefreshEvent::SessionRefreshed {
@@ -594,7 +594,7 @@ mod tests {
         let mut runtime = test_runtime(AuthSessionStore::with_file_access_token_for_test(
             auth_path, None,
         ));
-        let context = test_context(DEFAULT_BASE_URL.to_owned());
+        let context = test_context(default_base_url());
 
         let error = execute(&AuthSessionSubcommand::Refresh, &context, &mut runtime)
             .await

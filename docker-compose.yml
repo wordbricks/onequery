@@ -2,15 +2,19 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     ports:
-      - "5454:5432"
+      - "${ONEQUERY_POSTGRES_HOST_PORT}:${ONEQUERY_POSTGRES_CONTAINER_PORT}"
     environment:
-      POSTGRES_DB: onequery
-      POSTGRES_USER: onequery
-      POSTGRES_PASSWORD: onequery
+      POSTGRES_DB: ${ONEQUERY_POSTGRES_DB}
+      POSTGRES_USER: ${ONEQUERY_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${ONEQUERY_POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U onequery -d onequery"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${ONEQUERY_POSTGRES_USER} -d ${ONEQUERY_POSTGRES_DB}",
+        ]
       interval: 2s
       timeout: 5s
       retries: 10

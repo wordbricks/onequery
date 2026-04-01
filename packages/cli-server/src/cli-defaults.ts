@@ -5,7 +5,7 @@ export const CLI_DEVICE_AUTH_GRANT_TYPE =
   "urn:ietf:params:oauth:grant-type:device_code";
 export const CLI_DEFAULT_LOGIN_TIMEOUT_SEC = 180;
 export const CLI_DEFAULT_POLL_AFTER_MS = 5_000;
-export const CLI_DEVICE_AUTH_SLOW_DOWN_INCREMENT_MS = 5_000;
+const CLI_DEVICE_AUTH_SLOW_DOWN_INCREMENT_MS = 5_000;
 
 export const CLI_DEFAULT_RELAY_TIMEOUT_MS = 30_000;
 

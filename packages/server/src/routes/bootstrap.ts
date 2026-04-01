@@ -4,9 +4,9 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 
-import type { ServerEnv } from "../env";
 import { readBootstrapState } from "../lib/bootstrap-state";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
+import type { ServerRuntimeVariables } from "../runtime-context";
 import type { StorageVariables } from "../storage";
 
 const CompleteBootstrapBodySchema = z.object({
@@ -49,8 +49,7 @@ const CreateOrganizationCleanupSchema = z.object({
 });
 
 export const bootstrapRoute = new Hono<{
-  Bindings: ServerEnv;
-  Variables: StorageVariables;
+  Variables: ServerRuntimeVariables & StorageVariables;
 }>()
   .get("/", async (c) => {
     const state = await readBootstrapState(c.var.storage.db);
@@ -78,7 +77,7 @@ export const bootstrapRoute = new Hono<{
       const schema = c.var.storage.schema;
       const body = c.req.valid("json");
       let createdOrganizationId: string | null = null;
-      const baseUrl = c.env.BETTER_AUTH_URL;
+      const baseUrl = c.var.runtime.auth.baseURL;
       const origin = c.req.header("origin") ?? baseUrl;
 
       const signUpResponse = await auth.handler(

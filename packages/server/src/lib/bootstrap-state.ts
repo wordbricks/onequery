@@ -1,6 +1,6 @@
 import type { Database } from "@onequery/db/server";
 
-export type BootstrapState = {
+type BootstrapState = {
   isBootstrapped: boolean;
   needsBootstrap: boolean;
 };

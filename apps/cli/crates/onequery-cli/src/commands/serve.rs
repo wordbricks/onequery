@@ -15,6 +15,7 @@ use crate::config::self_host::SelfHostRuntimePaths;
 use crate::config::self_host::bootstrap_self_host_foundation;
 use crate::config::self_host::load_self_host_config;
 use crate::config::self_host::self_host_runtime_paths;
+use crate::config::self_host::write_self_host_launch_config;
 use crate::output::CommandOutput;
 use crate::path_utils::resolve_env_directory_for_cli;
 use crate::path_utils::resolve_user_path_for_cli;
@@ -48,10 +49,6 @@ const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
 const BUILD_REPO_WEB_COMMAND: &str = "run bun run --cwd apps/web build";
 const ONEQUERY_NPM_ROOT_ENV_VAR: &str = "ONEQUERY_NPM_ROOT";
 const ONEQUERY_SERVER_EXECUTABLE_ENV_VAR: &str = "ONEQUERY_SERVER_EXECUTABLE";
-const ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_CONFIG_DIR";
-const ONEQUERY_SELF_HOST_DATA_DIR_ENV_VAR: &str = "ONEQUERY_SELF_HOST_DATA_DIR";
-const ONEQUERY_RUNTIME_ROOT_ENV_VAR: &str = "ONEQUERY_RUNTIME_ROOT";
-const ONEQUERY_WEB_DIST_DIR_ENV_VAR: &str = "ONEQUERY_WEB_DIST_DIR";
 const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] = &[
     "/lib64/ld-linux-x86-64.so.2",
     "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
@@ -97,11 +94,9 @@ enum ServeLaunchKind {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct ServeLaunchPlan {
-    config_dir: PathBuf,
-    data_dir: PathBuf,
     launch_kind: ServeLaunchKind,
+    launch_config_path: PathBuf,
     runtime_entry_path: PathBuf,
-    runtime_root: PathBuf,
     web_dist_dir: PathBuf,
 }
 
@@ -226,24 +221,24 @@ fn run_serve_foreground(
     state: &ServeRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
-    let launch_plan = resolve_launch_plan(state, command_line)?;
+    let mut launch_plan = resolve_launch_plan(state, command_line)?;
+    launch_plan.launch_config_path =
+        write_self_host_launch_config(command_line, &launch_plan.web_dist_dir)?;
     remove_if_exists(state.paths.stop_request_path.as_path());
     let mut child = match launch_plan.launch_kind {
-        ServeLaunchKind::PackagedExecutable => ProcessCommand::new(&launch_plan.runtime_entry_path),
+        ServeLaunchKind::PackagedExecutable => {
+            let mut child = ProcessCommand::new(&launch_plan.runtime_entry_path);
+            child.arg(&launch_plan.launch_config_path);
+            child
+        }
         ServeLaunchKind::RepoBunEntry => {
             let mut child = ProcessCommand::new(BUN_EXECUTABLE_NAME);
             child.arg(&launch_plan.runtime_entry_path);
+            child.arg(&launch_plan.launch_config_path);
             child
         }
     };
     child
-        .env(
-            ONEQUERY_SELF_HOST_CONFIG_DIR_ENV_VAR,
-            &launch_plan.config_dir,
-        )
-        .env(ONEQUERY_SELF_HOST_DATA_DIR_ENV_VAR, &launch_plan.data_dir)
-        .env(ONEQUERY_RUNTIME_ROOT_ENV_VAR, &launch_plan.runtime_root)
-        .env(ONEQUERY_WEB_DIST_DIR_ENV_VAR, &launch_plan.web_dist_dir)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
@@ -341,11 +336,9 @@ fn resolve_launch_plan(
 
         if packaged_runtime.is_file() && packaged_web.join(WEB_INDEX_FILENAME).is_file() {
             return Ok(ServeLaunchPlan {
-                config_dir: state.paths.config_dir.clone(),
-                data_dir: state.paths.data_dir.clone(),
                 launch_kind: ServeLaunchKind::PackagedExecutable,
+                launch_config_path: state.paths.launch_config_path.clone(),
                 runtime_entry_path: packaged_runtime,
-                runtime_root: npm_root,
                 web_dist_dir: packaged_web,
             });
         }
@@ -392,11 +385,9 @@ fn resolve_launch_plan(
     }
 
     Ok(ServeLaunchPlan {
-        config_dir: state.paths.config_dir.clone(),
-        data_dir: state.paths.data_dir.clone(),
         launch_kind: ServeLaunchKind::RepoBunEntry,
+        launch_config_path: state.paths.launch_config_path.clone(),
         runtime_entry_path: repo_runtime,
-        runtime_root: repo_root,
         web_dist_dir,
     })
 }
@@ -1114,6 +1105,7 @@ fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
         "pidPath": paths.pid_path.display().to_string(),
         "lockPath": paths.lock_path.display().to_string(),
         "stopRequestPath": paths.stop_request_path.display().to_string(),
+        "launchConfigPath": paths.launch_config_path.display().to_string(),
     })
 }
 
@@ -1142,10 +1134,13 @@ mod tests {
     use super::render_serve_status_output;
     use super::resolve_packaged_server_dir_from_current_executable;
     use super::select_packaged_server_candidate;
+    use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostConfig;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
+    use crate::config::self_host::default_port;
     use crate::config::self_host::load_self_host_config_for_test;
+    use crate::config::self_host::write_self_host_launch_config_for_test;
 
     fn sample_paths() -> SelfHostRuntimePaths {
         SelfHostRuntimePaths {
@@ -1161,6 +1156,7 @@ mod tests {
             pid_path: "/tmp/onequery/data/run/server.pid".into(),
             lock_path: "/tmp/onequery/data/run/server.lock".into(),
             stop_request_path: "/tmp/onequery/data/run/server.stop".into(),
+            launch_config_path: "/tmp/onequery/data/run/launch.json".into(),
         }
     }
 
@@ -1205,7 +1201,10 @@ mod tests {
             },
             &LogPreview {
                 lines: vec![
-                    "[bun-server] listening on http://127.0.0.1:4545".to_owned(),
+                    format!(
+                        "[bun-server] listening on {}",
+                        crate::config::self_host::default_public_origin()
+                    ),
                     "[api] GET /api/health 200".to_owned(),
                 ],
                 truncated: false,
@@ -1367,6 +1366,57 @@ mod tests {
             data.pointer("/runtimeState/status")
                 .and_then(serde_json::Value::as_str),
             Some("not_running")
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected serve proof temp dir cleanup: {error}"));
+    }
+
+    #[test]
+    fn serve_writes_launch_contract_with_default_self_host_port() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-serve-launch-{}", Uuid::new_v4()));
+        let paths = SelfHostRuntimePaths::for_test(
+            test_dir.join("config").join("self-host"),
+            test_dir.join("data"),
+        );
+        let asset_dir = test_dir.join("runtime").join("web");
+
+        fs::create_dir_all(&asset_dir)
+            .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
+
+        let state = resolve_runtime_state_with_paths_for_test(
+            paths,
+            ServeStateAccessMode::BootstrapIfMissing,
+            "onequery serve",
+        )
+        .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
+
+        let launch_config_path =
+            write_self_host_launch_config_for_test(state.paths, &asset_dir, "onequery serve")
+                .unwrap_or_else(|error| {
+                    panic!("expected serve launch config write to succeed: {error}")
+                });
+        let launch_config_contents = fs::read_to_string(&launch_config_path)
+            .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
+        let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
+            .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
+
+        assert_eq!(
+            launch_config.pointer("/listen/host"),
+            Some(&serde_json::Value::String(
+                DEFAULT_SELF_HOST_LISTEN_HOST.to_owned(),
+            ))
+        );
+        assert_eq!(
+            launch_config.pointer("/listen/port"),
+            Some(&serde_json::Value::Number(default_port().into()))
+        );
+        assert_eq!(
+            launch_config.get("publicOrigin"),
+            Some(&serde_json::Value::String(
+                crate::config::self_host::default_public_origin(),
+            ))
         );
 
         fs::remove_dir_all(test_dir)

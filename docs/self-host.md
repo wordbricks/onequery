@@ -9,8 +9,7 @@ with the same CLI.
 Prerequisites:
 
 - `curl` and `tar`
-- Bun `1.3.10` or newer on `PATH` when you want to run `onequery serve`
-- current packaged support: macOS and Linux only
+- a supported published CLI package for macOS, Linux, or Windows
 
 Install the CLI:
 
@@ -31,18 +30,21 @@ bunx @onequery/cli --help
 npx @onequery/cli --help
 ```
 
+Published `onequery serve` packages include the bundled self-host runtime and
+do not require Bun on `PATH`.
+
 Start the server:
 
 ```bash
 onequery serve
 ```
 
-Then open `http://127.0.0.1:4545` and complete the first-user bootstrap.
+Then open `http://127.0.0.1:5656` and complete the first-user bootstrap.
 
 Point the CLI at that server:
 
 ```bash
-onequery config set server http://127.0.0.1:4545
+onequery config set server http://127.0.0.1:5656
 onequery auth login
 ```
 
@@ -69,8 +71,11 @@ Files under those roots:
 - `backups/`
 - `run/server.pid`
 - `run/server.lock`
+- `run/launch.json`
 
-The CLI creates these paths on first `onequery serve`.
+The CLI creates these paths on first `onequery serve`. `run/launch.json` is a
+resolved runtime artifact written by the CLI; it is not a user-edited config
+file.
 
 ## Reverse Proxy And Public Origin
 
@@ -80,7 +85,7 @@ When the server is reachable through a reverse proxy, set `public_origin` in
 ```toml
 [server]
 listen_host = "127.0.0.1"
-port = 4545
+port = 5656
 public_origin = "https://onequery.example.com"
 ```
 

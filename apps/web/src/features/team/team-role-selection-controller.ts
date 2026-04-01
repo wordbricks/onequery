@@ -53,7 +53,7 @@ type TeamRoleSelectionTypes = {
   input: TeamRoleSelectionMachineInput;
 };
 
-export type TeamRoleSelectionController = {
+type TeamRoleSelectionController = {
   hasChanges: boolean;
   isSelectionEmpty: boolean;
   reset: () => void;

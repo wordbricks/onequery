@@ -20,7 +20,8 @@ import { fileURLToPath } from "node:url";
 import {
   PACKAGED_PGLITE_DIR_SEGMENTS,
   PGLITE_RUNTIME_ASSET_FILENAMES,
-} from "../../../packages/db/src/pglite.ts";
+} from "@onequery/db/pglite";
+
 import {
   CLI_NPM_PACK_DIR_PREFIX,
   CLI_NPM_STAGE_DIR_PREFIX,
@@ -341,7 +342,7 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-export function parseNpmPackTarballName(stdout, stagingDir) {
+function parseNpmPackTarballName(stdout, stagingDir) {
   let parsedOutput;
   try {
     parsedOutput = JSON.parse(stdout);
@@ -385,7 +386,7 @@ function readOptionValue(argv, index, optionName) {
   return value;
 }
 
-export function parseArgs(argv) {
+function parseArgs(argv) {
   const args = {
     packOutput: null,
     packageName: null,

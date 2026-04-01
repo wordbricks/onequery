@@ -1,9 +1,12 @@
 import { and, eq } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
-import { serverApiRoutes } from "./app";
-import { getServerStorage } from "./storage";
+import { createServerApi } from "./app";
+import {
+  createTestRuntimeConfigFromDatabaseUrl,
+  TEST_SERVER_MASTER_ENCRYPTION_KEY,
+} from "./routes/test-env";
+import { createServerStorage } from "./storage";
 import {
   closeDatabase,
   createPgliteDatabaseUrl,
@@ -42,15 +45,18 @@ function buildSessionHeaders(
   return headers;
 }
 
-async function createTestEnv() {
-  return {
-    BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
-    BETTER_AUTH_URL: "http://localhost:4545",
-    DATABASE_URL: await createPgliteDatabaseUrl("onequery-bootstrap-test-"),
-    DISABLE_RATE_LIMIT: true,
-    MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-    WEB_URL: "http://localhost:4545",
-  };
+async function createTestRuntimeConfig() {
+  return createTestRuntimeConfigFromDatabaseUrl(
+    await createPgliteDatabaseUrl("onequery-bootstrap-test-"),
+    {
+      auth: {
+        secret: "test-better-auth-secret-1234567890",
+      },
+      crypto: {
+        masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+      },
+    }
+  );
 }
 
 function createBootstrapRequest() {
@@ -80,13 +86,13 @@ describe("self-host bootstrap", () => {
   });
 
   it("completes the first-run bootstrap flow and creates the initial owner organization", async () => {
-    const env = await createTestEnv();
-    const storage = getServerStorage(env);
+    const runtimeConfig = await createTestRuntimeConfig();
+    const storage = createServerStorage(runtimeConfig);
+    const app = createServerApi({ runtime: runtimeConfig, storage });
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const initialStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/bootstrap"),
-      env
+    const initialStateResponse = await app.fetch(
+      new Request("http://localhost:4545/bootstrap")
     );
     expect(initialStateResponse.status).toBe(200);
     await expect(initialStateResponse.json()).resolves.toMatchObject({
@@ -94,10 +100,7 @@ describe("self-host bootstrap", () => {
       needsBootstrap: true,
     });
 
-    const bootstrapResponse = await serverApiRoutes.fetch(
-      createBootstrapRequest(),
-      env
-    );
+    const bootstrapResponse = await app.fetch(createBootstrapRequest());
 
     expect(bootstrapResponse.status).toBe(201);
     await expect(bootstrapResponse.json()).resolves.toMatchObject({
@@ -130,9 +133,8 @@ describe("self-host bootstrap", () => {
 
     expect(ownerMember?.role).toBe("owner");
 
-    const finalStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/bootstrap"),
-      env
+    const finalStateResponse = await app.fetch(
+      new Request("http://localhost:4545/bootstrap")
     );
     await expect(finalStateResponse.json()).resolves.toMatchObject({
       isBootstrapped: true,
@@ -141,20 +143,17 @@ describe("self-host bootstrap", () => {
   });
 
   it("blocks public signup after bootstrap but allows signup for pending invitation emails", async () => {
-    const env = await createTestEnv();
-    const storage = getServerStorage(env);
+    const runtimeConfig = await createTestRuntimeConfig();
+    const storage = createServerStorage(runtimeConfig);
+    const app = createServerApi({ runtime: runtimeConfig, storage });
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const bootstrapResponse = await serverApiRoutes.fetch(
-      createBootstrapRequest(),
-      env
-    );
+    const bootstrapResponse = await app.fetch(createBootstrapRequest());
 
     expect(bootstrapResponse.status).toBe(201);
 
-    const signupStateResponse = await serverApiRoutes.fetch(
-      new Request("http://localhost:4545/auth/bootstrap-state"),
-      env
+    const signupStateResponse = await app.fetch(
+      new Request("http://localhost:4545/auth/bootstrap-state")
     );
     await expect(signupStateResponse.json()).resolves.toMatchObject({
       emailDeliveryMode: "manual-link",
@@ -249,8 +248,9 @@ describe("self-host bootstrap", () => {
   });
 
   it("cleans up partially created bootstrap organizations when the auth response is malformed", async () => {
-    const env = await createTestEnv();
-    const storage = getServerStorage(env);
+    const runtimeConfig = await createTestRuntimeConfig();
+    const storage = createServerStorage(runtimeConfig);
+    const app = createServerApi({ runtime: runtimeConfig, storage });
     openedDatabases.push(storage.db as ClosableDatabase);
 
     const originalCreateOrganization = storage.auth.api.createOrganization;
@@ -273,10 +273,7 @@ describe("self-host bootstrap", () => {
     });
 
     try {
-      const bootstrapResponse = await serverApiRoutes.fetch(
-        createBootstrapRequest(),
-        env
-      );
+      const bootstrapResponse = await app.fetch(createBootstrapRequest());
 
       expect(bootstrapResponse.status).toBe(500);
       await expect(bootstrapResponse.json()).resolves.toMatchObject({
@@ -309,14 +306,12 @@ describe("self-host bootstrap", () => {
   });
 
   it("allows zero-org users to create a new organization after invite-only signup", async () => {
-    const env = await createTestEnv();
-    const storage = getServerStorage(env);
+    const runtimeConfig = await createTestRuntimeConfig();
+    const storage = createServerStorage(runtimeConfig);
+    const app = createServerApi({ runtime: runtimeConfig, storage });
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const bootstrapResponse = await serverApiRoutes.fetch(
-      createBootstrapRequest(),
-      env
-    );
+    const bootstrapResponse = await app.fetch(createBootstrapRequest());
 
     expect(bootstrapResponse.status).toBe(201);
 

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -91,6 +91,48 @@ describe("loadConfig", () => {
       pollIntervalMs: 1500,
       queryTimeoutMs: 120_000,
       onequeryBaseUrl: "https://onequery.internal",
+    });
+  });
+
+  it("reads config/local.toml and lets env override it", () => {
+    const rootDir = createTempRoot();
+    const configDir = join(rootDir, "config");
+    const configPath = join(configDir, "local.toml");
+
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      configPath,
+      [
+        'ATHENA_DATABASE = "silver"',
+        'ATHENA_OUTPUT_LOCATION = "s3://bucket/results/"',
+        'ATHENA_WORKGROUP = "analytics"',
+        'AWS_REGION = "ap-northeast-2"',
+        'CONNECTOR_NAME = "athena-local"',
+        'LOG_LEVEL = "info"',
+        'ONEQUERY_BASE_URL = "http://localhost:4555/api/"',
+        'ONEQUERY_ENROLLMENT_TOKEN = "toml-token"',
+        'ORGANIZATION_ID = "org_toml"',
+      ].join("\n"),
+      "utf8"
+    );
+
+    const config = loadConfig(
+      {
+        AWS_REGION: "us-east-1",
+      },
+      rootDir
+    );
+
+    expect(config).toMatchObject({
+      athenaDatabase: "silver",
+      athenaOutputLocation: "s3://bucket/results/",
+      athenaWorkgroup: "analytics",
+      awsRegion: "us-east-1",
+      connectorName: "athena-local",
+      enrollmentToken: "toml-token",
+      logLevel: "info",
+      onequeryBaseUrl: "http://localhost:4555/api",
+      organizationId: "org_toml",
     });
   });
 });

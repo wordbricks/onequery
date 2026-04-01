@@ -1,14 +1,16 @@
 import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createLocalProcessEnv } from "@onequery/dev-config/local-env";
-import { loadLocalDevRuntimeSync } from "@onequery/dev-config/runtime";
+import { getDefaultSpaBuildDir } from "@onequery/bun-server/assets";
+import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { resolveWorkspaceDev } from "@onequery/config/workspace-dev";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");
-
-type RunMode = "dev" | "local";
 
 function prependPathEntries(
   entries: readonly string[],
@@ -29,64 +31,72 @@ function prependPathEntries(
   return merged.join(delimiter);
 }
 
-function parseRunMode(argv: readonly string[]): RunMode {
+export function parseRunMode(argv: readonly string[]): "dev" {
   const modeFlag = argv[0];
 
-  if (modeFlag === "--dev") {
+  if (modeFlag === "--dev" || modeFlag === undefined) {
     return "dev";
   }
 
-  if (modeFlag === "--local" || modeFlag === undefined) {
-    return "local";
-  }
-
   throw new Error(
-    `Unknown mode: ${modeFlag}. Use --local or --dev when running scripts/run-bun-server.ts.`
+    `Unknown mode: ${modeFlag}. Use --dev when running scripts/run-bun-server.ts.`
   );
 }
 
-function createChildEnv(mode: RunMode): NodeJS.ProcessEnv {
-  const localEnv = createLocalProcessEnv(rootDir);
+export function createLaunchConfig(
+  configRootDir: string = rootDir
+): ServerLaunchConfig {
+  return projectWorkspaceDevServerLaunchConfig(
+    resolveWorkspaceDev({
+      rootDir: configRootDir,
+    }),
+    {
+      assetDir: getDefaultSpaBuildDir(configRootDir),
+    }
+  );
+}
+
+export function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
+  launchConfigPath: string;
+  tempDir: string;
+} {
+  const tempDir = mkdtempSync(join(tmpdir(), "onequery-bun-server-"));
+  const launchConfigPath = join(tempDir, "launch.json");
+
+  writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
+
+  return {
+    launchConfigPath,
+    tempDir,
+  };
+}
+
+export function createChildEnv(): NodeJS.ProcessEnv {
   const childEnv: NodeJS.ProcessEnv = {
-    ...localEnv,
+    ...process.env,
     ONEQUERY_RUNTIME_ROOT: rootDir,
     PATH: prependPathEntries(
       [
         join(bunServerDir, "node_modules/.bin"),
         join(rootDir, "node_modules/.bin"),
       ],
-      localEnv.PATH
+      process.env.PATH
     ),
   };
-
-  if (mode === "dev") {
-    const runtime = loadLocalDevRuntimeSync({
-      env: localEnv,
-      rootDir,
-    });
-    childEnv.BETTER_AUTH_URL = runtime.auth.origin;
-    childEnv.DATABASE_URL = runtime.database.development.url;
-    childEnv.HOST = runtime.api.host;
-    childEnv.PORT = String(runtime.api.port);
-    childEnv.WEB_URL = runtime.web.origin;
-  }
 
   return childEnv;
 }
 
-function createBunArgs(mode: RunMode): string[] {
-  if (mode === "dev") {
-    return ["--watch", "src/index.ts"];
-  }
-
-  return ["src/index.ts"];
+export function createBunArgs(launchConfigPath: string): string[] {
+  return ["--watch", "src/index.ts", launchConfigPath];
 }
 
-function main(): void {
-  const mode = parseRunMode(process.argv.slice(2));
-  const child = spawn("bun", createBunArgs(mode), {
+export function main(): void {
+  parseRunMode(process.argv.slice(2));
+  const launchConfig = writeLaunchConfigFile(createLaunchConfig());
+  const child = spawn("bun", createBunArgs(launchConfig.launchConfigPath), {
     cwd: bunServerDir,
-    env: createChildEnv(mode),
+    env: createChildEnv(),
     shell: process.platform === "win32",
     stdio: "inherit",
   });
@@ -100,6 +110,11 @@ function main(): void {
   }
 
   child.on("exit", (code, signal) => {
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
+
     if (signal) {
       process.kill(process.pid, signal);
       return;
@@ -109,9 +124,15 @@ function main(): void {
   });
 
   child.on("error", (error) => {
-    console.error(`Failed to start bun-server (${mode}): ${error.message}`);
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
+    console.error(`Failed to start bun-server (dev): ${error.message}`);
     process.exit(1);
   });
 }
 
-main();
+if (import.meta.main) {
+  main();
+}

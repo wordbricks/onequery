@@ -54,6 +54,8 @@ AGENTS.override.md
 mise.local.toml
 onequery.local.toml
 onequery.local.env.toml
+onequery.dev.secrets.toml
+onequery.dev.secrets.toml.*
 apps/connector/config/local.toml
 
 # Local agent memory (development only)

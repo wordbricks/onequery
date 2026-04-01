@@ -25,19 +25,22 @@ use self::layers::raw_cli_overrides_layer;
 pub(crate) use self::paths::config_dir;
 use self::paths::config_path;
 pub(crate) use self::paths::data_dir;
+use self::self_host::default_public_origin;
 
 use crate::path_utils;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
-#[cfg(debug_assertions)]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
-#[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_BASE_URL: &str = "http://localhost:4545";
-pub(crate) const CONFIG_SET_SERVER_COMMAND_EXAMPLE: &str =
-    "onequery config set server http://127.0.0.1:4545";
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
+
+pub(crate) fn default_base_url() -> String {
+    default_public_origin()
+}
+
+pub(crate) fn config_set_server_command_example() -> String {
+    format!("onequery config set server {}", default_base_url())
+}
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct AppConfig {
@@ -350,9 +353,12 @@ mod tests {
     use super::ConfigStore;
     use super::DEFAULT_REQUEST_TIMEOUT_SEC;
     use super::TypedConfigOverrides;
+    use super::config_set_server_command_example;
+    use super::default_base_url;
     use super::layers::ConfigOrigins;
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
+    use super::self_host::default_public_origin;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
     struct CapturedEvent {
@@ -448,6 +454,15 @@ mod tests {
             Some(base_dir) => base_dir.join(path),
             None => path.to_path_buf(),
         }
+    }
+
+    #[test]
+    fn default_cli_server_examples_follow_the_self_host_default_public_origin() {
+        assert_eq!(default_base_url(), default_public_origin());
+        assert_eq!(
+            config_set_server_command_example(),
+            format!("onequery config set server {}", default_public_origin())
+        );
     }
 
     #[test]

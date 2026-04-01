@@ -3,9 +3,12 @@ import { existsSync } from "node:fs";
 import { eq } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../dev-config/src/master-encryption-key";
 import { verifyOrgAccess } from "./lib/verify-org-access";
-import { getServerStorage } from "./storage";
+import {
+  createTestRuntimeConfigFromDatabaseUrl,
+  TEST_SERVER_MASTER_ENCRYPTION_KEY,
+} from "./routes/test-env";
+import { createServerStorage } from "./storage";
 import {
   closeDatabase,
   createPgliteDatabaseUrl,
@@ -18,14 +21,16 @@ async function createPgliteStorage() {
 
   return {
     pgliteDir,
-    storage: getServerStorage({
-      BETTER_AUTH_SECRET: "test-better-auth-secret-1234567890",
-      BETTER_AUTH_URL: "http://localhost:4545",
-      DATABASE_URL: databaseUrl,
-      DISABLE_RATE_LIMIT: true,
-      MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-      WEB_URL: "http://localhost:4545",
-    }),
+    storage: createServerStorage(
+      createTestRuntimeConfigFromDatabaseUrl(databaseUrl, {
+        auth: {
+          secret: "test-better-auth-secret-1234567890",
+        },
+        crypto: {
+          masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+        },
+      })
+    ),
   };
 }
 

@@ -170,7 +170,7 @@ export const cliQueryExecuteHandlers = factory.createHandlers(
         loadCredentials: async (effect) =>
           runCliLoadQueryCredentialsEffect({
             db: c.var.db,
-            masterEncryptionKey: c.env.MASTER_ENCRYPTION_KEY,
+            masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
             effect,
           }),
         executeSql: async (effect) =>

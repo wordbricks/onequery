@@ -1,24 +1,115 @@
-import {
-  LOCAL_TEST_DATABASE_URL,
-  LOCAL_WEB_ORIGIN,
-} from "@onequery/dev-config/topology";
+import type {
+  ServerRuntimeConfig,
+  ServerRuntimeStorageConfig,
+} from "../runtime";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../../dev-config/src/master-encryption-key";
-import type { ServerEnv } from "../env";
+export const TEST_PUBLIC_ORIGIN = "http://localhost:4545";
+export const TEST_SERVER_MASTER_ENCRYPTION_KEY =
+  "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+export const DEFAULT_TEST_DATABASE_URL =
+  "postgres://test:test@localhost:5454/test";
 
-const defaultEnv: ServerEnv = {
-  BETTER_AUTH_SECRET: "test-better-auth-secret",
-  BETTER_AUTH_URL: LOCAL_WEB_ORIGIN,
-  // Comment: this helper targets the shared local/CI Postgres DSN, so tests
-  // that depend on it belong in the integration lane rather than the fast lane.
-  DATABASE_URL: LOCAL_TEST_DATABASE_URL,
-  MASTER_ENCRYPTION_KEY: SAMPLE_MASTER_ENCRYPTION_KEY,
-  WEB_URL: LOCAL_WEB_ORIGIN,
+export type TestRuntimeConfigOverrides = Omit<
+  Partial<ServerRuntimeConfig>,
+  "auth" | "connectors" | "crypto" | "listen" | "rateLimit"
+> & {
+  auth?: Partial<ServerRuntimeConfig["auth"]>;
+  connectors?: Partial<ServerRuntimeConfig["connectors"]>;
+  crypto?: Partial<ServerRuntimeConfig["crypto"]>;
+  databaseUrl?: string;
+  listen?: Partial<ServerRuntimeConfig["listen"]>;
+  rateLimit?: Partial<ServerRuntimeConfig["rateLimit"]>;
 };
 
-export function createTestEnv(overrides: Partial<ServerEnv> = {}): ServerEnv {
+function toRuntimeStorageConfig(
+  connectionString: string
+): ServerRuntimeStorageConfig {
+  if (connectionString.startsWith("pglite:")) {
+    return {
+      connectionString,
+      dir: connectionString.slice("pglite:".length),
+      kind: "pglite",
+    };
+  }
+
   return {
-    ...defaultEnv,
-    ...overrides,
+    connectionString,
+    kind: "postgres",
+    url: connectionString,
   };
+}
+
+const defaultRuntime: ServerRuntimeConfig = {
+  auth: {
+    baseURL: TEST_PUBLIC_ORIGIN,
+    emailDelivery: {
+      baseURL: TEST_PUBLIC_ORIGIN,
+    },
+    secret: "test-better-auth-secret",
+  },
+  connectors: {
+    enrollmentToken: "test-connector-token",
+  },
+  crypto: {
+    masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+  },
+  listen: {
+    host: "127.0.0.1",
+    port: 4555,
+  },
+  mode: "workspace-dev",
+  publicOrigin: TEST_PUBLIC_ORIGIN,
+  rateLimit: {
+    enabled: false,
+    storage: "memory",
+  },
+  runtimePaths: undefined,
+  storage: toRuntimeStorageConfig(DEFAULT_TEST_DATABASE_URL),
+};
+
+export function createTestRuntimeConfig(
+  overrides: TestRuntimeConfigOverrides = {}
+): ServerRuntimeConfig {
+  const runtimeStorage =
+    overrides.databaseUrl !== undefined
+      ? toRuntimeStorageConfig(overrides.databaseUrl)
+      : (overrides.storage ?? defaultRuntime.storage);
+
+  return {
+    ...defaultRuntime,
+    ...overrides,
+    auth: {
+      ...defaultRuntime.auth,
+      ...overrides.auth,
+      emailDelivery:
+        overrides.auth?.emailDelivery ?? defaultRuntime.auth.emailDelivery,
+    },
+    connectors: {
+      ...defaultRuntime.connectors,
+      ...overrides.connectors,
+    },
+    crypto: {
+      ...defaultRuntime.crypto,
+      ...overrides.crypto,
+    },
+    listen: {
+      ...defaultRuntime.listen,
+      ...overrides.listen,
+    },
+    rateLimit: {
+      ...defaultRuntime.rateLimit,
+      ...overrides.rateLimit,
+    },
+    storage: runtimeStorage,
+  };
+}
+
+export function createTestRuntimeConfigFromDatabaseUrl(
+  databaseUrl: string,
+  overrides: TestRuntimeConfigOverrides = {}
+): ServerRuntimeConfig {
+  return createTestRuntimeConfig({
+    ...overrides,
+    databaseUrl,
+  });
 }

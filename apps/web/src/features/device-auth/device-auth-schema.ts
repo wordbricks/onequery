@@ -1,7 +1,7 @@
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-export const DEVICE_USER_CODE_LENGTH = 8;
+const DEVICE_USER_CODE_LENGTH = 8;
 
 const DEVICE_USER_CODE_PATTERN = new RegExp(
   `^[A-Z0-9]{${DEVICE_USER_CODE_LENGTH}}$`

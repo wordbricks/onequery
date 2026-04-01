@@ -18,7 +18,6 @@ import {
   doesOrganizationMembershipGrantPermission,
   organizationPermissionChecks,
 } from "../auth/organization-permissions";
-import type { ServerEnv } from "../env";
 import { verifyOrgAccess } from "../lib/verify-org-access";
 import type { SessionVariables } from "../middleware/session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
@@ -127,7 +126,6 @@ function encodeAuditCursor(input: AuditCursor): string {
  * @route GET /:slug
  */
 export const organizationsRoute = new Hono<{
-  Bindings: ServerEnv;
   Variables: SessionVariables;
 }>()
   .get("/:slug", async (c) => {

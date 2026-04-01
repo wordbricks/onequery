@@ -3,17 +3,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createDb, prepareSelfHostDatabase } from "@onequery/db/server";
+import { prepareSelfHostDatabase } from "@onequery/db/server";
 import { Hono } from "hono";
 
-import { serverApiRoutes } from "../app";
-import { createAuth } from "../auth";
-import type { ServerEnv } from "../env";
-import { createTestEnv } from "../routes/test-env";
+import { createServerApi } from "../app";
+import {
+  createTestRuntimeConfig,
+  createTestRuntimeConfigFromDatabaseUrl,
+} from "../routes/test-env";
+import type { TestRuntimeConfigOverrides } from "../routes/test-env";
+import { createServerStorage } from "../storage";
 
 export type ClosableDatabase = {
   $client?: {
-    close?: () => void;
+    close?: () => Promise<unknown>;
     end?: (options?: Record<string, unknown>) => Promise<unknown>;
   };
 };
@@ -55,28 +58,29 @@ export async function createPgliteDatabaseUrl(
 }
 
 export async function createRouteIntegrationHarness(
-  overrides: Partial<ServerEnv> = {}
+  overrides: TestRuntimeConfigOverrides = {}
 ) {
-  const env = createTestEnv({
-    DISABLE_RATE_LIMIT: true,
-    ...overrides,
+  const runtimeConfig =
+    overrides.databaseUrl !== undefined
+      ? createTestRuntimeConfigFromDatabaseUrl(overrides.databaseUrl, overrides)
+      : overrides.storage?.connectionString !== undefined
+        ? createTestRuntimeConfigFromDatabaseUrl(
+            overrides.storage.connectionString,
+            overrides
+          )
+        : createTestRuntimeConfig(overrides);
+  const storage = createServerStorage(runtimeConfig, {
+    enableAuthTestUtils: true,
   });
-  const databaseUrl = env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    throw new Error("Test environment must provide DATABASE_URL");
-  }
-
-  const db = createDb(databaseUrl);
-  const auth = createAuth({
-    baseURL: env.BETTER_AUTH_URL,
-    databaseUrl,
-    disableRateLimit: true,
-    enableTestUtils: true,
-    secret: env.BETTER_AUTH_SECRET,
-  });
-  const app = new Hono().route("/api", serverApiRoutes);
-  const authContext = await auth.$context;
+  const app = new Hono().route(
+    "/api",
+    createServerApi({
+      enableAuthTestUtils: true,
+      runtime: runtimeConfig,
+      storage,
+    })
+  );
+  const authContext = await storage.auth.$context;
   const test = authContext.test;
 
   if (!test.createOrganization || !test.saveOrganization || !test.addMember) {
@@ -87,9 +91,9 @@ export async function createRouteIntegrationHarness(
 
   return {
     app,
-    auth,
-    db,
-    env,
+    auth: storage.auth,
+    db: storage.db,
+    runtimeConfig,
     test: test as typeof test & {
       addMember: NonNullable<typeof test.addMember>;
       createOrganization: NonNullable<typeof test.createOrganization>;

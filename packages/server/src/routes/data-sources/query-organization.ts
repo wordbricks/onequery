@@ -3,9 +3,9 @@ import type { Database } from "@onequery/db/server";
 import type { Context } from "hono";
 import { z } from "zod";
 
-import type { ServerEnv } from "../../env";
 import { verifyOrgAccess } from "../../lib/verify-org-access";
 import type { SessionVariables } from "../../middleware/session";
+import type { ServerRuntimeVariables } from "../../runtime-context";
 
 export const organizationLocatorSchema = z
   .object({
@@ -48,7 +48,7 @@ async function resolveOrganizationId(
 }
 
 export async function resolveAccessibleOrganizationId(
-  c: Context<{ Bindings: ServerEnv; Variables: SessionVariables }>,
+  c: Context<{ Variables: ServerRuntimeVariables & SessionVariables }>,
   db: Database,
   input: {
     organizationId?: string;

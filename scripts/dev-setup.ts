@@ -1,29 +1,76 @@
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 
+import {
+  deriveTestProfile,
+  ensureWorkspaceDevSecretsFileSync,
+  projectDockerComposeConfig,
+  resolveWorkspaceDev,
+} from "@onequery/config";
+import type {
+  DerivedTestProfile,
+  ResolvedWorkspaceDevConfig,
+} from "@onequery/config";
 import { prepareSelfHostDatabase } from "@onequery/db/server";
-import { syncManagedLocalConfigFile } from "@onequery/dev-config/local-env";
-import { loadLocalDevRuntimeSync } from "@onequery/dev-config/runtime";
-
-import { assertDevTopologyArtifactsInSync } from "./lib/dev-topology-check.ts";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY_MS = 1000;
 const DOCKER_INFO_TIMEOUT_MS = 5000;
 
-function getLocalDevRuntime() {
-  return loadLocalDevRuntimeSync({
-    rootDir: process.cwd(),
-  });
+type ExecOptions = {
+  env?: NodeJS.ProcessEnv;
+  silent?: boolean;
+  timeoutMs?: number;
+};
+
+let workspaceDevCache: ResolvedWorkspaceDevConfig | undefined;
+let testProfileCache: DerivedTestProfile | undefined;
+let dockerComposeEnvCache: NodeJS.ProcessEnv | undefined;
+
+function getWorkspaceDev(): ResolvedWorkspaceDevConfig {
+  if (!workspaceDevCache) {
+    workspaceDevCache = resolveWorkspaceDev({
+      rootDir: process.cwd(),
+    });
+  }
+
+  return workspaceDevCache;
 }
 
-function exec(
-  command: string,
-  options?: { silent?: boolean; timeoutMs?: number }
-): string {
+function getTestProfile(): DerivedTestProfile {
+  if (!testProfileCache) {
+    testProfileCache = deriveTestProfile(getWorkspaceDev());
+  }
+
+  return testProfileCache;
+}
+
+function getDockerComposeEnv(): NodeJS.ProcessEnv {
+  if (!dockerComposeEnvCache) {
+    const docker = projectDockerComposeConfig(getWorkspaceDev());
+
+    dockerComposeEnvCache = {
+      ...process.env,
+      ONEQUERY_POSTGRES_CONTAINER_PORT: String(docker.postgres.containerPort),
+      ONEQUERY_POSTGRES_DB: docker.environment.POSTGRES_DB,
+      ONEQUERY_POSTGRES_HOST_PORT: String(docker.postgres.hostPort),
+      ONEQUERY_POSTGRES_PASSWORD: docker.environment.POSTGRES_PASSWORD,
+      ONEQUERY_POSTGRES_USER: docker.environment.POSTGRES_USER,
+    };
+  }
+
+  return dockerComposeEnvCache;
+}
+
+function quoteShellArg(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function exec(command: string, options?: ExecOptions): string {
   try {
     return execSync(command, {
       encoding: "utf-8",
+      env: options?.env,
       killSignal: "SIGKILL",
       stdio: options?.silent ? "pipe" : "inherit",
       timeout: options?.timeoutMs,
@@ -34,6 +81,16 @@ function exec(
     }
     throw error;
   }
+}
+
+function execDockerCompose(
+  command: string,
+  options?: Omit<ExecOptions, "env">
+): string {
+  return exec(`docker compose ${command}`, {
+    ...options,
+    env: getDockerComposeEnv(),
+  });
 }
 
 function isDockerRunning(): boolean {
@@ -50,7 +107,7 @@ function isDockerRunning(): boolean {
 
 function getCurrentComposePostgresContainerNames(): Set<string> {
   try {
-    const result = exec("docker compose ps --format json", { silent: true });
+    const result = execDockerCompose("ps --format json", { silent: true });
     const names = new Set<string>();
 
     for (const line of result.split("\n")) {
@@ -87,9 +144,9 @@ function stopConflictingPostgres(): void {
   // Find any running container publishing the configured Postgres host port.
   // Do not hardcode the compose container name here because it changes with the
   // checkout directory.
-  const runtime = getLocalDevRuntime();
+  const workspaceDev = getWorkspaceDev();
   const result = exec(
-    `docker ps --filter "publish=${runtime.postgres.hostPort}" --format "{{.Names}}"`,
+    `docker ps --filter "publish=${workspaceDev.postgres.hostPort}" --format "{{.Names}}"`,
     { silent: true }
   )
     .split("\n")
@@ -112,7 +169,7 @@ function stopConflictingPostgres(): void {
 
 function isPostgresHealthy(): boolean {
   try {
-    const result = exec("docker compose ps --format json", { silent: true });
+    const result = execDockerCompose("ps --format json", { silent: true });
     // Docker outputs one JSON object per line
     for (const line of result.split("\n")) {
       if (!line.trim()) {
@@ -148,17 +205,19 @@ async function waitForPostgres(): Promise<boolean> {
 }
 
 function enablePgvector(): void {
-  const runtime = getLocalDevRuntime();
+  const workspaceDev = getWorkspaceDev();
   console.log(
-    `Enabling pgvector extension (${runtime.database.development.database})...`
+    `Enabling pgvector extension (${workspaceDev.postgres.database})...`
   );
-  enablePgvectorForDatabase(runtime.database.development.database);
+  enablePgvectorForDatabase(workspaceDev.postgres.database);
   console.log("pgvector extension enabled.");
 }
 
 function enablePgvectorForDatabase(databaseName: string): void {
-  exec(
-    `docker compose exec -T postgres psql -U onequery -d ${databaseName} -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || docker-compose exec -T postgres psql -U onequery -d ${databaseName} -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null`,
+  const workspaceDev = getWorkspaceDev();
+
+  execDockerCompose(
+    `exec -T postgres psql -U ${quoteShellArg(workspaceDev.postgres.user)} -d ${quoteShellArg(databaseName)} -c "CREATE EXTENSION IF NOT EXISTS vector;"`,
     { silent: true }
   );
 }
@@ -177,7 +236,7 @@ async function prepareDatabaseSchema(
   console.log(`Applying database migrations${labelSuffix}...`);
   await prepareSelfHostDatabase({
     connectionString:
-      options.connectionString ?? getLocalDevRuntime().database.development.url,
+      options.connectionString ?? getWorkspaceDev().postgres.url,
     migrationsFolder: getWorkspaceMigrationsDir(),
   });
   console.log("Database migrations applied.");
@@ -211,10 +270,10 @@ function getDatabaseConfig(connectionString: string): {
 }
 
 async function provisionLocalTestDatabase(): Promise<void> {
-  const runtime = getLocalDevRuntime();
-  const config = getDatabaseConfig(runtime.database.test.url);
+  const testProfile = getTestProfile();
+  const config = getDatabaseConfig(testProfile.database.url);
 
-  // Comment: Route tests default to LOCAL_TEST_DATABASE_URL, so dev bootstrap
+  // Comment: Route tests use the derived local test profile, so dev bootstrap
   // must provision that database too; otherwise `bun run db:reset` leaves the
   // main dev DB healthy while server tests still fail against missing creds.
   console.log(`Provisioning local test database (${config.databaseName})...`);
@@ -236,47 +295,32 @@ SELECT format('CREATE DATABASE %I OWNER %I', ${databaseName}, ${user})
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = ${databaseName})\\gexec
 `;
 
-  execSync("docker compose exec -T postgres psql -U onequery -d postgres", {
-    input: sql,
-    stdio: ["pipe", "inherit", "inherit"],
-  });
+  execSync(
+    `docker compose exec -T postgres psql -U ${quoteShellArg(getWorkspaceDev().postgres.user)} -d postgres`,
+    {
+      env: getDockerComposeEnv(),
+      input: sql,
+      stdio: ["pipe", "inherit", "inherit"],
+    }
+  );
 
   enablePgvectorForDatabase(config.databaseName);
   await prepareDatabaseSchema({
-    connectionString: runtime.database.test.url,
+    connectionString: testProfile.database.url,
     label: config.databaseName,
   });
 }
 
-function syncLocalConfigFile(): void {
-  const configResult = syncManagedLocalConfigFile(process.cwd());
+function ensureWorkspaceDevSecretsFile(): void {
+  const result = ensureWorkspaceDevSecretsFileSync({
+    rootDir: process.cwd(),
+  });
 
-  if (configResult.created) {
-    console.log(
-      `Created ${configResult.path} from the managed local config contract.`
-    );
-  } else if (configResult.addedKeys.length > 0) {
-    console.log(
-      `Updated ${configResult.path} with ${configResult.addedKeys.length} new managed key(s): ${configResult.addedKeys.join(", ")}`
-    );
-  }
-
-  if (configResult.errors.length === 0) {
+  if (!result.created) {
     return;
   }
 
-  const lines = ["Error: managed local configuration validation failed."];
-
-  if (configResult.errors.length > 0) {
-    lines.push(`Config file: ${configResult.path}`);
-    for (const error of configResult.errors) {
-      lines.push(`- ${error}`);
-    }
-  }
-
-  lines.push("Run `bun run env:sync` to refresh the tracked TOML artifact.");
-  process.stderr.write(`${lines.join("\n")}\n`);
-  process.exit(1);
+  console.log(`Created ${result.path} with generated local secrets.`);
 }
 
 async function main(): Promise<void> {
@@ -284,8 +328,8 @@ async function main(): Promise<void> {
   console.log("  OneQuery Development Environment Setup");
   console.log("========================================\n");
 
-  assertDevTopologyArtifactsInSync();
-  syncLocalConfigFile();
+  ensureWorkspaceDevSecretsFile();
+  getWorkspaceDev();
 
   if (!isDockerRunning()) {
     console.error(
@@ -298,7 +342,7 @@ async function main(): Promise<void> {
 
   // Start postgres
   console.log("Starting PostgreSQL container...");
-  exec("docker compose up -d postgres");
+  execDockerCompose("up -d postgres");
 
   const isReady = await waitForPostgres();
   if (!isReady) {

@@ -5,7 +5,7 @@ help:
     just -l
 
 # `onequery`
-alias v := onequery
+alias o := onequery
 onequery *args:
     cargo run --bin onequery -- "$@"
 

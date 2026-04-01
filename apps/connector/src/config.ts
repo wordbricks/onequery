@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { loadConfigFromSourcesSync } from "@onequery/config-loader";
+import { readTomlFileSync } from "@onequery/config-loader";
 import { z } from "zod";
 
 const DEFAULT_POLL_INTERVAL_MS = 3000;
@@ -81,13 +82,18 @@ export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
   rootDir: string = process.cwd()
 ): ConnectorConfig {
-  const parsed = loadConfigFromSourcesSync({
-    env,
-    schema: envSchema,
-    tomlPath: getConnectorConfigPath(rootDir),
+  const parsed = envSchema.parse({
+    ...readConnectorTomlConfig(rootDir),
+    ...env,
   });
 
   return toConnectorConfig(parsed);
+}
+
+function readConnectorTomlConfig(rootDir: string): Record<string, unknown> {
+  const configPath = getConnectorConfigPath(rootDir);
+
+  return existsSync(configPath) ? readTomlFileSync(configPath) : {};
 }
 
 function toConnectorConfig(parsed: z.infer<typeof envSchema>): ConnectorConfig {

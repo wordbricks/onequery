@@ -2,8 +2,7 @@ import type { Auth } from "@onequery/server/auth";
 import type { Context } from "hono";
 import { z } from "zod";
 
-import { createCliBrowserApp } from "../app";
-import type { CliRouteEnv } from "../app";
+import * as cliBrowserApp from "../app";
 import { buildCliRequestLogDetails, logCliEvent } from "../observability";
 
 const DEVICE_PAGE_PATH = "/device";
@@ -47,98 +46,107 @@ type DeviceDecisionConfig = {
   successMessage: string;
 };
 
+type CliRouteEnv = cliBrowserApp.CliRouteEnv;
+type CreateCliAppOptions = cliBrowserApp.CreateCliAppOptions;
 type CliBrowserContext = Context<CliRouteEnv>;
 
-export const deviceAuthorizationBrowserRoute = createCliBrowserApp()
-  .get("/", async (c) => {
-    const userCode = normalizeUserCode(c.req.query("user_code"));
-    return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);
-  })
-  .get("/approve", async (c) => {
-    const userCode = normalizeUserCode(c.req.query("user_code"));
-    if (!userCode) {
-      return c.redirect(buildDevicePageUrl(c.req.url), 302);
-    }
+export function createDeviceAuthorizationBrowserRoute(
+  input: CreateCliAppOptions
+) {
+  return (
+    cliBrowserApp
+      .createCliBrowserApp(input)
+      .get("/", async (c) => {
+        const userCode = normalizeUserCode(c.req.query("user_code"));
+        return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);
+      })
+      .get("/approve", async (c) => {
+        const userCode = normalizeUserCode(c.req.query("user_code"));
+        if (!userCode) {
+          return c.redirect(buildDevicePageUrl(c.req.url), 302);
+        }
 
-    const browserSession = await readBrowserSession(
-      c.var.storage.auth,
-      c.req.raw.headers
-    );
-    if (!browserSession) {
-      logCliEvent({
-        details: buildCliRequestLogDetails(c, {
-          userCode,
-        }),
-        event: "auth.device.redirect_to_signin",
-        level: "info",
-      });
-      return c.redirect(
-        buildSigninUrl(c.req.url, c.env.BETTER_AUTH_URL, userCode),
-        302
-      );
-    }
+        const browserSession = await readBrowserSession(
+          c.var.storage.auth,
+          c.req.raw.headers
+        );
+        if (!browserSession) {
+          logCliEvent({
+            details: buildCliRequestLogDetails(c, {
+              userCode,
+            }),
+            event: "auth.device.redirect_to_signin",
+            level: "info",
+          });
+          return c.redirect(
+            buildSigninUrl(c.req.url, c.var.runtime.auth.baseURL, userCode),
+            302
+          );
+        }
 
-    return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);
-  })
-  // Comment: browser presentation for the CLI device flow now lives in
-  // `apps/web`; this worker route only exposes JSON state/effect endpoints.
-  .get("/verify", async (c) => {
-    const userCode = normalizeUserCode(c.req.query("user_code"));
-    if (!userCode) {
-      return c.json(
-        {
-          error: "Enter the code shown in your terminal to continue.",
-        },
-        400
-      );
-    }
+        return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);
+      })
+      // Comment: browser presentation for the CLI device flow now lives in
+      // `apps/web`; this worker route only exposes JSON state/effect endpoints.
+      .get("/verify", async (c) => {
+        const userCode = normalizeUserCode(c.req.query("user_code"));
+        if (!userCode) {
+          return c.json(
+            {
+              error: "Enter the code shown in your terminal to continue.",
+            },
+            400
+          );
+        }
 
-    const verification = await verifyDeviceCode(
-      c.var.storage.auth,
-      c.req.raw,
-      userCode
-    );
-    if (verification.kind === "invalid") {
-      logCliEvent({
-        details: buildCliRequestLogDetails(c, {
-          userCode,
-        }),
-        event: "auth.device.verify_failed",
-        level: "warn",
-      });
-      return c.json(
-        {
-          error: verification.message,
-        },
-        400
-      );
-    }
+        const verification = await verifyDeviceCode(
+          c.var.storage.auth,
+          c.req.raw,
+          userCode
+        );
+        if (verification.kind === "invalid") {
+          logCliEvent({
+            details: buildCliRequestLogDetails(c, {
+              userCode,
+            }),
+            event: "auth.device.verify_failed",
+            level: "warn",
+          });
+          return c.json(
+            {
+              error: verification.message,
+            },
+            400
+          );
+        }
 
-    return c.json(
-      DeviceVerifyApiResponseSchema.parse({
-        status: verification.status,
-        userCode: verification.userCode,
-      }),
-      200
-    );
-  })
-  .post("/approve", async (c) =>
-    handleDeviceDecision(c, {
-      successEvent: "auth.device.approved",
-      successMessage:
-        "Return to your terminal to continue. You can close this tab.",
-      successTitle: "Device Approved",
-      targetPath: "/api/auth/device/approve",
-    })
-  )
-  .post("/deny", async (c) =>
-    handleDeviceDecision(c, {
-      successEvent: "auth.device.denied",
-      successMessage: "The terminal login request was denied.",
-      successTitle: "Device Denied",
-      targetPath: "/api/auth/device/deny",
-    })
+        return c.json(
+          DeviceVerifyApiResponseSchema.parse({
+            status: verification.status,
+            userCode: verification.userCode,
+          }),
+          200
+        );
+      })
+      .post("/approve", async (c) =>
+        handleDeviceDecision(c, {
+          successEvent: "auth.device.approved",
+          successMessage:
+            "Return to your terminal to continue. You can close this tab.",
+          successTitle: "Device Approved",
+          targetPath: "/api/auth/device/approve",
+        })
+      )
+      .post("/deny", async (c) =>
+        handleDeviceDecision(c, {
+          successEvent: "auth.device.denied",
+          successMessage: "The terminal login request was denied.",
+          successTitle: "Device Denied",
+          targetPath: "/api/auth/device/deny",
+        })
+      )
   );
+}
 
 async function handleDeviceDecision(
   c: CliBrowserContext,
@@ -162,7 +170,11 @@ async function handleDeviceDecision(
     return c.json(
       {
         error: "Sign in to continue.",
-        signInUrl: buildSigninUrl(c.req.url, c.env.BETTER_AUTH_URL, userCode),
+        signInUrl: buildSigninUrl(
+          c.req.url,
+          c.var.runtime.auth.baseURL,
+          userCode
+        ),
       },
       401
     );

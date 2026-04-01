@@ -1,12 +1,11 @@
 import { Hono } from "hono";
 
 import { readAuthBootstrapState } from "../auth/self-host";
-import type { AuthEnv } from "../env";
+import type { ServerRuntimeVariables } from "../runtime-context";
 import type { StorageVariables } from "../storage";
 
 export const authRoute = new Hono<{
-  Bindings: AuthEnv;
-  Variables: StorageVariables;
+  Variables: ServerRuntimeVariables & StorageVariables;
 }>()
   .get("/bootstrap-state", async (c) => {
     const state = await readAuthBootstrapState({

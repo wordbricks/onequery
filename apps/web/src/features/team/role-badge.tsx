@@ -2,7 +2,7 @@ import { Badge } from "@onequery/ui/components/badge";
 
 import type { OrganizationRoleName } from "@/lib/organization-role-access";
 
-export type MemberRole = OrganizationRoleName;
+type MemberRole = OrganizationRoleName;
 
 type RoleBadgeProps = {
   role: MemberRole;
@@ -42,7 +42,7 @@ function getRoleLabel(role: MemberRole): string {
   }
 }
 
-export function RoleBadge({ role }: RoleBadgeProps) {
+function RoleBadge({ role }: RoleBadgeProps) {
   return <Badge variant={getRoleVariant(role)}>{getRoleLabel(role)}</Badge>;
 }
 

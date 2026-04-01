@@ -3,7 +3,6 @@ import { count, eq, getDatabaseSchema } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import type { ServerEnv } from "../env";
 import { requireOrgAccess } from "../middleware/require-org-access";
 import type { SessionVariables } from "../middleware/session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
@@ -13,7 +12,6 @@ const QuerySchema = z.object({
 });
 
 export const statsRoute = new Hono<{
-  Bindings: ServerEnv;
   Variables: SessionVariables;
 }>()
   .use("*", requireOrgAccess())

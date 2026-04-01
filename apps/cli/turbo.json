@@ -1,6 +1,16 @@
 {
   "extends": ["//"],
   "tasks": {
+    "build": {
+      "env": [
+        "AR",
+        "CC",
+        "CXX",
+        "DEVELOPER_DIR",
+        "MACOSX_DEPLOYMENT_TARGET",
+        "SDKROOT"
+      ]
+    },
     "topo": {
       "inputs": [
         "Cargo.toml",
@@ -15,6 +25,14 @@
       ]
     },
     "typecheck": {
+      "env": [
+        "AR",
+        "CC",
+        "CXX",
+        "DEVELOPER_DIR",
+        "MACOSX_DEPLOYMENT_TARGET",
+        "SDKROOT"
+      ],
       "inputs": [
         "Cargo.toml",
         "Cargo.lock",
@@ -28,6 +46,14 @@
       ]
     },
     "test": {
+      "env": [
+        "AR",
+        "CC",
+        "CXX",
+        "DEVELOPER_DIR",
+        "MACOSX_DEPLOYMENT_TARGET",
+        "SDKROOT"
+      ],
       "inputs": [
         "Cargo.toml",
         "Cargo.lock",

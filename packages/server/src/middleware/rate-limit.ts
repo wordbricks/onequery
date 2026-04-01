@@ -11,20 +11,8 @@
 import type { MiddlewareHandler } from "hono";
 import { rateLimiter, UnstorageStore } from "hono-rate-limiter";
 
-import { parseBooleanEnvFlag } from "../env";
-import type { ServerEnv } from "../env";
 import type { ServerStorage } from "../storage";
 import type { SessionVariables } from "./session";
-
-type RateLimitEnv = {
-  Bindings: ServerEnv;
-  Variables: SessionVariables;
-};
-
-const apiRateLimiterCache = new WeakMap<
-  ServerStorage,
-  MiddlewareHandler<RateLimitEnv>
->();
 
 /**
  * Get client IP from request headers with multiple fallbacks.
@@ -84,10 +72,17 @@ function shouldSkipPath(path: string): boolean {
  * - Skips health checks, webhooks, and Better Auth-owned routes
  * - Uses user ID for authenticated requests, IP for anonymous
  */
-export function apiRateLimiter(): MiddlewareHandler<RateLimitEnv> {
+export function apiRateLimiter(input: { enabled: boolean }): MiddlewareHandler<{
+  Variables: SessionVariables;
+}> {
+  const middlewareCache = new WeakMap<
+    ServerStorage,
+    MiddlewareHandler<{ Variables: SessionVariables }>
+  >();
+
   return async (c, next) => {
     const storage = c.var.storage;
-    let middleware = apiRateLimiterCache.get(storage);
+    let middleware = middlewareCache.get(storage);
 
     if (!middleware) {
       middleware = rateLimiter({
@@ -102,7 +97,7 @@ export function apiRateLimiter(): MiddlewareHandler<RateLimitEnv> {
           return `ip:${getClientIp(rateLimitContext)}`;
         },
         skip: (rateLimitContext) => {
-          if (parseBooleanEnvFlag(rateLimitContext.env.DISABLE_RATE_LIMIT)) {
+          if (!input.enabled) {
             return true;
           }
           return shouldSkipPath(rateLimitContext.req.path);
@@ -112,7 +107,7 @@ export function apiRateLimiter(): MiddlewareHandler<RateLimitEnv> {
           storage: storage.apiRateLimitStorage,
         }),
       });
-      apiRateLimiterCache.set(storage, middleware);
+      middlewareCache.set(storage, middleware);
     }
 
     return middleware(c, next);

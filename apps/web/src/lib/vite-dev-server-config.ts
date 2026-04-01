@@ -1,22 +1,21 @@
-import { loadLocalDevRuntimeSync } from "@onequery/dev-config/runtime";
+import {
+  projectViteDevServerConfig,
+  resolveWorkspaceDev,
+} from "@onequery/config";
 
-export interface ViteDevServerConfig {
+interface ViteDevServerConfig {
   readonly apiProxyTarget: string;
   readonly port: number;
 }
 
 export function resolveViteDevServerConfig(
-  env: NodeJS.ProcessEnv = process.env
+  input: {
+    readonly rootDir?: string;
+  } = {}
 ): ViteDevServerConfig {
-  const runtime = loadLocalDevRuntimeSync({
-    env,
-  });
-
-  return {
-    // Comment: Keep the app-local helper as a thin compatibility shim so Vite's
-    // dev server config still has a stable call site while the local runtime
-    // truth now lives in @onequery/dev-config.
-    apiProxyTarget: runtime.api.origin,
-    port: runtime.web.port,
-  };
+  return projectViteDevServerConfig(
+    resolveWorkspaceDev({
+      rootDir: input.rootDir,
+    })
+  );
 }

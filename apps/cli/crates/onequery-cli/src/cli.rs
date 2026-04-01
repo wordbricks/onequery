@@ -883,7 +883,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use toml::Value as TomlValue;
 
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
 
     use super::AuthImportArgs;
     use super::AuthSessionSubcommand;
@@ -1055,7 +1055,7 @@ mod tests {
             OsString::from("config"),
             OsString::from("set"),
             OsString::from("server"),
-            OsString::from(DEFAULT_BASE_URL),
+            OsString::from(default_base_url()),
         ])
         .expect("expected config set server invocation");
 
@@ -1065,7 +1065,7 @@ mod tests {
 
         match invocation.command {
             super::Command::Config(ConfigCommand::SetServer { url }) => {
-                assert_eq!(url, DEFAULT_BASE_URL.to_owned());
+                assert_eq!(url, default_base_url());
             }
             other => panic!("expected config set server command, got {other:?}"),
         }

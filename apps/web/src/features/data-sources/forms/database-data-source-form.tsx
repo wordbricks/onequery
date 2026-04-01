@@ -58,6 +58,7 @@ export function DatabaseDataSourceForm({
       database: providerDefaults.defaultDatabase,
       username: "",
       password: "",
+      sslMode: providerDefaults.defaultSslMode,
     },
     resolver: zodResolver(DatabaseFormSchema),
   });
@@ -89,7 +90,7 @@ export function DatabaseDataSourceForm({
               database: data.database,
               username: data.username,
               password: data.password,
-              sslMode: defaults.defaultSslMode,
+              sslMode: data.sslMode ?? defaults.defaultSslMode,
             }
           : {
               type: "mysql",
@@ -98,7 +99,7 @@ export function DatabaseDataSourceForm({
               database: data.database,
               username: data.username,
               password: data.password,
-              sslMode: defaults.defaultSslMode,
+              sslMode: data.sslMode ?? defaults.defaultSslMode,
             };
 
       return createDataSource({
@@ -157,6 +158,7 @@ export function DatabaseDataSourceForm({
       password: parsed.password ?? "",
       port: parsed.port ?? providerDefaults.defaultPort,
       provider,
+      sslMode: parsed.sslMode ?? providerDefaults.defaultSslMode,
       username: parsed.username,
     });
   };

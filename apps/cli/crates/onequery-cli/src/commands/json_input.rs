@@ -58,12 +58,12 @@ mod tests {
     use super::parse_org_scoped_json_input;
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
 
     fn test_context(command_line: &str) -> CommandContext {
         CommandContext {
             command_line: command_line.to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
             resolved_org_source: ResolvedOrgSource::Config,

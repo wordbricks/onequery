@@ -9,7 +9,6 @@ import {
   organizationPermissionChecks,
 } from "../auth/organization-permissions";
 import type { OrganizationPermissionCheck } from "../auth/organization-permissions";
-import type { ServerEnv } from "../env";
 import type { SessionVariables } from "../middleware/session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
@@ -90,7 +89,6 @@ async function requireTeamPermission(input: {
 }
 
 export const teamRoute = new Hono<{
-  Bindings: ServerEnv;
   Variables: SessionVariables;
 }>()
   .post(

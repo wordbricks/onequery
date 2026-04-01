@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
-import type { AuthEnv } from "../env";
 import type { StorageVariables } from "../storage";
 import { sessionMiddleware } from "./session";
 import type { SessionVariables } from "./session";
@@ -21,7 +20,6 @@ function createMockStorage(input: {
 describe("session middleware", () => {
   it("falls back to an anonymous session when auth session lookup throws", async () => {
     const app = new Hono<{
-      Bindings: AuthEnv;
       Variables: SessionVariables;
     }>()
       .use("*", async (c, next) => {

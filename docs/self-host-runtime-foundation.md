@@ -1,70 +1,98 @@
 # Self-Host Runtime Foundation
 
-This document records the self-host runtime filesystem and lifecycle contract
-for the OSS self-host distribution.
+This document describes the self-host runtime contract after the config rewrite.
 
-## What Phase 2 Guarantees
+## Ownership Model
 
-- `onequery serve` bootstraps a valid self-host config area if one does not exist.
-- Self-host config and mutable runtime data live in separate platform-standard
-  roots.
-- One data directory may have only one live Bun runtime lease at a time.
-- The Bun runtime removes `server.pid` and `server.lock` on `SIGINT`,
-  `SIGTERM`, and startup failure.
+The self-host startup boundary has one owner per concern:
 
-Historical note:
+- `packages/config/src/server-launch.ts`, exported as
+  `@onequery/config/server-launch`, is the canonical launch-contract owner for
+  Bun runtime shape and validation.
+- Rust CLI owns self-host defaults, config parsing, secret parsing, path
+  discovery, and validation.
+- Rust CLI resolves a complete launch contract that matches the canonical
+  config-package owner and writes it to `run/launch.json`.
+- `packages/bun-server` reads that launch contract exactly once at process
+  start.
+- `packages/server` consumes the typed runtime object built from that launch
+  contract.
 
-- Early OSS self-host work introduced the runtime layout and lifecycle lease.
-- The current CLI now also provides `onequery serve status`, `onequery serve logs`,
-  `onequery serve stop`, `onequery backup`, and `onequery restore`.
-- For operator-facing guidance, use [`self-host.md`](./self-host.md).
+Bun does not parse `self-host/config.toml`, Bun does not parse
+`self-host/secrets.toml`, and Bun does not fall back to `onequery.dev.toml`.
+
+The current parity bar is deliberate: Rust and Bun stay aligned through the
+canonical config-package validator plus the shared fixture tests. We are not
+introducing a separate neutral schema artifact unless that parity workflow
+becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
-The self-host roots resolve to platform-standard directories on supported
-macOS/Linux hosts:
+Platform-default roots on supported macOS/Linux hosts:
 
-- Unix-like config root: `$XDG_CONFIG_HOME/onequery` or `~/.config/onequery`
-- Unix-like data root: `$XDG_DATA_HOME/onequery` or `~/.local/share/onequery`
+- config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
+- data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
 
 The runtime-managed files under those roots are:
 
-- `self-host/config.toml`: self-host listen, public origin, logging, and SMTP settings
-- `self-host/secrets.toml`: generated Better Auth, encryption, agent, and enrollment
-  secrets
-- `pglite/onequery/`: embedded PGlite data directory
-- `logs/server.log`: Bun lifecycle log
-- `backups/`: reserved backup target directory
-- `run/server.pid`: operator-facing process marker
-- `run/server.lock`: atomic lifecycle lease for duplicate-start prevention
+- `self-host/config.toml`
+- `self-host/secrets.toml`
+- `pglite/onequery/`
+- `logs/server.log`
+- `backups/`
+- `run/server.pid`
+- `run/server.lock`
+- `run/launch.json`
+
+## Operator Note
+
+These three files have different roles:
+
+- `config.toml` is the human-edited operator config.
+- `secrets.toml` stores generated or operator-managed secrets.
+- `run/launch.json` is a private resolved artifact. Do not edit it manually;
+  `onequery serve` rewrites it from the Rust-owned config model each time the
+  runtime starts.
 
 ## Lifecycle Rules
 
-The Rust CLI owns bootstrap and path discovery. It passes the resolved
-self-host config directory and data directory to the Bun runtime with:
+`onequery serve` now performs this startup sequence:
 
-- `ONEQUERY_SELF_HOST_CONFIG_DIR`
-- `ONEQUERY_SELF_HOST_DATA_DIR`
+```text
+self-host/config.toml + self-host/secrets.toml
+                     |
+                     v
+        resolve_self_host_config() in Rust
+                     |
+                     v
+              write run/launch.json
+                     |
+                     v
+      start packages/bun-server with launch-config path only
+                     |
+                     v
+      Bun reads launch.json once and starts the process runtime
+```
 
 The Bun runtime owns the process-local guarantees:
 
 - acquire the runtime lease before calling `Bun.serve`
-- fail fast if a live process already holds `server.lock` for the same data
-  directory
-- replace stale pid and lock markers only when the recorded pid is no longer
-  running
+- fail fast if `server.lock` belongs to a live process
+- replace stale pid and lock markers only when the recorded pid is gone
 - append lifecycle events to `logs/server.log`
-- release pid and lock markers during graceful shutdown
+- release pid and lock markers during graceful shutdown or startup failure
 
 ## Proof Surface
 
-The runtime contract is currently proven by the repo checks below:
+The current repo checks that prove this boundary are:
 
-- `cargo test -p onequery-cli`
-  proves `onequery serve` bootstrap creates `self-host/config.toml`,
-  `self-host/secrets.toml`, and the self-host runtime directories from the
-  CLI-owned path contract.
-- `bun run --cwd packages/bun-server test`
-  proves the Bun runtime blocks duplicate starts for the same data directory,
-  replaces stale locks safely, appends lifecycle logs, and cleans up pid/lock
-  markers on shutdown.
+- `cargo test -p onequery-cli self_host::tests`
+- `cargo test -p onequery-cli serve::tests`
+- `bun run --cwd packages/bun-server test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
+
+Those checks cover:
+
+- Rust-owned self-host config resolution and launch-contract generation
+- launch-config parsing and validation at Bun startup
+- starting the Bun runtime from serialized launch config input
+- lifecycle lease, stale lock replacement, log append, and shutdown cleanup

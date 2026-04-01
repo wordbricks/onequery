@@ -4,7 +4,7 @@ use serde_json::json;
 use url::Url;
 
 use crate::cli::ConfigCommand;
-use crate::config::CONFIG_SET_SERVER_COMMAND_EXAMPLE;
+use crate::config::config_set_server_command_example;
 use crate::output::CommandOutput;
 
 use super::CommandContext;
@@ -82,7 +82,7 @@ fn normalize_server_url(raw_url: &str, command_line: &str) -> Result<String, Cli
 }
 
 fn default_server_url_try_next() -> Vec<String> {
-    vec![CONFIG_SET_SERVER_COMMAND_EXAMPLE.to_owned()]
+    vec![config_set_server_command_example()]
 }
 
 #[cfg(test)]
@@ -95,7 +95,7 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
-    use crate::config::DEFAULT_BASE_URL;
+    use crate::config::default_base_url;
     use crate::credentials::AuthSessionStore;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
@@ -136,8 +136,8 @@ mod tests {
             terminal: NoopTerminal,
         };
         let context = CommandContext {
-            command_line: format!("onequery config set server {DEFAULT_BASE_URL}"),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            command_line: format!("onequery config set server {}", default_base_url()),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: None,
             resolved_org_source: ResolvedOrgSource::None,
@@ -146,7 +146,7 @@ mod tests {
 
         let output = execute(
             &ConfigCommand::SetServer {
-                url: DEFAULT_BASE_URL.to_owned(),
+                url: default_base_url(),
             },
             &context,
             &mut runtime,

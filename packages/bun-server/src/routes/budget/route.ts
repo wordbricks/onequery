@@ -8,7 +8,6 @@ import {
   gte,
   sql,
 } from "@onequery/db/server";
-import type { ServerEnv } from "@onequery/server/env";
 import { requireOrgAccess } from "@onequery/server/middleware/require-org-access";
 import type { SessionVariables } from "@onequery/server/middleware/session";
 import { zodProblemHook } from "@onequery/server/problem-details/zod-problem-hook";
@@ -84,7 +83,6 @@ function buildDailyCostSeries(input: {
 }
 
 export const budgetRoute = new Hono<{
-  Bindings: ServerEnv;
   Variables: SessionVariables;
 }>().get(
   "/",

@@ -18,21 +18,23 @@ import {
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
 } from "./lifecycle";
-import type { SelfHostRuntimePaths } from "./paths";
+import type { SelfHostLifecyclePaths } from "./lifecycle";
 
-function createPaths(root: string): SelfHostRuntimePaths {
+function createPaths(root: string): SelfHostLifecyclePaths & {
+  runDir: string;
+  serverLogPath: string;
+} {
+  const dataDir = join(root, "data");
+  const logsDir = join(dataDir, "logs");
+  const runDir = join(dataDir, "run");
+
   return {
-    configDir: join(root, "config", "self-host"),
-    dataDir: join(root, "data"),
-    configPath: join(root, "config", "self-host", "config.toml"),
-    secretsPath: join(root, "config", "self-host", "secrets.toml"),
-    pgliteDir: join(root, "data", "pglite", "onequery"),
-    logsDir: join(root, "data", "logs"),
-    serverLogPath: join(root, "data", "logs", "server.log"),
-    backupsDir: join(root, "data", "backups"),
-    runDir: join(root, "data", "run"),
-    pidPath: join(root, "data", "run", "server.pid"),
-    lockPath: join(root, "data", "run", "server.lock"),
+    dataDir,
+    lockPath: join(runDir, "server.lock"),
+    logsDir,
+    pidPath: join(runDir, "server.pid"),
+    runDir,
+    serverLogPath: join(logsDir, "server.log"),
   };
 }
 
@@ -149,12 +151,12 @@ describe("self-host lifecycle lease", () => {
 
     await appendLifecycleLog(
       paths,
-      "[bun-server] listening on http://127.0.0.1:4545",
+      "[bun-server] listening on http://127.0.0.1:5656",
       () => new Date("2026-03-25T00:00:00.000Z")
     );
 
     await expect(readFile(paths.serverLogPath, "utf8")).resolves.toContain(
-      "2026-03-25T00:00:00.000Z [bun-server] listening on http://127.0.0.1:4545"
+      "2026-03-25T00:00:00.000Z [bun-server] listening on http://127.0.0.1:5656"
     );
   });
 });

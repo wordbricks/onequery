@@ -160,8 +160,8 @@ async function seedAuditAction(input: {
 
 describe("organizations audit route", () => {
   it("lists org audit entries newest-first, paginates them, and applies filters", async () => {
-    const { app, db, env, test } = await createRouteIntegrationHarness({
-      DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-"),
+    const { app, db, test } = await createRouteIntegrationHarness({
+      databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-"),
     });
 
     const runId = createRunId();
@@ -233,8 +233,7 @@ describe("organizations audit route", () => {
         `http://localhost/api/organizations/${organization.slug}/audit?limit=1`,
         {
           headers: { cookie: ownerCookie },
-        },
-        env
+        }
       );
 
       expect(firstPageResponse.status).toBe(200);
@@ -253,8 +252,7 @@ describe("organizations audit route", () => {
         `http://localhost/api/organizations/${organization.slug}/audit?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor ?? "")}`,
         {
           headers: { cookie: ownerCookie },
-        },
-        env
+        }
       );
 
       expect(secondPageResponse.status).toBe(200);
@@ -271,8 +269,7 @@ describe("organizations audit route", () => {
         `http://localhost/api/organizations/${organization.slug}/audit?actionType=validate&status=query_rejected&sourceKey=billing&q=REJECTED`,
         {
           headers: { cookie: ownerCookie },
-        },
-        env
+        }
       );
 
       expect(filteredResponse.status).toBe(200);
@@ -296,8 +293,8 @@ describe("organizations audit route", () => {
   });
 
   it("rejects unauthenticated and unauthorized audit reads and returns 404 for unknown orgs", async () => {
-    const { app, db, env, test } = await createRouteIntegrationHarness({
-      DATABASE_URL: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
+    const { app, db, test } = await createRouteIntegrationHarness({
+      databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
     });
 
     const runId = createRunId();
@@ -331,9 +328,7 @@ describe("organizations audit route", () => {
       }
 
       const unauthenticated = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit`,
-        undefined,
-        env
+        `http://localhost/api/organizations/${organization.slug}/audit`
       );
       expect(unauthenticated.status).toBe(401);
 
@@ -341,8 +336,7 @@ describe("organizations audit route", () => {
         `http://localhost/api/organizations/${organization.slug}/audit`,
         {
           headers: { cookie: outsiderCookie },
-        },
-        env
+        }
       );
       expect(forbidden.status).toBe(403);
 
@@ -357,8 +351,7 @@ describe("organizations audit route", () => {
         "http://localhost/api/organizations/missing-org/audit",
         {
           headers: { cookie: ownerCookie },
-        },
-        env
+        }
       );
       expect(missing.status).toBe(404);
     } finally {

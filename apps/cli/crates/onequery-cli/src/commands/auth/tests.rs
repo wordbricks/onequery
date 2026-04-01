@@ -20,7 +20,7 @@ use crate::commands::Runtime;
 use crate::commands::auth_session::PersistedLoginNextStep;
 use crate::config::AppConfig;
 use crate::config::ConfigStore;
-use crate::config::DEFAULT_BASE_URL;
+use crate::config::default_base_url;
 use crate::credentials::AuthSessionStore;
 use crate::credentials::ImportedAuthSession;
 use crate::platform::BrowserLaunchError;
@@ -144,7 +144,7 @@ fn whoami_output_snapshot_uses_server_org_when_context_is_unresolved() {
         },
         &CommandContext {
             command_line: "onequery auth whoami".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: None,
             resolved_org_source: ResolvedOrgSource::None,
@@ -173,7 +173,7 @@ fn whoami_output_snapshot_projects_selected_fields() {
         },
         &CommandContext {
             command_line: "onequery auth whoami --fields user.email,effectiveOrg".to_owned(),
-            base_url: DEFAULT_BASE_URL.to_owned(),
+            base_url: default_base_url(),
             request_id: None,
             resolved_org: None,
             resolved_org_source: ResolvedOrgSource::None,
@@ -1187,7 +1187,7 @@ async fn auth_workflow_login_token_persist_failure_returns_failed_terminal_state
 fn auth_context(command_line: &str) -> CommandContext {
     CommandContext {
         command_line: command_line.to_owned(),
-        base_url: DEFAULT_BASE_URL.to_owned(),
+        base_url: default_base_url(),
         request_id: None,
         resolved_org: None,
         resolved_org_source: ResolvedOrgSource::None,

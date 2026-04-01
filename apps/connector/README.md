@@ -38,7 +38,7 @@ AWS_REGION=us-east-1 bun run dev
 Required variables for local development:
 
 ```toml
-ONEQUERY_BASE_URL = "http://localhost:4545/api"
+ONEQUERY_BASE_URL = "http://127.0.0.1:4555/api"
 ONEQUERY_ENROLLMENT_TOKEN = "replace-with-enrollment-token"
 ORGANIZATION_ID = "org_123"
 CONNECTOR_NAME = "customer-prod-apne2"
@@ -61,6 +61,8 @@ LOG_LEVEL = "info"
 # HTTPS_PROXY = "http://proxy.company.local:8080"
 # NODE_EXTRA_CA_CERTS = "/etc/ssl/certs/custom-ca.pem"
 ```
+
+Use the Bun API listener, not the Vite browser origin, for `ONEQUERY_BASE_URL`.
 
 ## Checks
 

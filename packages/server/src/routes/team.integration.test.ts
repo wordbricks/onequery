@@ -31,7 +31,7 @@ function expectExpiryToMatchPolicy(expiresAt: Date, createdAtMs: number) {
 
 describe("team invitation expiry alignment", () => {
   it("returns 7-day expirations, rejects expired invites, and reuses pending invites on re-invite", async () => {
-    const { app, auth, db, env, test } = await createRouteIntegrationHarness();
+    const { app, auth, db, test } = await createRouteIntegrationHarness();
 
     const runId = createRunId();
     const adminUser = test.createUser({
@@ -85,8 +85,7 @@ describe("team invitation expiry alignment", () => {
               cookie: adminCookie,
             },
             method: "POST",
-          },
-          env
+          }
         );
 
         expect(response.status).toBe(200);

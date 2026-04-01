@@ -1,4 +1,5 @@
 import type { Database } from "@onequery/db/server";
+import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
@@ -6,7 +7,6 @@ import { createMiddleware } from "hono/factory";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
 import type { CliSessionIdentity } from "./domain/workflows";
-import type { CliServerEnv } from "./env";
 import { CLI_REQUEST_ID_HEADER, createCliProblemHandler } from "./error";
 import {
   buildCliRequestLogDetails,
@@ -19,10 +19,10 @@ import {
 export type CliRouteEnv<
   Variables extends Record<string, unknown> = Record<string, never>,
 > = {
-  Bindings: CliServerEnv;
   Variables: {
     requestId: string;
     requestStartedAtMs: number;
+    runtime: ServerRuntimeConfig;
     storage: ServerStorage;
   } & Variables;
 };
@@ -35,6 +35,11 @@ export type CliOrgRouteVariables = CliSessionRouteVariables & {
   db: Database;
   authorizedOrg: AuthorizedCliOrgContext;
 };
+
+export interface CreateCliAppOptions {
+  runtime: ServerRuntimeConfig;
+  storage: ServerStorage;
+}
 
 const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
   async (c, next) => {
@@ -89,6 +94,21 @@ const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
   }
 );
 
+function cliRuntimeMiddleware<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(runtime: ServerRuntimeConfig) {
+  return createMiddleware<{
+    Variables: { runtime: ServerRuntimeConfig } & Variables;
+  }>(async (c, next) => {
+    (
+      c as typeof c & {
+        set: (key: "runtime", value: ServerRuntimeConfig) => void;
+      }
+    ).set("runtime", runtime);
+    await next();
+  });
+}
+
 function createCliRouter<
   Variables extends Record<string, unknown> = Record<string, never>,
 >() {
@@ -97,9 +117,10 @@ function createCliRouter<
 
 export function createCliApp<
   Variables extends Record<string, unknown> = Record<string, never>,
->() {
+>(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();
-  app.use(serverStorageMiddleware());
+  app.use(cliRuntimeMiddleware(input.runtime));
+  app.use(serverStorageMiddleware(input.storage));
   app.use(cliRequestObservabilityMiddleware);
   app.onError(createCliProblemHandler());
   return app;
@@ -107,9 +128,10 @@ export function createCliApp<
 
 export function createCliBrowserApp<
   Variables extends Record<string, unknown> = Record<string, never>,
->() {
-  const app = new Hono<CliRouteEnv<Variables>>();
-  app.use(serverStorageMiddleware());
+>(input: CreateCliAppOptions) {
+  const app = createCliRouter<Variables>();
+  app.use(cliRuntimeMiddleware(input.runtime));
+  app.use(serverStorageMiddleware(input.storage));
   app.use(cliRequestObservabilityMiddleware);
   return app;
 }

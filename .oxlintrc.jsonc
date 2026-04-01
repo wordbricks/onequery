@@ -54,6 +54,21 @@
     // Rely on oxfmt `experimentalSortImports` instead
     "sort-imports": "off",
     "no-duplicate-imports": ["error", { "allowSeparateTypeImports": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@onequery/*/src/*"],
+            "message": "Import from a package's public surface instead of its private src tree.",
+          },
+          {
+            "group": ["**/packages/*/src/*", "**/apps/*/src/*"],
+            "message": "Do not reach into another workspace package through repo-relative src paths. Import its public package surface instead.",
+          },
+        ],
+      },
+    ],
 
     "import/no-relative-parent-imports": "off",
     "import/no-default-export": "off",
@@ -83,6 +98,7 @@
     "typescript/no-require-imports": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/no-var-requires": "off",
+    "typescript/promise-function-async": "off",
     "typescript/require-await": "off",
 
     // TEMP: type-aware rules to fix incrementally
@@ -92,7 +108,6 @@
     "typescript/no-unsafe-call": "off", // TEMP ~139 external library .......
     "typescript/no-unsafe-return": "off", // TEMP ~137
     "typescript/no-unsafe-argument": "off", // TEMP ~102
-    // "typescript/promise-function-async": "off", // TEMP ~326
     "typescript/no-confusing-void-expression": "off", // TEMP ~172
     "typescript/no-floating-promises": "off", // TEMP ~71
     "typescript/prefer-nullish-coalescing": "off", // TEMP ~70
@@ -226,6 +241,14 @@
               },
             ],
             "patterns": [
+              {
+                "group": ["@onequery/*/src/*"],
+                "message": "Import from a package's public surface instead of its private src tree.",
+              },
+              {
+                "group": ["**/packages/*/src/*", "**/apps/*/src/*"],
+                "message": "Do not reach into another workspace package through repo-relative src paths. Import its public package surface instead.",
+              },
               {
                 "group": ["@onequery/server/*"],
                 "message": "Client code must not depend on server package internals. Move shared types or values into @onequery/contracts or a client-safe subpath.",

@@ -5,25 +5,23 @@
   "type": "module",
   "exports": {
     "./app": "./src/app.ts",
+    "./assets": "./src/assets.ts",
     "./client": "./src/client.ts"
   },
   "scripts": {
     "build:web": "bun run --cwd ../../apps/web build",
     "dev": "bun run ../../scripts/run-bun-server.ts --dev",
-    "start": "bun src/index.ts",
-    "start:local": "bun run ../../scripts/run-bun-server.ts --local",
-    "serve": "bun run build:web && bun run start:local",
+    "start": "cargo run --manifest-path ../../apps/cli/Cargo.toml --bin onequery -- serve",
+    "serve": "bun run build:web && bun run start",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@hono/zod-validator": "catalog:",
-    "@onequery/base": "workspace:*",
     "@onequery/cli-server": "workspace:*",
-    "@onequery/config-loader": "workspace:*",
+    "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
-    "@onequery/dev-config": "workspace:*",
     "@onequery/server": "workspace:*",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
