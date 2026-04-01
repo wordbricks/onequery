@@ -3,3 +3,4 @@ telemetry = false
 [install]
 exact = true
 linker = "isolated"
+minimumReleaseAge = 604800 # Require packages to be at least 7 days old to reduce supply chain risk.
