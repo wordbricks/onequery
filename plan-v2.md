@@ -445,10 +445,10 @@ Run these checks only after the earlier phases are complete.
 
 ### Search-based checks
 
-- [ ] `rg -n 'onequery\.local\.env\.toml|onequery\.local\.env\.toml\.template|env:sync|dev-topology' .` returns nothing useful.
-- [ ] `rg -n 'WEB_URL|BETTER_AUTH_URL' packages apps scripts docs` returns only deliberate edge-adapter history or nothing.
-- [ ] `rg -n 'process\.env\.' packages/server packages/bun-server` shows only startup-boundary reads, not app/runtime logic.
-- [ ] `rg -n '4545' apps packages docs scripts` returns nothing unless `4545` is still intentionally the chosen current default.
+- [x] `rg -n 'onequery\.local\.env\.toml|onequery\.local\.env\.toml\.template|env:sync|dev-topology' .` returns nothing useful.
+- [x] `rg -n 'WEB_URL|BETTER_AUTH_URL' packages apps scripts docs` returns only deliberate edge-adapter history or nothing.
+- [x] `rg -n 'process\.env\.' packages/server packages/bun-server` shows only startup-boundary reads, not app/runtime logic.
+- [x] `rg -n '4545' apps packages docs scripts` returns nothing unless `4545` is still intentionally the chosen current default.
 - [ ] `rg -n '5656|8080|3000|3001|5454|5432' apps packages docs scripts` shows one clear owner per concept and only derived consumers elsewhere.
 
 ### Behavior checks
