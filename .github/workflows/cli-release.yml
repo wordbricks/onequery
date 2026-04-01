@@ -318,7 +318,7 @@ jobs:
             --package cli \
             --release-version "${{ needs.tag-check.outputs.version }}" \
             --vendor-src dist/vendor \
-            --output-dir dist/npm
+            --output-dir dist/npm-publish
 
       - name: Stage release-only tarballs
         run: |
@@ -333,17 +333,18 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ needs.tag-check.outputs.version }}"
+          mkdir -p dist/npm-assets
 
-          cp "dist/npm/onequery-npm-${version}.tgz" "dist/npm/onequery-npm.tgz"
-          cp "dist/npm/onequery-npm-darwin-arm64-${version}.tgz" "dist/npm/onequery-npm-darwin-arm64.tgz"
-          cp "dist/npm/onequery-npm-darwin-x64-${version}.tgz" "dist/npm/onequery-npm-darwin-x64.tgz"
-          cp "dist/npm/onequery-npm-linux-arm64-${version}.tgz" "dist/npm/onequery-npm-linux-arm64.tgz"
-          cp "dist/npm/onequery-npm-linux-x64-${version}.tgz" "dist/npm/onequery-npm-linux-x64.tgz"
+          cp "dist/npm-publish/onequery-npm-${version}.tgz" "dist/npm-assets/onequery-npm.tgz"
+          cp "dist/npm-publish/onequery-npm-darwin-arm64-${version}.tgz" "dist/npm-assets/onequery-npm-darwin-arm64.tgz"
+          cp "dist/npm-publish/onequery-npm-darwin-x64-${version}.tgz" "dist/npm-assets/onequery-npm-darwin-x64.tgz"
+          cp "dist/npm-publish/onequery-npm-linux-arm64-${version}.tgz" "dist/npm-assets/onequery-npm-linux-arm64.tgz"
+          cp "dist/npm-publish/onequery-npm-linux-x64-${version}.tgz" "dist/npm-assets/onequery-npm-linux-x64.tgz"
 
       - uses: actions/upload-artifact@v6
         with:
-          name: cli-npm-tarballs
-          path: dist/npm/*.tgz
+          name: cli-npm-publish-tarballs
+          path: dist/npm-publish/*.tgz
           if-no-files-found: error
 
       - name: Create or update GitHub release
@@ -360,7 +361,7 @@ jobs:
           # COMMENT: Keep the release step rerunnable without depending on
           # softprops/action-gh-release, whose current v2 line still executes on
           # the deprecated Node 20 runtime.
-          release_assets=(dist/npm/*.tgz dist/release/*.tgz)
+          release_assets=(dist/npm-publish/*.tgz dist/npm-assets/*.tgz dist/release/*.tgz)
           [[ ${#release_assets[@]} -gt 0 ]] || {
             echo "No release assets were staged"
             exit 1
@@ -415,8 +416,8 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: cli-npm-tarballs
-          path: dist/npm
+          name: cli-npm-publish-tarballs
+          path: dist/npm-publish
 
       - name: Publish tarballs to npm
         shell: bash
@@ -429,13 +430,13 @@ jobs:
             publish_args=(--provenance --access public)
           fi
 
-          root_tarball="dist/npm/onequery-npm-${VERSION}.tgz"
+          root_tarball="dist/npm-publish/onequery-npm-${VERSION}.tgz"
           [[ -f "${root_tarball}" ]] || {
             echo "Missing root tarball ${root_tarball}"
             exit 1
           }
 
-          mapfile -t platform_tarballs < <(find dist/npm -maxdepth 1 -type f -name 'onequery-npm-*.tgz' ! -name "$(basename "${root_tarball}")" | sort)
+          mapfile -t platform_tarballs < <(find dist/npm-publish -maxdepth 1 -type f -name "onequery-npm-*-${VERSION}.tgz" ! -name "$(basename "${root_tarball}")" | sort)
 
           for tarball in "${platform_tarballs[@]}"; do
             publish_cmd=(npm publish "${tarball}" "${publish_args[@]}")
