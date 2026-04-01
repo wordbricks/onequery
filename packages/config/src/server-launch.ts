@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// Canonical launch-contract owner: Rust emits JSON to match this module, and
+// Bun validates/consumes it only through @onequery/config/server-launch.
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
 const portSchema = z.number().int().min(1).max(65535);

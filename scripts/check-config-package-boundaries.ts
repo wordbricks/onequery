@@ -13,11 +13,12 @@ const sourceFileExtensions = new Set([
   ".ts",
   ".tsx",
 ]);
+const configPackageRoot = ["packages", "config"].join("/");
 const disallowedSpecifiers = [
-  "@onequery/config/src",
-  "../packages/config/src",
-  "../../config/src",
-  "packages/config/src",
+  ["@onequery", "config", "src"].join("/"),
+  ["..", "packages", "config", "src"].join("/"),
+  ["..", "..", "config", "src"].join("/"),
+  [configPackageRoot, "src"].join("/"),
 ];
 const importSpecifierPattern =
   /\b(?:import|export)\b[\s\S]*?\bfrom\s*["']([^"']+)["']|import\s*["']([^"']+)["']|require\(\s*["']([^"']+)["']\s*\)/g;

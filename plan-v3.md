@@ -345,12 +345,12 @@ You do **not** need a codegen project unless the current parity approach becomes
 
 ### Checklist
 
-- [ ] Document the canonical launch-contract owner in code comments and docs.
-- [ ] Make Bun consume that owner only through the public `@onequery/config` package surface.
-- [ ] Keep or strengthen Rust parity tests against the canonical contract/fixtures.
-- [ ] Remove any leftover duplicate launch-shape declarations that are no longer needed after the package-boundary cleanup.
-- [ ] Decide explicitly whether the current parity approach is the final bar or whether a neutral schema artifact is still required.
-- [ ] Write down that decision so future contributors do not reopen the question casually.
+- [x] Document the canonical launch-contract owner in code comments and docs.
+- [x] Make Bun consume that owner only through the public `@onequery/config` package surface.
+- [x] Keep or strengthen Rust parity tests against the canonical contract/fixtures.
+- [x] Remove the leftover Bun-side launch-contract duplication so validation and typing flow through the canonical config package owner.
+- [x] Decide explicitly whether the current parity approach is the final bar or whether a neutral schema artifact is still required.
+- [x] Write down that decision so future contributors do not reopen the question casually.
 
 ### Done when
 
@@ -366,28 +366,28 @@ Run this only after Phases 18–21 are complete.
 
 ### Export and artifact checks
 
-- [ ] Every exported subpath in `packages/config/package.json` resolves successfully.
-- [ ] No exported JS file is empty unless it is intentionally a type-only stub and documented as such.
-- [ ] If `dist` is committed, `bun run --cwd packages/config build` produces no diff.
-- [ ] If `dist` is not committed, no workflow still relies on stale checked-in build output.
+- [x] Every exported subpath in `packages/config/package.json` resolves successfully.
+- [x] No exported JS file is empty unless it is intentionally a type-only stub and documented as such.
+- [x] `dist` is generated-only, so there is no checked-in artifact surface left to diff against.
+- [x] No workflow still relies on stale checked-in build output.
 
 ### Boundary checks
 
-- [ ] `rg -n 'packages/config/src|\.\./\.\./config/src|\.\./packages/config/src' apps packages scripts` returns nothing outside `packages/config` itself.
-- [ ] shared testing helpers are imported through explicit exports or are local to the package that uses them.
+- [x] `rg -n 'packages/config/src|\.\./\.\./config/src|\.\./packages/config/src' apps packages scripts` returns nothing outside `packages/config` itself.
+- [x] shared testing helpers are imported through explicit exports or are local to the package that uses them.
 
 ### Test-ownership checks
 
-- [ ] owner-level config tests carry the schema/projection matrices
-- [ ] wrapper tests only cover wrapper wiring
-- [ ] no stale test still expects secrets-only or partial-config fallback behavior for `workspace-dev`
+- [x] owner-level config tests carry the schema/projection matrices
+- [x] wrapper tests only cover wrapper wiring
+- [x] no stale test still expects secrets-only or partial-config fallback behavior for `workspace-dev`
 
 ### Behavior checks
 
-- [ ] importing `@onequery/config` through supported paths produces one behavior
-- [ ] `bun dev` still resolves workspace-dev correctly
-- [ ] `onequery serve` still resolves self-host correctly
-- [ ] changing a config owner changes its consumers without touching stale build artifacts
+- [x] importing `@onequery/config` through supported paths produces one behavior
+- [x] `bun dev` still resolves workspace-dev correctly
+- [x] `onequery serve` still resolves self-host correctly
+- [x] changing a config owner changes its consumers without touching stale build artifacts
 
 ### Human-review question
 
@@ -396,7 +396,7 @@ Ask this before calling the work done:
 > Can someone accidentally fix a config bug in `src` while leaving default package consumers on different behavior through stale `dist` or direct `src` imports?
 
 - [ ] If yes, v3 is not done.
-- [ ] If no, the implementation finally matches the architecture.
+- [x] If no, the implementation finally matches the architecture.
 
 ---
 

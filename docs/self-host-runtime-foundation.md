@@ -6,10 +6,13 @@ This document describes the self-host runtime contract after the config rewrite.
 
 The self-host startup boundary has one owner per concern:
 
+- `packages/config/src/server-launch.ts`, exported as
+  `@onequery/config/server-launch`, is the canonical launch-contract owner for
+  Bun runtime shape and validation.
 - Rust CLI owns self-host defaults, config parsing, secret parsing, path
   discovery, and validation.
-- Rust CLI resolves a complete `ServerLaunchConfig` and writes it to
-  `run/launch.json`.
+- Rust CLI resolves a complete launch contract that matches the canonical
+  config-package owner and writes it to `run/launch.json`.
 - `packages/bun-server` reads that launch contract exactly once at process
   start.
 - `packages/server` consumes the typed runtime object built from that launch
@@ -17,6 +20,11 @@ The self-host startup boundary has one owner per concern:
 
 Bun does not parse `self-host/config.toml`, Bun does not parse
 `self-host/secrets.toml`, and Bun does not fall back to `onequery.dev.toml`.
+
+The current parity bar is deliberate: Rust and Bun stay aligned through the
+canonical config-package validator plus the shared fixture tests. We are not
+introducing a separate neutral schema artifact unless that parity workflow
+becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
