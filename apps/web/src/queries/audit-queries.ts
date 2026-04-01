@@ -15,7 +15,7 @@ import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
 
 export { auditSearchSchema };
-export type { AuditListItem, AuditListResponse, AuditSearch };
+export type { AuditListItem, AuditSearch };
 
 const client = createApiClient();
 

@@ -15,7 +15,7 @@ export type AuthEmailDeliveryConfig = {
   smtp?: SmtpConfig;
 };
 
-export type PasswordResetDeliveryInput = {
+type PasswordResetDeliveryInput = {
   token: string;
   url: string;
   user: {
@@ -24,7 +24,7 @@ export type PasswordResetDeliveryInput = {
   };
 };
 
-export type DeliveryResult = {
+type DeliveryResult = {
   mode: EmailDeliveryMode;
   url: string;
 };

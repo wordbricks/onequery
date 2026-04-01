@@ -1,4 +1,4 @@
-import type { ApiClient, ApiType } from "@onequery/bun-server/client";
+import type { ApiClient } from "@onequery/bun-server/client";
 import { createApiClient as createBunApiClient } from "@onequery/bun-server/client";
 import type { ClientRequestOptions } from "hono/client";
 
@@ -14,5 +14,3 @@ export function createApiClient(
 ): ApiClient {
   return createBunApiClient(baseUrl, options);
 }
-
-export type { ApiClient, ApiType };

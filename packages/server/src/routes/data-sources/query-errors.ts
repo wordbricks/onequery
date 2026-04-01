@@ -1,4 +1,4 @@
-export type QueryErrorBody = {
+type QueryErrorBody = {
   error: string;
 };
 

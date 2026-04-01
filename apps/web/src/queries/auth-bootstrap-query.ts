@@ -12,7 +12,7 @@ const authBootstrapStateSchema = z.object({
   signupMode: z.enum(["first-user", "invite-only"]),
 });
 
-export type AuthBootstrapState = z.infer<typeof authBootstrapStateSchema>;
+type AuthBootstrapState = z.infer<typeof authBootstrapStateSchema>;
 
 async function fetchAuthBootstrapState(): Promise<AuthBootstrapState> {
   const response = await fetch(

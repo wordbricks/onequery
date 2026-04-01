@@ -5,14 +5,14 @@ export const INVITE_ONLY_SIGNUP_MESSAGE =
   "Public signup is disabled. Ask an organization admin for an invitation before creating an account.";
 const MAX_AUTH_EMAIL_LENGTH = 320;
 
-export type AuthBootstrapMode = "first-user" | "invite-only";
+type AuthBootstrapMode = "first-user" | "invite-only";
 
-export type AuthBootstrapState = {
+type AuthBootstrapState = {
   hasUsers: boolean;
   signupMode: AuthBootstrapMode;
 };
 
-export type SignupAuthorization =
+type SignupAuthorization =
   | {
       allowed: true;
       reason: "bootstrap" | "pending-invitation";

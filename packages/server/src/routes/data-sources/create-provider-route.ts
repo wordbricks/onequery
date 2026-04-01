@@ -32,7 +32,7 @@ type ParseRequestResult<TRequest> =
   | { ok: true; data: TRequest }
   | { ok: false; error: string };
 
-export interface ProviderRouteOptions<
+interface ProviderRouteOptions<
   TCredentials,
   TMethodSchema extends z.ZodTypeAny,
   TRequest,

@@ -69,7 +69,7 @@ export interface RuntimeLifecycleLease {
   release(options: CleanupOptions): Promise<void>;
 }
 
-export interface GracefulShutdownController {
+interface GracefulShutdownController {
   shutdown(reason: string): Promise<void>;
 }
 

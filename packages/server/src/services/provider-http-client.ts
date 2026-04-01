@@ -3,11 +3,11 @@ import { base64ToUtf8 } from "@onequery/codecs/base64";
 import { normalizeProviderRequestTimeout } from "./provider-http";
 import { serializeQueryParam } from "./provider-utils";
 
-export type ProviderAuth =
+type ProviderAuth =
   | { type: "basic"; username: string; password: string }
   | { type: "bearer"; token: string };
 
-export interface ProviderHttpClientOptions {
+interface ProviderHttpClientOptions {
   auth: ProviderAuth;
   baseUrl: string;
   blockedParams?: ReadonlySet<string>;
@@ -18,7 +18,7 @@ export interface ProviderHttpClientOptions {
   sanitize?: (text: string) => string;
 }
 
-export interface ProviderHttpRequestOptions {
+interface ProviderHttpRequestOptions {
   body?: BodyInit | Record<string, unknown> | unknown[] | null;
   endpoint: string;
   headers?: Record<string, string>;

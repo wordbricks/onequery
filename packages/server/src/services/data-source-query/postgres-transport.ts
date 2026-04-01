@@ -4,11 +4,11 @@ type SslMode = PostgresCredentials["sslMode"];
 
 export type PostgresSslConfig = false | { rejectUnauthorized: boolean };
 
-export type PostgresTransportState =
+type PostgresTransportState =
   | { kind: "plaintext" }
   | { kind: "tls"; verifyServerCertificate: boolean };
 
-export type PostgresFailureTransition = {
+type PostgresFailureTransition = {
   nextState: PostgresTransportState;
   preservePriorErrorOnFailure: boolean;
 };

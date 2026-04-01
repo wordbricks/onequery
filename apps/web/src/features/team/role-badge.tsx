@@ -2,7 +2,7 @@ import { Badge } from "@onequery/ui/components/badge";
 
 import type { OrganizationRoleName } from "@/lib/organization-role-access";
 
-export type MemberRole = OrganizationRoleName;
+type MemberRole = OrganizationRoleName;
 
 type RoleBadgeProps = {
   role: MemberRole;

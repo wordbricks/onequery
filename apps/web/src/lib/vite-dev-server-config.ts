@@ -3,7 +3,7 @@ import {
   resolveWorkspaceDev,
 } from "@onequery/config";
 
-export interface ViteDevServerConfig {
+interface ViteDevServerConfig {
   readonly apiProxyTarget: string;
   readonly port: number;
 }
