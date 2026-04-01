@@ -31,9 +31,6 @@
       "bin": {
         "onequery": "bin/onequery.js",
       },
-      "devDependencies": {
-        "@onequery/config": "workspace:*",
-      },
     },
     "apps/connector": {
       "name": "@onequery/connector",
@@ -121,7 +118,6 @@
       "version": "0.0.0",
       "dependencies": {
         "@hono/zod-validator": "catalog:",
-        "@onequery/base": "workspace:*",
         "@onequery/cli-server": "workspace:*",
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
