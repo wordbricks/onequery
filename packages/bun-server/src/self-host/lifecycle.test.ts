@@ -14,11 +14,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DuplicateRuntimeStartError,
-  type SelfHostLifecyclePaths,
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
 } from "./lifecycle";
+import type { SelfHostLifecyclePaths } from "./lifecycle";
 
 function createPaths(root: string): SelfHostLifecyclePaths & {
   runDir: string;

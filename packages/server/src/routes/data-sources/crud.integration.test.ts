@@ -67,10 +67,8 @@ describe("dataSourcesCrudRoute", () => {
     });
 
     const app = new Hono<{
-      Variables:
-        & ServerRuntimeVariables
-        & StorageVariables
-        & { session: SessionData | null };
+      Variables: ServerRuntimeVariables &
+        StorageVariables & { session: SessionData | null };
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {
@@ -103,7 +101,7 @@ describe("dataSourcesCrudRoute", () => {
           "content-type": "application/json",
         },
         method: "POST",
-      }),
+      })
     );
 
     expect(response.status).toBe(201);

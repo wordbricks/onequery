@@ -127,10 +127,8 @@ describe("createProviderRoute", () => {
     });
 
     const app = new Hono<{
-      Variables:
-        & ServerRuntimeVariables
-        & StorageVariables
-        & { session: SessionData | null };
+      Variables: ServerRuntimeVariables &
+        StorageVariables & { session: SessionData | null };
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {

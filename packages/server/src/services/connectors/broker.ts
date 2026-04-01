@@ -1,10 +1,4 @@
-import {
-  and,
-  asc,
-  eq,
-  getDatabaseSchema,
-  or,
-} from "@onequery/db/server";
+import { and, asc, eq, getDatabaseSchema, or } from "@onequery/db/server";
 import type {
   ConnectorHealthStatus,
   Database,

@@ -16,7 +16,10 @@ import {
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "./workspace-dev";
 
-const repoRootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const repoRootDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../.."
+);
 
 function createTempRootDir(): string {
   return mkdtempSync(join(tmpdir(), "onequery-config-"));
@@ -77,8 +80,7 @@ describe("@onequery/config workspace-dev", () => {
           enrollmentToken: "connector-token",
         },
         crypto: {
-          masterEncryptionKey:
-            "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+          masterEncryptionKey: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
         },
         flags: {
           disableRateLimit: true,

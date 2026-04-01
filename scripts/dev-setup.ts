@@ -6,8 +6,10 @@ import {
   ensureWorkspaceDevSecretsFileSync,
   projectDockerComposeConfig,
   resolveWorkspaceDev,
-  type DerivedTestProfile,
-  type ResolvedWorkspaceDevConfig,
+} from "@onequery/config";
+import type {
+  DerivedTestProfile,
+  ResolvedWorkspaceDevConfig,
 } from "@onequery/config";
 import { prepareSelfHostDatabase } from "@onequery/db/server";
 
@@ -64,10 +66,7 @@ function quoteShellArg(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function exec(
-  command: string,
-  options?: ExecOptions
-): string {
+function exec(command: string, options?: ExecOptions): string {
   try {
     return execSync(command, {
       encoding: "utf-8",
@@ -236,7 +235,8 @@ async function prepareDatabaseSchema(
   const labelSuffix = options?.label ? ` (${options.label})` : "";
   console.log(`Applying database migrations${labelSuffix}...`);
   await prepareSelfHostDatabase({
-    connectionString: options.connectionString ?? getWorkspaceDev().postgres.url,
+    connectionString:
+      options.connectionString ?? getWorkspaceDev().postgres.url,
     migrationsFolder: getWorkspaceMigrationsDir(),
   });
   console.log("Database migrations applied.");

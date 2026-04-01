@@ -2,7 +2,10 @@ import { readFileSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+export const packageDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
 export const distDir = resolve(packageDir, "dist");
 const packageJsonPath = resolve(packageDir, "package.json");
 const runtimeConditions = ["bun", "default"];
@@ -48,7 +51,9 @@ export async function buildConfigDist(outdir = distDir) {
 
   const bunExecutable = Bun.which("bun") ?? "bun";
   const runtimeTargets = getRuntimeTargets();
-  const entrypoints = runtimeTargets.map((target) => resolve(packageDir, target));
+  const entrypoints = runtimeTargets.map((target) =>
+    resolve(packageDir, target)
+  );
   const child = Bun.spawn(
     [
       bunExecutable,

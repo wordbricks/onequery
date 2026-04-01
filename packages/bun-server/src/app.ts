@@ -8,8 +8,8 @@ import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import {
   createServerStorage,
   serverStorageMiddleware,
-  type ServerStorage,
 } from "@onequery/server/storage";
+import type { ServerStorage } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { problemDetailsHandler } from "hono-problem-details";
 import { logger } from "hono/logger";
@@ -55,59 +55,63 @@ function resolveStorage(input: CreateBunAppOptions): ServerStorage {
 export function createApiApp(input: CreateBunAppOptions) {
   const storage = resolveStorage(input);
 
-  return new Hono()
-    .use("*", logger(apiLogger))
-    // The runtime package owns the public `/api` mount and top-level API
-    // composition. Deployment adapters can import this app without redefining
-    // the route graph.
-    .route(
-      API_ROUTE_PREFIX,
-      createServerApi({
-        enableAuthTestUtils: input.enableAuthTestUtils,
-        runtime: input.runtime,
-        storage,
-      })
-    )
-    .route(
-      DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
-      createDeviceAuthorizationBrowserRoute({
-        runtime: input.runtime,
-        storage,
-      })
-    )
-    .route(
-      CLI_API_ROUTE_PREFIX,
-      createCliRoute({
-        runtime: input.runtime,
-        storage,
-      })
-    )
-    .use(BUDGET_API_ROUTE_PREFIX, serverStorageMiddleware(storage))
-    .use(`${BUDGET_API_ROUTE_PREFIX}/*`, serverStorageMiddleware(storage))
-    .use(BUDGET_API_ROUTE_PREFIX, sessionMiddleware())
-    .use(`${BUDGET_API_ROUTE_PREFIX}/*`, sessionMiddleware())
-    .route(BUDGET_API_ROUTE_PREFIX, budgetRoute);
+  return (
+    new Hono()
+      .use("*", logger(apiLogger))
+      // The runtime package owns the public `/api` mount and top-level API
+      // composition. Deployment adapters can import this app without redefining
+      // the route graph.
+      .route(
+        API_ROUTE_PREFIX,
+        createServerApi({
+          enableAuthTestUtils: input.enableAuthTestUtils,
+          runtime: input.runtime,
+          storage,
+        })
+      )
+      .route(
+        DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
+        createDeviceAuthorizationBrowserRoute({
+          runtime: input.runtime,
+          storage,
+        })
+      )
+      .route(
+        CLI_API_ROUTE_PREFIX,
+        createCliRoute({
+          runtime: input.runtime,
+          storage,
+        })
+      )
+      .use(BUDGET_API_ROUTE_PREFIX, serverStorageMiddleware(storage))
+      .use(`${BUDGET_API_ROUTE_PREFIX}/*`, serverStorageMiddleware(storage))
+      .use(BUDGET_API_ROUTE_PREFIX, sessionMiddleware())
+      .use(`${BUDGET_API_ROUTE_PREFIX}/*`, sessionMiddleware())
+      .route(BUDGET_API_ROUTE_PREFIX, budgetRoute)
+  );
 }
 
 export function createApp(input: CreateBunAppOptions) {
   const apiApp = createApiApp(input);
 
-  return new Hono()
-    .onError(problemDetailsHandler())
-    .route("/", apiApp)
-    // Removed/private API endpoints should fail as API 404s instead of serving
-    // the SPA shell through the assets binding.
-    .notFound(async (c) => {
-      if (isApiRoutePath(c.req.path)) {
-        return c.text("404 Not Found", 404);
-      }
+  return (
+    new Hono()
+      .onError(problemDetailsHandler())
+      .route("/", apiApp)
+      // Removed/private API endpoints should fail as API 404s instead of serving
+      // the SPA shell through the assets binding.
+      .notFound(async (c) => {
+        if (isApiRoutePath(c.req.path)) {
+          return c.text("404 Not Found", 404);
+        }
 
-      if (shouldServeInstallScript(c.req.raw)) {
-        return createInstallScriptResponse(c.req.raw);
-      }
+        if (shouldServeInstallScript(c.req.raw)) {
+          return createInstallScriptResponse(c.req.raw);
+        }
 
-      return input.spaAssets.fetch(c.req.raw);
-    });
+        return input.spaAssets.fetch(c.req.raw);
+      })
+  );
 }
 
 export type ApiType = ReturnType<typeof createApiApp>;

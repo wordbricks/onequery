@@ -72,9 +72,7 @@ function shouldSkipPath(path: string): boolean {
  * - Skips health checks, webhooks, and Better Auth-owned routes
  * - Uses user ID for authenticated requests, IP for anonymous
  */
-export function apiRateLimiter(input: {
-  enabled: boolean;
-}): MiddlewareHandler<{
+export function apiRateLimiter(input: { enabled: boolean }): MiddlewareHandler<{
   Variables: SessionVariables;
 }> {
   const middlewareCache = new WeakMap<

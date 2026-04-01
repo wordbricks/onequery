@@ -50,7 +50,9 @@ export function createServerStorage(
   runtime: ServerRuntimeConfig,
   input: CreateServerStorageOptions = {}
 ): ServerStorage {
-  const databaseRuntime = createDatabaseRuntime(runtime.storage.connectionString);
+  const databaseRuntime = createDatabaseRuntime(
+    runtime.storage.connectionString
+  );
   const authRateLimitStorage =
     runtime.rateLimit.runtimeStorage?.auth ??
     createBetterAuthRateLimitStorage();
@@ -77,9 +79,7 @@ export function createServerStorage(
 
 export function serverStorageMiddleware<
   Variables extends Record<string, unknown> = Record<string, never>,
->(
-  storage: ServerStorage
-) {
+>(storage: ServerStorage) {
   return createMiddleware<{
     Variables: StorageVariables & Variables;
   }>(async (c, next) => {

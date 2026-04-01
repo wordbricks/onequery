@@ -2,9 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
-
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+import { describe, expect, it } from "vitest";
 
 import { createLaunchConfig } from "../../../scripts/run-bun-server";
 

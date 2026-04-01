@@ -2,9 +2,9 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import {
   loadStartupLaunchConfig,
   resolveStartupInputFromArgv,
@@ -227,7 +227,10 @@ describe("bun-server startup", () => {
     // Comment: keep this in self-host mode. A workspace-dev launch config here
     // would make the acceptance check look stronger than it really is.
     writeFileSync(join(root, "onequery.dev.toml"), 'port = "not json"\n');
-    writeFileSync(join(root, "onequery.dev.secrets.toml"), 'secret = "not toml"\n');
+    writeFileSync(
+      join(root, "onequery.dev.secrets.toml"),
+      'secret = "not toml"\n'
+    );
     writeSelfHostLaunchConfig(launchConfigPath);
 
     expect(loadStartupLaunchConfig({ launchConfigPath })).toMatchObject({

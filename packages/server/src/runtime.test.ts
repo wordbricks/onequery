@@ -60,7 +60,8 @@ describe("createServerRuntimeConfig", () => {
       },
       runtimePaths: undefined,
       storage: {
-        connectionString: "postgres://onequery:onequery@localhost:5454/onequery",
+        connectionString:
+          "postgres://onequery:onequery@localhost:5454/onequery",
         kind: "postgres",
         url: "postgres://onequery:onequery@localhost:5454/onequery",
       },

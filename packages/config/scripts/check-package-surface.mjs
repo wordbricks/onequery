@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import {
   buildConfigDist,
@@ -44,10 +44,7 @@ for (const [subpath, conditionMap] of Object.entries(packageJson.exports)) {
     );
   }
 
-  for (const target of new Set([
-    conditionMap.types,
-    ...runtimeTargets,
-  ])) {
+  for (const target of new Set([conditionMap.types, ...runtimeTargets])) {
     if (typeof target === "string") {
       assertFileExists(target);
     }

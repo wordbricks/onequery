@@ -173,7 +173,12 @@ async function ensureRuntimeDirectories(
   paths: SelfHostLifecyclePaths
 ): Promise<void> {
   await Promise.all(
-    [paths.dataDir, paths.logsDir, dirname(paths.pidPath), dirname(paths.lockPath)].map((path) =>
+    [
+      paths.dataDir,
+      paths.logsDir,
+      dirname(paths.pidPath),
+      dirname(paths.lockPath),
+    ].map((path) =>
       mkdir(path, {
         recursive: true,
         mode: 0o700,

@@ -2,40 +2,102 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
-import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => {
-  const createApp = vi.fn(() => ({
+import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
+import { createStartBunServer } from "./index";
+import type { StartBunServerDependencies } from "./index";
+import { loadStartupLaunchConfig } from "./startup";
+
+function writeLaunchConfigFile(value: unknown): string {
+  const root = mkdtempSync(join(tmpdir(), "onequery-bun-index-test-"));
+  const launchConfigPath = join(root, "launch.json");
+
+  writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
+
+  return launchConfigPath;
+}
+
+function createMocks() {
+  const createApp: StartBunServerDependencies["createApp"] = vi.fn(() => ({
     fetch: vi.fn(async () => new Response("ok")),
   }));
-  const createSpaAssetBinding = vi.fn(() => ({
-    fetch: vi.fn(async () => new Response("ok")),
-  }));
-  const createServerRuntimeConfig = vi.fn((launchConfig, services) => ({
-    publicOrigin: launchConfig.publicOrigin,
-    rateLimitStorage: services.rateLimitStorage,
-    storage: {
-      connectionString:
+  const createSpaAssetBinding: StartBunServerDependencies["createSpaAssetBinding"] =
+    vi.fn(() => ({
+      fetch: vi.fn(async () => new Response("ok")),
+    }));
+  const createServerRuntimeConfig: StartBunServerDependencies["createServerRuntimeConfig"] =
+    vi.fn((launchConfig, services) => ({
+      auth: {
+        baseURL: launchConfig.publicOrigin,
+        emailDelivery: {
+          baseURL: launchConfig.publicOrigin,
+        },
+        secret: launchConfig.auth.secret,
+      },
+      connectors: {
+        enrollmentToken: launchConfig.connectors.enrollmentToken,
+      },
+      crypto: {
+        masterEncryptionKey: launchConfig.crypto.masterEncryptionKey,
+      },
+      listen: launchConfig.listen,
+      mode: launchConfig.mode,
+      publicOrigin: launchConfig.publicOrigin,
+      rateLimit: {
+        enabled: launchConfig.rateLimit.enabled,
+        runtimeStorage: services.rateLimitStorage,
+        storage: launchConfig.rateLimit.storage,
+      },
+      runtimePaths: launchConfig.runtimePaths,
+      storage:
         launchConfig.storage.kind === "postgres"
-          ? launchConfig.storage.url
-          : `pglite:${launchConfig.storage.dir}`,
-    },
-  }));
-  const prepareRuntimeDatabase = vi.fn(async () => undefined);
-  const createPersistentRuntimeRateLimitStorage = vi.fn((dir: string) => ({
-    dir,
-    kind: "persistent-rate-limit-storage",
-  }));
+          ? {
+              connectionString: launchConfig.storage.url,
+              kind: "postgres",
+              url: launchConfig.storage.url,
+            }
+          : {
+              connectionString: `pglite:${launchConfig.storage.dir}`,
+              dir: launchConfig.storage.dir,
+              kind: "pglite",
+            },
+    }));
+  const prepareRuntimeDatabase: StartBunServerDependencies["prepareRuntimeDatabase"] =
+    vi.fn(async () => undefined);
+  const createPersistentRuntimeRateLimitStorage: StartBunServerDependencies["createPersistentRuntimeRateLimitStorage"] =
+    vi.fn((dir: string) => ({
+      api: {
+        dir,
+      },
+      auth: {
+        dir,
+      },
+    }));
   const releaseLifecycleLease = vi.fn(async () => undefined);
-  const acquireRuntimeLifecycleLease = vi.fn(async () => ({
-    release: releaseLifecycleLease,
-  }));
-  const appendLifecycleLog = vi.fn(async () => undefined);
+  const acquireRuntimeLifecycleLease: StartBunServerDependencies["acquireRuntimeLifecycleLease"] =
+    vi.fn(async () => ({
+      paths: {
+        dataDir: "/tmp/onequery/data",
+        lockPath: "/tmp/onequery/run/server.lock",
+        logsDir: "/tmp/onequery/logs",
+        pidPath: "/tmp/onequery/run/server.pid",
+      },
+      release: releaseLifecycleLease,
+    }));
+  const appendLifecycleLog: StartBunServerDependencies["appendLifecycleLog"] =
+    vi.fn(async () => undefined);
   const attachGracefulShutdownHandlers = vi.fn();
-  const toLifecyclePaths = vi.fn((launchConfig) => launchConfig.runtimePaths);
+  const toLifecyclePaths: StartBunServerDependencies["toLifecyclePaths"] =
+    vi.fn((launchConfig) => launchConfig.runtimePaths);
+  const serve: StartBunServerDependencies["serve"] = vi.fn(
+    ({ hostname, port }) => ({
+      hostname,
+      port,
+      stop: vi.fn(),
+    })
+  );
 
   return {
     acquireRuntimeLifecycleLease,
@@ -47,66 +109,37 @@ const mocks = vi.hoisted(() => {
     createSpaAssetBinding,
     prepareRuntimeDatabase,
     releaseLifecycleLease,
+    serve,
     toLifecyclePaths,
   };
-});
+}
 
-vi.mock("./app", () => ({
-  createApp: mocks.createApp,
-}));
-
-vi.mock("./assets", () => ({
-  createSpaAssetBinding: mocks.createSpaAssetBinding,
-}));
-
-vi.mock("./database", () => ({
-  prepareRuntimeDatabase: mocks.prepareRuntimeDatabase,
-}));
-
-vi.mock("./rate-limit-storage", () => ({
-  createPersistentRuntimeRateLimitStorage:
-    mocks.createPersistentRuntimeRateLimitStorage,
-}));
-
-vi.mock("./self-host/lifecycle", () => ({
-  acquireRuntimeLifecycleLease: mocks.acquireRuntimeLifecycleLease,
-  appendLifecycleLog: mocks.appendLifecycleLog,
-  attachGracefulShutdownHandlers: mocks.attachGracefulShutdownHandlers,
-  toLifecyclePaths: mocks.toLifecyclePaths,
-}));
-
-vi.mock("@onequery/server/runtime", () => ({
-  createServerRuntimeConfig: mocks.createServerRuntimeConfig,
-}));
-
-function writeLaunchConfigFile(value: unknown): string {
-  const root = mkdtempSync(join(tmpdir(), "onequery-bun-index-test-"));
-  const launchConfigPath = join(root, "launch.json");
-
-  writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
-
-  return launchConfigPath;
+function createDependencies(
+  mocks: ReturnType<typeof createMocks>
+): StartBunServerDependencies {
+  return {
+    acquireRuntimeLifecycleLease: mocks.acquireRuntimeLifecycleLease,
+    appendLifecycleLog: mocks.appendLifecycleLog,
+    attachGracefulShutdownHandlers: mocks.attachGracefulShutdownHandlers,
+    createApp: mocks.createApp,
+    createPersistentRuntimeRateLimitStorage:
+      mocks.createPersistentRuntimeRateLimitStorage,
+    createServerRuntimeConfig: mocks.createServerRuntimeConfig,
+    createSpaAssetBinding: mocks.createSpaAssetBinding,
+    loadStartupLaunchConfig,
+    prepareRuntimeDatabase: mocks.prepareRuntimeDatabase,
+    serve: mocks.serve,
+    toLifecyclePaths: mocks.toLifecyclePaths,
+  };
 }
 
 describe("startBunServer", () => {
-  const bunServeMock = vi.fn();
+  let mocks: ReturnType<typeof createMocks>;
+  let startBunServer: ReturnType<typeof createStartBunServer>;
 
   beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    bunServeMock.mockReset();
-    bunServeMock.mockImplementation(({ hostname, port }) => ({
-      hostname,
-      port,
-      stop: vi.fn(),
-    }));
-    vi.stubGlobal("Bun", {
-      serve: bunServeMock,
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    mocks = createMocks();
+    startBunServer = createStartBunServer(createDependencies(mocks));
   });
 
   it("starts from a serialized workspace-dev launch config file", async () => {
@@ -139,7 +172,6 @@ describe("startBunServer", () => {
       },
     });
 
-    const { startBunServer } = await import("./index");
     const server = await startBunServer({
       launchConfigPath,
     });
@@ -156,7 +188,7 @@ describe("startBunServer", () => {
     expect(mocks.prepareRuntimeDatabase).toHaveBeenCalledWith({
       databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
     });
-    expect(bunServeMock).toHaveBeenCalledWith(
+    expect(mocks.serve).toHaveBeenCalledWith(
       expect.objectContaining({
         fetch: expect.any(Function),
         hostname: "127.0.0.1",
@@ -209,7 +241,6 @@ describe("startBunServer", () => {
       },
     });
 
-    const { startBunServer } = await import("./index");
     const server = await startBunServer({
       launchConfigPath,
     });

@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { loadLaunchConfigFile } from "./launch-config";
 
 function createTempSpaBuildDir(): string {
@@ -165,6 +165,8 @@ describe("launch config", () => {
       })
     );
 
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow("runtimePaths");
+    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
+      "runtimePaths"
+    );
   });
 });

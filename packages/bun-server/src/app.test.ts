@@ -35,7 +35,9 @@ describe("bun runtime app", () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
     const rootResponse = await app.fetch(new Request("http://local/"));
-    const healthResponse = await app.fetch(new Request("http://local/api/health"));
+    const healthResponse = await app.fetch(
+      new Request("http://local/api/health")
+    );
 
     expect(rootResponse.status).toBe(200);
     expect(rootResponse.headers.get("content-type")).toContain("text/html");
@@ -62,7 +64,9 @@ describe("bun runtime app", () => {
   it("falls back to the SPA shell for non-api client routes", async () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
-    const response = await app.fetch(new Request("http://local/settings/profile"));
+    const response = await app.fetch(
+      new Request("http://local/settings/profile")
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");

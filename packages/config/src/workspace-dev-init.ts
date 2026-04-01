@@ -34,9 +34,11 @@ function renderWorkspaceDevSecretsFile(): string {
   ].join("\n");
 }
 
-export function ensureWorkspaceDevSecretsFileSync(input: {
-  readonly rootDir?: string;
-} = {}): WorkspaceDevSecretsInitResult {
+export function ensureWorkspaceDevSecretsFileSync(
+  input: {
+    readonly rootDir?: string;
+  } = {}
+): WorkspaceDevSecretsInitResult {
   const { secretsPath } = resolveWorkspaceDevPaths(input.rootDir);
 
   if (existsSync(secretsPath)) {

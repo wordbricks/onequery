@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import {
-  validateServerLaunchConfig,
-  type ServerLaunchConfig,
-} from "@onequery/config/server-launch";
+import { validateServerLaunchConfig } from "@onequery/config/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
 export function validateLaunchConfig(
   value: unknown,
@@ -21,7 +19,8 @@ export function loadLaunchConfigFile(path: string): ServerLaunchConfig {
     contents = readFileSync(resolvedPath, "utf8");
   } catch (error) {
     throw new Error(
-      `Failed to read launch config file: ${resolvedPath}\n${(error as Error).message}`
+      `Failed to read launch config file: ${resolvedPath}\n${(error as Error).message}`,
+      { cause: error }
     );
   }
 
@@ -30,7 +29,8 @@ export function loadLaunchConfigFile(path: string): ServerLaunchConfig {
     parsed = JSON.parse(contents);
   } catch (error) {
     throw new Error(
-      `Invalid launch config JSON: ${resolvedPath}\n${(error as Error).message}`
+      `Invalid launch config JSON: ${resolvedPath}\n${(error as Error).message}`,
+      { cause: error }
     );
   }
 

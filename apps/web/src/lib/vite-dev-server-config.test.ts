@@ -2,13 +2,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
-
-import { resolveViteDevServerConfig } from "@/lib/vite-dev-server-config";
 import {
   WORKSPACE_DEV_CONFIG_FILENAME,
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "@onequery/config";
+import { describe, expect, it } from "vitest";
+
+import { resolveViteDevServerConfig } from "@/lib/vite-dev-server-config";
 
 function createTempRootDir(): string {
   return mkdtempSync(join(tmpdir(), "onequery-web-config-"));

@@ -5,19 +5,22 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { ensureWorkspaceDevSecretsFileSync } from "./workspace-dev-init";
 import {
   resolveWorkspaceDev,
   WORKSPACE_DEV_CONFIG_FILENAME,
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "./workspace-dev";
+import { ensureWorkspaceDevSecretsFileSync } from "./workspace-dev-init";
 
 function createTempRootDir(): string {
   return mkdtempSync(join(tmpdir(), "onequery-workspace-dev-init-"));
 }
 
 function writeWorkspaceDevConfig(rootDir: string): void {
-  const repoRootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  const repoRootDir = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../.."
+  );
 
   writeFileSync(
     join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),

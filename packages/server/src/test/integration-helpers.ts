@@ -10,8 +10,8 @@ import { createServerApi } from "../app";
 import {
   createTestRuntimeConfig,
   createTestRuntimeConfigFromDatabaseUrl,
-  type TestRuntimeConfigOverrides,
 } from "../routes/test-env";
+import type { TestRuntimeConfigOverrides } from "../routes/test-env";
 import { createServerStorage } from "../storage";
 
 export type ClosableDatabase = {
@@ -62,16 +62,13 @@ export async function createRouteIntegrationHarness(
 ) {
   const runtimeConfig =
     overrides.databaseUrl !== undefined
-      ? createTestRuntimeConfigFromDatabaseUrl(
-          overrides.databaseUrl,
-          overrides
-        )
+      ? createTestRuntimeConfigFromDatabaseUrl(overrides.databaseUrl, overrides)
       : overrides.storage?.connectionString !== undefined
-      ? createTestRuntimeConfigFromDatabaseUrl(
-          overrides.storage.connectionString,
-          overrides
-        )
-      : createTestRuntimeConfig(overrides);
+        ? createTestRuntimeConfigFromDatabaseUrl(
+            overrides.storage.connectionString,
+            overrides
+          )
+        : createTestRuntimeConfig(overrides);
   const storage = createServerStorage(runtimeConfig, {
     enableAuthTestUtils: true,
   });

@@ -1,4 +1,7 @@
-import type { ServerRuntimeConfig, ServerRuntimeStorageConfig } from "../runtime";
+import type {
+  ServerRuntimeConfig,
+  ServerRuntimeStorageConfig,
+} from "../runtime";
 
 export const TEST_PUBLIC_ORIGIN = "http://localhost:4545";
 export const TEST_SERVER_MASTER_ENCRYPTION_KEY =
@@ -70,7 +73,7 @@ export function createTestRuntimeConfig(
   const runtimeStorage =
     overrides.databaseUrl !== undefined
       ? toRuntimeStorageConfig(overrides.databaseUrl)
-      : overrides.storage ?? defaultRuntime.storage;
+      : (overrides.storage ?? defaultRuntime.storage);
 
   return {
     ...defaultRuntime,

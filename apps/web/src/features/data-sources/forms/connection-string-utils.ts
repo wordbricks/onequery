@@ -55,7 +55,9 @@ export function parseConnectionString(
       password: decodeURIComponent(url.password) || "",
       port: url.port ? Number.parseInt(url.port, 10) : defaults.defaultPort,
       sslMode: defaults.isPostgresFamily
-        ? resolvePostgresConnectionStringSslMode(url.searchParams.get("sslmode"))
+        ? resolvePostgresConnectionStringSslMode(
+            url.searchParams.get("sslmode")
+          )
         : undefined,
       username: decodeURIComponent(url.username) || "",
     };

@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { readTomlFileSync, type TomlFileData } from "@onequery/config-loader";
+import { readTomlFileSync } from "@onequery/config-loader";
+import type { TomlFileData } from "@onequery/config-loader";
 import { z } from "zod";
 
 const defaultRootDir = resolve(
@@ -180,7 +181,9 @@ function readOptionalTomlFile(path: string): TomlFileData {
 }
 
 function formatIssuePath(path: readonly PropertyKey[]): string {
-  return path.length === 0 ? "(root)" : path.map((entry) => String(entry)).join(".");
+  return path.length === 0
+    ? "(root)"
+    : path.map((entry) => String(entry)).join(".");
 }
 
 function buildWorkspaceDevError(
@@ -206,7 +209,9 @@ function buildWorkspaceDevError(
   );
 }
 
-export function resolveWorkspaceDevPaths(rootDir: string = defaultRootDir): WorkspaceDevPaths {
+export function resolveWorkspaceDevPaths(
+  rootDir: string = defaultRootDir
+): WorkspaceDevPaths {
   return {
     configPath: resolve(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
     rootDir,

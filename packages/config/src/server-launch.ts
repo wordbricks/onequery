@@ -107,7 +107,10 @@ export const serverLaunchConfigSchema = z
 export type ServerLaunchConfig = z.infer<typeof serverLaunchConfigSchema>;
 export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
 
-function buildServerLaunchConfigError(source: string, error: z.ZodError): Error {
+function buildServerLaunchConfigError(
+  source: string,
+  error: z.ZodError
+): Error {
   const issues = error.issues.map((issue) => {
     const path =
       issue.path.length === 0

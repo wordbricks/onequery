@@ -4,10 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
 import { validateServerLaunchConfig } from "./server-launch";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
 
-const fixtureDir = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures");
+const fixtureDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../fixtures"
+);
 
 function createWorkspaceDevLaunchConfig() {
   return {

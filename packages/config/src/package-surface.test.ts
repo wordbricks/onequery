@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { WORKSPACE_DEV_CONFIG_FILENAME, WORKSPACE_DEV_SECRETS_FILENAME } from "./workspace-dev";
+import {
+  WORKSPACE_DEV_CONFIG_FILENAME,
+  WORKSPACE_DEV_SECRETS_FILENAME,
+} from "./workspace-dev";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRootDir = resolve(packageDir, "../..");

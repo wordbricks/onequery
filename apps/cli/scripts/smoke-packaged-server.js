@@ -8,6 +8,7 @@ import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+
 import {
   CLI_BINARY_NAME,
   CLI_SERVER_BINARY_NAME,
