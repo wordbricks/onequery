@@ -465,4 +465,43 @@ describe("@onequery/config workspace-dev", () => {
       rmSync(rootDir, { force: true, recursive: true });
     }
   });
+
+  it("rejects an incomplete tracked dev config file", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
+        "[api]",
+        'host = "127.0.0.1"',
+        "port = 4555",
+        "",
+        "[postgres]",
+        "host_port = 5454",
+        "container_port = 5432",
+        'database = "onequery"',
+        'user = "onequery"',
+        'password = "onequery"',
+        "",
+        "[flags]",
+        "disable_rate_limit = true",
+      ]);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
+        "Invalid workspace-dev config."
+      );
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
 });

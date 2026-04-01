@@ -396,30 +396,30 @@ Add the tests that make the remaining regressions impossible to reintroduce quie
 ### Checklist
 
 #### Workspace-dev authored file tests
-- [ ] unknown key in `onequery.dev.toml` fails
-- [ ] unknown key in `onequery.dev.secrets.toml` fails
-- [ ] secret key in config file fails
-- [ ] config key in secrets file fails
-- [ ] missing required non-secret key fails if the tracked dev file is incomplete
-- [ ] changing browser/API ports changes all derived projections
+- [x] unknown key in `onequery.dev.toml` fails
+- [x] unknown key in `onequery.dev.secrets.toml` fails
+- [x] secret key in config file fails
+- [x] config key in secrets file fails
+- [x] missing required non-secret key fails if the tracked dev file is incomplete
+- [x] changing browser/API ports changes all derived projections
 
 #### Self-host authored file tests
-- [ ] unknown key in `config.toml` fails
-- [ ] unknown key in `secrets.toml` fails
-- [ ] secret key in `config.toml` fails
-- [ ] config key in `secrets.toml` fails
-- [ ] self-host startup does not read repo-local dev files
+- [x] unknown key in `config.toml` fails
+- [x] unknown key in `secrets.toml` fails
+- [x] secret key in `config.toml` fails
+- [x] config key in `secrets.toml` fails
+- [x] self-host startup does not read repo-local dev files
 
 #### Launch contract tests
-- [ ] malformed `launch.json` fails at startup
-- [ ] extra key in `launch.json` fails if contract is strict
-- [ ] runtime path omissions fail when required for self-host
-- [ ] valid Rust-emitted launch JSON passes consumer validation
+- [x] malformed `launch.json` fails at startup
+- [x] extra key in `launch.json` fails if contract is strict
+- [x] runtime path omissions fail when required for self-host
+- [x] valid Rust-emitted launch JSON passes consumer validation
 
 #### Regression / surface tests
-- [ ] root/local docs do not mention old env files
-- [ ] smoke/onboarding examples use the actual chosen self-host default
-- [ ] no request-path code parses startup config again
+- [x] root/local docs do not mention old env files
+- [x] smoke/onboarding examples use the actual chosen self-host default
+- [x] no request-path code parses startup config again
 
 ### Done when
 
