@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import {
   validateServerLaunchConfig,
   type ServerLaunchConfig,
-} from "../../config/src/server-launch";
+} from "@onequery/config/server-launch";
 
 export function validateLaunchConfig(
   value: unknown,

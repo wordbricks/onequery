@@ -4,8 +4,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+
 import { createLaunchConfig } from "../../../scripts/run-bun-server";
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../config/src/testing";
 
 describe("bun dev entrypoint", () => {
   it("writes a launch contract with separate browser and API ports", () => {

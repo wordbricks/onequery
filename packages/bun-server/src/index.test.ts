@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../config/src/testing";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
 
 const mocks = vi.hoisted(() => {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "../../config/src/testing";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { loadLaunchConfigFile } from "./launch-config";
 
 function createTempSpaBuildDir(): string {

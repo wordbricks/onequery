@@ -4,10 +4,11 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { resolveWorkspaceDev } from "@onequery/config/workspace-dev";
+
 import { getDefaultSpaBuildDir } from "../packages/bun-server/src/assets";
-import { projectWorkspaceDevServerLaunchConfig } from "../packages/config/src/projections/server-launch";
-import type { ServerLaunchConfig } from "../packages/config/src/server-launch";
-import { resolveWorkspaceDev } from "../packages/config/src/workspace-dev";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bunServerDir = resolve(rootDir, "packages", "bun-server");

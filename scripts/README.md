@@ -55,9 +55,9 @@ launch contract before Bun starts.
 
 ## Environment Files
 
-- `packages/config/src/workspace-dev.ts` owns the workspace-dev authored shape
-  and resolver.
-- `packages/config/src/workspace-dev-init.ts` seeds the local secrets file.
+- `@onequery/config/workspace-dev` owns the workspace-dev authored shape and
+  resolver.
+- `@onequery/config/workspace-dev-init` seeds the local secrets file.
 - `onequery.dev.toml` is the tracked repo config for local dev defaults.
 - `onequery.dev.secrets.toml` is a local machine file and stays untracked.
 

@@ -215,20 +215,20 @@ No cross-package file-path imports into `src/*` should remain.
 
 ### Checklist
 
-- [ ] Audit all direct cross-package imports of `packages/config/src/*` or equivalent relative paths.
-- [ ] Replace them with package imports such as:
-  - [ ] `@onequery/config`
-  - [ ] `@onequery/config/server-launch`
-  - [ ] `@onequery/config/workspace-dev`
-  - [ ] `@onequery/config/projections/server-launch`
-- [ ] Add an explicit exported subpath for testing helpers if they are intentionally shared, for example `@onequery/config/testing`.
-- [ ] If a helper is not meant to be a shared package API, move it local to the consumer instead of importing from `src/testing.ts`.
-- [ ] Update:
-  - [ ] `packages/bun-server/src/launch-config.ts`
-  - [ ] `scripts/run-bun-server.ts`
-  - [ ] `apps/cli/scripts/smoke-packaged-server.js`
-  - [ ] any tests that import `../../config/src/*`
-- [ ] Add a repo check that fails on new cross-package `src/*` imports.
+- [x] Audit all direct cross-package imports of `packages/config/src/*` or equivalent relative paths.
+- [x] Replace them with package imports such as:
+  - [x] `@onequery/config`
+  - [x] `@onequery/config/server-launch`
+  - [x] `@onequery/config/workspace-dev`
+  - [x] `@onequery/config/projections/server-launch`
+- [x] Add an explicit exported subpath for testing helpers if they are intentionally shared, for example `@onequery/config/testing`.
+- [x] Keep the shared sample encryption key behind `@onequery/config/testing` instead of deep-importing `src/testing.ts`.
+- [x] Update:
+  - [x] `packages/bun-server/src/launch-config.ts`
+  - [x] `scripts/run-bun-server.ts`
+  - [x] `apps/cli/scripts/smoke-packaged-server.js`
+  - [x] tests that imported `../../config/src/*`
+- [x] Add a repo check that fails on new cross-package `src/*` imports.
 
 ### Recommended repo check
 
