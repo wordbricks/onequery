@@ -1392,12 +1392,11 @@ mod tests {
         )
         .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
 
-        let launch_config_path = write_self_host_launch_config_for_test(
-            state.paths,
-            &asset_dir,
-            "onequery serve",
-        )
-        .unwrap_or_else(|error| panic!("expected serve launch config write to succeed: {error}"));
+        let launch_config_path =
+            write_self_host_launch_config_for_test(state.paths, &asset_dir, "onequery serve")
+                .unwrap_or_else(|error| {
+                    panic!("expected serve launch config write to succeed: {error}")
+                });
         let launch_config_contents = fs::read_to_string(&launch_config_path)
             .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
         let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
