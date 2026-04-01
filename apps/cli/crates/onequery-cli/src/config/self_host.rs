@@ -674,6 +674,7 @@ mod tests {
     use super::SmtpConfig;
     use super::SmtpSecrets;
     use super::bootstrap_self_host_foundation_with_paths;
+    use super::default_port;
     use super::load_self_host_config_with_paths;
     use super::resolve_self_host_launch_config;
     use super::write_self_host_launch_config_for_test;
@@ -691,14 +692,8 @@ mod tests {
     fn write_valid_self_host_files(paths: &SelfHostRuntimePaths) {
         fs::create_dir_all(&paths.config_dir)
             .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
-        fs::write(
-            &paths.config_path,
-            r#"[server]
-listen_host = "127.0.0.1"
-port = 5656
-"#,
-        )
-        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
         fs::write(
             &paths.secrets_path,
             r#"[auth]
@@ -712,6 +707,13 @@ enrollment_token = "connector"
 "#,
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+    }
+
+    fn valid_self_host_config_toml() -> String {
+        format!(
+            "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n",
+            default_port()
+        )
     }
 
     fn shared_self_host_launch_fixture_path() -> PathBuf {
@@ -881,11 +883,10 @@ enrollment_token = "connector"
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.config_path,
-            r#"[server]
-listen_host = "127.0.0.1"
-port = 5656
-unexpected = true
-"#,
+            format!(
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\nunexpected = true\n",
+                default_port()
+            ),
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
@@ -936,13 +937,10 @@ enrollment_token = "connector"
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.config_path,
-            r#"[server]
-listen_host = "127.0.0.1"
-port = 5656
-
-[auth]
-better_auth_secret = "wrong-file"
-"#,
+            format!(
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n\n[auth]\nbetter_auth_secret = \"wrong-file\"\n",
+                default_port()
+            ),
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
@@ -963,18 +961,10 @@ better_auth_secret = "wrong-file"
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.secrets_path,
-            r#"[auth]
-better_auth_secret = "better"
-
-[crypto]
-master_encryption_key = "master"
-
-[connectors]
-enrollment_token = "connector"
-
-[server]
-port = 5656
-"#,
+            format!(
+                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[server]\nport = {}\n",
+                default_port()
+            ),
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 

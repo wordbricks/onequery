@@ -433,15 +433,15 @@ Run these checks only after the earlier phases are complete.
 
 ### Ownership checks
 
-- [ ] For each of the following concepts, identify one owner and verify no second authored owner exists:
-  - [ ] workspace browser port
-  - [ ] workspace API port
-  - [ ] workspace Postgres host/container ports
-  - [ ] self-host default public/listen port
-  - [ ] auth secret location
-  - [ ] crypto master key location
-  - [ ] runtime paths for self-host
-  - [ ] launch contract definition
+- [x] For each of the following concepts, identify one owner and verify no second authored owner exists:
+  - [x] workspace browser port
+  - [x] workspace API port
+  - [x] workspace Postgres host/container ports
+  - [x] self-host default public/listen port
+  - [x] auth secret location
+  - [x] crypto master key location
+  - [x] runtime paths for self-host
+  - [x] launch contract definition
 
 ### Search-based checks
 
@@ -449,15 +449,15 @@ Run these checks only after the earlier phases are complete.
 - [x] `rg -n 'WEB_URL|BETTER_AUTH_URL' packages apps scripts docs` returns only deliberate edge-adapter history or nothing.
 - [x] `rg -n 'process\.env\.' packages/server packages/bun-server` shows only startup-boundary reads, not app/runtime logic.
 - [x] `rg -n '4545' apps packages docs scripts` returns nothing unless `4545` is still intentionally the chosen current default.
-- [ ] `rg -n '5656|8080|3000|3001|5454|5432' apps packages docs scripts` shows one clear owner per concept and only derived consumers elsewhere.
+- [x] `rg -n '5656|8080|3000|3001|5454|5432' apps packages docs scripts` shows one clear owner per concept and only derived consumers elsewhere.
 
 ### Behavior checks
 
-- [ ] `bun dev` still runs with separate browser/API ports.
-- [ ] `onequery serve` still runs from self-host launch config only.
-- [ ] self-host startup still succeeds with repo-local dev files absent.
-- [ ] changing a tracked workspace-dev value changes Vite/Docker/Drizzle behavior without touching code.
-- [ ] changing a self-host default helper changes CLI/user-facing output without hunting literals across the repo.
+- [x] `bun dev` still runs with separate browser/API ports.
+- [x] `onequery serve` still runs from self-host launch config only.
+- [x] self-host startup still succeeds with repo-local dev files absent.
+- [x] changing a tracked workspace-dev value changes Vite/Docker/Drizzle behavior without touching code.
+- [x] changing a self-host default helper changes CLI/user-facing output without hunting literals across the repo.
 
 ### Human-review check
 
@@ -466,7 +466,7 @@ Ask one blunt question before declaring success:
 > Can a new contributor find two different places that both appear to own the same config fact?
 
 - [ ] If yes, v2 is not done.
-- [ ] If no, the architecture is likely in the right place.
+- [x] If no, the architecture is likely in the right place.
 
 ---
 

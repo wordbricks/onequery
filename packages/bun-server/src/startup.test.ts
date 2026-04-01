@@ -48,6 +48,52 @@ function writeWorkspaceDevLaunchConfig(launchConfigPath: string): void {
   );
 }
 
+function writeSelfHostLaunchConfig(launchConfigPath: string): void {
+  writeFileSync(
+    launchConfigPath,
+    JSON.stringify(
+      {
+        assets: {
+          distDir: "/tmp/web",
+        },
+        auth: {
+          secret: "self-host-auth-secret",
+        },
+        connectors: {
+          enrollmentToken: "connector-token",
+        },
+        crypto: {
+          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
+        },
+        listen: {
+          host: "127.0.0.1",
+          port: 5656,
+        },
+        mode: "self-host",
+        publicOrigin: "http://127.0.0.1:5656",
+        rateLimit: {
+          enabled: true,
+          storage: "persistent",
+        },
+        runtimePaths: {
+          backupsDir: "/tmp/onequery/backups",
+          dataDir: "/tmp/onequery/data",
+          lockPath: "/tmp/onequery/run/server.lock",
+          logsDir: "/tmp/onequery/logs",
+          pidPath: "/tmp/onequery/run/server.pid",
+          runDir: "/tmp/onequery/run",
+        },
+        storage: {
+          dir: "/tmp/onequery/pglite",
+          kind: "pglite",
+        },
+      },
+      null,
+      2
+    )
+  );
+}
+
 describe("bun-server startup", () => {
   it("accepts an in-memory launch config object", () => {
     const launchConfig = {
@@ -124,16 +170,72 @@ describe("bun-server startup", () => {
     });
   });
 
-  it("does not read onequery.dev.toml during self-host startup", () => {
+  it("loads a self-host launch config from the explicit startup argv path", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
+    writeSelfHostLaunchConfig(launchConfigPath);
+
+    const startupInput = resolveStartupInputFromArgv([
+      "bun",
+      "src/index.ts",
+      launchConfigPath,
+    ]);
+
+    expect(loadStartupLaunchConfig(startupInput)).toEqual({
+      assets: {
+        distDir: "/tmp/web",
+      },
+      auth: {
+        secret: "self-host-auth-secret",
+      },
+      connectors: {
+        enrollmentToken: "connector-token",
+      },
+      crypto: {
+        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
+      },
+      listen: {
+        host: "127.0.0.1",
+        port: 5656,
+      },
+      mode: "self-host",
+      publicOrigin: "http://127.0.0.1:5656",
+      rateLimit: {
+        enabled: true,
+        storage: "persistent",
+      },
+      runtimePaths: {
+        backupsDir: "/tmp/onequery/backups",
+        dataDir: "/tmp/onequery/data",
+        lockPath: "/tmp/onequery/run/server.lock",
+        logsDir: "/tmp/onequery/logs",
+        pidPath: "/tmp/onequery/run/server.pid",
+        runDir: "/tmp/onequery/run",
+      },
+      storage: {
+        dir: "/tmp/onequery/pglite",
+        kind: "pglite",
+      },
+    });
+  });
+
+  it("does not read repo-local workspace-dev files during self-host startup", () => {
+    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const launchConfigPath = join(root, "launch.json");
+
+    // Comment: keep this in self-host mode. A workspace-dev launch config here
+    // would make the acceptance check look stronger than it really is.
     writeFileSync(join(root, "onequery.dev.toml"), 'port = "not json"\n');
-    writeWorkspaceDevLaunchConfig(launchConfigPath);
+    writeFileSync(join(root, "onequery.dev.secrets.toml"), 'secret = "not toml"\n');
+    writeSelfHostLaunchConfig(launchConfigPath);
 
     expect(loadStartupLaunchConfig({ launchConfigPath })).toMatchObject({
-      mode: "workspace-dev",
-      publicOrigin: "http://localhost:4545",
+      mode: "self-host",
+      publicOrigin: "http://127.0.0.1:5656",
+      runtimePaths: {
+        dataDir: "/tmp/onequery/data",
+      },
     });
   });
 

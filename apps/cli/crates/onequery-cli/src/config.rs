@@ -353,9 +353,12 @@ mod tests {
     use super::ConfigStore;
     use super::DEFAULT_REQUEST_TIMEOUT_SEC;
     use super::TypedConfigOverrides;
+    use super::config_set_server_command_example;
+    use super::default_base_url;
     use super::layers::ConfigOrigins;
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
+    use super::self_host::default_public_origin;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
     struct CapturedEvent {
@@ -451,6 +454,15 @@ mod tests {
             Some(base_dir) => base_dir.join(path),
             None => path.to_path_buf(),
         }
+    }
+
+    #[test]
+    fn default_cli_server_examples_follow_the_self_host_default_public_origin() {
+        assert_eq!(default_base_url(), default_public_origin());
+        assert_eq!(
+            config_set_server_command_example(),
+            format!("onequery config set server {}", default_public_origin())
+        );
     }
 
     #[test]
