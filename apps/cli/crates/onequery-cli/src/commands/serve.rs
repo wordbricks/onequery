@@ -1134,9 +1134,11 @@ mod tests {
     use super::render_serve_status_output;
     use super::resolve_packaged_server_dir_from_current_executable;
     use super::select_packaged_server_candidate;
+    use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostConfig;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
+    use crate::config::self_host::default_port;
     use crate::config::self_host::load_self_host_config_for_test;
     use crate::config::self_host::write_self_host_launch_config_for_test;
 
@@ -1403,11 +1405,13 @@ mod tests {
 
         assert_eq!(
             launch_config.pointer("/listen/host"),
-            Some(&serde_json::Value::String("127.0.0.1".to_owned()))
+            Some(&serde_json::Value::String(
+                DEFAULT_SELF_HOST_LISTEN_HOST.to_owned(),
+            ))
         );
         assert_eq!(
             launch_config.pointer("/listen/port"),
-            Some(&serde_json::Value::Number(5656.into()))
+            Some(&serde_json::Value::Number(default_port().into()))
         );
         assert_eq!(
             launch_config.get("publicOrigin"),

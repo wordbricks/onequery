@@ -295,7 +295,9 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
+    use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostRuntimePaths;
+    use crate::config::self_host::default_port;
 
     #[test]
     fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
@@ -424,7 +426,11 @@ mod tests {
 
         fs::write(
             &paths.config_path,
-            "[server]\nlisten_host = \"127.0.0.1\"\nport = 5656\nlog_level = \"info\"\n",
+            format!(
+                "[server]\nlisten_host = \"{}\"\nport = {}\nlog_level = \"info\"\n",
+                DEFAULT_SELF_HOST_LISTEN_HOST,
+                default_port()
+            ),
         )
         .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
         if include_secrets {

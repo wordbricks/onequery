@@ -301,7 +301,7 @@ Anything executable or user-facing should either:
 - [x] Audit onboarding/docs/landing/README copy for stale port numbers or old commands.
 - [x] Update any stale references such as `4545` if the real self-host default is now something else.
 - [x] Remove separately hardcoded CLI base URL strings and derive them from the same self-host default helper.
-- [ ] Check smoke tests and snapshots for copied literals that should come from config helpers.
+- [x] Check smoke tests and snapshots for copied literals that should come from config helpers.
 - [x] Audit comments, README examples, and shell snippets for outdated URLs.
 
 ### Recommended approach

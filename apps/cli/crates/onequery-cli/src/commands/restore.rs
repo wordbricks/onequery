@@ -326,6 +326,7 @@ mod tests {
     use crate::config::default_base_url;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
+    use crate::config::self_host::default_port;
 
     #[test]
     fn restore_replaces_existing_runtime_and_bootstraps_missing_secrets_without_reporting_them_as_restored()
@@ -378,7 +379,10 @@ mod tests {
             fs::read_to_string(&paths.config_path).unwrap_or_else(|error| panic!(
                 "expected restored self-host config to load: {error}"
             )),
-            "[server]\nlisten_host = \"0.0.0.0\"\nport = 5656\nlog_level = \"debug\"\n"
+            format!(
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                default_port()
+            )
         );
 
         fs::remove_dir_all(temp_root)
@@ -471,7 +475,10 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected source state dir creation: {error}"));
         fs::write(
             config_dir.join("config.toml"),
-            "[server]\nlisten_host = \"0.0.0.0\"\nport = 5656\nlog_level = \"debug\"\n",
+            format!(
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                default_port()
+            ),
         )
         .unwrap_or_else(|error| panic!("expected source server config write: {error}"));
         if include_secrets {
