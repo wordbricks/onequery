@@ -20,7 +20,7 @@ type CliQueryActionTrailActor = import("./logging").CliQueryActionTrailActor;
 
 type ClosableDatabase = {
   $client?: {
-    close?: () => void;
+    close?: () => Promise<unknown>;
     end?: (options?: Record<string, unknown>) => Promise<unknown>;
   };
 };

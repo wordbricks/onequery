@@ -33,42 +33,44 @@ function createMocks() {
       fetch: vi.fn(async () => new Response("ok")),
     }));
   const createServerRuntimeConfig: StartBunServerDependencies["createServerRuntimeConfig"] =
-    vi.fn((launchConfig, services): ServerRuntimeConfig => ({
-      auth: {
-        baseURL: launchConfig.publicOrigin,
-        emailDelivery: {
+    vi.fn(
+      (launchConfig, services): ServerRuntimeConfig => ({
+        auth: {
           baseURL: launchConfig.publicOrigin,
+          emailDelivery: {
+            baseURL: launchConfig.publicOrigin,
+          },
+          secret: launchConfig.auth.secret,
         },
-        secret: launchConfig.auth.secret,
-      },
-      connectors: {
-        enrollmentToken: launchConfig.connectors.enrollmentToken,
-      },
-      crypto: {
-        masterEncryptionKey: launchConfig.crypto.masterEncryptionKey,
-      },
-      listen: launchConfig.listen,
-      mode: launchConfig.mode,
-      publicOrigin: launchConfig.publicOrigin,
-      rateLimit: {
-        enabled: launchConfig.rateLimit.enabled,
-        runtimeStorage: services.rateLimitStorage,
-        storage: launchConfig.rateLimit.storage,
-      },
-      runtimePaths: launchConfig.runtimePaths,
-      storage:
-        launchConfig.storage.kind === "postgres"
-          ? {
-              connectionString: launchConfig.storage.url,
-              kind: "postgres",
-              url: launchConfig.storage.url,
-            }
-          : {
-              connectionString: `pglite:${launchConfig.storage.dir}`,
-              dir: launchConfig.storage.dir,
-              kind: "pglite",
-            },
-    }));
+        connectors: {
+          enrollmentToken: launchConfig.connectors.enrollmentToken,
+        },
+        crypto: {
+          masterEncryptionKey: launchConfig.crypto.masterEncryptionKey,
+        },
+        listen: launchConfig.listen,
+        mode: launchConfig.mode,
+        publicOrigin: launchConfig.publicOrigin,
+        rateLimit: {
+          enabled: launchConfig.rateLimit.enabled,
+          runtimeStorage: services.rateLimitStorage,
+          storage: launchConfig.rateLimit.storage,
+        },
+        runtimePaths: launchConfig.runtimePaths,
+        storage:
+          launchConfig.storage.kind === "postgres"
+            ? {
+                connectionString: launchConfig.storage.url,
+                kind: "postgres",
+                url: launchConfig.storage.url,
+              }
+            : {
+                connectionString: `pglite:${launchConfig.storage.dir}`,
+                dir: launchConfig.storage.dir,
+                kind: "pglite",
+              },
+      })
+    );
   const prepareRuntimeDatabase: StartBunServerDependencies["prepareRuntimeDatabase"] =
     vi.fn(
       async (): Promise<DatabasePreparationResult> => ({

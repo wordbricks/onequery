@@ -74,14 +74,12 @@ async function uploadTo0x0(filePath: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+  const [filePath] = process.argv.slice(2);
 
-  if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
+  if (filePath === undefined || filePath === "--help" || filePath === "-h") {
     printUsage();
-    process.exit(args.length === 0 ? 1 : 0);
+    process.exit(filePath === undefined ? 1 : 0);
   }
-
-  const filePath = args[0];
 
   await validateFile(filePath);
   const url = await uploadTo0x0(filePath);
