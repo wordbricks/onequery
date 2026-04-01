@@ -18,6 +18,12 @@ export const serverLaunchRuntimePathsSchema = z
   })
   .strict();
 
+export const serverLaunchMigrationsSchema = z
+  .object({
+    dir: nonEmptyStringSchema,
+  })
+  .strict();
+
 export const serverLaunchStorageSchema = z.discriminatedUnion("kind", [
   z
     .object({
@@ -73,6 +79,7 @@ export const serverLaunchConfigSchema = z
         port: portSchema,
       })
       .strict(),
+    migrations: serverLaunchMigrationsSchema,
     mode: z.enum(["workspace-dev", "self-host"]),
     publicOrigin: originSchema,
     rateLimit: z

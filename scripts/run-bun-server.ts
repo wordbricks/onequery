@@ -52,6 +52,13 @@ export function createLaunchConfig(
     }),
     {
       assetDir: getDefaultSpaBuildDir(configRootDir),
+      migrationsDir: resolve(
+        configRootDir,
+        "packages",
+        "db",
+        "src",
+        "migrations"
+      ),
     }
   );
 }

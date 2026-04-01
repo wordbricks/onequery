@@ -30,6 +30,9 @@ function createWorkspaceDevLaunchConfig() {
       host: "127.0.0.1",
       port: 4555,
     },
+    migrations: {
+      dir: "/tmp/onequery/runtime/migrations",
+    },
     mode: "workspace-dev" as const,
     publicOrigin: "http://localhost:4545",
     rateLimit: {
@@ -60,6 +63,9 @@ function createSelfHostLaunchConfig() {
     listen: {
       host: "127.0.0.1",
       port: 5656,
+    },
+    migrations: {
+      dir: "/tmp/onequery/runtime/migrations",
     },
     mode: "self-host" as const,
     publicOrigin: "http://127.0.0.1:5656",

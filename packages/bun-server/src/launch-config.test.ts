@@ -34,6 +34,9 @@ function createWorkspaceDevLaunchConfig(assetDir: string) {
       host: "127.0.0.1",
       port: 4555,
     },
+    migrations: {
+      dir: "/tmp/migrations",
+    },
     mode: "workspace-dev" as const,
     publicOrigin: "http://localhost:4545",
     rateLimit: {
@@ -64,6 +67,9 @@ function createSelfHostLaunchConfig(assetDir: string) {
     listen: {
       host: "127.0.0.1",
       port: 5656,
+    },
+    migrations: {
+      dir: "/tmp/migrations",
     },
     mode: "self-host" as const,
     publicOrigin: "http://127.0.0.1:5656",

@@ -31,7 +31,9 @@ const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
 const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
 const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
 const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
+const PACKAGED_MIGRATIONS_DIR: &str = "migrations";
 const PACKAGED_WEB_DIR: &str = "web";
+const REPO_MIGRATIONS_DIR: &[&str] = &["packages", "db", "src", "migrations"];
 const REPO_SERVER_ENTRYPOINT: &[&str] = &["packages", "bun-server", "src", "index.ts"];
 const REPO_WEB_CLIENT_DIR: &[&str] = &["apps", "web", "dist", "client"];
 const REPO_WEB_DIST_DIR: &[&str] = &["apps", "web", "dist"];
@@ -96,6 +98,7 @@ enum ServeLaunchKind {
 struct ServeLaunchPlan {
     launch_kind: ServeLaunchKind,
     launch_config_path: PathBuf,
+    migrations_dir: PathBuf,
     runtime_entry_path: PathBuf,
     web_dist_dir: PathBuf,
 }
@@ -222,8 +225,11 @@ fn run_serve_foreground(
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let mut launch_plan = resolve_launch_plan(state, command_line)?;
-    launch_plan.launch_config_path =
-        write_self_host_launch_config(command_line, &launch_plan.web_dist_dir)?;
+    launch_plan.launch_config_path = write_self_host_launch_config(
+        command_line,
+        &launch_plan.web_dist_dir,
+        &launch_plan.migrations_dir,
+    )?;
     remove_if_exists(state.paths.stop_request_path.as_path());
     let mut child = match launch_plan.launch_kind {
         ServeLaunchKind::PackagedExecutable => {
@@ -332,12 +338,15 @@ fn resolve_launch_plan(
             )],
         )?;
         let packaged_runtime = resolve_packaged_server_executable(command_line)?;
+        let packaged_migrations =
+            join_path_segments(&npm_root, &[PACKAGED_RUNTIME_DIR, PACKAGED_MIGRATIONS_DIR]);
         let packaged_web = join_path_segments(&npm_root, &[PACKAGED_RUNTIME_DIR, PACKAGED_WEB_DIR]);
 
         if packaged_runtime.is_file() && packaged_web.join(WEB_INDEX_FILENAME).is_file() {
             return Ok(ServeLaunchPlan {
                 launch_kind: ServeLaunchKind::PackagedExecutable,
                 launch_config_path: state.paths.launch_config_path.clone(),
+                migrations_dir: packaged_migrations,
                 runtime_entry_path: packaged_runtime,
                 web_dist_dir: packaged_web,
             });
@@ -358,6 +367,7 @@ fn resolve_launch_plan(
     }
 
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../");
+    let repo_migrations = join_path_segments(&repo_root, REPO_MIGRATIONS_DIR);
     let repo_runtime = join_path_segments(&repo_root, REPO_SERVER_ENTRYPOINT);
     let repo_web_client = join_path_segments(&repo_root, REPO_WEB_CLIENT_DIR);
     let repo_web_dist = join_path_segments(&repo_root, REPO_WEB_DIST_DIR);
@@ -387,6 +397,7 @@ fn resolve_launch_plan(
     Ok(ServeLaunchPlan {
         launch_kind: ServeLaunchKind::RepoBunEntry,
         launch_config_path: state.paths.launch_config_path.clone(),
+        migrations_dir: repo_migrations,
         runtime_entry_path: repo_runtime,
         web_dist_dir,
     })
@@ -1381,6 +1392,7 @@ mod tests {
             test_dir.join("data"),
         );
         let asset_dir = test_dir.join("runtime").join("web");
+        let migrations_dir = test_dir.join("runtime").join("migrations");
 
         fs::create_dir_all(&asset_dir)
             .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
@@ -1392,11 +1404,13 @@ mod tests {
         )
         .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
 
-        let launch_config_path =
-            write_self_host_launch_config_for_test(state.paths, &asset_dir, "onequery serve")
-                .unwrap_or_else(|error| {
-                    panic!("expected serve launch config write to succeed: {error}")
-                });
+        let launch_config_path = write_self_host_launch_config_for_test(
+            state.paths,
+            &asset_dir,
+            &migrations_dir,
+            "onequery serve",
+        )
+        .unwrap_or_else(|error| panic!("expected serve launch config write to succeed: {error}"));
         let launch_config_contents = fs::read_to_string(&launch_config_path)
             .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
         let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)

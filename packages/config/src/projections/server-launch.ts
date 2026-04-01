@@ -8,6 +8,7 @@ import type { ResolvedWorkspaceDevConfig } from "../workspace-dev";
 
 export interface ProjectWorkspaceDevServerLaunchConfigOptions {
   readonly assetDir: string;
+  readonly migrationsDir: string;
   readonly smtp?: ServerLaunchSmtpConfig;
 }
 
@@ -29,6 +30,9 @@ export function projectWorkspaceDevServerLaunchConfig(
       masterEncryptionKey: workspaceDev.crypto.masterEncryptionKey,
     },
     listen: workspaceDev.api.listen,
+    migrations: {
+      dir: resolve(options.migrationsDir),
+    },
     mode: "workspace-dev",
     publicOrigin: workspaceDev.publicOrigin,
     rateLimit: {
