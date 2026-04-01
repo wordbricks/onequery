@@ -49,13 +49,13 @@
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt --check",
     "format:fix": "oxfmt .",
-    "test": "turbo test",
+    "test": "bun run check:package-boundaries && turbo test",
     "test:integration": "turbo run test:integration",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "turbo run test:e2e",
     "test:e2e:ui": "cd apps/web && bun run test:e2e:ui",
-    "check:config-boundaries": "bun run scripts/check-config-package-boundaries.ts",
+    "check:package-boundaries": "bun run scripts/check-package-boundaries.ts",
     "typecheck": "turbo run typecheck typecheck:root",
     "typecheck:root": "tsgo --noEmit -p tsconfig.scripts.json",
     "db:generate": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit generate",
@@ -69,6 +69,7 @@
     "knip": "knip"
   },
   "devDependencies": {
+    "@onequery/bun-server": "workspace:*",
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
     "@testing-library/jest-dom": "6.9.1",

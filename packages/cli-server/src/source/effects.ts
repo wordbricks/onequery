@@ -4,7 +4,7 @@ import type { Database } from "@onequery/db/server";
 import {
   deriveKeyFromBase64,
   encryptCredentialsObject,
-} from "../../../server/src/services/crypto/credential-encryption";
+} from "@onequery/server/services/crypto/credential-encryption";
 import type {
   CliConnectSourceEffect,
   CliConnectSourceEffectResult,

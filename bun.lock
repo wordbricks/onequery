@@ -5,6 +5,7 @@
     "": {
       "name": "onequery-workspace",
       "devDependencies": {
+        "@onequery/bun-server": "workspace:*",
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@testing-library/jest-dom": "6.9.1",
@@ -29,6 +30,9 @@
       "version": "0.0.0-dev",
       "bin": {
         "onequery": "bin/onequery.js",
+      },
+      "devDependencies": {
+        "@onequery/config": "workspace:*",
       },
     },
     "apps/connector": {

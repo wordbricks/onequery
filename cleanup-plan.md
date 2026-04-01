@@ -134,9 +134,9 @@ Every cross-package dependency should go through one of these only:
 
 ### Checklist
 
-- [ ] add a **general package-boundary check**, not just a config-package check
-- [ ] fail CI/test when code outside a package imports another package’s private `src/*`
-- [ ] fix each current offender by either exporting or relocating the shared code
+- [x] add a **general package-boundary check**, not just a config-package check
+- [x] fail CI/test when code outside a package imports another package’s private `src/*`
+- [x] fix each current offender by either exporting or relocating the shared code
 
 ### Recommended fixes by file
 
@@ -146,9 +146,9 @@ Current issue:
 - pulls `getDefaultSpaBuildDir()` from `packages/bun-server/src/assets`
 
 Cleanup:
-- [ ] export `getDefaultSpaBuildDir` from `@onequery/bun-server/assets`
-- [ ] or move that helper into a more neutral shared package if it is conceptually not bun-server-owned
-- [ ] update the script to use the public subpath export
+- [x] export `getDefaultSpaBuildDir` from `@onequery/bun-server/assets`
+- [x] or move that helper into a more neutral shared package if it is conceptually not bun-server-owned
+- [x] update the script to use the public subpath export
 
 #### `packages/cli-server/src/source/effects.ts`
 
@@ -156,7 +156,7 @@ Current issue:
 - imports `credential-encryption` through `server/src`
 
 Cleanup:
-- [ ] switch to the already-exported public subpath from `@onequery/server/services/crypto/credential-encryption`
+- [x] switch to the already-exported public subpath from `@onequery/server/services/crypto/credential-encryption`
 
 This one should be easy because the server package already exports that service.
 
@@ -166,9 +166,9 @@ Current issue:
 - imports server internals through `server/src`
 
 Cleanup:
-- [ ] decide whether these are intentionally shared server surfaces
-- [ ] if yes, export them from `@onequery/server/...`
-- [ ] if no, move them into a more neutral shared package (for example contracts/schemas or connector-domain code)
+- [x] decide whether these are intentionally shared server surfaces
+- [x] if yes, export them from `@onequery/server/...`
+- [x] if no, move them into a more neutral shared package (for example contracts/schemas or connector-domain code)
 
 Suggested ownership split:
 - `CreateDataSourceSchema` probably belongs on an explicit shared contract/schema surface
@@ -180,13 +180,16 @@ Current issue:
 - imports PGlite packaging constants through `packages/db/src/pglite.ts`
 
 Cleanup:
-- [ ] export the required packaging constants from `@onequery/db`
-- [ ] or move those constants into CLI packaging code if they are packaging-only concerns
+- [x] export the required packaging constants from `@onequery/db`
+- [x] or move those constants into CLI packaging code if they are packaging-only concerns
 
 ### Done when
 
 - cross-package imports no longer depend on another package’s private folder layout
 - the repo has one mechanical guard that prevents these leaks from returning
+
+Status:
+- [x] Complete. The remaining production callers now use public package exports, and a repo-wide boundary check blocks new cross-package `src/*` leaks.
 
 ---
 
