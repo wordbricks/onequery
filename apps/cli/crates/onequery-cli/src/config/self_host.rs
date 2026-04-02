@@ -181,7 +181,7 @@ pub(crate) struct SecretsConfig {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AuthSecrets {
-    pub(crate) better_auth_secret: String,
+    pub(crate) secret: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -214,7 +214,7 @@ impl SecretsConfig {
         Self {
             smtp: SmtpSecrets::default(),
             auth: AuthSecrets {
-                better_auth_secret: generate_auth_secret(),
+                secret: generate_auth_secret(),
             },
             crypto: CryptoSecrets {
                 master_encryption_key: generate_master_encryption_key(),
@@ -580,7 +580,7 @@ fn resolve_self_host_launch_config(
             dist_dir: assets_dist_dir.display().to_string(),
         },
         auth: ServerLaunchAuthConfig {
-            secret: bundle.secrets.auth.better_auth_secret.clone(),
+            secret: bundle.secrets.auth.secret.clone(),
         },
         connectors: ServerLaunchConnectorsConfig {
             enrollment_token: bundle.secrets.connectors.enrollment_token.clone(),
@@ -785,7 +785,7 @@ mod tests {
 
     fn valid_self_host_secrets_toml() -> String {
         format!(
-            "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+            "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
         )
     }
 
@@ -866,7 +866,7 @@ mod tests {
 
         assert_eq!(loaded.paths, paths);
         assert_eq!(loaded.config, SelfHostConfig::default());
-        assert_eq!(loaded.secrets.auth.better_auth_secret.is_empty(), false);
+        assert_eq!(loaded.secrets.auth.secret.is_empty(), false);
         assert_eq!(
             loaded.secrets.crypto.master_encryption_key.is_empty(),
             false
@@ -932,7 +932,7 @@ public_origin = "https://onequery.example.com"
             SecretsConfig {
                 smtp: SmtpSecrets::default(),
                 auth: AuthSecrets {
-                    better_auth_secret: "better".to_owned(),
+                    secret: "better".to_owned(),
                 },
                 crypto: CryptoSecrets {
                     master_encryption_key: TEST_MASTER_ENCRYPTION_KEY.to_owned(),
@@ -979,7 +979,7 @@ public_origin = "https://onequery.example.com"
         fs::write(
             &paths.secrets_path,
             r#"[auth]
-better_auth_secret = "better"
+secret = "better"
 unexpected = true
 
 [crypto]
@@ -1009,7 +1009,7 @@ enrollment_token = "connector"
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n\n[auth]\nbetter_auth_secret = \"wrong-file\"\n",
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n\n[auth]\nsecret = \"wrong-file\"\n",
                 default_port()
             ),
         )
@@ -1033,7 +1033,7 @@ enrollment_token = "connector"
         fs::write(
             &paths.secrets_path,
             format!(
-                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[server]\nport = {}\n",
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[server]\nport = {}\n",
                 default_port()
             ),
         )
@@ -1084,7 +1084,7 @@ secure = false
         fs::write(
             &paths.secrets_path,
             format!(
-                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[smtp]\npassword = \"smtp-pass\"\n"
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[smtp]\npassword = \"smtp-pass\"\n"
             ),
         )
         .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
@@ -1180,7 +1180,7 @@ secure = false
                     password: Some("smtp-pass".to_owned()),
                 },
                 auth: AuthSecrets {
-                    better_auth_secret: "better".to_owned(),
+                    secret: "better".to_owned(),
                 },
                 crypto: CryptoSecrets {
                     master_encryption_key: TEST_MASTER_ENCRYPTION_KEY.to_owned(),
@@ -1210,7 +1210,7 @@ secure = false
             .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
         fs::write(
             &paths.secrets_path,
-            "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n",
+            "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n",
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 

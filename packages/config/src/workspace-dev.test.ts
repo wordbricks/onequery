@@ -10,6 +10,7 @@ import { projectDrizzleConfig } from "./projections/drizzle";
 import { projectWorkspaceDevServerLaunchConfig } from "./projections/server-launch";
 import { projectViteDevServerConfig } from "./projections/vite";
 import { deriveTestProfile } from "./test-profile";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
 import {
   resolveWorkspaceDev,
   WORKSPACE_DEV_CONFIG_FILENAME,
@@ -136,7 +137,7 @@ describe("@onequery/config workspace-dev", () => {
         'secret = "workspace-auth-secret"',
         "",
         "[crypto]",
-        'master_encryption_key = "custom-master-key"',
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
         "",
         "[connectors]",
         'enrollment_token = "workspace-connector-token"',
@@ -179,7 +180,7 @@ describe("@onequery/config workspace-dev", () => {
           enrollmentToken: "workspace-connector-token",
         },
         crypto: {
-          masterEncryptionKey: "custom-master-key",
+          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
         },
         listen: {
           host: "127.0.0.1",

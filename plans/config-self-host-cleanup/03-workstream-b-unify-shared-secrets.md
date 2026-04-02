@@ -19,26 +19,26 @@ There is no architectural reason for this difference.
 
 ### TODO
 
-- [ ] Keep `onequery.dev.secrets.toml` and self-host `secrets.toml` as separate files with independently generated values.
-- [ ] Rename self-host `auth.better_auth_secret` to `auth.secret`.
-- [ ] Update self-host Rust structs accordingly.
-- [ ] Update backup/restore expectations and any tests that look for `better_auth_secret`.
-- [ ] Keep `smtp.password` as a self-host-only extension in the secrets file.
-- [ ] Introduce one shared schema/contract for overlapping secret sections, key names, and external text representations consumed by both server-side TS and `apps/cli` Rust.
-- [ ] Ensure workspace-dev and self-host use the same generator semantics for each shared secret type.
-- [ ] Treat `auth.secret` and `connectors.enrollment_token` as opaque transport strings after validation.
-- [ ] Treat `crypto.master_encryption_key` as the exception: validate its encoded form at config/launch boundaries, then normalize it to key bytes for runtime use.
-- [ ] Share the rules for valid secret samples, but keep test builders local to each language rather than introducing one cross-language fixture as SSoT.
-- [ ] Remove backward-compatibility shims or dual-read behavior for old secret keys and formats.
-- [ ] Update `docs/env-secrets-management.md` and any README text that still implies old env/config sync behavior.
+- [x] Keep `onequery.dev.secrets.toml` and self-host `secrets.toml` as separate files with independently generated values.
+- [x] Rename self-host `auth.better_auth_secret` to `auth.secret`.
+- [x] Update self-host Rust structs accordingly.
+- [x] Update backup/restore expectations and any tests that look for `better_auth_secret`.
+- [x] Keep `smtp.password` as a self-host-only extension in the secrets file.
+- [x] Introduce one shared schema/contract for overlapping secret sections, key names, and external text representations consumed by both server-side TS and `apps/cli` Rust.
+- [x] Ensure workspace-dev and self-host use the same generator semantics for each shared secret type.
+- [x] Treat `auth.secret` and `connectors.enrollment_token` as opaque transport strings after validation.
+- [x] Treat `crypto.master_encryption_key` as the exception: validate its encoded form at config/launch boundaries, then normalize it to key bytes for runtime use.
+- [x] Share the rules for valid secret samples, but keep test builders local to each language rather than introducing one cross-language fixture as SSoT.
+- [x] Remove backward-compatibility shims or dual-read behavior for old secret keys and formats.
+- [x] Update `docs/env-secrets-management.md` and any README text that still implies old env/config sync behavior.
 
 ### Acceptance
 
-- [ ] Shared secret section names and value formats are identical across both profiles for overlapping concepts.
-- [ ] Shared secret generation and validation rules are identical across both profiles.
-- [ ] Workspace-dev and self-host still use separate secrets files; only the schema is shared.
-- [ ] No code path refers to `better_auth_secret` or legacy aliases anymore.
-- [ ] Docs no longer show stale field names or imply that workspace-dev and self-host share secret values.
+- [x] Shared secret section names and value formats are identical across both profiles for overlapping concepts.
+- [x] Shared secret generation and validation rules are identical across both profiles.
+- [x] Workspace-dev and self-host still use separate secrets files; only the schema is shared.
+- [x] No code path refers to `better_auth_secret` or legacy aliases anymore.
+- [x] Docs no longer show stale field names or imply that workspace-dev and self-host share secret values.
 
 ## Workstream C — Make the launch contract a real SSoT boundary
 
@@ -64,14 +64,14 @@ The key point is:
 
 ### TODO
 
-- [ ] Introduce explicit semantic validators for secret-bearing fields in `packages/config/src/server-launch.ts`.
-- [ ] Keep transport-only string encodings at the launch boundary, but normalize semantically typed runtime values once during runtime config creation.
-- [ ] Replace fixture-shape parity as the main Rust contract check with projection tests that cover semantic validity and required field meaning.
-- [ ] Keep Rust local serde structs if they are ergonomic, but stop pretending fixture equality alone is enough.
-- [ ] Keep any shared sample launch JSON as a convenience artifact only, not the primary source of truth.
+- [x] Introduce explicit semantic validators for secret-bearing fields in `packages/config/src/server-launch.ts`.
+- [x] Keep transport-only string encodings at the launch boundary, but normalize semantically typed runtime values once during runtime config creation.
+- [x] Replace fixture-shape parity as the main Rust contract check with projection tests that cover semantic validity and required field meaning.
+- [x] Keep Rust local serde structs if they are ergonomic, but stop pretending fixture equality alone is enough.
+- [x] Keep any shared sample launch JSON as a convenience artifact only, not the primary source of truth.
 
 ### Acceptance
 
-- [ ] A semantically invalid self-host launch JSON fails contract validation even if all keys are present.
-- [ ] Rust projection tests defend the same semantic contract that Bun validates.
-- [ ] Shared sample JSON can no longer mask semantic invalidity by passing shape-only parity tests.
+- [x] A semantically invalid self-host launch JSON fails contract validation even if all keys are present.
+- [x] Rust projection tests defend the same semantic contract that Bun validates.
+- [x] Shared sample JSON can no longer mask semantic invalidity by passing shape-only parity tests.

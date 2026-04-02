@@ -299,6 +299,8 @@ mod tests {
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::default_port;
 
+    const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+
     #[test]
     fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
      {
@@ -436,7 +438,9 @@ mod tests {
         if include_secrets {
             fs::write(
                 &paths.secrets_path,
-                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n",
+                format!(
+                    "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+                ),
             )
             .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
         }

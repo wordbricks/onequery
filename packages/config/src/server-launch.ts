@@ -1,51 +1,20 @@
 import { z } from "zod";
 
+import {
+  authSecretSchema,
+  connectorEnrollmentTokenSchema,
+  decodeMasterEncryptionKey,
+  masterEncryptionKeySchema,
+} from "./shared-secrets";
+
+export { decodeMasterEncryptionKey } from "./shared-secrets";
+
 // Canonical launch-contract owner: Rust emits JSON to match this module, and
 // Bun validates/consumes it only through @onequery/config/server-launch.
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
 const portSchema = z.number().int().min(1).max(65535);
 const originSchema = z.string().trim().url();
-const MASTER_ENCRYPTION_KEY_BYTE_LENGTH = 32;
-
-function decodeMasterEncryptionKeyValue(value: string): Uint8Array {
-  const normalizedValue = value.trim();
-  let decodedValue: string;
-
-  try {
-    decodedValue = atob(normalizedValue);
-  } catch {
-    throw new Error(
-      "Master encryption key must be valid base64 that decodes to exactly 32 bytes."
-    );
-  }
-
-  if (decodedValue.length !== MASTER_ENCRYPTION_KEY_BYTE_LENGTH) {
-    throw new Error(
-      "Master encryption key must be valid base64 that decodes to exactly 32 bytes."
-    );
-  }
-
-  return Uint8Array.from(decodedValue, (char) => char.charCodeAt(0));
-}
-
-export function decodeMasterEncryptionKey(value: string): Uint8Array {
-  return decodeMasterEncryptionKeyValue(value);
-}
-
-const masterEncryptionKeySchema = nonEmptyStringSchema.superRefine(
-  (value, context) => {
-    try {
-      decodeMasterEncryptionKeyValue(value);
-    } catch (error) {
-      context.addIssue({
-        code: "custom",
-        message:
-          error instanceof Error ? error.message : "Invalid master encryption key.",
-      });
-    }
-  }
-);
 
 export const serverLaunchRuntimePathsSchema = z
   .object({
@@ -100,12 +69,12 @@ export const serverLaunchConfigSchema = z
       .strict(),
     auth: z
       .object({
-        secret: nonEmptyStringSchema,
+        secret: authSecretSchema,
       })
       .strict(),
     connectors: z
       .object({
-        enrollmentToken: nonEmptyStringSchema,
+        enrollmentToken: connectorEnrollmentTokenSchema,
       })
       .strict(),
     crypto: z

@@ -6,6 +6,8 @@ import { readTomlFileSync } from "@onequery/config-loader";
 import type { TomlFileData } from "@onequery/config-loader";
 import { z } from "zod";
 
+import { sharedSecretSectionsSchema } from "./shared-secrets";
+
 const defaultRootDir = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../.."
@@ -89,17 +91,7 @@ export const workspaceDevConfigSchema = z
   .strict()
   .superRefine(validateUniqueHostPorts);
 
-export const workspaceDevSecretsSchema = strictObject({
-  auth: strictObject({
-    secret: nonEmptyStringSchema,
-  }),
-  connectors: strictObject({
-    enrollment_token: nonEmptyStringSchema,
-  }),
-  crypto: strictObject({
-    master_encryption_key: nonEmptyStringSchema,
-  }),
-});
+export const workspaceDevSecretsSchema = sharedSecretSectionsSchema;
 
 export const WORKSPACE_DEV_CONFIG_FILENAME = "onequery.dev.toml";
 export const WORKSPACE_DEV_SECRETS_FILENAME = "onequery.dev.secrets.toml";

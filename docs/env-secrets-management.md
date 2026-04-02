@@ -58,6 +58,13 @@ Self-host is owned by the Rust CLI, not by the repo-local dev resolver:
 
 `onequery serve` uses this profile only.
 
+Overlapping secret keys stay aligned with workspace-dev while values stay
+independent:
+
+- `auth.secret`
+- `crypto.master_encryption_key`
+- `connectors.enrollment_token`
+
 Default self-host port:
 
 - bundled public origin: `http://127.0.0.1:5656`
