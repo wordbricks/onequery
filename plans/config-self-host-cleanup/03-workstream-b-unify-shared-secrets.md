@@ -6,7 +6,7 @@
 
 Make `onequery.dev.secrets.toml` and self-host `secrets.toml` honest projections of the same shared secret schema.
 
-This does **not** mean the two profiles share secret values. It means they use the same key names, value encodings, and validation rules for overlapping concepts while staying separate config files.
+This does **not** mean the two profiles share secret values. It means they use the same key names, external text representations, and validation rules for overlapping concepts while staying separate config files.
 
 The canonical target shape and encoding rules live in `01-target-architecture.md`. This workstream only owns the implementation needed to reach that target.
 
@@ -24,7 +24,7 @@ There is no architectural reason for this difference.
 - [ ] Update self-host Rust structs accordingly.
 - [ ] Update backup/restore expectations and any tests that look for `better_auth_secret`.
 - [ ] Keep `smtp.password` as a self-host-only extension in the secrets file.
-- [ ] Introduce one shared schema/contract for overlapping secret sections, key names, and value encodings consumed by both server-side TS and `apps/cli` Rust.
+- [ ] Introduce one shared schema/contract for overlapping secret sections, key names, and external text representations consumed by both server-side TS and `apps/cli` Rust.
 - [ ] Ensure workspace-dev and self-host use the same generator semantics for each shared secret type.
 - [ ] Add one canonical sample secrets fixture/helper used by tests in both TS and Rust.
 - [ ] Remove backward-compatibility shims or dual-read behavior for old secret keys and formats.
@@ -63,6 +63,7 @@ This can be a JSON Schema or another simple machine-readable artifact, but the k
 ### TODO
 
 - [ ] Introduce explicit semantic validators for secret-bearing fields in `packages/config/src/server-launch.ts`.
+- [ ] Keep transport-only string encodings at the launch boundary, but normalize semantically typed runtime values once during runtime config creation.
 - [ ] Generate a neutral launch-contract artifact from the config package.
 - [ ] Make Rust launch-config tests validate against the generated artifact rather than only matching a hand-maintained fixture.
 - [ ] Keep Rust local serde structs if they are ergonomic, but stop pretending fixture equality alone is enough.

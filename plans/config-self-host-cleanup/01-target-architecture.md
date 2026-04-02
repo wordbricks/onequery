@@ -28,21 +28,30 @@ password = "..."
 
 But shared concepts must not fork by profile.
 
-### Rule 2: same concept, same encoding, everywhere
+### Rule 2: same concept, same external representation, and semantic validation
 
 Define a real secret taxonomy instead of “non-empty string”.
+
+Important distinction:
+
+- config files and launch JSON need **text representations**
+- runtime internals should carry **validated semantic values**
+- do not let a transport encoding choice become an accidental runtime-wide type contract
 
 Recommended primitives:
 
 - `auth.secret`
   - opaque auth secret
-  - generated as 32 random bytes encoded as base64url
+  - generated as 32 random bytes encoded as base64url for config/launch transport
 - `connectors.enrollment_token`
   - opaque enrollment token
-  - generated as 32 random bytes encoded as base64url
+  - generated as 32 random bytes encoded as base64url for config/launch transport
 - `crypto.master_encryption_key`
-  - **must** be 32 random bytes encoded as standard base64
-  - validated semantically everywhere it can enter the system
+  - **must** represent 32 random bytes of key material
+  - config/launch should use one explicit text encoding for that value across both profiles
+  - keep standard base64 as the default representation unless there is a concrete reason to migrate
+  - decode and validate it once at the config/runtime boundary
+  - after validation, runtime code should carry key bytes, not repeatedly re-parse the transport string in request paths
 
 ### Rule 3: profile config is authored separately, shared runtime contract is explicit
 

@@ -56,6 +56,12 @@ Current workspace-dev generation (`packages/config/src/workspace-dev-init.ts`):
 - `crypto.master_encryption_key` is generated as **base64-encoded 32-byte key material**.
 - This matches runtime expectations.
 
+Architectural note:
+
+- the important invariant is **32 bytes of encryption key material**
+- the base64 layer is the current text representation used to carry that key through TOML/JSON boundaries
+- standard base64 is therefore an implementation choice in the current system, not the underlying security property
+
 Current self-host generation (`apps/cli/crates/onequery-cli/src/config/self_host.rs`):
 
 - `SecretsConfig::generate()` uses `generate_secret("master-encryption")`
