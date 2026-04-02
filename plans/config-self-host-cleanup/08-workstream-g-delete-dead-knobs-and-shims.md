@@ -8,7 +8,7 @@ Remove config/options that create surface area without carrying real meaning.
 
 ### TODO
 
-- [ ] Delete `server.log_level` from self-host config unless it is wired all the way through to actual runtime logging behavior.
+- [ ] Delete `server.log_level` from self-host config rather than wiring it through.
 - [ ] Remove any serve/status JSON that only reflects dead config.
 - [ ] Remove the legacy unsupported-test cleanup shim in `packages/server/src/routes/data-sources/crud.ts` (`LEGACY_UNSUPPORTED_TEST_PREFIX`) since backward compatibility is explicitly not needed here.
 - [ ] Delete any stale comments/docs that still describe the old compatibility assumptions.
@@ -43,16 +43,17 @@ That coverage is expensive but still missed the actual production failure.
 #### Remove / collapse
 
 - repeated launch-config object builders in multiple packages
-- fixture parity tests that only confirm the same invalid sample shape
+- fixture parity tests that only confirm the same sample shape without semantic validation
 - runtime tests using invalid master keys
 - overlapping serve/config tests that do not defend unique behavior
 
 ### TODO
 
 - [ ] Create shared launch-config builders/helpers in one place for TS tests.
-- [ ] Create one canonical valid self-host launch fixture.
+- [ ] Treat semantic validators and runtime smoke tests as the real contract checks; any fixture kept in the repo is only a convenience artifact, not the source of truth.
 - [ ] Make all test helpers use a valid sample master key.
 - [ ] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
+- [ ] Prefer small boundary-focused samples over one giant canonical launch fixture.
 - [ ] In Rust, keep tests for:
   - [ ] filesystem layout
   - [ ] config/secrets parsing

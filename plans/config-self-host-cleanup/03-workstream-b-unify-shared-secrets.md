@@ -26,6 +26,8 @@ There is no architectural reason for this difference.
 - [ ] Keep `smtp.password` as a self-host-only extension in the secrets file.
 - [ ] Introduce one shared schema/contract for overlapping secret sections, key names, and external text representations consumed by both server-side TS and `apps/cli` Rust.
 - [ ] Ensure workspace-dev and self-host use the same generator semantics for each shared secret type.
+- [ ] Treat `auth.secret` and `connectors.enrollment_token` as opaque transport strings after validation.
+- [ ] Treat `crypto.master_encryption_key` as the exception: validate its encoded form at config/launch boundaries, then normalize it to key bytes for runtime use.
 - [ ] Add one canonical sample secrets fixture/helper used by tests in both TS and Rust.
 - [ ] Remove backward-compatibility shims or dual-read behavior for old secret keys and formats.
 - [ ] Update `docs/env-secrets-management.md` and any README text that still implies old env/config sync behavior.

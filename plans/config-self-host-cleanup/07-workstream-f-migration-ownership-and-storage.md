@@ -11,12 +11,25 @@ Have one clean answer to “who migrates the application schema?” and “what 
 3. Self-host storage is explicit, not ambient.
 4. Self-host Postgres should not be documented until it actually exists in the self-host config model.
 
+### Better ownership model
+
+Use an explicit owner matrix instead of one broad slogan:
+
+- `workspace-dev` runtime startup owns application schema convergence for repo-local app runs
+- `self-host` runtime startup owns application schema convergence for `onequery serve`
+- `dev:setup` owns only infra/bootstrap prerequisites and never applies application schema
+- test harnesses may call explicit schema-prep helpers directly when they are intentionally bypassing runtime startup
+
+That keeps runtime behavior deterministic without making setup scripts or tests depend on accidental startup side effects.
+
 ### TODO
 
 - [ ] Remove app-schema migration execution from `scripts/dev-setup.ts`.
 - [ ] Keep infra setup there: secrets bootstrap, Docker/Postgres startup, `pgvector` enablement, etc.
 - [ ] Let workspace-dev Bun startup apply migrations using the launch contract.
+- [ ] Let self-host Bun startup remain the migration owner for `onequery serve`.
 - [ ] Keep test harnesses free to call DB prep helpers directly.
+- [ ] Document which entrypoints do and do not guarantee application schema convergence.
 - [ ] Rename `prepareSelfHostDatabase()` to something accurate like `prepareApplicationDatabase()` or `prepareRuntimeDatabaseSchema()` since it is not self-host-only.
 - [ ] Remove self-host `DATABASE_URL` documentation from `docs/self-host.md` for now.
 - [ ] Audit the repo for any lingering suggestion that self-host Postgres is supported via ambient env.
@@ -49,6 +62,7 @@ But **do not** resurrect ambient `DATABASE_URL` for self-host.
 ### Acceptance
 
 - [ ] There is one clear migration owner for runtime startup.
+- [ ] The repo documents which paths migrate automatically and which do not.
 - [ ] `dev:setup` no longer applies the application schema.
 - [ ] Self-host docs match actual supported storage behavior.
 - [ ] The DB prep helper name no longer implies “self-host only” when it is used everywhere.
