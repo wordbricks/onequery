@@ -1,5 +1,7 @@
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
+import { deriveKeyFromBase64 } from "./services/crypto/credential-encryption";
 import { createServerRuntimeConfig } from "./runtime";
 
 describe("createServerRuntimeConfig", () => {
@@ -15,7 +17,7 @@ describe("createServerRuntimeConfig", () => {
         enrollmentToken: "connector-token",
       },
       crypto: {
-        masterEncryptionKey: "master-key",
+        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
       },
       listen: {
         host: "127.0.0.1",
@@ -48,7 +50,7 @@ describe("createServerRuntimeConfig", () => {
         enrollmentToken: "connector-token",
       },
       crypto: {
-        masterEncryptionKey: "master-key",
+        masterEncryptionKey: deriveKeyFromBase64(SAMPLE_MASTER_ENCRYPTION_KEY),
       },
       listen: {
         host: "127.0.0.1",
@@ -83,7 +85,7 @@ describe("createServerRuntimeConfig", () => {
         enrollmentToken: "connector-token",
       },
       crypto: {
-        masterEncryptionKey: "master-key",
+        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
       },
       listen: {
         host: "127.0.0.1",

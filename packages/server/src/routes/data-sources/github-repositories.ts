@@ -15,7 +15,6 @@ import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
   decryptCredentialsObject,
-  deriveKeyFromBase64,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
 import { listGitHubRepositories } from "../../services/github/relay";
@@ -80,13 +79,10 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         );
       }
 
-      const masterKey = deriveKeyFromBase64(
-        c.var.runtime.crypto.masterEncryptionKey
-      );
       const credentials = decryptCredentialsObject(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,
-        masterKey,
+        c.var.runtime.crypto.masterEncryptionKey,
         CredentialsSchema
       );
 
@@ -152,13 +148,10 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         return c.json({ error: "Data source is not GitHub" }, 400);
       }
 
-      const masterKey = deriveKeyFromBase64(
-        c.var.runtime.crypto.masterEncryptionKey
-      );
       const credentials = decryptCredentialsObject(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,
-        masterKey,
+        c.var.runtime.crypto.masterEncryptionKey,
         CredentialsSchema
       );
 
@@ -176,7 +169,10 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         repositories,
       };
 
-      const encrypted = encryptCredentialsObject(updatedCredentials, masterKey);
+      const encrypted = encryptCredentialsObject(
+        updatedCredentials,
+        c.var.runtime.crypto.masterEncryptionKey
+      );
 
       await db
         .update(dataSources)

@@ -6,7 +6,7 @@ This plan is split into smaller files, with each requirement owned in one canoni
 
 - [ ] [Context and findings](./config-self-host-cleanup/00-context-and-findings.md)
 - [ ] [Target architecture](./config-self-host-cleanup/01-target-architecture.md)
-- [ ] [Workstream A — Fix the released `onequery serve` data-source bug first](./config-self-host-cleanup/02-workstream-a-fix-self-host-data-source-bug.md)
+- [x] [Workstream A — Fix the released `onequery serve` data-source bug first](./config-self-host-cleanup/02-workstream-a-fix-self-host-data-source-bug.md)
 - [ ] [Workstreams B/C — Standardize secret schema and make the launch contract a real boundary](./config-self-host-cleanup/03-workstream-b-unify-shared-secrets.md)
 - [ ] [Workstreams D/E — Separate execution paths and declare one runtime bundle layout](./config-self-host-cleanup/05-workstream-d-separate-execution-paths.md)
 - [ ] [Workstream F — Make migration ownership explicit and remove storage/doc drift](./config-self-host-cleanup/07-workstream-f-migration-ownership-and-storage.md)

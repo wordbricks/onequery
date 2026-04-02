@@ -22,7 +22,6 @@ import type { ServerRuntimeVariables } from "../../runtime-context";
 import { ensureConnectorOrganization } from "../../services/connectors/broker";
 import {
   decryptCredentialsObject,
-  deriveKeyFromBase64,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
 import { LEGACY_UNSUPPORTED_TEST_PREFIX } from "../../services/data-source-tester";
@@ -281,10 +280,10 @@ export const dataSourcesCrudRoute = new Hono<{
         return c.json({ error: "Name is required" }, 400);
       }
 
-      const masterKey = deriveKeyFromBase64(
+      const encrypted = encryptCredentialsObject(
+        body.credentials,
         c.var.runtime.crypto.masterEncryptionKey
       );
-      const encrypted = encryptCredentialsObject(body.credentials, masterKey);
       const providerType: ProviderType = body.provider;
 
       const [inserted] = await db
@@ -418,10 +417,10 @@ export const dataSourcesCrudRoute = new Hono<{
           }
         }
 
-        const masterKey = deriveKeyFromBase64(
+        const encrypted = encryptCredentialsObject(
+          body.credentials,
           c.var.runtime.crypto.masterEncryptionKey
         );
-        const encrypted = encryptCredentialsObject(body.credentials, masterKey);
         updates.credentialsEncrypted = encrypted.ciphertext;
         updates.credentialsIv = encrypted.iv;
       }
@@ -482,15 +481,12 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       if (existing.provider === "linear") {
-        const masterKey = deriveKeyFromBase64(
-          c.var.runtime.crypto.masterEncryptionKey
-        );
         const decryptOutcome = await Promise.resolve()
           .then(() =>
             decryptCredentialsObject(
               existing.credentialsEncrypted,
               existing.credentialsIv,
-              masterKey,
+              c.var.runtime.crypto.masterEncryptionKey,
               credentialSchemaMap.linear
             )
           )

@@ -1,4 +1,7 @@
-import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import {
+  decodeMasterEncryptionKey,
+  type ServerLaunchConfig,
+} from "@onequery/config/server-launch";
 
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
 import type { RuntimeRateLimitStorage } from "./lib/rate-limit-storage";
@@ -25,7 +28,7 @@ export interface ServerRuntimeConfig {
     readonly enrollmentToken: string;
   };
   readonly crypto: {
-    readonly masterEncryptionKey: string;
+    readonly masterEncryptionKey: Uint8Array;
   };
   readonly listen: ServerLaunchConfig["listen"];
   readonly mode: ServerLaunchConfig["mode"];
@@ -98,7 +101,9 @@ export function createServerRuntimeConfig(
       enrollmentToken: launchConfig.connectors.enrollmentToken,
     },
     crypto: {
-      masterEncryptionKey: launchConfig.crypto.masterEncryptionKey,
+      masterEncryptionKey: decodeMasterEncryptionKey(
+        launchConfig.crypto.masterEncryptionKey
+      ),
     },
     listen: launchConfig.listen,
     mode: launchConfig.mode,

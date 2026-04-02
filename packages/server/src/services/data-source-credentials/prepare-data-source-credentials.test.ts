@@ -49,7 +49,7 @@ describe("prepare data source credentials", () => {
           credentialsEncrypted: encrypted.ciphertext,
           credentialsIv: encrypted.iv,
         }),
-        masterEncryptionKey: masterKeyBase64,
+        masterEncryptionKey: masterKey,
       })
     ).resolves.toMatchObject({
       ok: true,
@@ -63,13 +63,14 @@ describe("prepare data source credentials", () => {
   });
 
   it("redacts data source names and parser details from invalid credential errors", async () => {
+    const masterKey = deriveKeyFromBase64(generateMasterKey());
     const result = await prepareDataSourceCredentials({
       dataSource: createRecord({
         credentialsEncrypted: "not-hex",
         credentialsIv: "still-not-hex",
         name: "Sensitive Production Warehouse",
       }),
-      masterEncryptionKey: generateMasterKey(),
+      masterEncryptionKey: masterKey,
     });
 
     expect(result).toEqual({
@@ -95,7 +96,7 @@ describe("prepare data source credentials", () => {
         credentialsIv: encrypted.iv,
         provider: "postgres",
       }),
-      masterEncryptionKey: masterKeyBase64,
+      masterEncryptionKey: masterKey,
     });
 
     expect(result).toEqual({

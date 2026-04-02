@@ -46,7 +46,7 @@ export async function runCliValidateQueryEffect(
 
 export async function runCliLoadQueryCredentialsEffect(input: {
   db: Database;
-  masterEncryptionKey: string;
+  masterEncryptionKey: Uint8Array;
   effect: CliLoadCredentialsEffect;
 }): Promise<CliLoadCredentialsEffectResult> {
   const credentialsResult = await prepareDataSourceCredentials({

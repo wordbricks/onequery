@@ -1,7 +1,6 @@
 import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import {
-  deriveKeyFromBase64,
   encryptCredentialsObject,
 } from "@onequery/server/services/crypto/credential-encryption";
 
@@ -82,13 +81,12 @@ export async function runCliLoadSourceEffect(input: {
 export async function runCliConnectSourceEffect(input: {
   db: Database;
   effect: CliConnectSourceEffect;
-  masterEncryptionKey: string;
+  masterEncryptionKey: Uint8Array;
 }): Promise<CliConnectSourceEffectResult> {
   const { dataSources } = getDatabaseSchema(input.db);
-  const masterKey = deriveKeyFromBase64(input.masterEncryptionKey);
   const encrypted = encryptCredentialsObject(
     input.effect.credentials,
-    masterKey
+    input.masterEncryptionKey
   );
 
   const [inserted] = await input.db

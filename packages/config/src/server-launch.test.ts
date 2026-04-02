@@ -188,4 +188,18 @@ describe("server launch contract", () => {
       )
     ).toThrow("runtimePaths");
   });
+
+  it("rejects master keys that do not decode to exactly 32 bytes", () => {
+    expect(() =>
+      validateServerLaunchConfig(
+        {
+          ...createSelfHostLaunchConfig(),
+          crypto: {
+            masterEncryptionKey: "master",
+          },
+        },
+        "test"
+      )
+    ).toThrow("crypto.masterEncryptionKey");
+  });
 });

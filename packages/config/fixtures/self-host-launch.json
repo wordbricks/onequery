@@ -9,7 +9,7 @@
     "enrollmentToken": "connector"
   },
   "crypto": {
-    "masterEncryptionKey": "master"
+    "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
   },
   "listen": {
     "host": "0.0.0.0",
