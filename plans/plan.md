@@ -33,7 +33,7 @@ Execute Workstream A first. It removes the released self-host failure mode and e
 Execute Workstreams B/C next:
 
 - standardize the shared secret schema across TS and Rust while keeping separate profile-owned secret files
-- make the launch contract a real semantic boundary instead of a shape-only convention
+- make the launch contract a real semantic boundary instead of a shape-only convention, without adding a generated schema artifact yet
 
 ### Phase 3 — Clean the self-host runtime boundary
 

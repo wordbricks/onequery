@@ -29,8 +29,8 @@ If repo-local self-host smoke is needed, it should stage the same runtime bundle
 
 - [ ] Remove repo-local path inference from `apps/cli/.../commands/serve.rs`.
 - [ ] Stop using `env!("CARGO_MANIFEST_DIR")` inside `serve.rs` to discover repo assets.
-- [ ] Introduce one explicit self-host runtime bundle root input.
-- [ ] Keep packaged executable selection logic, but make asset/migration discovery come from the fixed bundle layout, not code branches.
+- [ ] Resolve the self-host bundle root from `current_exe` through one fixed installed-layout rule, not through ad hoc flags, env overrides, or repo fallbacks.
+- [ ] Keep packaged executable selection logic, but make asset/migration discovery come from that fixed bundle layout, not code branches.
 - [ ] If local self-host smoke support is kept, limit it to staging the same bundle layout and then invoking unchanged `onequery serve`.
 - [ ] Keep `scripts/run-bun-server.ts` as workspace-dev-only machinery.
 - [ ] Remove any accidental “self-host but really using repo-local dev assumptions” behavior from the serve command.
@@ -40,6 +40,7 @@ If repo-local self-host smoke is needed, it should stage the same runtime bundle
 
 - [ ] `bun dev` remains the repo-local split browser/API flow.
 - [ ] `onequery serve` becomes a pure self-host runtime launcher.
+- [ ] Bundle-root discovery follows one fixed `current_exe`-relative installed-layout rule.
 - [ ] Any local self-host smoke flow uses the same runtime bundle layout as release and still goes through `onequery serve`.
 
 ## Workstream E — Replace path folklore with one fixed self-host runtime bundle layout
@@ -81,7 +82,7 @@ The important rule is not “manifest vs no manifest”. The important rule is:
 - [ ] Make any local staging path produce the same layout.
 - [ ] Make `serve.rs` resolve web assets and migrations from that single layout convention.
 - [ ] Remove duplicated web/migrations path constants where they are no longer needed.
-- [ ] Pick **one** web build output directory for runtime use.
+- [ ] Standardize the self-host runtime web output directory on `apps/web/dist`.
 - [ ] Delete the `dist/client` vs `dist` fallback behavior from self-host runtime code paths.
 - [ ] Update `docs/self-host-runtime-foundation.md` to describe the fixed bundle layout and the stricter contract story.
 
@@ -93,6 +94,11 @@ Choose one runtime output path and enforce it. The current fallback between:
 - `apps/web/dist`
 
 is a smell. The runtime should not need to guess.
+
+Chosen direction:
+
+- self-host runtime uses `apps/web/dist`
+- `dist/client` fallback is removed from self-host code paths
 
 ### Acceptance
 

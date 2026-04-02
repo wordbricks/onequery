@@ -72,14 +72,13 @@ Recommended direction:
 
 ```text
 runtime/
-  manifest.json
   migrations/
   web/
 server/
   onequery-server[platform-specific]
 ```
 
-The CLI should resolve a **bundle root**, read `runtime/manifest.json`, and launch from that.
+The CLI should resolve a **bundle root** from `current_exe` using one fixed installed-layout rule, then launch from that.
 
 No repo-specific path inference inside the `serve` command.
 

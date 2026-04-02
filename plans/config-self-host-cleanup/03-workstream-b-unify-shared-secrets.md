@@ -28,7 +28,7 @@ There is no architectural reason for this difference.
 - [ ] Ensure workspace-dev and self-host use the same generator semantics for each shared secret type.
 - [ ] Treat `auth.secret` and `connectors.enrollment_token` as opaque transport strings after validation.
 - [ ] Treat `crypto.master_encryption_key` as the exception: validate its encoded form at config/launch boundaries, then normalize it to key bytes for runtime use.
-- [ ] Add one canonical sample secrets fixture/helper used by tests in both TS and Rust.
+- [ ] Share the rules for valid secret samples, but keep test builders local to each language rather than introducing one cross-language fixture as SSoT.
 - [ ] Remove backward-compatibility shims or dual-read behavior for old secret keys and formats.
 - [ ] Update `docs/env-secrets-management.md` and any README text that still implies old env/config sync behavior.
 
@@ -53,27 +53,25 @@ The current “TS is canonical, Rust has a local struct plus fixture parity” m
 Recommended upgrade:
 
 - keep `packages/config` as the human-owned contract source
-- generate a neutral schema artifact from it
-- validate Rust-emitted launch JSON against that artifact in CI/tests
+- put semantic validation in the TS contract layer
+- make Rust projection tests assert against those same semantics instead of only matching fixture shape
 
-This can be a JSON Schema or another simple machine-readable artifact, but the key point is:
+The key point is:
 
 - one contract source
-- generated artifact
-- both Rust and TS test against the same semantics
+- semantic validation at the boundary
+- Rust tests that defend the same meaning, not just the same JSON shape
 
 ### TODO
 
 - [ ] Introduce explicit semantic validators for secret-bearing fields in `packages/config/src/server-launch.ts`.
 - [ ] Keep transport-only string encodings at the launch boundary, but normalize semantically typed runtime values once during runtime config creation.
-- [ ] Generate a neutral launch-contract artifact from the config package.
-- [ ] Make Rust launch-config tests validate against the generated artifact rather than only matching a hand-maintained fixture.
+- [ ] Replace fixture-shape parity as the main Rust contract check with projection tests that cover semantic validity and required field meaning.
 - [ ] Keep Rust local serde structs if they are ergonomic, but stop pretending fixture equality alone is enough.
-- [ ] Update `packages/config/fixtures/self-host-launch.json` so it is generated from or at least validated by the same semantic contract.
-- [ ] Add a contract-version field if future evolution is expected.
+- [ ] Keep any shared sample launch JSON as a convenience artifact only, not the primary source of truth.
 
 ### Acceptance
 
 - [ ] A semantically invalid self-host launch JSON fails contract validation even if all keys are present.
-- [ ] Rust-emitted launch JSON is checked against the same contract artifact that Bun uses.
-- [ ] The self-host fixture can no longer drift into semantically invalid values.
+- [ ] Rust projection tests defend the same semantic contract that Bun validates.
+- [ ] Shared sample JSON can no longer mask semantic invalidity by passing shape-only parity tests.

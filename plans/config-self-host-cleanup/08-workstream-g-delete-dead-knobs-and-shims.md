@@ -38,7 +38,7 @@ That coverage is expensive but still missed the actual production failure.
 - one file-I/O wrapper test suite for reading launch config from disk
 - one runtime mapping test suite
 - one Rust self-host config/bootstrap suite
-- one end-to-end self-host smoke that proves fresh bootstrap can create a data source
+- one CLI-owned end-to-end self-host smoke that proves fresh bootstrap can create a data source
 
 #### Remove / collapse
 
@@ -54,6 +54,7 @@ That coverage is expensive but still missed the actual production failure.
 - [ ] Make all test helpers use a valid sample master key.
 - [ ] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
 - [ ] Prefer small boundary-focused samples over one giant canonical launch fixture.
+- [ ] Share test-data rules across TS and Rust, but keep builders local to each language.
 - [ ] In Rust, keep tests for:
   - [ ] filesystem layout
   - [ ] config/secrets parsing
@@ -62,8 +63,8 @@ That coverage is expensive but still missed the actual production failure.
   - [ ] startup/serve behavior unique to the CLI
 - [ ] Drop Rust tests that only repeat the same launch-contract shape with different hardcoded literals.
 - [ ] Add semantic tests that invalid master keys are rejected.
-- [ ] Add one smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
-- [ ] Add one smoke test that invalid self-host secrets fail on startup, not later during API usage.
+- [ ] Add one CLI-owned smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
+- [ ] Add one CLI-owned smoke test that invalid self-host secrets fail on startup, not later during API usage.
 
 ### Acceptance
 
