@@ -31,7 +31,8 @@ function isPostHogCredentials(value: unknown): value is PostHogCredentials {
 export const dataSourcesPostHogQueryRoute = createProviderRoute<
   PostHogCredentials,
   typeof methodSchema,
-  z.output<typeof postHogRunQueryRequestSchema>
+  z.output<typeof postHogRunQueryRequestSchema>,
+  "/posthog/query"
 >({
   credentialsGuard: isPostHogCredentials,
   execute: ({ credentials, request }) =>

@@ -1,4 +1,5 @@
 import { and, eq } from "@onequery/db/server";
+import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createServerApi } from "./app";
@@ -60,22 +61,14 @@ async function createTestRuntimeConfig() {
   );
 }
 
-function createBootstrapRequest() {
-  return new Request("http://localhost:4545/bootstrap/complete", {
-    body: JSON.stringify({
-      email: "owner@example.com",
-      name: "Owner",
-      organizationName: "Owner Org",
-      organizationSlug: "owner-org",
-      password: "password123",
-    }),
-    headers: {
-      "content-type": "application/json",
-      origin: "http://localhost:4545",
-    },
-    method: "POST",
-  });
-}
+const BOOTSTRAP_ORIGIN = "http://localhost:4545";
+const BOOTSTRAP_REQUEST_BODY = {
+  email: "owner@example.com",
+  name: "Owner",
+  organizationName: "Owner Org",
+  organizationSlug: "owner-org",
+  password: "password123",
+} as const;
 
 describe("self-host bootstrap", () => {
   const openedDatabases: ClosableDatabase[] = [];
@@ -93,18 +86,26 @@ describe("self-host bootstrap", () => {
       createMemoryApiRateLimitStorage()
     );
     const app = createServerApi({ runtime: runtimeConfig, storage });
+    const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const initialStateResponse = await app.fetch(
-      new Request("http://localhost:4545/bootstrap")
-    );
+    const initialStateResponse = await client.bootstrap.$get();
     expect(initialStateResponse.status).toBe(200);
     await expect(initialStateResponse.json()).resolves.toMatchObject({
       isBootstrapped: false,
       needsBootstrap: true,
     });
 
-    const bootstrapResponse = await app.fetch(createBootstrapRequest());
+    const bootstrapResponse = await client.bootstrap.complete.$post(
+      {
+        json: BOOTSTRAP_REQUEST_BODY,
+      },
+      {
+        headers: {
+          origin: BOOTSTRAP_ORIGIN,
+        },
+      }
+    );
 
     expect(bootstrapResponse.status).toBe(201);
     await expect(bootstrapResponse.json()).resolves.toMatchObject({
@@ -137,9 +138,7 @@ describe("self-host bootstrap", () => {
 
     expect(ownerMember?.role).toBe("owner");
 
-    const finalStateResponse = await app.fetch(
-      new Request("http://localhost:4545/bootstrap")
-    );
+    const finalStateResponse = await client.bootstrap.$get();
     await expect(finalStateResponse.json()).resolves.toMatchObject({
       isBootstrapped: true,
       needsBootstrap: false,
@@ -153,15 +152,23 @@ describe("self-host bootstrap", () => {
       createMemoryApiRateLimitStorage()
     );
     const app = createServerApi({ runtime: runtimeConfig, storage });
+    const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const bootstrapResponse = await app.fetch(createBootstrapRequest());
+    const bootstrapResponse = await client.bootstrap.complete.$post(
+      {
+        json: BOOTSTRAP_REQUEST_BODY,
+      },
+      {
+        headers: {
+          origin: BOOTSTRAP_ORIGIN,
+        },
+      }
+    );
 
     expect(bootstrapResponse.status).toBe(201);
 
-    const signupStateResponse = await app.fetch(
-      new Request("http://localhost:4545/auth/bootstrap-state")
-    );
+    const signupStateResponse = await client.auth["bootstrap-state"].$get();
     await expect(signupStateResponse.json()).resolves.toMatchObject({
       emailDeliveryMode: "manual-link",
       publicSignupAllowed: false,
@@ -261,6 +268,7 @@ describe("self-host bootstrap", () => {
       createMemoryApiRateLimitStorage()
     );
     const app = createServerApi({ runtime: runtimeConfig, storage });
+    const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
     const originalCreateOrganization = storage.auth.api.createOrganization;
@@ -283,7 +291,16 @@ describe("self-host bootstrap", () => {
     });
 
     try {
-      const bootstrapResponse = await app.fetch(createBootstrapRequest());
+      const bootstrapResponse = await client.bootstrap.complete.$post(
+        {
+          json: BOOTSTRAP_REQUEST_BODY,
+        },
+        {
+          headers: {
+            origin: BOOTSTRAP_ORIGIN,
+          },
+        }
+      );
 
       expect(bootstrapResponse.status).toBe(500);
       await expect(bootstrapResponse.json()).resolves.toMatchObject({
@@ -322,9 +339,19 @@ describe("self-host bootstrap", () => {
       createMemoryApiRateLimitStorage()
     );
     const app = createServerApi({ runtime: runtimeConfig, storage });
+    const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
-    const bootstrapResponse = await app.fetch(createBootstrapRequest());
+    const bootstrapResponse = await client.bootstrap.complete.$post(
+      {
+        json: BOOTSTRAP_REQUEST_BODY,
+      },
+      {
+        headers: {
+          origin: BOOTSTRAP_ORIGIN,
+        },
+      }
+    );
 
     expect(bootstrapResponse.status).toBe(201);
 

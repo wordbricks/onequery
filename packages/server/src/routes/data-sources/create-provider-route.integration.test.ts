@@ -1,5 +1,6 @@
 import { createDatabaseRuntime, eq } from "@onequery/db/server";
 import { Hono } from "hono";
+import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
@@ -104,7 +105,8 @@ describe("createProviderRoute", () => {
         type: "amplitude";
       },
       typeof methodSchema,
-      { endpoint: string }
+      { endpoint: string },
+      "/amplitude/query"
     >({
       credentialsGuard: (
         value
@@ -148,17 +150,13 @@ describe("createProviderRoute", () => {
       })
       .route("/", route);
 
-    const response = await app.fetch(
-      new Request("http://localhost/amplitude/query", {
-        body: JSON.stringify({
-          method: "ping",
-          organizationId: "org-1",
-          request: {},
-        }),
-        headers: { "content-type": "application/json" },
-        method: "POST",
-      })
-    );
+    const response = await testClient(app).amplitude.query.$post({
+      json: {
+        method: "ping",
+        organizationId: "org-1",
+        request: {},
+      },
+    });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ ok: true });

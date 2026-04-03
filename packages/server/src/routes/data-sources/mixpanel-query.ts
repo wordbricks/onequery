@@ -94,7 +94,8 @@ function isMixpanelCredentials(value: unknown): value is MixpanelCredentials {
 export const dataSourcesMixpanelQueryRoute = createProviderRoute<
   MixpanelCredentials,
   typeof methodSchema,
-  MixpanelRequest
+  MixpanelRequest,
+  "/mixpanel/query"
 >({
   credentialsGuard: isMixpanelCredentials,
   execute: ({ credentials, request }) => {

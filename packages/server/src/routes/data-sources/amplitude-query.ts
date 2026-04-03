@@ -38,7 +38,8 @@ function isAmplitudeCredentials(value: unknown): value is AmplitudeCredentials {
 export const dataSourcesAmplitudeQueryRoute = createProviderRoute<
   AmplitudeCredentials,
   typeof methodSchema,
-  z.output<typeof amplitudeFetchApiRequestSchema>
+  z.output<typeof amplitudeFetchApiRequestSchema>,
+  "/amplitude/query"
 >({
   credentialsGuard: isAmplitudeCredentials,
   execute: ({ credentials, request }) =>

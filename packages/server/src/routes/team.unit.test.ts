@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { testClient } from "hono/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SessionData, SessionVariables } from "../middleware/session";
@@ -85,18 +86,22 @@ describe("team route", () => {
       })
       .route("/", teamRoute);
 
-    const response = await app.request(
-      "http://localhost/organizations/org_1/invitations",
+    const response = await testClient(app).organizations[
+      ":organizationId"
+    ].invitations.$post(
       {
-        body: JSON.stringify({
+        json: {
           email: "invitee@example.com",
           role: "member",
-        }),
+        },
+        param: {
+          organizationId: "org_1",
+        },
+      },
+      {
         headers: {
-          "content-type": "application/json",
           cookie: "session=test",
         },
-        method: "POST",
       }
     );
 

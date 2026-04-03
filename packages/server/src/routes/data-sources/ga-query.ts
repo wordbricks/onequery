@@ -26,7 +26,8 @@ function isGoogleAnalyticsCredentials(
 export const dataSourcesGaQueryRoute = createProviderRoute<
   GoogleAnalyticsCredentials,
   typeof methodSchema,
-  Record<string, unknown>
+  Record<string, unknown>,
+  "/ga/query"
 >({
   buildConflictMessage: ({ multipleDefaults }) =>
     multipleDefaults
