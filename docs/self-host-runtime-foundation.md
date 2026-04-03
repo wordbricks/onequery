@@ -24,8 +24,8 @@ Bun does not parse `self-host/config.toml`, Bun does not parse
 `self-host/secrets.toml`, and Bun does not fall back to `onequery.dev.toml`.
 
 The current parity bar is deliberate: Rust and Bun stay aligned through the
-canonical config-package validator plus the shared fixture tests. We are not
-introducing a separate neutral schema artifact unless that parity workflow
+canonical config-package validator plus focused Rust/Bun contract tests. We are
+not introducing a separate neutral schema artifact unless that parity workflow
 becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
@@ -132,11 +132,14 @@ The current repo checks that prove this boundary are:
 
 - `cargo test -p onequery-cli self_host::tests`
 - `cargo test -p onequery-cli serve::tests`
+- `bun test apps/cli/scripts/self-host-smoke.integration.test.ts`
 - `bun run --cwd packages/bun-server test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
 
 Those checks cover:
 
 - Rust-owned self-host config resolution and launch-contract generation
+- packaged self-host bootstrap, startup failure on invalid secrets, and
+  data-source creation through `onequery serve`
 - launch-config parsing and validation at Bun startup
 - starting the Bun runtime from serialized launch config input
 - lifecycle lease, stale lock replacement, log append, and shutdown cleanup

@@ -216,13 +216,13 @@ Important covered surfaces:
   [`packages/server/src/bootstrap.integration.test.ts`](../packages/server/src/bootstrap.integration.test.ts)
 - CLI device auth workflow:
   [`apps/cli/crates/onequery-cli/src/commands/auth/tests.rs`](../apps/cli/crates/onequery-cli/src/commands/auth/tests.rs)
+- packaged self-host smoke:
+  [`apps/cli/scripts/self-host-smoke.integration.test.ts`](../apps/cli/scripts/self-host-smoke.integration.test.ts)
 - Bun runtime lifecycle:
   [`packages/bun-server/src/self-host/lifecycle.test.ts`](../packages/bun-server/src/self-host/lifecycle.test.ts)
-
-The Phase 7 smoke path also verifies:
-
-- `onequery serve` starts a fresh temp runtime
-- `onequery serve status` reports a running server
-- `onequery serve stop` clears runtime markers
-- `onequery backup --include-secrets --archive-path ...` creates a restorable archive
-- `onequery restore ...` restores config and data into place
+- backup archive coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/backup.rs`](../apps/cli/crates/onequery-cli/src/commands/backup.rs)
+- restore archive coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/restore.rs`](../apps/cli/crates/onequery-cli/src/commands/restore.rs)
+- serve status/stop command coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/serve.rs`](../apps/cli/crates/onequery-cli/src/commands/serve.rs)
