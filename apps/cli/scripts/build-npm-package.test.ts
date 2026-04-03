@@ -32,17 +32,26 @@ describe("build-npm-package runtime asset resolution", () => {
   });
 
   it("finds the owning workspace package manifest by package name", async () => {
-    await expect(
-      __internal.resolveWorkspacePackageManifestPath("@onequery/server")
-    ).resolves.toBe(SERVER_PACKAGE_MANIFEST_PATH);
+    expect(
+      await __internal.resolveWorkspacePackageManifestPath("@onequery/server")
+    ).toBe(SERVER_PACKAGE_MANIFEST_PATH);
   });
 
   it("fails clearly when a workspace package is missing", async () => {
-    await expect(
-      __internal.resolveWorkspacePackageRequire("@onequery/not-a-package")
-    ).rejects.toThrow(
-      "Workspace package '@onequery/not-a-package' was not found in the manifests declared by"
-    );
+    try {
+      await __internal.resolveWorkspacePackageRequire(
+        "@onequery/not-a-package"
+      );
+      throw new Error("expected missing workspace package lookup to fail");
+    } catch (error) {
+      if (!(error instanceof Error)) {
+        throw error;
+      }
+
+      expect(error.message).toContain(
+        "Workspace package '@onequery/not-a-package' was not found in the manifests declared by"
+      );
+    }
   });
 
   it("rejects duplicate workspace package names when indexing manifests", () => {
