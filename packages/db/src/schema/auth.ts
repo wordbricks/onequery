@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -101,6 +102,19 @@ export const verification = pgTable(
 
 export type Verification = typeof verification.$inferSelect;
 export type NewVerification = typeof verification.$inferInsert;
+
+export const rateLimit = pgTable(
+  "rate_limit",
+  {
+    count: integer("count").notNull(),
+    key: text("key").notNull(),
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (table) => [uniqueIndex("rate_limit_key_key").on(table.key)]
+);
+
+export type RateLimit = typeof rateLimit.$inferSelect;
+export type NewRateLimit = typeof rateLimit.$inferInsert;
 
 export const organization = pgTable("organization", {
   createdAt: timestamp("created_at").defaultNow().notNull(),

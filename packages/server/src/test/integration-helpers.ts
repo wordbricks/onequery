@@ -7,6 +7,7 @@ import { prepareApplicationDatabase } from "@onequery/db/server";
 import { Hono } from "hono";
 
 import { createServerApi } from "../app";
+import { createMemoryApiRateLimitStorage } from "../lib/rate-limit-storage";
 import {
   createTestRuntimeConfig,
   createTestRuntimeConfigFromDatabaseUrl,
@@ -69,9 +70,13 @@ export async function createRouteIntegrationHarness(
             overrides
           )
         : createTestRuntimeConfig(overrides);
-  const storage = createServerStorage(runtimeConfig, {
-    enableAuthTestUtils: true,
-  });
+  const storage = createServerStorage(
+    runtimeConfig,
+    createMemoryApiRateLimitStorage(),
+    {
+      enableAuthTestUtils: true,
+    }
+  );
   const app = new Hono().route(
     "/api",
     createServerApi({

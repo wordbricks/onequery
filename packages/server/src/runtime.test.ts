@@ -40,9 +40,10 @@ describe("createServerRuntimeConfig", () => {
       mode: "workspace-dev",
       publicOrigin: "http://localhost:4545",
       rateLimit: {
+        api: {
+          storage: "memory",
+        },
         enabled: false,
-        runtimeStorage: undefined,
-        storage: "memory",
       },
       runtimePaths: undefined,
       storage: {

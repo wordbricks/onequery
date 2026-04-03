@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 
+import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import { apiRateLimiter } from "./middleware/rate-limit";
 import { sessionMiddleware } from "./middleware/session";
 import type { SessionVariables } from "./middleware/session";
@@ -39,7 +40,7 @@ type ServerApiEnv = {
 export function createServerApi(input: CreateServerApiOptions) {
   const storage =
     input.storage ??
-    createServerStorage(input.runtime, {
+    createServerStorage(input.runtime, createMemoryApiRateLimitStorage(), {
       enableAuthTestUtils: input.enableAuthTestUtils,
     });
 

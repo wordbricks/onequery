@@ -196,8 +196,10 @@ describe("@onequery/config workspace-dev", () => {
         mode: "workspace-dev",
         publicOrigin: "http://127.0.0.1:4600",
         rateLimit: {
+          api: {
+            storage: "memory",
+          },
           enabled: true,
-          storage: "memory",
         },
         storage: {
           kind: "postgres",

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { eq } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import { verifyOrgAccess } from "./lib/verify-org-access";
 import {
   createTestRuntimeConfigFromDatabaseUrl,
@@ -29,7 +30,8 @@ async function createPgliteStorage() {
         crypto: {
           masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
         },
-      })
+      }),
+      createMemoryApiRateLimitStorage()
     ),
   };
 }

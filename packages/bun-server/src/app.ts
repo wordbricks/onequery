@@ -3,6 +3,7 @@ import {
   createDeviceAuthorizationBrowserRoute,
 } from "@onequery/cli-server";
 import { createServerApi } from "@onequery/server/app";
+import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { sessionMiddleware } from "@onequery/server/middleware/session";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import {
@@ -45,7 +46,7 @@ function apiLogger(message: string, ...rest: string[]): void {
 function resolveStorage(input: CreateBunAppOptions): ServerStorage {
   return (
     input.storage ??
-    createServerStorage(input.runtime, {
+    createServerStorage(input.runtime, createMemoryApiRateLimitStorage(), {
       enableAuthTestUtils: input.enableAuthTestUtils,
     })
   );

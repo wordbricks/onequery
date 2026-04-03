@@ -1,17 +1,23 @@
 import { join } from "node:path";
 
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { createMemoryApiRateLimitStorage } from '@onequery/server/lib/rate-limit-storage';
+import type { ApiRateLimitStorage } from '@onequery/server/lib/rate-limit-storage';
 import { createServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
+import { createServerStorage } from '@onequery/server/storage';
+import type { ServerStorage } from '@onequery/server/storage';
+import { createStorage } from "unstorage";
+import fsLiteDriver from "unstorage/drivers/fs-lite";
 
 import { createApp } from "./app";
 import { createSpaAssetBinding } from "./assets";
 import {
   DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS,
+  RUNTIME_RATE_LIMIT_API_DIRNAME,
   RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
 } from "./constants";
 import { prepareRuntimeDatabase } from "./database";
-import { createPersistentRuntimeRateLimitStorage } from "./rate-limit-storage";
 import {
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
@@ -50,8 +56,9 @@ export interface StartBunServerDependencies {
   createApp(input: {
     runtime: ServerRuntimeConfig;
     spaAssets: AppFetchHandler;
+    storage?: ServerStorage;
   }): AppFetchHandler;
-  createPersistentRuntimeRateLimitStorage: typeof createPersistentRuntimeRateLimitStorage;
+  createServerStorage: typeof createServerStorage;
   createServerRuntimeConfig: typeof createServerRuntimeConfig;
   createSpaAssetBinding(options: { assetDir: string }): AppFetchHandler;
   loadStartupLaunchConfig: typeof loadStartupLaunchConfig;
@@ -70,7 +77,7 @@ const defaultStartBunServerDependencies: StartBunServerDependencies = {
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
   createApp,
-  createPersistentRuntimeRateLimitStorage,
+  createServerStorage,
   createServerRuntimeConfig,
   createSpaAssetBinding,
   loadStartupLaunchConfig,
@@ -89,23 +96,28 @@ const defaultStartBunServerDependencies: StartBunServerDependencies = {
   toLifecyclePaths,
 };
 
-function createRuntimeRateLimitStorage(
-  launchConfig: ServerLaunchConfig,
-  createPersistentStorage: StartBunServerDependencies["createPersistentRuntimeRateLimitStorage"]
-) {
-  if (launchConfig.rateLimit.storage !== "persistent") {
-    return undefined;
+function resolveApiRateLimitStorage(
+  launchConfig: ServerLaunchConfig
+): ApiRateLimitStorage {
+  if (launchConfig.rateLimit.api.storage !== "persistent") {
+    return createMemoryApiRateLimitStorage();
   }
 
   if (!launchConfig.runtimePaths) {
     throw new Error(
-      "Persistent rate limiting requires launchConfig.runtimePaths."
+      "Persistent API rate limiting requires launchConfig.runtimePaths."
     );
   }
 
-  return createPersistentStorage(
-    join(launchConfig.runtimePaths.dataDir, RUNTIME_RATE_LIMIT_STORAGE_DIRNAME)
-  );
+  return createStorage({
+    driver: fsLiteDriver({
+      base: join(
+        launchConfig.runtimePaths.dataDir,
+        RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
+        RUNTIME_RATE_LIMIT_API_DIRNAME
+      ),
+    }),
+  });
 }
 
 function createLifecycleLogWriter(
@@ -145,23 +157,23 @@ export function createStartBunServer(
       : null;
 
     try {
-      const runtime = dependencies.createServerRuntimeConfig(launchConfig, {
-        rateLimitStorage: createRuntimeRateLimitStorage(
-          launchConfig,
-          dependencies.createPersistentRuntimeRateLimitStorage
-        ),
-      });
+      const runtime = dependencies.createServerRuntimeConfig(launchConfig);
       // Comment: The Bun runtime is the single owner of main application schema
       // convergence; local bootstrap only guarantees the shared Postgres container.
       await dependencies.prepareRuntimeDatabase({
         databaseUrl: runtime.storage.connectionString,
         migrationsDir: launchConfig.migrations.dir,
       });
+      const storage = dependencies.createServerStorage(
+        runtime,
+        resolveApiRateLimitStorage(launchConfig)
+      );
       const app = dependencies.createApp({
         runtime,
         spaAssets: dependencies.createSpaAssetBinding({
           assetDir: launchConfig.assets.distDir,
         }),
+        storage,
       });
 
       const server = dependencies.serve({

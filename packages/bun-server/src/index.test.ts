@@ -8,13 +8,11 @@ import {
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
 import type { DatabasePreparationResult } from "@onequery/db/server";
-import type { RuntimeRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
+import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
-import { createStorage } from "unstorage";
-import memoryDriver from "unstorage/drivers/memory";
+import type { ServerStorage } from "@onequery/server/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RUNTIME_RATE_LIMIT_STORAGE_DIRNAME } from "./constants";
 import { createStartBunServer } from "./index";
 import type { StartBunServerDependencies } from "./index";
 import { loadStartupLaunchConfig } from "./startup";
@@ -38,7 +36,7 @@ function createMocks() {
     }));
   const createServerRuntimeConfig: StartBunServerDependencies["createServerRuntimeConfig"] =
     vi.fn(
-      (launchConfig, services): ServerRuntimeConfig => ({
+      (launchConfig): ServerRuntimeConfig => ({
         auth: {
           baseURL: launchConfig.publicOrigin,
           emailDelivery: {
@@ -50,15 +48,16 @@ function createMocks() {
           enrollmentToken: launchConfig.connectors.enrollmentToken,
         },
         crypto: {
-          masterEncryptionKey: launchConfig.crypto.masterEncryptionKey,
+          masterEncryptionKey: new Uint8Array(32),
         },
         listen: launchConfig.listen,
         mode: launchConfig.mode,
         publicOrigin: launchConfig.publicOrigin,
         rateLimit: {
+          api: {
+            storage: launchConfig.rateLimit.api.storage,
+          },
           enabled: launchConfig.rateLimit.enabled,
-          runtimeStorage: services.rateLimitStorage,
-          storage: launchConfig.rateLimit.storage,
         },
         runtimePaths: launchConfig.runtimePaths,
         storage:
@@ -75,31 +74,16 @@ function createMocks() {
               },
       })
     );
+  const createServerStorage: StartBunServerDependencies["createServerStorage"] =
+    vi.fn(
+      (_runtime, apiRateLimitStorage): ServerStorage =>
+        ({ apiRateLimitStorage }) as ServerStorage
+    );
   const prepareRuntimeDatabase: StartBunServerDependencies["prepareRuntimeDatabase"] =
     vi.fn(
       async (): Promise<DatabasePreparationResult> => ({
         engine: "postgres",
         mode: "migrate",
-      })
-    );
-  const createPersistentRuntimeRateLimitStorage: StartBunServerDependencies["createPersistentRuntimeRateLimitStorage"] =
-    vi.fn(
-      (dir: string): RuntimeRateLimitStorage => ({
-        api: createStorage({
-          driver: memoryDriver(),
-        }),
-        auth: {
-          async get(key) {
-            return key === dir
-              ? {
-                  count: 1,
-                  key,
-                  lastRequest: 0,
-                }
-              : undefined;
-          },
-          async set() {},
-        },
       })
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
@@ -131,7 +115,7 @@ function createMocks() {
     appendLifecycleLog,
     attachGracefulShutdownHandlers,
     createApp,
-    createPersistentRuntimeRateLimitStorage,
+    createServerStorage,
     createServerRuntimeConfig,
     createSpaAssetBinding,
     prepareRuntimeDatabase,
@@ -149,8 +133,7 @@ function createDependencies(
     appendLifecycleLog: mocks.appendLifecycleLog,
     attachGracefulShutdownHandlers: mocks.attachGracefulShutdownHandlers,
     createApp: mocks.createApp,
-    createPersistentRuntimeRateLimitStorage:
-      mocks.createPersistentRuntimeRateLimitStorage,
+    createServerStorage: mocks.createServerStorage,
     createServerRuntimeConfig: mocks.createServerRuntimeConfig,
     createSpaAssetBinding: mocks.createSpaAssetBinding,
     loadStartupLaunchConfig,
@@ -185,10 +168,7 @@ describe("startBunServer", () => {
       expect.objectContaining({
         mode: "workspace-dev",
         publicOrigin: "http://localhost:4545",
-      }),
-      {
-        rateLimitStorage: undefined,
-      }
+      })
     );
     expect(mocks.prepareRuntimeDatabase).toHaveBeenCalledWith({
       databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
@@ -222,9 +202,25 @@ describe("startBunServer", () => {
       launchConfigPath,
     });
 
-    expect(mocks.createPersistentRuntimeRateLimitStorage).toHaveBeenCalledWith(
-      join("/tmp/onequery/data", RUNTIME_RATE_LIMIT_STORAGE_DIRNAME)
-    );
+    const createServerStorageMock =
+      mocks.createServerStorage as typeof mocks.createServerStorage & {
+        mock: {
+          calls: Array<[ServerRuntimeConfig, ApiRateLimitStorage]>;
+        };
+      };
+    const apiRateLimitStorage = createServerStorageMock.mock.calls.at(
+      -1
+    )?.[1] as ApiRateLimitStorage;
+    expect(apiRateLimitStorage).toBeDefined();
+    await expect(apiRateLimitStorage.getItem("user:123")).resolves.toBeNull();
+    await apiRateLimitStorage.setItem("user:123", {
+      count: 1,
+      firstHitAt: 1_742_861_200_000,
+    });
+    await expect(apiRateLimitStorage.getItem("user:123")).resolves.toEqual({
+      count: 1,
+      firstHitAt: 1_742_861_200_000,
+    });
     expect(mocks.acquireRuntimeLifecycleLease).toHaveBeenCalledWith(
       runtimePaths,
       expect.objectContaining({
