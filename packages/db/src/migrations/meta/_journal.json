@@ -15,6 +15,13 @@
       "when": 1775212612594,
       "tag": "20260403103652_slippery_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775215339838,
+      "tag": "20260403112219_gigantic_namora",
+      "breakpoints": true
     }
   ]
 }

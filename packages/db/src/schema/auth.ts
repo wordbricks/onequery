@@ -106,6 +106,7 @@ export type NewVerification = typeof verification.$inferInsert;
 export const rateLimit = pgTable(
   "rate_limit",
   {
+    id: text("id").primaryKey(),
     count: integer("count").notNull(),
     key: text("key").notNull(),
     lastRequest: bigint("last_request", { mode: "number" }).notNull(),
