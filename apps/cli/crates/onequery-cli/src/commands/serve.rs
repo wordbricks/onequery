@@ -712,7 +712,6 @@ fn remove_if_exists(path: &std::path::Path) {
     let _ = fs::remove_file(path);
 }
 
-#[cfg(windows)]
 fn mark_stop_requested(
     path: &std::path::Path,
     pid: u32,
@@ -727,16 +726,6 @@ fn mark_stop_requested(
             vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
         )
     })
-}
-
-#[cfg(not(windows))]
-fn mark_stop_requested(
-    path: &std::path::Path,
-    pid: u32,
-    command_line: &str,
-) -> Result<(), CliError> {
-    let _ = (path, pid, command_line);
-    Ok(())
 }
 
 fn stop_request_matches(path: &std::path::Path, pid: u32) -> bool {
@@ -993,12 +982,14 @@ mod tests {
     use super::ServeRuntimeState;
     use super::ServeStateAccessMode;
     use super::packaged_server_candidates;
+    use super::mark_stop_requested;
     use super::render_serve_logs_output;
     use super::render_serve_output;
     use super::render_serve_start_output;
     use super::render_serve_status_output;
     use super::resolve_packaged_bundle_root_from_current_executable;
     use super::select_packaged_server_candidate;
+    use super::stop_request_matches;
     use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostConfig;
     use crate::config::self_host::SelfHostRuntimePaths;
@@ -1296,6 +1287,24 @@ mod tests {
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected serve proof temp dir cleanup: {error}"));
+    }
+
+    #[test]
+    fn mark_stop_requested_records_pid_for_managed_shutdown() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-serve-stop-request-{}", Uuid::new_v4()));
+        let stop_request_path = test_dir.join("server.stop");
+
+        fs::create_dir_all(&test_dir)
+            .unwrap_or_else(|error| panic!("expected temp dir creation to succeed: {error}"));
+
+        mark_stop_requested(stop_request_path.as_path(), 4321, "onequery serve stop")
+            .unwrap_or_else(|error| panic!("expected stop request write to succeed: {error}"));
+
+        assert_eq!(stop_request_matches(stop_request_path.as_path(), 4321), true);
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected stop-request temp dir cleanup: {error}"));
     }
 
     fn resolve_runtime_state_with_paths_for_test(

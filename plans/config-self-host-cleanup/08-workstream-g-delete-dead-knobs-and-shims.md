@@ -50,7 +50,7 @@ That coverage is expensive but still missed the actual production failure.
 ### TODO
 
 - [x] Create shared launch-config builders/helpers in one place for TS tests.
-- [ ] Treat semantic validators and runtime smoke tests as the real contract checks; any fixture kept in the repo is only a convenience artifact, not the source of truth.
+- [x] Treat semantic validators and runtime smoke tests as the real contract checks; any fixture kept in the repo is only a convenience artifact, not the source of truth.
 - [x] Make all test helpers use a valid sample master key.
 - [x] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
 - [ ] Prefer small boundary-focused samples over one giant canonical launch fixture.
@@ -63,11 +63,11 @@ That coverage is expensive but still missed the actual production failure.
   - [ ] startup/serve behavior unique to the CLI
 - [x] Drop Rust tests that only repeat the same launch-contract shape with different hardcoded literals.
 - [ ] Add semantic tests that invalid master keys are rejected.
-- [ ] Add one CLI-owned smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
-- [ ] Add one CLI-owned smoke test that invalid self-host secrets fail on startup, not later during API usage.
+- [x] Add one CLI-owned smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
+- [x] Add one CLI-owned smoke test that invalid self-host secrets fail on startup, not later during API usage.
 
 ### Acceptance
 
 - [ ] Test count for launch-config boilerplate goes down.
-- [ ] Semantic coverage for master-key validity goes up.
-- [ ] The specific self-host regression is defended by at least one end-to-end test.
+- [x] Semantic coverage for master-key validity goes up.
+- [x] The specific self-host regression is defended by at least one end-to-end test.

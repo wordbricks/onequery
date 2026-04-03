@@ -223,7 +223,10 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
 
   const runtimeDir = path.join(runtimeRoot, "runtime");
   const migrationsOutDir = path.join(runtimeDir, "migrations");
-  const pgliteOutDir = path.join(runtimeDir, PACKAGED_PGLITE_DIR);
+  // Comment: `runtimeRoot` is already the packaged bundle root
+  // (`vendor/<target>`), so the PGlite payload should land at
+  // `vendor/<target>/runtime/pglite`, not `runtime/runtime/pglite`.
+  const pgliteOutDir = path.join(runtimeRoot, PACKAGED_PGLITE_DIR);
   const webOutDir = path.join(runtimeDir, "web");
   const builtWebDistDir = await resolveBuiltWebDistDir();
   const pgliteDistDir = await resolvePgliteDistDir();
