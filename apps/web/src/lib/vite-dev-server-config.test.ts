@@ -6,6 +6,7 @@ import {
   WORKSPACE_DEV_CONFIG_FILENAME,
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "@onequery/config";
+import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
 import { resolveViteDevServerConfig } from "@/lib/vite-dev-server-config";
@@ -51,7 +52,7 @@ describe("resolveViteDevServerConfig", () => {
         'secret = "workspace-auth-secret"',
         "",
         "[crypto]",
-        'master_encryption_key = "custom-master-key"',
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
         "",
         "[connectors]",
         'enrollment_token = "workspace-connector-token"',
