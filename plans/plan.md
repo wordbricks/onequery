@@ -10,7 +10,7 @@ This plan is split into smaller files, with each requirement owned in one canoni
 - [x] [Workstreams B/C — Standardize secret schema and make the launch contract a real boundary](./config-self-host-cleanup/03-workstream-b-unify-shared-secrets.md)
 - [x] [Workstreams D/E — Separate execution paths and declare one runtime bundle layout](./config-self-host-cleanup/05-workstream-d-separate-execution-paths.md)
 - [x] [Workstream F — Make migration ownership explicit and remove storage/doc drift](./config-self-host-cleanup/07-workstream-f-migration-ownership-and-storage.md)
-- [ ] [Workstreams G/H — Delete dead knobs and replace redundant tests](./config-self-host-cleanup/08-workstream-g-delete-dead-knobs-and-shims.md)
+- [x] [Workstreams G/H — Delete dead knobs and replace redundant tests](./config-self-host-cleanup/08-workstream-g-delete-dead-knobs-and-shims.md)
 
 ## Notes
 

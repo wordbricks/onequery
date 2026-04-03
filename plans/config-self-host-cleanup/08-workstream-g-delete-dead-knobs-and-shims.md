@@ -68,6 +68,6 @@ That coverage is expensive but still missed the actual production failure.
 
 ### Acceptance
 
-- [ ] Test count for launch-config boilerplate goes down.
+- [x] Test count for launch-config boilerplate goes down.
 - [x] Semantic coverage for master-key validity goes up.
 - [x] The specific self-host regression is defended by at least one end-to-end test.
