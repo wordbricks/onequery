@@ -27,21 +27,21 @@ If repo-local self-host smoke is needed, it should stage the same runtime bundle
 
 ### TODO
 
-- [ ] Remove repo-local path inference from `apps/cli/.../commands/serve.rs`.
-- [ ] Stop using `env!("CARGO_MANIFEST_DIR")` inside `serve.rs` to discover repo assets.
-- [ ] Resolve the self-host bundle root from `current_exe` through one fixed installed-layout rule, not through ad hoc flags, env overrides, or repo fallbacks.
-- [ ] Keep packaged executable selection logic, but make asset/migration discovery come from that fixed bundle layout, not code branches.
-- [ ] If local self-host smoke support is kept, limit it to staging the same bundle layout and then invoking unchanged `onequery serve`.
-- [ ] Keep `scripts/run-bun-server.ts` as workspace-dev-only machinery.
-- [ ] Remove any accidental “self-host but really using repo-local dev assumptions” behavior from the serve command.
-- [ ] Update `docs/self-host.md` to say `onequery serve` is the only self-host launch entrypoint.
+- [x] Remove repo-local path inference from `apps/cli/.../commands/serve.rs`.
+- [x] Stop using `env!("CARGO_MANIFEST_DIR")` inside `serve.rs` to discover repo assets.
+- [x] Resolve the self-host bundle root from `current_exe` through one fixed installed-layout rule, not through ad hoc flags, env overrides, or repo fallbacks.
+- [x] Keep packaged executable selection logic, but make asset/migration discovery come from that fixed bundle layout, not code branches.
+- [x] If local self-host smoke support is kept, limit it to staging the same bundle layout and then invoking unchanged `onequery serve`.
+- [x] Keep `scripts/run-bun-server.ts` as workspace-dev-only machinery.
+- [x] Remove any accidental “self-host but really using repo-local dev assumptions” behavior from the serve command.
+- [x] Update `docs/self-host.md` to say `onequery serve` is the only self-host launch entrypoint.
 
 ### Acceptance
 
-- [ ] `bun dev` remains the repo-local split browser/API flow.
-- [ ] `onequery serve` becomes a pure self-host runtime launcher.
-- [ ] Bundle-root discovery follows one fixed `current_exe`-relative installed-layout rule.
-- [ ] Any local self-host smoke flow uses the same runtime bundle layout as release and still goes through `onequery serve`.
+- [x] `bun dev` remains the repo-local split browser/API flow.
+- [x] `onequery serve` becomes a pure self-host runtime launcher.
+- [x] Bundle-root discovery follows one fixed `current_exe`-relative installed-layout rule.
+- [x] Any local self-host smoke flow uses the same runtime bundle layout as release and still goes through `onequery serve`.
 
 ## Workstream E — Replace path folklore with one fixed self-host runtime bundle layout
 
@@ -78,13 +78,13 @@ The important rule is not “manifest vs no manifest”. The important rule is:
 
 ### TODO
 
-- [ ] Make packaging produce one fixed runtime bundle layout relative to the bundle root.
-- [ ] Make any local staging path produce the same layout.
-- [ ] Make `serve.rs` resolve web assets and migrations from that single layout convention.
-- [ ] Remove duplicated web/migrations path constants where they are no longer needed.
-- [ ] Standardize the self-host runtime web output directory on `apps/web/dist`.
-- [ ] Delete the `dist/client` vs `dist` fallback behavior from self-host runtime code paths.
-- [ ] Update `docs/self-host-runtime-foundation.md` to describe the fixed bundle layout and the stricter contract story.
+- [x] Make packaging produce one fixed runtime bundle layout relative to the bundle root.
+- [x] Make any local staging path produce the same layout.
+- [x] Make `serve.rs` resolve web assets and migrations from that single layout convention.
+- [x] Remove duplicated web/migrations path constants where they are no longer needed.
+- [x] Standardize the self-host runtime web output directory on `apps/web/dist`.
+- [x] Delete the `dist/client` vs `dist` fallback behavior from self-host runtime code paths.
+- [x] Update `docs/self-host-runtime-foundation.md` to describe the fixed bundle layout and the stricter contract story.
 
 ### Strong recommendation on web build output
 
@@ -102,8 +102,8 @@ Chosen direction:
 
 ### Acceptance
 
-- [ ] One fixed layout defines the runtime bundle structure.
-- [ ] Packaging and any local self-host smoke path use the same layout convention.
-- [ ] `onequery serve` no longer hardcodes repo-only runtime asset paths.
-- [ ] Runtime no longer guesses between multiple web output directories.
-- [ ] Docs describe exactly one runtime-discovery story for self-host.
+- [x] One fixed layout defines the runtime bundle structure.
+- [x] Packaging and any local self-host smoke path use the same layout convention.
+- [x] `onequery serve` no longer hardcodes repo-only runtime asset paths.
+- [x] Runtime no longer guesses between multiple web output directories.
+- [x] Docs describe exactly one runtime-discovery story for self-host.

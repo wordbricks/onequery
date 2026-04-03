@@ -17,8 +17,6 @@ use crate::config::self_host::load_self_host_config;
 use crate::config::self_host::self_host_runtime_paths;
 use crate::config::self_host::write_self_host_launch_config;
 use crate::output::CommandOutput;
-use crate::path_utils::resolve_env_directory_for_cli;
-use crate::path_utils::resolve_user_path_for_cli;
 
 use super::CommandContext;
 use super::Runtime;
@@ -31,26 +29,15 @@ const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
 const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
 const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
 const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
-const PACKAGED_MIGRATIONS_DIR: &str = "migrations";
-const PACKAGED_WEB_DIR: &str = "web";
-const REPO_MIGRATIONS_DIR: &[&str] = &["packages", "db", "src", "migrations"];
-const REPO_SERVER_ENTRYPOINT: &[&str] = &["packages", "bun-server", "src", "index.ts"];
-const REPO_WEB_CLIENT_DIR: &[&str] = &["apps", "web", "dist", "client"];
-const REPO_WEB_DIST_DIR: &[&str] = &["apps", "web", "dist"];
 const WEB_INDEX_FILENAME: &str = "index.html";
 const SERVE_LOG_PREVIEW_LINE_COUNT: usize = 20;
 const SERVE_STOP_POLL_ATTEMPTS: usize = 50;
 const SERVE_STOP_POLL_INTERVAL_MS: u64 = 100;
-const BUN_EXECUTABLE_NAME: &str = "bun";
-const INSTALL_BUN_GUIDANCE: &str = "install bun and ensure it is on PATH";
 const RETRY_SERVE_COMMAND: &str = "retry onequery serve";
 const RETRY_SERVE_STOP_COMMAND: &str = "retry onequery serve stop";
 const CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP: &str =
     "check the server log and retry onequery serve stop";
 const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
-const BUILD_REPO_WEB_COMMAND: &str = "run bun run --cwd apps/web build";
-const ONEQUERY_NPM_ROOT_ENV_VAR: &str = "ONEQUERY_NPM_ROOT";
-const ONEQUERY_SERVER_EXECUTABLE_ENV_VAR: &str = "ONEQUERY_SERVER_EXECUTABLE";
 const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] = &[
     "/lib64/ld-linux-x86-64.so.2",
     "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
@@ -88,15 +75,8 @@ struct LogPreview {
     truncated: bool,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum ServeLaunchKind {
-    PackagedExecutable,
-    RepoBunEntry,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct ServeLaunchPlan {
-    launch_kind: ServeLaunchKind,
     launch_config_path: PathBuf,
     migrations_dir: PathBuf,
     runtime_entry_path: PathBuf,
@@ -231,34 +211,16 @@ fn run_serve_foreground(
         &launch_plan.migrations_dir,
     )?;
     remove_if_exists(state.paths.stop_request_path.as_path());
-    let mut child = match launch_plan.launch_kind {
-        ServeLaunchKind::PackagedExecutable => {
-            let mut child = ProcessCommand::new(&launch_plan.runtime_entry_path);
-            child.arg(&launch_plan.launch_config_path);
-            child
-        }
-        ServeLaunchKind::RepoBunEntry => {
-            let mut child = ProcessCommand::new(BUN_EXECUTABLE_NAME);
-            child.arg(&launch_plan.runtime_entry_path);
-            child.arg(&launch_plan.launch_config_path);
-            child
-        }
-    };
+    let mut child = ProcessCommand::new(&launch_plan.runtime_entry_path);
+    child.arg(&launch_plan.launch_config_path);
     child
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
     let mut child = child.spawn().map_err(|spawn_error| {
-        let (why, try_next) = match (launch_plan.launch_kind, spawn_error.kind()) {
-            (ServeLaunchKind::RepoBunEntry, std::io::ErrorKind::NotFound) => (
-                "bun executable was not found on PATH".to_owned(),
-                vec![
-                    INSTALL_BUN_GUIDANCE.to_owned(),
-                    RETRY_SERVE_COMMAND.to_owned(),
-                ],
-            ),
-            (ServeLaunchKind::PackagedExecutable, std::io::ErrorKind::NotFound) => (
+        let (why, try_next) = match spawn_error.kind() {
+            std::io::ErrorKind::NotFound => (
                 format!(
                     "compiled self-host server executable was not found at {}",
                     launch_plan.runtime_entry_path.display()
@@ -323,127 +285,44 @@ fn resolve_launch_plan(
     state: &ServeRuntimeState,
     command_line: &str,
 ) -> Result<ServeLaunchPlan, CliError> {
-    if let Some(npm_root) = env::var_os(ONEQUERY_NPM_ROOT_ENV_VAR)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
+    let bundle_root = resolve_packaged_bundle_root(command_line)?;
+    let runtime_entry_path =
+        resolve_packaged_server_executable(bundle_root.as_path(), command_line)?;
+    let migrations_dir = join_path_segments(&bundle_root, &[PACKAGED_RUNTIME_DIR, "migrations"]);
+    let web_dist_dir = join_path_segments(&bundle_root, &[PACKAGED_RUNTIME_DIR, "web"]);
+
+    if runtime_entry_path.is_file()
+        && migrations_dir.is_dir()
+        && web_dist_dir.join(WEB_INDEX_FILENAME).is_file()
     {
-        let npm_root = resolve_env_directory_for_cli(
-            ONEQUERY_NPM_ROOT_ENV_VAR,
-            npm_root.as_path(),
-            command_line,
-            ErrorStage::LoadConfig,
-            "failed to resolve packaged runtime root",
-            vec![format!(
-                "set {ONEQUERY_NPM_ROOT_ENV_VAR} to a valid directory"
-            )],
-        )?;
-        let packaged_runtime = resolve_packaged_server_executable(command_line)?;
-        let packaged_migrations =
-            join_path_segments(&npm_root, &[PACKAGED_RUNTIME_DIR, PACKAGED_MIGRATIONS_DIR]);
-        let packaged_web = join_path_segments(&npm_root, &[PACKAGED_RUNTIME_DIR, PACKAGED_WEB_DIR]);
-
-        if packaged_runtime.is_file() && packaged_web.join(WEB_INDEX_FILENAME).is_file() {
-            return Ok(ServeLaunchPlan {
-                launch_kind: ServeLaunchKind::PackagedExecutable,
-                launch_config_path: state.paths.launch_config_path.clone(),
-                migrations_dir: packaged_migrations,
-                runtime_entry_path: packaged_runtime,
-                web_dist_dir: packaged_web,
-            });
-        }
-
-        return Err(CliError::new(
-            "packaged self-host runtime is incomplete",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!(
-                "expected {} and {} inside {}",
-                packaged_runtime.display(),
-                packaged_web.join(WEB_INDEX_FILENAME).display(),
-                npm_root.display()
-            ),
-            vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
-        ));
+        return Ok(ServeLaunchPlan {
+            launch_config_path: state.paths.launch_config_path.clone(),
+            migrations_dir,
+            runtime_entry_path,
+            web_dist_dir,
+        });
     }
 
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../");
-    let repo_migrations = join_path_segments(&repo_root, REPO_MIGRATIONS_DIR);
-    let repo_runtime = join_path_segments(&repo_root, REPO_SERVER_ENTRYPOINT);
-    let repo_web_client = join_path_segments(&repo_root, REPO_WEB_CLIENT_DIR);
-    let repo_web_dist = join_path_segments(&repo_root, REPO_WEB_DIST_DIR);
-    let web_dist_dir = if repo_web_client.join(WEB_INDEX_FILENAME).is_file() {
-        repo_web_client
-    } else {
-        repo_web_dist
-    };
-
-    if !repo_runtime.is_file() || !web_dist_dir.join(WEB_INDEX_FILENAME).is_file() {
-        return Err(CliError::new(
-            "repo-local self-host runtime is not built",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!(
-                "expected {} and {}",
-                repo_runtime.display(),
-                web_dist_dir.join(WEB_INDEX_FILENAME).display()
-            ),
-            vec![
-                BUILD_REPO_WEB_COMMAND.to_owned(),
-                RETRY_SERVE_COMMAND.to_owned(),
-            ],
-        ));
-    }
-
-    Ok(ServeLaunchPlan {
-        launch_kind: ServeLaunchKind::RepoBunEntry,
-        launch_config_path: state.paths.launch_config_path.clone(),
-        migrations_dir: repo_migrations,
-        runtime_entry_path: repo_runtime,
-        web_dist_dir,
-    })
+    Err(CliError::new(
+        "packaged self-host runtime is incomplete",
+        command_line,
+        ErrorStage::LoadConfig,
+        format!(
+            "expected {}, {}, and {} inside {}",
+            runtime_entry_path.display(),
+            migrations_dir.display(),
+            web_dist_dir.join(WEB_INDEX_FILENAME).display(),
+            bundle_root.display()
+        ),
+        vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
+    ))
 }
 
-fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, CliError> {
-    if let Some(server_executable) = env::var_os(ONEQUERY_SERVER_EXECUTABLE_ENV_VAR)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-    {
-        return resolve_explicit_packaged_server_executable(
-            server_executable.as_path(),
-            command_line,
-        );
-    }
-
-    let current_executable = env::current_exe().map_err(|error| {
-        CliError::new(
-            "failed to resolve packaged self-host server executable",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!("failed to read current executable path: {error}"),
-            vec![
-                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
-            ],
-        )
-    })?;
-    let server_dir = resolve_packaged_server_dir_from_current_executable(
-        current_executable.as_path(),
-    )
-    .ok_or_else(|| {
-        CliError::new(
-            "failed to resolve packaged self-host server executable",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!(
-                "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}",
-                current_executable.display()
-            ),
-            vec![
-                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
-            ],
-        )
-    })?;
+fn resolve_packaged_server_executable(
+    bundle_root: &std::path::Path,
+    command_line: &str,
+) -> Result<PathBuf, CliError> {
+    let server_dir = bundle_root.join(PACKAGED_SERVER_DIR);
     let candidates = packaged_server_candidates(
         server_dir.as_path(),
         std::env::consts::OS,
@@ -455,10 +334,7 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
             command_line,
             ErrorStage::LoadConfig,
             detail,
-            vec![
-                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
-            ],
+            vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
         )
     })?;
     let existing_candidates = candidates
@@ -495,57 +371,37 @@ fn resolve_packaged_server_executable(command_line: &str) -> Result<PathBuf, Cli
             server_dir.display(),
             render_required_loader_paths(&existing_candidates)
         ),
-        vec![
-            REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-            format!("set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"),
-        ],
+        vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
     ))
 }
 
-fn resolve_explicit_packaged_server_executable(
-    server_executable: &std::path::Path,
-    command_line: &str,
-) -> Result<PathBuf, CliError> {
-    let resolved_server_executable = resolve_user_path_for_cli(
-        server_executable,
-        command_line,
-        ErrorStage::LoadConfig,
-        "failed to resolve packaged self-host server executable",
-        vec![format!(
-            "set {ONEQUERY_SERVER_EXECUTABLE_ENV_VAR} to an absolute executable path"
-        )],
-    )?;
-
-    let metadata = fs::metadata(&resolved_server_executable).map_err(|error| {
+fn resolve_packaged_bundle_root(command_line: &str) -> Result<PathBuf, CliError> {
+    let current_executable = env::current_exe().map_err(|error| {
         CliError::new(
-            "packaged self-host runtime is incomplete",
+            "failed to resolve packaged self-host runtime bundle",
             command_line,
             ErrorStage::LoadConfig,
-            format!(
-                "failed to read packaged server executable {}: {error}",
-                resolved_server_executable.display()
-            ),
+            format!("failed to read current executable path: {error}"),
             vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
         )
     })?;
-
-    if !metadata.is_file() {
-        return Err(CliError::new(
-            "packaged self-host runtime is incomplete",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!(
-                "expected {} to be a file",
-                resolved_server_executable.display()
-            ),
-            vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
-        ));
-    }
-
-    Ok(resolved_server_executable)
+    resolve_packaged_bundle_root_from_current_executable(current_executable.as_path()).ok_or_else(
+        || {
+            CliError::new(
+                "failed to resolve packaged self-host runtime bundle",
+                command_line,
+                ErrorStage::LoadConfig,
+                format!(
+                    "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}",
+                    current_executable.display()
+                ),
+                vec![REINSTALL_CLI_PACKAGE_COMMAND.to_owned()],
+            )
+        },
+    )
 }
 
-fn resolve_packaged_server_dir_from_current_executable(
+fn resolve_packaged_bundle_root_from_current_executable(
     current_executable: &std::path::Path,
 ) -> Option<PathBuf> {
     let cli_dir = current_executable.parent()?;
@@ -553,8 +409,7 @@ fn resolve_packaged_server_dir_from_current_executable(
         return None;
     }
 
-    let target_dir = cli_dir.parent()?;
-    Some(target_dir.join(PACKAGED_SERVER_DIR))
+    cli_dir.parent().map(std::path::Path::to_path_buf)
 }
 
 fn packaged_server_candidates(
@@ -1143,7 +998,7 @@ mod tests {
     use super::render_serve_output;
     use super::render_serve_start_output;
     use super::render_serve_status_output;
-    use super::resolve_packaged_server_dir_from_current_executable;
+    use super::resolve_packaged_bundle_root_from_current_executable;
     use super::select_packaged_server_candidate;
     use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostConfig;
@@ -1240,7 +1095,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_packaged_server_dir_from_current_executable_uses_sibling_server_dir() {
+    fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir() {
         let temp_dir = tempdir().unwrap();
         let current_executable = temp_dir
             .path()
@@ -1255,13 +1110,12 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected fake current executable: {error}"));
 
         assert_eq!(
-            resolve_packaged_server_dir_from_current_executable(current_executable.as_path()),
+            resolve_packaged_bundle_root_from_current_executable(current_executable.as_path()),
             Some(
                 temp_dir
                     .path()
                     .join("vendor")
                     .join("x86_64-unknown-linux-musl")
-                    .join(PACKAGED_SERVER_DIR)
             )
         );
     }

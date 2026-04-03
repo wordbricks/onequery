@@ -38,8 +38,8 @@ bun run dev:setup
 # Workspace dev: Vite browser + Bun API on separate ports
 bun dev
 
-# Self-host dev path through the Rust-owned runtime contract
-cargo run --manifest-path apps/cli/Cargo.toml --bin onequery -- serve
+# Repo-local self-host smoke through the packaged runtime layout
+bun run --cwd packages/bun-server serve
 ```
 
 Default ports:
@@ -50,8 +50,10 @@ Default ports:
 
 `bun dev` keeps the browser on the workspace-dev browser origin while Vite
 proxies `/api` to a separate local Bun listener for HMR-friendly full-stack
-work. `onequery serve` uses the self-host config roots and writes a resolved
-launch contract before Bun starts.
+work. `bun run --cwd packages/bun-server serve` stages the same packaged
+self-host bundle layout used in release and then invokes `onequery serve`,
+which uses the self-host config roots and writes a resolved launch contract
+before Bun starts.
 
 ## Environment Files
 

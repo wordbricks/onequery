@@ -44,6 +44,26 @@ The runtime-managed files under those roots are:
 - `run/server.lock`
 - `run/launch.json`
 
+The bundled self-host runtime is discovered from one fixed executable-relative
+layout:
+
+```text
+vendor/<target>/
+  onequery/
+    onequery[.exe]
+  server/
+    onequery-server[platform-specific]
+  runtime/
+    migrations/
+    web/
+    pglite/
+```
+
+`onequery serve` resolves `vendor/<target>` from `current_exe()` and then reads
+`runtime/web`, `runtime/migrations`, and `server/` from that bundle root only.
+There is no repo-local asset fallback and no alternate self-host launch path in
+the serve command.
+
 ## Operator Note
 
 These three files have different roles:
@@ -73,6 +93,11 @@ self-host/config.toml + self-host/secrets.toml
                      v
       Bun reads launch.json once and starts the process runtime
 ```
+
+Repo-local self-host smoke uses the same packaged layout: the helper stages a
+temporary `vendor/<target>` bundle and then invokes unchanged `onequery serve`
+from that staged CLI binary. Workspace-dev remains separate and continues to
+use `scripts/run-bun-server.ts`.
 
 The Bun runtime owns the process-local guarantees:
 

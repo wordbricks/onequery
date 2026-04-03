@@ -31,7 +31,8 @@ npx @onequery/cli --help
 ```
 
 Published `onequery serve` packages include the bundled self-host runtime and
-do not require Bun on `PATH`.
+do not require Bun on `PATH`. `onequery serve` is the self-host launch
+entrypoint; repo-local workspace development keeps using `bun dev` instead.
 
 Start the server:
 
