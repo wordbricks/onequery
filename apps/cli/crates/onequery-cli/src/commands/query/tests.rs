@@ -172,11 +172,6 @@ fn with_effective_query_timeout_defaults_missing_timeout_to_config_timeout() {
     let payload = with_effective_query_timeout(&sample_query_payload(), 5);
 
     assert_eq!(payload.timeout_ms, Some(5_000));
-}
-
-#[test]
-fn effective_query_http_timeout_uses_the_defaulted_payload_timeout() {
-    let payload = with_effective_query_timeout(&sample_query_payload(), 5);
 
     assert_eq!(
         effective_query_http_timeout(&payload, 5),

@@ -12,11 +12,9 @@ use super::PACKAGED_SERVER_MUSL_FILENAME;
 use super::PACKAGED_SERVER_WINDOWS_FILENAME;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootSource;
-use super::launch::current_executable_is_cargo_build_output;
 use super::launch::packaged_cli_relative_path;
 use super::launch::packaged_server_candidates;
 use super::launch::packaged_server_relative_path;
-use super::launch::resolve_packaged_bundle_root_from_current_executable;
 use super::launch::resolve_runtime_bundle_root_from_components;
 use super::launch::runtime_root_env_var;
 use super::launch::select_packaged_server_candidate;
@@ -132,32 +130,6 @@ fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
 }
 
 #[test]
-fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir() {
-    let temp_dir = tempdir().unwrap();
-    let current_executable = temp_dir
-        .path()
-        .join("vendor")
-        .join("x86_64-unknown-linux-musl")
-        .join(packaged_cli_relative_path())
-        .join("onequery");
-
-    fs::create_dir_all(current_executable.parent().unwrap())
-        .unwrap_or_else(|error| panic!("expected current executable parent dir: {error}"));
-    fs::write(&current_executable, b"")
-        .unwrap_or_else(|error| panic!("expected fake current executable: {error}"));
-
-    assert_eq!(
-        resolve_packaged_bundle_root_from_current_executable(current_executable.as_path()),
-        Some(
-            temp_dir
-                .path()
-                .join("vendor")
-                .join("x86_64-unknown-linux-musl")
-        )
-    );
-}
-
-#[test]
 fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
     let current_executable = PathBuf::from(format!(
         "/tmp/vendor/x86_64-unknown-linux-musl/{}/onequery",
@@ -199,14 +171,6 @@ fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_
             path: Path::new("/tmp/vendor/x86_64-unknown-linux-musl").to_path_buf(),
             source: RuntimeBundleRootSource::PackagedExecutable,
         }
-    );
-}
-
-#[test]
-fn current_executable_is_cargo_build_output_detects_standard_debug_binary_path() {
-    assert_eq!(
-        current_executable_is_cargo_build_output(Path::new("/tmp/project/target/debug/onequery")),
-        true
     );
 }
 

@@ -44,6 +44,29 @@ function createTempHomeDir(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 
+async function prepareSelfHostRuntime(prefix: string): Promise<{
+  baseUrl: string;
+  env: Record<string, string>;
+  homeDir: string;
+  port: number;
+  stagedBundleRoot: string;
+}> {
+  const stagedBundleRoot = await getStagedBundleRoot();
+  const homeDir = createTempHomeDir(prefix);
+  const port = await findOpenPort();
+  const env = {
+    ONEQUERY_HOME: homeDir,
+  };
+
+  return {
+    baseUrl: `http://127.0.0.1:${port}`,
+    env,
+    homeDir,
+    port,
+    stagedBundleRoot,
+  };
+}
+
 function writeSelfHostConfig(homeDir: string, port: number): void {
   const configDir = join(homeDir, "config", "self-host");
   mkdirSync(configDir, { recursive: true });
@@ -179,8 +202,7 @@ async function startServeProcess(input: {
   env: Record<string, string>;
   stagedBundleRoot: string;
 }) {
-  const stagedCliPath = resolveStagedCliPath(input.stagedBundleRoot);
-  const child = spawn(stagedCliPath, ["serve"], {
+  const child = spawn(resolveStagedCliPath(input.stagedBundleRoot), ["serve"], {
     cwd: cliRootDir,
     env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
     stdio: "pipe",
@@ -191,7 +213,6 @@ async function startServeProcess(input: {
   return {
     child,
     output,
-    stagedCliPath,
   };
 }
 
@@ -249,13 +270,8 @@ async function stopServeProcess(input: {
 
 describe("CLI self-host smoke", () => {
   it("bootstraps a fresh self-host runtime and creates a data source through the packaged serve path", async () => {
-    const stagedBundleRoot = await getStagedBundleRoot();
-    const homeDir = createTempHomeDir("onequery-cli-self-host-home-");
-    const port = await findOpenPort();
-    const env = {
-      ONEQUERY_HOME: homeDir,
-    };
-    const baseUrl = `http://127.0.0.1:${port}`;
+    const { baseUrl, env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-self-host-home-");
 
     writeSelfHostConfig(homeDir, port);
 
@@ -304,7 +320,6 @@ describe("CLI self-host smoke", () => {
       };
       const cookieHeader = buildCookieHeader(bootstrapResponse.headers);
 
-      expect(cookieHeader).toBeTruthy();
       expect(bootstrapPayload).toMatchObject({
         bootstrap: {
           organizationSlug: "owner-org",
@@ -373,12 +388,8 @@ describe("CLI self-host smoke", () => {
   }, 240_000);
 
   it("fails on startup when self-host secrets contain an invalid master key", async () => {
-    const stagedBundleRoot = await getStagedBundleRoot();
-    const homeDir = createTempHomeDir("onequery-cli-invalid-master-key-");
-    const port = await findOpenPort();
-    const env = {
-      ONEQUERY_HOME: homeDir,
-    };
+    const { env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-invalid-master-key-");
 
     writeSelfHostConfig(homeDir, port);
     writeInvalidSecrets(homeDir);

@@ -626,7 +626,9 @@ async fn login_after_logout_marks_the_next_identity_for_org_bootstrap() {
     });
 }
 
-async fn run_device_denied_poll_login_effect() -> (AuthEvent, String) {
+#[tokio::test]
+async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_endpoint_and_returns_a_failed_login_completion_event()
+ {
     let listener =
         TcpListener::bind("127.0.0.1:0").expect("expected login poll test listener to bind");
     let address = listener
@@ -709,20 +711,7 @@ async fn run_device_denied_poll_login_effect() -> (AuthEvent, String) {
     let request = request_rx
         .recv()
         .expect("expected auth poll workflow to issue exactly one poll request");
-
-    (event, request)
-}
-
-#[tokio::test]
-async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_endpoint() {
-    let (_, request) = run_device_denied_poll_login_effect().await;
-
     assert!(request.starts_with("POST /api/cli/auth/device-authorizations:poll HTTP/1.1\r\n"));
-}
-
-#[tokio::test]
-async fn poll_login_effect_device_denial_returns_a_failed_login_completion_event() {
-    let (event, _) = run_device_denied_poll_login_effect().await;
 
     assert_eq!(
         match event {
@@ -748,7 +737,7 @@ async fn poll_login_effect_device_denial_returns_a_failed_login_completion_event
 #[tokio::test]
 async fn auth_workflow_login_without_bootstrap_runs_effects_through_token_persistence() {
     let completion = sample_login_completion();
-    let (_, effect_log) = run_scripted_auth_workflow(
+    let (terminal_state, effect_log) = run_scripted_auth_workflow(
         AuthMode::Login,
         vec![
             ScriptedAuthStep::new(
@@ -796,48 +785,6 @@ async fn auth_workflow_login_without_bootstrap_runs_effects_through_token_persis
             "PersistToken",
         ]
     );
-}
-
-#[tokio::test]
-async fn auth_workflow_login_without_bootstrap_returns_a_completed_login_result() {
-    let completion = sample_login_completion();
-    let (terminal_state, _) = run_scripted_auth_workflow(
-        AuthMode::Login,
-        vec![
-            ScriptedAuthStep::new(
-                "StartLoginSession",
-                AuthEvent::LoginSessionStarted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "OpenBrowser",
-                AuthEvent::BrowserAttempted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PollLogin",
-                AuthEvent::LoginAuthorized {
-                    access_token: completion.access_token.clone(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "ResolveLoginIdentity",
-                AuthEvent::LoginCompleted {
-                    completion: completion.clone(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PersistToken",
-                AuthEvent::TokenPersisted {
-                    completion: completion.clone(),
-                    next_step: PersistedLoginNextStep::Complete,
-                },
-            ),
-        ],
-    )
-    .await;
 
     assert_eq!(
         match terminal_state {
@@ -857,7 +804,7 @@ async fn auth_workflow_login_without_bootstrap_returns_a_completed_login_result(
 
 #[tokio::test]
 async fn auth_workflow_login_device_denial_stops_after_poll_login_effect() {
-    let (_, effect_log) = run_scripted_auth_workflow(
+    let (terminal_state, effect_log) = run_scripted_auth_workflow(
         AuthMode::Login,
         vec![
             ScriptedAuthStep::new(
@@ -892,40 +839,6 @@ async fn auth_workflow_login_device_denial_stops_after_poll_login_effect() {
         effect_log,
         vec!["StartLoginSession", "OpenBrowser", "PollLogin"]
     );
-}
-
-#[tokio::test]
-async fn auth_workflow_login_device_denial_returns_failed_terminal_state() {
-    let (terminal_state, _) = run_scripted_auth_workflow(
-        AuthMode::Login,
-        vec![
-            ScriptedAuthStep::new(
-                "StartLoginSession",
-                AuthEvent::LoginSessionStarted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "OpenBrowser",
-                AuthEvent::BrowserAttempted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PollLogin",
-                AuthEvent::LoginCompletionFailed {
-                    error: CliError::new(
-                        "login denied",
-                        "onequery auth login",
-                        ErrorStage::Auth,
-                        "browser authorization was denied before token exchange completed",
-                        vec!["run onequery auth login again".to_owned()],
-                    ),
-                },
-            ),
-        ],
-    )
-    .await;
 
     assert_eq!(
         match terminal_state {
@@ -956,7 +869,7 @@ async fn auth_workflow_login_device_denial_returns_failed_terminal_state() {
 
 #[tokio::test]
 async fn auth_workflow_login_expired_session_stops_after_poll_login_effect() {
-    let (_, effect_log) = run_scripted_auth_workflow(
+    let (terminal_state, effect_log) = run_scripted_auth_workflow(
         AuthMode::Login,
         vec![
             ScriptedAuthStep::new(
@@ -991,40 +904,6 @@ async fn auth_workflow_login_expired_session_stops_after_poll_login_effect() {
         effect_log,
         vec!["StartLoginSession", "OpenBrowser", "PollLogin"]
     );
-}
-
-#[tokio::test]
-async fn auth_workflow_login_expired_session_returns_failed_terminal_state() {
-    let (terminal_state, _) = run_scripted_auth_workflow(
-        AuthMode::Login,
-        vec![
-            ScriptedAuthStep::new(
-                "StartLoginSession",
-                AuthEvent::LoginSessionStarted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "OpenBrowser",
-                AuthEvent::BrowserAttempted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PollLogin",
-                AuthEvent::LoginCompletionFailed {
-                    error: CliError::new(
-                        "login session expired",
-                        "onequery auth login",
-                        ErrorStage::Auth,
-                        "browser authorization session expired before token exchange completed",
-                        vec!["run onequery auth login again".to_owned()],
-                    ),
-                },
-            ),
-        ],
-    )
-    .await;
 
     assert_eq!(
         match terminal_state {
@@ -1056,7 +935,7 @@ async fn auth_workflow_login_expired_session_returns_failed_terminal_state() {
 #[tokio::test]
 async fn auth_workflow_login_token_persist_failure_runs_effects_through_persist_token() {
     let completion = sample_login_completion();
-    let (_, effect_log) = run_scripted_auth_workflow(
+    let (terminal_state, effect_log) = run_scripted_auth_workflow(
         AuthMode::Login,
         vec![
             ScriptedAuthStep::new(
@@ -1109,53 +988,6 @@ async fn auth_workflow_login_token_persist_failure_runs_effects_through_persist_
             "PersistToken",
         ]
     );
-}
-
-#[tokio::test]
-async fn auth_workflow_login_token_persist_failure_returns_failed_terminal_state() {
-    let completion = sample_login_completion();
-    let (terminal_state, _) = run_scripted_auth_workflow(
-        AuthMode::Login,
-        vec![
-            ScriptedAuthStep::new(
-                "StartLoginSession",
-                AuthEvent::LoginSessionStarted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "OpenBrowser",
-                AuthEvent::BrowserAttempted {
-                    session: sample_login_session(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PollLogin",
-                AuthEvent::LoginAuthorized {
-                    access_token: completion.access_token.clone(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "ResolveLoginIdentity",
-                AuthEvent::LoginCompleted {
-                    completion: completion.clone(),
-                },
-            ),
-            ScriptedAuthStep::new(
-                "PersistToken",
-                AuthEvent::TokenPersistFailed {
-                    error: CliError::new(
-                        "persist credentials failed",
-                        "onequery auth login",
-                        ErrorStage::LoadCredentials,
-                        "failed to write stored auth session",
-                        vec!["retry onequery auth login".to_owned()],
-                    ),
-                },
-            ),
-        ],
-    )
-    .await;
 
     assert_eq!(
         match terminal_state {

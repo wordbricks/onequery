@@ -330,105 +330,78 @@ mod tests {
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
-    fn restore_replaces_existing_runtime_and_bootstraps_missing_secrets_without_reporting_them_as_restored()
-     {
-        let temp_root =
-            std::env::temp_dir().join(format!("onequery-restore-command-{}", Uuid::new_v4()));
-        let archive_path = temp_root.join("fixtures").join("backup-no-secrets.tar.gz");
-        let paths = SelfHostRuntimePaths::for_test(
-            temp_root.join("config").join("self-host"),
-            temp_root.join("data"),
-        );
-        write_backup_archive(&archive_path, false);
-        seed_existing_runtime(&paths);
+    fn restore_replaces_runtime_and_toggles_secrets_from_the_archive() {
+        for (include_secrets, temp_dir_name) in [
+            (false, "onequery-restore-command"),
+            (true, "onequery-restore-secrets"),
+        ] {
+            let temp_root =
+                std::env::temp_dir().join(format!("{temp_dir_name}-{}", Uuid::new_v4()));
+            let archive_path = temp_root.join("fixtures").join(if include_secrets {
+                "backup-with-secrets.tar.gz"
+            } else {
+                "backup-no-secrets.tar.gz"
+            });
+            let paths = SelfHostRuntimePaths::for_test(
+                temp_root.join("config").join("self-host"),
+                temp_root.join("data"),
+            );
+            write_backup_archive(&archive_path, include_secrets);
+            seed_existing_runtime(&paths);
 
-        let output = execute_with_paths(
-            archive_path.as_path(),
-            &sample_context("onequery restore"),
-            &paths,
-            |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
-        )
-        .unwrap_or_else(|error| panic!("expected restore without secrets to succeed: {error}"));
-
-        let data = output.into_data();
-
-        assert_eq!(
-            data.get("secretsPresent")
-                .and_then(serde_json::Value::as_bool),
-            Some(false)
-        );
-        assert_eq!(paths.config_path.is_file(), true);
-        assert_eq!(paths.pglite_dir.join("PG_VERSION").is_file(), true);
-        assert_eq!(paths.server_log_path.is_file(), true);
-        assert_eq!(
-            paths.data_dir.join("state").join("cache.json").is_file(),
-            true
-        );
-        assert_eq!(paths.config_dir.join("stale.txt").exists(), false);
-        assert_eq!(
-            paths.data_dir.join("obsolete").join("stale.bin").exists(),
-            false
-        );
-        assert_eq!(paths.secrets_path.is_file(), true);
-        assert_eq!(
-            fs::read_to_string(&paths.secrets_path)
-                .unwrap_or_else(|error| panic!("expected generated secrets file to load: {error}"))
-                .contains("secret"),
-            true
-        );
-        assert_eq!(
-            fs::read_to_string(&paths.config_path).unwrap_or_else(|error| panic!(
-                "expected restored self-host config to load: {error}"
-            )),
-            format!(
-                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
-                default_port()
+            let output = execute_with_paths(
+                archive_path.as_path(),
+                &sample_context("onequery restore"),
+                &paths,
+                |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
             )
-        );
+            .unwrap_or_else(|error| panic!("expected restore to succeed: {error}"));
 
-        fs::remove_dir_all(temp_root)
-            .unwrap_or_else(|error| panic!("expected restore test temp dir cleanup: {error}"));
-    }
+            let data = output.into_data();
 
-    #[test]
-    fn restore_preserves_secrets_from_the_archive_when_present() {
-        let temp_root =
-            std::env::temp_dir().join(format!("onequery-restore-secrets-{}", Uuid::new_v4()));
-        let archive_path = temp_root
-            .join("fixtures")
-            .join("backup-with-secrets.tar.gz");
-        let paths = SelfHostRuntimePaths::for_test(
-            temp_root.join("config").join("self-host"),
-            temp_root.join("data"),
-        );
-        write_backup_archive(&archive_path, true);
+            assert_eq!(
+                data.get("secretsPresent")
+                    .and_then(serde_json::Value::as_bool),
+                Some(include_secrets)
+            );
+            assert_eq!(paths.config_path.is_file(), true);
+            assert_eq!(paths.pglite_dir.join("PG_VERSION").is_file(), true);
+            assert_eq!(paths.server_log_path.is_file(), true);
+            assert_eq!(
+                paths.data_dir.join("state").join("cache.json").is_file(),
+                true
+            );
+            assert_eq!(paths.config_dir.join("stale.txt").exists(), false);
+            assert_eq!(
+                paths.data_dir.join("obsolete").join("stale.bin").exists(),
+                false
+            );
+            assert_eq!(paths.secrets_path.is_file(), true);
+            let secrets_contents = fs::read_to_string(&paths.secrets_path)
+                .unwrap_or_else(|error| panic!("expected restored secrets file to load: {error}"));
+            if include_secrets {
+                assert_eq!(
+                    secrets_contents,
+                    format!(
+                        "[auth]\nsecret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n"
+                    )
+                );
+            } else {
+                assert!(secrets_contents.contains("secret"));
+            }
+            assert_eq!(
+                fs::read_to_string(&paths.config_path).unwrap_or_else(|error| panic!(
+                    "expected restored self-host config to load: {error}"
+                )),
+                format!(
+                    "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
+                    default_port()
+                )
+            );
 
-        let output = execute_with_paths(
-            archive_path.as_path(),
-            &sample_context("onequery restore"),
-            &paths,
-            |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
-        )
-        .unwrap_or_else(|error| panic!("expected restore with secrets to succeed: {error}"));
-
-        let data = output.into_data();
-
-        assert_eq!(
-            data.get("secretsPresent")
-                .and_then(serde_json::Value::as_bool),
-            Some(true)
-        );
-        assert_eq!(
-            fs::read_to_string(&paths.secrets_path)
-                .unwrap_or_else(|error| panic!("expected restored secrets file to load: {error}")),
-            format!(
-                "[auth]\nsecret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n"
-            )
-        );
-
-        fs::remove_dir_all(temp_root).unwrap_or_else(|error| {
-            panic!("expected restore-with-secrets temp dir cleanup: {error}")
-        });
+            fs::remove_dir_all(temp_root)
+                .unwrap_or_else(|error| panic!("expected restore test temp dir cleanup: {error}"));
+        }
     }
 
     fn sample_context(command_line: &str) -> CommandContext {

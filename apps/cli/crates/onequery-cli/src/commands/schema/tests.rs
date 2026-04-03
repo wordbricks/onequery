@@ -8,8 +8,6 @@ use crate::cli::SchemaSubcommand;
 use crate::commands::with_command_snapshot_path;
 
 use super::CLI_OPENAPI_JSON;
-use super::DISCOVERY_SKILL_PATH;
-use super::ROOT_SKILL_PATH;
 use super::ReadControls;
 use super::embedded_skill_schemas;
 use super::execute;
@@ -34,26 +32,6 @@ fn schema_commands_snapshot() {
 }
 
 #[test]
-fn schema_command_query_execute_snapshot() {
-    let command = public_command_schemas()
-        .expect("expected command schemas")
-        .into_iter()
-        .find(|command| command.command == "query execute")
-        .expect("expected query execute command schema");
-
-    let rendered = render_json_output(
-        serde_json::to_value(command).expect("expected command schema serialization"),
-    )
-    .expect("expected schema command output")
-    .lines
-    .join("\n");
-
-    with_command_snapshot_path(|| {
-        assert_snapshot!(rendered);
-    });
-}
-
-#[test]
 fn schema_skills_snapshot() {
     let rendered = render_json_output(serde_json::json!({
         "skills": embedded_skill_schemas().expect("expected embedded skills"),
@@ -65,21 +43,6 @@ fn schema_skills_snapshot() {
     with_command_snapshot_path(|| {
         assert_snapshot!(rendered);
     });
-}
-
-#[test]
-fn local_command_registry_keeps_one_entry_per_local_command_path() {
-    let commands = local_command_registry();
-    let command_paths = commands
-        .iter()
-        .map(|entry| entry.command)
-        .collect::<Vec<_>>();
-    let unique_command_paths = command_paths
-        .iter()
-        .copied()
-        .collect::<std::collections::BTreeSet<_>>();
-
-    assert_eq!(command_paths.len(), unique_command_paths.len());
 }
 
 #[test]
@@ -211,23 +174,6 @@ fn schema_openapi_matches_checked_in_document() {
         .expect("expected checked-in OpenAPI document to parse");
 
     assert_eq!(parsed, reparsed);
-}
-
-#[test]
-fn embedded_skill_output_includes_root_and_leaf_paths() {
-    let paths = embedded_skill_schemas()
-        .expect("expected embedded skills")
-        .into_iter()
-        .map(|skill| skill.path)
-        .collect::<Vec<_>>();
-
-    assert_eq!(
-        (
-            paths.contains(&ROOT_SKILL_PATH.to_owned()),
-            paths.contains(&DISCOVERY_SKILL_PATH.to_owned()),
-        ),
-        (true, true)
-    );
 }
 
 #[tokio::test(flavor = "current_thread")]

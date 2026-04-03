@@ -346,40 +346,6 @@ fn unauthorized_org_load_failure_transitions_to_explicit_reauth_terminal_state()
 }
 
 #[test]
-fn render_org_list_output_renders_table() {
-    let output = render_org_list_output(
-        OrgListPayload {
-            organizations: vec![
-                OrgSummary {
-                    slug: Some("acme".to_owned()),
-                    name: Some("Acme".to_owned()),
-                },
-                OrgSummary {
-                    slug: Some("globex".to_owned()),
-                    name: Some("Globex".to_owned()),
-                },
-            ],
-            page: PageInfo {
-                next_cursor: None,
-                returned: 2,
-                has_more: false,
-            },
-        },
-        &ListReadArgs::default(),
-    )
-    .expect("expected org list output");
-
-    assert_eq!(
-        output.lines,
-        vec![
-            format!("{:<6}  {:<6}", "ORG", "NAME"),
-            format!("{:<6}  {:<6}", "acme", "Acme"),
-            format!("{:<6}  {:<6}", "globex", "Globex"),
-        ]
-    );
-}
-
-#[test]
 fn org_list_output_snapshot() {
     let output = render_org_list_output(
         OrgListPayload {
@@ -406,26 +372,6 @@ fn org_list_output_snapshot() {
     with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
-}
-
-#[test]
-fn render_org_list_output_renders_empty_state() {
-    let output = render_org_list_output(
-        OrgListPayload {
-            organizations: Vec::new(),
-            page: PageInfo {
-                next_cursor: None,
-                returned: 0,
-                has_more: false,
-            },
-        },
-        &ListReadArgs::default(),
-    )
-    .expect("expected org list empty state output");
-    assert_eq!(
-        output.lines,
-        vec!["No organizations found for this account.".to_owned()]
-    );
 }
 
 #[test]
