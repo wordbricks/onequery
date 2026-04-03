@@ -121,9 +121,9 @@
         "checksConditionals": true,
         "checksSpreads": true,
         "checksVoidReturn": {
-          "attributes": false
-        }
-      }
+          "attributes": false,
+        },
+      },
     ],
     "typescript/unbound-method": "off", // TEMP ~23
     "typescript/use-unknown-in-catch-callback-variable": "off", // TEMP ~16
