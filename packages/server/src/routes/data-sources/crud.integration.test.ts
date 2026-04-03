@@ -1,5 +1,6 @@
 import { createDatabaseRuntime, eq } from "@onequery/db/server";
 import { Hono } from "hono";
+import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { SessionData } from "../../middleware/session";
@@ -81,28 +82,22 @@ describe("dataSourcesCrudRoute", () => {
       })
       .route("/", dataSourcesCrudRoute);
 
-    const response = await app.fetch(
-      new Request("http://localhost/", {
-        body: JSON.stringify({
-          credentials: {
-            database: "analytics",
-            host: "localhost",
-            password: "password",
-            port: 5432,
-            sslMode: "prefer",
-            type: "postgres",
-            username: "postgres",
-          },
-          name: "Warehouse",
-          organizationId: "org-1",
-          provider: "postgres",
-        }),
-        headers: {
-          "content-type": "application/json",
+    const response = await testClient(app).index.$post({
+      json: {
+        credentials: {
+          database: "analytics",
+          host: "localhost",
+          password: "password",
+          port: 5432,
+          sslMode: "prefer",
+          type: "postgres",
+          username: "postgres",
         },
-        method: "POST",
-      })
-    );
+        name: "Warehouse",
+        organizationId: "org-1",
+        provider: "postgres",
+      },
+    });
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({

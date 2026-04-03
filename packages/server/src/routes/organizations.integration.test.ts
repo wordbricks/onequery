@@ -160,7 +160,7 @@ async function seedAuditAction(input: {
 
 describe("organizations audit route", () => {
   it("lists org audit entries newest-first, paginates them, and applies filters", async () => {
-    const { app, db, test } = await createRouteIntegrationHarness({
+    const { client, db, test } = await createRouteIntegrationHarness({
       databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-"),
     });
 
@@ -229,8 +229,17 @@ describe("organizations audit route", () => {
         usagePersistenceStatus: "not_started",
       });
 
-      const firstPageResponse = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit?limit=1`,
+      const firstPageResponse = await client.api.organizations[
+        ":slug"
+      ].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            limit: "1",
+          },
+        },
         {
           headers: { cookie: ownerCookie },
         }
@@ -248,8 +257,18 @@ describe("organizations audit route", () => {
       expect(firstPage.items[0]?.state.lastEventType).toBe("usage_persisted");
       expect(firstPage.nextCursor).not.toBeNull();
 
-      const secondPageResponse = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor ?? "")}`,
+      const secondPageResponse = await client.api.organizations[
+        ":slug"
+      ].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            cursor: firstPage.nextCursor ?? "",
+            limit: "1",
+          },
+        },
         {
           headers: { cookie: ownerCookie },
         }
@@ -265,8 +284,20 @@ describe("organizations audit route", () => {
       expect(secondPage.items[0]?.id).toBe(`action-rejected-${runId}`);
       expect(secondPage.nextCursor).toBeNull();
 
-      const filteredResponse = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit?actionType=validate&status=query_rejected&sourceKey=billing&q=REJECTED`,
+      const filteredResponse = await client.api.organizations[
+        ":slug"
+      ].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            actionType: "validate",
+            q: "REJECTED",
+            sourceKey: "billing",
+            status: "query_rejected",
+          },
+        },
         {
           headers: { cookie: ownerCookie },
         }
@@ -293,7 +324,7 @@ describe("organizations audit route", () => {
   });
 
   it("rejects unauthenticated and unauthorized audit reads and returns 404 for unknown orgs", async () => {
-    const { app, db, test } = await createRouteIntegrationHarness({
+    const { client, db, test } = await createRouteIntegrationHarness({
       databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
     });
 
@@ -327,13 +358,23 @@ describe("organizations audit route", () => {
         throw new Error("Outsider login must expose a cookie header");
       }
 
-      const unauthenticated = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit`
-      );
+      const unauthenticated = await client.api.organizations[
+        ":slug"
+      ].audit.$get({
+        param: {
+          slug: organization.slug as string,
+        },
+        query: {},
+      });
       expect(unauthenticated.status).toBe(401);
 
-      const forbidden = await app.request(
-        `http://localhost/api/organizations/${organization.slug}/audit`,
+      const forbidden = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {},
+        },
         {
           headers: { cookie: outsiderCookie },
         }
@@ -347,8 +388,13 @@ describe("organizations audit route", () => {
         throw new Error("Owner login must expose a cookie header");
       }
 
-      const missing = await app.request(
-        "http://localhost/api/organizations/missing-org/audit",
+      const missing = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: "missing-org",
+          },
+          query: {},
+        },
         {
           headers: { cookie: ownerCookie },
         }

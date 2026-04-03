@@ -45,7 +45,8 @@ function buildConflictMessage(input: { multipleDefaults: boolean }): string {
 export const dataSourcesSentryQueryRoute = createProviderRoute<
   SentryCredentials,
   typeof methodSchema,
-  z.output<typeof sentryFetchApiRequestSchema>
+  z.output<typeof sentryFetchApiRequestSchema>,
+  "/sentry/query"
 >({
   buildConflictMessage,
   credentialsGuard: isSentryCredentials,

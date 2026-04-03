@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { prepareApplicationDatabase } from "@onequery/db/server";
 import { Hono } from "hono";
+import { testClient } from "hono/testing";
 
 import { createServerApi } from "../app";
 import { createMemoryApiRateLimitStorage } from "../lib/rate-limit-storage";
@@ -97,6 +98,7 @@ export async function createRouteIntegrationHarness(
   return {
     app,
     auth: storage.auth,
+    client: testClient(app),
     db: storage.db,
     runtimeConfig,
     test: test as typeof test & {

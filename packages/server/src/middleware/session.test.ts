@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { testClient } from "hono/testing";
 import { describe, expect, it } from "vitest";
 
 import type { StorageVariables } from "../storage";
@@ -40,7 +41,7 @@ describe("session middleware", () => {
       .use("*", sessionMiddleware())
       .get("/", (c) => c.json({ session: c.get("session") }));
 
-    const response = await app.request("http://localhost/");
+    const response = await testClient(app).index.$get();
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({

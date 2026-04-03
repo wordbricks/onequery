@@ -50,7 +50,8 @@ function isGitHubCredentials(value: unknown): value is GitHubCredentials {
 export const dataSourcesGitHubQueryRoute = createProviderRoute<
   GitHubCredentials,
   typeof methodSchema,
-  z.output<typeof fetchGitHubApiRequestSchema>
+  z.output<typeof fetchGitHubApiRequestSchema>,
+  "/github/query"
 >({
   credentialsGuard: isGitHubCredentials,
   execute: ({ credentials, request }) =>

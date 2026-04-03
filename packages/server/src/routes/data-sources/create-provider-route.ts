@@ -33,6 +33,7 @@ interface ProviderRouteOptions<
   TCredentials,
   TMethodSchema extends z.ZodType,
   TRequest,
+  TRoutePath extends string,
 > {
   credentialsGuard: (creds: unknown) => creds is TCredentials;
   execute: (input: {
@@ -55,7 +56,7 @@ interface ProviderRouteOptions<
   provider: ProviderType;
   providerLabel: string;
   relayErrorPrefix?: string;
-  routePath: string;
+  routePath: TRoutePath;
   buildConflictMessage?: (input: { multipleDefaults: boolean }) => string;
   missingDataSourceMessage?: string;
 }
@@ -97,7 +98,15 @@ export function createProviderRoute<
   TCredentials,
   TMethodSchema extends z.ZodType,
   TRequest,
->(options: ProviderRouteOptions<TCredentials, TMethodSchema, TRequest>) {
+  TRoutePath extends string,
+>(
+  options: ProviderRouteOptions<
+    TCredentials,
+    TMethodSchema,
+    TRequest,
+    TRoutePath
+  >
+) {
   const querySchema = createProviderQuerySchema(options.methodSchema);
 
   return new Hono<RouteContext>().post(
