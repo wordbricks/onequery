@@ -2,32 +2,11 @@
   "extends": ["//"],
   "tasks": {
     "build": {
+      "dependsOn": [],
       "env": [
         "AR",
         "CC",
-        "CXX",
-        "DEVELOPER_DIR",
-        "MACOSX_DEPLOYMENT_TARGET",
-        "SDKROOT"
-      ]
-    },
-    "topo": {
-      "inputs": [
-        "Cargo.toml",
-        "Cargo.lock",
-        "rust-toolchain.toml",
-        "justfile",
-        ".cargo/**",
-        "crates/**/Cargo.toml",
-        "crates/**/build.rs",
-        "crates/**/*.rs",
-        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
-      ]
-    },
-    "typecheck": {
-      "env": [
-        "AR",
-        "CC",
+        "CARGO_TARGET_DIR",
         "CXX",
         "DEVELOPER_DIR",
         "MACOSX_DEPLOYMENT_TARGET",
@@ -42,13 +21,43 @@
         "crates/**/Cargo.toml",
         "crates/**/build.rs",
         "crates/**/*.rs",
-        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
-      ]
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json",
+        "!**/.DS_Store",
+        "!**/target/**"
+      ],
+      "outputs": ["target/**"]
     },
-    "test": {
+    "typecheck": {
+      "dependsOn": [],
       "env": [
         "AR",
         "CC",
+        "CARGO_TARGET_DIR",
+        "CXX",
+        "DEVELOPER_DIR",
+        "MACOSX_DEPLOYMENT_TARGET",
+        "SDKROOT"
+      ],
+      "inputs": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "justfile",
+        ".cargo/**",
+        "crates/**/Cargo.toml",
+        "crates/**/build.rs",
+        "crates/**/*.rs",
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json",
+        "!**/.DS_Store",
+        "!**/target/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [],
+      "env": [
+        "AR",
+        "CC",
+        "CARGO_TARGET_DIR",
         "CXX",
         "DEVELOPER_DIR",
         "MACOSX_DEPLOYMENT_TARGET",
@@ -65,7 +74,50 @@
         "crates/**/build.rs",
         "crates/**/*.rs",
         "crates/**/*.snap",
-        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json"
+        "$TURBO_ROOT$/packages/cli-contract/openapi/generated/cli.openapi.json",
+        "!**/.DS_Store",
+        "!**/target/**"
+      ]
+    },
+    "test:integration": {
+      "dependsOn": [],
+      "env": ["CARGO_TARGET_DIR", "ONEQUERY_RUNTIME_ROOT"],
+      "inputs": [
+        "package.json",
+        "bin/**",
+        "scripts/**",
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "justfile",
+        ".cargo/**",
+        "crates/**",
+        "$TURBO_ROOT$/apps/web/index.html",
+        "$TURBO_ROOT$/apps/web/package.json",
+        "$TURBO_ROOT$/apps/web/public/**",
+        "$TURBO_ROOT$/apps/web/src/**",
+        "$TURBO_ROOT$/apps/web/tsconfig.e2e.json",
+        "$TURBO_ROOT$/apps/web/tsconfig.json",
+        "$TURBO_ROOT$/apps/web/vite.config.ts",
+        "$TURBO_ROOT$/packages/base/src/**",
+        "$TURBO_ROOT$/packages/bun-server/src/**",
+        "$TURBO_ROOT$/packages/cli-contract/openapi/**",
+        "$TURBO_ROOT$/packages/cli-server/generated/**",
+        "$TURBO_ROOT$/packages/cli-server/src/**",
+        "$TURBO_ROOT$/packages/codecs/src/**",
+        "$TURBO_ROOT$/packages/config-loader/src/**",
+        "$TURBO_ROOT$/packages/config/src/**",
+        "$TURBO_ROOT$/packages/contracts/src/**",
+        "$TURBO_ROOT$/packages/datetime/src/**",
+        "$TURBO_ROOT$/packages/db/src/**",
+        "$TURBO_ROOT$/packages/server/src/**",
+        "$TURBO_ROOT$/packages/ui/src/**",
+        "!**/.DS_Store",
+        "!**/target/**",
+        "!$TURBO_ROOT$/apps/**/.DS_Store",
+        "!$TURBO_ROOT$/apps/**/target/**",
+        "!$TURBO_ROOT$/packages/**/.DS_Store",
+        "!$TURBO_ROOT$/packages/**/target/**"
       ]
     }
   }

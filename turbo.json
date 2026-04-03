@@ -3,28 +3,26 @@
   "remoteCache": {
     "signature": true
   },
-  "globalEnv": [
-    "CONNECTOR_ABORT_ON_AUTH_FAILURE",
-    "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
-    "CARGO_TARGET_DIR",
-    "DATABASE_URL",
-    "GITHUB_ACTIONS_INTEGRATION_ID",
-    "NODE_ENV",
-    "ONEQUERY_LANDING_DEV_PORT",
-    "ONEQUERY_RUNTIME_ROOT",
-    "PATH"
-  ],
-  "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath"],
+  "globalEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath", "PATH"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "env": ["ONEQUERY_E2E"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"],
       "outputs": ["dist/**", "dist-worker/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["LOCAL_AGENT"]
+      "passThroughEnv": [
+        "LOCAL_AGENT",
+        "CONNECTOR_ABORT_ON_AUTH_FAILURE",
+        "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
+        "DATABASE_URL",
+        "ONEQUERY_LANDING_DEV_PORT",
+        "ONEQUERY_RUNTIME_ROOT"
+      ]
     },
     "dev:container": {
       "cache": false,
@@ -46,13 +44,16 @@
       "cache": false
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"]
     },
     "test:integration": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"],
       "outputs": ["coverage/**"]
     },
     "test:e2e": {
@@ -60,10 +61,12 @@
       "cache": false
     },
     "topo": {
-      "dependsOn": ["^topo"]
+      "dependsOn": ["^topo"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"]
     },
     "typecheck": {
-      "dependsOn": ["topo"]
+      "dependsOn": ["topo"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"]
     },
     "//#typecheck:root": {}
   }

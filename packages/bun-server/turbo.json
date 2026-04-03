@@ -1,0 +1,33 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "src/**",
+        "!src/**/.DS_Store",
+        "!src/**/target/**"
+      ]
+    },
+    "topo": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "src/**",
+        "!src/**/.DS_Store",
+        "!src/**/target/**"
+      ]
+    },
+    "typecheck": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "src/**",
+        "!src/**/.DS_Store",
+        "!src/**/target/**"
+      ]
+    }
+  }
+}

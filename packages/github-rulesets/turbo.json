@@ -1,0 +1,17 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "check": {
+      "cache": false,
+      "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
+    },
+    "plan": {
+      "cache": false,
+      "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
+    },
+    "apply": {
+      "cache": false,
+      "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
+    }
+  }
+}
