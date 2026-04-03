@@ -25,6 +25,7 @@ use crate::workflows::runner::TransitionProgress;
 
 use super::super::CommandContext;
 use super::super::ResolvedOrgSource;
+use super::super::with_command_snapshot_path;
 use super::CheckingAuthState;
 use super::ExecutingQueryState;
 use super::FailedState;
@@ -52,12 +53,6 @@ use super::presentation::render_query_output;
 use super::presentation::render_query_validation_output;
 use super::validate::reduce_validating_query;
 use super::validate_query_source_key;
-
-fn with_legacy_snapshot_path(test: impl FnOnce()) {
-    let mut settings = insta::Settings::clone_current();
-    settings.set_snapshot_path("../snapshots");
-    settings.bind(test);
-}
 
 fn sample_context() -> CommandContext {
     CommandContext {
@@ -130,7 +125,7 @@ fn render_query_output_snapshot() {
     )
     .expect("expected query output");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -167,7 +162,7 @@ fn render_query_validation_output_snapshot() {
     )
     .expect("expected query validation output");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }

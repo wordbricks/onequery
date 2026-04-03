@@ -16,6 +16,7 @@ use crate::workflows::runner::TransitionProgress;
 
 use super::super::CommandContext;
 use super::super::ResolvedOrgSource;
+use super::super::with_command_snapshot_path;
 use super::presentation::current;
 use super::presentation::render_org_get_output;
 use super::presentation::render_org_list_output;
@@ -32,12 +33,6 @@ use super::workflow::OrgTerminalState;
 use super::workflow::normalize_org_slug;
 use super::workflow::reduce;
 
-fn with_legacy_snapshot_path(test: impl FnOnce()) {
-    let mut settings = insta::Settings::clone_current();
-    settings.set_snapshot_path("../snapshots");
-    settings.bind(test);
-}
-
 #[test]
 fn current_output_snapshot_from_flag() {
     let output = current(&CommandContext {
@@ -49,7 +44,7 @@ fn current_output_snapshot_from_flag() {
         verbose: false,
     });
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -65,7 +60,7 @@ fn current_output_snapshot_unresolved() {
         verbose: false,
     });
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -95,7 +90,7 @@ fn current_output_uses_config_source_label() {
 fn use_org_unchanged_output_snapshot() {
     let output = render_use_org_unchanged_output("acme");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -119,7 +114,7 @@ fn use_org_unchanged_output_data_marks_config_as_source_of_truth() {
 fn use_org_updated_output_snapshot() {
     let output = render_use_org_updated_output("acme");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -142,7 +137,7 @@ fn use_org_updated_output_data_marks_the_org_as_changed() {
 fn use_org_dry_run_output_snapshot() {
     let output = render_use_org_dry_run_output("acme", true);
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -165,7 +160,7 @@ fn org_get_output_snapshot() {
     )
     .expect("expected org get output");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -408,7 +403,7 @@ fn org_list_output_snapshot() {
     )
     .expect("expected org list snapshot output");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }
@@ -448,7 +443,7 @@ fn org_list_output_snapshot_empty_state() {
     )
     .expect("expected org list empty state snapshot output");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
 }

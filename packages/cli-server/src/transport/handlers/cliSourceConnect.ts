@@ -161,9 +161,6 @@ export const cliSourceConnectHandlers = factory.createHandlers(
       }
     }
 
-    // Comment: the legacy app route accepts broader data source names, but the
-    // CLI must keep new names immediately addressable as `sourceKey` path
-    // segments on the public CLI surface.
     const result = await runCliConnectSourceEffect({
       db: c.var.db,
       effect: {

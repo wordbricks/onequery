@@ -240,6 +240,13 @@ pub(crate) fn is_process_running(pid: u32) -> bool {
     }
 }
 
+#[cfg(test)]
+pub(crate) fn with_command_snapshot_path(test: impl FnOnce()) {
+    let mut settings = insta::Settings::clone_current();
+    settings.set_snapshot_path("../snapshots");
+    settings.bind(test);
+}
+
 pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
     match context.resolved_org.as_deref() {
         Some(org) => crate::identifiers::normalize_org_slug(org).ok_or_else(|| {

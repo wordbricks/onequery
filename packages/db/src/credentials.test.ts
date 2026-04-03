@@ -146,61 +146,6 @@ describe("credentials schemas", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should coerce legacy ssl boolean to prefer", () => {
-      const credentials = {
-        database: "mydb",
-        host: "localhost",
-        password: "secret123",
-        port: 5432,
-        ssl: true,
-        type: "postgres",
-        username: "admin",
-      };
-
-      const result = PostgresCredentialsSchema.safeParse(credentials);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.sslMode).toBe("prefer");
-      }
-    });
-
-    it("should preserve explicit sslMode when present", () => {
-      const credentials = {
-        database: "mydb",
-        host: "localhost",
-        password: "secret123",
-        port: 5432,
-        ssl: true,
-        sslMode: "require",
-        type: "postgres",
-        username: "admin",
-      };
-
-      const result = PostgresCredentialsSchema.safeParse(credentials);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.sslMode).toBe("require");
-      }
-    });
-
-    it("should coerce legacy ssl false to disable", () => {
-      const credentials = {
-        database: "mydb",
-        host: "localhost",
-        password: "secret123",
-        port: 5432,
-        ssl: false,
-        type: "postgres",
-        username: "admin",
-      };
-
-      const result = PostgresCredentialsSchema.safeParse(credentials);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.sslMode).toBe("disable");
-      }
-    });
-
     it("should accept connection string format", () => {
       const credentials = {
         database: "production",

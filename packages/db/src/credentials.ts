@@ -1,56 +1,34 @@
 import { z } from "zod";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-const blankStringToUndefined = (value: unknown): unknown => {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  return value.trim().length === 0 ? undefined : value;
-};
-
 const trimmedString = (message: string) => z.string().trim().min(1, message);
+// Keep `.optional()` at the outermost layer so Hono infers these request
+// fields as optional instead of required `unknown`.
 const optionalTrimmedString = (message: string) =>
-  z.preprocess(blankStringToUndefined, trimmedString(message).optional());
+  z
+    .string()
+    .trim()
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .pipe(trimmedString(message).optional())
+    .optional();
 const requiredOpaqueString = (message: string) =>
   z.string().refine((value) => value.trim().length > 0, message);
 const optionalOpaqueString = (message: string) =>
-  z.preprocess(
-    blankStringToUndefined,
-    requiredOpaqueString(message).optional()
-  );
+  z
+    .string()
+    .transform((value) => (value.trim().length === 0 ? undefined : value))
+    .pipe(requiredOpaqueString(message).optional())
+    .optional();
 
 const trimmedUrl = (requiredMessage: string, invalidMessage: string) =>
   z.string().trim().min(1, requiredMessage).pipe(z.url(invalidMessage));
 
 const optionalTrimmedUrl = (invalidMessage: string) =>
-  z.preprocess(
-    blankStringToUndefined,
-    z.string().trim().pipe(z.url(invalidMessage)).optional()
-  );
-
-const coerceSslMode = (value: unknown): unknown => {
-  if (!isRecord(value)) {
-    return value;
-  }
-
-  if ("sslMode" in value) {
-    return value;
-  }
-
-  if (typeof value.ssl === "boolean") {
-    return {
-      ...value,
-      sslMode: value.ssl ? "prefer" : "disable",
-    };
-  }
-
-  return {
-    ...value,
-  };
-};
+  z
+    .string()
+    .trim()
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .pipe(z.url(invalidMessage).optional())
+    .optional();
 
 const MONGODB_CONNECTION_STRING_SCHEMA = trimmedString(
   "Connection string is required"
@@ -63,33 +41,27 @@ const MONGODB_CONNECTION_STRING_SCHEMA = trimmedString(
 export const SslModeSchema = z.enum(["disable", "prefer", "require"]);
 export type SslMode = z.infer<typeof SslModeSchema>;
 
-export const PostgresCredentialsSchema = z.preprocess(
-  coerceSslMode,
-  z.object({
-    database: trimmedString("Database name is required"),
-    host: trimmedString("Host is required"),
-    password: requiredOpaqueString("Password is required"),
-    port: z.number().int().min(1).max(65535).default(5432),
-    sslMode: SslModeSchema.default("prefer"),
-    type: z.literal("postgres"),
-    username: trimmedString("Username is required"),
-  })
-);
+export const PostgresCredentialsSchema = z.object({
+  database: trimmedString("Database name is required"),
+  host: trimmedString("Host is required"),
+  password: requiredOpaqueString("Password is required"),
+  port: z.number().int().min(1).max(65535).default(5432),
+  sslMode: SslModeSchema.default("prefer"),
+  type: z.literal("postgres"),
+  username: trimmedString("Username is required"),
+});
 
 export type PostgresCredentials = z.infer<typeof PostgresCredentialsSchema>;
 
-export const MySQLCredentialsSchema = z.preprocess(
-  coerceSslMode,
-  z.object({
-    database: trimmedString("Database name is required"),
-    host: trimmedString("Host is required"),
-    password: requiredOpaqueString("Password is required"),
-    port: z.number().int().min(1).max(65535).default(3306),
-    sslMode: SslModeSchema.default("prefer"),
-    type: z.literal("mysql"),
-    username: trimmedString("Username is required"),
-  })
-);
+export const MySQLCredentialsSchema = z.object({
+  database: trimmedString("Database name is required"),
+  host: trimmedString("Host is required"),
+  password: requiredOpaqueString("Password is required"),
+  port: z.number().int().min(1).max(65535).default(3306),
+  sslMode: SslModeSchema.default("prefer"),
+  type: z.literal("mysql"),
+  username: trimmedString("Username is required"),
+});
 
 export type MySQLCredentials = z.infer<typeof MySQLCredentialsSchema>;
 
