@@ -4,7 +4,12 @@
     "signature": true
   },
   "globalEnv": ["NODE_ENV"],
-  "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath"],
+  "globalPassThroughEnv": [
+    "npm_config_user_agent",
+    "npm_execpath",
+    "PATH",
+    "GITHUB_ACTIONS_INTEGRATION_ID"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
