@@ -259,21 +259,51 @@ fn validate_master_encryption_key(value: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
+fn validate_opaque_secret_transport(value: &str) -> Result<(), &'static str> {
+    if value.trim().is_empty() {
+        return Err("must not be empty");
+    }
+
+    Ok(())
+}
+
+fn invalid_self_host_secrets_error(
+    secrets_path: &Path,
+    command_line: &str,
+    field_path: &str,
+    message: &str,
+) -> CliError {
+    CliError::new(
+        "invalid self-host secrets config",
+        command_line,
+        ErrorStage::LoadConfig,
+        format!("{} -> {field_path}: {message}", secrets_path.display()),
+        vec![format!("fix {}", secrets_path.display())],
+    )
+}
+
 fn validate_self_host_secrets(
     secrets: &SecretsConfig,
     secrets_path: &Path,
     command_line: &str,
 ) -> Result<(), CliError> {
-    validate_master_encryption_key(&secrets.crypto.master_encryption_key).map_err(|message| {
-        CliError::new(
-            "invalid self-host secrets config",
+    validate_opaque_secret_transport(&secrets.auth.secret).map_err(|message| {
+        invalid_self_host_secrets_error(secrets_path, command_line, "auth.secret", message)
+    })?;
+    validate_opaque_secret_transport(&secrets.connectors.enrollment_token).map_err(|message| {
+        invalid_self_host_secrets_error(
+            secrets_path,
             command_line,
-            ErrorStage::LoadConfig,
-            format!(
-                "{} -> crypto.master_encryption_key: {message}",
-                secrets_path.display()
-            ),
-            vec![format!("fix {}", secrets_path.display())],
+            "connectors.enrollment_token",
+            message,
+        )
+    })?;
+    validate_master_encryption_key(&secrets.crypto.master_encryption_key).map_err(|message| {
+        invalid_self_host_secrets_error(
+            secrets_path,
+            command_line,
+            "crypto.master_encryption_key",
+            message,
         )
     })
 }
@@ -1143,6 +1173,70 @@ secure = false
             error.why,
             format!(
                 "{} -> crypto.master_encryption_key: must be base64 that decodes to exactly 32 bytes",
+                paths.secrets_path.display()
+            )
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_empty_auth_secret_before_runtime_launch() {
+        let (test_dir, paths) = create_test_paths("self-host-empty-auth-secret");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            format!(
+                "[auth]\nsecret = \"\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+            .expect_err("expected empty auth secret to fail before runtime launch");
+
+        assert_eq!(error.title, "invalid self-host secrets config");
+        assert_eq!(
+            error.why,
+            format!(
+                "{} -> auth.secret: must not be empty",
+                paths.secrets_path.display()
+            )
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_whitespace_connector_enrollment_token_before_runtime_launch() {
+        let (test_dir, paths) = create_test_paths("self-host-whitespace-enrollment-token");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            format!(
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"   \"\n"
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+            .expect_err("expected whitespace enrollment token to fail before runtime launch");
+
+        assert_eq!(error.title, "invalid self-host secrets config");
+        assert_eq!(
+            error.why,
+            format!(
+                "{} -> connectors.enrollment_token: must not be empty",
                 paths.secrets_path.display()
             )
         );
