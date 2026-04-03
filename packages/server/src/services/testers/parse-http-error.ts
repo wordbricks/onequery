@@ -39,7 +39,7 @@ export function parseHttpStatusError(
     };
   }
 
-  const matched = err.message.match(HTTP_ERROR_PATTERN);
+  const matched = HTTP_ERROR_PATTERN.exec(err.message);
   if (!matched) {
     return createFailureResult({ error: err.message, latencyMs });
   }

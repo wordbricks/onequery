@@ -63,7 +63,7 @@ function hasMultipleStatements(sql: string): boolean {
 }
 
 function readFirstKeyword(sql: string): string {
-  const match = sql.match(/^[\s(]*([a-zA-Z_]+)/);
+  const match = /^[\s(]*([a-zA-Z_]+)/.exec(sql);
   if (!match?.[1]) {
     return "";
   }
