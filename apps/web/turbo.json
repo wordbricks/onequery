@@ -1,0 +1,14 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": ["$TURBO_EXTENDS$", "!public/images/**"]
+    },
+    "topo": {
+      "inputs": ["$TURBO_EXTENDS$", "!public/images/**"]
+    },
+    "typecheck": {
+      "inputs": ["$TURBO_EXTENDS$", "!public/images/**"]
+    }
+  }
+}
