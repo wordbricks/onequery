@@ -7,10 +7,10 @@ We treat workflows as explicit, deterministic state machines.
 If you encounter something surprising or confusing in this project, flag it as a comment.
 
 - Runtime: Bun
-- For type checking, use `turbo run typecheck`.
-- For testing, use `turbo run test`.
-- For linting, use `bun run lint -- --format json`. For type-aware lint, append `--type-aware` flag (takes more time then normal lint).
-- For checking lint/format for whole monorepo, use `turbo run check`, to fix, `turbo run check:fix`
+- For type checking, use `bunx turbo typecheck`.
+- For testing, use `bunx turbo test`.
+- For linting, use `bun lint -- --format json`. For type-aware lint, append `--type-aware` flag (takes more time then normal lint).
+- For checking lint/format for whole monorepo, use `bunx turbo check`, to fix, `bunx turbo check:fix`
 
 ### Auto-generated files and how to generate them:
 NOTE: Don't edit them manually.
