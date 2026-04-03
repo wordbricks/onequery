@@ -2,9 +2,17 @@ pre-commit:
   commands:
     lint:
       run: bunx oxlint --fix {staged_files}
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs}"
       stage_fixed: true
     format:
       run: bunx oxfmt {staged_files}
+      glob:
+        - "*.{js,jsx,ts,tsx,mjs,cjs}"
+        - "*.{json,jsonc,json5}"
+        - "*.{yaml,yml,toml}"
+        - "*.{md,mdx}"
+        - "*.{css,scss,less}"
+        - "*.{html,vue,gql,graphql,hbs}"
       stage_fixed: true
 
 pre-push:

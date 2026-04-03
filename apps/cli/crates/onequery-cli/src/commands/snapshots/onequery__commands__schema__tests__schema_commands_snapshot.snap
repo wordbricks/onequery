@@ -1,6 +1,5 @@
 ---
 source: crates/onequery-cli/src/commands/schema/tests.rs
-assertion_line: 37
 expression: rendered
 ---
 {
@@ -2796,7 +2795,7 @@ expression: rendered
         "required": [],
         "type": "object"
       },
-      "summary": "Launch the packaged self-host runtime after writing the resolved launch contract.",
+      "summary": "Launch the self-host runtime bundle after writing the resolved launch contract.",
       "supportsDryRun": false,
       "supportsFields": false,
       "supportsHeadlessAuth": true,

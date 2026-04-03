@@ -11,8 +11,12 @@ use super::PACKAGED_SERVER_FILENAME;
 use super::PACKAGED_SERVER_MUSL_FILENAME;
 use super::PACKAGED_SERVER_WINDOWS_FILENAME;
 use super::PACKAGED_VENDOR_CLI_DIR;
+use super::launch::RuntimeBundleRoot;
+use super::launch::RuntimeBundleRootSource;
+use super::launch::current_executable_is_cargo_build_output;
 use super::launch::packaged_server_candidates;
 use super::launch::resolve_packaged_bundle_root_from_current_executable;
+use super::launch::resolve_runtime_bundle_root_from_components;
 use super::launch::select_packaged_server_candidate;
 use super::render::render_serve_logs_output;
 use super::render::render_serve_output;
@@ -148,6 +152,73 @@ fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir()
                 .join("vendor")
                 .join("x86_64-unknown-linux-musl")
         )
+    );
+}
+
+#[test]
+fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
+    let current_executable = Path::new("/tmp/vendor/x86_64-unknown-linux-musl/onequery/onequery");
+    let runtime_root_override = Path::new("/tmp/staged-runtime");
+    let resolved = resolve_runtime_bundle_root_from_components(
+        Some(runtime_root_override),
+        current_executable,
+        "onequery serve",
+    )
+    .expect("expected runtime root override to win");
+
+    assert_eq!(
+        resolved,
+        RuntimeBundleRoot {
+            path: runtime_root_override.to_path_buf(),
+            source: RuntimeBundleRootSource::EnvironmentOverride,
+        }
+    );
+}
+
+#[test]
+fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_override() {
+    let current_executable = Path::new("/tmp/vendor/x86_64-unknown-linux-musl/onequery/onequery");
+    let resolved =
+        resolve_runtime_bundle_root_from_components(None, current_executable, "onequery serve")
+            .expect("expected packaged executable layout to resolve");
+
+    assert_eq!(
+        resolved,
+        RuntimeBundleRoot {
+            path: Path::new("/tmp/vendor/x86_64-unknown-linux-musl").to_path_buf(),
+            source: RuntimeBundleRootSource::PackagedExecutable,
+        }
+    );
+}
+
+#[test]
+fn current_executable_is_cargo_build_output_detects_standard_debug_binary_path() {
+    assert_eq!(
+        current_executable_is_cargo_build_output(Path::new("/tmp/project/target/debug/onequery")),
+        true
+    );
+}
+
+#[test]
+fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
+    let error = resolve_runtime_bundle_root_from_components(
+        None,
+        Path::new("/tmp/project/target/debug/onequery"),
+        "onequery serve",
+    )
+    .expect_err("expected Cargo output guidance");
+
+    assert_eq!(
+        error.title.as_str(),
+        "failed to resolve self-host runtime bundle"
+    );
+    assert_eq!(
+        error.why.as_str(),
+        "current executable /tmp/project/target/debug/onequery was launched from Cargo output; set ONEQUERY_RUNTIME_ROOT to a staged self-host runtime bundle root"
+    );
+    assert_eq!(
+        error.try_next,
+        vec!["set ONEQUERY_RUNTIME_ROOT=<bundle-root> and retry onequery serve".to_owned()]
     );
 }
 
