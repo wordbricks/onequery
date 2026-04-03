@@ -54,7 +54,7 @@ That coverage is expensive but still missed the actual production failure.
 - [x] Make all test helpers use a valid sample master key.
 - [x] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
 - [x] Prefer small boundary-focused samples over one giant canonical launch fixture.
-- [ ] Share test-data rules across TS and Rust, but keep builders local to each language.
+- [x] Share test-data rules across TS and Rust, but keep builders local to each language.
 - [x] In Rust, keep tests for:
   - [x] filesystem layout
   - [x] config/secrets parsing

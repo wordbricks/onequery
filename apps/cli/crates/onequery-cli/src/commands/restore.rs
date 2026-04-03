@@ -327,8 +327,7 @@ mod tests {
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
     use crate::config::self_host::default_port;
-
-    const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
     fn restore_replaces_existing_runtime_and_bootstraps_missing_secrets_without_reporting_them_as_restored()

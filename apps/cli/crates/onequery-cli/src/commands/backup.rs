@@ -298,8 +298,7 @@ mod tests {
     use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::default_port;
-
-    const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
     fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()

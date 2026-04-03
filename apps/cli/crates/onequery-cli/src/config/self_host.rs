@@ -745,8 +745,7 @@ mod tests {
     use super::default_port;
     use super::load_self_host_config_with_paths;
     use super::write_self_host_launch_config_for_test;
-
-    const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     fn create_test_paths(label: &str) -> (PathBuf, SelfHostRuntimePaths) {
         let test_dir = std::env::temp_dir().join(format!("onequery-{label}-{}", Uuid::new_v4()));
@@ -960,16 +959,9 @@ public_origin = "https://onequery.example.com"
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.secrets_path,
-            r#"[auth]
-secret = "better"
-unexpected = true
-
-[crypto]
-master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
-
-[connectors]
-enrollment_token = "connector"
-"#,
+            format!(
+                "[auth]\nsecret = \"better\"\nunexpected = true\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+            ),
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
