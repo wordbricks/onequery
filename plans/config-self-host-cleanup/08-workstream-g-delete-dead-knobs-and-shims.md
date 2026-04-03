@@ -49,10 +49,10 @@ That coverage is expensive but still missed the actual production failure.
 
 ### TODO
 
-- [ ] Create shared launch-config builders/helpers in one place for TS tests.
+- [x] Create shared launch-config builders/helpers in one place for TS tests.
 - [ ] Treat semantic validators and runtime smoke tests as the real contract checks; any fixture kept in the repo is only a convenience artifact, not the source of truth.
-- [ ] Make all test helpers use a valid sample master key.
-- [ ] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
+- [x] Make all test helpers use a valid sample master key.
+- [x] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
 - [ ] Prefer small boundary-focused samples over one giant canonical launch fixture.
 - [ ] Share test-data rules across TS and Rust, but keep builders local to each language.
 - [ ] In Rust, keep tests for:
