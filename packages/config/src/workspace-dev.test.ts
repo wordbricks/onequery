@@ -34,6 +34,19 @@ function writeToml(
   writeFileSync(join(rootDir, filename), `${lines.join("\n")}\n`, "utf8");
 }
 
+function writeDefaultWorkspaceDevSecrets(rootDir: string): void {
+  writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+    "[auth]",
+    'secret = "better-auth-secret"',
+    "",
+    "[crypto]",
+    `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
+    "",
+    "[connectors]",
+    'enrollment_token = "connector-token"',
+  ]);
+}
+
 function writeTrackedWorkspaceDevConfig(rootDir: string): void {
   writeFileSync(
     join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
@@ -48,16 +61,7 @@ describe("@onequery/config workspace-dev", () => {
 
     try {
       writeTrackedWorkspaceDevConfig(rootDir);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(resolveWorkspaceDev({ rootDir })).toEqual({
         api: {
@@ -81,7 +85,7 @@ describe("@onequery/config workspace-dev", () => {
           enrollmentToken: "connector-token",
         },
         crypto: {
-          masterEncryptionKey: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
         },
         flags: {
           disableRateLimit: true,
@@ -230,6 +234,33 @@ describe("@onequery/config workspace-dev", () => {
     }
   });
 
+  it("rejects invalid master keys before projecting workspace-dev config", () => {
+    const rootDir = createTempRootDir();
+
+    try {
+      writeTrackedWorkspaceDevConfig(rootDir);
+      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
+        "[auth]",
+        'secret = "better-auth-secret"',
+        "",
+        "[crypto]",
+        'master_encryption_key = "master"',
+        "",
+        "[connectors]",
+        'enrollment_token = "connector-token"',
+      ]);
+
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
+        "crypto.master_encryption_key"
+      );
+      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
+        "decodes to exactly 32 bytes"
+      );
+    } finally {
+      rmSync(rootDir, { force: true, recursive: true });
+    }
+  });
+
   it("rejects duplicate host ports", () => {
     const rootDir = createTempRootDir();
 
@@ -253,16 +284,7 @@ describe("@onequery/config workspace-dev", () => {
         "[flags]",
         "disable_rate_limit = true",
       ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         'Workspace-dev host ports must be unique. "api.port" conflicts with "browser.port" on 4545.'
@@ -296,16 +318,7 @@ describe("@onequery/config workspace-dev", () => {
         "[flags]",
         "disable_rate_limit = true",
       ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("extra");
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
@@ -324,7 +337,7 @@ describe("@onequery/config workspace-dev", () => {
         'secret = "better-auth-secret"',
         "",
         "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
         'unexpected = "nope"',
         "",
         "[connectors]",
@@ -364,16 +377,7 @@ describe("@onequery/config workspace-dev", () => {
         "[auth]",
         'secret = "wrong-file"',
       ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("auth");
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
@@ -392,7 +396,7 @@ describe("@onequery/config workspace-dev", () => {
         'secret = "better-auth-secret"',
         "",
         "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
+        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
         "",
         "[connectors]",
         'enrollment_token = "connector-token"',
@@ -431,16 +435,7 @@ describe("@onequery/config workspace-dev", () => {
         "[flags]",
         "disable_rate_limit = true",
       ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("prt");
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser.port");
@@ -453,16 +448,7 @@ describe("@onequery/config workspace-dev", () => {
     const rootDir = createTempRootDir();
 
     try {
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         "Invalid workspace-dev config."
@@ -492,16 +478,7 @@ describe("@onequery/config workspace-dev", () => {
         "[flags]",
         "disable_rate_limit = true",
       ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+      writeDefaultWorkspaceDevSecrets(rootDir);
 
       expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
         "Invalid workspace-dev config."

@@ -62,7 +62,7 @@ That coverage is expensive but still missed the actual production failure.
   - [ ] launch-config projection
   - [ ] startup/serve behavior unique to the CLI
 - [x] Drop Rust tests that only repeat the same launch-contract shape with different hardcoded literals.
-- [ ] Add semantic tests that invalid master keys are rejected.
+- [x] Add semantic tests that invalid master keys are rejected.
 - [x] Add one CLI-owned smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
 - [x] Add one CLI-owned smoke test that invalid self-host secrets fail on startup, not later during API usage.
 
