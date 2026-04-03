@@ -543,39 +543,45 @@ export async function executeMySQLQuery(
     return initialAttempt;
   }
 
-  const attemptPlaintext = async (error: unknown) =>
-    runMySQLQuery(
-      mysql,
-      buildMySQLConnectionConfig(
-        creds,
-        buildMySQLSslConfig(false, false),
+  const attemptPlaintext = async (error: unknown) => {
+    try {
+      return await runMySQLQuery(
+        mysql,
+        buildMySQLConnectionConfig(
+          creds,
+          buildMySQLSslConfig(false, false),
+          timeoutMs
+        ),
+        query,
         timeoutMs
-      ),
-      query,
-      timeoutMs
-    ).catch(() => {
+      );
+    } catch {
       throw error;
-    });
+    }
+  };
 
-  return initialAttempt.catch(async (error: unknown) => {
+  try {
+    return await initialAttempt;
+  } catch (error) {
     if (!isTlsVerificationError(error)) {
       return attemptPlaintext(error);
     }
 
-    const relaxedAttempt = runMySQLQuery(
-      mysql,
-      buildMySQLConnectionConfig(
-        creds,
-        buildMySQLSslConfig(true, false),
+    try {
+      return await runMySQLQuery(
+        mysql,
+        buildMySQLConnectionConfig(
+          creds,
+          buildMySQLSslConfig(true, false),
+          timeoutMs
+        ),
+        query,
         timeoutMs
-      ),
-      query,
-      timeoutMs
-    );
-    return relaxedAttempt.catch(async (relaxedError: unknown) =>
-      attemptPlaintext(relaxedError)
-    );
-  });
+      );
+    } catch (relaxedError) {
+      return attemptPlaintext(relaxedError);
+    }
+  }
 }
 
 export async function executeBigQueryQuery(

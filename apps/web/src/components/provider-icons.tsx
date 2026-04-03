@@ -248,7 +248,7 @@ function SentryIcon({ size = 24, ...props }: ProviderIconProps) {
   );
 }
 
-function GitHubIcon({ size = 24, ...props }: ProviderIconProps) {
+export function GitHubIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"

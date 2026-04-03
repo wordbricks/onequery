@@ -146,8 +146,6 @@ export function AuthCallbackPage() {
         });
 
         if (landingTarget.kind === "organizationHome") {
-          // TODO: Check if org has agents
-          // Later we'll check: if no agents -> /onboarding/create-agent
           await navigate({
             params: { org_slug: landingTarget.organizationSlug },
             to: "/$org_slug/home",

@@ -30,7 +30,7 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getProviderIcon, ProviderIcons } from "@/components/provider-icons";
+import { GitHubIcon, getProviderIcon } from "@/components/provider-icons";
 import { AddDataSourceDialog } from "@/features/data-sources/add-data-source-dialog";
 import { showDataSourceErrorToast } from "@/features/data-sources/data-source-error-toast";
 import {
@@ -179,7 +179,7 @@ function DataSourceCard({
             </DropdownMenuItem>
             {dataSource.provider === "github" ? (
               <DropdownMenuItem onClick={() => setRepoDialogOpen(true)}>
-                <ProviderIcons.github size={16} stroke="2" />
+                <GitHubIcon size={16} stroke="2" />
                 Select Repositories
               </DropdownMenuItem>
             ) : null}
