@@ -58,7 +58,7 @@ impl ErrorStage {
     /// ```
     /// use onequery_cli_core::error::ErrorStage;
     ///
-    /// let stage = ErrorStage::from_api_stage("config", ErrorStage::Internal);
+    /// let stage = ErrorStage::from_api_stage("load_config", ErrorStage::Internal);
     /// let unknown = ErrorStage::from_api_stage("mystery_stage", ErrorStage::Render);
     ///
     /// assert_eq!(stage, ErrorStage::LoadConfig);
@@ -78,9 +78,6 @@ impl ErrorStage {
             "http" => Self::Http,
             "render" => Self::Render,
             "internal" => Self::Internal,
-            // CONTEXT: CLI endpoints historically emitted these aliases.
-            "config" => Self::LoadConfig,
-            "command" => Self::Internal,
             _ => fallback,
         }
     }
@@ -261,14 +258,6 @@ mod tests {
 
     use super::CliError;
     use super::ErrorStage;
-
-    #[test]
-    fn from_api_stage_maps_legacy_aliases() {
-        assert_eq!(
-            ErrorStage::from_api_stage("config", ErrorStage::Internal),
-            ErrorStage::LoadConfig
-        );
-    }
 
     #[test]
     fn from_api_stage_falls_back_for_unknown_values() {

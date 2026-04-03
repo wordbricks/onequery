@@ -5,6 +5,7 @@ use serde_json::json;
 
 use crate::cli::SchemaCommandArgs;
 use crate::cli::SchemaSubcommand;
+use crate::commands::with_command_snapshot_path;
 
 use super::CLI_OPENAPI_JSON;
 use super::DISCOVERY_SKILL_PATH;
@@ -18,12 +19,6 @@ use super::public_command_schemas;
 use super::registry::local_command_registry;
 use super::render_json_output;
 
-fn with_legacy_snapshot_path(test: impl FnOnce()) {
-    let mut settings = insta::Settings::clone_current();
-    settings.set_snapshot_path("../snapshots");
-    settings.bind(test);
-}
-
 #[test]
 fn schema_commands_snapshot() {
     let rendered = render_json_output(serde_json::json!({
@@ -33,7 +28,7 @@ fn schema_commands_snapshot() {
     .lines
     .join("\n");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(rendered);
     });
 }
@@ -53,7 +48,7 @@ fn schema_command_query_execute_snapshot() {
     .lines
     .join("\n");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(rendered);
     });
 }
@@ -67,7 +62,7 @@ fn schema_skills_snapshot() {
     .lines
     .join("\n");
 
-    with_legacy_snapshot_path(|| {
+    with_command_snapshot_path(|| {
         assert_snapshot!(rendered);
     });
 }

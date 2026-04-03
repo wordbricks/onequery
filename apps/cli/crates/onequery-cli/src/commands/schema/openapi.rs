@@ -84,7 +84,7 @@ fn resolve_http_command_schema(
         "x-onequery-supports-raw-input",
         derivation_command.clone(),
     )?;
-    ensure_legacy_read_control_flags_match(
+    ensure_read_control_flags_match(
         &read_controls,
         supports_fields,
         supports_pagination,
@@ -160,7 +160,7 @@ fn read_controls_from_operation(
     })
 }
 
-fn ensure_legacy_read_control_flags_match(
+fn ensure_read_control_flags_match(
     read_controls: &ReadControls,
     supports_fields: bool,
     supports_pagination: bool,
