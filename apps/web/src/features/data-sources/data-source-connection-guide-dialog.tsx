@@ -1510,11 +1510,7 @@ function GuideLocaleView(props: {
       </section>
 
       {props.content.steps.map((step, index) => (
-        <GuideSection
-          key={`${step.title}-${index}`}
-          step={step}
-          index={index}
-        />
+        <GuideSection key={step.title} step={step} index={index} />
       ))}
 
       {props.content.closingTitle && (

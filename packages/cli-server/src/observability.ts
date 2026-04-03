@@ -131,7 +131,6 @@ function writeCliLog(
     }
     case "error": {
       console.error(message, details);
-      return;
     }
   }
 }

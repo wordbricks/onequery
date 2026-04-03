@@ -94,6 +94,7 @@
     "jsdoc/require-returns-type": "off",
 
     "@typescript-eslint/consistent-type-definitions": "off",
+    "typescript/array-type": "off",
     "typescript/explicit-module-boundary-types": "off",
     "typescript/no-require-imports": "off",
     "typescript/explicit-function-return-type": "off",
@@ -102,16 +103,16 @@
     "typescript/require-await": "off",
 
     // TEMP: type-aware rules to fix incrementally
-    "typescript/strict-boolean-expressions": "off", // TEMP ~1044
-    "typescript/no-unsafe-member-access": "off", // TEMP ~656
-    "typescript/no-unsafe-assignment": "off", // TEMP ~595
-    "typescript/no-unsafe-call": "off", // TEMP ~139 external library .......
-    "typescript/no-unsafe-return": "off", // TEMP ~137
-    "typescript/no-unsafe-argument": "off", // TEMP ~102
-    "typescript/no-confusing-void-expression": "off", // TEMP ~172
+    "typescript/strict-boolean-expressions": "off", // TEMP ~293
+    "typescript/no-unsafe-member-access": "off", // TEMP ~121
+    "typescript/no-unsafe-assignment": "off", // TEMP ~160
+    "typescript/no-unsafe-call": "off", // TEMP ~5 external library .......
+    "typescript/no-unsafe-return": "off", // TEMP ~
+    "typescript/no-unsafe-argument": "off", // TEMP ~
+    "typescript/no-confusing-void-expression": "off", // TEMP ~
     "no-void": "off", // `typescript/no-floating-promises` needs explicit `void`
-    "typescript/prefer-nullish-coalescing": "off", // TEMP ~70
-    "typescript/no-unnecessary-type-arguments": "off", // TEMP ~59
+    "typescript/prefer-nullish-coalescing": "off", // TEMP ~13
+    "typescript/no-unnecessary-type-arguments": "off", // TEMP ~8
     "typescript/no-misused-promises": [
       "error",
       {
@@ -125,22 +126,17 @@
         },
       },
     ],
-    "typescript/unbound-method": "off", // TEMP ~23
-    "typescript/use-unknown-in-catch-callback-variable": "off", // TEMP ~16
-    "typescript/no-unnecessary-boolean-literal-compare": "off", // TEMP ~14
-    "typescript/switch-exhaustiveness-check": "off", // TEMP ~13
-    "typescript/no-unsafe-type-assertion": "off", // TEMP
-    "typescript/no-unnecessary-type-assertion": "off", // TEMP ~11
-    "typescript/no-redundant-type-constituents": "off", // TEMP ~11
-    "typescript/only-throw-error": "off", // TEMP ~10
-    "typescript/no-base-to-string": "off", // TEMP ~10
-    "typescript/restrict-template-expressions": "off", // TEMP ~5
-    "typescript/no-unsafe-enum-comparison": "off", // TEMP ~4
-    "typescript/no-misused-spread": "off", // TEMP ~4
-    "typescript/prefer-promise-reject-errors": "off", // TEMP ~3
-    "typescript/non-nullable-type-assertion-style": "off", // TEMP ~2
-    "typescript/no-duplicate-type-constituents": "off", // TEMP ~2
-    "typescript/no-unnecessary-template-expression": "off", // TEMP ~1
+    "typescript/use-unknown-in-catch-callback-variable": "off", // TEMP ~11
+    "typescript/switch-exhaustiveness-check": "off", // TEMP ~
+    "typescript/no-unsafe-type-assertion": "off", // TEMP ~46
+    "typescript/no-unnecessary-type-assertion": "off", // TEMP ~
+    "typescript/no-redundant-type-constituents": "off", // TEMP ~
+    "typescript/only-throw-error": "off", // TEMP ~
+    "typescript/no-base-to-string": "off", // TEMP ~
+    "typescript/restrict-template-expressions": "off", // TEMP ~
+    "typescript/prefer-promise-reject-errors": "off", // TEMP ~
+    "typescript/non-nullable-type-assertion-style": "off", // TEMP ~
+    "typescript/no-duplicate-type-constituents": "off", // TEMP ~
 
     "node/no-process-env": "off",
     "turbo/no-undeclared-env-vars": "error",
@@ -178,40 +174,33 @@
 
     "onequery/no-vi-mock": "error",
 
-    // TEMP: rules to fix incrementally (4315 errors after --fix)
-    "require-await": "off", // TEMP ~258 — remove async from functions without await
-    "promise/prefer-await-to-then": "off", // TEMP ~120 — refactor .then() chains to async/await
-    "promise/prefer-await-to-callbacks": "off", // TEMP ~67 — refactor callback patterns to async/await
-    "import/first": "off", // TEMP ~64 — move imports before other statements
-    "typescript/consistent-type-imports": "off", // TEMP ~46 — use import type for type-only imports
-    "no-nested-ternary": "off", // TEMP ~42 — flatten nested ternary expressions
-    "default-case": "off", // TEMP ~35 — add default case to switch statements
-    "no-negated-condition": "off", // TEMP ~30 — flip negated if/else conditions
-    "curly": "off", // TEMP ~28 — add braces to single-line if/else/for/while
-    "promise/avoid-new": "off", // TEMP ~28 — avoid new Promise(), use async/await
-    "no-use-before-define": "off", // TEMP ~402 — reorder function declarations
-    "complexity": "off", // TEMP ~55 — reduce cyclomatic complexity
-    "no-shadow": "off", // TEMP ~24 — rename shadowed variables
-    "no-empty-function": "off", // TEMP ~21 — remove or fill empty functions
-    "class-methods-use-this": "off", // TEMP ~20 — make methods static or use this
-    "promise/no-nesting": "off", // TEMP ~19 — flatten nested promises
-    "react-hooks/exhaustive-deps": "off", // TEMP ~16 — fix hook dependency arrays
-    "max-classes-per-file": "off", // TEMP ~14 — split files with multiple classes
-    "react/jsx-handler-names": "off", // TEMP ~13 — prefix handlers with handle/on
-    "no-promise-executor-return": "off", // TEMP ~10 — don't return in Promise executor
-    "react/jsx-pascal-case": "off", // TEMP ~9 — use PascalCase for JSX components
-    "typescript/no-invalid-void-type": "off", // TEMP ~8 — restrict void to return types
+    // TEMP: rules to fix incrementally
+    "require-await": "off", // TEMP ~161 — remove async from functions without await
+    "promise/prefer-await-to-then": "off", // TEMP ~28 — refactor .then() chains to async/await
+    "promise/prefer-await-to-callbacks": "off", // TEMP ~14 — refactor callback patterns to async/await
+    "typescript/consistent-type-imports": "off", // TEMP ~6 — use import type for type-only imports
+    "no-nested-ternary": "off", // TEMP ~ — flatten nested ternary expressions
+    "default-case": "off", // TEMP ~32 — add default case to switch statements
+    "no-negated-condition": "off", // TEMP ~11 — flip negated if/else conditions
+    "curly": "off", // TEMP ~1 — add braces to single-line if/else/for/while
+    "promise/avoid-new": "off", // TEMP ~9 — avoid new Promise(), use async/await
+    "no-use-before-define": "off", // TEMP ~403 — reorder function declarations
+    "complexity": "off", // TEMP ~10 — reduce cyclomatic complexity
+    "no-shadow": "off", // TEMP ~11 — rename shadowed variables
+    "no-empty-function": "off", // TEMP ~7 — remove or fill empty functions
+    "class-methods-use-this": "off", // TEMP ~1 — make methods static or use this
+    "promise/no-nesting": "off", // TEMP ~11 — flatten nested promises
+    "react-hooks/exhaustive-deps": "off", // TEMP ~8 — fix hook dependency arrays
+    "max-classes-per-file": "off", // TEMP ~4 — split files with multiple classes
+    "react/jsx-handler-names": "off", // TEMP ~9 — prefix handlers with handle/on
+    "no-promise-executor-return": "off", // TEMP ~3 — don't return in Promise executor
+    // "react/jsx-pascal-case": "off", // TEMP ~1 — use PascalCase for JSX components
+    "typescript/no-invalid-void-type": "off", // TEMP ~4 — restrict void to return types
     "no-bitwise": "off", // TEMP ~7 — avoid bitwise operators
-    "typescript/array-type": "off", // TEMP ~6 — use T[] instead of Array<T>
-    "jsx-a11y/heading-has-content": "off", // TEMP ~6 — add content to headings
-    "react/no-unescaped-entities": "off", // TEMP ~5 — escape special chars in JSX
-    "jsx-a11y/anchor-has-content": "off", // TEMP ~5 — add content to anchors
+    "react/no-unescaped-entities": "off", // TEMP ~2 — escape special chars in JSX
     "oxc/no-barrel-file": "off", // TEMP ~4 — eliminate barrel/index re-exports
-    "no-warning-comments": "off", // TEMP ~3 — resolve TODO/FIXME comments
-    "react/no-array-index-key": "off", // TEMP ~3 — don't use array index as key
-    "promise/no-promise-in-callback": "off", // TEMP ~2 — avoid promises in callbacks
+    // "promise/no-promise-in-callback": "off", // TEMP ~2 — avoid promises in callbacks
     "typescript/triple-slash-reference": "off", // TEMP ~1
-    "no-useless-return": "off", // TEMP ~1
     "no-script-url": "off", // TEMP ~1
     "no-redeclare": "off", // TEMP ~1
     "no-new": "off", // TEMP ~1
