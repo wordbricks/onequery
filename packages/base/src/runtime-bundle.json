@@ -1,0 +1,57 @@
+{
+  "manifestVersion": 1,
+  "runtimeRootEnvVar": "ONEQUERY_RUNTIME_ROOT",
+  "directories": {
+    "cli": {
+      "relativePath": "onequery"
+    },
+    "server": {
+      "relativePath": "server"
+    }
+  },
+  "runtimeEntries": {
+    "migrations": {
+      "relativePath": "runtime/migrations"
+    },
+    "webDist": {
+      "relativePath": "runtime/web",
+      "requiredFile": "index.html"
+    }
+  },
+  "runtimeAssetFamilies": {
+    "pglite": {
+      "buildOwnerPackage": "@onequery/db",
+      "buildSource": {
+        "kind": "package-entrypoint-directory",
+        "packageSpecifier": "@electric-sql/pglite"
+      },
+      "files": {
+        "pgliteWasm": {
+          "filename": "pglite.wasm"
+        },
+        "initdbWasm": {
+          "filename": "initdb.wasm"
+        },
+        "fsBundle": {
+          "filename": "pglite.data"
+        }
+      },
+      "packagedPath": "runtime/pglite"
+    },
+    "sqlParser": {
+      "buildOwnerPackage": "@onequery/server",
+      "buildSource": {
+        "kind": "resolved-specifier-map",
+        "specifiersByFileRole": {
+          "wasm": "@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm"
+        }
+      },
+      "files": {
+        "wasm": {
+          "filename": "sql_parser_wasm_bg.wasm"
+        }
+      },
+      "packagedPath": "runtime/sql-parser"
+    }
+  }
+}

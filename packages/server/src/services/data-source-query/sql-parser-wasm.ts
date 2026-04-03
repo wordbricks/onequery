@@ -6,8 +6,15 @@ import initWasm, {
 } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
 import type { InitInput } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
 import { isRecord } from "@onequery/base";
+import {
+  resolvePackagedRuntimeAssetPath,
+  resolveRuntimeRoot,
+} from "@onequery/base/runtime-bundle";
 
 import { isNodeLike } from "./wasm-runtime";
+
+const SQL_PARSER_RUNTIME_ASSET_FAMILY = "sqlParser";
+const SQL_PARSER_WASM_FILE_ROLE = "wasm";
 
 const parserState: {
   promise?: Promise<void>;
@@ -51,15 +58,49 @@ async function initSqlParserInNode(): Promise<void> {
     return;
   }
 
-  const [{ readFile }, { createRequire }] = await Promise.all([
+  const [{ readFile }, wasmPath] = await Promise.all([
     import("node:fs/promises"),
-    import("node:module"),
+    resolveSqlParserWasmPath(),
   ]);
-  const require = createRequire(import.meta.url);
-  const wasmPath =
-    require.resolve("@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm");
   const bytes = await readFile(wasmPath);
   initSync({ module: bytes });
+}
+
+async function resolveSqlParserWasmPath(): Promise<string> {
+  const explicitWasmPath = await resolvePackagedSqlParserWasmPath();
+  if (explicitWasmPath) {
+    return explicitWasmPath;
+  }
+
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  return require.resolve("@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm");
+}
+
+async function resolvePackagedSqlParserWasmPath(): Promise<string | null> {
+  if (!isNodeLike) {
+    return null;
+  }
+
+  const runtimeRoot = resolveRuntimeRoot(process.env);
+  if (!runtimeRoot) {
+    return null;
+  }
+
+  const { existsSync } = await import("node:fs");
+  const packagedWasmPath = resolvePackagedRuntimeAssetPath(
+    runtimeRoot,
+    SQL_PARSER_RUNTIME_ASSET_FAMILY,
+    SQL_PARSER_WASM_FILE_ROLE
+  );
+
+  if (!existsSync(packagedWasmPath)) {
+    return null;
+  }
+
+  // Comment: compiled Bun executables resolve nested package assets under
+  // `/$bunfs/root`, so the packaged runtime must provide the parser wasm file.
+  return packagedWasmPath;
 }
 
 function unwrapDefaultExport(value: unknown): unknown {

@@ -2,25 +2,27 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Deserialize;
 
 use super::LINUX_ARM64_GLIBC_LOADER_PATHS;
 use super::LINUX_ARM64_MUSL_LOADER_PATHS;
 use super::LINUX_X64_GLIBC_LOADER_PATHS;
 use super::LINUX_X64_MUSL_LOADER_PATHS;
-use super::PACKAGED_RUNTIME_DIR;
-use super::PACKAGED_SERVER_DIR;
 use super::PACKAGED_SERVER_FILENAME;
 use super::PACKAGED_SERVER_MUSL_FILENAME;
 use super::PACKAGED_SERVER_WINDOWS_FILENAME;
-use super::PACKAGED_VENDOR_CLI_DIR;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
-use super::WEB_INDEX_FILENAME;
 use super::state::ServeRuntimeState;
 
-const ONEQUERY_RUNTIME_ROOT_ENV: &str = "ONEQUERY_RUNTIME_ROOT";
+const RUNTIME_BUNDLE_SPEC_RAW: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../../../packages/base/src/runtime-bundle.json"
+));
+static RUNTIME_BUNDLE_SPEC: OnceLock<RuntimeBundleSpec> = OnceLock::new();
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct ServeLaunchPlan {
@@ -48,16 +50,54 @@ pub(super) struct RuntimeBundleRoot {
     pub(super) source: RuntimeBundleRootSource,
 }
 
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBundleSpec {
+    directories: RuntimeBundleDirectories,
+    runtime_entries: RuntimeBundleEntries,
+    runtime_root_env_var: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+struct RuntimeBundleDirectories {
+    cli: RuntimeBundlePathConfig,
+    server: RuntimeBundlePathConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBundleEntries {
+    migrations: RuntimeBundlePathConfig,
+    web_dist: RuntimeBundleWebEntry,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBundlePathConfig {
+    relative_path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBundleWebEntry {
+    relative_path: String,
+    required_file: String,
+}
+
 pub(super) fn resolve_launch_plan(
     state: &ServeRuntimeState,
     command_line: &str,
 ) -> Result<ServeLaunchPlan, CliError> {
     let bundle_root = resolve_runtime_bundle_root(command_line)?;
+    let bundle_spec = runtime_bundle_spec();
     let runtime_entry_path = resolve_packaged_server_executable(&bundle_root, command_line)?;
-    let migrations_dir =
-        join_path_segments(&bundle_root.path, &[PACKAGED_RUNTIME_DIR, "migrations"]);
-    let web_dist_dir = join_path_segments(&bundle_root.path, &[PACKAGED_RUNTIME_DIR, "web"]);
-    let web_index_path = web_dist_dir.join(WEB_INDEX_FILENAME);
+    let migrations_dir = bundle_root
+        .path
+        .join(&bundle_spec.runtime_entries.migrations.relative_path);
+    let web_dist_dir = bundle_root
+        .path
+        .join(&bundle_spec.runtime_entries.web_dist.relative_path);
+    let web_index_path = web_dist_dir.join(&bundle_spec.runtime_entries.web_dist.required_file);
 
     if runtime_entry_path.is_file() && migrations_dir.is_dir() && web_index_path.is_file() {
         return Ok(ServeLaunchPlan {
@@ -85,7 +125,7 @@ fn resolve_packaged_server_executable(
     bundle_root: &RuntimeBundleRoot,
     command_line: &str,
 ) -> Result<PathBuf, CliError> {
-    let server_dir = bundle_root.path.join(PACKAGED_SERVER_DIR);
+    let server_dir = bundle_root.path.join(packaged_server_relative_path());
     let candidates = packaged_server_candidates(
         server_dir.as_path(),
         std::env::consts::OS,
@@ -135,7 +175,7 @@ fn resolve_packaged_server_executable(
 }
 
 fn resolve_runtime_bundle_root(command_line: &str) -> Result<RuntimeBundleRoot, CliError> {
-    let runtime_root_override = env::var_os(ONEQUERY_RUNTIME_ROOT_ENV).map(PathBuf::from);
+    let runtime_root_override = env::var_os(runtime_root_env_var()).map(PathBuf::from);
     let current_executable = env::current_exe().map_err(|error| {
         CliError::new(
             "failed to resolve self-host runtime bundle",
@@ -163,7 +203,7 @@ pub(super) fn resolve_runtime_bundle_root_from_components(
                 "failed to resolve self-host runtime bundle",
                 command_line,
                 ErrorStage::LoadConfig,
-                format!("{ONEQUERY_RUNTIME_ROOT_ENV} was set but empty"),
+                format!("{} was set but empty", runtime_root_env_var()),
                 vec![retry_with_runtime_root(command_line)],
             ));
         }
@@ -192,8 +232,9 @@ pub(super) fn resolve_runtime_bundle_root_from_components(
             command_line,
             ErrorStage::LoadConfig,
             format!(
-                "current executable {} was launched from Cargo output; set {ONEQUERY_RUNTIME_ROOT_ENV} to a staged self-host runtime bundle root",
-                current_executable.display()
+                "current executable {} was launched from Cargo output; set {} to a staged self-host runtime bundle root",
+                current_executable.display(),
+                runtime_root_env_var()
             ),
             vec![retry_with_runtime_root(command_line)],
         ));
@@ -204,8 +245,10 @@ pub(super) fn resolve_runtime_bundle_root_from_components(
         command_line,
         ErrorStage::LoadConfig,
         format!(
-            "expected {} to live under vendor/<target>/{PACKAGED_VENDOR_CLI_DIR}, or set {ONEQUERY_RUNTIME_ROOT_ENV}=<bundle-root>",
-            current_executable.display()
+            "expected {} to live under vendor/<target>/{}, or set {}=<bundle-root>",
+            current_executable.display(),
+            packaged_cli_relative_path(),
+            runtime_root_env_var()
         ),
         vec![retry_with_runtime_root(command_line)],
     ))
@@ -215,11 +258,18 @@ pub(super) fn resolve_packaged_bundle_root_from_current_executable(
     current_executable: &Path,
 ) -> Option<PathBuf> {
     let cli_dir = current_executable.parent()?;
-    if cli_dir.file_name()? != std::ffi::OsStr::new(PACKAGED_VENDOR_CLI_DIR) {
+    let cli_relative_path = Path::new(packaged_cli_relative_path());
+    let depth = cli_relative_path.components().count();
+    let mut bundle_root = cli_dir;
+    for _ in 0..depth {
+        bundle_root = bundle_root.parent()?;
+    }
+
+    if bundle_root.join(cli_relative_path) != cli_dir {
         return None;
     }
 
-    cli_dir.parent().map(Path::to_path_buf)
+    Some(bundle_root.to_path_buf())
 }
 
 pub(super) fn current_executable_is_cargo_build_output(current_executable: &Path) -> bool {
@@ -327,10 +377,27 @@ fn render_required_loader_paths(candidates: &[&PackagedServerCandidate]) -> Stri
         .join(", ")
 }
 
-fn join_path_segments(root: &Path, segments: &[&str]) -> PathBuf {
-    segments
-        .iter()
-        .fold(root.to_path_buf(), |path, segment| path.join(segment))
+fn runtime_bundle_spec() -> &'static RuntimeBundleSpec {
+    RUNTIME_BUNDLE_SPEC.get_or_init(|| {
+        serde_json::from_str::<RuntimeBundleSpec>(RUNTIME_BUNDLE_SPEC_RAW)
+            .unwrap_or_else(|error| panic!("expected valid runtime bundle spec: {error}"))
+    })
+}
+
+pub(super) fn packaged_cli_relative_path() -> &'static str {
+    runtime_bundle_spec().directories.cli.relative_path.as_str()
+}
+
+pub(super) fn packaged_server_relative_path() -> &'static str {
+    runtime_bundle_spec()
+        .directories
+        .server
+        .relative_path
+        .as_str()
+}
+
+pub(super) fn runtime_root_env_var() -> &'static str {
+    runtime_bundle_spec().runtime_root_env_var.as_str()
 }
 
 fn incomplete_runtime_bundle_error(
@@ -344,7 +411,8 @@ fn incomplete_runtime_bundle_error(
         ErrorStage::LoadConfig,
         match bundle_root.source {
             RuntimeBundleRootSource::EnvironmentOverride => format!(
-                "configured {ONEQUERY_RUNTIME_ROOT_ENV} ({}) is incomplete: {detail}",
+                "configured {} ({}) is incomplete: {detail}",
+                runtime_root_env_var(),
                 bundle_root.path.display()
             ),
             RuntimeBundleRootSource::PackagedExecutable => detail,
@@ -366,5 +434,8 @@ fn runtime_bundle_resolution_try_next(
 }
 
 fn retry_with_runtime_root(command_line: &str) -> String {
-    format!("set {ONEQUERY_RUNTIME_ROOT_ENV}=<bundle-root> and retry {command_line}")
+    format!(
+        "set {}=<bundle-root> and retry {command_line}",
+        runtime_root_env_var()
+    )
 }

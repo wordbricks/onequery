@@ -1,3 +1,8 @@
+import {
+  ONEQUERY_RUNTIME_ROOT_ENV_VAR,
+  getRuntimeBundleDirectoryConfig,
+} from "@onequery/base/runtime-bundle";
+
 // Comment: the installer still relies on mutable latest-release tarballs.
 // Keep the shell flow minimal here until the release pipeline can publish
 // checksums or signatures for end-to-end artifact verification.
@@ -5,6 +10,7 @@ const RELEASE_BASE_URL =
   "https://github.com/wordbricks/onequery/releases/latest/download";
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
+const PACKAGED_CLI_DIR = getRuntimeBundleDirectoryConfig("cli").relativePath;
 
 export function shouldServeInstallScript(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -157,9 +163,8 @@ write_launcher() {
 #!/bin/sh
 set -eu
 INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-export ONEQUERY_PGLITE_ASSET_DIR="\${ONEQUERY_PGLITE_ASSET_DIR:-$INSTALL_DIR/vendor/\${target_triple}/runtime/pglite}"
-export ONEQUERY_RUNTIME_ROOT="\${ONEQUERY_RUNTIME_ROOT:-$INSTALL_DIR/vendor/\${target_triple}}"
-exec "$INSTALL_DIR/vendor/\${target_triple}/onequery/onequery" "$@"
+export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/\${target_triple}}"
+exec "$INSTALL_DIR/vendor/\${target_triple}/${PACKAGED_CLI_DIR}/onequery" "$@"
 EOF
   chmod 755 "$launcher_path"
 }

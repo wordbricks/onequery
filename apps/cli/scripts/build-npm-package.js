@@ -18,9 +18,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  PACKAGED_PGLITE_DIR_SEGMENTS,
-  PGLITE_RUNTIME_ASSET_FILENAMES,
-} from "@onequery/db/pglite";
+  RUNTIME_BUNDLE_SPEC_FILENAME,
+  getRuntimeAssetFamilyConfig,
+  getRuntimeAssetFamilyIds,
+  getRuntimeBundleEntryConfig,
+  resolvePackagedRuntimeAssetDir,
+  resolvePackagedRuntimeEntryDir,
+  resolveRuntimeBundleSpecSourcePath,
+} from "@onequery/base/runtime-bundle";
 
 import {
   CLI_NPM_PACK_DIR_PREFIX,
@@ -37,12 +42,19 @@ const __dirname = path.dirname(__filename);
 
 const CLI_ROOT = path.resolve(__dirname, "..");
 const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
-const dbPackageRequire = createRequire(
-  path.join(WORKSPACE_ROOT, "packages", "db", "package.json")
-);
+const WORKSPACE_MANIFEST_PATH = path.join(WORKSPACE_ROOT, "package.json");
+const workspacePackageRequireCache = new Map();
+let workspacePackageManifestPathIndexPromise = null;
 const WEB_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "web");
 const WEB_DIST_DIR = path.join(WEB_BUILD_ROOT, "dist");
-const WEB_INDEX_FILENAME = "index.html";
+const WEB_DIST_ENTRY = getRuntimeBundleEntryConfig("webDist");
+if (!WEB_DIST_ENTRY.requiredFile) {
+  throw new Error(
+    "Expected runtime bundle webDist entry to declare requiredFile."
+  );
+}
+
+const WEB_INDEX_FILENAME = WEB_DIST_ENTRY.requiredFile;
 const DB_MIGRATIONS_DIR = path.join(
   WORKSPACE_ROOT,
   "packages",
@@ -50,7 +62,6 @@ const DB_MIGRATIONS_DIR = path.join(
   "src",
   "migrations"
 );
-const PACKAGED_PGLITE_DIR = path.join(...PACKAGED_PGLITE_DIR_SEGMENTS);
 
 export const PACKAGE_EXPANSIONS = {
   cli: ["cli", ...Object.keys(PLATFORM_PACKAGES)],
@@ -151,14 +162,19 @@ async function stageSources({ stagingDir, packageName, version }) {
       recursive: true,
     });
     await copyFile(readmePath, path.join(stagingDir, "README.md"));
+    await copyFile(
+      resolveRuntimeBundleSpecSourcePath(),
+      path.join(stagingDir, RUNTIME_BUNDLE_SPEC_FILENAME)
+    );
 
     // CONTEXT: apps/cli is both the Rust workspace root and the npm package
     // source. Only published platform aliases belong in optionalDependencies;
     // GNU Linux extras stay as GitHub-release-only tarballs.
     delete packageJson.private;
     delete packageJson.scripts;
+    delete packageJson.devDependencies;
     packageJson.version = version;
-    packageJson.files = ["bin", "README.md"];
+    packageJson.files = ["bin", RUNTIME_BUNDLE_SPEC_FILENAME, "README.md"];
     // CONTEXT: optional dependency keys stay unscoped because they are npm
     // alias names. The published package backing each alias is @onequery/cli.
     packageJson.optionalDependencies = Object.fromEntries(
@@ -221,43 +237,261 @@ async function copyPlatformVendor({ vendorSrc, stagingDir, targetTriple }) {
 export async function stagePackagedRuntime({ runtimeRoot }) {
   await buildWebAssets();
 
-  const runtimeDir = path.join(runtimeRoot, "runtime");
-  const migrationsOutDir = path.join(runtimeDir, "migrations");
-  // Comment: `runtimeRoot` is already the packaged bundle root
-  // (`vendor/<target>`), so the PGlite payload should land at
-  // `vendor/<target>/runtime/pglite`, not `runtime/runtime/pglite`.
-  const pgliteOutDir = path.join(runtimeRoot, PACKAGED_PGLITE_DIR);
-  const webOutDir = path.join(runtimeDir, "web");
+  const migrationsOutDir = resolvePackagedRuntimeEntryDir(
+    runtimeRoot,
+    "migrations"
+  );
+  const webOutDir = resolvePackagedRuntimeEntryDir(runtimeRoot, "webDist");
   const builtWebDistDir = await resolveBuiltWebDistDir();
-  const pgliteDistDir = await resolvePgliteDistDir();
+  const runtimeAssetCopyPlans = await Promise.all(
+    getRuntimeAssetFamilyIds().map(async (family) => ({
+      family,
+      outDir: resolvePackagedRuntimeAssetDir(runtimeRoot, family),
+      sourcePaths: await resolveRuntimeAssetSourcePaths(family),
+    }))
+  );
 
   await mkdir(runtimeRoot, { recursive: true });
-  await mkdir(runtimeDir, { recursive: true });
-  await cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true });
-  await mkdir(pgliteOutDir, { recursive: true });
   await Promise.all(
-    PGLITE_RUNTIME_ASSET_FILENAMES.map((filename) =>
-      copyFile(
-        path.join(pgliteDistDir, filename),
-        path.join(pgliteOutDir, filename)
+    [migrationsOutDir, webOutDir]
+      .map((outDir) => path.dirname(outDir))
+      .map((outDir) => mkdir(outDir, { recursive: true }))
+  );
+  await cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true });
+  await Promise.all(
+    runtimeAssetCopyPlans.map(({ outDir }) =>
+      mkdir(outDir, { recursive: true })
+    )
+  );
+  await Promise.all(
+    runtimeAssetCopyPlans.flatMap(({ outDir, sourcePaths }) =>
+      sourcePaths.map(({ filename, sourcePath }) =>
+        copyFile(sourcePath, path.join(outDir, filename))
       )
     )
   );
   await cp(builtWebDistDir, webOutDir, { recursive: true });
 }
 
-async function resolvePgliteDistDir() {
-  const packageEntrypoint = dbPackageRequire.resolve("@electric-sql/pglite");
-  const distDir = path.dirname(packageEntrypoint);
+async function resolveRuntimeAssetSourcePaths(family) {
+  const familyConfig = getRuntimeAssetFamilyConfig(family);
+  let sourceResolver;
+  try {
+    sourceResolver = await resolveWorkspacePackageRequire(
+      familyConfig.buildOwnerPackage
+    );
+  } catch (error) {
+    throw new Error(
+      `Failed to resolve runtime asset owner '${familyConfig.buildOwnerPackage}' for '${family}'.`,
+      { cause: error }
+    );
+  }
 
-  await Promise.all(
-    PGLITE_RUNTIME_ASSET_FILENAMES.map((filename) =>
-      access(path.join(distDir, filename))
+  try {
+    switch (familyConfig.buildSource.kind) {
+      case "package-entrypoint-directory": {
+        const packageEntrypoint = sourceResolver.resolve(
+          familyConfig.buildSource.packageSpecifier
+        );
+        const distDir = path.dirname(packageEntrypoint);
+        const sourcePaths = Object.values(familyConfig.files).map(
+          (fileConfig) => ({
+            filename: fileConfig.filename,
+            sourcePath: path.join(distDir, fileConfig.filename),
+          })
+        );
+
+        await Promise.all(
+          sourcePaths.map(({ sourcePath }) => access(sourcePath))
+        );
+        return sourcePaths;
+      }
+      case "resolved-specifier-map": {
+        const sourcePaths = Object.entries(familyConfig.files).map(
+          ([fileRole, fileConfig]) => ({
+            filename: fileConfig.filename,
+            sourcePath: sourceResolver.resolve(
+              familyConfig.buildSource.specifiersByFileRole[fileRole]
+            ),
+          })
+        );
+
+        await Promise.all(
+          sourcePaths.map(({ sourcePath }) => access(sourcePath))
+        );
+        return sourcePaths;
+      }
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to resolve runtime asset sources for '${family}' from '${familyConfig.buildOwnerPackage}'.`,
+      { cause: error }
+    );
+  }
+
+  throw new Error(
+    `Unsupported runtime asset build source '${familyConfig.buildSource.kind}' for '${family}'.`
+  );
+}
+
+async function resolveWorkspacePackageRequire(packageSpecifier) {
+  const cachedRequire = workspacePackageRequireCache.get(packageSpecifier);
+  if (cachedRequire) {
+    return cachedRequire;
+  }
+
+  // Comment: Runtime asset ownership is declared in runtime-bundle.json, so
+  // source resolution must anchor to the owning workspace package manifest
+  // rather than to whichever packages happen to be linked at the workspace root.
+  const packageJsonPath =
+    await resolveWorkspacePackageManifestPath(packageSpecifier);
+  const packageRequire = createRequire(packageJsonPath);
+  workspacePackageRequireCache.set(packageSpecifier, packageRequire);
+  return packageRequire;
+}
+
+async function resolveWorkspacePackageManifestPath(packageSpecifier) {
+  const workspacePackageManifestPathIndex =
+    await loadWorkspacePackageManifestPathIndex();
+  const packageJsonPath =
+    workspacePackageManifestPathIndex.get(packageSpecifier);
+  if (packageJsonPath) {
+    return packageJsonPath;
+  }
+
+  throw new Error(
+    `Workspace package '${packageSpecifier}' was not found in the manifests declared by '${WORKSPACE_MANIFEST_PATH}'.`
+  );
+}
+
+async function loadWorkspacePackageManifestPathIndex() {
+  if (!workspacePackageManifestPathIndexPromise) {
+    workspacePackageManifestPathIndexPromise =
+      createWorkspacePackageManifestPathIndex();
+  }
+
+  return workspacePackageManifestPathIndexPromise;
+}
+
+async function createWorkspacePackageManifestPathIndex() {
+  const workspacePackagePatterns = await loadWorkspacePackagePatterns();
+  const workspacePackageManifests = (
+    await Promise.all(
+      workspacePackagePatterns.map((workspacePackagePattern) =>
+        loadWorkspacePackageManifestsForPattern(workspacePackagePattern)
+      )
     )
+  ).flat();
+
+  return indexWorkspacePackageManifestPaths(workspacePackageManifests);
+}
+
+async function loadWorkspacePackagePatterns() {
+  const workspaceManifest = JSON.parse(
+    await readFile(WORKSPACE_MANIFEST_PATH, "utf8")
+  );
+  const workspacePackagePatterns = workspaceManifest.workspaces?.packages;
+  if (
+    Array.isArray(workspacePackagePatterns) &&
+    workspacePackagePatterns.length > 0
+  ) {
+    return workspacePackagePatterns;
+  }
+
+  throw new Error(
+    `Expected '${WORKSPACE_MANIFEST_PATH}' to declare workspace package patterns.`
+  );
+}
+
+async function loadWorkspacePackageManifestsForPattern(
+  workspacePackagePattern
+) {
+  if (
+    typeof workspacePackagePattern !== "string" ||
+    !workspacePackagePattern.endsWith("/*")
+  ) {
+    throw new Error(
+      `Unsupported workspace package pattern '${workspacePackagePattern}' in '${WORKSPACE_MANIFEST_PATH}'.`
+    );
+  }
+
+  const workspacePackageDir = path.join(
+    WORKSPACE_ROOT,
+    workspacePackagePattern.slice(0, -2)
+  );
+  const directoryEntries = await readdir(workspacePackageDir, {
+    withFileTypes: true,
+  });
+  const workspacePackageManifests = await Promise.all(
+    directoryEntries
+      .filter((directoryEntry) => directoryEntry.isDirectory())
+      .map(async (directoryEntry) => {
+        const packageJsonPath = path.join(
+          workspacePackageDir,
+          directoryEntry.name,
+          "package.json"
+        );
+
+        try {
+          const packageJson = JSON.parse(
+            await readFile(packageJsonPath, "utf8")
+          );
+          return {
+            name: packageJson.name,
+            packageJsonPath,
+          };
+        } catch (error) {
+          if (error?.code === "ENOENT") {
+            return null;
+          }
+
+          throw error;
+        }
+      })
   );
 
-  return distDir;
+  return workspacePackageManifests.filter(
+    (workspacePackageManifest) => workspacePackageManifest !== null
+  );
 }
+
+function indexWorkspacePackageManifestPaths(workspacePackageManifests) {
+  const workspacePackageManifestPathIndex = new Map();
+
+  for (const workspacePackageManifest of workspacePackageManifests) {
+    if (
+      typeof workspacePackageManifest.name !== "string" ||
+      workspacePackageManifest.name.trim().length === 0
+    ) {
+      throw new Error(
+        `Expected workspace package manifest '${workspacePackageManifest.packageJsonPath}' to declare a package name.`
+      );
+    }
+
+    const existingPackageJsonPath = workspacePackageManifestPathIndex.get(
+      workspacePackageManifest.name
+    );
+    if (existingPackageJsonPath) {
+      throw new Error(
+        `Duplicate workspace package name '${workspacePackageManifest.name}' in '${existingPackageJsonPath}' and '${workspacePackageManifest.packageJsonPath}'.`
+      );
+    }
+
+    workspacePackageManifestPathIndex.set(
+      workspacePackageManifest.name,
+      workspacePackageManifest.packageJsonPath
+    );
+  }
+
+  return workspacePackageManifestPathIndex;
+}
+
+export const __internal = {
+  indexWorkspacePackageManifestPaths,
+  resolveRuntimeAssetSourcePaths,
+  resolveWorkspacePackageManifestPath,
+  resolveWorkspacePackageRequire,
+};
 
 async function buildWebAssets() {
   // Comment: Build the web package through Turbo so its workspace
