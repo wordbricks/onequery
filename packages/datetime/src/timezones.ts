@@ -54,7 +54,7 @@ export function getTimezoneOffset(timezone: string): string {
   }
 
   // Extract offset from "GMT+9" or "GMT-5:30" format
-  const match = tzPart.value.match(GMT_OFFSET_PATTERN);
+  const match = GMT_OFFSET_PATTERN.exec(tzPart.value);
   const sign = match?.[1];
   const hours = match?.[2];
   const minutes = match?.[3] ?? ZERO_MINUTES;

@@ -15,7 +15,7 @@ function parseMixpanelError(
   latencyMs: number,
   timeoutSeconds: number
 ): ConnectionTestResult {
-  const matched = error.message.match(MIXPANEL_ERROR_PATTERN);
+  const matched = MIXPANEL_ERROR_PATTERN.exec(error.message);
   if (matched && matched[1] === "400") {
     const detail = matched[2]?.trim().toLowerCase() ?? "";
     if (

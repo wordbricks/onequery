@@ -15,42 +15,47 @@ afterEach(() => {
 });
 
 describe("github relay", () => {
-  it("rejects credential-like query parameters", async () => {
-    await expect(
-      fetchGitHubApi({
-        credentials,
-        endpoint: "/repos/openai/example/issues",
-        options: {
-          params: {
-            access_token: "should-not-be-forwarded",
+  it.each([
+    [
+      "credential-like query parameters",
+      () =>
+        fetchGitHubApi({
+          credentials,
+          endpoint: "/repos/openai/example/issues",
+          options: {
+            params: {
+              access_token: "should-not-be-forwarded",
+            },
           },
-        },
-      })
-    ).rejects.toThrow('GitHub request param "access_token" is not allowed');
-  });
-
-  it("rejects full URLs with embedded credentials", async () => {
-    await expect(
-      fetchGitHubApi({
-        credentials,
-        endpoint:
-          "https://user:pass@api.github.com/repos/openai/example/issues",
-      })
-    ).rejects.toThrow("GitHub endpoint must not include URL credentials");
-  });
-
-  it("rejects headers containing control characters", async () => {
-    await expect(
-      fetchGitHubApi({
-        credentials,
-        endpoint: "/repos/openai/example/issues",
-        options: {
-          headers: {
-            "x-test": "value\r\nx-injected: bad",
+        }),
+      'GitHub request param "access_token" is not allowed',
+    ],
+    [
+      "full URLs with embedded credentials",
+      () =>
+        fetchGitHubApi({
+          credentials,
+          endpoint:
+            "https://user:pass@api.github.com/repos/openai/example/issues",
+        }),
+      "GitHub endpoint must not include URL credentials",
+    ],
+    [
+      "headers containing control characters",
+      () =>
+        fetchGitHubApi({
+          credentials,
+          endpoint: "/repos/openai/example/issues",
+          options: {
+            headers: {
+              "x-test": "value\r\nx-injected: bad",
+            },
           },
-        },
-      })
-    ).rejects.toThrow("Invalid GitHub header: x-test");
+        }),
+      "Invalid GitHub header: x-test",
+    ],
+  ])("rejects %s", async (_label, invoke, message) => {
+    await expect(invoke()).rejects.toThrow(message);
   });
 
   it("uses the shared repositories listing request defaults", async () => {

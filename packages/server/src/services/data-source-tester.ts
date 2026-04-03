@@ -343,7 +343,7 @@ function readErrorMessage(error: unknown): string {
 
 function readBigQueryStatusCode(error: unknown): number | null {
   const message = readErrorMessage(error);
-  const match = message.match(/BigQuery API request failed: (\d{3})\b/u);
+  const match = /BigQuery API request failed: (\d{3})\b/u.exec(message);
   if (!match) {
     return null;
   }

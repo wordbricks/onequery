@@ -9,6 +9,13 @@ import {
 import type { PostgresClientConfig } from "./postgres-transport";
 
 const originalFetch = globalThis.fetch;
+const postgresCredentials = {
+  database: "app",
+  host: "db.example.com",
+  password: "secret",
+  port: 5432,
+  username: "app",
+} as const;
 
 type PostgresPlan = {
   connectError?: Error;
@@ -41,78 +48,80 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function expectPreflightRejection(
+  invoke: () => Promise<unknown>,
+  message: string
+) {
+  const fetchSpy = vi.fn();
+  globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+  await expect(invoke()).rejects.toThrow(message);
+  expect(fetchSpy).not.toHaveBeenCalled();
+}
+
 describe("data source query execution", () => {
-  it("rejects non-read-only SQL before attempting execution", async () => {
-    const fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy as unknown as typeof fetch;
-
-    await expect(
-      executeDatabaseQuery({
-        credentials: {
-          database: "app",
-          host: "localhost",
-          password: "secret",
-          port: 5432,
-          sslMode: "prefer",
-          type: "postgres",
-          username: "app",
-        },
-        sql: "DELETE FROM users",
-      })
-    ).rejects.toThrow("Only SELECT queries are allowed.");
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid BigQuery locations before making a request", async () => {
-    await expect(
-      executeBigQueryQuery(
-        {
-          accessToken: "bq-access-token",
-          authType: "oauth",
-          expiresAt: Date.now() + 60_000,
-          projectId: "project-123",
-          refreshToken: "bq-refresh-token",
-          type: "bigquery",
-        },
-        "SELECT 1",
-        {
-          location: "us-central1?debug=true",
-        }
-      )
-    ).rejects.toThrow("BigQuery location is invalid");
-  });
-
-  it("rejects Laminar base URLs with paths before making a request", async () => {
-    const fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy as unknown as typeof fetch;
-
-    await expect(
-      executeLaminarQuery(
-        {
-          apiBaseUrl: "https://api.lmnr.ai/custom-path",
-          apiKey: "laminar-api-key",
-          type: "laminar",
-        },
-        "SELECT 1"
-      )
-    ).rejects.toThrow("Laminar API base URL must not include a path");
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
+  it.each([
+    [
+      "non-read-only SQL",
+      () =>
+        executeDatabaseQuery({
+          credentials: {
+            ...postgresCredentials,
+            host: "localhost",
+            sslMode: "prefer",
+            type: "postgres",
+          },
+          sql: "DELETE FROM users",
+        }),
+      "Only SELECT queries are allowed.",
+    ],
+    [
+      "invalid BigQuery locations",
+      () =>
+        executeBigQueryQuery(
+          {
+            accessToken: "bq-access-token",
+            authType: "oauth",
+            expiresAt: Date.now() + 60_000,
+            projectId: "project-123",
+            refreshToken: "bq-refresh-token",
+            type: "bigquery",
+          },
+          "SELECT 1",
+          {
+            location: "us-central1?debug=true",
+          }
+        ),
+      "BigQuery location is invalid",
+    ],
+    [
+      "Laminar base URLs with paths",
+      () =>
+        executeLaminarQuery(
+          {
+            apiBaseUrl: "https://api.lmnr.ai/custom-path",
+            apiKey: "laminar-api-key",
+            type: "laminar",
+          },
+          "SELECT 1"
+        ),
+      "Laminar API base URL must not include a path",
+    ],
+  ])(
+    "rejects %s before attempting execution",
+    async (_label, invoke, message) => {
+      await expectPreflightRejection(invoke, message);
+    }
+  );
 
   it("uses TLS without certificate verification for postgres sslmode=require", async () => {
     const { receivedConfigs, runner } = createPostgresRunner([]);
 
     const rows = await executePostgresQuery(
       {
-        database: "app",
-        host: "db.example.com",
-        password: "secret",
-        port: 5432,
+        ...postgresCredentials,
         sslMode: "require",
         type: "postgres",
-        username: "app",
       },
       "SELECT 1",
       undefined,
@@ -138,13 +147,9 @@ describe("data source query execution", () => {
 
     const rows = await executePostgresQuery(
       {
-        database: "app",
-        host: "db.example.com",
-        password: "secret",
-        port: 5432,
+        ...postgresCredentials,
         sslMode: "prefer",
         type: "postgres",
-        username: "app",
       },
       "SELECT 1",
       undefined,
@@ -175,13 +180,9 @@ describe("data source query execution", () => {
     await expect(
       executePostgresQuery(
         {
-          database: "app",
-          host: "db.example.com",
-          password: "secret",
-          port: 5432,
+          ...postgresCredentials,
           sslMode: "prefer",
           type: "postgres",
-          username: "app",
         },
         "SELECT 1",
         undefined,

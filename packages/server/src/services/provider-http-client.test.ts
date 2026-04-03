@@ -21,7 +21,17 @@ describe("ProviderHttpClient", () => {
     );
   });
 
-  it("rejects blocked query params from endpoint or params input", async () => {
+  it.each([
+    [
+      "endpoint query string",
+      (client: ProviderHttpClient) => client.get("/events?authorization=bad"),
+    ],
+    [
+      "params input",
+      (client: ProviderHttpClient) =>
+        client.get("/events", { authorization: "bad" }),
+    ],
+  ])("rejects blocked query params from %s", async (_source, invoke) => {
     const client = new ProviderHttpClient({
       auth: { token: "token", type: "bearer" },
       baseUrl: "https://api.example.com",
@@ -30,13 +40,9 @@ describe("ProviderHttpClient", () => {
       providerName: "Example",
     });
 
-    await expect(client.get("/events?authorization=bad")).rejects.toThrow(
+    await expect(invoke(client)).rejects.toThrow(
       'Provider request param "authorization" is not allowed'
     );
-
-    await expect(
-      client.get("/events", { authorization: "bad" })
-    ).rejects.toThrow('Provider request param "authorization" is not allowed');
   });
 
   it("preserves caller header casing in fetch init", async () => {

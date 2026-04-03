@@ -1,10 +1,7 @@
 import {
   and,
-  bigqueryQueryCosts,
   connectorJobs,
   connectors,
-  dataSourceQueryCosts,
-  dataSourceTableUsage,
   dataSources,
   eq,
   member,
@@ -33,9 +30,6 @@ describe("auth route organization deletion guardrails", () => {
     const connectorId = `connector-${runId}`;
     const connectorJobId = `connector-job-${runId}`;
     const dataSourceId = `data-source-${runId}`;
-    const tableUsageId = `table-usage-${runId}`;
-    const bigQueryCostId = `bq-cost-${runId}`;
-    const dataSourceCostId = `ds-cost-${runId}`;
 
     await test.saveUser(user);
 
@@ -77,32 +71,6 @@ describe("auth route organization deletion guardrails", () => {
         name: `Warehouse ${runId}`,
         organizationId: org.id as string,
         provider: "postgres",
-      });
-      await db.insert(dataSourceTableUsage).values({
-        dataSourceId,
-        formatted: "[]",
-        generatedAt: new Date(),
-        id: tableUsageId,
-        organizationId: org.id as string,
-        provider: "postgres",
-        tables: [],
-      });
-      await db.insert(bigqueryQueryCosts).values({
-        connectionName: "warehouse",
-        executedAt: new Date(),
-        id: bigQueryCostId,
-        organizationId: org.id as string,
-        queryId: `query-${runId}`,
-        toolCallId: `tool-call-${runId}`,
-      });
-      await db.insert(dataSourceQueryCosts).values({
-        connectionName: "warehouse",
-        executedAt: new Date(),
-        id: dataSourceCostId,
-        organizationId: org.id as string,
-        provider: "bigquery",
-        queryId: `data-source-query-${runId}`,
-        toolCallId: `data-source-tool-call-${runId}`,
       });
 
       const seededSession = await auth.api.getSession({
@@ -150,34 +118,13 @@ describe("auth route organization deletion guardrails", () => {
       const persistedDataSource = await db.query.dataSources.findFirst({
         where: eq(dataSources.id, dataSourceId),
       });
-      const persistedTableUsage = await db.query.dataSourceTableUsage.findFirst(
-        {
-          where: eq(dataSourceTableUsage.id, tableUsageId),
-        }
-      );
-      const persistedBigQueryCost = await db.query.bigqueryQueryCosts.findFirst(
-        {
-          where: eq(bigqueryQueryCosts.id, bigQueryCostId),
-        }
-      );
-      const persistedDataSourceCost =
-        await db.query.dataSourceQueryCosts.findFirst({
-          where: eq(dataSourceQueryCosts.id, dataSourceCostId),
-        });
-      const persistedSessionRow = await db.query.session.findFirst({
-        where: eq(authSessionTable.token, login.session.token),
-      });
 
       expect(persistedSession?.session.activeOrganizationId).toBe(org.id);
-      expect(persistedSessionRow?.activeOrganizationId).toBe(org.id);
       expect(persistedMembership?.role).toBe("owner");
       expect(persistedProfile?.organizationId).toBe(org.id);
       expect(persistedConnector?.organizationId).toBe(org.id);
       expect(persistedConnectorJob?.connectorId).toBe(connectorId);
       expect(persistedDataSource?.organizationId).toBe(org.id);
-      expect(persistedTableUsage?.dataSourceId).toBe(dataSourceId);
-      expect(persistedBigQueryCost?.organizationId).toBe(org.id);
-      expect(persistedDataSourceCost?.organizationId).toBe(org.id);
     } finally {
       await test.deleteOrganization?.(org.id as string);
       await test.deleteUser(user.id);

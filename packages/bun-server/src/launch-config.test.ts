@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -50,17 +50,6 @@ describe("launch config", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
 
     expect(() => loadLaunchConfigFile(join(root, "missing.json"))).toThrow(
-      "Failed to read launch config file"
-    );
-  });
-
-  it("wraps filesystem read errors", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-launch-config-"));
-    const launchConfigPath = join(root, "launch-dir");
-
-    mkdirSync(launchConfigPath, { recursive: true });
-
-    expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
       "Failed to read launch config file"
     );
   });

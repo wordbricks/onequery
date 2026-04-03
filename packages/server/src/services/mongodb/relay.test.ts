@@ -9,39 +9,44 @@ const credentials = {
 };
 
 describe("mongodb relay", () => {
-  it("rejects invalid requested database names before connecting", async () => {
-    await expect(
-      listMongoCollections({
-        credentials,
-        request: {
-          database: "admin/system",
-        },
-      })
-    ).rejects.toThrow("database is invalid");
-  });
-
-  it("rejects invalid collection names before connecting", async () => {
-    await expect(
-      findMongoDocuments({
-        credentials,
-        request: {
-          collection: "$cmd",
-        },
-      })
-    ).rejects.toThrow("collection is invalid");
-  });
-
-  it("rejects dangerous mongo operators in filters", async () => {
-    await expect(
-      findMongoDocuments({
-        credentials,
-        request: {
-          collection: "events",
-          filter: {
-            $where: "this.secret === true",
+  it.each([
+    [
+      "invalid requested database names before connecting",
+      () =>
+        listMongoCollections({
+          credentials,
+          request: {
+            database: "admin/system",
           },
-        },
-      })
-    ).rejects.toThrow("filter contains unsupported operator $where");
+        }),
+      "database is invalid",
+    ],
+    [
+      "invalid collection names before connecting",
+      () =>
+        findMongoDocuments({
+          credentials,
+          request: {
+            collection: "$cmd",
+          },
+        }),
+      "collection is invalid",
+    ],
+    [
+      "dangerous mongo operators in filters",
+      () =>
+        findMongoDocuments({
+          credentials,
+          request: {
+            collection: "events",
+            filter: {
+              $where: "this.secret === true",
+            },
+          },
+        }),
+      "filter contains unsupported operator $where",
+    ],
+  ])("rejects %s", async (_label, invoke, message) => {
+    await expect(invoke()).rejects.toThrow(message);
   });
 });

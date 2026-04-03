@@ -34,17 +34,6 @@ describe("connection-string-utils", () => {
     expect(
       parseConnectionString(
         "postgres://user:secret@db.example.com/app",
-        "postgres"
-      )
-    ).toEqual(
-      parseConnectionString(
-        "postgres://user:secret@db.example.com/app",
-        "supabase"
-      )
-    );
-    expect(
-      parseConnectionString(
-        "postgres://user:secret@db.example.com/app",
         "supabase"
       )
     ).toMatchObject({

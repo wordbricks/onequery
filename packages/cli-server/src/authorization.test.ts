@@ -6,6 +6,15 @@ import {
   resolveCliActorAuthorization,
 } from "./authorization";
 
+const FULL_CAPABILITIES = [
+  "org.list",
+  "org.read",
+  "source.connect",
+  "source.list",
+  "source.read",
+  "query.execute",
+];
+
 describe("cli authorization", () => {
   it("defines an explicit action surface", () => {
     expect(CLI_ACTIONS).toEqual([
@@ -18,116 +27,35 @@ describe("cli authorization", () => {
     ]);
   });
 
-  it("covers the full role-to-action matrix exhaustively", () => {
-    expect({
-      admin: CLI_ACTIONS.map((action) => [
-        action,
-        canCliActorAccessAction({
-          action,
-          rawMembershipRole: "admin",
-        }),
-      ]),
-      member: CLI_ACTIONS.map((action) => [
-        action,
-        canCliActorAccessAction({
-          action,
-          rawMembershipRole: "member",
-        }),
-      ]),
-      owner: CLI_ACTIONS.map((action) => [
-        action,
-        canCliActorAccessAction({
-          action,
-          rawMembershipRole: "owner",
-        }),
-      ]),
-    }).toEqual({
-      admin: [
-        ["org.list", true],
-        ["org.read", true],
-        ["source.connect", true],
-        ["source.list", true],
-        ["source.read", true],
-        ["query.execute", true],
-      ],
-      member: [
-        ["org.list", true],
-        ["org.read", true],
-        ["source.connect", true],
-        ["source.list", true],
-        ["source.read", true],
-        ["query.execute", true],
-      ],
-      owner: [
-        ["org.list", true],
-        ["org.read", true],
-        ["source.connect", true],
-        ["source.list", true],
-        ["source.read", true],
-        ["query.execute", true],
-      ],
-    });
-  });
+  it.each(["admin", "member", "owner"] as const)(
+    "maps %s role to the full standard CLI capability set",
+    (rawMembershipRole) => {
+      expect(
+        resolveCliActorAuthorization({
+          action: "query.execute",
+          rawMembershipRole,
+        })
+      ).toEqual({
+        capabilities: FULL_CAPABILITIES,
+        isKnownAction: true,
+        membershipRoles: [rawMembershipRole],
+      });
+    }
+  );
 
-  it("maps member role to the full standard CLI capability set", () => {
-    expect(
-      resolveCliActorAuthorization({
-        action: "query.execute",
-        rawMembershipRole: "member",
-      })
-    ).toEqual({
-      capabilities: [
-        "org.list",
-        "org.read",
-        "source.connect",
-        "source.list",
-        "source.read",
-        "query.execute",
-      ],
-      isKnownAction: true,
-      membershipRoles: ["member"],
-    });
-  });
-
-  it("maps admin role to the full standard CLI capability set", () => {
-    expect(
-      resolveCliActorAuthorization({
-        action: "query.execute",
-        rawMembershipRole: "admin",
-      })
-    ).toEqual({
-      capabilities: [
-        "org.list",
-        "org.read",
-        "source.connect",
-        "source.list",
-        "source.read",
-        "query.execute",
-      ],
-      isKnownAction: true,
-      membershipRoles: ["admin"],
-    });
-  });
-
-  it("maps owner role to the full standard CLI org capability set", () => {
-    expect(
-      resolveCliActorAuthorization({
-        action: "query.execute",
-        rawMembershipRole: "owner",
-      })
-    ).toEqual({
-      capabilities: [
-        "org.list",
-        "org.read",
-        "source.connect",
-        "source.list",
-        "source.read",
-        "query.execute",
-      ],
-      isKnownAction: true,
-      membershipRoles: ["owner"],
-    });
-  });
+  it.each(["admin", "member", "owner"] as const)(
+    "allows all CLI actions for %s role",
+    (rawMembershipRole) => {
+      for (const action of CLI_ACTIONS) {
+        expect(
+          canCliActorAccessAction({
+            action,
+            rawMembershipRole,
+          })
+        ).toBe(true);
+      }
+    }
+  );
 
   it("unions multiple Better Auth membership roles instead of collapsing them", () => {
     expect(
@@ -136,14 +64,7 @@ describe("cli authorization", () => {
         rawMembershipRole: "member, admin",
       })
     ).toEqual({
-      capabilities: [
-        "org.list",
-        "org.read",
-        "source.connect",
-        "source.list",
-        "source.read",
-        "query.execute",
-      ],
+      capabilities: FULL_CAPABILITIES,
       isKnownAction: true,
       membershipRoles: ["member", "admin"],
     });
@@ -156,14 +77,7 @@ describe("cli authorization", () => {
         rawMembershipRole: "member, member, billing-admin",
       })
     ).toEqual({
-      capabilities: [
-        "org.list",
-        "org.read",
-        "source.connect",
-        "source.list",
-        "source.read",
-        "query.execute",
-      ],
+      capabilities: FULL_CAPABILITIES,
       isKnownAction: true,
       membershipRoles: ["member"],
     });

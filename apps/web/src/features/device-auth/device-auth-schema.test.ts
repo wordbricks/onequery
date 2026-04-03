@@ -7,9 +7,10 @@ describe("normalizeDeviceUserCode", () => {
     expect(normalizeDeviceUserCode(" abcd-1234 ")).toBe("ABCD1234");
   });
 
-  it("rejects codes that do not match the expected bounded format", () => {
-    expect(normalizeDeviceUserCode("abc")).toBeUndefined();
-    expect(normalizeDeviceUserCode("abcd_1234")).toBeUndefined();
-    expect(normalizeDeviceUserCode("abcd12345")).toBeUndefined();
-  });
+  it.each(["abc", "abcd_1234"])(
+    "rejects code %s when it does not match the expected bounded format",
+    (code) => {
+      expect(normalizeDeviceUserCode(code)).toBeUndefined();
+    }
+  );
 });

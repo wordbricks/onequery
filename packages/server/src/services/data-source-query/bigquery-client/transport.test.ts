@@ -10,35 +10,35 @@ afterEach(() => {
 });
 
 describe("bigquery transport", () => {
-  it("rejects invalid API paths before calling fetch", async () => {
-    const fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy as unknown as typeof fetch;
-
-    await expect(
-      requestBigQueryJson({
-        accessTokenPromise: Promise.resolve("bq-access-token"),
+  it.each([
+    [
+      "invalid API paths",
+      {
         path: "/jobs/../secrets",
-        projectId: "project-123",
-      })
-    ).rejects.toThrow("BigQuery API path is invalid.");
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("rejects control characters in query parameters", async () => {
-    const fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy as unknown as typeof fetch;
-
-    await expect(
-      requestBigQueryJson({
-        accessTokenPromise: Promise.resolve("bq-access-token"),
+      },
+      "BigQuery API path is invalid.",
+    ],
+    [
+      "control characters in query parameters",
+      {
         path: "/datasets",
-        projectId: "project-123",
         query: {
           pageToken: "abc\r\nx-injected: bad",
         },
+      },
+      'BigQuery query parameter "pageToken" is invalid.',
+    ],
+  ])("rejects %s before calling fetch", async (_label, overrides, message) => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    await expect(
+      requestBigQueryJson({
+        accessTokenPromise: Promise.resolve("bq-access-token"),
+        ...overrides,
+        projectId: "project-123",
       })
-    ).rejects.toThrow('BigQuery query parameter "pageToken" is invalid.');
+    ).rejects.toThrow(message);
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });

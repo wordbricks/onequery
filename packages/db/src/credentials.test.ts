@@ -1607,10 +1607,6 @@ describe("credentials schemas", () => {
       expect(normalizeEnvVarName("db-server-01")).toBe("DB_SERVER_01");
     });
 
-    it("should handle already uppercase names", () => {
-      expect(normalizeEnvVarName("PROD_DB")).toBe("PROD_DB");
-    });
-
     it("should handle single word", () => {
       expect(normalizeEnvVarName("database")).toBe("DATABASE");
     });

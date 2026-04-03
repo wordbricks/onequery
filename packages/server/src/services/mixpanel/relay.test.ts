@@ -12,41 +12,46 @@ const credentials = {
 };
 
 describe("mixpanel relay", () => {
-  it("rejects reserved project and workspace params", async () => {
-    await expect(
-      fetchMixpanelQueryApi({
-        credentials,
-        endpoint: "/query/engage",
-        options: {
-          params: {
-            project_id: "other-project",
+  it.each([
+    [
+      "reserved project and workspace params",
+      () =>
+        fetchMixpanelQueryApi({
+          credentials,
+          endpoint: "/query/engage",
+          options: {
+            params: {
+              project_id: "other-project",
+            },
           },
-        },
-      })
-    ).rejects.toThrow('Mixpanel params key "project_id" is reserved');
-  });
-
-  it("rejects dot-segment endpoints that escape the query API base path", async () => {
-    await expect(
-      fetchMixpanelQueryApi({
-        credentials,
-        endpoint: "/query/../secrets",
-      })
-    ).rejects.toThrow("Mixpanel endpoint must not contain dot segments");
-  });
-
-  it("rejects reserved body keys for export requests", async () => {
-    await expect(
-      exportMixpanelEvents({
-        credentials,
-        options: {
-          body: {
-            project_id: "other-project",
+        }),
+      'Mixpanel params key "project_id" is reserved',
+    ],
+    [
+      "dot-segment endpoints that escape the query API base path",
+      () =>
+        fetchMixpanelQueryApi({
+          credentials,
+          endpoint: "/query/../secrets",
+        }),
+      "Mixpanel endpoint must not contain dot segments",
+    ],
+    [
+      "reserved body keys for export requests",
+      () =>
+        exportMixpanelEvents({
+          credentials,
+          options: {
+            body: {
+              project_id: "other-project",
+            },
+            bodyFormat: "json",
+            method: "POST",
           },
-          bodyFormat: "json",
-          method: "POST",
-        },
-      })
-    ).rejects.toThrow('Mixpanel body key "project_id" is reserved');
+        }),
+      'Mixpanel body key "project_id" is reserved',
+    ],
+  ])("rejects %s", async (_label, invoke, message) => {
+    await expect(invoke()).rejects.toThrow(message);
   });
 });
