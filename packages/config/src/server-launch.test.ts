@@ -101,8 +101,10 @@ describe("server launch contract", () => {
         {
           ...createWorkspaceDevLaunchConfig(),
           rateLimit: {
+            api: {
+              storage: "persistent",
+            },
             enabled: true,
-            storage: "persistent",
           },
         },
         "test"
@@ -121,8 +123,10 @@ describe("server launch contract", () => {
             }),
           }),
           rateLimit: {
+            api: {
+              storage: "memory",
+            },
             enabled: false,
-            storage: "memory",
           },
           runtimePaths: undefined,
         },

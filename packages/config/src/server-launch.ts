@@ -93,8 +93,12 @@ export const serverLaunchConfigSchema = z
     publicOrigin: originSchema,
     rateLimit: z
       .object({
+        api: z
+          .object({
+            storage: z.enum(["memory", "persistent"]),
+          })
+          .strict(),
         enabled: z.boolean(),
-        storage: z.enum(["memory", "persistent"]),
       })
       .strict(),
     runtimePaths: serverLaunchRuntimePathsSchema.optional(),
@@ -103,10 +107,10 @@ export const serverLaunchConfigSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.rateLimit.storage === "persistent" && !value.runtimePaths) {
+    if (value.rateLimit.api.storage === "persistent" && !value.runtimePaths) {
       context.addIssue({
         code: "custom",
-        message: "Persistent rate limiting requires runtimePaths.",
+        message: "Persistent API rate limiting requires runtimePaths.",
         path: ["runtimePaths"],
       });
     }

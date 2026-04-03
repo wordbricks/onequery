@@ -36,8 +36,10 @@ export function projectWorkspaceDevServerLaunchConfig(
     mode: "workspace-dev",
     publicOrigin: workspaceDev.publicOrigin,
     rateLimit: {
+      api: {
+        storage: "memory",
+      },
       enabled: !workspaceDev.flags.disableRateLimit,
-      storage: "memory",
     },
     smtp: options.smtp,
     storage: {

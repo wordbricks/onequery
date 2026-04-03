@@ -41,8 +41,10 @@ export function createWorkspaceDevLaunchConfig(input?: {
     mode: "workspace-dev",
     publicOrigin: input?.publicOrigin ?? "http://localhost:4545",
     rateLimit: input?.rateLimit ?? {
+      api: {
+        storage: "memory",
+      },
       enabled: false,
-      storage: "memory",
     },
     storage: {
       kind: "postgres",
@@ -129,8 +131,10 @@ export function createSelfHostLaunchConfig(input?: {
     mode: "self-host",
     publicOrigin: input?.publicOrigin ?? "http://127.0.0.1:5656",
     rateLimit: input?.rateLimit ?? {
+      api: {
+        storage: "persistent",
+      },
       enabled: true,
-      storage: "persistent",
     },
     runtimePaths: input?.runtimePaths ?? createSelfHostRuntimePaths(),
     smtp: input?.smtp,

@@ -18,10 +18,8 @@ import {
   organizationRoles,
 } from "./auth/organization-permissions";
 import { authorizeSelfHostSignUp } from "./auth/self-host";
-import { createBetterAuthRateLimitStorage } from "./lib/better-auth-rate-limit-storage";
 import { deliverPasswordResetEmail } from "./lib/email-delivery";
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
-import type { RuntimeRateLimitStorage } from "./lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "./runtime";
 
 type AuthConfig = {
@@ -31,11 +29,9 @@ type AuthConfig = {
   provider?: "pg";
   secret: string;
   baseURL?: string;
-  authRateLimitStorage?: ReturnType<typeof createBetterAuthRateLimitStorage>;
   disableRateLimit?: boolean;
   emailDelivery?: AuthEmailDeliveryConfig;
   enableTestUtils?: boolean;
-  rateLimitStorage?: RuntimeRateLimitStorage;
 };
 
 type DbInstance = ReturnType<typeof createDb>;
@@ -149,9 +145,8 @@ export function createAuth(config: AuthConfig) {
         // Better Auth's device plugin already enforces RFC 8628 slow_down.
         "/device/token": false,
       },
-      customStorage:
-        config.authRateLimitStorage ?? createBetterAuthRateLimitStorage(),
       enabled: !config.disableRateLimit,
+      storage: "database",
     },
     plugins: [
       bearer(),
@@ -254,7 +249,6 @@ export function createAuth(config: AuthConfig) {
 }
 
 export interface CreateAuthFromConfigOptions {
-  authRateLimitStorage?: ReturnType<typeof createBetterAuthRateLimitStorage>;
   db?: DbInstance;
   enableTestUtils?: boolean;
   provider?: "pg";
@@ -268,10 +262,6 @@ export function createAuthFromConfig(
   console.info("[auth] Using database-backed JWE session cache (15 min TTL)");
 
   return createAuth({
-    authRateLimitStorage:
-      input.authRateLimitStorage ??
-      runtime.rateLimit.runtimeStorage?.auth ??
-      createBetterAuthRateLimitStorage(),
     baseURL: runtime.auth.baseURL,
     databaseUrl: runtime.storage.connectionString,
     db: input.db,
@@ -279,7 +269,6 @@ export function createAuthFromConfig(
     emailDelivery: runtime.auth.emailDelivery,
     enableTestUtils: input.enableTestUtils,
     provider: input.provider,
-    rateLimitStorage: runtime.rateLimit.runtimeStorage,
     schema: input.schema,
     secret: runtime.auth.secret,
   });

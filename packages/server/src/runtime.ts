@@ -2,7 +2,6 @@ import { decodeMasterEncryptionKey } from "@onequery/config/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
-import type { RuntimeRateLimitStorage } from "./lib/rate-limit-storage";
 
 export type ServerRuntimeStorageConfig =
   | {
@@ -32,16 +31,13 @@ export interface ServerRuntimeConfig {
   readonly mode: ServerLaunchConfig["mode"];
   readonly publicOrigin: string;
   readonly rateLimit: {
+    readonly api: {
+      readonly storage: ServerLaunchConfig["rateLimit"]["api"]["storage"];
+    };
     readonly enabled: boolean;
-    readonly runtimeStorage?: RuntimeRateLimitStorage;
-    readonly storage: ServerLaunchConfig["rateLimit"]["storage"];
   };
   readonly runtimePaths: ServerLaunchConfig["runtimePaths"];
   readonly storage: ServerRuntimeStorageConfig;
-}
-
-export interface CreateServerRuntimeConfigOptions {
-  readonly rateLimitStorage?: RuntimeRateLimitStorage;
 }
 
 function resolveStorageConfig(
@@ -86,8 +82,7 @@ function resolveEmailDelivery(
 }
 
 export function createServerRuntimeConfig(
-  launchConfig: ServerLaunchConfig,
-  input: CreateServerRuntimeConfigOptions = {}
+  launchConfig: ServerLaunchConfig
 ): ServerRuntimeConfig {
   return {
     auth: {
@@ -107,9 +102,10 @@ export function createServerRuntimeConfig(
     mode: launchConfig.mode,
     publicOrigin: launchConfig.publicOrigin,
     rateLimit: {
+      api: {
+        storage: launchConfig.rateLimit.api.storage,
+      },
       enabled: launchConfig.rateLimit.enabled,
-      runtimeStorage: input.rateLimitStorage,
-      storage: launchConfig.rateLimit.storage,
     },
     runtimePaths: launchConfig.runtimePaths,
     storage: resolveStorageConfig(launchConfig),

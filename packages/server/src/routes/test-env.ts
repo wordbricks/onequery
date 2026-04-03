@@ -63,8 +63,10 @@ const defaultRuntime: ServerRuntimeConfig = {
   mode: "workspace-dev",
   publicOrigin: TEST_PUBLIC_ORIGIN,
   rateLimit: {
+    api: {
+      storage: "memory",
+    },
     enabled: false,
-    storage: "memory",
   },
   runtimePaths: undefined,
   storage: toRuntimeStorageConfig(DEFAULT_TEST_DATABASE_URL),

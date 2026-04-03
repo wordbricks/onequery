@@ -382,14 +382,21 @@ pub(crate) enum ServerLaunchMode {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchRateLimitConfig {
+    pub(crate) api: ServerLaunchApiRateLimitConfig,
     pub(crate) enabled: bool,
-    pub(crate) storage: ServerLaunchRateLimitStorage,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub(crate) enum ServerLaunchRateLimitStorage {
+pub(crate) enum ServerLaunchApiRateLimitStorage {
+    Memory,
     Persistent,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchApiRateLimitConfig {
+    pub(crate) storage: ServerLaunchApiRateLimitStorage,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -619,8 +626,10 @@ fn resolve_self_host_launch_config(
         },
         public_origin,
         rate_limit: ServerLaunchRateLimitConfig {
+            api: ServerLaunchApiRateLimitConfig {
+                storage: ServerLaunchApiRateLimitStorage::Persistent,
+            },
             enabled: true,
-            storage: ServerLaunchRateLimitStorage::Persistent,
         },
         runtime_paths: ServerLaunchRuntimePathsConfig {
             backups_dir: bundle.paths.backups_dir.display().to_string(),
@@ -1136,6 +1145,15 @@ secure = false
         assert_eq!(
             launch_config.public_origin,
             "http://127.0.0.1:7777".to_owned()
+        );
+        assert_eq!(
+            launch_config.rate_limit,
+            super::ServerLaunchRateLimitConfig {
+                api: super::ServerLaunchApiRateLimitConfig {
+                    storage: super::ServerLaunchApiRateLimitStorage::Persistent,
+                },
+                enabled: true,
+            }
         );
         assert_eq!(
             launch_config.runtime_paths.run_dir,
