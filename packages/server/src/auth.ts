@@ -86,19 +86,14 @@ export function createAuth(config: AuthConfig) {
 
   const isHttps = config.baseURL?.startsWith("https://") ?? false;
 
-  const trustedOrigins = [
-    config.baseURL,
-    "https://*.wbai.workers.dev",
-    "https://*.wordbricks.ai",
-    "http://*.wordbricks.ai",
-    "http://localhost:*",
-    "https://*.nextrows.com",
-  ].filter((origin): origin is string => origin !== undefined);
+  const trustedOrigins = [config.baseURL, "http://localhost:*"].filter(
+    (origin): origin is string => origin !== undefined
+  );
 
   const crossSubDomainCookieDomain = config.baseURL
     ? new URL(config.baseURL).hostname
     : undefined;
-  const sharedCookieDomains = ["wordbricks.ai", "nextrows.com"];
+  const sharedCookieDomains: string[] = [];
   const cookieDomain = crossSubDomainCookieDomain
     ? sharedCookieDomains.find(
         (domain) =>
