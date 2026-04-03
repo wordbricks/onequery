@@ -26,6 +26,21 @@ function writeLaunchConfigFile(value: unknown): string {
   return launchConfigPath;
 }
 
+function createTempSelfHostRuntimePaths() {
+  const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-test-"));
+
+  // Comment: self-host rate-limit storage is filesystem-backed, so this test
+  // must not reuse the shared defaults from @onequery/config/testing.
+  return createSelfHostRuntimePaths({
+    backupsDir: join(root, "backups"),
+    dataDir: join(root, "data"),
+    lockPath: join(root, "run", "server.lock"),
+    logsDir: join(root, "logs"),
+    pidPath: join(root, "run", "server.pid"),
+    runDir: join(root, "run"),
+  });
+}
+
 function createMocks() {
   const createApp: StartBunServerDependencies["createApp"] = vi.fn(() => ({
     fetch: vi.fn(async () => new Response("ok")),
@@ -189,7 +204,7 @@ describe("startBunServer", () => {
   });
 
   it("starts from a serialized self-host launch config file", async () => {
-    const runtimePaths = createSelfHostRuntimePaths();
+    const runtimePaths = createTempSelfHostRuntimePaths();
     const launchConfigPath = writeLaunchConfigFile(
       createSelfHostLaunchConfig({
         assetsDistDir: "/tmp/web",
