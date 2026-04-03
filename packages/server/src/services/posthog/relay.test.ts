@@ -10,37 +10,42 @@ const credentials = {
 };
 
 describe("posthog relay", () => {
-  it("rejects host URLs with embedded credentials", async () => {
-    await expect(
-      runPostHogQuery({
-        credentials: {
-          ...credentials,
-          hostUrl: "https://user:pass@us.posthog.com",
-        },
-        query: { kind: "HogQLQuery", query: "SELECT 1" },
-      })
-    ).rejects.toThrow("PostHog host URL must not include URL credentials");
-  });
-
-  it("rejects host URLs with path components", async () => {
-    await expect(
-      runPostHogQuery({
-        credentials: {
-          ...credentials,
-          hostUrl: "https://us.posthog.com/custom-path",
-        },
-        query: { kind: "HogQLQuery", query: "SELECT 1" },
-      })
-    ).rejects.toThrow("PostHog host URL must not include a path");
-  });
-
-  it("rejects refresh values with control characters", async () => {
-    await expect(
-      runPostHogQuery({
-        credentials,
-        query: { kind: "HogQLQuery", query: "SELECT 1" },
-        refresh: "blocking\r\nx-injected: bad",
-      })
-    ).rejects.toThrow("PostHog refresh must not contain control characters");
+  it.each([
+    [
+      "host URLs with embedded credentials",
+      () =>
+        runPostHogQuery({
+          credentials: {
+            ...credentials,
+            hostUrl: "https://user:pass@us.posthog.com",
+          },
+          query: { kind: "HogQLQuery", query: "SELECT 1" },
+        }),
+      "PostHog host URL must not include URL credentials",
+    ],
+    [
+      "host URLs with path components",
+      () =>
+        runPostHogQuery({
+          credentials: {
+            ...credentials,
+            hostUrl: "https://us.posthog.com/custom-path",
+          },
+          query: { kind: "HogQLQuery", query: "SELECT 1" },
+        }),
+      "PostHog host URL must not include a path",
+    ],
+    [
+      "refresh values with control characters",
+      () =>
+        runPostHogQuery({
+          credentials,
+          query: { kind: "HogQLQuery", query: "SELECT 1" },
+          refresh: "blocking\r\nx-injected: bad",
+        }),
+      "PostHog refresh must not contain control characters",
+    ],
+  ])("rejects %s", async (_label, invoke, message) => {
+    await expect(invoke()).rejects.toThrow(message);
   });
 });

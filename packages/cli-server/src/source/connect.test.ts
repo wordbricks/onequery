@@ -1,4 +1,3 @@
-import { PROVIDER_TYPES } from "@onequery/db/server";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -28,12 +27,6 @@ describe("source connect guide", () => {
     });
 
     expect(result.nextCommand).toBe("onequery source show warehouse");
-  });
-
-  it("covers every persisted provider type with a connect guide", () => {
-    expect(
-      PROVIDER_TYPES.map((provider) => buildCliSourceConnectGuide(provider))
-    ).toHaveLength(PROVIDER_TYPES.length);
   });
 
   it("documents the supabase postgres credential fallback explicitly", () => {

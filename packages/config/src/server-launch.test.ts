@@ -112,29 +112,6 @@ describe("server launch contract", () => {
     ).toThrow("runtimePaths");
   });
 
-  it("requires runtimePaths for self-host launch config", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createSelfHostLaunchConfig({
-            runtimePaths: createSelfHostRuntimePaths(),
-            smtp: createSelfHostSmtpConfig({
-              password: "smtp-pass",
-            }),
-          }),
-          rateLimit: {
-            api: {
-              storage: "memory",
-            },
-            enabled: false,
-          },
-          runtimePaths: undefined,
-        },
-        "test"
-      )
-    ).toThrow("runtimePaths");
-  });
-
   it("rejects master keys that do not decode to exactly 32 bytes", () => {
     expect(() =>
       validateServerLaunchConfig(

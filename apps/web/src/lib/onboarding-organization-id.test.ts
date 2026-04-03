@@ -7,9 +7,10 @@ describe("sanitizeOnboardingOrganizationId", () => {
     expect(sanitizeOnboardingOrganizationId("  org_123  ")).toBe("org_123");
   });
 
-  it("rejects blank, whitespace-containing, and oversized ids", () => {
-    expect(sanitizeOnboardingOrganizationId("   ")).toBeUndefined();
-    expect(sanitizeOnboardingOrganizationId("org 123")).toBeUndefined();
-    expect(sanitizeOnboardingOrganizationId("o".repeat(129))).toBeUndefined();
-  });
+  it.each(["   ", "org 123", "o".repeat(129)])(
+    "rejects invalid onboarding organization id %s",
+    (value) => {
+      expect(sanitizeOnboardingOrganizationId(value)).toBeUndefined();
+    }
+  );
 });

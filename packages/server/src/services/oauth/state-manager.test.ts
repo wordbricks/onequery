@@ -7,16 +7,19 @@ import {
 } from "./state-manager";
 
 describe("oauth state manager", () => {
-  it("rejects empty signing secrets", async () => {
-    await expect(
-      createOAuthState("   ", {
-        organizationId: "org_123",
-        provider: "github",
-        redirectTo: "/settings",
-      })
-    ).rejects.toThrow("OAuth state secret must be configured");
-
-    await expect(validateOAuthState("   ", "state")).rejects.toThrow(
+  it.each([
+    [
+      "createOAuthState",
+      () =>
+        createOAuthState("   ", {
+          organizationId: "org_123",
+          provider: "github",
+          redirectTo: "/settings",
+        }),
+    ],
+    ["validateOAuthState", () => validateOAuthState("   ", "state")],
+  ])("rejects empty signing secrets in %s", async (_name, invoke) => {
+    await expect(invoke()).rejects.toThrow(
       "OAuth state secret must be configured"
     );
   });
