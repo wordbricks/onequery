@@ -1,11 +1,9 @@
 pre-commit:
   commands:
     lint:
-      glob: "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}"
       run: bunx oxlint --fix {staged_files}
       stage_fixed: true
     format:
-      glob: "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}"
       run: bunx oxfmt {staged_files}
       stage_fixed: true
 
