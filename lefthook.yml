@@ -9,5 +9,5 @@ pre-commit:
 
 pre-push:
   commands:
-    check:
+    lint-full:
       run: bunx turbo lint -- --type-aware --type-check
