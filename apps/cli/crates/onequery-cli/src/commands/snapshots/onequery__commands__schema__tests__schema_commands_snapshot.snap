@@ -2796,7 +2796,7 @@ expression: rendered
         "required": [],
         "type": "object"
       },
-      "summary": "Launch the self-host runtime from the packaged server executable or the repo-local Bun entrypoint.",
+      "summary": "Launch the packaged self-host runtime after writing the resolved launch contract.",
       "supportsDryRun": false,
       "supportsFields": false,
       "supportsHeadlessAuth": true,

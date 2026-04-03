@@ -1,4 +1,4 @@
-import { prepareSelfHostDatabase } from "@onequery/db/server";
+import { prepareApplicationDatabase } from "@onequery/db/server";
 
 export async function prepareRuntimeDatabase(options: {
   databaseUrl: string;
@@ -6,7 +6,7 @@ export async function prepareRuntimeDatabase(options: {
 }) {
   // Comment: launch.json is the single source of truth for runtime asset paths;
   // compiled Bun executables cannot reliably derive migrations from import.meta.url.
-  return prepareSelfHostDatabase({
+  return prepareApplicationDatabase({
     connectionString: options.databaseUrl,
     migrationsFolder: options.migrationsDir,
   });

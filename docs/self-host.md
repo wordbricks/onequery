@@ -58,10 +58,19 @@ onequery auth login
 
 ## Config Files
 
-Platform-default roots on supported hosts:
+Roots on supported hosts:
 
-- Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-- Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- with `ONEQUERY_HOME` set:
+  - config root: `$ONEQUERY_HOME/config`
+  - data root: `$ONEQUERY_HOME/data`
+- without `ONEQUERY_HOME`:
+  - Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
+  - Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+
+- default self-host secrets path on Unix:
+  `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml`
+- self-host secrets path with override:
+  `$ONEQUERY_HOME/config/self-host/secrets.toml`
 
 Files under those roots:
 
@@ -99,24 +108,32 @@ Operational requirements:
 
 Without `public_origin`, OneQuery falls back to the listen address.
 
-## Storage Modes
+## Storage
 
-Default mode is PGlite:
+Self-host currently supports PGlite only:
 
 - database path: `pglite/onequery/` under the OneQuery data root
 - no external database dependency
-
-Optional Postgres mode:
-
-```bash
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
-```
+- `onequery serve` ignores ambient `DATABASE_URL`
 
 Runtime behavior:
 
-- PGlite runs the checked-in Drizzle migrations on startup.
-- Postgres runs the checked-in Drizzle migrations on startup and fails closed if
-  migration application fails.
+- `onequery serve` applies the checked-in Drizzle migrations on startup.
+- startup fails closed if migration application fails.
+- if explicit external Postgres support is added later, it should be modeled in
+  self-host config rather than ambient env.
+
+## Migration Ownership
+
+Application schema convergence happens at runtime startup, not in bootstrap
+scripts:
+
+- `bun run dev:setup` creates workspace-dev secrets, starts local Postgres, and
+  provisions shared local databases/extensions only
+- `bun dev` starts workspace-dev and the Bun runtime applies the application
+  schema on startup
+- `onequery serve` starts self-host and the Bun runtime applies the application
+  schema on startup
 
 ## SMTP And Manual-Link Fallback
 

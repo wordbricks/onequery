@@ -14,7 +14,10 @@ step now does three things:
 1. Creates `onequery.dev.secrets.toml` if it is missing.
 2. Resolves the structured workspace-dev config from `@onequery/config`.
 3. Starts the local Postgres container from the Docker projection and prepares
-   the shared test database.
+   the shared test database and extensions.
+
+It does not apply the application schema anymore. Schema convergence now
+happens during runtime startup in `bun dev` and `onequery serve`.
 
 ## Quick Start
 
@@ -53,7 +56,8 @@ proxies `/api` to a separate local Bun listener for HMR-friendly full-stack
 work. `bun run --cwd packages/bun-server serve` stages the same packaged
 self-host bundle layout used in release and then invokes `onequery serve`,
 which uses the self-host config roots and writes a resolved launch contract
-before Bun starts.
+before Bun starts. That runtime, not `dev:setup`, applies the application
+schema.
 
 ## Environment Files
 

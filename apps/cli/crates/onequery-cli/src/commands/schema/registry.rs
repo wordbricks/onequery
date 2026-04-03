@@ -218,7 +218,7 @@ pub(super) fn local_command_registry() -> Vec<LocalCommandRegistryEntry> {
         LocalCommandRegistryEntry::new(
             "serve",
             "local",
-            "Launch the self-host runtime from the packaged server executable or the repo-local Bun entrypoint.",
+            "Launch the packaged self-host runtime after writing the resolved launch contract.",
             empty_object_schema(),
             Value::Null,
             serve_foreground_output_schema(),

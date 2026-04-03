@@ -18,7 +18,7 @@ export type DatabasePreparationResult =
       mode: "migrate";
     };
 
-export async function prepareSelfHostDatabase(options: {
+export async function prepareApplicationDatabase(options: {
   connectionString: string;
   migrationsFolder: string;
 }): Promise<DatabasePreparationResult> {

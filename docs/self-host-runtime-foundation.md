@@ -15,6 +15,8 @@ The self-host startup boundary has one owner per concern:
   config-package owner and writes it to `run/launch.json`.
 - `packages/bun-server` reads that launch contract exactly once at process
   start.
+- runtime startup owns application-schema convergence after launch-config
+  resolution.
 - `packages/server` consumes the typed runtime object built from that launch
   contract.
 
@@ -28,10 +30,14 @@ becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
-Platform-default roots on supported macOS/Linux hosts:
+Roots on supported hosts:
 
-- config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-- data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- with `ONEQUERY_HOME` set:
+  - config root: `$ONEQUERY_HOME/config`
+  - data root: `$ONEQUERY_HOME/data`
+- without `ONEQUERY_HOME`:
+  - config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
+  - data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
 
 The runtime-managed files under those roots are:
 
@@ -43,6 +49,12 @@ The runtime-managed files under those roots are:
 - `run/server.pid`
 - `run/server.lock`
 - `run/launch.json`
+
+The self-host secrets file is therefore resolved at:
+
+- `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml` on default
+  Unix roots
+- `$ONEQUERY_HOME/config/self-host/secrets.toml` when `ONEQUERY_HOME` is set
 
 The bundled self-host runtime is discovered from one fixed executable-relative
 layout:
@@ -106,6 +118,13 @@ The Bun runtime owns the process-local guarantees:
 - replace stale pid and lock markers only when the recorded pid is gone
 - append lifecycle events to `logs/server.log`
 - release pid and lock markers during graceful shutdown or startup failure
+- apply the checked-in Drizzle migrations before the server begins handling
+  requests
+
+Workspace-dev follows the same migration-ownership rule through
+`scripts/run-bun-server.ts`: `bun run dev:setup` prepares infra only, while the
+runtime launched by `bun dev` converges the application schema from the launch
+contract at startup.
 
 ## Proof Surface
 

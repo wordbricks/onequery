@@ -7,7 +7,7 @@ import {
   createDb,
   eq,
   getDatabaseSchema,
-  prepareSelfHostDatabase,
+  prepareApplicationDatabase,
 } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -43,7 +43,7 @@ const migrationsFolder = fileURLToPath(
 
 async function createTestDb() {
   const connectionString = `pglite:${join(tmpdir(), "pglite", randomUUID())}`;
-  await prepareSelfHostDatabase({
+  await prepareApplicationDatabase({
     connectionString,
     migrationsFolder,
   });
