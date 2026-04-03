@@ -1,5 +1,5 @@
 ---
-source: crates/onequery-cli/src/commands/serve.rs
+source: crates/onequery-cli/src/commands/serve/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
 Serve logs

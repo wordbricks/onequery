@@ -1,0 +1,84 @@
+mod launch;
+mod render;
+mod runtime;
+mod state;
+
+#[cfg(test)]
+mod tests;
+
+use onequery_cli_core::error::CliError;
+
+use crate::cli::ServeCommand;
+use crate::output::CommandOutput;
+
+use super::CommandContext;
+use super::Runtime;
+use super::ensure_self_host_runtime_supported;
+use render::render_serve_logs_output;
+use render::render_serve_status_output;
+use runtime::read_log_preview;
+use runtime::run_serve_foreground;
+use runtime::stop_runtime;
+use state::ServeStateAccessMode;
+use state::resolve_runtime_state;
+
+const PACKAGED_RUNTIME_DIR: &str = "runtime";
+const PACKAGED_SERVER_DIR: &str = "server";
+const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
+const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
+const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
+const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
+const WEB_INDEX_FILENAME: &str = "index.html";
+const SERVE_LOG_PREVIEW_LINE_COUNT: usize = 20;
+const SERVE_STOP_POLL_ATTEMPTS: usize = 50;
+const SERVE_STOP_POLL_INTERVAL_MS: u64 = 100;
+const RETRY_SERVE_COMMAND: &str = "retry onequery serve";
+const RETRY_SERVE_STOP_COMMAND: &str = "retry onequery serve stop";
+const CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP: &str =
+    "check the server log and retry onequery serve stop";
+const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
+const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] = &[
+    "/lib64/ld-linux-x86-64.so.2",
+    "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
+];
+const LINUX_X64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-x86_64.so.1"];
+const LINUX_ARM64_GLIBC_LOADER_PATHS: &[&str] = &[
+    "/lib/ld-linux-aarch64.so.1",
+    "/lib64/ld-linux-aarch64.so.1",
+    "/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1",
+];
+const LINUX_ARM64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-aarch64.so.1"];
+
+pub(super) async fn execute<B, T>(
+    command: ServeCommand,
+    context: &CommandContext,
+    _runtime: &mut Runtime<B, T>,
+) -> Result<CommandOutput, CliError> {
+    ensure_self_host_runtime_supported(&context.command_line)?;
+
+    match command {
+        ServeCommand::Root | ServeCommand::Start => {
+            let state = resolve_runtime_state(
+                &context.command_line,
+                ServeStateAccessMode::BootstrapIfMissing,
+            )?;
+            run_serve_foreground(&state, &context.command_line)
+        }
+        ServeCommand::Stop => {
+            let state =
+                resolve_runtime_state(&context.command_line, ServeStateAccessMode::ReadOnly)?;
+            stop_runtime(&state, &context.command_line)
+        }
+        ServeCommand::Status => {
+            let state =
+                resolve_runtime_state(&context.command_line, ServeStateAccessMode::ReadOnly)?;
+            Ok(render_serve_status_output(&state))
+        }
+        ServeCommand::Logs => {
+            let state =
+                resolve_runtime_state(&context.command_line, ServeStateAccessMode::ReadOnly)?;
+            let preview = read_log_preview(&state.paths.server_log_path, &context.command_line)?;
+            Ok(render_serve_logs_output(&state, &preview))
+        }
+    }
+}
