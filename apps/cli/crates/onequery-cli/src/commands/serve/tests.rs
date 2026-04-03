@@ -16,7 +16,6 @@ use super::launch::current_executable_is_cargo_build_output;
 use super::launch::packaged_cli_relative_path;
 use super::launch::packaged_server_candidates;
 use super::launch::packaged_server_relative_path;
-use super::launch::resolve_packaged_bundle_root_from_current_executable;
 use super::launch::resolve_runtime_bundle_root_from_components;
 use super::launch::runtime_root_env_var;
 use super::launch::select_packaged_server_candidate;
@@ -128,32 +127,6 @@ fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
             .get("status")
             .and_then(serde_json::Value::as_str),
         Some("stale_markers")
-    );
-}
-
-#[test]
-fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir() {
-    let temp_dir = tempdir().unwrap();
-    let current_executable = temp_dir
-        .path()
-        .join("vendor")
-        .join("x86_64-unknown-linux-musl")
-        .join(packaged_cli_relative_path())
-        .join("onequery");
-
-    fs::create_dir_all(current_executable.parent().unwrap())
-        .unwrap_or_else(|error| panic!("expected current executable parent dir: {error}"));
-    fs::write(&current_executable, b"")
-        .unwrap_or_else(|error| panic!("expected fake current executable: {error}"));
-
-    assert_eq!(
-        resolve_packaged_bundle_root_from_current_executable(current_executable.as_path()),
-        Some(
-            temp_dir
-                .path()
-                .join("vendor")
-                .join("x86_64-unknown-linux-musl")
-        )
     );
 }
 
