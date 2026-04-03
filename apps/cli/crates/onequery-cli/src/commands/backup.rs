@@ -301,103 +301,74 @@ mod tests {
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
-    fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
-     {
-        let temp_root =
-            std::env::temp_dir().join(format!("onequery-backup-command-{}", Uuid::new_v4()));
-        let paths = SelfHostRuntimePaths::for_test(
-            temp_root.join("config").join("self-host"),
-            temp_root.join("data"),
-        );
-        seed_runtime_fixture(&paths, true);
-        let archive_path = temp_root.join("artifacts").join("backup-no-secrets.tar.gz");
+    fn backup_archives_runtime_files_and_toggles_secrets() {
+        for (include_secrets, temp_dir_name, command_line) in [
+            (false, "onequery-backup-command", "onequery backup"),
+            (
+                true,
+                "onequery-backup-secrets",
+                "onequery backup --include-secrets",
+            ),
+        ] {
+            let temp_root =
+                std::env::temp_dir().join(format!("{temp_dir_name}-{}", Uuid::new_v4()));
+            let paths = SelfHostRuntimePaths::for_test(
+                temp_root.join("config").join("self-host"),
+                temp_root.join("data"),
+            );
+            seed_runtime_fixture(&paths, true);
+            let archive_path = temp_root.join("artifacts").join(if include_secrets {
+                "backup-with-secrets.tar.gz"
+            } else {
+                "backup-no-secrets.tar.gz"
+            });
 
-        let output = execute_with_paths(
-            &BackupArgs {
-                include_secrets: false,
-                archive_path: Some(archive_path.clone()),
-            },
-            &sample_context("onequery backup"),
-            &paths,
-        )
-        .unwrap_or_else(|error| panic!("expected backup to succeed: {error}"));
+            let output = execute_with_paths(
+                &BackupArgs {
+                    include_secrets,
+                    archive_path: Some(archive_path.clone()),
+                },
+                &sample_context(command_line),
+                &paths,
+            )
+            .unwrap_or_else(|error| panic!("expected backup to succeed: {error}"));
 
-        let data = output.into_data();
-        let entries = archive_entries(&archive_path);
+            let data = output.into_data();
+            let entries = archive_entries(&archive_path);
 
-        assert_eq!(
-            data.get("archivePath").and_then(serde_json::Value::as_str),
-            Some(archive_path.to_string_lossy().as_ref())
-        );
-        assert_eq!(
-            data.get("includedSecrets")
-                .and_then(serde_json::Value::as_bool),
-            Some(false)
-        );
-        assert_eq!(
-            entries.contains(&"config/self-host/config.toml".to_owned()),
-            true
-        );
-        assert_eq!(
-            entries.contains(&"config/self-host/secrets.toml".to_owned()),
-            false
-        );
-        assert_eq!(
-            entries.contains(&"data/pglite/onequery/PG_VERSION".to_owned()),
-            true
-        );
-        assert_eq!(entries.contains(&"data/logs/server.log".to_owned()), true);
-        assert_eq!(entries.contains(&"data/state/cache.json".to_owned()), true);
-        assert_eq!(
-            entries.contains(&"data/backups/old-backup.tar.gz".to_owned()),
-            false
-        );
-        assert_eq!(entries.contains(&"data/run/server.pid".to_owned()), false);
-        assert_eq!(entries.contains(&"data/run/server.lock".to_owned()), false);
+            assert_eq!(
+                data.get("archivePath").and_then(serde_json::Value::as_str),
+                Some(archive_path.to_string_lossy().as_ref())
+            );
+            assert_eq!(
+                data.get("includedSecrets")
+                    .and_then(serde_json::Value::as_bool),
+                Some(include_secrets)
+            );
+            assert_eq!(
+                entries.contains(&"config/self-host/config.toml".to_owned()),
+                true
+            );
+            assert_eq!(
+                entries.contains(&"config/self-host/secrets.toml".to_owned()),
+                include_secrets
+            );
+            assert_eq!(
+                entries.contains(&"data/pglite/onequery/PG_VERSION".to_owned()),
+                true
+            );
+            assert_eq!(entries.contains(&"data/logs/server.log".to_owned()), true);
+            assert_eq!(entries.contains(&"data/state/cache.json".to_owned()), true);
+            assert_eq!(
+                entries.contains(&"data/backups/old-backup.tar.gz".to_owned()),
+                false
+            );
+            assert_eq!(entries.contains(&"data/run/server.pid".to_owned()), false);
+            assert_eq!(entries.contains(&"data/run/server.lock".to_owned()), false);
 
-        fs::remove_dir_all(temp_root)
-            .unwrap_or_else(|error| panic!("expected backup test temp dir cleanup: {error}"));
-    }
-
-    #[test]
-    fn backup_includes_secrets_when_requested() {
-        let temp_root =
-            std::env::temp_dir().join(format!("onequery-backup-secrets-{}", Uuid::new_v4()));
-        let paths = SelfHostRuntimePaths::for_test(
-            temp_root.join("config").join("self-host"),
-            temp_root.join("data"),
-        );
-        seed_runtime_fixture(&paths, true);
-        let archive_path = temp_root
-            .join("artifacts")
-            .join("backup-with-secrets.tar.gz");
-
-        let output = execute_with_paths(
-            &BackupArgs {
-                include_secrets: true,
-                archive_path: Some(archive_path.clone()),
-            },
-            &sample_context("onequery backup --include-secrets"),
-            &paths,
-        )
-        .unwrap_or_else(|error| panic!("expected backup with secrets to succeed: {error}"));
-
-        let data = output.into_data();
-        let entries = archive_entries(&archive_path);
-
-        assert_eq!(
-            data.get("includedSecrets")
-                .and_then(serde_json::Value::as_bool),
-            Some(true)
-        );
-        assert_eq!(
-            entries.contains(&"config/self-host/secrets.toml".to_owned()),
-            true
-        );
-
-        fs::remove_dir_all(temp_root).unwrap_or_else(|error| {
-            panic!("expected backup-with-secrets temp dir cleanup: {error}")
-        });
+            fs::remove_dir_all(temp_root)
+                .unwrap_or_else(|error| panic!("expected backup test temp dir cleanup: {error}"));
+        }
     }
 
     fn sample_context(command_line: &str) -> CommandContext {

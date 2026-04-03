@@ -26,6 +26,27 @@ fn sample_login_completion(access_token: &str, email: &str) -> LoginCompletion {
     }
 }
 
+fn sample_auth_dot_json() -> AuthDotJson {
+    AuthDotJson {
+        user: Some(super::PersistedAuthUser {
+            id: "user-1".to_owned(),
+            email: "alice@example.com".to_owned(),
+            display_name: Some("Alice".to_owned()),
+        }),
+        tokens: Some(super::PersistedAuthTokens {
+            access_token: "pat_file".to_owned(),
+            issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
+            expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
+        }),
+        last_refresh: Some("2026-03-10T00:00:00Z".to_owned()),
+    }
+}
+
+fn serialized_auth_dot_json() -> String {
+    serde_json::to_string_pretty(&sample_auth_dot_json())
+        .unwrap_or_else(|error| panic!("expected auth serialization to succeed: {error}"))
+}
+
 #[test]
 fn file_storage_load_returns_none_when_auth_file_is_missing() {
     let test_dir = std::env::temp_dir().join(format!("onequery-auth-test-{}", Uuid::new_v4()));
@@ -183,21 +204,7 @@ fn file_storage_loads_current_auth_json_shape() {
         panic!("expected temp auth directory creation to succeed: {error}");
     });
     let auth_path = test_dir.join("auth.json");
-    let serialized = serde_json::to_string_pretty(&AuthDotJson {
-        user: Some(super::PersistedAuthUser {
-            id: "user-1".to_owned(),
-            email: "alice@example.com".to_owned(),
-            display_name: Some("Alice".to_owned()),
-        }),
-        tokens: Some(super::PersistedAuthTokens {
-            access_token: "pat_file".to_owned(),
-            issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
-            expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
-        }),
-        last_refresh: Some("2026-03-10T00:00:00Z".to_owned()),
-    })
-    .unwrap_or_else(|error| panic!("expected auth serialization to succeed: {error}"));
-    fs::write(&auth_path, serialized)
+    fs::write(&auth_path, serialized_auth_dot_json())
         .unwrap_or_else(|error| panic!("expected auth file write to succeed: {error}"));
 
     let snapshot = read_persisted_auth_session_record(&auth_path, "onequery auth whoami")
@@ -229,21 +236,7 @@ fn file_storage_loads_current_auth_json_shape() {
 
 #[test]
 fn import_payload_parses_current_auth_json_shape() {
-    let raw = serde_json::to_string_pretty(&AuthDotJson {
-        user: Some(super::PersistedAuthUser {
-            id: "user-1".to_owned(),
-            email: "alice@example.com".to_owned(),
-            display_name: Some("Alice".to_owned()),
-        }),
-        tokens: Some(super::PersistedAuthTokens {
-            access_token: "pat_file".to_owned(),
-            issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
-            expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
-        }),
-        last_refresh: Some("2026-03-10T00:00:00Z".to_owned()),
-    })
-    .unwrap_or_else(|error| panic!("expected auth serialization to succeed: {error}"));
-
+    let raw = serialized_auth_dot_json();
     let imported = ImportedAuthSession::from_raw_json(&raw, "onequery auth import --input -")
         .unwrap_or_else(|error| panic!("expected auth import parse to succeed: {error}"));
 
