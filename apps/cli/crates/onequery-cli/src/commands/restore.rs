@@ -382,7 +382,7 @@ mod tests {
                 "expected restored self-host config to load: {error}"
             )),
             format!(
-                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
                 default_port()
             )
         );
@@ -478,7 +478,7 @@ mod tests {
         fs::write(
             config_dir.join("config.toml"),
             format!(
-                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
                 default_port()
             ),
         )

@@ -7,10 +7,7 @@ import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import { prepareDataSourceCredentials } from "../../services/data-source-credentials/prepare-data-source-credentials";
-import {
-  LEGACY_UNSUPPORTED_TEST_PREFIX,
-  testDataSource,
-} from "../../services/data-source-tester";
+import { testDataSource } from "../../services/data-source-tester";
 import { OrgQuerySchema } from "./schemas";
 
 export const dataSourcesTestRoute = new Hono<{
@@ -66,21 +63,6 @@ export const dataSourcesTestRoute = new Hono<{
           .where(eq(dataSources.id, id));
 
         return c.json({ result });
-      }
-
-      const hasUnsupportedError =
-        dataSource.errorMessage?.startsWith(LEGACY_UNSUPPORTED_TEST_PREFIX) ??
-        false;
-
-      if (dataSource.status === "error" && hasUnsupportedError) {
-        await db
-          .update(dataSources)
-          .set({
-            errorMessage: null,
-            status: "active",
-            updatedAt: now,
-          })
-          .where(eq(dataSources.id, id));
       }
 
       return c.json({ result });

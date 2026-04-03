@@ -909,7 +909,6 @@ fn server_json(config: &SelfHostConfig) -> serde_json::Value {
     json!({
         "listenHost": config.server.listen_host,
         "port": config.server.port,
-        "logLevel": config.server.log_level,
         "publicOrigin": config.server.public_origin,
     })
 }
@@ -1056,6 +1055,14 @@ mod tests {
     fn render_serve_status_output_snapshot() {
         let output = render_serve_status_output(&sample_state());
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn render_serve_status_output_omits_dead_log_level_json() {
+        let output = render_serve_status_output(&sample_state());
+        let data = output.into_data();
+
+        assert_eq!(data.pointer("/server/logLevel"), None);
     }
 
     #[test]

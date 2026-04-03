@@ -107,8 +107,6 @@ pub(crate) struct ServerSection {
     pub(crate) listen_host: String,
     #[serde(default = "default_port")]
     pub(crate) port: u16,
-    #[serde(default = "default_log_level")]
-    pub(crate) log_level: String,
     #[serde(default)]
     pub(crate) public_origin: Option<String>,
 }
@@ -118,7 +116,6 @@ impl Default for ServerSection {
         Self {
             listen_host: default_listen_host(),
             port: default_port(),
-            log_level: default_log_level(),
             public_origin: None,
         }
     }
@@ -158,10 +155,6 @@ fn default_listen_host() -> String {
 
 pub(crate) fn default_port() -> u16 {
     DEFAULT_SELF_HOST_PORT
-}
-
-fn default_log_level() -> String {
-    "info".to_owned()
 }
 
 pub(crate) fn default_public_origin() -> String {
@@ -900,7 +893,6 @@ mod tests {
             r#"[server]
 listen_host = "0.0.0.0"
 port = 7777
-log_level = "debug"
 public_origin = "https://onequery.example.com"
 "#,
         )
@@ -921,7 +913,6 @@ public_origin = "https://onequery.example.com"
                 server: ServerSection {
                     listen_host: "0.0.0.0".to_owned(),
                     port: 7777,
-                    log_level: "debug".to_owned(),
                     public_origin: Some("https://onequery.example.com".to_owned()),
                 },
                 smtp: SmtpConfig::default(),
@@ -948,24 +939,24 @@ public_origin = "https://onequery.example.com"
     }
 
     #[test]
-    fn rejects_unknown_keys_in_self_host_config_file() {
-        let (test_dir, paths) = create_test_paths("self-host-config-unknown");
+    fn rejects_removed_log_level_in_self_host_config_file() {
+        let (test_dir, paths) = create_test_paths("self-host-config-log-level");
 
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\nunexpected = true\n",
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\nlog_level = \"debug\"\n",
                 default_port()
             ),
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
         let error = load_self_host_config_with_paths(paths, "onequery serve")
-            .expect_err("expected unknown config key to fail");
+            .expect_err("expected removed log_level key to fail");
 
         assert_eq!(error.title, "failed to parse self-host config");
-        assert_eq!(error.why.contains("unexpected"), true);
+        assert_eq!(error.why.contains("log_level"), true);
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
@@ -1163,7 +1154,6 @@ secure = false
                 server: ServerSection {
                     listen_host: "0.0.0.0".to_owned(),
                     port: 7777,
-                    log_level: "info".to_owned(),
                     public_origin: None,
                 },
                 smtp: SmtpConfig {

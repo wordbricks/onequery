@@ -24,7 +24,6 @@ import {
   decryptCredentialsObject,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
-import { LEGACY_UNSUPPORTED_TEST_PREFIX } from "../../services/data-source-tester";
 import {
   CreateDataSourceSchema,
   OrgQuerySchema,
@@ -132,49 +131,7 @@ export const dataSourcesCrudRoute = new Hono<{
         where: eq(dataSources.organizationId, organizationId),
       });
 
-      // TODO(legacy-cleanup): Remove this migration shim after all environments
-      // have been migrated away from the old unsupported-test error format
-      // ("Testing is not supported for provider: ...").
-      const legacyUnsupportedIds = result
-        .filter((item) => {
-          if (item.status !== "error") {
-            return false;
-          }
-          return (
-            item.errorMessage?.startsWith(LEGACY_UNSUPPORTED_TEST_PREFIX) ??
-            false
-          );
-        })
-        .map((item) => item.id);
-
-      if (legacyUnsupportedIds.length > 0) {
-        const now = new Date();
-        await Promise.all(
-          legacyUnsupportedIds.map((id) =>
-            db
-              .update(dataSources)
-              .set({
-                errorMessage: null,
-                status: "active",
-                updatedAt: now,
-              })
-              .where(eq(dataSources.id, id))
-          )
-        );
-      }
-
-      const cleanedDataSources = result.map((item) => {
-        if (!legacyUnsupportedIds.includes(item.id)) {
-          return item;
-        }
-        return {
-          ...item,
-          errorMessage: null,
-          status: "active" as const,
-        };
-      });
-
-      return c.json({ dataSources: cleanedDataSources });
+      return c.json({ dataSources: result });
     }
   )
 

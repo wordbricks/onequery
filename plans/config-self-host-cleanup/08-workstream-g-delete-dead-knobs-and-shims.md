@@ -8,15 +8,15 @@ Remove config/options that create surface area without carrying real meaning.
 
 ### TODO
 
-- [ ] Delete `server.log_level` from self-host config rather than wiring it through.
-- [ ] Remove any serve/status JSON that only reflects dead config.
-- [ ] Remove the legacy unsupported-test cleanup shim in `packages/server/src/routes/data-sources/crud.ts` (`LEGACY_UNSUPPORTED_TEST_PREFIX`) since backward compatibility is explicitly not needed here.
-- [ ] Delete any stale comments/docs that still describe the old compatibility assumptions.
+- [x] Delete `server.log_level` from self-host config rather than wiring it through.
+- [x] Remove any serve/status JSON that only reflects dead config.
+- [x] Remove the legacy unsupported-test cleanup shim in `packages/server/src/routes/data-sources/crud.ts` (`LEGACY_UNSUPPORTED_TEST_PREFIX`) since backward compatibility is explicitly not needed here.
+- [x] Delete any stale comments/docs that still describe the old compatibility assumptions.
 
 ### Acceptance
 
-- [ ] Every remaining config field changes real behavior.
-- [ ] Route code no longer includes one-off migration cleanup for legacy states that we no longer support.
+- [x] Every remaining config field changes real behavior.
+- [x] Route code no longer includes one-off migration cleanup for legacy states that we no longer support.
 
 ## Workstream H — Reduce redundant tests and replace them with higher-value checks
 

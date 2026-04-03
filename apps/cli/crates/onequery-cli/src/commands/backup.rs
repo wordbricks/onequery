@@ -429,7 +429,7 @@ mod tests {
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"{}\"\nport = {}\nlog_level = \"info\"\n",
+                "[server]\nlisten_host = \"{}\"\nport = {}\n",
                 DEFAULT_SELF_HOST_LISTEN_HOST,
                 default_port()
             ),
