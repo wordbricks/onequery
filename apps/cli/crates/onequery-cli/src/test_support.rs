@@ -6,8 +6,7 @@ static TRACING_SUBSCRIBER_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 // Comment: Keep this semantically aligned with the TS sample master key. The
 // contract is "valid base64 that decodes to 32 bytes", not this exact literal.
-pub(crate) const TEST_MASTER_ENCRYPTION_KEY: &str =
-    "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
+pub(crate) const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
 
 pub(crate) fn lock_tracing_subscriber() -> MutexGuard<'static, ()> {
     TRACING_SUBSCRIBER_TEST_LOCK

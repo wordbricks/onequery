@@ -981,8 +981,8 @@ mod tests {
     use super::PACKAGED_VENDOR_CLI_DIR;
     use super::ServeRuntimeState;
     use super::ServeStateAccessMode;
-    use super::packaged_server_candidates;
     use super::mark_stop_requested;
+    use super::packaged_server_candidates;
     use super::render_serve_logs_output;
     use super::render_serve_output;
     use super::render_serve_start_output;
@@ -1301,7 +1301,10 @@ mod tests {
         mark_stop_requested(stop_request_path.as_path(), 4321, "onequery serve stop")
             .unwrap_or_else(|error| panic!("expected stop request write to succeed: {error}"));
 
-        assert_eq!(stop_request_matches(stop_request_path.as_path(), 4321), true);
+        assert_eq!(
+            stop_request_matches(stop_request_path.as_path(), 4321),
+            true
+        );
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected stop-request temp dir cleanup: {error}"));
