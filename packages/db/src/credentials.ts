@@ -1,32 +1,34 @@
 import { z } from "zod";
 
-const blankStringToUndefined = (value: unknown): unknown => {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  return value.trim().length === 0 ? undefined : value;
-};
-
 const trimmedString = (message: string) => z.string().trim().min(1, message);
+// Keep `.optional()` at the outermost layer so Hono infers these request
+// fields as optional instead of required `unknown`.
 const optionalTrimmedString = (message: string) =>
-  z.preprocess(blankStringToUndefined, trimmedString(message).optional());
+  z
+    .string()
+    .trim()
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .pipe(trimmedString(message).optional())
+    .optional();
 const requiredOpaqueString = (message: string) =>
   z.string().refine((value) => value.trim().length > 0, message);
 const optionalOpaqueString = (message: string) =>
-  z.preprocess(
-    blankStringToUndefined,
-    requiredOpaqueString(message).optional()
-  );
+  z
+    .string()
+    .transform((value) => (value.trim().length === 0 ? undefined : value))
+    .pipe(requiredOpaqueString(message).optional())
+    .optional();
 
 const trimmedUrl = (requiredMessage: string, invalidMessage: string) =>
   z.string().trim().min(1, requiredMessage).pipe(z.url(invalidMessage));
 
 const optionalTrimmedUrl = (invalidMessage: string) =>
-  z.preprocess(
-    blankStringToUndefined,
-    z.string().trim().pipe(z.url(invalidMessage)).optional()
-  );
+  z
+    .string()
+    .trim()
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .pipe(z.url(invalidMessage).optional())
+    .optional();
 
 const MONGODB_CONNECTION_STRING_SCHEMA = trimmedString(
   "Connection string is required"

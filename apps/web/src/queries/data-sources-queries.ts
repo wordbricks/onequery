@@ -1,5 +1,6 @@
-import type { Credentials, DataSourceStatus, ProviderType } from "@onequery/db";
+import type { DataSourceStatus, ProviderType } from "@onequery/db";
 import { queryOptions } from "@tanstack/react-query";
+import type { InferRequestType } from "hono/client";
 
 import { createApiClient } from "@/lib/api-client";
 import {
@@ -36,6 +37,10 @@ type DataSourceTestResult =
     };
 
 const client = createApiClient();
+
+type CreateDataSourceRequest = NonNullable<
+  InferRequestType<(typeof client.api)["data-sources"]["$post"]>["json"]
+>;
 
 async function fetchDataSources(organizationId: string): Promise<DataSource[]> {
   const response = await client.api["data-sources"].$get({
@@ -91,27 +96,9 @@ export async function deleteDataSource(
   }
 }
 
-type DataSourceProvider =
-  | "postgres"
-  | "supabase"
-  | "mysql"
-  | "mongodb"
-  | "ga"
-  | "bigquery"
-  | "laminar"
-  | "aws_athena_connector"
-  | "amplitude"
-  | "mixpanel"
-  | "posthog"
-  | "sentry"
-  | "github";
-
-export async function createDataSource(data: {
-  organizationId: string;
-  provider: DataSourceProvider;
-  name: string;
-  credentials: Credentials;
-}): Promise<{ dataSource: { id: string } }> {
+export async function createDataSource(
+  data: CreateDataSourceRequest
+): Promise<{ dataSource: { id: string } }> {
   const response = await client.api["data-sources"].$post({
     json: data,
   });
