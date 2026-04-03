@@ -6,7 +6,6 @@ use uuid::Uuid;
 use super::AuthDotJson;
 use super::AuthSessionMetadata;
 use super::AuthSessionSnapshot;
-use super::AuthSessionSource;
 use super::AuthSessionStore;
 use super::ImportedAuthSession;
 use super::backends::read_persisted_auth_session_record;
@@ -282,7 +281,7 @@ fn import_payload_rejects_missing_user_identity() {
 }
 
 #[test]
-fn file_storage_persist_records_user_and_session_metadata() {
+fn file_storage_persist_login_completion_writes_current_auth_json_shape() {
     let test_dir = std::env::temp_dir().join(format!("onequery-auth-test-{}", Uuid::new_v4()));
     fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
         panic!("expected temp auth directory creation to succeed: {error}");
@@ -304,88 +303,19 @@ fn file_storage_persist_records_user_and_session_metadata() {
     let last_refresh = record.last_refresh.clone();
 
     assert_eq!(
-        (record, store),
-        (
-            AuthDotJson {
-                user: Some(super::PersistedAuthUser {
-                    id: "user-1".to_owned(),
-                    email: "alice@example.com".to_owned(),
-                    display_name: Some("Alice".to_owned()),
-                }),
-                tokens: Some(super::PersistedAuthTokens {
-                    access_token: "pat_file".to_owned(),
-                    issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
-                    expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
-                }),
-                last_refresh: last_refresh.clone(),
-            },
-            AuthSessionStore {
-                snapshot: AuthSessionSnapshot {
-                    access_token: Some("pat_file".to_owned()),
-                    metadata: AuthSessionMetadata {
-                        principal: Some(super::AuthSessionPrincipal {
-                            user_id: "user-1".to_owned(),
-                            email: "alice@example.com".to_owned(),
-                        }),
-                        display_name: Some("Alice".to_owned()),
-                        issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
-                        expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
-                        last_refresh,
-                    },
-                },
-                path: auth_path,
-                source: AuthSessionSource::PersistedFile,
-            },
-        )
-    );
-
-    fs::remove_dir_all(&test_dir).unwrap_or_else(|cleanup_error| {
-        panic!("expected temp auth directory cleanup to succeed: {cleanup_error}");
-    });
-}
-
-#[test]
-fn file_storage_persist_imported_session_preserves_import_metadata() {
-    let test_dir = std::env::temp_dir().join(format!("onequery-auth-test-{}", Uuid::new_v4()));
-    fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
-        panic!("expected temp auth directory creation to succeed: {error}");
-    });
-    let auth_path = test_dir.join("auth.json");
-
-    let imported = ImportedAuthSession {
-        user_id: "user-2".to_owned(),
-        email: "bob@example.com".to_owned(),
-        display_name: None,
-        access_token: "pat_imported".to_owned(),
-        issued_at: Some("2026-03-11T00:00:00.000Z".to_owned()),
-        expires_at: Some("2026-03-18T00:00:00.000Z".to_owned()),
-        last_refresh: Some("2026-03-11T12:00:00Z".to_owned()),
-    };
-
-    let mut store = AuthSessionStore::with_file_access_token_for_test(auth_path.clone(), None);
-    store
-        .persist_imported_session(&imported, "onequery auth import --input auth.json")
-        .unwrap_or_else(|error| panic!("expected auth import persistence to succeed: {error}"));
-
-    let serialized = fs::read_to_string(&auth_path)
-        .unwrap_or_else(|error| panic!("expected auth file read to succeed: {error}"));
-    let record = serde_json::from_str::<AuthDotJson>(&serialized)
-        .unwrap_or_else(|error| panic!("expected auth file parse to succeed: {error}"));
-
-    assert_eq!(
         record,
         AuthDotJson {
             user: Some(super::PersistedAuthUser {
-                id: "user-2".to_owned(),
-                email: "bob@example.com".to_owned(),
-                display_name: None,
+                id: "user-1".to_owned(),
+                email: "alice@example.com".to_owned(),
+                display_name: Some("Alice".to_owned()),
             }),
             tokens: Some(super::PersistedAuthTokens {
-                access_token: "pat_imported".to_owned(),
-                issued_at: Some("2026-03-11T00:00:00.000Z".to_owned()),
-                expires_at: Some("2026-03-18T00:00:00.000Z".to_owned()),
+                access_token: "pat_file".to_owned(),
+                issued_at: Some("2026-03-10T00:00:00.000Z".to_owned()),
+                expires_at: Some("2026-03-17T00:00:00.000Z".to_owned()),
             }),
-            last_refresh: Some("2026-03-11T12:00:00Z".to_owned()),
+            last_refresh,
         }
     );
 

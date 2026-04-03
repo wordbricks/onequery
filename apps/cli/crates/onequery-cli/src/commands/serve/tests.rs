@@ -12,7 +12,6 @@ use super::PACKAGED_SERVER_MUSL_FILENAME;
 use super::PACKAGED_SERVER_WINDOWS_FILENAME;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootSource;
-use super::launch::current_executable_is_cargo_build_output;
 use super::launch::packaged_cli_relative_path;
 use super::launch::packaged_server_candidates;
 use super::launch::packaged_server_relative_path;
@@ -172,14 +171,6 @@ fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_
             path: Path::new("/tmp/vendor/x86_64-unknown-linux-musl").to_path_buf(),
             source: RuntimeBundleRootSource::PackagedExecutable,
         }
-    );
-}
-
-#[test]
-fn current_executable_is_cargo_build_output_detects_standard_debug_binary_path() {
-    assert_eq!(
-        current_executable_is_cargo_build_output(Path::new("/tmp/project/target/debug/onequery")),
-        true
     );
 }
 

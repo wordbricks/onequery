@@ -151,29 +151,23 @@ fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_
 
 #[test]
 fn version_output_matches_current_package_version() {
-    match parse_outcome(&["onequery", "--version"]) {
-        // Version output is derived from release metadata, so snapshotting it creates
-        // avoidable churn whenever the tag changes.
-        ParseOutcome::Display(display) => {
-            assert_eq!(
-                display.lines.join("\n").trim(),
-                format!("onequery {}", env!("CARGO_PKG_VERSION"))
-            );
+    for (args, binary_name) in [
+        (&["onequery", "--version"][..], "onequery"),
+        (&["onequery", "auth", "--version"][..], "onequery-auth"),
+    ] {
+        match parse_outcome(args) {
+            // Version output is derived from release metadata, so snapshotting it creates
+            // avoidable churn whenever the tag changes.
+            ParseOutcome::Display(display) => {
+                assert_eq!(
+                    display.lines.join("\n").trim(),
+                    format!("{binary_name} {}", env!("CARGO_PKG_VERSION"))
+                );
+            }
+            ParseOutcome::Invocation(_) => {
+                panic!("expected {binary_name} --version to render display output")
+            }
         }
-        ParseOutcome::Invocation(_) => panic!("expected --version to render display output"),
-    }
-}
-
-#[test]
-fn subcommand_version_output_matches_current_package_version() {
-    match parse_outcome(&["onequery", "auth", "--version"]) {
-        ParseOutcome::Display(display) => {
-            assert_eq!(
-                display.lines.join("\n").trim(),
-                format!("onequery-auth {}", env!("CARGO_PKG_VERSION"))
-            );
-        }
-        ParseOutcome::Invocation(_) => panic!("expected auth --version to render display output"),
     }
 }
 
@@ -188,23 +182,18 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
 }
 
 #[test]
-fn parse_invocation_accepts_serve_without_subcommand() {
-    let invocation = parse_invocation(&["onequery", "serve"]);
+fn parse_invocation_accepts_serve_root_and_status_subcommands() {
+    for (args, expected) in [
+        (&["onequery", "serve"][..], ServeCommand::Root),
+        (&["onequery", "serve", "status"][..], ServeCommand::Status),
+    ] {
+        let invocation = parse_invocation(args);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Serve(ServeCommand::Root)
-    ));
-}
-
-#[test]
-fn parse_invocation_accepts_serve_status_subcommand() {
-    let invocation = parse_invocation(&["onequery", "serve", "status"]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Serve(ServeCommand::Status)
-    ));
+        assert!(matches!(
+            invocation.command,
+            Command::Serve(command) if command == expected
+        ));
+    }
 }
 
 #[test]
@@ -369,32 +358,32 @@ fn parse_invocation_accepts_use_input_json() {
 }
 
 #[test]
-fn parse_invocation_accepts_auth_import_raw_input() {
-    let invocation = parse_invocation(&["onequery", "auth", "import", "--input", "auth.json"]);
+fn parse_invocation_accepts_auth_import_input_and_dry_run() {
+    for (args, dry_run) in [
+        (
+            &["onequery", "auth", "import", "--input", "auth.json"][..],
+            false,
+        ),
+        (
+            &[
+                "onequery",
+                "auth",
+                "import",
+                "--input",
+                "auth.json",
+                "--dry-run",
+            ][..],
+            true,
+        ),
+    ] {
+        let invocation = parse_invocation(args);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Auth(super::AuthSubcommand::Import(AuthImportArgs { input, dry_run }))
-            if input == std::path::Path::new("auth.json") && !dry_run
-    ));
-}
-
-#[test]
-fn parse_invocation_accepts_auth_import_dry_run() {
-    let invocation = parse_invocation(&[
-        "onequery",
-        "auth",
-        "import",
-        "--input",
-        "auth.json",
-        "--dry-run",
-    ]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Auth(super::AuthSubcommand::Import(AuthImportArgs { input, dry_run }))
-            if input == std::path::Path::new("auth.json") && dry_run
-    ));
+        assert!(matches!(
+            invocation.command,
+            Command::Auth(super::AuthSubcommand::Import(AuthImportArgs { input, dry_run: actual_dry_run }))
+                if input == std::path::Path::new("auth.json") && actual_dry_run == dry_run
+        ));
+    }
 }
 
 #[test]
@@ -433,19 +422,19 @@ fn parse_invocation_accepts_schema_command_path_tokens() {
 }
 
 #[test]
-fn requested_output_from_args_reads_space_separated_long_flag() {
-    assert_eq!(
-        super::requested_output_from_args(&argv(&["onequery", "--output", "json"])),
-        Some(RequestedOutputMode::Json)
-    );
-}
-
-#[test]
-fn requested_output_from_args_reads_equals_delimited_long_flag() {
-    assert_eq!(
-        super::requested_output_from_args(&argv(&["onequery", "--output=text"])),
-        Some(RequestedOutputMode::Text)
-    );
+fn requested_output_from_args_reads_long_flag_syntax() {
+    for (args, expected) in [
+        (
+            &["onequery", "--output", "json"][..],
+            Some(RequestedOutputMode::Json),
+        ),
+        (
+            &["onequery", "--output=text"][..],
+            Some(RequestedOutputMode::Text),
+        ),
+    ] {
+        assert_eq!(super::requested_output_from_args(&argv(args)), expected);
+    }
 }
 
 #[test]
@@ -607,68 +596,69 @@ fn parse_invocation_accepts_explicit_query_validate_subcommand() {
 }
 
 #[test]
-fn parse_invocation_renders_bare_auth_as_help() {
-    assert!(
-        rendered_display(&["onequery", "auth"])
-            .contains("Usage: onequery auth [OPTIONS] <COMMAND>")
-    );
+fn parse_invocation_renders_bare_auth_and_query_as_help() {
+    for (args, usage) in [
+        (
+            &["onequery", "auth"][..],
+            "Usage: onequery auth [OPTIONS] <COMMAND>",
+        ),
+        (
+            &["onequery", "query"][..],
+            "Usage: onequery query [OPTIONS] <COMMAND>",
+        ),
+    ] {
+        assert!(rendered_display(args).contains(usage));
+    }
 }
 
 #[test]
-fn parse_invocation_renders_bare_query_as_help() {
-    assert!(
-        rendered_display(&["onequery", "query"])
-            .contains("Usage: onequery query [OPTIONS] <COMMAND>")
-    );
-}
+fn parse_invocation_preserves_query_disambiguation_cases() {
+    #[derive(Copy, Clone)]
+    enum Case {
+        OrgUseArgument,
+        SchemaCommandPathSegment,
+        SourceFlagValue,
+    }
 
-#[test]
-fn parse_invocation_preserves_query_as_org_use_argument() {
-    let invocation = parse_invocation(&["onequery", "org", "use", "query"]);
+    for (args, case) in [
+        (
+            &["onequery", "org", "use", "query"][..],
+            Case::OrgUseArgument,
+        ),
+        (
+            &["onequery", "schema", "command", "query"][..],
+            Case::SchemaCommandPathSegment,
+        ),
+        (
+            &[
+                "onequery", "query", "execute", "--source", "query", "--sql", "select 1",
+            ][..],
+            Case::SourceFlagValue,
+        ),
+    ] {
+        let invocation = parse_invocation(args);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Org(super::OrgSubcommand::Use { org_slug, dry_run })
-            if org_slug == "query" && !dry_run
-    ));
-}
-
-#[test]
-fn parse_invocation_accepts_org_use_dry_run() {
-    let invocation = parse_invocation(&["onequery", "org", "use", "acme", "--dry-run"]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Org(super::OrgSubcommand::Use { org_slug, dry_run })
-            if org_slug == "acme" && dry_run
-    ));
-}
-
-#[test]
-fn parse_invocation_preserves_query_as_schema_command_path_segment() {
-    let invocation = parse_invocation(&["onequery", "schema", "command", "query"]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Schema(super::SchemaSubcommand::Command(super::SchemaCommandArgs {
-            path
-        })) if path == vec!["query".to_owned()]
-    ));
-}
-
-#[test]
-fn parse_invocation_preserves_query_as_source_flag_value() {
-    let invocation = parse_invocation(&[
-        "onequery", "query", "execute", "--source", "query", "--sql", "select 1",
-    ]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Query(QuerySubcommand::Execute(super::QueryExecuteArgs {
-            source,
-            ..
-        })) if source == "query"
-    ));
+        match case {
+            Case::OrgUseArgument => assert!(matches!(
+                invocation.command,
+                Command::Org(super::OrgSubcommand::Use { org_slug, dry_run })
+                    if org_slug == "query" && !dry_run
+            )),
+            Case::SchemaCommandPathSegment => assert!(matches!(
+                invocation.command,
+                Command::Schema(super::SchemaSubcommand::Command(super::SchemaCommandArgs {
+                    path
+                })) if path == vec!["query".to_owned()]
+            )),
+            Case::SourceFlagValue => assert!(matches!(
+                invocation.command,
+                Command::Query(QuerySubcommand::Execute(super::QueryExecuteArgs {
+                    source,
+                    ..
+                })) if source == "query"
+            )),
+        }
+    }
 }
 
 #[test]

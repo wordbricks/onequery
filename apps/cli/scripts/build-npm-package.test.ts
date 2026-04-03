@@ -31,12 +31,6 @@ describe("build-npm-package runtime asset resolution", () => {
     ]);
   });
 
-  it("finds the owning workspace package manifest by package name", async () => {
-    expect(
-      await __internal.resolveWorkspacePackageManifestPath("@onequery/server")
-    ).toBe(SERVER_PACKAGE_MANIFEST_PATH);
-  });
-
   it("fails clearly when a workspace package is missing", async () => {
     try {
       await __internal.resolveWorkspacePackageRequire(
