@@ -12,7 +12,7 @@ pre-commit:
         - "*.{yaml,yml,toml}"
         - "*.{md,mdx}"
         - "*.{css,scss,less}"
-        - "*.{html,vue,gql,graphql,hbs}"
+        - "*.{html,gql,graphql,hbs}"
       stage_fixed: true
 
 pre-push:
