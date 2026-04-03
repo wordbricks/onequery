@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, readdirSync, statSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +24,7 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
+const runtimeBundleSpec = readRuntimeBundleSpec(resolveRuntimeBundleSpecPath());
 
 const { platform, arch } = process;
 const targetTriple = resolveTargetTriple(platform, arch);
@@ -30,6 +37,7 @@ const localVendorRoot = path.join(__dirname, "..", "vendor");
 const resolvedVendor = resolveVendorPayload({
   binaryName,
   localVendorRoot,
+  runtimeBundleSpec,
   targetTripleCandidates,
 });
 
@@ -50,16 +58,7 @@ if (!resolvedVendor) {
   throw new Error(`Unsupported target triple: ${targetTriple}`);
 }
 
-const { resolvedTargetTriple, vendorRoot } = resolvedVendor;
-
-const binaryPath = path.join(
-  vendorRoot,
-  resolvedTargetTriple,
-  "onequery",
-  binaryName
-);
-const serverBinaryDir = path.join(vendorRoot, resolvedTargetTriple, "server");
-const bundleRoot = path.join(vendorRoot, resolvedTargetTriple);
+const { binaryPath, bundleRoot, serverBinaryDir } = resolvedVendor;
 
 if (platform !== "win32") {
   ensureExecutable(binaryPath);
@@ -69,10 +68,8 @@ if (platform !== "win32") {
 const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
     ...process.env,
-    ONEQUERY_PGLITE_ASSET_DIR:
-      process.env.ONEQUERY_PGLITE_ASSET_DIR ??
-      path.join(bundleRoot, "runtime", "pglite"),
-    ONEQUERY_RUNTIME_ROOT: process.env.ONEQUERY_RUNTIME_ROOT ?? bundleRoot,
+    [runtimeBundleSpec.runtimeRootEnvVar]:
+      process.env[runtimeBundleSpec.runtimeRootEnvVar] ?? bundleRoot,
   },
   stdio: "inherit",
 });
@@ -139,15 +136,15 @@ function detectPackageManager() {
 function resolveVendorPayload({
   binaryName,
   localVendorRoot,
+  runtimeBundleSpec,
   targetTripleCandidates,
 }) {
   for (const candidateTargetTriple of targetTripleCandidates) {
-    const localBinaryPath = path.join(
-      localVendorRoot,
-      candidateTargetTriple,
-      "onequery",
-      binaryName
-    );
+    const localBundle = resolveBundlePaths({
+      binaryName,
+      bundleRoot: path.join(localVendorRoot, candidateTargetTriple),
+      runtimeBundleSpec,
+    });
 
     const platformPackage = PLATFORM_PACKAGE_BY_TARGET[candidateTargetTriple];
     if (platformPackage) {
@@ -159,16 +156,14 @@ function resolveVendorPayload({
           path.dirname(packageJsonPath),
           "vendor"
         );
-        const packagedBinaryPath = path.join(
-          resolvedVendorRoot,
-          candidateTargetTriple,
-          "onequery",
-          binaryName
-        );
-        if (existsSync(packagedBinaryPath)) {
+        const packagedBundle = resolveBundlePaths({
+          binaryName,
+          bundleRoot: path.join(resolvedVendorRoot, candidateTargetTriple),
+          runtimeBundleSpec,
+        });
+        if (packagedBundle) {
           return {
-            resolvedTargetTriple: candidateTargetTriple,
-            vendorRoot: resolvedVendorRoot,
+            ...packagedBundle,
           };
         }
       } catch {
@@ -176,15 +171,93 @@ function resolveVendorPayload({
       }
     }
 
-    if (existsSync(localBinaryPath)) {
+    if (localBundle) {
       return {
-        resolvedTargetTriple: candidateTargetTriple,
-        vendorRoot: localVendorRoot,
+        ...localBundle,
       };
     }
   }
 
   return null;
+}
+
+function resolveBundlePaths({ binaryName, bundleRoot, runtimeBundleSpec }) {
+  const binaryPath = path.join(
+    bundleRoot,
+    runtimeBundleSpec.directories.cli.relativePath,
+    binaryName
+  );
+  if (!existsSync(binaryPath)) {
+    return null;
+  }
+
+  return {
+    binaryPath,
+    bundleRoot,
+    serverBinaryDir: path.join(
+      bundleRoot,
+      runtimeBundleSpec.directories.server.relativePath
+    ),
+  };
+}
+
+function resolveRuntimeBundleSpecPath() {
+  const packagedSpecPath = path.join(__dirname, "..", "runtime-bundle.json");
+  if (existsSync(packagedSpecPath)) {
+    return packagedSpecPath;
+  }
+
+  // Comment: local workspace execution reads the canonical bundle spec from the
+  // repo; published npm packages ship the same file at the package root.
+  return path.join(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    "packages",
+    "base",
+    "src",
+    "runtime-bundle.json"
+  );
+}
+
+function readRuntimeBundleSpec(specPath) {
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(specPath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `Failed to read runtime bundle spec at ${specPath}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
+    );
+  }
+
+  const runtimeRootEnvVar = readNonEmptyString(parsed?.runtimeRootEnvVar);
+  const cliRelativePath = readNonEmptyString(
+    parsed?.directories?.cli?.relativePath
+  );
+  const serverRelativePath = readNonEmptyString(
+    parsed?.directories?.server?.relativePath
+  );
+  if (!runtimeRootEnvVar || !cliRelativePath || !serverRelativePath) {
+    throw new Error(`Invalid runtime bundle spec at ${specPath}.`);
+  }
+
+  return {
+    directories: {
+      cli: {
+        relativePath: cliRelativePath,
+      },
+      server: {
+        relativePath: serverRelativePath,
+      },
+    },
+    runtimeRootEnvVar,
+  };
+}
+
+function readNonEmptyString(value) {
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function ensureExecutable(filePath) {

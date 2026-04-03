@@ -6,7 +6,8 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./organization-permissions": "./src/organization-permissions.ts"
+    "./organization-permissions": "./src/organization-permissions.ts",
+    "./runtime-bundle": "./src/runtime-bundle.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"

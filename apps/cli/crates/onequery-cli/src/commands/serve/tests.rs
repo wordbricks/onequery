@@ -1,22 +1,24 @@
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
 use insta::assert_snapshot;
 use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 use uuid::Uuid;
 
-use super::PACKAGED_SERVER_DIR;
 use super::PACKAGED_SERVER_FILENAME;
 use super::PACKAGED_SERVER_MUSL_FILENAME;
 use super::PACKAGED_SERVER_WINDOWS_FILENAME;
-use super::PACKAGED_VENDOR_CLI_DIR;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootSource;
 use super::launch::current_executable_is_cargo_build_output;
+use super::launch::packaged_cli_relative_path;
 use super::launch::packaged_server_candidates;
+use super::launch::packaged_server_relative_path;
 use super::launch::resolve_packaged_bundle_root_from_current_executable;
 use super::launch::resolve_runtime_bundle_root_from_components;
+use super::launch::runtime_root_env_var;
 use super::launch::select_packaged_server_candidate;
 use super::render::render_serve_logs_output;
 use super::render::render_serve_output;
@@ -136,7 +138,7 @@ fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir()
         .path()
         .join("vendor")
         .join("x86_64-unknown-linux-musl")
-        .join(PACKAGED_VENDOR_CLI_DIR)
+        .join(packaged_cli_relative_path())
         .join("onequery");
 
     fs::create_dir_all(current_executable.parent().unwrap())
@@ -157,11 +159,14 @@ fn resolve_packaged_bundle_root_from_current_executable_uses_target_bundle_dir()
 
 #[test]
 fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
-    let current_executable = Path::new("/tmp/vendor/x86_64-unknown-linux-musl/onequery/onequery");
+    let current_executable = PathBuf::from(format!(
+        "/tmp/vendor/x86_64-unknown-linux-musl/{}/onequery",
+        packaged_cli_relative_path()
+    ));
     let runtime_root_override = Path::new("/tmp/staged-runtime");
     let resolved = resolve_runtime_bundle_root_from_components(
         Some(runtime_root_override),
-        current_executable,
+        current_executable.as_path(),
         "onequery serve",
     )
     .expect("expected runtime root override to win");
@@ -177,10 +182,16 @@ fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
 
 #[test]
 fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_override() {
-    let current_executable = Path::new("/tmp/vendor/x86_64-unknown-linux-musl/onequery/onequery");
-    let resolved =
-        resolve_runtime_bundle_root_from_components(None, current_executable, "onequery serve")
-            .expect("expected packaged executable layout to resolve");
+    let current_executable = PathBuf::from(format!(
+        "/tmp/vendor/x86_64-unknown-linux-musl/{}/onequery",
+        packaged_cli_relative_path()
+    ));
+    let resolved = resolve_runtime_bundle_root_from_components(
+        None,
+        current_executable.as_path(),
+        "onequery serve",
+    )
+    .expect("expected packaged executable layout to resolve");
 
     assert_eq!(
         resolved,
@@ -214,18 +225,24 @@ fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
     );
     assert_eq!(
         error.why.as_str(),
-        "current executable /tmp/project/target/debug/onequery was launched from Cargo output; set ONEQUERY_RUNTIME_ROOT to a staged self-host runtime bundle root"
+        format!(
+            "current executable /tmp/project/target/debug/onequery was launched from Cargo output; set {} to a staged self-host runtime bundle root",
+            runtime_root_env_var()
+        )
     );
     assert_eq!(
         error.try_next,
-        vec!["set ONEQUERY_RUNTIME_ROOT=<bundle-root> and retry onequery serve".to_owned()]
+        vec![format!(
+            "set {}=<bundle-root> and retry onequery serve",
+            runtime_root_env_var()
+        )]
     );
 }
 
 #[test]
 fn select_packaged_server_candidate_prefers_glibc_binary_when_loader_exists() {
     let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+    let server_dir = temp_dir.path().join(packaged_server_relative_path());
     fs::create_dir_all(&server_dir)
         .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
     fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
@@ -246,7 +263,7 @@ fn select_packaged_server_candidate_prefers_glibc_binary_when_loader_exists() {
 #[test]
 fn select_packaged_server_candidate_falls_back_to_musl_binary() {
     let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+    let server_dir = temp_dir.path().join(packaged_server_relative_path());
     fs::create_dir_all(&server_dir)
         .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
     fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
@@ -270,7 +287,7 @@ fn select_packaged_server_candidate_falls_back_to_musl_binary() {
 #[test]
 fn packaged_server_candidates_use_windows_executable_name() {
     let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(PACKAGED_SERVER_DIR);
+    let server_dir = temp_dir.path().join(packaged_server_relative_path());
     fs::create_dir_all(&server_dir)
         .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
 

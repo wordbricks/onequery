@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PACKAGED_PGLITE_DIR_SEGMENTS } from "@onequery/db/pglite";
+import { resolvePackagedRuntimeBundleDirectory } from "@onequery/base/runtime-bundle";
 
 import {
   binaryNameForPlatform,
@@ -44,8 +44,10 @@ export function resolveBundledRuntimeRoot(stagingRoot) {
 
 export function resolveStagedCliPath(stagingRoot) {
   return join(
-    resolveBundledRuntimeRoot(stagingRoot),
-    "onequery",
+    resolvePackagedRuntimeBundleDirectory(
+      resolveBundledRuntimeRoot(stagingRoot),
+      "cli"
+    ),
     cliBinaryName
   );
 }
@@ -56,10 +58,6 @@ export function createBundledRuntimeEnv(stagingRoot, env = {}) {
   return {
     ...process.env,
     ...env,
-    ONEQUERY_PGLITE_ASSET_DIR:
-      env.ONEQUERY_PGLITE_ASSET_DIR ??
-      process.env.ONEQUERY_PGLITE_ASSET_DIR ??
-      join(bundleRoot, ...PACKAGED_PGLITE_DIR_SEGMENTS),
     ONEQUERY_RUNTIME_ROOT:
       env.ONEQUERY_RUNTIME_ROOT ??
       process.env.ONEQUERY_RUNTIME_ROOT ??
@@ -117,8 +115,8 @@ function buildServerExecutableArtifacts({ outdir, targetTriple }) {
 export async function createStagedBundleRoot() {
   const stagingRoot = mkdtempSync(join(tmpdir(), "onequery-self-host-smoke-"));
   const bundleRoot = resolveBundledRuntimeRoot(stagingRoot);
-  const cliDir = join(bundleRoot, "onequery");
-  const serverDir = join(bundleRoot, "server");
+  const cliDir = resolvePackagedRuntimeBundleDirectory(bundleRoot, "cli");
+  const serverDir = resolvePackagedRuntimeBundleDirectory(bundleRoot, "server");
   const stagedCliPath = resolveStagedCliPath(stagingRoot);
 
   mkdirSync(cliDir, { recursive: true });

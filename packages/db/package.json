@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "0.4.2",
+    "@onequery/base": "workspace:*",
     "@onequery/contracts": "workspace:*",
     "drizzle-orm": "0.45.1",
     "pg": "8.17.1",

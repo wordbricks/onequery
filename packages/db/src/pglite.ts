@@ -2,15 +2,25 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { PGliteOptions } from "@electric-sql/pglite";
+import {
+  getRuntimeAssetFamilyConfig,
+  ONEQUERY_RUNTIME_ROOT_ENV_VAR,
+  resolvePackagedRuntimeAssetDir,
+  resolveRuntimeRoot,
+} from "@onequery/base/runtime-bundle";
+import type { RuntimeAssetEnvironment } from "@onequery/base/runtime-bundle";
 
-export const PGLITE_ASSET_DIR_ENV_VAR = "ONEQUERY_PGLITE_ASSET_DIR";
-export const PGLITE_RUNTIME_ROOT_ENV_VAR = "ONEQUERY_RUNTIME_ROOT";
-export const PACKAGED_PGLITE_DIR_SEGMENTS = ["runtime", "pglite"] as const;
-export const PGLITE_RUNTIME_ASSET_FILENAMES = [
-  "pglite.wasm",
-  "initdb.wasm",
-  "pglite.data",
-] as const;
+const PGLITE_RUNTIME_ASSET_FAMILY = "pglite";
+const PGLITE_RUNTIME_ASSET_CONFIG = getRuntimeAssetFamilyConfig(
+  PGLITE_RUNTIME_ASSET_FAMILY
+);
+const PGLITE_RUNTIME_ASSET_FILES = PGLITE_RUNTIME_ASSET_CONFIG.files;
+export const PGLITE_RUNTIME_ASSET_FILENAMES = Object.values(
+  PGLITE_RUNTIME_ASSET_FILES
+).map(({ filename }) => filename);
+const PGLITE_WASM_FILENAME = PGLITE_RUNTIME_ASSET_FILES.pgliteWasm.filename;
+const INITDB_WASM_FILENAME = PGLITE_RUNTIME_ASSET_FILES.initdbWasm.filename;
+const PGLITE_DATA_FILENAME = PGLITE_RUNTIME_ASSET_FILES.fsBundle.filename;
 
 type PGliteRuntimeOptions = Pick<
   PGliteOptions,
@@ -67,11 +77,14 @@ export function ensurePgliteDataDir(connectionString: string): string {
 }
 
 export function resolvePackagedPgliteAssetDir(runtimeRoot: string): string {
-  return resolve(runtimeRoot, ...PACKAGED_PGLITE_DIR_SEGMENTS);
+  return resolvePackagedRuntimeAssetDir(
+    runtimeRoot,
+    PGLITE_RUNTIME_ASSET_FAMILY
+  );
 }
 
 export function resolvePgliteRuntimeOptions(
-  processEnv: NodeJS.ProcessEnv = process.env
+  processEnv: RuntimeAssetEnvironment = process.env
 ): PGliteRuntimeOptions | undefined {
   const assetLookup = lookupPgliteAssetDir(processEnv);
   if (assetLookup.kind === "unavailable") {
@@ -85,9 +98,9 @@ export function resolvePgliteRuntimeOptions(
     return cachedOptions;
   }
 
-  const pgliteWasmPath = resolve(assetDir, "pglite.wasm");
-  const initdbWasmPath = resolve(assetDir, "initdb.wasm");
-  const fsBundlePath = resolve(assetDir, "pglite.data");
+  const pgliteWasmPath = resolve(assetDir, PGLITE_WASM_FILENAME);
+  const initdbWasmPath = resolve(assetDir, INITDB_WASM_FILENAME);
+  const fsBundlePath = resolve(assetDir, PGLITE_DATA_FILENAME);
 
   const options = {
     fsBundle: new Blob([readFileSync(fsBundlePath)]),
@@ -103,7 +116,7 @@ export function resolvePgliteRuntimeOptions(
 }
 
 export function resolvePgliteAssetDir(
-  processEnv: NodeJS.ProcessEnv = process.env
+  processEnv: RuntimeAssetEnvironment = process.env
 ): string {
   const assetLookup = lookupPgliteAssetDir(processEnv);
   if (assetLookup.kind === "resolved") {
@@ -113,39 +126,15 @@ export function resolvePgliteAssetDir(
   throw new Error(assetLookup.message);
 }
 
-function normalizeNonEmptyEnvValue(value: string | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-
-  const trimmedValue = value.trim();
-  return trimmedValue.length > 0 ? trimmedValue : null;
-}
-
 function lookupPgliteAssetDir(
-  processEnv: NodeJS.ProcessEnv
+  processEnv: RuntimeAssetEnvironment
 ): PgliteAssetLookup {
-  const explicitAssetDir = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_ASSET_DIR_ENV_VAR]
-  );
-  if (explicitAssetDir) {
-    return {
-      assetDir: requirePgliteAssets(
-        resolve(explicitAssetDir),
-        `${PGLITE_ASSET_DIR_ENV_VAR}=${explicitAssetDir}`
-      ),
-      kind: "resolved",
-    };
-  }
-
-  const runtimeRoot = normalizeNonEmptyEnvValue(
-    processEnv[PGLITE_RUNTIME_ROOT_ENV_VAR]
-  );
+  const runtimeRoot = resolveRuntimeRoot(processEnv);
   if (!runtimeRoot) {
     return {
       kind: "unavailable",
       message:
-        "PGlite runtime assets are unavailable because no explicit asset directory or packaged runtime root was provided",
+        "PGlite runtime assets are unavailable because no packaged runtime root was provided",
     };
   }
 
@@ -153,14 +142,14 @@ function lookupPgliteAssetDir(
   if (!existsSync(packagedAssetDir)) {
     return {
       kind: "unavailable",
-      message: `PGlite runtime assets are unavailable because ${PGLITE_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot} does not contain ${PACKAGED_PGLITE_DIR_SEGMENTS.join("/")}`,
+      message: `PGlite runtime assets are unavailable because ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot} does not contain ${PGLITE_RUNTIME_ASSET_CONFIG.packagedPath}`,
     };
   }
 
   return {
     assetDir: requirePgliteAssets(
       packagedAssetDir,
-      `${PGLITE_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot}`
+      `${ONEQUERY_RUNTIME_ROOT_ENV_VAR}=${runtimeRoot}`
     ),
     kind: "resolved",
   };

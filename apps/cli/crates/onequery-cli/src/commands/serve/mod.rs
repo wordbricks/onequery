@@ -22,13 +22,9 @@ use runtime::stop_runtime;
 use state::ServeStateAccessMode;
 use state::resolve_runtime_state;
 
-const PACKAGED_RUNTIME_DIR: &str = "runtime";
-const PACKAGED_SERVER_DIR: &str = "server";
 const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
 const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
 const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
-const PACKAGED_VENDOR_CLI_DIR: &str = "onequery";
-const WEB_INDEX_FILENAME: &str = "index.html";
 const SERVE_LOG_PREVIEW_LINE_COUNT: usize = 20;
 const SERVE_STOP_POLL_ATTEMPTS: usize = 50;
 const SERVE_STOP_POLL_INTERVAL_MS: u64 = 100;

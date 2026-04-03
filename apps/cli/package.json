@@ -30,6 +30,9 @@
     "test:integration": "bun test scripts/self-host-smoke.integration.test.ts",
     "fix": "just fix"
   },
+  "devDependencies": {
+    "@onequery/base": "workspace:*"
+  },
   "engines": {
     "node": ">=18"
   }
