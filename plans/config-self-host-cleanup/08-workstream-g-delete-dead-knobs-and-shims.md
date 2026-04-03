@@ -55,12 +55,12 @@ That coverage is expensive but still missed the actual production failure.
 - [x] Collapse duplicate launch-config builders across `packages/config`, `packages/bun-server`, and `packages/server` tests.
 - [x] Prefer small boundary-focused samples over one giant canonical launch fixture.
 - [ ] Share test-data rules across TS and Rust, but keep builders local to each language.
-- [ ] In Rust, keep tests for:
-  - [ ] filesystem layout
-  - [ ] config/secrets parsing
-  - [ ] bootstrap file creation
-  - [ ] launch-config projection
-  - [ ] startup/serve behavior unique to the CLI
+- [x] In Rust, keep tests for:
+  - [x] filesystem layout
+  - [x] config/secrets parsing
+  - [x] bootstrap file creation
+  - [x] launch-config projection
+  - [x] startup/serve behavior unique to the CLI
 - [x] Drop Rust tests that only repeat the same launch-contract shape with different hardcoded literals.
 - [x] Add semantic tests that invalid master keys are rejected.
 - [x] Add one CLI-owned smoke test that fresh self-host bootstrap can actually encrypt credentials and create a data source.
