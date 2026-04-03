@@ -428,10 +428,12 @@ async function runPostgresQuery(
   const client = new pg.Client(config);
   await client.connect();
 
-  return client
-    .query(query)
-    .then((result) => normalizeRecordRows("PostgreSQL", result.rows))
-    .finally(async () => client.end());
+  try {
+    const result = await client.query(query);
+    return normalizeRecordRows("PostgreSQL", result.rows);
+  } finally {
+    await client.end();
+  }
 }
 
 async function resolvePostgresQueryRunner(): Promise<PostgresQueryRunner> {
@@ -468,13 +470,15 @@ async function runMySQLQuery(
   query: string,
   timeoutMs: number
 ): Promise<Record<string, unknown>[]> {
-  return mysql.createConnection(config).then(async (connection) =>
-    connection
-      .execute("SET SESSION max_execution_time = ?", [timeoutMs])
-      .then(async () => connection.execute(query))
-      .then((result) => normalizeRecordRows("MySQL", result[0]))
-      .finally(async () => connection.end().catch(() => {}))
-  );
+  const connection = await mysql.createConnection(config);
+
+  try {
+    await connection.execute("SET SESSION max_execution_time = ?", [timeoutMs]);
+    const result = await connection.execute(query);
+    return normalizeRecordRows("MySQL", result[0]);
+  } finally {
+    await connection.end().catch(() => {});
+  }
 }
 
 export async function executePostgresQuery(

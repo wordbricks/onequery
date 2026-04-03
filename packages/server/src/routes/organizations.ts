@@ -28,7 +28,7 @@ const OrganizationSlugParamsSchema = z.object({
 
 const UpdateOrgSettingsSchema = z
   .object({
-    monthlyBudgetUsd: z.number().finite().min(0).nullable().optional(),
+    monthlyBudgetUsd: z.number().min(0).nullable().optional(),
   })
   .refine((body) => body.monthlyBudgetUsd !== undefined, {
     message: "At least one organization setting must be provided",

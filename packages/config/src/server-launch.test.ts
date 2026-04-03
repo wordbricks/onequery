@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import { validateServerLaunchConfig } from "./server-launch";
 import {
-  SAMPLE_MASTER_ENCRYPTION_KEY,
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
   createSelfHostSmtpConfig,

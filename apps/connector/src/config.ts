@@ -51,7 +51,7 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(DEFAULT_QUERY_TIMEOUT_MS),
-  ONEQUERY_BASE_URL: z.string().url(),
+  ONEQUERY_BASE_URL: z.url(),
   ONEQUERY_ENROLLMENT_TOKEN: z.string().min(1),
 });
 

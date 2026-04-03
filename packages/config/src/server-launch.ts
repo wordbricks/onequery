@@ -14,7 +14,7 @@ export { decodeMasterEncryptionKey } from "./shared-secrets";
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
 const portSchema = z.number().int().min(1).max(65535);
-const originSchema = z.string().trim().url();
+const originSchema = z.string().trim().pipe(z.url());
 
 export const serverLaunchRuntimePathsSchema = z
   .object({

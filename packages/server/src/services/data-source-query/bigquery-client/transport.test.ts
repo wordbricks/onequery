@@ -20,7 +20,7 @@ describe("bigquery transport", () => {
         path: "/jobs/../secrets",
         projectId: "project-123",
       })
-    ).rejects.toThrowError("BigQuery API path is invalid.");
+    ).rejects.toThrow("BigQuery API path is invalid.");
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -38,7 +38,7 @@ describe("bigquery transport", () => {
           pageToken: "abc\r\nx-injected: bad",
         },
       })
-    ).rejects.toThrowError('BigQuery query parameter "pageToken" is invalid.');
+    ).rejects.toThrow('BigQuery query parameter "pageToken" is invalid.');
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });

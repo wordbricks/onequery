@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/$org_slug/team")({
       // Comment: invitations are secondary route data. Prefetch them during
       // navigation, but keep the page shell rendering instead of suspending the
       // entire app at the root boundary while this query resolves.
-      queryClient.prefetchQuery(
+      void queryClient.prefetchQuery(
         teamInvitationsQueryOptions(session.user.id, organizationId)
       );
     }

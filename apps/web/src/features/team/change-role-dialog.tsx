@@ -63,7 +63,7 @@ export function ChangeRoleDialog({
     },
     onSuccess: () => {
       toast.success("Role updated");
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: teamMembersQueryOptions(currentUserId, member.organizationId)
           .queryKey,
       });

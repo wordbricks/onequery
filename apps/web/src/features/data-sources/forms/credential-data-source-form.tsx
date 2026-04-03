@@ -333,7 +333,7 @@ export function CredentialDataSourceForm({
             rows={8}
             {...credentialsField}
             onChange={(event) => {
-              credentialsField.onChange(event);
+              void credentialsField.onChange(event);
               setCredentialsError(null);
             }}
             className="font-mono text-sm h-48 max-h-64 overflow-y-auto resize-y field-sizing-fixed"

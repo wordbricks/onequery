@@ -13,8 +13,8 @@ const BetterAuthDeviceCodeResponseSchema = z
     // public origin, so upstream Better Auth payloads do not need to echo the
     // browser-facing
     // URLs back to the client for this flow to stay valid.
-    verification_uri: z.string().url().optional(),
-    verification_uri_complete: z.string().url().optional(),
+    verification_uri: z.url().optional(),
+    verification_uri_complete: z.url().optional(),
   })
   .meta({ id: "BetterAuthDeviceCodeResponse" });
 

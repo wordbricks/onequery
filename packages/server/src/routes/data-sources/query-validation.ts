@@ -4,7 +4,7 @@ import { organizationLocatorSchema } from "./query-organization";
 
 const providerRequestEnvelopeSchema = z.record(z.string(), z.unknown());
 
-export function createProviderQuerySchema<TMethodSchema extends z.ZodTypeAny>(
+export function createProviderQuerySchema<TMethodSchema extends z.ZodType>(
   methodSchema: TMethodSchema
 ) {
   return organizationLocatorSchema.extend({
@@ -13,7 +13,7 @@ export function createProviderQuerySchema<TMethodSchema extends z.ZodTypeAny>(
   });
 }
 
-export function parseProviderRequest<TSchema extends z.ZodTypeAny>(
+export function parseProviderRequest<TSchema extends z.ZodType>(
   schema: TSchema,
   value: unknown,
   error: string

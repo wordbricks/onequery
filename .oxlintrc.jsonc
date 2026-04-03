@@ -109,11 +109,22 @@
     "typescript/no-unsafe-return": "off", // TEMP ~137
     "typescript/no-unsafe-argument": "off", // TEMP ~102
     "typescript/no-confusing-void-expression": "off", // TEMP ~172
-    "typescript/no-floating-promises": "off", // TEMP ~71
+    "no-void": "off", // `typescript/no-floating-promises` needs explicit `void`
     "typescript/prefer-nullish-coalescing": "off", // TEMP ~70
     "typescript/no-unnecessary-type-arguments": "off", // TEMP ~59
-    "typescript/no-deprecated": "off", // TEMP ~58
-    "typescript/no-misused-promises": "off", // TEMP ~39
+    "typescript/no-misused-promises": [
+      "error",
+      {
+        // React event props are typed as void callbacks, but React does not
+        // await returned promises. Keep the rule for actual misuse while
+        // allowing explicit async UI handlers at the JSX boundary.
+        "checksConditionals": true,
+        "checksSpreads": true,
+        "checksVoidReturn": {
+          "attributes": false
+        }
+      }
+    ],
     "typescript/unbound-method": "off", // TEMP ~23
     "typescript/use-unknown-in-catch-callback-variable": "off", // TEMP ~16
     "typescript/no-unnecessary-boolean-literal-compare": "off", // TEMP ~14
@@ -170,7 +181,6 @@
     // TEMP: rules to fix incrementally (4315 errors after --fix)
     "require-await": "off", // TEMP ~258 — remove async from functions without await
     "promise/prefer-await-to-then": "off", // TEMP ~120 — refactor .then() chains to async/await
-    // "no-void": "off", // TEMP ~74 — remove void operator usage
     "promise/prefer-await-to-callbacks": "off", // TEMP ~67 — refactor callback patterns to async/await
     "import/first": "off", // TEMP ~64 — move imports before other statements
     "typescript/consistent-type-imports": "off", // TEMP ~46 — use import type for type-only imports

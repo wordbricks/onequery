@@ -1,9 +1,7 @@
 import { CredentialsSchema } from "@onequery/db/server";
 import type { Credentials, ProviderType } from "@onequery/db/server";
 
-import {
-  decryptCredentialsObject,
-} from "../crypto/credential-encryption";
+import { decryptCredentialsObject } from "../crypto/credential-encryption";
 
 export type DataSourceCredentialRecord = {
   id: string;

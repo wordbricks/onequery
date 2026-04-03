@@ -82,7 +82,7 @@ const defaultStartBunServerDependencies: StartBunServerDependencies = {
       hostname: server.hostname ?? options.hostname,
       port: server.port ?? options.port,
       stop(closeActiveConnections) {
-        server.stop(closeActiveConnections);
+        void server.stop(closeActiveConnections);
       },
     };
   },

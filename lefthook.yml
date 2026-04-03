@@ -1,7 +1,15 @@
-# To prevent merge-conflict between staged/unstaged files,
-# use `pre-push` instead of `pre-commit`.
-# But it does not provide `stage_fixed` option.
+pre-commit:
+  commands:
+    lint:
+      glob: "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}"
+      run: bunx oxlint --fix {staged_files}
+      stage_fixed: true
+    format:
+      glob: "*.{js,jsx,ts,tsx,cjs,mjs,cts,mts}"
+      run: bunx oxfmt {staged_files}
+      stage_fixed: true
+
 pre-push:
   commands:
     check:
-      run: turbo check:fix
+      run: turbo run lint -- --type-aware --type-check

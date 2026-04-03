@@ -10,12 +10,12 @@ import {
   getDatabaseSchema,
   prepareApplicationDatabase,
 } from "@onequery/db/server";
-import { afterEach, describe, expect, it } from "vitest";
 import {
   decryptCredentialsObject,
   deriveKeyFromBase64,
   generateMasterKey,
 } from "@onequery/server/services/crypto/credential-encryption";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { runCliConnectSourceEffect } from "./effects";
 

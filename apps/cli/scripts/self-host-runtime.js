@@ -10,11 +10,12 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { PACKAGED_PGLITE_DIR_SEGMENTS } from "@onequery/db/pglite";
+
 import {
   binaryNameForPlatform,
   resolveTargetTriple,
 } from "../bin/package-constants.js";
-import { PACKAGED_PGLITE_DIR_SEGMENTS } from "@onequery/db/pglite";
 import { stagePackagedRuntime } from "./build-npm-package.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,7 +43,11 @@ export function resolveBundledRuntimeRoot(stagingRoot) {
 }
 
 export function resolveStagedCliPath(stagingRoot) {
-  return join(resolveBundledRuntimeRoot(stagingRoot), "onequery", cliBinaryName);
+  return join(
+    resolveBundledRuntimeRoot(stagingRoot),
+    "onequery",
+    cliBinaryName
+  );
 }
 
 export function createBundledRuntimeEnv(stagingRoot, env = {}) {

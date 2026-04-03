@@ -28,10 +28,7 @@ describe("launch config", () => {
       assetsDistDir: assetDir,
     });
 
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify(launchConfig, null, 2)
-    );
+    writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
 
     expect(loadLaunchConfigFile(launchConfigPath)).toEqual(launchConfig);
   });
@@ -44,10 +41,7 @@ describe("launch config", () => {
       assetsDistDir: assetDir,
     });
 
-    writeFileSync(
-      launchConfigPath,
-      JSON.stringify(launchConfig, null, 2)
-    );
+    writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
 
     expect(loadLaunchConfigFile(launchConfigPath)).toEqual(launchConfig);
   });

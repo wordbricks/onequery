@@ -6,8 +6,8 @@ import {
 } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
-import { deriveKeyFromBase64 } from "./services/crypto/credential-encryption";
 import { createServerRuntimeConfig } from "./runtime";
+import { deriveKeyFromBase64 } from "./services/crypto/credential-encryption";
 
 describe("createServerRuntimeConfig", () => {
   it("maps a postgres launch contract into a typed runtime config", () => {

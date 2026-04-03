@@ -35,7 +35,7 @@ describe("google analytics relay", () => {
           type: "ga",
         },
       })
-    ).rejects.toThrowError("Google Analytics access token is required");
+    ).rejects.toThrow("Google Analytics access token is required");
   });
 
   it("rejects invalid property paths before issuing a request", async () => {
@@ -46,7 +46,7 @@ describe("google analytics relay", () => {
         propertyPath: "properties/12345/reports",
         requestBody: {},
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "Google Analytics property must be a property ID or properties/<id>"
     );
   });

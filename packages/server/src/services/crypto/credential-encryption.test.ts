@@ -40,7 +40,7 @@ describe("credential encryption", () => {
   it("rejects malformed encrypted payloads with a generic error", () => {
     const masterKey = deriveKeyFromBase64(generateMasterKey());
 
-    expect(() => decryptCredentials("not-hex", "abcd", masterKey)).toThrowError(
+    expect(() => decryptCredentials("not-hex", "abcd", masterKey)).toThrow(
       "Invalid encrypted credentials"
     );
   });
@@ -58,6 +58,6 @@ describe("credential encryption", () => {
           requiredField: z.string(),
         })
       )
-    ).toThrowError("Invalid encrypted credentials");
+    ).toThrow("Invalid encrypted credentials");
   });
 });

@@ -56,19 +56,24 @@ const attemptMySQLConnection = async (
   credentials: MySQLCredentials,
   timeoutSeconds: number,
   useSsl: boolean
-): Promise<ConnectionAttemptResult> =>
-  mysql
-    .createConnection(
+): Promise<ConnectionAttemptResult> => {
+  try {
+    const connection = await mysql.createConnection(
       buildMySQLConnectionConfig(credentials, timeoutSeconds, useSsl)
-    )
-    .then(async (connection) =>
-      Promise.resolve()
-        .then(async () => connection.execute("SELECT 1 as result"))
-        .then(() => ({ ok: true as const }))
-        .catch((error: unknown) => ({ error, ok: false as const }))
-        .finally(async () => connection.end().catch(() => {}))
-    )
-    .catch((error: unknown) => ({ error, ok: false as const }));
+    );
+
+    try {
+      await connection.execute("SELECT 1 as result");
+      return { ok: true };
+    } catch (error: unknown) {
+      return { error, ok: false };
+    } finally {
+      await connection.end().catch(() => {});
+    }
+  } catch (error: unknown) {
+    return { error, ok: false };
+  }
+};
 
 export async function testMySQLConnection(
   credentials: MySQLCredentials,

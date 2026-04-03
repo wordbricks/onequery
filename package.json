@@ -32,8 +32,8 @@
       "hono-rate-limiter": "0.5.3",
       "unstorage": "1.17.4",
       "vitest": "4.1.1",
-      "oxlint": "1.56.0",
-      "oxfmt": "0.41.0"
+      "oxlint": "1.57.0",
+      "oxfmt": "0.42.0"
     }
   },
   "scripts": {

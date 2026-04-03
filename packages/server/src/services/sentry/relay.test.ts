@@ -19,9 +19,7 @@ describe("sentry relay", () => {
         },
         endpoint: "/organizations/{organizationSlug}/projects/",
       })
-    ).rejects.toThrowError(
-      "Sentry API base URL must not include URL credentials"
-    );
+    ).rejects.toThrow("Sentry API base URL must not include URL credentials");
   });
 
   it("rejects absolute endpoint URLs", async () => {
@@ -30,7 +28,7 @@ describe("sentry relay", () => {
         credentials,
         endpoint: "https://sentry.io/api/0/projects/",
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "Sentry endpoint must be a relative path without control characters, query params, or fragments"
     );
   });
@@ -46,6 +44,6 @@ describe("sentry relay", () => {
           },
         },
       })
-    ).rejects.toThrowError('Sentry query param "auth_token" is not allowed');
+    ).rejects.toThrow('Sentry query param "auth_token" is not allowed');
   });
 });

@@ -17,7 +17,10 @@ import type { DataSource } from "@/queries/data-sources-queries";
 import { applyDataSourceNameConflictError } from "./data-source-errors";
 
 const PostHogFormSchema = z.object({
-  hostUrl: z.string().min(1, "Host URL is required").url("Invalid host URL"),
+  hostUrl: z
+    .string()
+    .min(1, "Host URL is required")
+    .pipe(z.url("Invalid host URL")),
   name: z.string().min(1, "Name is required"),
   personalApiKey: z.string().min(1, "Personal API Key is required"),
   projectId: z.string().min(1, "Project ID is required"),

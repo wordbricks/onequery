@@ -27,19 +27,20 @@ export function decodeMasterEncryptionKey(value: string): Uint8Array {
   return Uint8Array.from(decodedValue, (char) => char.charCodeAt(0));
 }
 
-export const masterEncryptionKeySchema = opaqueSecretTransportSchema.superRefine(
-  (value, context) => {
+export const masterEncryptionKeySchema =
+  opaqueSecretTransportSchema.superRefine((value, context) => {
     try {
       decodeMasterEncryptionKey(value);
     } catch (error) {
       context.addIssue({
         code: "custom",
         message:
-          error instanceof Error ? error.message : "Invalid master encryption key.",
+          error instanceof Error
+            ? error.message
+            : "Invalid master encryption key.",
       });
     }
-  }
-);
+  });
 
 export const sharedSecretSectionsSchema = z
   .object({

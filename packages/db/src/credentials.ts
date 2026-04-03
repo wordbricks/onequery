@@ -23,12 +23,12 @@ const optionalOpaqueString = (message: string) =>
   );
 
 const trimmedUrl = (requiredMessage: string, invalidMessage: string) =>
-  z.string().trim().min(1, requiredMessage).url(invalidMessage);
+  z.string().trim().min(1, requiredMessage).pipe(z.url(invalidMessage));
 
 const optionalTrimmedUrl = (invalidMessage: string) =>
   z.preprocess(
     blankStringToUndefined,
-    z.string().trim().url(invalidMessage).optional()
+    z.string().trim().pipe(z.url(invalidMessage)).optional()
   );
 
 const coerceSslMode = (value: unknown): unknown => {
@@ -107,7 +107,7 @@ const ServiceAccountSchema = z.object({
     .string()
     .trim()
     .min(1, "Client email is required")
-    .email("Client email must be a valid email address"),
+    .pipe(z.email("Client email must be a valid email address")),
   privateKey: requiredOpaqueString("Private key is required"),
   privateKeyId: optionalOpaqueString("Private key ID is required"),
   projectId: trimmedString("Project ID is required"),

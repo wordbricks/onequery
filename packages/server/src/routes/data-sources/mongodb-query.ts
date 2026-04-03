@@ -12,9 +12,7 @@ import { z } from "zod";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
-import {
-  decryptCredentialsObject,
-} from "../../services/crypto/credential-encryption";
+import { decryptCredentialsObject } from "../../services/crypto/credential-encryption";
 import {
   findMongoDocuments,
   listMongoCollections,

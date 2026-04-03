@@ -87,7 +87,7 @@ export function encryptCredentialsObject<T>(
   return encryptCredentials(plaintext, masterKey);
 }
 
-export function decryptCredentialsObject<T extends z.ZodTypeAny>(
+export function decryptCredentialsObject<T extends z.ZodType>(
   ciphertextHex: string,
   ivHex: string,
   masterKey: Uint8Array,

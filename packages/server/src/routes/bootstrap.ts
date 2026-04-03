@@ -10,7 +10,7 @@ import type { ServerRuntimeVariables } from "../runtime-context";
 import type { StorageVariables } from "../storage";
 
 const CompleteBootstrapBodySchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   organizationName: z
     .string()

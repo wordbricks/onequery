@@ -23,7 +23,7 @@ describe("mixpanel relay", () => {
           },
         },
       })
-    ).rejects.toThrowError('Mixpanel params key "project_id" is reserved');
+    ).rejects.toThrow('Mixpanel params key "project_id" is reserved');
   });
 
   it("rejects dot-segment endpoints that escape the query API base path", async () => {
@@ -32,7 +32,7 @@ describe("mixpanel relay", () => {
         credentials,
         endpoint: "/query/../secrets",
       })
-    ).rejects.toThrowError("Mixpanel endpoint must not contain dot segments");
+    ).rejects.toThrow("Mixpanel endpoint must not contain dot segments");
   });
 
   it("rejects reserved body keys for export requests", async () => {
@@ -47,6 +47,6 @@ describe("mixpanel relay", () => {
           method: "POST",
         },
       })
-    ).rejects.toThrowError('Mixpanel body key "project_id" is reserved');
+    ).rejects.toThrow('Mixpanel body key "project_id" is reserved');
   });
 });

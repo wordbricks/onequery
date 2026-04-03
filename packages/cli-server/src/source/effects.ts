@@ -1,8 +1,6 @@
 import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
-import {
-  encryptCredentialsObject,
-} from "@onequery/server/services/crypto/credential-encryption";
+import { encryptCredentialsObject } from "@onequery/server/services/crypto/credential-encryption";
 
 import type {
   CliConnectSourceEffect,

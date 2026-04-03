@@ -159,7 +159,7 @@ export function AuditPage() {
 
   function updateAuditSearch(next: Partial<AuditSearch>) {
     startTransition(() => {
-      navigate({
+      void navigate({
         params: { org_slug: organizationSlug },
         replace: true,
         search: (prev) => ({
@@ -186,7 +186,7 @@ export function AuditPage() {
     setSourceKeyInput("");
 
     startTransition(() => {
-      navigate({
+      void navigate({
         params: { org_slug: organizationSlug },
         replace: true,
         search: {

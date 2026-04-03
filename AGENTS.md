@@ -9,7 +9,7 @@ If you encounter something surprising or confusing in this project, flag it as a
 - Runtime: Bun
 - For type checking, use `turbo run typecheck`.
 - For testing, use `turbo run test`.
-- For linting, use `turbo run lint --format json`. For type-aware lint, append `--type-aware` flag (takes more time then normal lint).
+- For linting, use `bun run lint -- --format json`. For type-aware lint, append `--type-aware` flag (takes more time then normal lint).
 - For checking lint/format for whole monorepo, use `turbo run check`, to fix, `turbo run check:fix`
 
 ### Auto-generated files and how to generate them:

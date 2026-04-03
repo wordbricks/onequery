@@ -31,7 +31,7 @@ const InvitationParamsSchema = OrganizationParamsSchema.extend({
 });
 
 const CreateInvitationBodySchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   role: TeamRoleSelectionSchema,
 });
 

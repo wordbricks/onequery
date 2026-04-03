@@ -1,7 +1,5 @@
-import {
-  decodeMasterEncryptionKey,
-  type ServerLaunchConfig,
-} from "@onequery/config/server-launch";
+import { decodeMasterEncryptionKey } from "@onequery/config/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
 import type { RuntimeRateLimitStorage } from "./lib/rate-limit-storage";

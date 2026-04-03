@@ -34,7 +34,7 @@ describe("service account token", () => {
         privateKey: await createPrivateKeyPem(),
         scope: "scope",
       })
-    ).rejects.toThrowError("clientEmail is required");
+    ).rejects.toThrow("clientEmail is required");
   });
 
   it("surfaces sanitized provider error details", async () => {
@@ -59,7 +59,7 @@ describe("service account token", () => {
         privateKey: await createPrivateKeyPem(),
         scope: "https://www.googleapis.com/auth/analytics.readonly",
       })
-    ).rejects.toThrowError(
+    ).rejects.toThrow(
       "Failed to exchange service account token: 400 Invalid service account credentials"
     );
   });

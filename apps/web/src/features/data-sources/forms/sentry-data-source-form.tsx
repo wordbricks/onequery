@@ -19,7 +19,7 @@ import { applyDataSourceNameConflictError } from "./data-source-errors";
 const SentryFormSchema = z.object({
   apiBaseUrl: z.union([
     z.literal(""),
-    z.string().url("API base URL must be a valid URL"),
+    z.url("API base URL must be a valid URL"),
   ]),
   authToken: z.string().min(1, "Auth token is required"),
   name: z.string().min(1, "Name is required"),

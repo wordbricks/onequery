@@ -1,12 +1,11 @@
 import { spawn } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   cleanupPath,
   createBundledRuntimeEnv,
   createStagedBundleRoot,
-  resolveBundledRuntimeRoot,
   resolveStagedCliPath,
 } from "../apps/cli/scripts/self-host-runtime.js";
 
@@ -15,7 +14,6 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 async function main(): Promise<void> {
   const cliArgs = process.argv.slice(2);
   const stagingRoot = await createStagedBundleRoot();
-  const bundleRoot = resolveBundledRuntimeRoot(stagingRoot);
   const stagedCliPath = resolveStagedCliPath(stagingRoot);
   const child = spawn(stagedCliPath, cliArgs, {
     cwd: rootDir,

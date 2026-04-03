@@ -10,7 +10,7 @@ import type { ConnectorSession } from "./types";
 import { sleep, toErrorMessage } from "./utils";
 
 if (import.meta.main) {
-  startConnector();
+  void startConnector();
 }
 
 export async function startConnector(): Promise<void> {

@@ -16,7 +16,7 @@ describe("ProviderHttpClient", () => {
       sanitize: (text) => text.replaceAll("secret-token", "***"),
     });
 
-    await expect(client.get("/events")).rejects.toThrowError(
+    await expect(client.get("/events")).rejects.toThrow(
       "Example API error (401): *** exploded"
     );
   });
@@ -30,15 +30,13 @@ describe("ProviderHttpClient", () => {
       providerName: "Example",
     });
 
-    await expect(client.get("/events?authorization=bad")).rejects.toThrowError(
+    await expect(client.get("/events?authorization=bad")).rejects.toThrow(
       'Provider request param "authorization" is not allowed'
     );
 
     await expect(
       client.get("/events", { authorization: "bad" })
-    ).rejects.toThrowError(
-      'Provider request param "authorization" is not allowed'
-    );
+    ).rejects.toThrow('Provider request param "authorization" is not allowed');
   });
 
   it("preserves caller header casing in fetch init", async () => {

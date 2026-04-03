@@ -17,7 +17,7 @@ describe("mongodb relay", () => {
           database: "admin/system",
         },
       })
-    ).rejects.toThrowError("database is invalid");
+    ).rejects.toThrow("database is invalid");
   });
 
   it("rejects invalid collection names before connecting", async () => {
@@ -28,7 +28,7 @@ describe("mongodb relay", () => {
           collection: "$cmd",
         },
       })
-    ).rejects.toThrowError("collection is invalid");
+    ).rejects.toThrow("collection is invalid");
   });
 
   it("rejects dangerous mongo operators in filters", async () => {
@@ -42,6 +42,6 @@ describe("mongodb relay", () => {
           },
         },
       })
-    ).rejects.toThrowError("filter contains unsupported operator $where");
+    ).rejects.toThrow("filter contains unsupported operator $where");
   });
 });

@@ -1,9 +1,15 @@
+import { afterAll, describe, expect, it } from "bun:test";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn, spawnSync } from "node:child_process";
-import { afterAll, describe, expect, it } from "bun:test";
 
 import {
   cleanupPath,
@@ -19,7 +25,10 @@ const SHUTDOWN_TIMEOUT_MS = 30_000;
 let stagedBundleRootPromise: Promise<string> | null = null;
 
 function getStagedBundleRoot(): Promise<string> {
-  stagedBundleRootPromise ??= createStagedBundleRoot();
+  if (!stagedBundleRootPromise) {
+    stagedBundleRootPromise = createStagedBundleRoot();
+  }
+
   return stagedBundleRootPromise;
 }
 
@@ -96,9 +105,9 @@ function buildCookieHeader(headers: Headers): string | null {
   return cookies.join("; ");
 }
 
-function collectProcessOutput(
-  child: ReturnType<typeof spawn>
-): { read: () => string } {
+function collectProcessOutput(child: ReturnType<typeof spawn>): {
+  read: () => string;
+} {
   let stdout = "";
   let stderr = "";
 
@@ -200,7 +209,8 @@ async function stopServeProcess(input: {
     env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
   });
 
-  const stopOutput = `${stopResult.stdout ?? ""}${stopResult.stderr ?? ""}`.trim();
+  const stopOutput =
+    `${stopResult.stdout ?? ""}${stopResult.stderr ?? ""}`.trim();
   const pidPath = join(input.homeDir, "data", "run", "server.pid");
   const lockPath = join(input.homeDir, "data", "run", "server.lock");
 
@@ -231,38 +241,44 @@ async function stopServeProcess(input: {
     throw new Error(
       `self-host serve process failed to stop cleanly.\nstop output:\n${stopOutput}\nserve output:\n${input.output.read()}\n${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
 }
 
 describe("CLI self-host smoke", () => {
-  it(
-    "bootstraps a fresh self-host runtime and creates a data source through the packaged serve path",
-    async () => {
-      const stagedBundleRoot = await getStagedBundleRoot();
-      const homeDir = createTempHomeDir("onequery-cli-self-host-home-");
-      const port = await findOpenPort();
-      const env = {
-        ONEQUERY_HOME: homeDir,
+  it("bootstraps a fresh self-host runtime and creates a data source through the packaged serve path", async () => {
+    const stagedBundleRoot = await getStagedBundleRoot();
+    const homeDir = createTempHomeDir("onequery-cli-self-host-home-");
+    const port = await findOpenPort();
+    const env = {
+      ONEQUERY_HOME: homeDir,
+    };
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    writeSelfHostConfig(homeDir, port);
+
+    const handle = await startServeProcess({
+      env,
+      stagedBundleRoot,
+    });
+
+    try {
+      const bootstrapStateResponse = await waitForBootstrap(baseUrl);
+      const bootstrapStatePayload = (await bootstrapStateResponse.json()) as {
+        isBootstrapped: boolean;
+        needsBootstrap: boolean;
       };
-      const baseUrl = `http://127.0.0.1:${port}`;
 
-      writeSelfHostConfig(homeDir, port);
-
-      const handle = await startServeProcess({
-        env,
-        stagedBundleRoot,
+      expect(bootstrapStatePayload).toMatchObject({
+        isBootstrapped: false,
+        needsBootstrap: true,
       });
 
-      try {
-        const bootstrapStateResponse = await waitForBootstrap(baseUrl);
-        await expect(bootstrapStateResponse.json()).resolves.toMatchObject({
-          isBootstrapped: false,
-          needsBootstrap: true,
-        });
-
-        const bootstrapResponse = await fetch(`${baseUrl}/api/bootstrap/complete`, {
+      const bootstrapResponse = await fetch(
+        `${baseUrl}/api/bootstrap/complete`,
+        {
           body: JSON.stringify({
             email: "owner@example.com",
             name: "Owner",
@@ -275,112 +291,118 @@ describe("CLI self-host smoke", () => {
             origin: baseUrl,
           },
           method: "POST",
-        });
+        }
+      );
 
-        expect(bootstrapResponse.status).toBe(201);
+      expect(bootstrapResponse.status).toBe(201);
 
-        const bootstrapPayload = (await bootstrapResponse.json()) as {
-          bootstrap: {
-            organizationId: string;
-            organizationSlug: string;
-          };
+      const bootstrapPayload = (await bootstrapResponse.json()) as {
+        bootstrap: {
+          organizationId: string;
+          organizationSlug: string;
         };
-        const cookieHeader = buildCookieHeader(bootstrapResponse.headers);
-
-        expect(cookieHeader).toBeTruthy();
-        expect(bootstrapPayload).toMatchObject({
-          bootstrap: {
-            organizationSlug: "owner-org",
-          },
-        });
-
-        const dataSourceResponse = await fetch(`${baseUrl}/api/data-sources`, {
-          body: JSON.stringify({
-            credentials: {
-              database: "analytics",
-              host: "localhost",
-              password: "password",
-              port: 5432,
-              sslMode: "prefer",
-              type: "postgres",
-              username: "postgres",
-            },
-            name: "Warehouse",
-            organizationId: bootstrapPayload.bootstrap.organizationId,
-            provider: "postgres",
-          }),
-          headers: {
-            "content-type": "application/json",
-            cookie: cookieHeader ?? "",
-            origin: baseUrl,
-          },
-          method: "POST",
-        });
-
-        expect(dataSourceResponse.status).toBe(201);
-        await expect(dataSourceResponse.json()).resolves.toMatchObject({
-          dataSource: {
-            name: "Warehouse",
-            provider: "postgres",
-            status: "active",
-          },
-        });
-      } catch (error) {
-        throw new Error(
-          `self-host smoke failed.\n${handle.output.read()}\n${
-            error instanceof Error ? error.message : String(error)
-          }`
-        );
-      } finally {
-        await stopServeProcess({
-          child: handle.child,
-          env,
-          homeDir,
-          output: handle.output,
-          stagedBundleRoot,
-        });
-        rmSync(homeDir, {
-          force: true,
-          recursive: true,
-        });
-      }
-    },
-    240_000
-  );
-
-  it(
-    "fails on startup when self-host secrets contain an invalid master key",
-    async () => {
-      const stagedBundleRoot = await getStagedBundleRoot();
-      const homeDir = createTempHomeDir("onequery-cli-invalid-master-key-");
-      const port = await findOpenPort();
-      const env = {
-        ONEQUERY_HOME: homeDir,
       };
+      const cookieHeader = buildCookieHeader(bootstrapResponse.headers);
 
-      writeSelfHostConfig(homeDir, port);
-      writeInvalidSecrets(homeDir);
-
-      const handle = await startServeProcess({
-        env,
-        stagedBundleRoot,
+      expect(cookieHeader).toBeTruthy();
+      expect(bootstrapPayload).toMatchObject({
+        bootstrap: {
+          organizationSlug: "owner-org",
+        },
       });
 
-      try {
-        const exit = await waitForExit(handle.child, 20_000);
-        const output = handle.output.read();
+      const dataSourceResponse = await fetch(`${baseUrl}/api/data-sources`, {
+        body: JSON.stringify({
+          credentials: {
+            database: "analytics",
+            host: "localhost",
+            password: "password",
+            port: 5432,
+            sslMode: "prefer",
+            type: "postgres",
+            username: "postgres",
+          },
+          name: "Warehouse",
+          organizationId: bootstrapPayload.bootstrap.organizationId,
+          provider: "postgres",
+        }),
+        headers: {
+          "content-type": "application/json",
+          cookie: cookieHeader ?? "",
+          origin: baseUrl,
+        },
+        method: "POST",
+      });
 
-        expect(exit.code).not.toBe(0);
-        expect(output).toContain("invalid self-host secrets config");
-        expect(output).toContain("crypto.master_encryption_key");
-        expect(existsSync(join(homeDir, "data", "run", "server.pid"))).toBe(false);
-      } finally {
-        rmSync(homeDir, {
-          force: true,
-          recursive: true,
-        });
-      }
-    },
-    240_000
-  );
+      expect(dataSourceResponse.status).toBe(201);
+      const dataSourcePayload = (await dataSourceResponse.json()) as {
+        dataSource: {
+          name: string;
+          provider: string;
+          status: string;
+        };
+      };
+
+      expect(dataSourcePayload).toMatchObject({
+        dataSource: {
+          name: "Warehouse",
+          provider: "postgres",
+          status: "active",
+        },
+      });
+    } catch (error) {
+      throw new Error(
+        `self-host smoke failed.\n${handle.output.read()}\n${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error }
+      );
+    } finally {
+      await stopServeProcess({
+        child: handle.child,
+        env,
+        homeDir,
+        output: handle.output,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("fails on startup when self-host secrets contain an invalid master key", async () => {
+    const stagedBundleRoot = await getStagedBundleRoot();
+    const homeDir = createTempHomeDir("onequery-cli-invalid-master-key-");
+    const port = await findOpenPort();
+    const env = {
+      ONEQUERY_HOME: homeDir,
+    };
+
+    writeSelfHostConfig(homeDir, port);
+    writeInvalidSecrets(homeDir);
+
+    const handle = await startServeProcess({
+      env,
+      stagedBundleRoot,
+    });
+
+    try {
+      const exit = await waitForExit(handle.child, 20_000);
+      const output = handle.output.read();
+
+      expect(exit.code).not.toBe(0);
+      expect(output).toContain("invalid self-host secrets config");
+      expect(output).toContain("crypto.master_encryption_key");
+      expect(existsSync(join(homeDir, "data", "run", "server.pid"))).toBe(
+        false
+      );
+    } finally {
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
 });
