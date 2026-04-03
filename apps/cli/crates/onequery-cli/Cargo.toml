@@ -15,6 +15,7 @@ clap = { workspace = true, features = ["derive"] }
 dirs = { workspace = true }
 flate2 = "1.1.5"
 futures-util = { workspace = true }
+getrandom = "0.3"
 libc = "0.2.177"
 path-absolutize = { workspace = true }
 progenitor-client = "0.13.0"

@@ -3,12 +3,12 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use base64::Engine as _;
+use getrandom::fill as fill_random_bytes;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use uuid::Uuid;
 
 use super::config_dir;
 use super::data_dir;
@@ -238,11 +238,9 @@ fn generate_base64url_secret() -> String {
 }
 
 fn generate_random_secret_bytes() -> [u8; MASTER_ENCRYPTION_KEY_BYTE_LENGTH] {
-    let first = Uuid::new_v4();
-    let second = Uuid::new_v4();
     let mut bytes = [0_u8; MASTER_ENCRYPTION_KEY_BYTE_LENGTH];
-    bytes[..16].copy_from_slice(first.as_bytes());
-    bytes[16..].copy_from_slice(second.as_bytes());
+    fill_random_bytes(&mut bytes)
+        .unwrap_or_else(|error| panic!("expected operating system randomness: {error}"));
     bytes
 }
 
@@ -891,7 +889,22 @@ mod tests {
             generated_master_key.len(),
             super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
         );
-        assert_eq!(loaded.secrets.connectors.enrollment_token.is_empty(), false);
+        let generated_auth_secret = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(loaded.secrets.auth.secret.as_bytes())
+            .unwrap_or_else(|error| panic!("expected bootstrap auth secret to decode: {error}"));
+        assert_eq!(
+            generated_auth_secret.len(),
+            super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
+        );
+        let generated_enrollment_token = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(loaded.secrets.connectors.enrollment_token.as_bytes())
+            .unwrap_or_else(|error| {
+                panic!("expected bootstrap enrollment token to decode: {error}")
+            });
+        assert_eq!(
+            generated_enrollment_token.len(),
+            super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
+        );
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
