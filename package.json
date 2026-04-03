@@ -84,7 +84,7 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "0.17.0",
-    "turbo": "2.8.20",
+    "turbo": "2.9.1",
     "vitest": "catalog:"
   },
   "resolutions": {
