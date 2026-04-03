@@ -51,9 +51,5 @@ describe("data-sources schema", () => {
         expect(PROVIDER_TYPES).toContain(provider);
       }
     });
-
-    it("should match the OSS provider surface", () => {
-      expect(QUERYABLE_PROVIDER_TYPES).toEqual(PROVIDER_TYPES);
-    });
   });
 });

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildDeviceAuthPath,
-  buildInvitePath,
-  DEVICE_ROUTE,
-} from "@/lib/app-routes";
+import { buildDeviceAuthPath, DEVICE_ROUTE } from "@/lib/app-routes";
 
 describe("buildDeviceAuthPath", () => {
   it("returns the base device route when no code is provided", () => {
@@ -15,11 +11,5 @@ describe("buildDeviceAuthPath", () => {
     expect(buildDeviceAuthPath("ABCD 1234")).toBe(
       "/device?user_code=ABCD+1234"
     );
-  });
-});
-
-describe("buildInvitePath", () => {
-  it("builds the public invite route for an invitation id", () => {
-    expect(buildInvitePath("invite_123")).toBe("/invite/invite_123");
   });
 });

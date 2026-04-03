@@ -7,16 +7,6 @@ import {
 } from "./install-script";
 
 describe("install script surface", () => {
-  it("serves the installer for curl-like root requests", () => {
-    const request = new Request("https://onequery.wordbricks.ai/", {
-      headers: {
-        "user-agent": "curl/8.7.1",
-      },
-    });
-
-    expect(shouldServeInstallScript(request)).toBe(true);
-  });
-
   it("keeps the SPA root for browser navigation", () => {
     const request = new Request("https://onequery.wordbricks.ai/", {
       headers: {

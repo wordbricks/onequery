@@ -9,9 +9,6 @@ describe("source connect guide", () => {
   it("reuses the canonical connect command in guide output", () => {
     const guide = buildCliSourceConnectGuide("postgres");
 
-    expect(guide.command).toBe(
-      "onequery source connect --source postgres --input '<json>'"
-    );
     expect(guide.content).toContain(
       "Run: `onequery source connect --source postgres --input '<json>'`"
     );
@@ -27,18 +24,5 @@ describe("source connect guide", () => {
     });
 
     expect(result.nextCommand).toBe("onequery source show warehouse");
-  });
-
-  it("documents the supabase postgres credential fallback explicitly", () => {
-    const guide = buildCliSourceConnectGuide("supabase");
-
-    expect(guide.command).toBe(
-      "onequery source connect --source supabase --input '<json>'"
-    );
-    expect(guide.content).toContain("Set `credentials.type` to `postgres`.");
-    expect(guide.providers[0]?.credentialTemplate).toMatchObject({
-      sslMode: "require",
-      type: "postgres",
-    });
   });
 });

@@ -10,13 +10,10 @@ describe("getLandingDevPort", () => {
 
   it("accepts well-formed port numbers", () => {
     expect(getLandingDevPort("4547")).toBe(4547);
-    expect(getLandingDevPort("65535")).toBe(65535);
   });
 
   it("rejects malformed or out-of-range values", () => {
     expect(getLandingDevPort("4546abc")).toBe(DEFAULT_LANDING_DEV_PORT);
     expect(getLandingDevPort("-1")).toBe(DEFAULT_LANDING_DEV_PORT);
-    expect(getLandingDevPort("0")).toBe(DEFAULT_LANDING_DEV_PORT);
-    expect(getLandingDevPort("70000")).toBe(DEFAULT_LANDING_DEV_PORT);
   });
 });

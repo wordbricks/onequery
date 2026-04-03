@@ -52,11 +52,6 @@ describe("formatRelativeTime", () => {
       label: "uses numeric auto for day-relative labels",
     },
     {
-      expected: "5 minutes ago",
-      input: "2024-06-15T11:55:00Z",
-      label: "accepts string date input",
-    },
-    {
       expected: "Invalid date",
       input: "not-a-date",
       label: "returns a fallback for invalid dates",

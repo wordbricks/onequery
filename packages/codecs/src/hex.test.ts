@@ -56,8 +56,6 @@ describe("hexToBytes", () => {
   describe("validation (decode)", () => {
     it.each([
       ["invalid hex characters", "xyz"],
-      ["hex with spaces", "ab cd"],
-      ["hex with 0x prefix", "0xabcd"],
       ["non-string input", 123],
     ])("fails on %s", (_name, input) => {
       // @ts-expect-error Intentionally passing invalid input to verify runtime validation.

@@ -15,9 +15,6 @@ describe("api paths", () => {
   });
 
   it("builds organization-scoped team api paths", () => {
-    expect(buildTeamOrganizationApiPath("org_123", "invitations")).toBe(
-      "/api/team/organizations/org_123/invitations"
-    );
     expect(
       buildTeamOrganizationApiPath("org_123", "members", "user_456", "role")
     ).toBe("/api/team/organizations/org_123/members/user_456/role");

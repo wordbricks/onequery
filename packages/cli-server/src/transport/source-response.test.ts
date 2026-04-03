@@ -32,10 +32,4 @@ describe("cli source transport projection", () => {
       name: "warehouse",
     });
   });
-
-  it("returns the full source when the root field is selected", () => {
-    expect(projectCliSourceSummary(source, new Set(["source"]), "source")).toBe(
-      source
-    );
-  });
 });

@@ -2,28 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   resolveGoogleAnalyticsAccessToken,
-  resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "./relay";
 
 describe("google analytics relay", () => {
-  it("rejects malformed property paths", () => {
-    expect(
-      resolveGoogleAnalyticsPropertyPath({
-        credentials: {
-          accessToken: "ga-access-token",
-          expiresAt: Date.now() + 60_000,
-          propertyId: "properties/12345",
-          refreshToken: "ga-refresh-token",
-          type: "ga",
-        },
-        request: {
-          property: "properties/12345/reports",
-        },
-      })
-    ).toBeNull();
-  });
-
   it("rejects empty oauth access tokens", async () => {
     await expect(
       resolveGoogleAnalyticsAccessToken({

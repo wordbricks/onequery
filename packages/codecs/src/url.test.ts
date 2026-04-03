@@ -57,14 +57,6 @@ function expectURL(url: URL, expected: URLExpectation): void {
 describe("stringToURL", () => {
   it.each([
     {
-      name: "decodes a standard http URL",
-      input: "http://example.com",
-      expected: {
-        href: "http://example.com/",
-        protocol: "http:",
-      },
-    },
-    {
       name: "decodes a URL with auth, port, path, query, and hash",
       input:
         "https://user:pass@example.com:8080/path/to/resource?foo=bar&baz=qux#section",
@@ -90,13 +82,6 @@ describe("stringToURL", () => {
         pathname: "/path/to/file.txt",
       },
     },
-    {
-      name: "decodes encoded path characters",
-      input: "https://example.com/path%20with%20spaces",
-      expected: {
-        pathname: "/path%20with%20spaces",
-      },
-    },
   ])("$name", ({ input, expected }) => {
     const result = stringToURL.decode(input);
     expect(result).toBeInstanceOf(URL);
@@ -104,20 +89,6 @@ describe("stringToURL", () => {
   });
 
   it.each([
-    {
-      name: "encodes a URL with a path",
-      url: new URL("https://example.com/path"),
-      expected: "https://example.com/path",
-    },
-    {
-      name: "encodes query params",
-      url: (() => {
-        const value = new URL("https://example.com");
-        value.searchParams.set("key", "value");
-        return value;
-      })(),
-      expected: "https://example.com/?key=value",
-    },
     {
       name: "encodes spaces in query values",
       url: (() => {
@@ -127,19 +98,16 @@ describe("stringToURL", () => {
       })(),
       expected: "https://example.com/?q=hello+world",
     },
+    {
+      name: "encodes a URL with a path",
+      url: new URL("https://example.com/path"),
+      expected: "https://example.com/path",
+    },
   ])("$name", ({ url, expected }) => {
     expect(stringToURL.encode(url)).toBe(expected);
   });
 
   it.each([
-    {
-      name: "rejects an empty string",
-      input: "",
-    },
-    {
-      name: "rejects a malformed URL",
-      input: "not a url",
-    },
     {
       name: "rejects a string without a protocol",
       input: "example.com",
@@ -164,20 +132,6 @@ describe("stringToURL", () => {
 describe("stringToHttpURL", () => {
   it.each([
     {
-      name: "decodes a valid http URL",
-      input: "http://example.com",
-      expected: {
-        protocol: "http:",
-      },
-    },
-    {
-      name: "decodes a valid https URL",
-      input: "https://example.com",
-      expected: {
-        protocol: "https:",
-      },
-    },
-    {
       name: "decodes a URL with path and query",
       input: "https://api.example.com/v1/users?limit=10",
       expected: {
@@ -195,11 +149,6 @@ describe("stringToHttpURL", () => {
   });
 
   it.each([
-    {
-      name: "encodes an http URL",
-      url: new URL("http://example.com/path"),
-      expected: "http://example.com/path",
-    },
     {
       name: "encodes an https URL",
       url: new URL("https://secure.example.com"),

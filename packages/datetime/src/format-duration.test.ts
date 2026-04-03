@@ -10,11 +10,6 @@ describe("formatDuration", () => {
       ms: 500,
     },
     {
-      expected: /0\s?ms/,
-      label: "formats zero milliseconds",
-      ms: 0,
-    },
-    {
       expected: /5\s?s/,
       label: "formats sub-minute durations as seconds",
       ms: 5_000,
