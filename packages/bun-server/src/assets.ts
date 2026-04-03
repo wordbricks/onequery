@@ -87,11 +87,6 @@ function createFileResponse(path: string, request: Request): Response {
 }
 
 export function getDefaultSpaBuildDir(rootDir: string): string {
-  const clientDistDir = resolve(rootDir, "apps/web/dist/client");
-  if (isReadableFile(join(clientDistDir, "index.html"))) {
-    return clientDistDir;
-  }
-
   return resolve(rootDir, "apps/web/dist");
 }
 

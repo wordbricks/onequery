@@ -2,7 +2,10 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+import {
+  createSelfHostLaunchConfig,
+  createWorkspaceDevLaunchConfig,
+} from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -10,129 +13,16 @@ import {
   resolveStartupInputFromArgv,
 } from "./startup";
 
-function writeWorkspaceDevLaunchConfig(launchConfigPath: string): void {
-  writeFileSync(
-    launchConfigPath,
-    JSON.stringify(
-      {
-        assets: {
-          distDir: "/tmp/web",
-        },
-        auth: {
-          secret: "workspace-auth-secret",
-        },
-        connectors: {
-          enrollmentToken: "connector-token",
-        },
-        crypto: {
-          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-        },
-        listen: {
-          host: "127.0.0.1",
-          port: 4555,
-        },
-        migrations: {
-          dir: "/tmp/migrations",
-        },
-        mode: "workspace-dev",
-        publicOrigin: "http://localhost:4545",
-        rateLimit: {
-          enabled: false,
-          storage: "memory",
-        },
-        storage: {
-          kind: "postgres",
-          url: "postgres://onequery:onequery@localhost:5454/onequery",
-        },
-      },
-      null,
-      2
-    )
-  );
-}
-
-function writeSelfHostLaunchConfig(launchConfigPath: string): void {
-  writeFileSync(
-    launchConfigPath,
-    JSON.stringify(
-      {
-        assets: {
-          distDir: "/tmp/web",
-        },
-        auth: {
-          secret: "self-host-auth-secret",
-        },
-        connectors: {
-          enrollmentToken: "connector-token",
-        },
-        crypto: {
-          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-        },
-        listen: {
-          host: "127.0.0.1",
-          port: 5656,
-        },
-        migrations: {
-          dir: "/tmp/migrations",
-        },
-        mode: "self-host",
-        publicOrigin: "http://127.0.0.1:5656",
-        rateLimit: {
-          enabled: true,
-          storage: "persistent",
-        },
-        runtimePaths: {
-          backupsDir: "/tmp/onequery/backups",
-          dataDir: "/tmp/onequery/data",
-          lockPath: "/tmp/onequery/run/server.lock",
-          logsDir: "/tmp/onequery/logs",
-          pidPath: "/tmp/onequery/run/server.pid",
-          runDir: "/tmp/onequery/run",
-        },
-        storage: {
-          dir: "/tmp/onequery/pglite",
-          kind: "pglite",
-        },
-      },
-      null,
-      2
-    )
-  );
+function writeLaunchConfig(launchConfigPath: string, value: unknown): void {
+  writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
 }
 
 describe("bun-server startup", () => {
   it("accepts an in-memory launch config object", () => {
-    const launchConfig = {
-      assets: {
-        distDir: "/tmp/web",
-      },
-      auth: {
-        secret: "workspace-auth-secret",
-      },
-      connectors: {
-        enrollmentToken: "connector-token",
-      },
-      crypto: {
-        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-      },
-      listen: {
-        host: "127.0.0.1",
-        port: 4555,
-      },
-      migrations: {
-        dir: "/tmp/migrations",
-      },
-      mode: "workspace-dev" as const,
-      publicOrigin: "http://localhost:4545",
-      rateLimit: {
-        enabled: false,
-        storage: "memory" as const,
-      },
-      storage: {
-        kind: "postgres" as const,
-        url: "postgres://onequery:onequery@localhost:5454/onequery",
-      },
-    };
+    const launchConfig = createWorkspaceDevLaunchConfig({
+      assetsDistDir: "/tmp/web",
+      migrationsDir: "/tmp/migrations",
+    });
 
     expect(loadStartupLaunchConfig({ launchConfig })).toEqual(launchConfig);
   });
@@ -141,7 +31,11 @@ describe("bun-server startup", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
-    writeWorkspaceDevLaunchConfig(launchConfigPath);
+    const launchConfig = createWorkspaceDevLaunchConfig({
+      assetsDistDir: "/tmp/web",
+      migrationsDir: "/tmp/migrations",
+    });
+    writeLaunchConfig(launchConfigPath, launchConfig);
 
     const startupInput = resolveStartupInputFromArgv([
       "bun",
@@ -149,44 +43,18 @@ describe("bun-server startup", () => {
       launchConfigPath,
     ]);
 
-    expect(loadStartupLaunchConfig(startupInput)).toEqual({
-      assets: {
-        distDir: "/tmp/web",
-      },
-      auth: {
-        secret: "workspace-auth-secret",
-      },
-      connectors: {
-        enrollmentToken: "connector-token",
-      },
-      crypto: {
-        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-      },
-      listen: {
-        host: "127.0.0.1",
-        port: 4555,
-      },
-      migrations: {
-        dir: "/tmp/migrations",
-      },
-      mode: "workspace-dev",
-      publicOrigin: "http://localhost:4545",
-      rateLimit: {
-        enabled: false,
-        storage: "memory",
-      },
-      storage: {
-        kind: "postgres",
-        url: "postgres://onequery:onequery@localhost:5454/onequery",
-      },
-    });
+    expect(loadStartupLaunchConfig(startupInput)).toEqual(launchConfig);
   });
 
   it("loads a self-host launch config from the explicit startup argv path", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
-    writeSelfHostLaunchConfig(launchConfigPath);
+    const launchConfig = createSelfHostLaunchConfig({
+      assetsDistDir: "/tmp/web",
+      migrationsDir: "/tmp/migrations",
+    });
+    writeLaunchConfig(launchConfigPath, launchConfig);
 
     const startupInput = resolveStartupInputFromArgv([
       "bun",
@@ -194,45 +62,7 @@ describe("bun-server startup", () => {
       launchConfigPath,
     ]);
 
-    expect(loadStartupLaunchConfig(startupInput)).toEqual({
-      assets: {
-        distDir: "/tmp/web",
-      },
-      auth: {
-        secret: "self-host-auth-secret",
-      },
-      connectors: {
-        enrollmentToken: "connector-token",
-      },
-      crypto: {
-        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-      },
-      listen: {
-        host: "127.0.0.1",
-        port: 5656,
-      },
-      migrations: {
-        dir: "/tmp/migrations",
-      },
-      mode: "self-host",
-      publicOrigin: "http://127.0.0.1:5656",
-      rateLimit: {
-        enabled: true,
-        storage: "persistent",
-      },
-      runtimePaths: {
-        backupsDir: "/tmp/onequery/backups",
-        dataDir: "/tmp/onequery/data",
-        lockPath: "/tmp/onequery/run/server.lock",
-        logsDir: "/tmp/onequery/logs",
-        pidPath: "/tmp/onequery/run/server.pid",
-        runDir: "/tmp/onequery/run",
-      },
-      storage: {
-        dir: "/tmp/onequery/pglite",
-        kind: "pglite",
-      },
-    });
+    expect(loadStartupLaunchConfig(startupInput)).toEqual(launchConfig);
   });
 
   it("does not read repo-local workspace-dev files during self-host startup", () => {
@@ -246,7 +76,13 @@ describe("bun-server startup", () => {
       join(root, "onequery.dev.secrets.toml"),
       'secret = "not toml"\n'
     );
-    writeSelfHostLaunchConfig(launchConfigPath);
+    writeLaunchConfig(
+      launchConfigPath,
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+      })
+    );
 
     expect(loadStartupLaunchConfig({ launchConfigPath })).toMatchObject({
       mode: "self-host",

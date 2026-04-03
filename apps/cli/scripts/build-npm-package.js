@@ -42,7 +42,6 @@ const dbPackageRequire = createRequire(
 );
 const WEB_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "web");
 const WEB_DIST_DIR = path.join(WEB_BUILD_ROOT, "dist");
-const WEB_CLIENT_DIST_DIR = path.join(WEB_DIST_DIR, "client");
 const WEB_INDEX_FILENAME = "index.html";
 const DB_MIGRATIONS_DIR = path.join(
   WORKSPACE_ROOT,
@@ -51,10 +50,7 @@ const DB_MIGRATIONS_DIR = path.join(
   "src",
   "migrations"
 );
-const PACKAGED_RUNTIME_DIR = "runtime";
-const PACKAGED_MIGRATIONS_DIR = path.join(PACKAGED_RUNTIME_DIR, "migrations");
 const PACKAGED_PGLITE_DIR = path.join(...PACKAGED_PGLITE_DIR_SEGMENTS);
-const PACKAGED_WEB_DIR = path.join(PACKAGED_RUNTIME_DIR, "web");
 
 export const PACKAGE_EXPANSIONS = {
   cli: ["cli", ...Object.keys(PLATFORM_PACKAGES)],
@@ -154,9 +150,6 @@ async function stageSources({ stagingDir, packageName, version }) {
     await cp(path.join(CLI_ROOT, "bin"), path.join(stagingDir, "bin"), {
       recursive: true,
     });
-    await stagePackagedRuntime({
-      stagingDir,
-    });
     await copyFile(readmePath, path.join(stagingDir, "README.md"));
 
     // CONTEXT: apps/cli is both the Rust workspace root and the npm package
@@ -165,7 +158,7 @@ async function stageSources({ stagingDir, packageName, version }) {
     delete packageJson.private;
     delete packageJson.scripts;
     packageJson.version = version;
-    packageJson.files = ["bin", PACKAGED_RUNTIME_DIR, "README.md"];
+    packageJson.files = ["bin", "README.md"];
     // CONTEXT: optional dependency keys stay unscoped because they are npm
     // alias names. The published package backing each alias is @onequery/cli.
     packageJson.optionalDependencies = Object.fromEntries(
@@ -185,6 +178,9 @@ async function stageSources({ stagingDir, packageName, version }) {
   }
 
   await copyFile(readmePath, path.join(stagingDir, "README.md"));
+  await stagePackagedRuntime({
+    runtimeRoot: path.join(stagingDir, "vendor", platformPackage.targetTriple),
+  });
 
   const stagedPlatformPackage = {
     cpu: [platformPackage.cpu],
@@ -222,17 +218,21 @@ async function copyPlatformVendor({ vendorSrc, stagingDir, targetTriple }) {
   await cp(targetSource, targetDestination, { recursive: true });
 }
 
-async function stagePackagedRuntime({ stagingDir }) {
+export async function stagePackagedRuntime({ runtimeRoot }) {
   await buildWebAssets();
 
-  const runtimeRoot = path.join(stagingDir, PACKAGED_RUNTIME_DIR);
-  const migrationsOutDir = path.join(stagingDir, PACKAGED_MIGRATIONS_DIR);
-  const pgliteOutDir = path.join(stagingDir, PACKAGED_PGLITE_DIR);
-  const webOutDir = path.join(stagingDir, PACKAGED_WEB_DIR);
+  const runtimeDir = path.join(runtimeRoot, "runtime");
+  const migrationsOutDir = path.join(runtimeDir, "migrations");
+  // Comment: `runtimeRoot` is already the packaged bundle root
+  // (`vendor/<target>`), so the PGlite payload should land at
+  // `vendor/<target>/runtime/pglite`, not `runtime/runtime/pglite`.
+  const pgliteOutDir = path.join(runtimeRoot, PACKAGED_PGLITE_DIR);
+  const webOutDir = path.join(runtimeDir, "web");
   const builtWebDistDir = await resolveBuiltWebDistDir();
   const pgliteDistDir = await resolvePgliteDistDir();
 
   await mkdir(runtimeRoot, { recursive: true });
+  await mkdir(runtimeDir, { recursive: true });
   await cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true });
   await mkdir(pgliteOutDir, { recursive: true });
   await Promise.all(
@@ -291,18 +291,13 @@ async function buildWebAssets() {
 }
 
 async function resolveBuiltWebDistDir() {
-  for (const candidate of [WEB_CLIENT_DIST_DIR, WEB_DIST_DIR]) {
-    try {
-      await access(path.join(candidate, WEB_INDEX_FILENAME));
-      return candidate;
-    } catch {
-      // Continue until a known build output contains index.html.
-    }
+  const indexPath = path.join(WEB_DIST_DIR, WEB_INDEX_FILENAME);
+  try {
+    await access(indexPath);
+    return WEB_DIST_DIR;
+  } catch {
+    throw new Error(`failed to locate built web assets; expected ${indexPath}`);
   }
-
-  throw new Error(
-    `failed to locate built web assets; expected ${path.join(WEB_CLIENT_DIST_DIR, WEB_INDEX_FILENAME)} or ${path.join(WEB_DIST_DIR, WEB_INDEX_FILENAME)}`
-  );
 }
 
 async function runNpmPack({ stagingDir, packOutput }) {

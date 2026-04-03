@@ -43,7 +43,7 @@ function RoutedApp() {
   };
 
   useEffect(() => {
-    router.invalidate();
+    void router.invalidate();
   }, [auth.isAuthenticated, auth.session?.user.id, isPending]);
 
   if (isPending) {

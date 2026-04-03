@@ -14,9 +14,9 @@ describe("oauth state manager", () => {
         provider: "github",
         redirectTo: "/settings",
       })
-    ).rejects.toThrowError("OAuth state secret must be configured");
+    ).rejects.toThrow("OAuth state secret must be configured");
 
-    await expect(validateOAuthState("   ", "state")).rejects.toThrowError(
+    await expect(validateOAuthState("   ", "state")).rejects.toThrow(
       "OAuth state secret must be configured"
     );
   });

@@ -1,10 +1,7 @@
 import { CredentialsSchema } from "@onequery/db/server";
 import type { Credentials, ProviderType } from "@onequery/db/server";
 
-import {
-  decryptCredentialsObject,
-  deriveKeyFromBase64,
-} from "../crypto/credential-encryption";
+import { decryptCredentialsObject } from "../crypto/credential-encryption";
 
 export type DataSourceCredentialRecord = {
   id: string;
@@ -42,7 +39,7 @@ type PrepareCredentialsResult =
 
 export async function prepareDataSourceCredentials(input: {
   dataSource: DataSourceCredentialRecord;
-  masterEncryptionKey: string;
+  masterEncryptionKey: Uint8Array;
 }): Promise<PrepareCredentialsResult> {
   const descriptor = describeDataSourceRecord(input.dataSource);
 
@@ -54,13 +51,12 @@ export async function prepareDataSourceCredentials(input: {
       };
     }
 
-    const masterKey = deriveKeyFromBase64(input.masterEncryptionKey);
     let decrypted: Credentials;
     try {
       decrypted = decryptCredentialsObject(
         input.dataSource.credentialsEncrypted,
         input.dataSource.credentialsIv,
-        masterKey,
+        input.masterEncryptionKey,
         CredentialsSchema
       );
     } catch {

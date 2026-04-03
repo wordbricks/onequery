@@ -13,10 +13,7 @@ import type { z } from "zod";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
-import {
-  decryptCredentialsObject,
-  deriveKeyFromBase64,
-} from "../../services/crypto/credential-encryption";
+import { decryptCredentialsObject } from "../../services/crypto/credential-encryption";
 import {
   createCredentialTypeQueryError,
   createPrefixedQueryError,
@@ -24,7 +21,7 @@ import {
 import { resolveAccessibleOrganizationId } from "./query-organization";
 import { createProviderQuerySchema } from "./query-validation";
 
-type ProviderQueryInput<TMethodSchema extends z.ZodTypeAny> = z.output<
+type ProviderQueryInput<TMethodSchema extends z.ZodType> = z.output<
   ReturnType<typeof createProviderQuerySchema<TMethodSchema>>
 >;
 
@@ -34,7 +31,7 @@ type ParseRequestResult<TRequest> =
 
 interface ProviderRouteOptions<
   TCredentials,
-  TMethodSchema extends z.ZodTypeAny,
+  TMethodSchema extends z.ZodType,
   TRequest,
 > {
   credentialsGuard: (creds: unknown) => creds is TCredentials;
@@ -98,7 +95,7 @@ function selectDataSource<TDataSource extends { useAsDataSource: boolean }>(
 
 export function createProviderRoute<
   TCredentials,
-  TMethodSchema extends z.ZodTypeAny,
+  TMethodSchema extends z.ZodType,
   TRequest,
 >(options: ProviderRouteOptions<TCredentials, TMethodSchema, TRequest>) {
   const querySchema = createProviderQuerySchema(options.methodSchema);
@@ -167,15 +164,12 @@ export function createProviderRoute<
         );
       }
 
-      const masterKey = deriveKeyFromBase64(
-        c.var.runtime.crypto.masterEncryptionKey
-      );
       const credentialsOutcome = await Promise.resolve()
         .then(() =>
           decryptCredentialsObject(
             dataSource.credentialsEncrypted,
             dataSource.credentialsIv,
-            masterKey,
+            c.var.runtime.crypto.masterEncryptionKey,
             CredentialsSchema
           )
         )

@@ -76,7 +76,7 @@ export function AppHeader() {
   async function handleSignOut() {
     await signOut();
     await router.invalidate();
-    navigate({ to: "/" });
+    await navigate({ to: "/" });
   }
 
   return (

@@ -15,6 +15,8 @@ The self-host startup boundary has one owner per concern:
   config-package owner and writes it to `run/launch.json`.
 - `packages/bun-server` reads that launch contract exactly once at process
   start.
+- runtime startup owns application-schema convergence after launch-config
+  resolution.
 - `packages/server` consumes the typed runtime object built from that launch
   contract.
 
@@ -22,16 +24,20 @@ Bun does not parse `self-host/config.toml`, Bun does not parse
 `self-host/secrets.toml`, and Bun does not fall back to `onequery.dev.toml`.
 
 The current parity bar is deliberate: Rust and Bun stay aligned through the
-canonical config-package validator plus the shared fixture tests. We are not
-introducing a separate neutral schema artifact unless that parity workflow
+canonical config-package validator plus focused Rust/Bun contract tests. We are
+not introducing a separate neutral schema artifact unless that parity workflow
 becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
-Platform-default roots on supported macOS/Linux hosts:
+Roots on supported hosts:
 
-- config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-- data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- with `ONEQUERY_HOME` set:
+  - config root: `$ONEQUERY_HOME/config`
+  - data root: `$ONEQUERY_HOME/data`
+- without `ONEQUERY_HOME`:
+  - config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
+  - data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
 
 The runtime-managed files under those roots are:
 
@@ -43,6 +49,32 @@ The runtime-managed files under those roots are:
 - `run/server.pid`
 - `run/server.lock`
 - `run/launch.json`
+
+The self-host secrets file is therefore resolved at:
+
+- `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml` on default
+  Unix roots
+- `$ONEQUERY_HOME/config/self-host/secrets.toml` when `ONEQUERY_HOME` is set
+
+The bundled self-host runtime is discovered from one fixed executable-relative
+layout:
+
+```text
+vendor/<target>/
+  onequery/
+    onequery[.exe]
+  server/
+    onequery-server[platform-specific]
+  runtime/
+    migrations/
+    web/
+    pglite/
+```
+
+`onequery serve` resolves `vendor/<target>` from `current_exe()` and then reads
+`runtime/web`, `runtime/migrations`, and `server/` from that bundle root only.
+There is no repo-local asset fallback and no alternate self-host launch path in
+the serve command.
 
 ## Operator Note
 
@@ -74,6 +106,11 @@ self-host/config.toml + self-host/secrets.toml
       Bun reads launch.json once and starts the process runtime
 ```
 
+Repo-local self-host smoke uses the same packaged layout: the helper stages a
+temporary `vendor/<target>` bundle and then invokes unchanged `onequery serve`
+from that staged CLI binary. Workspace-dev remains separate and continues to
+use `scripts/run-bun-server.ts`.
+
 The Bun runtime owns the process-local guarantees:
 
 - acquire the runtime lease before calling `Bun.serve`
@@ -81,6 +118,13 @@ The Bun runtime owns the process-local guarantees:
 - replace stale pid and lock markers only when the recorded pid is gone
 - append lifecycle events to `logs/server.log`
 - release pid and lock markers during graceful shutdown or startup failure
+- apply the checked-in Drizzle migrations before the server begins handling
+  requests
+
+Workspace-dev follows the same migration-ownership rule through
+`scripts/run-bun-server.ts`: `bun run dev:setup` prepares infra only, while the
+runtime launched by `bun dev` converges the application schema from the launch
+contract at startup.
 
 ## Proof Surface
 
@@ -88,11 +132,14 @@ The current repo checks that prove this boundary are:
 
 - `cargo test -p onequery-cli self_host::tests`
 - `cargo test -p onequery-cli serve::tests`
+- `bun test apps/cli/scripts/self-host-smoke.integration.test.ts`
 - `bun run --cwd packages/bun-server test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
 
 Those checks cover:
 
 - Rust-owned self-host config resolution and launch-contract generation
+- packaged self-host bootstrap, startup failure on invalid secrets, and
+  data-source creation through `onequery serve`
 - launch-config parsing and validation at Bun startup
 - starting the Bun runtime from serialized launch config input
 - lifecycle lease, stale lock replacement, log append, and shutdown cleanup

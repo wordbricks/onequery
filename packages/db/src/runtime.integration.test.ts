@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createDatabaseRuntime,
   getDatabaseSchema,
-  prepareSelfHostDatabase,
+  prepareApplicationDatabase,
   sql,
 } from "./server";
 
@@ -77,7 +77,7 @@ describe("database runtime", () => {
   it("boots the PGlite runtime and keeps a stable runtime schema marker", async () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-db-runtime-test-"));
     const connectionString = `pglite:${join(root, "pglite", "onequery")}`;
-    await prepareSelfHostDatabase({
+    await prepareApplicationDatabase({
       connectionString,
       migrationsFolder,
     });

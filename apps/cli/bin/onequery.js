@@ -27,8 +27,6 @@ const binaryName = binaryNameForPlatform(platform, CLI_BINARY_NAME);
 // CONTEXT: platform packages are installed through npm alias names so the
 // launcher resolves the alias folder, not the underlying published package id.
 const localVendorRoot = path.join(__dirname, "..", "vendor");
-const packageRoot = path.resolve(__dirname, "..");
-
 const resolvedVendor = resolveVendorPayload({
   binaryName,
   localVendorRoot,
@@ -61,6 +59,7 @@ const binaryPath = path.join(
   binaryName
 );
 const serverBinaryDir = path.join(vendorRoot, resolvedTargetTriple, "server");
+const bundleRoot = path.join(vendorRoot, resolvedTargetTriple);
 
 if (platform !== "win32") {
   ensureExecutable(binaryPath);
@@ -70,11 +69,10 @@ if (platform !== "win32") {
 const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
     ...process.env,
-    ONEQUERY_NPM_ROOT: process.env.ONEQUERY_NPM_ROOT ?? packageRoot,
     ONEQUERY_PGLITE_ASSET_DIR:
       process.env.ONEQUERY_PGLITE_ASSET_DIR ??
-      path.join(packageRoot, "runtime", "pglite"),
-    ONEQUERY_RUNTIME_ROOT: process.env.ONEQUERY_RUNTIME_ROOT ?? packageRoot,
+      path.join(bundleRoot, "runtime", "pglite"),
+    ONEQUERY_RUNTIME_ROOT: process.env.ONEQUERY_RUNTIME_ROOT ?? bundleRoot,
   },
   stdio: "inherit",
 });

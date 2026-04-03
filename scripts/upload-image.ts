@@ -86,4 +86,4 @@ async function main(): Promise<void> {
   console.log(url);
 }
 
-main();
+void main();

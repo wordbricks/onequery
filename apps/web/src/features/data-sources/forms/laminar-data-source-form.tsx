@@ -17,7 +17,7 @@ import type { DataSource } from "@/queries/data-sources-queries";
 import { applyDataSourceNameConflictError } from "./data-source-errors";
 
 const OptionalUrlSchema = z.union([
-  z.string().url("API Base URL must be a valid URL"),
+  z.url("API Base URL must be a valid URL"),
   z.literal(""),
 ]);
 

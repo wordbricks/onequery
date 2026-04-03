@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { prepareSelfHostDatabase } from "@onequery/db/server";
+import { prepareApplicationDatabase } from "@onequery/db/server";
 import { Hono } from "hono";
 
 import { createServerApi } from "../app";
@@ -49,7 +49,7 @@ export async function createPgliteDatabaseUrl(
   const root = mkdtempSync(join(tmpdir(), prefix));
   const databaseUrl = `pglite:${join(root, ...pathSegments)}`;
 
-  await prepareSelfHostDatabase({
+  await prepareApplicationDatabase({
     connectionString: databaseUrl,
     migrationsFolder,
   });

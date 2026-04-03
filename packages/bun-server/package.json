@@ -11,8 +11,8 @@
   "scripts": {
     "build:web": "bun run --cwd ../../apps/web build",
     "dev": "bun run ../../scripts/run-bun-server.ts --dev",
-    "start": "cargo run --manifest-path ../../apps/cli/Cargo.toml --bin onequery -- serve",
-    "serve": "bun run build:web && bun run start",
+    "start": "bun run ../../scripts/run-self-host-smoke.ts serve",
+    "serve": "bun run ../../scripts/run-self-host-smoke.ts serve",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"

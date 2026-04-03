@@ -12,44 +12,37 @@ import type {
   BigQueryTableSchema,
 } from "./types";
 
-const BigQueryRowFieldSchema: z.ZodType<BigQueryRowField> = z
-  .object({
-    v: z.unknown().optional(),
-  })
-  .passthrough();
+const BigQueryRowFieldSchema: z.ZodType<BigQueryRowField> = z.looseObject({
+  v: z.unknown().optional(),
+});
 
-const BigQueryRowSchema: z.ZodType<BigQueryRow> = z
-  .object({
-    f: z.array(BigQueryRowFieldSchema).optional(),
-  })
-  .passthrough();
+const BigQueryRowSchema: z.ZodType<BigQueryRow> = z.looseObject({
+  f: z.array(BigQueryRowFieldSchema).optional(),
+});
 
 const BigQuerySchemaFieldSchema: z.ZodType<BigQuerySchemaField> = z.lazy(() =>
-  z
-    .object({
-      fields: z.array(BigQuerySchemaFieldSchema).optional(),
-      mode: z.string().optional(),
-      name: z.string().optional(),
-      type: z.string().optional(),
-    })
-    .passthrough()
+  z.looseObject({
+    fields: z.array(BigQuerySchemaFieldSchema).optional(),
+    mode: z.string().optional(),
+    name: z.string().optional(),
+    type: z.string().optional(),
+  })
 );
 
-const BigQueryTableSchemaSchema: z.ZodType<BigQueryTableSchema> = z
-  .object({
+const BigQueryTableSchemaSchema: z.ZodType<BigQueryTableSchema> = z.looseObject(
+  {
     fields: z.array(BigQuerySchemaFieldSchema).optional(),
-  })
-  .passthrough();
+  }
+);
 
-const BigQueryJobReferenceSchema: z.ZodType<BigQueryJobReference> = z
-  .object({
+const BigQueryJobReferenceSchema: z.ZodType<BigQueryJobReference> =
+  z.looseObject({
     jobId: z.string().optional(),
     location: z.string().optional(),
-  })
-  .passthrough();
+  });
 
-const BigQueryJobsQueryResponseSchema: z.ZodType<BigQueryJobsQueryResponse> = z
-  .object({
+const BigQueryJobsQueryResponseSchema: z.ZodType<BigQueryJobsQueryResponse> =
+  z.looseObject({
     cacheHit: z.boolean().optional(),
     jobComplete: z.boolean().optional(),
     jobReference: BigQueryJobReferenceSchema.optional(),
@@ -60,48 +53,37 @@ const BigQueryJobsQueryResponseSchema: z.ZodType<BigQueryJobsQueryResponse> = z
     schema: BigQueryTableSchemaSchema.optional(),
     totalBytesBilled: z.string().optional(),
     totalBytesProcessed: z.string().optional(),
-  })
-  .passthrough();
+  });
 
-const BigQueryJobsInsertStatisticsSchema = z
-  .object({
-    query: z
-      .object({
-        totalBytesProcessed: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+const BigQueryJobsInsertStatisticsSchema = z.looseObject({
+  query: z
+    .looseObject({
+      totalBytesProcessed: z.string().optional(),
+    })
+    .optional(),
+});
 
 const BigQueryJobsInsertResponseSchema: z.ZodType<BigQueryJobsInsertResponse> =
-  z
-    .object({
-      jobReference: BigQueryJobReferenceSchema.optional(),
-      statistics: BigQueryJobsInsertStatisticsSchema.optional(),
-    })
-    .passthrough();
+  z.looseObject({
+    jobReference: BigQueryJobReferenceSchema.optional(),
+    statistics: BigQueryJobsInsertStatisticsSchema.optional(),
+  });
 
 const BigQueryDatasetsListResponseSchema: z.ZodType<BigQueryDatasetsListResponse> =
-  z
-    .object({
-      datasets: z.array(z.unknown()).optional(),
-      nextPageToken: z.string().optional(),
-    })
-    .passthrough();
+  z.looseObject({
+    datasets: z.array(z.unknown()).optional(),
+    nextPageToken: z.string().optional(),
+  });
 
-const BigQueryErrorPayloadSchema = z
-  .object({
-    error: z
-      .object({
-        message: z.string().optional(),
-        status: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-    message: z.string().optional(),
-  })
-  .passthrough();
+const BigQueryErrorPayloadSchema = z.looseObject({
+  error: z
+    .looseObject({
+      message: z.string().optional(),
+      status: z.string().optional(),
+    })
+    .optional(),
+  message: z.string().optional(),
+});
 
 function parseBigQueryResponse<T>(
   schema: z.ZodType<T>,

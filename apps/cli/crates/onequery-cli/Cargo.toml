@@ -9,11 +9,13 @@ name = "onequery"
 path = "src/main.rs"
 
 [dependencies]
+base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
 dirs = { workspace = true }
 flate2 = "1.1.5"
 futures-util = { workspace = true }
+getrandom = "0.3"
 libc = "0.2.177"
 path-absolutize = { workspace = true }
 progenitor-client = "0.13.0"

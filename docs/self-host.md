@@ -31,7 +31,8 @@ npx @onequery/cli --help
 ```
 
 Published `onequery serve` packages include the bundled self-host runtime and
-do not require Bun on `PATH`.
+do not require Bun on `PATH`. `onequery serve` is the self-host launch
+entrypoint; repo-local workspace development keeps using `bun dev` instead.
 
 Start the server:
 
@@ -57,10 +58,19 @@ onequery auth login
 
 ## Config Files
 
-Platform-default roots on supported hosts:
+Roots on supported hosts:
 
-- Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-- Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- with `ONEQUERY_HOME` set:
+  - config root: `$ONEQUERY_HOME/config`
+  - data root: `$ONEQUERY_HOME/data`
+- without `ONEQUERY_HOME`:
+  - Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
+  - Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+
+- default self-host secrets path on Unix:
+  `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml`
+- self-host secrets path with override:
+  `$ONEQUERY_HOME/config/self-host/secrets.toml`
 
 Files under those roots:
 
@@ -98,24 +108,32 @@ Operational requirements:
 
 Without `public_origin`, OneQuery falls back to the listen address.
 
-## Storage Modes
+## Storage
 
-Default mode is PGlite:
+Self-host currently supports PGlite only:
 
 - database path: `pglite/onequery/` under the OneQuery data root
 - no external database dependency
-
-Optional Postgres mode:
-
-```bash
-DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/onequery onequery serve
-```
+- `onequery serve` ignores ambient `DATABASE_URL`
 
 Runtime behavior:
 
-- PGlite runs the checked-in Drizzle migrations on startup.
-- Postgres runs the checked-in Drizzle migrations on startup and fails closed if
-  migration application fails.
+- `onequery serve` applies the checked-in Drizzle migrations on startup.
+- startup fails closed if migration application fails.
+- if explicit external Postgres support is added later, it should be modeled in
+  self-host config rather than ambient env.
+
+## Migration Ownership
+
+Application schema convergence happens at runtime startup, not in bootstrap
+scripts:
+
+- `bun run dev:setup` creates workspace-dev secrets, starts local Postgres, and
+  provisions shared local databases/extensions only
+- `bun dev` starts workspace-dev and the Bun runtime applies the application
+  schema on startup
+- `onequery serve` starts self-host and the Bun runtime applies the application
+  schema on startup
 
 ## SMTP And Manual-Link Fallback
 
@@ -198,13 +216,13 @@ Important covered surfaces:
   [`packages/server/src/bootstrap.integration.test.ts`](../packages/server/src/bootstrap.integration.test.ts)
 - CLI device auth workflow:
   [`apps/cli/crates/onequery-cli/src/commands/auth/tests.rs`](../apps/cli/crates/onequery-cli/src/commands/auth/tests.rs)
+- packaged self-host smoke:
+  [`apps/cli/scripts/self-host-smoke.integration.test.ts`](../apps/cli/scripts/self-host-smoke.integration.test.ts)
 - Bun runtime lifecycle:
   [`packages/bun-server/src/self-host/lifecycle.test.ts`](../packages/bun-server/src/self-host/lifecycle.test.ts)
-
-The Phase 7 smoke path also verifies:
-
-- `onequery serve` starts a fresh temp runtime
-- `onequery serve status` reports a running server
-- `onequery serve stop` clears runtime markers
-- `onequery backup --include-secrets --archive-path ...` creates a restorable archive
-- `onequery restore ...` restores config and data into place
+- backup archive coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/backup.rs`](../apps/cli/crates/onequery-cli/src/commands/backup.rs)
+- restore archive coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/restore.rs`](../apps/cli/crates/onequery-cli/src/commands/restore.rs)
+- serve status/stop command coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/serve.rs`](../apps/cli/crates/onequery-cli/src/commands/serve.rs)

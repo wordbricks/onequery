@@ -102,7 +102,7 @@ export function CreateOrgPage() {
         queryKey: organizationsQueryOptions(userId).queryKey,
       });
 
-      navigate({
+      await navigate({
         search: { orgId },
         to: "/onboarding/connect-database",
       });

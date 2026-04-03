@@ -68,7 +68,7 @@ function useOptimisticMutation<TData, TVariables = void, TCacheData = unknown>({
     },
     onSettled: () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey });
     },
     onSuccess: (data: TData, variables: TVariables) => {
       if (successMessage) {

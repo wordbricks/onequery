@@ -1,4 +1,5 @@
-import { pgTable as basePgTable } from "drizzle-orm/pg-core";
+import { pgTable as drizzlePgTable } from "drizzle-orm/pg-core";
+import type { PgTableFn } from "drizzle-orm/pg-core";
 
 /**
  * pgTable wrapper with RLS enabled by default.
@@ -10,6 +11,13 @@ import { pgTable as basePgTable } from "drizzle-orm/pg-core";
  * meaning no rows are visible or can be modified by non-superusers.
  * Add policies separately based on your deployment requirements.
  */
-export const pgTable: typeof basePgTable = ((
-  ...args: Parameters<typeof basePgTable>
-) => basePgTable(...args).enableRLS()) as typeof basePgTable;
+export const pgTable: PgTableFn = ((
+  name: string,
+  columns: unknown,
+  extraConfig?: unknown
+) =>
+  drizzlePgTable(
+    name,
+    columns as never,
+    extraConfig as never
+  ).enableRLS()) as unknown as PgTableFn;

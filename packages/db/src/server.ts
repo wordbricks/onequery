@@ -11,7 +11,7 @@ export {
   schema,
 } from "./client";
 export {
-  prepareSelfHostDatabase,
+  prepareApplicationDatabase,
   type DatabasePreparationResult,
 } from "./migrations";
 export * from "./shared";

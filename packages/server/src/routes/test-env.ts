@@ -2,6 +2,7 @@ import type {
   ServerRuntimeConfig,
   ServerRuntimeStorageConfig,
 } from "../runtime";
+import { deriveKeyFromBase64 } from "../services/crypto/credential-encryption";
 
 export const TEST_PUBLIC_ORIGIN = "http://localhost:4545";
 export const TEST_SERVER_MASTER_ENCRYPTION_KEY =
@@ -15,7 +16,9 @@ export type TestRuntimeConfigOverrides = Omit<
 > & {
   auth?: Partial<ServerRuntimeConfig["auth"]>;
   connectors?: Partial<ServerRuntimeConfig["connectors"]>;
-  crypto?: Partial<ServerRuntimeConfig["crypto"]>;
+  crypto?: {
+    masterEncryptionKey?: string | Uint8Array;
+  };
   databaseUrl?: string;
   listen?: Partial<ServerRuntimeConfig["listen"]>;
   rateLimit?: Partial<ServerRuntimeConfig["rateLimit"]>;
@@ -51,7 +54,7 @@ const defaultRuntime: ServerRuntimeConfig = {
     enrollmentToken: "test-connector-token",
   },
   crypto: {
-    masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+    masterEncryptionKey: deriveKeyFromBase64(TEST_SERVER_MASTER_ENCRYPTION_KEY),
   },
   listen: {
     host: "127.0.0.1",
@@ -90,7 +93,7 @@ export function createTestRuntimeConfig(
     },
     crypto: {
       ...defaultRuntime.crypto,
-      ...overrides.crypto,
+      ...normalizeCryptoOverrides(overrides.crypto),
     },
     listen: {
       ...defaultRuntime.listen,
@@ -101,6 +104,21 @@ export function createTestRuntimeConfig(
       ...overrides.rateLimit,
     },
     storage: runtimeStorage,
+  };
+}
+
+function normalizeCryptoOverrides(
+  crypto: TestRuntimeConfigOverrides["crypto"]
+): Partial<ServerRuntimeConfig["crypto"]> {
+  if (!crypto?.masterEncryptionKey) {
+    return {};
+  }
+
+  return {
+    masterEncryptionKey:
+      typeof crypto.masterEncryptionKey === "string"
+        ? deriveKeyFromBase64(crypto.masterEncryptionKey)
+        : crypto.masterEncryptionKey,
   };
 }
 

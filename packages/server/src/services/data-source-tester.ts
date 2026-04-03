@@ -20,9 +20,6 @@ export type DataSourceTestResult =
   | { kind: "supported"; result: ConnectionTestResult }
   | { kind: "unsupported"; reason: UnsupportedTestReason; message: string };
 
-export const LEGACY_UNSUPPORTED_TEST_PREFIX =
-  "Testing is not supported for provider:";
-
 const OAUTH_UNSUPPORTED_MESSAGE =
   "Testing is not supported for OAuth-based providers. They are tested during the authorization flow.";
 const GENERIC_UNSUPPORTED_MESSAGE =

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createSpaAssetBinding } from "./assets";
+import { createSpaAssetBinding, getDefaultSpaBuildDir } from "./assets";
 
 const tempDirs: string[] = [];
 
@@ -78,5 +78,11 @@ describe("spa asset binding", () => {
     const response = await binding.fetch(new Request("http://local/%E0%A4%A"));
 
     expect(response.status).toBe(404);
+  });
+
+  it("uses apps/web/dist as the workspace-dev build output path", () => {
+    expect(getDefaultSpaBuildDir("/workspace/root")).toBe(
+      "/workspace/root/apps/web/dist"
+    );
   });
 });

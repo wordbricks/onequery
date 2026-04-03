@@ -9,7 +9,7 @@ const DEVICE_PAGE_PATH = "/device";
 
 const BrowserSessionSchema = z.object({
   user: z.object({
-    email: z.string().email(),
+    email: z.email(),
   }),
 });
 

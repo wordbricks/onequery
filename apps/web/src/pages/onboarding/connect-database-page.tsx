@@ -61,7 +61,7 @@ export function ConnectDatabasePage() {
   useEffect(() => {
     if (!orgId) {
       toast.error("Missing organization information");
-      navigate({ to: "/onboarding/create-org" });
+      void navigate({ to: "/onboarding/create-org" });
     }
   }, [orgId, navigate]);
 

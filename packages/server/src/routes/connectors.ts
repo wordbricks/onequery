@@ -36,7 +36,7 @@ const connectorHeartbeatSchema = z.object({
     )
     .optional(),
   status: z.enum(["healthy", "degraded"]),
-  timestamp: z.string().datetime(),
+  timestamp: z.iso.datetime(),
 });
 
 const connectorJobResultSchema = z.object({

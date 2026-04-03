@@ -34,7 +34,7 @@ import { teamInvitationsQueryOptions } from "@/queries/team-queries";
 import type { Invitation } from "@/queries/team-queries";
 
 const InviteMemberFormSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
 });
 const inviteMemberResponseSchema = z.object({
   expiresAt: z.coerce.date().optional(),

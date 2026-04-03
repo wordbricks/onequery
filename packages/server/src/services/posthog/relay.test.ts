@@ -19,7 +19,7 @@ describe("posthog relay", () => {
         },
         query: { kind: "HogQLQuery", query: "SELECT 1" },
       })
-    ).rejects.toThrowError("PostHog host URL must not include URL credentials");
+    ).rejects.toThrow("PostHog host URL must not include URL credentials");
   });
 
   it("rejects host URLs with path components", async () => {
@@ -31,7 +31,7 @@ describe("posthog relay", () => {
         },
         query: { kind: "HogQLQuery", query: "SELECT 1" },
       })
-    ).rejects.toThrowError("PostHog host URL must not include a path");
+    ).rejects.toThrow("PostHog host URL must not include a path");
   });
 
   it("rejects refresh values with control characters", async () => {
@@ -41,8 +41,6 @@ describe("posthog relay", () => {
         query: { kind: "HogQLQuery", query: "SELECT 1" },
         refresh: "blocking\r\nx-injected: bad",
       })
-    ).rejects.toThrowError(
-      "PostHog refresh must not contain control characters"
-    );
+    ).rejects.toThrow("PostHog refresh must not contain control characters");
   });
 });

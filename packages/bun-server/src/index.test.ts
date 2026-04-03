@@ -2,7 +2,11 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
+import {
+  createSelfHostLaunchConfig,
+  createSelfHostRuntimePaths,
+  createWorkspaceDevLaunchConfig,
+} from "@onequery/config/testing";
 import type { DatabasePreparationResult } from "@onequery/db/server";
 import type { RuntimeRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
@@ -166,37 +170,12 @@ describe("startBunServer", () => {
   });
 
   it("starts from a serialized workspace-dev launch config file", async () => {
-    const launchConfigPath = writeLaunchConfigFile({
-      assets: {
-        distDir: "/tmp/web",
-      },
-      auth: {
-        secret: "workspace-auth-secret",
-      },
-      connectors: {
-        enrollmentToken: "connector-token",
-      },
-      crypto: {
-        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-      },
-      listen: {
-        host: "127.0.0.1",
-        port: 4555,
-      },
-      migrations: {
-        dir: "/tmp/migrations",
-      },
-      mode: "workspace-dev",
-      publicOrigin: "http://localhost:4545",
-      rateLimit: {
-        enabled: false,
-        storage: "memory",
-      },
-      storage: {
-        kind: "postgres",
-        url: "postgres://onequery:onequery@localhost:5454/onequery",
-      },
-    });
+    const launchConfigPath = writeLaunchConfigFile(
+      createWorkspaceDevLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+      })
+    );
 
     const server = await startBunServer({
       launchConfigPath,
@@ -230,46 +209,14 @@ describe("startBunServer", () => {
   });
 
   it("starts from a serialized self-host launch config file", async () => {
-    const runtimePaths = {
-      backupsDir: "/tmp/onequery/backups",
-      dataDir: "/tmp/onequery/data",
-      lockPath: "/tmp/onequery/run/server.lock",
-      logsDir: "/tmp/onequery/logs",
-      pidPath: "/tmp/onequery/run/server.pid",
-      runDir: "/tmp/onequery/run",
-    };
-    const launchConfigPath = writeLaunchConfigFile({
-      assets: {
-        distDir: "/tmp/web",
-      },
-      auth: {
-        secret: "self-host-auth-secret",
-      },
-      connectors: {
-        enrollmentToken: "connector-token",
-      },
-      crypto: {
-        masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-      },
-      listen: {
-        host: "127.0.0.1",
-        port: 5656,
-      },
-      migrations: {
-        dir: "/tmp/migrations",
-      },
-      mode: "self-host",
-      publicOrigin: "http://127.0.0.1:5656",
-      rateLimit: {
-        enabled: true,
-        storage: "persistent",
-      },
-      runtimePaths,
-      storage: {
-        dir: "/tmp/onequery/pglite",
-        kind: "pglite",
-      },
-    });
+    const runtimePaths = createSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+      })
+    );
 
     const server = await startBunServer({
       launchConfigPath,

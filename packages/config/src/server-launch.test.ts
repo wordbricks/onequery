@@ -1,107 +1,44 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
 
 import { validateServerLaunchConfig } from "./server-launch";
-import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
-
-const fixtureDir = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../fixtures"
-);
-
-function createWorkspaceDevLaunchConfig() {
-  return {
-    assets: {
-      distDir: "/tmp/onequery/runtime/web",
-    },
-    auth: {
-      secret: "workspace-auth-secret",
-    },
-    connectors: {
-      enrollmentToken: "connector-token",
-    },
-    crypto: {
-      masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-    },
-    listen: {
-      host: "127.0.0.1",
-      port: 4555,
-    },
-    migrations: {
-      dir: "/tmp/onequery/runtime/migrations",
-    },
-    mode: "workspace-dev" as const,
-    publicOrigin: "http://localhost:4545",
-    rateLimit: {
-      enabled: false,
-      storage: "memory" as const,
-    },
-    storage: {
-      kind: "postgres" as const,
-      url: "postgres://onequery:onequery@localhost:5454/onequery",
-    },
-  };
-}
-
-function createSelfHostLaunchConfig() {
-  return {
-    assets: {
-      distDir: "/tmp/onequery/runtime/web",
-    },
-    auth: {
-      secret: "self-host-auth-secret",
-    },
-    connectors: {
-      enrollmentToken: "connector-token",
-    },
-    crypto: {
-      masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-    },
-    listen: {
-      host: "127.0.0.1",
-      port: 5656,
-    },
-    migrations: {
-      dir: "/tmp/onequery/runtime/migrations",
-    },
-    mode: "self-host" as const,
-    publicOrigin: "http://127.0.0.1:5656",
-    rateLimit: {
-      enabled: true,
-      storage: "persistent" as const,
-    },
-    runtimePaths: {
-      backupsDir: "/tmp/onequery/backups",
-      dataDir: "/tmp/onequery/data",
-      lockPath: "/tmp/onequery/run/server.lock",
-      logsDir: "/tmp/onequery/logs",
-      pidPath: "/tmp/onequery/run/server.pid",
-      runDir: "/tmp/onequery/run",
-    },
-    smtp: {
-      fromEmail: "hello@example.com",
-      host: "smtp.example.com",
-      password: "smtp-pass",
-      port: 587,
-    },
-    storage: {
-      dir: "/tmp/onequery/pglite",
-      kind: "pglite" as const,
-    },
-  };
-}
+import {
+  createSelfHostLaunchConfig,
+  createSelfHostRuntimePaths,
+  createSelfHostSmtpConfig,
+  createWorkspaceDevLaunchConfig,
+} from "./testing";
 
 describe("server launch contract", () => {
-  it("accepts the shared self-host launch fixture", () => {
-    const fixturePath = resolve(fixtureDir, "self-host-launch.json");
-    const fixture = JSON.parse(readFileSync(fixturePath, "utf8")) as unknown;
+  it("accepts a workspace-dev launch config sample", () => {
+    const launchConfig = createWorkspaceDevLaunchConfig();
 
-    expect(
-      validateServerLaunchConfig(fixture, `fixture ${fixturePath}`)
-    ).toEqual(fixture);
+    expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
+      launchConfig
+    );
+  });
+
+  it("accepts a self-host launch config sample with runtime-only fields", () => {
+    const launchConfig = createSelfHostLaunchConfig({
+      runtimePaths: createSelfHostRuntimePaths({
+        backupsDir: "/tmp/onequery/data/backups",
+        dataDir: "/tmp/onequery/data",
+        lockPath: "/tmp/onequery/data/run/server.lock",
+        logsDir: "/tmp/onequery/data/logs",
+        pidPath: "/tmp/onequery/data/run/server.pid",
+        runDir: "/tmp/onequery/data/run",
+      }),
+      smtp: createSelfHostSmtpConfig({
+        fromName: "OneQuery OSS",
+        password: "smtp-pass",
+        secure: false,
+        username: "smtp-user",
+      }),
+      storageDir: "/tmp/onequery/data/pglite/onequery",
+    });
+
+    expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
+      launchConfig
+    );
   });
 
   it("rejects unknown keys", () => {
@@ -177,7 +114,12 @@ describe("server launch contract", () => {
     expect(() =>
       validateServerLaunchConfig(
         {
-          ...createSelfHostLaunchConfig(),
+          ...createSelfHostLaunchConfig({
+            runtimePaths: createSelfHostRuntimePaths(),
+            smtp: createSelfHostSmtpConfig({
+              password: "smtp-pass",
+            }),
+          }),
           rateLimit: {
             enabled: false,
             storage: "memory",
@@ -187,5 +129,19 @@ describe("server launch contract", () => {
         "test"
       )
     ).toThrow("runtimePaths");
+  });
+
+  it("rejects master keys that do not decode to exactly 32 bytes", () => {
+    expect(() =>
+      validateServerLaunchConfig(
+        {
+          ...createSelfHostLaunchConfig(),
+          crypto: {
+            masterEncryptionKey: "master",
+          },
+        },
+        "test"
+      )
+    ).toThrow("crypto.masterEncryptionKey");
   });
 });

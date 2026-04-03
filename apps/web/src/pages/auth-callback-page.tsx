@@ -187,7 +187,7 @@ export function AuthCallbackPage() {
       }
     }
 
-    handleCallback();
+    void handleCallback();
 
     return () => {
       isMounted = false;

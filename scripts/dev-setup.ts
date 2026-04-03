@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { resolve } from "node:path";
 
 import {
   deriveTestProfile,
@@ -11,7 +10,6 @@ import type {
   DerivedTestProfile,
   ResolvedWorkspaceDevConfig,
 } from "@onequery/config";
-import { prepareSelfHostDatabase } from "@onequery/db/server";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY_MS = 1000;
@@ -222,26 +220,6 @@ function enablePgvectorForDatabase(databaseName: string): void {
   );
 }
 
-function getWorkspaceMigrationsDir(rootDir: string = process.cwd()): string {
-  return resolve(rootDir, "packages", "db", "src", "migrations");
-}
-
-async function prepareDatabaseSchema(
-  options: {
-    connectionString?: string;
-    label?: string;
-  } = {}
-): Promise<void> {
-  const labelSuffix = options?.label ? ` (${options.label})` : "";
-  console.log(`Applying database migrations${labelSuffix}...`);
-  await prepareSelfHostDatabase({
-    connectionString:
-      options.connectionString ?? getWorkspaceDev().postgres.url,
-    migrationsFolder: getWorkspaceMigrationsDir(),
-  });
-  console.log("Database migrations applied.");
-}
-
 function quoteSqlLiteral(value: string): string {
   return `'${value.replaceAll(/'/g, "''")}'`;
 }
@@ -274,8 +252,8 @@ async function provisionLocalTestDatabase(): Promise<void> {
   const config = getDatabaseConfig(testProfile.database.url);
 
   // Comment: Route tests use the derived local test profile, so dev bootstrap
-  // must provision that database too; otherwise `bun run db:reset` leaves the
-  // main dev DB healthy while server tests still fail against missing creds.
+  // still provisions that database and role. Runtime startup and explicit test
+  // harnesses own schema convergence after this bootstrap step.
   console.log(`Provisioning local test database (${config.databaseName})...`);
 
   const databaseName = quoteSqlLiteral(config.databaseName);
@@ -305,10 +283,6 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = ${databaseName})\\gexe
   );
 
   enablePgvectorForDatabase(config.databaseName);
-  await prepareDatabaseSchema({
-    connectionString: testProfile.database.url,
-    label: config.databaseName,
-  });
 }
 
 function ensureWorkspaceDevSecretsFile(): void {

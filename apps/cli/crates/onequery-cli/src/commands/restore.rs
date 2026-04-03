@@ -327,6 +327,7 @@ mod tests {
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::bootstrap_self_host_foundation_for_test;
     use crate::config::self_host::default_port;
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
     fn restore_replaces_existing_runtime_and_bootstraps_missing_secrets_without_reporting_them_as_restored()
@@ -372,7 +373,7 @@ mod tests {
         assert_eq!(
             fs::read_to_string(&paths.secrets_path)
                 .unwrap_or_else(|error| panic!("expected generated secrets file to load: {error}"))
-                .contains("better_auth_secret"),
+                .contains("secret"),
             true
         );
         assert_eq!(
@@ -380,7 +381,7 @@ mod tests {
                 "expected restored self-host config to load: {error}"
             )),
             format!(
-                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
                 default_port()
             )
         );
@@ -420,7 +421,9 @@ mod tests {
         assert_eq!(
             fs::read_to_string(&paths.secrets_path)
                 .unwrap_or_else(|error| panic!("expected restored secrets file to load: {error}")),
-            "[auth]\nbetter_auth_secret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"archived-master\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n"
+            format!(
+                "[auth]\nsecret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n"
+            )
         );
 
         fs::remove_dir_all(temp_root).unwrap_or_else(|error| {
@@ -453,11 +456,9 @@ mod tests {
             "stale-data",
         )
         .unwrap_or_else(|error| panic!("expected stale data fixture write to succeed: {error}"));
-        fs::write(
-            &paths.secrets_path,
-            "[auth]\nbetter_auth_secret = \"stale\"\n",
-        )
-        .unwrap_or_else(|error| panic!("expected stale secrets fixture write to succeed: {error}"));
+        fs::write(&paths.secrets_path, "[auth]\nsecret = \"stale\"\n").unwrap_or_else(|error| {
+            panic!("expected stale secrets fixture write to succeed: {error}")
+        });
     }
 
     fn write_backup_archive(archive_path: &Path, include_secrets: bool) {
@@ -476,7 +477,7 @@ mod tests {
         fs::write(
             config_dir.join("config.toml"),
             format!(
-                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\nlog_level = \"debug\"\n",
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
                 default_port()
             ),
         )
@@ -484,7 +485,9 @@ mod tests {
         if include_secrets {
             fs::write(
                 config_dir.join("secrets.toml"),
-                "[auth]\nbetter_auth_secret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"archived-master\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n",
+                format!(
+                    "[auth]\nsecret = \"archived-better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"archived-connector\"\n"
+                ),
             )
             .unwrap_or_else(|error| panic!("expected source secrets config write: {error}"));
         }

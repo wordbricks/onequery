@@ -59,7 +59,7 @@ describe("data source query execution", () => {
         },
         sql: "DELETE FROM users",
       })
-    ).rejects.toThrowError("Only SELECT queries are allowed.");
+    ).rejects.toThrow("Only SELECT queries are allowed.");
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe("data source query execution", () => {
           location: "us-central1?debug=true",
         }
       )
-    ).rejects.toThrowError("BigQuery location is invalid");
+    ).rejects.toThrow("BigQuery location is invalid");
   });
 
   it("rejects Laminar base URLs with paths before making a request", async () => {
@@ -96,7 +96,7 @@ describe("data source query execution", () => {
         },
         "SELECT 1"
       )
-    ).rejects.toThrowError("Laminar API base URL must not include a path");
+    ).rejects.toThrow("Laminar API base URL must not include a path");
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -187,7 +187,7 @@ describe("data source query execution", () => {
         undefined,
         runner
       )
-    ).rejects.toThrowError(initialError.message);
+    ).rejects.toThrow(initialError.message);
 
     expect(receivedConfigs).toHaveLength(2);
     expect(receivedConfigs[0]).toMatchObject({

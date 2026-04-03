@@ -1,11 +1,20 @@
 import { z } from "zod";
 
+import {
+  authSecretSchema,
+  connectorEnrollmentTokenSchema,
+  decodeMasterEncryptionKey,
+  masterEncryptionKeySchema,
+} from "./shared-secrets";
+
+export { decodeMasterEncryptionKey } from "./shared-secrets";
+
 // Canonical launch-contract owner: Rust emits JSON to match this module, and
 // Bun validates/consumes it only through @onequery/config/server-launch.
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalStringSchema = nonEmptyStringSchema.optional();
 const portSchema = z.number().int().min(1).max(65535);
-const originSchema = z.string().trim().url();
+const originSchema = z.string().trim().pipe(z.url());
 
 export const serverLaunchRuntimePathsSchema = z
   .object({
@@ -60,17 +69,17 @@ export const serverLaunchConfigSchema = z
       .strict(),
     auth: z
       .object({
-        secret: nonEmptyStringSchema,
+        secret: authSecretSchema,
       })
       .strict(),
     connectors: z
       .object({
-        enrollmentToken: nonEmptyStringSchema,
+        enrollmentToken: connectorEnrollmentTokenSchema,
       })
       .strict(),
     crypto: z
       .object({
-        masterEncryptionKey: nonEmptyStringSchema,
+        masterEncryptionKey: masterEncryptionKeySchema,
       })
       .strict(),
     listen: z

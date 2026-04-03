@@ -44,7 +44,10 @@ onequery.dev.toml + onequery.dev.secrets.toml
                 +--> derived test profile
                 |
                 v
-          bun dev startup
+   scripts/run-bun-server.ts writes launch contract
+                |
+                v
+          bun dev runtime startup
 ```
 
 ### Self Host
@@ -57,6 +60,13 @@ Self-host is owned by the Rust CLI, not by the repo-local dev resolver:
 - `apps/cli/.../config/self_host.rs`: defaults, validation, and path rules
 
 `onequery serve` uses this profile only.
+
+Overlapping secret keys stay aligned with workspace-dev while values stay
+independent:
+
+- `auth.secret`
+- `crypto.master_encryption_key`
+- `connectors.enrollment_token`
 
 Default self-host port:
 
@@ -79,15 +89,19 @@ self-host/config.toml + self-host/secrets.toml
 
 ## Practical Rules
 
-- `bun run dev:setup` creates `onequery.dev.secrets.toml` when it is missing.
+- `bun run dev:setup` creates `onequery.dev.secrets.toml` when it is missing,
+  starts the local Postgres container, and provisions shared local
+  infra. It does not apply the application schema.
 - `bun dev` reads repo-local workspace config and keeps browser/API listeners
-  split on purpose.
+  split on purpose. Its Bun runtime applies the application schema on startup.
 - `onequery serve` ignores `onequery.dev.toml` and starts from the resolved
   self-host launch contract.
 - `publicOrigin` is the canonical public URL. Do not introduce separate public
   URL aliases alongside it.
 - `DATABASE_URL` is a projection for consumers that need it. It is not the
   authored source of truth for workspace dev.
+- `onequery serve` does not support ambient `DATABASE_URL`; self-host storage is
+  currently the bundled PGlite runtime only.
 - Optional secrets for integrations can stay unset until you need them locally.
 
 ## Commands

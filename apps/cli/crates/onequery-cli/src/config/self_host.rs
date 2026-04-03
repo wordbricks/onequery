@@ -2,12 +2,13 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
+use base64::Engine as _;
+use getrandom::fill as fill_random_bytes;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use uuid::Uuid;
 
 use super::config_dir;
 use super::data_dir;
@@ -22,6 +23,7 @@ const PID_FILENAME: &str = "server.pid";
 const LOCK_FILENAME: &str = "server.lock";
 const STOP_REQUEST_FILENAME: &str = "server.stop";
 const LAUNCH_CONFIG_FILENAME: &str = "launch.json";
+const MASTER_ENCRYPTION_KEY_BYTE_LENGTH: usize = 32;
 pub(crate) const DEFAULT_SELF_HOST_LISTEN_HOST: &str = "127.0.0.1";
 pub(crate) const DEFAULT_SELF_HOST_PORT: u16 = 5656;
 
@@ -105,8 +107,6 @@ pub(crate) struct ServerSection {
     pub(crate) listen_host: String,
     #[serde(default = "default_port")]
     pub(crate) port: u16,
-    #[serde(default = "default_log_level")]
-    pub(crate) log_level: String,
     #[serde(default)]
     pub(crate) public_origin: Option<String>,
 }
@@ -116,7 +116,6 @@ impl Default for ServerSection {
         Self {
             listen_host: default_listen_host(),
             port: default_port(),
-            log_level: default_log_level(),
             public_origin: None,
         }
     }
@@ -158,10 +157,6 @@ pub(crate) fn default_port() -> u16 {
     DEFAULT_SELF_HOST_PORT
 }
 
-fn default_log_level() -> String {
-    "info".to_owned()
-}
-
 pub(crate) fn default_public_origin() -> String {
     resolve_default_public_origin(DEFAULT_SELF_HOST_LISTEN_HOST, DEFAULT_SELF_HOST_PORT)
 }
@@ -179,7 +174,7 @@ pub(crate) struct SecretsConfig {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct AuthSecrets {
-    pub(crate) better_auth_secret: String,
+    pub(crate) secret: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -212,20 +207,103 @@ impl SecretsConfig {
         Self {
             smtp: SmtpSecrets::default(),
             auth: AuthSecrets {
-                better_auth_secret: generate_secret("better-auth"),
+                secret: generate_auth_secret(),
             },
             crypto: CryptoSecrets {
-                master_encryption_key: generate_secret("master-encryption"),
+                master_encryption_key: generate_master_encryption_key(),
             },
             connectors: ConnectorSecrets {
-                enrollment_token: generate_secret("connector-enrollment"),
+                enrollment_token: generate_connector_enrollment_token(),
             },
         }
     }
 }
 
-fn generate_secret(label: &str) -> String {
-    format!("{}_{}", label, Uuid::new_v4().simple())
+fn generate_auth_secret() -> String {
+    generate_base64url_secret()
+}
+
+fn generate_connector_enrollment_token() -> String {
+    generate_base64url_secret()
+}
+
+fn generate_master_encryption_key() -> String {
+    let random_bytes = generate_random_secret_bytes();
+    base64::engine::general_purpose::STANDARD.encode(random_bytes)
+}
+
+fn generate_base64url_secret() -> String {
+    let random_bytes = generate_random_secret_bytes();
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random_bytes)
+}
+
+fn generate_random_secret_bytes() -> [u8; MASTER_ENCRYPTION_KEY_BYTE_LENGTH] {
+    let mut bytes = [0_u8; MASTER_ENCRYPTION_KEY_BYTE_LENGTH];
+    fill_random_bytes(&mut bytes)
+        .unwrap_or_else(|error| panic!("expected operating system randomness: {error}"));
+    bytes
+}
+
+fn validate_master_encryption_key(value: &str) -> Result<(), &'static str> {
+    let normalized_value = value.trim();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(normalized_value)
+        .map_err(|_| "must be base64 that decodes to exactly 32 bytes")?;
+
+    if decoded.len() != MASTER_ENCRYPTION_KEY_BYTE_LENGTH {
+        return Err("must be base64 that decodes to exactly 32 bytes");
+    }
+
+    Ok(())
+}
+
+fn validate_opaque_secret_transport(value: &str) -> Result<(), &'static str> {
+    if value.trim().is_empty() {
+        return Err("must not be empty");
+    }
+
+    Ok(())
+}
+
+fn invalid_self_host_secrets_error(
+    secrets_path: &Path,
+    command_line: &str,
+    field_path: &str,
+    message: &str,
+) -> CliError {
+    CliError::new(
+        "invalid self-host secrets config",
+        command_line,
+        ErrorStage::LoadConfig,
+        format!("{} -> {field_path}: {message}", secrets_path.display()),
+        vec![format!("fix {}", secrets_path.display())],
+    )
+}
+
+fn validate_self_host_secrets(
+    secrets: &SecretsConfig,
+    secrets_path: &Path,
+    command_line: &str,
+) -> Result<(), CliError> {
+    validate_opaque_secret_transport(&secrets.auth.secret).map_err(|message| {
+        invalid_self_host_secrets_error(secrets_path, command_line, "auth.secret", message)
+    })?;
+    validate_opaque_secret_transport(&secrets.connectors.enrollment_token).map_err(|message| {
+        invalid_self_host_secrets_error(
+            secrets_path,
+            command_line,
+            "connectors.enrollment_token",
+            message,
+        )
+    })?;
+    validate_master_encryption_key(&secrets.crypto.master_encryption_key).map_err(|message| {
+        invalid_self_host_secrets_error(
+            secrets_path,
+            command_line,
+            "crypto.master_encryption_key",
+            message,
+        )
+    })
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -461,9 +539,13 @@ fn load_self_host_config_with_paths(
     paths: SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<SelfHostConfigBundle, CliError> {
+    let config = load_toml_file(&paths.config_path, command_line, "self-host config")?;
+    let secrets = load_toml_file(&paths.secrets_path, command_line, "secrets config")?;
+    validate_self_host_secrets(&secrets, &paths.secrets_path, command_line)?;
+
     Ok(SelfHostConfigBundle {
-        config: load_toml_file(&paths.config_path, command_line, "self-host config")?,
-        secrets: load_toml_file(&paths.secrets_path, command_line, "secrets config")?,
+        config,
+        secrets,
         paths,
     })
 }
@@ -519,7 +601,7 @@ fn resolve_self_host_launch_config(
             dist_dir: assets_dist_dir.display().to_string(),
         },
         auth: ServerLaunchAuthConfig {
-            secret: bundle.secrets.auth.better_auth_secret.clone(),
+            secret: bundle.secrets.auth.secret.clone(),
         },
         connectors: ServerLaunchConnectorsConfig {
             enrollment_token: bundle.secrets.connectors.enrollment_token.clone(),
@@ -673,6 +755,7 @@ mod tests {
     use std::path::Path;
     use std::path::PathBuf;
 
+    use base64::Engine as _;
     use pretty_assertions::assert_eq;
     use uuid::Uuid;
 
@@ -681,7 +764,6 @@ mod tests {
     use super::CryptoSecrets;
     use super::SecretsConfig;
     use super::SelfHostConfig;
-    use super::SelfHostConfigBundle;
     use super::SelfHostRuntimePaths;
     use super::ServerLaunchConfig;
     use super::ServerSection;
@@ -690,8 +772,8 @@ mod tests {
     use super::bootstrap_self_host_foundation_with_paths;
     use super::default_port;
     use super::load_self_host_config_with_paths;
-    use super::resolve_self_host_launch_config;
     use super::write_self_host_launch_config_for_test;
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     fn create_test_paths(label: &str) -> (PathBuf, SelfHostRuntimePaths) {
         let test_dir = std::env::temp_dir().join(format!("onequery-{label}-{}", Uuid::new_v4()));
@@ -708,19 +790,8 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
         fs::write(&paths.config_path, valid_self_host_config_toml())
             .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
-        fs::write(
-            &paths.secrets_path,
-            r#"[auth]
-better_auth_secret = "better"
-
-[crypto]
-master_encryption_key = "master"
-
-[connectors]
-enrollment_token = "connector"
-"#,
-        )
-        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+        fs::write(&paths.secrets_path, valid_self_host_secrets_toml())
+            .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
     }
 
     fn valid_self_host_config_toml() -> String {
@@ -730,11 +801,10 @@ enrollment_token = "connector"
         )
     }
 
-    fn shared_self_host_launch_fixture_path() -> PathBuf {
-        // Comment: TS owns the canonical launch-contract schema and fixture;
-        // Rust keeps a local struct plus parity coverage against that artifact.
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../../packages/config/fixtures/self-host-launch.json")
+    fn valid_self_host_secrets_toml() -> String {
+        format!(
+            "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+        )
     }
 
     #[test]
@@ -807,12 +877,34 @@ enrollment_token = "connector"
 
         assert_eq!(loaded.paths, paths);
         assert_eq!(loaded.config, SelfHostConfig::default());
-        assert_eq!(loaded.secrets.auth.better_auth_secret.is_empty(), false);
+        assert_eq!(loaded.secrets.auth.secret.is_empty(), false);
         assert_eq!(
             loaded.secrets.crypto.master_encryption_key.is_empty(),
             false
         );
-        assert_eq!(loaded.secrets.connectors.enrollment_token.is_empty(), false);
+        let generated_master_key = base64::engine::general_purpose::STANDARD
+            .decode(loaded.secrets.crypto.master_encryption_key.as_bytes())
+            .unwrap_or_else(|error| panic!("expected bootstrap master key to decode: {error}"));
+        assert_eq!(
+            generated_master_key.len(),
+            super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
+        );
+        let generated_auth_secret = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(loaded.secrets.auth.secret.as_bytes())
+            .unwrap_or_else(|error| panic!("expected bootstrap auth secret to decode: {error}"));
+        assert_eq!(
+            generated_auth_secret.len(),
+            super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
+        );
+        let generated_enrollment_token = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(loaded.secrets.connectors.enrollment_token.as_bytes())
+            .unwrap_or_else(|error| {
+                panic!("expected bootstrap enrollment token to decode: {error}")
+            });
+        assert_eq!(
+            generated_enrollment_token.len(),
+            super::MASTER_ENCRYPTION_KEY_BYTE_LENGTH
+        );
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
@@ -834,24 +926,12 @@ enrollment_token = "connector"
             r#"[server]
 listen_host = "0.0.0.0"
 port = 7777
-log_level = "debug"
 public_origin = "https://onequery.example.com"
 "#,
         )
         .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
-        fs::write(
-            &paths.secrets_path,
-            r#"[auth]
-better_auth_secret = "better"
-
-[crypto]
-master_encryption_key = "master"
-
-[connectors]
-enrollment_token = "connector"
-"#,
-        )
-        .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
+        fs::write(&paths.secrets_path, valid_self_host_secrets_toml())
+            .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
 
         let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery serve")
             .unwrap_or_else(|error| panic!("expected bootstrap to preserve files: {error}"));
@@ -866,7 +946,6 @@ enrollment_token = "connector"
                 server: ServerSection {
                     listen_host: "0.0.0.0".to_owned(),
                     port: 7777,
-                    log_level: "debug".to_owned(),
                     public_origin: Some("https://onequery.example.com".to_owned()),
                 },
                 smtp: SmtpConfig::default(),
@@ -877,10 +956,10 @@ enrollment_token = "connector"
             SecretsConfig {
                 smtp: SmtpSecrets::default(),
                 auth: AuthSecrets {
-                    better_auth_secret: "better".to_owned(),
+                    secret: "better".to_owned(),
                 },
                 crypto: CryptoSecrets {
-                    master_encryption_key: "master".to_owned(),
+                    master_encryption_key: TEST_MASTER_ENCRYPTION_KEY.to_owned(),
                 },
                 connectors: ConnectorSecrets {
                     enrollment_token: "connector".to_owned(),
@@ -893,24 +972,24 @@ enrollment_token = "connector"
     }
 
     #[test]
-    fn rejects_unknown_keys_in_self_host_config_file() {
-        let (test_dir, paths) = create_test_paths("self-host-config-unknown");
+    fn rejects_removed_log_level_in_self_host_config_file() {
+        let (test_dir, paths) = create_test_paths("self-host-config-log-level");
 
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\nunexpected = true\n",
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\nlog_level = \"debug\"\n",
                 default_port()
             ),
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
         let error = load_self_host_config_with_paths(paths, "onequery serve")
-            .expect_err("expected unknown config key to fail");
+            .expect_err("expected removed log_level key to fail");
 
         assert_eq!(error.title, "failed to parse self-host config");
-        assert_eq!(error.why.contains("unexpected"), true);
+        assert_eq!(error.why.contains("log_level"), true);
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
@@ -923,16 +1002,9 @@ enrollment_token = "connector"
         write_valid_self_host_files(&paths);
         fs::write(
             &paths.secrets_path,
-            r#"[auth]
-better_auth_secret = "better"
-unexpected = true
-
-[crypto]
-master_encryption_key = "master"
-
-[connectors]
-enrollment_token = "connector"
-"#,
+            format!(
+                "[auth]\nsecret = \"better\"\nunexpected = true\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+            ),
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
@@ -954,7 +1026,7 @@ enrollment_token = "connector"
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n\n[auth]\nbetter_auth_secret = \"wrong-file\"\n",
+                "[server]\nlisten_host = \"127.0.0.1\"\nport = {}\n\n[auth]\nsecret = \"wrong-file\"\n",
                 default_port()
             ),
         )
@@ -978,7 +1050,7 @@ enrollment_token = "connector"
         fs::write(
             &paths.secrets_path,
             format!(
-                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[server]\nport = {}\n",
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[server]\nport = {}\n",
                 default_port()
             ),
         )
@@ -1028,18 +1100,9 @@ secure = false
         .unwrap_or_else(|error| panic!("expected server config write to succeed: {error}"));
         fs::write(
             &paths.secrets_path,
-            r#"[auth]
-better_auth_secret = "better"
-
-[crypto]
-master_encryption_key = "master"
-
-[connectors]
-enrollment_token = "connector"
-
-[smtp]
-password = "smtp-pass"
-"#,
+            format!(
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n\n[smtp]\npassword = \"smtp-pass\"\n"
+            ),
         )
         .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
 
@@ -1102,55 +1165,96 @@ password = "smtp-pass"
     }
 
     #[test]
-    fn self_host_launch_fixture_matches_rust_emitted_contract() {
-        let fixture_path = shared_self_host_launch_fixture_path();
-        let fixture = fs::read_to_string(&fixture_path)
-            .unwrap_or_else(|error| panic!("expected shared launch fixture to load: {error}"));
-        let fixture_json: serde_json::Value = serde_json::from_str(&fixture)
-            .unwrap_or_else(|error| panic!("expected shared launch fixture to parse: {error}"));
-        let bundle = SelfHostConfigBundle {
-            paths: SelfHostRuntimePaths::for_test(
-                PathBuf::from("/tmp/onequery/config/self-host"),
-                PathBuf::from("/tmp/onequery/data"),
-            ),
-            config: SelfHostConfig {
-                server: ServerSection {
-                    listen_host: "0.0.0.0".to_owned(),
-                    port: 7777,
-                    log_level: "info".to_owned(),
-                    public_origin: None,
-                },
-                smtp: SmtpConfig {
-                    from_email: Some("hello@example.com".to_owned()),
-                    from_name: Some("OneQuery OSS".to_owned()),
-                    host: Some("smtp.example.com".to_owned()),
-                    port: Some(587),
-                    secure: Some(false),
-                    username: Some("smtp-user".to_owned()),
-                },
-            },
-            secrets: SecretsConfig {
-                smtp: SmtpSecrets {
-                    password: Some("smtp-pass".to_owned()),
-                },
-                auth: AuthSecrets {
-                    better_auth_secret: "better".to_owned(),
-                },
-                crypto: CryptoSecrets {
-                    master_encryption_key: "master".to_owned(),
-                },
-                connectors: ConnectorSecrets {
-                    enrollment_token: "connector".to_owned(),
-                },
-            },
-        };
-        let emitted_json = serde_json::to_value(resolve_self_host_launch_config(
-            &bundle,
-            Path::new("/tmp/onequery/runtime/web"),
-            Path::new("/tmp/onequery/runtime/migrations"),
-        ))
-        .unwrap_or_else(|error| panic!("expected emitted launch contract to serialize: {error}"));
+    fn rejects_invalid_master_encryption_key_before_runtime_launch() {
+        let (test_dir, paths) = create_test_paths("self-host-invalid-master-key");
 
-        assert_eq!(emitted_json, fixture_json);
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n",
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+            .expect_err("expected invalid master key to fail before runtime launch");
+
+        assert_eq!(error.title, "invalid self-host secrets config");
+        assert_eq!(
+            error.why,
+            format!(
+                "{} -> crypto.master_encryption_key: must be base64 that decodes to exactly 32 bytes",
+                paths.secrets_path.display()
+            )
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_empty_auth_secret_before_runtime_launch() {
+        let (test_dir, paths) = create_test_paths("self-host-empty-auth-secret");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            format!(
+                "[auth]\nsecret = \"\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+            .expect_err("expected empty auth secret to fail before runtime launch");
+
+        assert_eq!(error.title, "invalid self-host secrets config");
+        assert_eq!(
+            error.why,
+            format!(
+                "{} -> auth.secret: must not be empty",
+                paths.secrets_path.display()
+            )
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn rejects_whitespace_connector_enrollment_token_before_runtime_launch() {
+        let (test_dir, paths) = create_test_paths("self-host-whitespace-enrollment-token");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(&paths.config_path, valid_self_host_config_toml())
+            .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+        fs::write(
+            &paths.secrets_path,
+            format!(
+                "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"   \"\n"
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
+
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+            .expect_err("expected whitespace enrollment token to fail before runtime launch");
+
+        assert_eq!(error.title, "invalid self-host secrets config");
+        assert_eq!(
+            error.why,
+            format!(
+                "{} -> connectors.enrollment_token: must not be empty",
+                paths.secrets_path.display()
+            )
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
     }
 }

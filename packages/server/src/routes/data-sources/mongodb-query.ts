@@ -12,10 +12,7 @@ import { z } from "zod";
 import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
-import {
-  decryptCredentialsObject,
-  deriveKeyFromBase64,
-} from "../../services/crypto/credential-encryption";
+import { decryptCredentialsObject } from "../../services/crypto/credential-encryption";
 import {
   findMongoDocuments,
   listMongoCollections,
@@ -110,15 +107,12 @@ export const dataSourcesMongoDbQueryRoute = new Hono<{
       );
     }
 
-    const masterKey = deriveKeyFromBase64(
-      c.var.runtime.crypto.masterEncryptionKey
-    );
     const credentialsOutcome = await Promise.resolve()
       .then(() =>
         decryptCredentialsObject(
           dataSource.credentialsEncrypted,
           dataSource.credentialsIv,
-          masterKey,
+          c.var.runtime.crypto.masterEncryptionKey,
           CredentialsSchema
         )
       )

@@ -81,7 +81,7 @@ export function BudgetDashboardPage() {
     }
 
     startTransition(() => {
-      navigate({
+      void navigate({
         params: { org_slug: organizationSlug },
         replace: true,
         search: { days: nextDaysResult.data },

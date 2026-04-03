@@ -22,10 +22,8 @@ import type { ServerRuntimeVariables } from "../../runtime-context";
 import { ensureConnectorOrganization } from "../../services/connectors/broker";
 import {
   decryptCredentialsObject,
-  deriveKeyFromBase64,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
-import { LEGACY_UNSUPPORTED_TEST_PREFIX } from "../../services/data-source-tester";
 import {
   CreateDataSourceSchema,
   OrgQuerySchema,
@@ -133,49 +131,7 @@ export const dataSourcesCrudRoute = new Hono<{
         where: eq(dataSources.organizationId, organizationId),
       });
 
-      // TODO(legacy-cleanup): Remove this migration shim after all environments
-      // have been migrated away from the old unsupported-test error format
-      // ("Testing is not supported for provider: ...").
-      const legacyUnsupportedIds = result
-        .filter((item) => {
-          if (item.status !== "error") {
-            return false;
-          }
-          return (
-            item.errorMessage?.startsWith(LEGACY_UNSUPPORTED_TEST_PREFIX) ??
-            false
-          );
-        })
-        .map((item) => item.id);
-
-      if (legacyUnsupportedIds.length > 0) {
-        const now = new Date();
-        await Promise.all(
-          legacyUnsupportedIds.map((id) =>
-            db
-              .update(dataSources)
-              .set({
-                errorMessage: null,
-                status: "active",
-                updatedAt: now,
-              })
-              .where(eq(dataSources.id, id))
-          )
-        );
-      }
-
-      const cleanedDataSources = result.map((item) => {
-        if (!legacyUnsupportedIds.includes(item.id)) {
-          return item;
-        }
-        return {
-          ...item,
-          errorMessage: null,
-          status: "active" as const,
-        };
-      });
-
-      return c.json({ dataSources: cleanedDataSources });
+      return c.json({ dataSources: result });
     }
   )
 
@@ -281,10 +237,10 @@ export const dataSourcesCrudRoute = new Hono<{
         return c.json({ error: "Name is required" }, 400);
       }
 
-      const masterKey = deriveKeyFromBase64(
+      const encrypted = encryptCredentialsObject(
+        body.credentials,
         c.var.runtime.crypto.masterEncryptionKey
       );
-      const encrypted = encryptCredentialsObject(body.credentials, masterKey);
       const providerType: ProviderType = body.provider;
 
       const [inserted] = await db
@@ -418,10 +374,10 @@ export const dataSourcesCrudRoute = new Hono<{
           }
         }
 
-        const masterKey = deriveKeyFromBase64(
+        const encrypted = encryptCredentialsObject(
+          body.credentials,
           c.var.runtime.crypto.masterEncryptionKey
         );
-        const encrypted = encryptCredentialsObject(body.credentials, masterKey);
         updates.credentialsEncrypted = encrypted.ciphertext;
         updates.credentialsIv = encrypted.iv;
       }
@@ -482,15 +438,12 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       if (existing.provider === "linear") {
-        const masterKey = deriveKeyFromBase64(
-          c.var.runtime.crypto.masterEncryptionKey
-        );
         const decryptOutcome = await Promise.resolve()
           .then(() =>
             decryptCredentialsObject(
               existing.credentialsEncrypted,
               existing.credentialsIv,
-              masterKey,
+              c.var.runtime.crypto.masterEncryptionKey,
               credentialSchemaMap.linear
             )
           )

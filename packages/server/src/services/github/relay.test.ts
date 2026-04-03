@@ -26,9 +26,7 @@ describe("github relay", () => {
           },
         },
       })
-    ).rejects.toThrowError(
-      'GitHub request param "access_token" is not allowed'
-    );
+    ).rejects.toThrow('GitHub request param "access_token" is not allowed');
   });
 
   it("rejects full URLs with embedded credentials", async () => {
@@ -38,7 +36,7 @@ describe("github relay", () => {
         endpoint:
           "https://user:pass@api.github.com/repos/openai/example/issues",
       })
-    ).rejects.toThrowError("GitHub endpoint must not include URL credentials");
+    ).rejects.toThrow("GitHub endpoint must not include URL credentials");
   });
 
   it("rejects headers containing control characters", async () => {
@@ -52,7 +50,7 @@ describe("github relay", () => {
           },
         },
       })
-    ).rejects.toThrowError("Invalid GitHub header: x-test");
+    ).rejects.toThrow("Invalid GitHub header: x-test");
   });
 
   it("uses the shared repositories listing request defaults", async () => {

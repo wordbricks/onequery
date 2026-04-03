@@ -298,6 +298,7 @@ mod tests {
     use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
     use crate::config::self_host::SelfHostRuntimePaths;
     use crate::config::self_host::default_port;
+    use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
     #[test]
     fn backup_archives_server_pglite_and_runtime_files_but_excludes_secrets_and_live_markers_by_default()
@@ -427,7 +428,7 @@ mod tests {
         fs::write(
             &paths.config_path,
             format!(
-                "[server]\nlisten_host = \"{}\"\nport = {}\nlog_level = \"info\"\n",
+                "[server]\nlisten_host = \"{}\"\nport = {}\n",
                 DEFAULT_SELF_HOST_LISTEN_HOST,
                 default_port()
             ),
@@ -436,7 +437,9 @@ mod tests {
         if include_secrets {
             fs::write(
                 &paths.secrets_path,
-                "[auth]\nbetter_auth_secret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"master\"\n\n[connectors]\nenrollment_token = \"connector\"\n",
+                format!(
+                    "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
+                ),
             )
             .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
         }
