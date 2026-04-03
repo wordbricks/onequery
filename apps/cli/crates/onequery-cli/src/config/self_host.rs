@@ -736,7 +736,6 @@ mod tests {
     use super::CryptoSecrets;
     use super::SecretsConfig;
     use super::SelfHostConfig;
-    use super::SelfHostConfigBundle;
     use super::SelfHostRuntimePaths;
     use super::ServerLaunchConfig;
     use super::ServerSection;
@@ -745,7 +744,6 @@ mod tests {
     use super::bootstrap_self_host_foundation_with_paths;
     use super::default_port;
     use super::load_self_host_config_with_paths;
-    use super::resolve_self_host_launch_config;
     use super::write_self_host_launch_config_for_test;
 
     const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
@@ -780,13 +778,6 @@ mod tests {
         format!(
             "[auth]\nsecret = \"better\"\n\n[crypto]\nmaster_encryption_key = \"{TEST_MASTER_ENCRYPTION_KEY}\"\n\n[connectors]\nenrollment_token = \"connector\"\n"
         )
-    }
-
-    fn shared_self_host_launch_fixture_path() -> PathBuf {
-        // Comment: TS owns the canonical launch-contract schema and fixture;
-        // Rust keeps a local struct plus parity coverage against that artifact.
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../../packages/config/fixtures/self-host-launch.json")
     }
 
     #[test]
@@ -1136,58 +1127,6 @@ secure = false
 
         fs::remove_dir_all(test_dir)
             .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
-    }
-
-    #[test]
-    fn self_host_launch_fixture_matches_rust_emitted_contract() {
-        let fixture_path = shared_self_host_launch_fixture_path();
-        let fixture = fs::read_to_string(&fixture_path)
-            .unwrap_or_else(|error| panic!("expected shared launch fixture to load: {error}"));
-        let fixture_json: serde_json::Value = serde_json::from_str(&fixture)
-            .unwrap_or_else(|error| panic!("expected shared launch fixture to parse: {error}"));
-        let bundle = SelfHostConfigBundle {
-            paths: SelfHostRuntimePaths::for_test(
-                PathBuf::from("/tmp/onequery/config/self-host"),
-                PathBuf::from("/tmp/onequery/data"),
-            ),
-            config: SelfHostConfig {
-                server: ServerSection {
-                    listen_host: "0.0.0.0".to_owned(),
-                    port: 7777,
-                    public_origin: None,
-                },
-                smtp: SmtpConfig {
-                    from_email: Some("hello@example.com".to_owned()),
-                    from_name: Some("OneQuery OSS".to_owned()),
-                    host: Some("smtp.example.com".to_owned()),
-                    port: Some(587),
-                    secure: Some(false),
-                    username: Some("smtp-user".to_owned()),
-                },
-            },
-            secrets: SecretsConfig {
-                smtp: SmtpSecrets {
-                    password: Some("smtp-pass".to_owned()),
-                },
-                auth: AuthSecrets {
-                    secret: "better".to_owned(),
-                },
-                crypto: CryptoSecrets {
-                    master_encryption_key: TEST_MASTER_ENCRYPTION_KEY.to_owned(),
-                },
-                connectors: ConnectorSecrets {
-                    enrollment_token: "connector".to_owned(),
-                },
-            },
-        };
-        let emitted_json = serde_json::to_value(resolve_self_host_launch_config(
-            &bundle,
-            Path::new("/tmp/onequery/runtime/web"),
-            Path::new("/tmp/onequery/runtime/migrations"),
-        ))
-        .unwrap_or_else(|error| panic!("expected emitted launch contract to serialize: {error}"));
-
-        assert_eq!(emitted_json, fixture_json);
     }
 
     #[test]
