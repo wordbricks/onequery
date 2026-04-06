@@ -529,7 +529,7 @@ migration.
 - [ ] Map `ConnectError.code` first, then metadata only where the CLI actually needs it.
 - [ ] Do not depend on typed error details in the first cutover.
 - [x] Stop storing RFC 9457 problem types in the shared CLI error model and presentation layer.
-- [ ] Remove the checked-in OpenAPI contract assertion test from `transport/mod.rs`.
+- [x] Remove the checked-in OpenAPI contract assertion test from `transport/mod.rs`.
 
 ---
 
