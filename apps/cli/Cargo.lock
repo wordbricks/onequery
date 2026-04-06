@@ -1306,6 +1306,7 @@ dependencies = [
  "flate2",
  "getrandom 0.3.4",
  "http",
+ "http-body",
  "insta",
  "libc",
  "onequery-cli-core",
