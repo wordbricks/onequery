@@ -11,6 +11,8 @@ mod schema;
 mod serve;
 mod source;
 mod source_connect;
+#[cfg(test)]
+pub(crate) mod test_support;
 mod use_cmd;
 
 use url::Url;

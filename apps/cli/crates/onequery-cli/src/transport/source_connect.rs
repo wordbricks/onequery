@@ -1,3 +1,5 @@
+use buffa::MessageField;
+use buffa_types::google::protobuf::Struct as ProtoStruct;
 use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -6,16 +8,19 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::transport::client::AuthenticatedApiClient;
+use crate::transport::generated::types;
 use crate::transport::http::ApiFailure;
 use crate::transport::http::ApiSuccess;
-use crate::transport::http::TransportFailure;
-use crate::transport::http::TransportFailureKind;
+use crate::transport::http::ResponseFailureStages;
+use crate::transport::http::conversion_failure;
 use crate::transport::http::decode_failure;
-use crate::transport::http::parse_problem_response;
+use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
+use crate::transport::labels::content_format_to_str;
+use crate::transport::labels::source_provider_from_str;
+use crate::transport::labels::source_provider_to_str;
 use crate::transport::source::SourceSummary;
-
-const SOURCE_CONNECT_PATH_PREFIX: &str = "/api/cli/organizations";
+use crate::transport::source::source_summary_from_generated;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -76,108 +81,251 @@ pub(crate) struct SourceConnectResult {
     pub(crate) next_command: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-struct SourceConnectEnvelope<T> {
-    data: T,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    request_id: Option<String>,
-}
-
 pub(crate) async fn load_source_connect_guide(
     client: &AuthenticatedApiClient,
     org_slug: &str,
     source: &str,
 ) -> Result<ApiSuccess<SourceConnectGuide>, ApiFailure> {
-    let url =
-        client.app_url(format!("{SOURCE_CONNECT_PATH_PREFIX}/{org_slug}/sources:connect").as_str());
-    let response = client
-        .http()
-        .get(url)
-        .query(&[("source", source)])
-        .send()
-        .await
-        .map_err(|error| {
-            ApiFailure::Transport(TransportFailure {
-                kind: TransportFailureKind::SendRequest,
-                stage: ErrorStage::ResolveSource,
-                message: error.to_string(),
-                retryable: error.is_connect() || error.is_timeout(),
-            })
-        })?;
+    let org_slug: String =
+        crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
+    let source = source_provider_from_str(source).ok_or_else(|| {
+        conversion_failure(
+            ErrorStage::ResolveSource,
+            format!("unsupported source provider {source}"),
+        )
+    })?;
 
-    read_source_connect_response(response, ErrorStage::ResolveSource).await
+    let response = match client
+        .cli()
+        .get_source_connect_guide(types::GetSourceConnectGuideRequest {
+            org_slug,
+            source: source.into(),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(
+                error,
+                ResponseFailureStages::from_status(problem_stage_for_status),
+            ));
+        }
+    };
+
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
+
+    Ok(ApiSuccess {
+        payload: source_connect_guide_from_generated(payload, request_id.clone())?,
+        request_id,
+    })
 }
 
 pub(crate) async fn connect_source(
     client: &AuthenticatedApiClient,
     org_slug: &str,
     source: &str,
-    input: Map<String, Value>,
+    mut input: Map<String, Value>,
 ) -> Result<ApiSuccess<SourceConnectResult>, ApiFailure> {
-    let url =
-        client.app_url(format!("{SOURCE_CONNECT_PATH_PREFIX}/{org_slug}/sources:connect").as_str());
-    let response = client
-        .http()
-        .post(url)
-        .query(&[("source", source)])
-        .json(&Value::Object(input))
-        .send()
-        .await
-        .map_err(|error| {
-            ApiFailure::Transport(TransportFailure {
-                kind: TransportFailureKind::SendRequest,
-                stage: ErrorStage::ResolveSource,
-                message: error.to_string(),
-                retryable: error.is_connect() || error.is_timeout(),
-            })
-        })?;
-
-    read_source_connect_response(response, ErrorStage::ResolveSource).await
-}
-
-async fn read_source_connect_response<T>(
-    response: reqwest::Response,
-    stage: ErrorStage,
-) -> Result<ApiSuccess<T>, ApiFailure>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    let request_id = response_request_id(response.headers());
-    let status = response.status();
-    let body = response.bytes().await.map_err(|error| {
-        ApiFailure::Transport(TransportFailure {
-            kind: TransportFailureKind::ReadResponseBody,
-            stage,
-            message: error.to_string(),
-            retryable: error.is_connect() || error.is_timeout(),
+    let org_slug: String =
+        crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
+    let source = source_provider_from_str(source).ok_or_else(|| {
+        conversion_failure(
+            ErrorStage::ResolveSource,
+            format!("unsupported source provider {source}"),
+        )
+    })?;
+    let name = input
+        .remove("name")
+        .and_then(|value| match value {
+            Value::String(value) if !value.trim().is_empty() => Some(value),
+            _ => None,
         })
+        .ok_or_else(|| {
+            conversion_failure(
+                ErrorStage::ResolveSource,
+                "source connect input must include non-empty string field `name`",
+            )
+        })?;
+    let credentials = input.remove("credentials").ok_or_else(|| {
+        conversion_failure(
+            ErrorStage::ResolveSource,
+            "source connect input must include object field `credentials`",
+        )
+    })?;
+    let credentials = serde_json::from_value::<ProtoStruct>(credentials).map_err(|error| {
+        conversion_failure(
+            ErrorStage::ResolveSource,
+            format!("invalid source connect credentials: {error}"),
+        )
     })?;
 
-    if !status.is_success() {
-        return Err(ApiFailure::Problem(parse_problem_response(
-            status,
-            request_id,
-            &body,
-            problem_stage_for_status(status, stage),
-        )));
-    }
+    let response = match client
+        .cli()
+        .connect_source(types::ConnectSourceRequest {
+            org_slug,
+            source: source.into(),
+            name,
+            credentials: MessageField::some(credentials),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(
+                error,
+                ResponseFailureStages::from_status(problem_stage_for_status),
+            ));
+        }
+    };
 
-    let payload = serde_json::from_slice::<SourceConnectEnvelope<T>>(&body)
-        .map_err(|error| decode_failure(stage, error.to_string(), request_id.clone()))?;
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: payload.data,
-        request_id: payload.request_id.or(request_id),
+        payload: source_connect_result_from_generated(payload, request_id.clone())?,
+        request_id,
     })
 }
 
-fn problem_stage_for_status(status: StatusCode, fallback: ErrorStage) -> ErrorStage {
+fn problem_stage_for_status(status: StatusCode) -> ErrorStage {
     match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => ErrorStage::Auth,
         StatusCode::NOT_FOUND => ErrorStage::ResolveOrg,
-        _ => fallback,
+        _ => ErrorStage::ResolveSource,
     }
+}
+
+fn source_connect_guide_from_generated(
+    response: types::GetSourceConnectGuideResponse,
+    request_id: Option<String>,
+) -> Result<SourceConnectGuide, ApiFailure> {
+    let input_schema = response.input_schema.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source connect guide missing input schema",
+            request_id.clone(),
+        )
+    })?;
+
+    Ok(SourceConnectGuide {
+        title: response.title,
+        description: response.description,
+        format: content_format_to_str(response.format),
+        content: response.content,
+        command: response.command,
+        input_schema: input_schema_from_generated(input_schema, request_id.clone())?,
+        providers: response
+            .providers
+            .into_iter()
+            .map(|provider| provider_guide_from_generated(provider, request_id.clone()))
+            .collect::<Result<Vec<_>, _>>()?,
+    })
+}
+
+fn input_schema_from_generated(
+    schema: types::CliSourceConnectInputSchema,
+    request_id: Option<String>,
+) -> Result<SourceConnectInputSchema, ApiFailure> {
+    let properties = schema.properties.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source connect guide missing input schema properties",
+            request_id.clone(),
+        )
+    })?;
+
+    Ok(SourceConnectInputSchema {
+        field_type: schema.r#type,
+        required: schema.required,
+        properties: SourceConnectInputSchemaProperties {
+            name: schema_field_from_generated(properties.name.into_option().ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::ResolveSource,
+                    "source connect guide missing input schema name field",
+                    request_id.clone(),
+                )
+            })?),
+            credentials: schema_field_from_generated(
+                properties.credentials.into_option().ok_or_else(|| {
+                    decode_failure(
+                        ErrorStage::ResolveSource,
+                        "source connect guide missing input schema credentials field",
+                        request_id,
+                    )
+                })?,
+            ),
+        },
+    })
+}
+
+fn schema_field_from_generated(
+    field: types::CliSourceConnectSchemaField,
+) -> SourceConnectSchemaField {
+    SourceConnectSchemaField {
+        field_type: field.r#type,
+        description: field.description,
+        pattern: field.pattern,
+        enum_values: (!field.enum_values.is_empty()).then_some(field.enum_values),
+    }
+}
+
+fn provider_guide_from_generated(
+    guide: types::CliSourceConnectProviderGuide,
+    request_id: Option<String>,
+) -> Result<SourceConnectProviderGuide, ApiFailure> {
+    Ok(SourceConnectProviderGuide {
+        provider: source_provider_to_str(guide.provider),
+        summary: guide.summary,
+        required_credential_fields: guide.required_credential_fields,
+        optional_credential_fields: guide.optional_credential_fields,
+        steps: guide.steps,
+        credential_template: struct_to_json(
+            guide.credential_template.into_option().ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::ResolveSource,
+                    "source connect guide missing credential template",
+                    request_id.clone(),
+                )
+            })?,
+            request_id.clone(),
+        )?,
+        example_input: struct_to_json(
+            guide.example_input.into_option().ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::ResolveSource,
+                    "source connect guide missing example input",
+                    request_id,
+                )
+            })?,
+            None,
+        )?,
+    })
+}
+
+fn source_connect_result_from_generated(
+    response: types::ConnectSourceResponse,
+    request_id: Option<String>,
+) -> Result<SourceConnectResult, ApiFailure> {
+    let source = response.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source connect response missing source summary",
+            request_id,
+        )
+    })?;
+
+    Ok(SourceConnectResult {
+        source: source_summary_from_generated(source),
+        next_command: response.next_command,
+    })
+}
+
+fn struct_to_json(value: ProtoStruct, request_id: Option<String>) -> Result<Value, ApiFailure> {
+    serde_json::to_value(value)
+        .map_err(|error| decode_failure(ErrorStage::ResolveSource, error.to_string(), request_id))
 }
 
 #[cfg(test)]

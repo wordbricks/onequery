@@ -80,11 +80,11 @@ mod tests {
     fn unauthorized_failures_require_reauth_even_if_they_are_not_retryable() {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
             status: StatusCode::UNAUTHORIZED,
-            problem_type: None,
             title: None,
             detail: None,
             code: None,
             retryable: false,
+            retry_after_ms: None,
             stage: ErrorStage::Auth,
             hint: None,
             request_id: None,

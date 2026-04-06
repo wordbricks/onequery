@@ -662,7 +662,8 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
             .send(request)
             .expect("expected login poll request receiver");
 
-        let response_body = r#"{"type":"https://onequery.invalid/problems/cli/login-denied","title":"Login Denied","status":403,"detail":"device authorization was denied","code":"login_denied","stage":"auth","requestId":"req_denied","retryable":false}"#;
+        let response_body =
+            r#"{"code":"permission_denied","message":"device authorization was denied"}"#;
         let response = format!(
             "HTTP/1.1 403 Forbidden\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_denied\r\nconnection: close\r\n\r\n{}",
             response_body.len(),
@@ -711,7 +712,9 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
     let request = request_rx
         .recv()
         .expect("expected auth poll workflow to issue exactly one poll request");
-    assert!(request.starts_with("POST /api/cli/auth/device-authorizations:poll HTTP/1.1\r\n"));
+    assert!(request.starts_with(
+        "POST /api/cli/onequery.cli.v1.CliService/PollDeviceAuthorization HTTP/1.1\r\n"
+    ));
 
     assert_eq!(
         match event {

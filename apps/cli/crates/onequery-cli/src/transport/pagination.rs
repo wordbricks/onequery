@@ -1,5 +1,3 @@
-use std::num::NonZeroU64;
-
 use onequery_cli_core::error::ErrorStage;
 
 use crate::transport::generated::types;
@@ -9,7 +7,7 @@ use crate::transport::read_controls::PageInfo;
 
 pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
     PageInfo {
-        next_cursor: page.next_cursor.map(Into::into),
+        next_cursor: page.next_cursor,
         returned: usize::try_from(page.returned).unwrap_or(usize::MAX),
         has_more: page.has_more,
     }
@@ -18,12 +16,13 @@ pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
 pub(crate) fn optional_page_size(
     page_size: Option<usize>,
     stage: ErrorStage,
-) -> Result<Option<NonZeroU64>, ApiFailure> {
+) -> Result<Option<u32>, ApiFailure> {
     page_size
         .map(|page_size| {
-            let page_size = u64::try_from(page_size)
+            let page_size = u32::try_from(page_size)
                 .map_err(|error| conversion_failure(stage, error.to_string()))?;
-            NonZeroU64::new(page_size)
+            (page_size > 0)
+                .then_some(page_size)
                 .ok_or_else(|| conversion_failure(stage, "page size must be greater than zero"))
         })
         .transpose()

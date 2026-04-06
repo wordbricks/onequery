@@ -410,7 +410,6 @@ fn auth_session_unexpected_transition_error(
 #[cfg(test)]
 mod tests {
     use std::io::Read;
-    use std::io::Write;
     use std::net::TcpListener;
     use std::sync::mpsc;
     use std::time::Duration;
@@ -420,6 +419,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::commands::ResolvedOrgSource;
+    use crate::commands::test_support::refresh_session_response_body;
+    use crate::commands::test_support::write_proto_response;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
     use crate::config::default_base_url;
@@ -463,30 +464,6 @@ mod tests {
             issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
             expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
         }
-    }
-
-    fn refresh_response_body(
-        request_id: &str,
-        access_token: &str,
-        active_org_slug: Option<&str>,
-    ) -> String {
-        serde_json::json!({
-            "requestId": request_id,
-            "data": {
-                "accessToken": access_token,
-                "authMode": "bearer_token",
-                "user": {
-                    "id": "user-1",
-                    "email": "alice@example.com",
-                    "displayName": "Alice",
-                },
-                "activeOrgSlug": active_org_slug,
-                "issuedAt": "2026-03-11T00:00:00.000Z",
-                "expiresAt": "2026-03-18T00:00:00.000Z",
-            },
-            "warnings": [],
-        })
-        .to_string()
     }
 
     fn test_context(base_url: String, command_line: &str) -> CommandContext {
@@ -624,16 +601,14 @@ mod tests {
                 }
             }
 
-            let response_body =
-                refresh_response_body("req_refresh", "token_refreshed", Some("acme"));
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_187_200,
+                1_773_792_000,
             );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
+            write_proto_response(&mut stream, "req_refresh", &response_body)
+                .expect("expected proto response write to CLI");
         });
 
         let base_url = format!("http://{address}");
@@ -706,16 +681,14 @@ mod tests {
                 .send(request)
                 .expect("expected captured request receiver");
 
-            let response_body =
-                refresh_response_body("req_refresh", "token_refreshed", Some("acme"));
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_187_200,
+                1_773_792_000,
             );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
+            write_proto_response(&mut stream, "req_refresh", &response_body)
+                .expect("expected proto response write to CLI");
         });
 
         let base_url = format!("http://{address}");
@@ -791,16 +764,14 @@ mod tests {
                 .send(request)
                 .expect("expected captured request receiver");
 
-            let response_body =
-                refresh_response_body("req_refresh", "token_refreshed", Some("acme"));
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_187_200,
+                1_773_792_000,
             );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
+            write_proto_response(&mut stream, "req_refresh", &response_body)
+                .expect("expected proto response write to CLI");
         });
 
         let base_url = format!("http://{address}");
@@ -880,16 +851,14 @@ mod tests {
                 .send(String::from_utf8_lossy(&request_bytes).into_owned())
                 .expect("expected captured request receiver");
 
-            let response_body =
-                refresh_response_body("req_refresh", "token_refreshed", Some("acme"));
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_187_200,
+                1_773_792_000,
             );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
+            write_proto_response(&mut stream, "req_refresh", &response_body)
+                .expect("expected proto response write to CLI");
         });
 
         let context = test_context_with_request_id(

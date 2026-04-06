@@ -1,46 +1,89 @@
 use std::env;
-use std::fs;
-use std::fs::File;
 use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
+
+const PROTO_ROOT: &str = "proto";
+const PROTO_FILES: [&str; 7] = [
+    "onequery/cli/v1/auth.proto",
+    "onequery/cli/v1/cli.proto",
+    "onequery/cli/v1/common.proto",
+    "onequery/cli/v1/org.proto",
+    "onequery/cli/v1/query.proto",
+    "onequery/cli/v1/source.proto",
+    "onequery/cli/v1/use.proto",
+];
 
 fn main() {
-    let spec_path = "../../../../packages/cli-contract/openapi/generated/cli.openapi.json";
-    println!("cargo:rerun-if-changed={spec_path}");
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = repo_root(manifest_dir);
+    emit_rerun_triggers(&repo_root);
 
-    let file = match File::open(spec_path) {
-        Ok(file) => file,
-        Err(error) => panic!("expected checked-in CLI OpenAPI spec at {spec_path}: {error}"),
-    };
-    let spec = match serde_json::from_reader(file) {
-        Ok(spec) => spec,
-        Err(error) => panic!("expected valid OpenAPI JSON at {spec_path}: {error}"),
-    };
+    let out_dir = env::var("OUT_DIR").unwrap_or_else(|error| panic!("expected OUT_DIR: {error}"));
+    let descriptor_path = Path::new(&out_dir).join("onequery-cli.fds");
+    build_descriptor_set(&repo_root, &descriptor_path);
 
-    let mut settings = progenitor::GenerationSettings::default();
-    settings.with_derive("PartialEq").with_derive("Eq");
-    let mut generator = progenitor::Generator::new(&settings);
+    connectrpc_build::Config::new()
+        .files(&PROTO_FILES)
+        .descriptor_set(&descriptor_path)
+        .emit_register_fn(false)
+        .include_file("_connectrpc.rs")
+        .compile()
+        .unwrap_or_else(|error| panic!("expected Connect client generation to succeed: {error}"));
+}
 
-    let tokens = match generator.generate_tokens(&spec) {
-        Ok(tokens) => tokens,
-        Err(error) => panic!("expected progenitor client generation to succeed: {error}"),
-    };
-    let ast = match syn::parse2(tokens) {
-        Ok(ast) => ast,
-        Err(error) => panic!("expected progenitor tokens to parse: {error}"),
-    };
-    let content = prettyplease::unparse(&ast);
+fn repo_root(manifest_dir: &Path) -> PathBuf {
+    manifest_dir
+        .join("../../../../")
+        .canonicalize()
+        .unwrap_or_else(|error| panic!("expected repo root from {manifest_dir:?}: {error}"))
+}
 
-    let out_dir = match env::var("OUT_DIR") {
-        Ok(out_dir) => out_dir,
-        Err(error) => panic!("expected OUT_DIR: {error}"),
-    };
-    let mut out_file = Path::new(&out_dir).to_path_buf();
-    out_file.push("cli_api.rs");
+fn emit_rerun_triggers(repo_root: &Path) {
+    println!(
+        "cargo:rerun-if-changed={}",
+        repo_root.join("buf.yaml").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        repo_root.join("buf.gen.yaml").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        repo_root.join("buf.lock").display()
+    );
+    for proto_file in PROTO_FILES {
+        println!(
+            "cargo:rerun-if-changed={}",
+            repo_root.join(PROTO_ROOT).join(proto_file).display()
+        );
+    }
+}
 
-    if let Err(error) = fs::write(&out_file, content) {
+fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
+    let mut buf_command = Command::new("buf");
+    buf_command
+        .current_dir(repo_root)
+        .arg("build")
+        .arg("--as-file-descriptor-set")
+        .arg("-o")
+        .arg(descriptor_path);
+    for proto_file in PROTO_FILES {
+        buf_command
+            .arg("--path")
+            .arg(Path::new(PROTO_ROOT).join(proto_file));
+    }
+
+    let output = buf_command.output().unwrap_or_else(|error| {
         panic!(
-            "expected generated client file write to succeed at {}: {error}",
-            out_file.display()
+            "expected to spawn `buf build` for descriptor generation: {error}. \
+             Install `buf` or run `nix shell nixpkgs#buf nixpkgs#protobuf --command cargo test -p onequery-cli`"
+        )
+    });
+    if !output.status.success() {
+        panic!(
+            "expected `buf build` descriptor generation to succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 }

@@ -8,10 +8,12 @@ use crate::transport::http::ApiFailure;
 use crate::transport::http::ApiSuccess;
 use crate::transport::http::ResponseFailureStages;
 use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_generated;
+use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
+use crate::transport::labels::source_provider_to_str;
+use crate::transport::labels::source_status_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::read_controls::PageInfo;
@@ -78,27 +80,32 @@ async fn fetch_source_page(
     org: &str,
     controls: SinglePageReadControls,
 ) -> Result<ApiSuccess<SourceListPayload>, ApiFailure> {
-    let org_slug = try_into_value(org, ErrorStage::Http)?;
-    let cursor = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
-    let fields = try_into_option(controls.fields.as_deref(), ErrorStage::Http)?;
+    let org_slug: String = try_into_value(org, ErrorStage::Http)?;
+    let cursor: Option<String> = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
+    let fields: Option<String> = try_into_option(controls.fields.as_deref(), ErrorStage::Http)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::Http)?;
     let response = match client
         .cli()
-        .cli_source_list(&org_slug, cursor.as_ref(), fields.as_ref(), limit)
+        .list_sources(types::ListSourcesRequest {
+            org_slug,
+            fields,
+            limit,
+            cursor,
+            ..Default::default()
+        })
         .await
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Http, ErrorStage::Http),
-            )
-            .await);
+                ResponseFailureStages::from_status(list_sources_problem_stage_for_status),
+            ));
         }
     };
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
-    let page = payload.page.ok_or_else(|| {
+    let payload = response.into_owned();
+    let page = payload.page.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::Http,
             "source list response missing page metadata",
@@ -109,7 +116,6 @@ async fn fetch_source_page(
     Ok(ApiSuccess {
         payload: SourceListPayload {
             sources: payload
-                .data
                 .sources
                 .into_iter()
                 .map(source_summary_from_generated)
@@ -126,52 +132,119 @@ pub(crate) async fn get_source_by_key_with_controls(
     source_key: &str,
     controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<SourceSummary>, ApiFailure> {
-    let org_slug = try_into_value(org, ErrorStage::ResolveSource)?;
-    let source_key = try_into_value(source_key, ErrorStage::ResolveSource)?;
-    let fields = try_into_option(controls.fields.as_deref(), ErrorStage::ResolveSource)?;
+    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
+    let fields: Option<String> =
+        try_into_option(controls.fields.as_deref(), ErrorStage::ResolveSource)?;
     let response = match client
         .cli()
-        .cli_source_show(&org_slug, &source_key, fields.as_ref())
+        .get_source(types::GetSourceRequest {
+            org_slug,
+            source_key,
+            fields,
+            ..Default::default()
+        })
         .await
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::ResolveSource, ErrorStage::Http),
-            )
-            .await);
+                ResponseFailureStages::from_status(get_source_problem_stage_for_status),
+            ));
         }
     };
 
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: source_summary_from_generated(payload.data),
+        payload: source_summary_from_get_response(payload),
         request_id,
     })
 }
 
+fn list_sources_problem_stage_for_status(status: reqwest::StatusCode) -> ErrorStage {
+    if matches!(
+        status,
+        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN
+    ) {
+        ErrorStage::Auth
+    } else {
+        ErrorStage::Http
+    }
+}
+
+fn get_source_problem_stage_for_status(status: reqwest::StatusCode) -> ErrorStage {
+    if matches!(
+        status,
+        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN
+    ) {
+        ErrorStage::Auth
+    } else {
+        ErrorStage::ResolveSource
+    }
+}
+
 pub(crate) fn source_summary_from_generated(summary: types::CliSourceSummary) -> SourceSummary {
     SourceSummary {
-        name: summary.name.map(Into::into),
-        display_name: summary.display_name.map(Into::into),
-        provider_kind: summary.provider.map(|provider| provider.to_string()),
-        queryable: summary.queryable,
-        status: summary.status.map(|status| status.to_string()),
+        name: non_empty(summary.name),
+        display_name: non_empty_option(summary.display_name),
+        provider_kind: Some(source_provider_to_str(summary.provider)),
+        queryable: Some(summary.queryable),
+        status: Some(source_status_to_str(summary.status)),
     }
+}
+
+fn source_summary_from_get_response(response: types::GetSourceResponse) -> SourceSummary {
+    SourceSummary {
+        name: non_empty(response.name),
+        display_name: non_empty_option(response.display_name),
+        provider_kind: Some(source_provider_to_str(response.provider)),
+        queryable: Some(response.queryable),
+        status: Some(source_status_to_str(response.status)),
+    }
+}
+
+fn non_empty(value: String) -> Option<String> {
+    (!value.is_empty()).then_some(value)
+}
+
+fn non_empty_option(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.is_empty())
 }
 
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use reqwest::StatusCode;
     use serde_json::json;
 
     use crate::transport::read_controls::PageInfo;
 
     use super::SourceListPayload;
     use super::SourceSummary;
+    use super::get_source_problem_stage_for_status;
+    use super::list_sources_problem_stage_for_status;
+    use onequery_cli_core::error::ErrorStage;
+
+    #[test]
+    fn source_problem_stage_mappings_preserve_auth_failures() {
+        assert_eq!(
+            [
+                list_sources_problem_stage_for_status(StatusCode::UNAUTHORIZED),
+                list_sources_problem_stage_for_status(StatusCode::BAD_REQUEST),
+                get_source_problem_stage_for_status(StatusCode::FORBIDDEN),
+                get_source_problem_stage_for_status(StatusCode::NOT_FOUND),
+            ],
+            [
+                ErrorStage::Auth,
+                ErrorStage::Http,
+                ErrorStage::Auth,
+                ErrorStage::ResolveSource,
+            ]
+        );
+    }
 
     #[test]
     fn source_list_response_deserializes_canonical_shape() {

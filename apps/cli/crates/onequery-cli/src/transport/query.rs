@@ -1,3 +1,4 @@
+use buffa::MessageField;
 use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -11,11 +12,12 @@ use crate::transport::http::ApiSuccess;
 use crate::transport::http::ResponseFailureStages;
 use crate::transport::http::conversion_failure;
 use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_generated;
+use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
 use crate::transport::http::untrusted_output_metadata_from_generated;
+use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
@@ -126,25 +128,6 @@ pub(crate) struct QueryValidationResult {
     pub(crate) truncated: Option<bool>,
 }
 
-// CONTEXT: retry lifecycle belongs in command workflow state transitions.
-// This adapter executes a single HTTP attempt and leaves retry policy to the caller.
-#[cfg(test)]
-pub(crate) async fn execute_read_only_query(
-    client: &AuthenticatedApiClient,
-    org: &str,
-    source_key: &str,
-    payload: &QueryRequestPayload,
-) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
-    execute_read_only_query_with_controls(
-        client,
-        org,
-        source_key,
-        payload,
-        &ReadRequestControls::default(),
-    )
-    .await
-}
-
 pub(crate) async fn execute_read_only_query_with_controls(
     client: &AuthenticatedApiClient,
     org: &str,
@@ -196,37 +179,37 @@ async fn fetch_query_page(
     payload: &QueryRequestPayload,
     controls: SinglePageReadControls,
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
-    let org_slug = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    let source_key = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    let cursor = try_into_option(controls.cursor.as_deref(), ErrorStage::ExecuteQuery)?;
-    let fields = try_into_option(controls.fields.as_deref(), ErrorStage::ExecuteQuery)?;
-    let body = query_request_from_payload(payload)?;
+    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
+    let cursor: Option<String> =
+        try_into_option(controls.cursor.as_deref(), ErrorStage::ExecuteQuery)?;
+    let fields: Option<String> =
+        try_into_option(controls.fields.as_deref(), ErrorStage::ExecuteQuery)?;
+    let limit = optional_page_size(controls.page_size, ErrorStage::ExecuteQuery)?;
+    let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
-        .cli_query_execute(
-            &org_slug,
-            &source_key,
-            cursor.as_ref(),
-            fields.as_ref(),
-            controls.page_size.and_then(non_zero_u64),
-            &body,
-        )
+        .execute_query(types::ExecuteQueryRequest {
+            org_slug,
+            source_key,
+            fields,
+            limit,
+            cursor,
+            query: MessageField::some(query),
+            ..Default::default()
+        })
         .await
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(
-                    execute_query_problem_stage_for_status,
-                    ErrorStage::ExecuteQuery,
-                ),
-            )
-            .await);
+                ResponseFailureStages::from_status(execute_query_problem_stage_for_status),
+            ));
         }
     };
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
         payload: query_result_from_generated(payload, request_id.clone())?,
@@ -241,29 +224,32 @@ pub(crate) async fn validate_read_only_query_with_controls(
     payload: &QueryRequestPayload,
     controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<QueryValidationResult>, ApiFailure> {
-    let org_slug = try_into_value(org, ErrorStage::ReadQueryInput)?;
-    let source_key = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
-    let fields = try_into_option(controls.fields.as_deref(), ErrorStage::ReadQueryInput)?;
-    let body = query_request_from_payload(payload)?;
+    let org_slug: String = try_into_value(org, ErrorStage::ReadQueryInput)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
+    let fields: Option<String> =
+        try_into_option(controls.fields.as_deref(), ErrorStage::ReadQueryInput)?;
+    let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
-        .cli_query_validate(&org_slug, &source_key, fields.as_ref(), &body)
+        .validate_query(types::ValidateQueryRequest {
+            org_slug,
+            source_key,
+            fields,
+            query: MessageField::some(query),
+            ..Default::default()
+        })
         .await
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(
-                    validate_query_problem_stage_for_status,
-                    ErrorStage::ReadQueryInput,
-                ),
-            )
-            .await);
+                ResponseFailureStages::from_status(validate_query_problem_stage_for_status),
+            ));
         }
     };
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
         payload: query_validation_from_generated(payload),
@@ -291,6 +277,7 @@ fn query_request_from_payload(
     payload: &QueryRequestPayload,
 ) -> Result<types::CliQueryRequest, ApiFailure> {
     Ok(types::CliQueryRequest {
+        sql: try_into_value(payload.sql.as_str(), ErrorStage::ReadQueryInput)?,
         parameters: payload
             .parameters
             .clone()
@@ -298,19 +285,19 @@ fn query_request_from_payload(
             .into_iter()
             .map(query_parameter_to_generated)
             .collect::<Result<Vec<_>, _>>()?,
-        sql: try_into_value(payload.sql.as_str(), ErrorStage::ReadQueryInput)?,
-        max_rows: payload.max_rows.and_then(non_zero_u64),
-        max_bytes: payload.max_bytes.and_then(non_zero_u64),
-        cell_max_chars: payload.cell_max_chars.and_then(non_zero_u64),
-        timeout_ms: payload.timeout_ms.and_then(std::num::NonZeroU64::new),
+        max_rows: optional_query_bound(payload.max_rows, ErrorStage::ReadQueryInput)?,
+        max_bytes: optional_query_bound(payload.max_bytes, ErrorStage::ReadQueryInput)?,
+        cell_max_chars: optional_query_bound(payload.cell_max_chars, ErrorStage::ReadQueryInput)?,
+        timeout_ms: optional_timeout_ms(payload.timeout_ms, ErrorStage::ReadQueryInput)?,
+        ..Default::default()
     })
 }
 
 fn query_result_from_generated(
-    result: types::CliQueryExecuteEnvelope,
+    result: types::ExecuteQueryResponse,
     request_id: Option<String>,
 ) -> Result<QueryResult, ApiFailure> {
-    let page = result.page.ok_or_else(|| {
+    let page = result.page.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::ExecuteQuery,
             "query execution response missing page metadata",
@@ -318,54 +305,60 @@ fn query_result_from_generated(
         )
     })?;
 
+    // Comment: the Connect query response only carries `sanitization`; reuse its
+    // sanitized paths as legacy `untrusted_paths` so existing CLI output stays stable.
+    let untrusted_paths = result
+        .sanitization
+        .clone()
+        .into_option()
+        .map(|sanitization| sanitization.sanitized_paths)
+        .unwrap_or_default();
+
     Ok(QueryResult {
         output_metadata: untrusted_output_metadata_from_generated(
-            result.untrusted_paths,
-            result.sanitization,
+            untrusted_paths,
+            result.sanitization.into_option(),
         ),
-        source: result.data.source.map(source_summary_from_generated),
-        row_count: result
-            .data
-            .row_count
-            .and_then(|row_count| usize::try_from(row_count).ok()),
-        elapsed_ms: result
-            .data
-            .elapsed_ms
-            .and_then(|elapsed_ms| u64::try_from(elapsed_ms).ok()),
+        source: result
+            .source
+            .into_option()
+            .map(source_summary_from_generated),
+        row_count: usize::try_from(result.row_count).ok(),
+        elapsed_ms: Some(result.elapsed_ms),
         columns: Some(
             result
-                .data
                 .columns
                 .into_iter()
                 .map(|column| QueryColumn {
-                    name: column.name.map(Into::into),
+                    name: non_empty(column.name),
                     logical_type: column
                         .logical_type
-                        .map(|logical_type| logical_type.to_string()),
+                        .and_then(query_logical_type_from_generated),
                 })
                 .collect(),
         ),
-        rows: Some(result.data.rows),
-        truncated: result.data.truncated,
+        rows: Some(result.rows.into_iter().map(|row| row.values).collect()),
+        truncated: Some(result.truncated),
         page: page_info_from_generated(page),
     })
 }
 
-fn query_validation_from_generated(
-    result: types::CliQueryValidateEnvelope,
-) -> QueryValidationResult {
+fn query_validation_from_generated(result: types::ValidateQueryResponse) -> QueryValidationResult {
     QueryValidationResult {
         request: result
-            .data
             .request
+            .into_option()
             .map(query_canonical_request_from_generated),
-        normalized_sql: result.data.normalized_sql.map(Into::into),
+        normalized_sql: non_empty(result.normalized_sql),
         declared_result_window: result
-            .data
             .declared_result_window
+            .into_option()
             .map(query_result_window_from_generated),
-        source: result.data.source.map(source_summary_from_generated),
-        truncated: result.data.truncated,
+        source: result
+            .source
+            .into_option()
+            .map(source_summary_from_generated),
+        truncated: Some(result.truncated),
     }
 }
 
@@ -373,7 +366,7 @@ fn query_canonical_request_from_generated(
     request: types::CliQueryCanonicalRequest,
 ) -> QueryCanonicalRequest {
     QueryCanonicalRequest {
-        sql: request.sql.map(Into::into),
+        sql: non_empty(request.sql),
         parameters: (!request.parameters.is_empty()).then(|| {
             request
                 .parameters
@@ -383,17 +376,14 @@ fn query_canonical_request_from_generated(
         }),
         max_rows: request
             .max_rows
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
         max_bytes: request
             .max_bytes
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
         cell_max_chars: request
             .cell_max_chars
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
-        timeout_ms: request.timeout_ms.map(std::num::NonZeroU64::get),
+        timeout_ms: request.timeout_ms.map(u64::from),
     }
 }
 
@@ -403,65 +393,129 @@ fn query_result_window_from_generated(
     QueryResultWindow {
         max_rows: window
             .max_rows
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
         max_bytes: window
             .max_bytes
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
         cell_max_chars: window
             .cell_max_chars
-            .map(std::num::NonZeroU64::get)
             .and_then(|value| usize::try_from(value).ok()),
-        timeout_ms: window.timeout_ms.map(std::num::NonZeroU64::get),
+        timeout_ms: window.timeout_ms.map(u64::from),
     }
 }
 
 fn query_parameter_to_generated(
     parameter: QueryParameter,
 ) -> Result<types::CliQueryParameter, ApiFailure> {
-    let type_ = types::CliQueryParameterType::try_from(parameter.parameter_type.as_str())
-        .map_err(|error| conversion_failure(ErrorStage::ReadQueryInput, error.to_string()))?;
+    let parameter_type = query_parameter_type_to_generated(parameter.parameter_type.as_str())
+        .ok_or_else(|| {
+            conversion_failure(
+                ErrorStage::ReadQueryInput,
+                format!(
+                    "unsupported query parameter type {}",
+                    parameter.parameter_type
+                ),
+            )
+        })?;
 
     Ok(types::CliQueryParameter {
-        type_,
+        r#type: parameter_type.into(),
         value: parameter.value,
+        ..Default::default()
     })
 }
 
 fn query_parameter_from_generated(parameter: types::CliQueryParameter) -> QueryParameter {
     QueryParameter {
-        parameter_type: parameter.type_.to_string(),
+        parameter_type: parameter
+            .r#type
+            .as_known()
+            .and_then(query_parameter_type_from_generated)
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| parameter.r#type.to_string()),
         value: parameter.value,
     }
 }
 
-fn non_zero_u64(value: usize) -> Option<std::num::NonZeroU64> {
-    u64::try_from(value)
-        .ok()
-        .and_then(std::num::NonZeroU64::new)
+fn optional_query_bound(
+    value: Option<usize>,
+    stage: ErrorStage,
+) -> Result<Option<u32>, ApiFailure> {
+    value
+        .map(|value| {
+            let value = u32::try_from(value)
+                .map_err(|error| conversion_failure(stage, error.to_string()))?;
+            (value > 0)
+                .then_some(value)
+                .ok_or_else(|| conversion_failure(stage, "query bounds must be greater than zero"))
+        })
+        .transpose()
+}
+
+fn optional_timeout_ms(value: Option<u64>, stage: ErrorStage) -> Result<Option<u32>, ApiFailure> {
+    value
+        .map(|value| {
+            let value = u32::try_from(value)
+                .map_err(|error| conversion_failure(stage, error.to_string()))?;
+            (value > 0)
+                .then_some(value)
+                .ok_or_else(|| conversion_failure(stage, "timeout must be greater than zero"))
+        })
+        .transpose()
+}
+
+fn query_parameter_type_to_generated(value: &str) -> Option<types::CliQueryParameterType> {
+    match value {
+        "string" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING),
+        "number" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NUMBER),
+        "boolean" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN),
+        "null" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL),
+        _ => None,
+    }
+}
+
+fn query_parameter_type_from_generated(
+    value: types::CliQueryParameterType,
+) -> Option<&'static str> {
+    match value {
+        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING => Some("string"),
+        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NUMBER => Some("number"),
+        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN => Some("boolean"),
+        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL => Some("null"),
+        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED => None,
+    }
+}
+
+fn query_logical_type_from_generated(
+    value: buffa::EnumValue<types::CliQueryLogicalType>,
+) -> Option<String> {
+    value.as_known().and_then(|value| match value {
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_STRING => Some("string".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER => Some("number".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BOOLEAN => Some("boolean".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BIGINT => Some("bigint".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_DATETIME => Some("datetime".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_ARRAY => Some("array".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON => Some("json".to_owned()),
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED => None,
+    })
+}
+
+fn non_empty(value: String) -> Option<String> {
+    (!value.is_empty()).then_some(value)
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read;
-    use std::io::Write;
-    use std::net::TcpListener;
-    use std::sync::mpsc;
-    use std::time::Duration;
-
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
     use serde_json::json;
 
     use crate::output_metadata::UntrustedOutputMetadata;
-    use crate::transport::client::AuthenticatedApiClient;
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
-    use crate::transport::http::ApiSuccess;
     use crate::transport::read_controls::PageInfo;
-    use crate::transport::read_controls::ReadRequestControls;
     use crate::transport::source::SourceSummary;
 
     use super::QueryColumn;
@@ -471,23 +525,7 @@ mod tests {
     use super::QueryResultWindow;
     use super::QueryValidationResult;
     use super::execute_query_problem_stage_for_status;
-    use super::execute_read_only_query;
     use super::validate_query_problem_stage_for_status;
-    use super::validate_read_only_query_with_controls;
-
-    fn paged_success_envelope(
-        request_id: &str,
-        data: serde_json::Value,
-        page: serde_json::Value,
-    ) -> String {
-        json!({
-            "requestId": request_id,
-            "data": data,
-            "page": page,
-            "warnings": [],
-        })
-        .to_string()
-    }
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -621,11 +659,11 @@ mod tests {
             [
                 ApiFailure::Problem(ApiProblem {
                     status: StatusCode::BAD_GATEWAY,
-                    problem_type: None,
                     title: None,
                     detail: None,
                     code: None,
                     retryable: true,
+                    retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
                     hint: None,
                     request_id: None,
@@ -635,11 +673,11 @@ mod tests {
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
                     status: StatusCode::BAD_REQUEST,
-                    problem_type: None,
                     title: None,
                     detail: None,
                     code: None,
                     retryable: false,
+                    retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
                     hint: None,
                     request_id: None,
@@ -680,105 +718,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn validate_query_maps_unauthorized_problem_to_auth_stage() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let expected_raw_body = serde_json::to_string(&super::types::CliProblem {
-            code: super::types::CliProblemCode::NotLoggedIn,
-            detail: Some("no authenticated session was found".to_owned()),
-            errors: Vec::new(),
-            hint: Some("login via the OneQuery web app and retry".to_owned()),
-            instance: None,
-            request_id: super::types::CliProblemRequestId::try_from("req_auth".to_owned())
-                .expect("expected request id"),
-            retry_after_ms: None,
-            retryable: false,
-            stage: super::types::CliProblemStage::Auth,
-            status: 401,
-            title: "Not Logged In".to_owned(),
-            type_: "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
-        })
-        .expect("expected canonical problem JSON");
-        let response_body = expected_raw_body.clone();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let response = format!(
-                "HTTP/1.1 401 Unauthorized\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_auth\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = AuthenticatedApiClient::new(&format!("http://{address}"), 5, "pat_123")
-            .expect("expected API client");
-
-        let error = validate_read_only_query_with_controls(
-            &client,
-            "acme",
-            "warehouse",
-            &QueryRequestPayload {
-                sql: "select 1".to_owned(),
-                parameters: None,
-                max_rows: None,
-                max_bytes: None,
-                cell_max_chars: None,
-                timeout_ms: Some(2_500),
-            },
-            &ReadRequestControls::default(),
-        )
-        .await
-        .expect_err("expected auth failure");
-
-        assert_eq!(
-            error,
-            ApiFailure::Problem(ApiProblem {
-                status: StatusCode::UNAUTHORIZED,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
-                ),
-                title: Some("Not Logged In".to_owned()),
-                detail: Some("no authenticated session was found".to_owned()),
-                code: Some("not_logged_in".to_owned()),
-                retryable: false,
-                stage: ErrorStage::Auth,
-                hint: Some("login via the OneQuery web app and retry".to_owned()),
-                request_id: Some("req_auth".to_owned()),
-                validation_issues: Vec::new(),
-                raw_body: expected_raw_body,
-            })
-        );
-    }
-
-    #[tokio::test]
-    async fn execute_read_only_query_posts_canonical_request() {
-        let (request_line, request_body) = execute_query_request_capture(QueryRequestPayload {
+    #[test]
+    fn query_request_from_payload_projects_connect_request() {
+        let request = super::query_request_from_payload(&QueryRequestPayload {
             sql: "select 42".to_owned(),
             parameters: Some(vec![
                 QueryParameter {
@@ -790,202 +732,224 @@ mod tests {
                     value: None,
                 },
             ]),
-            max_rows: None,
-            max_bytes: None,
-            cell_max_chars: None,
-            timeout_ms: Some(2500),
+            max_rows: Some(100),
+            max_bytes: Some(4_096),
+            cell_max_chars: Some(256),
+            timeout_ms: Some(2_500),
         })
-        .await;
-        let request_json =
-            serde_json::from_str::<serde_json::Value>(&request_body).expect("expected JSON body");
+        .expect("expected canonical query request");
 
         assert_eq!(
-            (request_line, request_json),
-            (
-                "POST /api/cli/organizations/acme/sources/warehouse/queries:execute HTTP/1.1"
-                    .to_owned(),
-                json!({
-                    "parameters": [
-                        {"type": "string", "value": "acme"},
-                        {"type": "null", "value": null},
-                    ],
-                    "sql": "select 42",
-                    "timeoutMs": 2500,
-                }),
-            )
+            request,
+            super::types::CliQueryRequest {
+                sql: "select 42".to_owned(),
+                parameters: vec![
+                    super::types::CliQueryParameter {
+                        r#type:
+                            super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
+                                .into(),
+                        value: Some("acme".to_owned()),
+                        ..Default::default()
+                    },
+                    super::types::CliQueryParameter {
+                        r#type: super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
+                            .into(),
+                        value: None,
+                        ..Default::default()
+                    },
+                ],
+                max_rows: Some(100),
+                max_bytes: Some(4_096),
+                cell_max_chars: Some(256),
+                timeout_ms: Some(2_500),
+                ..Default::default()
+            }
         );
     }
 
-    #[tokio::test]
-    async fn execute_read_only_query_omits_timeout_when_unset() {
-        let (_, request_body) = execute_query_request_capture(QueryRequestPayload {
-            sql: "select 99".to_owned(),
-            parameters: None,
-            max_rows: None,
-            max_bytes: None,
-            cell_max_chars: None,
-            timeout_ms: None,
-        })
-        .await;
-        let request_json =
-            serde_json::from_str::<serde_json::Value>(&request_body).expect("expected JSON body");
+    #[test]
+    fn query_result_from_generated_projects_execute_response() {
+        let result = super::query_result_from_generated(
+            super::types::ExecuteQueryResponse {
+                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                    name: "warehouse".to_owned(),
+                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    queryable: true,
+                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    ..Default::default()
+                }),
+                row_count: 1,
+                elapsed_ms: 25,
+                columns: vec![super::types::CliQueryColumn {
+                    name: "value".to_owned(),
+                    logical_type: Some(
+                        super::types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER.into(),
+                    ),
+                    ..Default::default()
+                }],
+                rows: vec![super::types::CliQueryRow {
+                    values: vec!["42".to_owned()],
+                    ..Default::default()
+                }],
+                truncated: false,
+                page: buffa::MessageField::some(super::types::CliPage {
+                    returned: 1,
+                    has_more: false,
+                    ..Default::default()
+                }),
+                sanitization: buffa::MessageField::some(super::types::CliSanitization {
+                    profile: "strict".to_owned(),
+                    sanitized_paths: vec!["rows[0][0]".to_owned()],
+                    raw_available: false,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some("req_query".to_owned()),
+        )
+        .expect("expected projected query result");
 
         assert_eq!(
-            request_json,
-            json!({
-                "sql": "select 99",
+            result,
+            QueryResult {
+                source: Some(SourceSummary {
+                    name: Some("warehouse".to_owned()),
+                    display_name: None,
+                    provider_kind: Some("postgres".to_owned()),
+                    queryable: Some(true),
+                    status: Some("active".to_owned()),
+                }),
+                row_count: Some(1),
+                elapsed_ms: Some(25),
+                columns: Some(vec![QueryColumn {
+                    name: Some("value".to_owned()),
+                    logical_type: Some("number".to_owned()),
+                }]),
+                rows: Some(vec![vec!["42".to_owned()]]),
+                truncated: Some(false),
+                page: PageInfo {
+                    next_cursor: None,
+                    returned: 1,
+                    has_more: false,
+                },
+                output_metadata: UntrustedOutputMetadata {
+                    untrusted_paths: vec!["rows[0][0]".to_owned()],
+                    sanitization: Some(crate::output_metadata::SanitizationMetadata {
+                        profile: "strict".to_owned(),
+                        sanitized_paths: vec!["rows[0][0]".to_owned()],
+                        raw_available: false,
+                    }),
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn query_validation_from_generated_projects_validate_response() {
+        let validation =
+            super::query_validation_from_generated(super::types::ValidateQueryResponse {
+                request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
+                    sql: "SELECT 1".to_owned(),
+                    parameters: vec![
+                        super::types::CliQueryParameter {
+                            r#type:
+                                super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
+                                    .into(),
+                            value: Some("acme".to_owned()),
+                            ..Default::default()
+                        },
+                        super::types::CliQueryParameter {
+                            r#type:
+                                super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
+                                    .into(),
+                            value: None,
+                            ..Default::default()
+                        },
+                    ],
+                    max_rows: Some(100),
+                    max_bytes: Some(4_096),
+                    cell_max_chars: Some(256),
+                    timeout_ms: Some(2_500),
+                    ..Default::default()
+                }),
+                normalized_sql: "SELECT 1".to_owned(),
+                declared_result_window: buffa::MessageField::some(
+                    super::types::CliDeclaredQueryResultWindow {
+                        max_rows: Some(100),
+                        max_bytes: Some(4_096),
+                        cell_max_chars: Some(256),
+                        timeout_ms: Some(2_500),
+                        ..Default::default()
+                    },
+                ),
+                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                    name: "warehouse".to_owned(),
+                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    queryable: true,
+                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    ..Default::default()
+                }),
+                truncated: false,
+                ..Default::default()
+            });
+
+        assert_eq!(
+            validation,
+            QueryValidationResult {
+                request: Some(super::QueryCanonicalRequest {
+                    sql: Some("SELECT 1".to_owned()),
+                    parameters: Some(vec![
+                        QueryParameter {
+                            parameter_type: "string".to_owned(),
+                            value: Some("acme".to_owned()),
+                        },
+                        QueryParameter {
+                            parameter_type: "null".to_owned(),
+                            value: None,
+                        },
+                    ]),
+                    max_rows: Some(100),
+                    max_bytes: Some(4_096),
+                    cell_max_chars: Some(256),
+                    timeout_ms: Some(2_500),
+                }),
+                normalized_sql: Some("SELECT 1".to_owned()),
+                declared_result_window: Some(QueryResultWindow {
+                    max_rows: Some(100),
+                    max_bytes: Some(4_096),
+                    cell_max_chars: Some(256),
+                    timeout_ms: Some(2_500),
+                }),
+                source: Some(SourceSummary {
+                    name: Some("warehouse".to_owned()),
+                    display_name: None,
+                    provider_kind: Some("postgres".to_owned()),
+                    queryable: Some(true),
+                    status: Some("active".to_owned()),
+                }),
+                truncated: Some(false),
+            }
+        );
+    }
+
+    #[test]
+    fn query_result_from_generated_requires_page_metadata() {
+        let error = super::query_result_from_generated(
+            super::types::ExecuteQueryResponse {
+                row_count: 1,
+                ..Default::default()
+            },
+            Some("req_missing_page".to_owned()),
+        )
+        .expect_err("expected missing page metadata to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+                stage: ErrorStage::ExecuteQuery,
+                message: "query execution response missing page metadata".to_owned(),
+                request_id: Some("req_missing_page".to_owned()),
             })
         );
-    }
-
-    async fn execute_query_request_capture(payload: QueryRequestPayload) -> (String, String) {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_line_tx, request_line_rx) = mpsc::channel();
-        let (request_body_tx, request_body_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            let header_end = loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    panic!("expected HTTP request before client closed connection");
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if let Some(position) = request_bytes
-                    .windows(4)
-                    .position(|window| window == b"\r\n\r\n")
-                {
-                    break position + 4;
-                }
-            };
-
-            let header_bytes = &request_bytes[..header_end];
-            let header_text = String::from_utf8_lossy(header_bytes).into_owned();
-            let content_length = header_text
-                .lines()
-                .find_map(|line| {
-                    let (name, value) = line.split_once(':')?;
-                    if name.eq_ignore_ascii_case("content-length") {
-                        return value.trim().parse::<usize>().ok();
-                    }
-
-                    None
-                })
-                .unwrap_or(0);
-
-            while request_bytes.len() < header_end + content_length {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request body bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-            }
-
-            let request_line = header_text
-                .lines()
-                .next()
-                .expect("expected HTTP request line")
-                .to_owned();
-            request_line_tx
-                .send(request_line)
-                .expect("expected request line receiver");
-
-            let request_body = String::from_utf8_lossy(&request_bytes[header_end..]).into_owned();
-            request_body_tx
-                .send(request_body)
-                .expect("expected request body receiver");
-
-            let response_body = paged_success_envelope(
-                "req_query",
-                json!({
-                    "source": {
-                        "name": "warehouse",
-                        "provider": "postgres",
-                        "queryable": true,
-                        "status": "active"
-                    },
-                    "columns": [
-                        {"name": "value", "logicalType": "number"}
-                    ],
-                    "rows": [["42"]],
-                    "rowCount": 1,
-                    "elapsedMs": 25,
-                    "truncated": false,
-                }),
-                json!({
-                    "nextCursor": null,
-                    "returned": 1,
-                    "hasMore": false,
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_query\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = AuthenticatedApiClient::new(&format!("http://{address}"), 5, "pat_123")
-            .expect("expected API client");
-
-        let response = execute_read_only_query(&client, "acme", "warehouse", &payload)
-            .await
-            .expect("expected query response");
-
-        assert_eq!(
-            response,
-            ApiSuccess {
-                payload: QueryResult {
-                    source: Some(SourceSummary {
-                        name: Some("warehouse".to_owned()),
-                        display_name: None,
-                        provider_kind: Some("postgres".to_owned()),
-                        queryable: Some(true),
-                        status: Some("active".to_owned()),
-                    }),
-                    row_count: Some(1),
-                    elapsed_ms: Some(25),
-                    columns: Some(vec![QueryColumn {
-                        name: Some("value".to_owned()),
-                        logical_type: Some("number".to_owned()),
-                    }]),
-                    rows: Some(vec![vec!["42".to_owned()]]),
-                    truncated: Some(false),
-                    page: PageInfo {
-                        next_cursor: None,
-                        returned: 1,
-                        has_more: false,
-                    },
-                    output_metadata: UntrustedOutputMetadata::default(),
-                },
-                request_id: Some("req_query".to_owned()),
-            }
-        );
-
-        let request_line = request_line_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request line");
-        let request_body = request_body_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request body");
-        (request_line, request_body)
     }
 }

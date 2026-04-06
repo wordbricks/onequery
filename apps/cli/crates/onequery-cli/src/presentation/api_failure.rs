@@ -58,6 +58,7 @@ pub(crate) fn present_api_failure(
                 .with_code(problem.code)
                 .with_status(Some(problem.status.as_u16()))
                 .with_retryable(problem.retryable)
+                .with_retry_after_ms(problem.retry_after_ms)
                 .with_validation_issues(
                     problem
                         .validation_issues
@@ -334,13 +335,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::NOT_FOUND,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/source-not-found".to_owned(),
-                ),
                 title: Some("Source Not Found".to_owned()),
                 detail: Some("no source named \"warehouse\" exists".to_owned()),
                 code: Some("source_not_found".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
@@ -420,13 +419,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::NOT_FOUND,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/source-not-found".to_owned(),
-                ),
                 title: Some("Source Not Found".to_owned()),
                 detail: Some("no source named \"warehouse\" exists".to_owned()),
                 code: Some("source_not_found".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_problem".to_owned()),
@@ -496,13 +493,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
-                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::Auth,
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_reauth".to_owned()),
@@ -545,13 +540,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
-                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::Auth,
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_query_auth".to_owned()),
@@ -578,13 +571,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::FORBIDDEN,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/not-authorized".to_owned(),
-                ),
                 title: Some("Forbidden".to_owned()),
                 detail: Some("this account can no longer access the org list".to_owned()),
                 code: Some("forbidden".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::Auth,
                 hint: Some("refresh your session and retry".to_owned()),
                 request_id: Some("req_org_auth".to_owned()),
@@ -612,13 +603,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::UNAUTHORIZED,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/not-logged-in".to_owned(),
-                ),
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::Auth,
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_source_auth".to_owned()),
@@ -646,13 +635,11 @@ mod tests {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::BAD_REQUEST,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/invalid-request".to_owned(),
-                ),
                 title: Some("Invalid Request".to_owned()),
                 detail: Some("request body contains invalid fields".to_owned()),
                 code: Some("invalid_request".to_owned()),
                 retryable: false,
+                retry_after_ms: None,
                 stage: ErrorStage::ExecuteQuery,
                 hint: Some("correct the request and retry".to_owned()),
                 request_id: Some("req_validation".to_owned()),
