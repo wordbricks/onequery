@@ -10,25 +10,34 @@ message GetSessionRequest {
 }
 
 message GetSessionResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliAuthSession data = 3;
+  CliAuthMode auth_mode = 1;
+  CliAuthSessionProjectedUser user = 2;
+  optional string active_org_slug = 3;
+  optional google.protobuf.Timestamp issued_at = 4;
+  optional google.protobuf.Timestamp expires_at = 5;
 }
 
 message RefreshSessionRequest {}
 
 message RefreshSessionResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliRefreshSession data = 3;
+  string access_token = 1;
+  CliAuthMode auth_mode = 2;
+  CliAuthSessionUser user = 3;
+  optional string active_org_slug = 4;
+  optional google.protobuf.Timestamp issued_at = 5;
+  optional google.protobuf.Timestamp expires_at = 6;
 }
 
 message StartDeviceAuthorizationRequest {}
 
 message StartDeviceAuthorizationResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliDeviceAuthorizationStart data = 3;
+  string state = 1;
+  string device_code = 2;
+  string user_code = 3;
+  string verification_url = 4;
+  string verification_complete_url = 5;
+  uint32 poll_after_ms = 6;
+  google.protobuf.Timestamp expires_at = 7;
 }
 
 message PollDeviceAuthorizationRequest {
@@ -36,12 +45,9 @@ message PollDeviceAuthorizationRequest {
 }
 
 message PollDeviceAuthorizationResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-
   oneof outcome {
-    CliPendingDeviceAuthorization pending = 3;
-    CliAuthorizedDeviceAuthorization authorized = 4;
+    CliPendingDeviceAuthorization pending = 1;
+    CliAuthorizedDeviceAuthorization authorized = 2;
   }
 }
 

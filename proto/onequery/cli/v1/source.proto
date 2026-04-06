@@ -20,10 +20,8 @@ message ListSourcesRequest {
 }
 
 message ListSourcesResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliSourceList data = 3;
-  optional CliPage page = 4;
+  repeated CliSourceSummary sources = 1;
+  optional CliPage page = 2;
 }
 
 message GetSourceRequest {
@@ -39,9 +37,11 @@ message GetSourceRequest {
 }
 
 message GetSourceResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliSourceSummary data = 3;
+  string name = 1;
+  optional string display_name = 2;
+  CliSourceProvider provider = 3;
+  bool queryable = 4;
+  CliSourceStatus status = 5;
 }
 
 message GetSourceConnectGuideRequest {
@@ -53,9 +53,13 @@ message GetSourceConnectGuideRequest {
 }
 
 message GetSourceConnectGuideResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliSourceConnectGuide data = 3;
+  string title = 1;
+  string description = 2;
+  CliContentFormat format = 3;
+  string content = 4;
+  string command = 5;
+  CliSourceConnectInputSchema input_schema = 6;
+  repeated CliSourceConnectProviderGuide providers = 7;
 }
 
 message ConnectSourceRequest {
@@ -72,9 +76,8 @@ message ConnectSourceRequest {
 }
 
 message ConnectSourceResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliConnectedSource data = 3;
+  CliSourceSummary source = 1;
+  string next_command = 2;
 }
 
 message CliSourceList {

@@ -20,9 +20,11 @@ message ValidateQueryRequest {
 }
 
 message ValidateQueryResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliValidatedQuery data = 3;
+  CliQueryCanonicalRequest request = 1;
+  string normalized_sql = 2;
+  CliDeclaredQueryResultWindow declared_result_window = 3;
+  CliSourceSummary source = 4;
+  bool truncated = 5;
 }
 
 message ExecuteQueryRequest {
@@ -44,12 +46,14 @@ message ExecuteQueryRequest {
 }
 
 message ExecuteQueryResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliQuerySuccess data = 3;
-  optional CliPage page = 4;
-  repeated string untrusted_paths = 5;
-  optional CliSanitization sanitization = 6;
+  CliSourceSummary source = 1;
+  uint64 row_count = 2;
+  uint64 elapsed_ms = 3;
+  repeated CliQueryColumn columns = 4;
+  repeated CliQueryRow rows = 5;
+  bool truncated = 6;
+  optional CliPage page = 7;
+  optional CliSanitization sanitization = 8;
 }
 
 message CliQueryRequest {

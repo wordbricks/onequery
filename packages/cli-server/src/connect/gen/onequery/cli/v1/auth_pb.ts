@@ -18,7 +18,7 @@ import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js
  * Describes the file onequery/cli/v1/auth.proto.
  */
 export const file_onequery_cli_v1_auth: GenFile /*@__PURE__*/ = fileDesc(
-  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIjwKEUdldFNlc3Npb25SZXF1ZXN0EhwKBmZpZWxkcxgBIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiaQoSR2V0U2Vzc2lvblJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSEAoId2FybmluZ3MYAiADKAkSLQoEZGF0YRgDIAEoCzIfLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvbiIXChVSZWZyZXNoU2Vzc2lvblJlcXVlc3QicAoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRISCgpyZXF1ZXN0X2lkGAEgASgJEhAKCHdhcm5pbmdzGAIgAygJEjAKBGRhdGEYAyABKAsyIi5vbmVxdWVyeS5jbGkudjEuQ2xpUmVmcmVzaFNlc3Npb24iIQofU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdCKEAQogU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIQCgh3YXJuaW5ncxgCIAMoCRI6CgRkYXRhGAMgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaURldmljZUF1dGhvcml6YXRpb25TdGFydCI+Ch5Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3QSHAoLZGV2aWNlX2NvZGUYASABKAlCB7pIBHICEAEi3gEKH1BvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIQCgh3YXJuaW5ncxgCIAMoCRJBCgdwZW5kaW5nGAMgASgLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVBlbmRpbmdEZXZpY2VBdXRob3JpemF0aW9uSAASRwoKYXV0aG9yaXplZBgEIAEoCzIxLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRob3JpemVkRGV2aWNlQXV0aG9yaXphdGlvbkgAQgkKB291dGNvbWUiTgobQ2xpQXV0aFNlc3Npb25Qcm9qZWN0ZWRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCSJFChJDbGlBdXRoU2Vzc2lvblVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJIrUCCg5DbGlBdXRoU2Vzc2lvbhIvCglhdXRoX21vZGUYASABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSOgoEdXNlchgCIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblByb2plY3RlZFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAMgASgJSACIAQESMgoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IsUCChFDbGlSZWZyZXNoU2Vzc2lvbhIUCgxhY2Nlc3NfdG9rZW4YASABKAkSLwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEjEKBHVzZXIYAyABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFNlc3Npb25Vc2VyEhwKD2FjdGl2ZV9vcmdfc2x1ZxgEIAEoCUgAiAEBEjIKCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIzCgpleHBpcmVzX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBQhIKEF9hY3RpdmVfb3JnX3NsdWdCDAoKX2lzc3VlZF9hdEINCgtfZXhwaXJlc19hdCLYAQobQ2xpRGV2aWNlQXV0aG9yaXphdGlvblN0YXJ0Eg0KBXN0YXRlGAEgASgJEhMKC2RldmljZV9jb2RlGAIgASgJEhEKCXVzZXJfY29kZRgDIAEoCRIYChB2ZXJpZmljYXRpb25fdXJsGAQgASgJEiEKGXZlcmlmaWNhdGlvbl9jb21wbGV0ZV91cmwYBSABKAkSFQoNcG9sbF9hZnRlcl9tcxgGIAEoDRIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJFCh1DbGlQZW5kaW5nRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIVCg1wb2xsX2FmdGVyX21zGAIgASgNIuMCCiBDbGlBdXRob3JpemVkRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIUCgxhY2Nlc3NfdG9rZW4YAiABKAkSLwoJYXV0aF9tb2RlGAMgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEjEKBHVzZXIYBCABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFNlc3Npb25Vc2VyEhwKD2FjdGl2ZV9vcmdfc2x1ZxgFIAEoCUgAiAEBEjIKCWlzc3VlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIzCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBQhIKEF9hY3RpdmVfb3JnX3NsdWdCDAoKX2lzc3VlZF9hdEINCgtfZXhwaXJlc19hdCpvCgtDbGlBdXRoTW9kZRIdChlDTElfQVVUSF9NT0RFX1VOU1BFQ0lGSUVEEAASIQodQ0xJX0FVVEhfTU9ERV9CUk9XU0VSX1NFU1NJT04QARIeChpDTElfQVVUSF9NT0RFX0JFQVJFUl9UT0tFThACYgZwcm90bzM",
+  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIjwKEUdldFNlc3Npb25SZXF1ZXN0EhwKBmZpZWxkcxgBIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiuQIKEkdldFNlc3Npb25SZXNwb25zZRIvCglhdXRoX21vZGUYASABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSOgoEdXNlchgCIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblByb2plY3RlZFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAMgASgJSACIAQESMgoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IhcKFVJlZnJlc2hTZXNzaW9uUmVxdWVzdCLKAgoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSLwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEjEKBHVzZXIYAyABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFNlc3Npb25Vc2VyEhwKD2FjdGl2ZV9vcmdfc2x1ZxgEIAEoCUgAiAEBEjIKCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIzCgpleHBpcmVzX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBQhIKEF9hY3RpdmVfb3JnX3NsdWdCDAoKX2lzc3VlZF9hdEINCgtfZXhwaXJlc19hdCIhCh9TdGFydERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0It0BCiBTdGFydERldmljZUF1dGhvcml6YXRpb25SZXNwb25zZRINCgVzdGF0ZRgBIAEoCRITCgtkZXZpY2VfY29kZRgCIAEoCRIRCgl1c2VyX2NvZGUYAyABKAkSGAoQdmVyaWZpY2F0aW9uX3VybBgEIAEoCRIhChl2ZXJpZmljYXRpb25fY29tcGxldGVfdXJsGAUgASgJEhUKDXBvbGxfYWZ0ZXJfbXMYBiABKA0SLgoKZXhwaXJlc19hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiPgoeUG9sbERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0EhwKC2RldmljZV9jb2RlGAEgASgJQge6SARyAhABIrgBCh9Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEkEKB3BlbmRpbmcYASABKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb25IABJHCgphdXRob3JpemVkGAIgASgLMjEub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uSABCCQoHb3V0Y29tZSJOChtDbGlBdXRoU2Vzc2lvblByb2plY3RlZFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJIkUKEkNsaUF1dGhTZXNzaW9uVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkitQIKDkNsaUF1dGhTZXNzaW9uEi8KCWF1dGhfbW9kZRgBIAEoDjIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoTW9kZRI6CgR1c2VyGAIgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhTZXNzaW9uUHJvamVjdGVkVXNlchIcCg9hY3RpdmVfb3JnX3NsdWcYAyABKAlIAIgBARIyCglpc3N1ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESMwoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAogBAUISChBfYWN0aXZlX29yZ19zbHVnQgwKCl9pc3N1ZWRfYXRCDQoLX2V4cGlyZXNfYXQixQIKEUNsaVJlZnJlc2hTZXNzaW9uEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIvCglhdXRoX21vZGUYAiABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSMQoEdXNlchgDIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAQgASgJSACIAQESMgoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0ItgBChtDbGlEZXZpY2VBdXRob3JpemF0aW9uU3RhcnQSDQoFc3RhdGUYASABKAkSEwoLZGV2aWNlX2NvZGUYAiABKAkSEQoJdXNlcl9jb2RlGAMgASgJEhgKEHZlcmlmaWNhdGlvbl91cmwYBCABKAkSIQoZdmVyaWZpY2F0aW9uX2NvbXBsZXRlX3VybBgFIAEoCRIVCg1wb2xsX2FmdGVyX21zGAYgASgNEi4KCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkUKHUNsaVBlbmRpbmdEZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhUKDXBvbGxfYWZ0ZXJfbXMYAiABKA0i4wIKIENsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhQKDGFjY2Vzc190b2tlbhgCIAEoCRIvCglhdXRoX21vZGUYAyABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSMQoEdXNlchgEIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAUgASgJSACIAQESMgoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0Km8KC0NsaUF1dGhNb2RlEh0KGUNMSV9BVVRIX01PREVfVU5TUEVDSUZJRUQQABIhCh1DTElfQVVUSF9NT0RFX0JST1dTRVJfU0VTU0lPThABEh4KGkNMSV9BVVRIX01PREVfQkVBUkVSX1RPS0VOEAJiBnByb3RvMw",
   [file_buf_validate_validate, file_google_protobuf_timestamp]
 );
 
@@ -45,19 +45,29 @@ export const GetSessionRequestSchema: GenMessage<GetSessionRequest> /*@__PURE__*
 export type GetSessionResponse =
   Message<"onequery.cli.v1.GetSessionResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 1;
      */
-    requestId: string;
+    authMode: CliAuthMode;
 
     /**
-     * @generated from field: repeated string warnings = 2;
+     * @generated from field: onequery.cli.v1.CliAuthSessionProjectedUser user = 2;
      */
-    warnings: string[];
+    user?: CliAuthSessionProjectedUser;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSession data = 3;
+     * @generated from field: optional string active_org_slug = 3;
      */
-    data?: CliAuthSession;
+    activeOrgSlug?: string;
+
+    /**
+     * @generated from field: optional google.protobuf.Timestamp issued_at = 4;
+     */
+    issuedAt?: Timestamp;
+
+    /**
+     * @generated from field: optional google.protobuf.Timestamp expires_at = 5;
+     */
+    expiresAt?: Timestamp;
   };
 
 /**
@@ -86,19 +96,34 @@ export const RefreshSessionRequestSchema: GenMessage<RefreshSessionRequest> /*@_
 export type RefreshSessionResponse =
   Message<"onequery.cli.v1.RefreshSessionResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: string access_token = 1;
      */
-    requestId: string;
+    accessToken: string;
 
     /**
-     * @generated from field: repeated string warnings = 2;
+     * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 2;
      */
-    warnings: string[];
+    authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliRefreshSession data = 3;
+     * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 3;
      */
-    data?: CliRefreshSession;
+    user?: CliAuthSessionUser;
+
+    /**
+     * @generated from field: optional string active_org_slug = 4;
+     */
+    activeOrgSlug?: string;
+
+    /**
+     * @generated from field: optional google.protobuf.Timestamp issued_at = 5;
+     */
+    issuedAt?: Timestamp;
+
+    /**
+     * @generated from field: optional google.protobuf.Timestamp expires_at = 6;
+     */
+    expiresAt?: Timestamp;
   };
 
 /**
@@ -127,19 +152,39 @@ export const StartDeviceAuthorizationRequestSchema: GenMessage<StartDeviceAuthor
 export type StartDeviceAuthorizationResponse =
   Message<"onequery.cli.v1.StartDeviceAuthorizationResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: string state = 1;
      */
-    requestId: string;
+    state: string;
 
     /**
-     * @generated from field: repeated string warnings = 2;
+     * @generated from field: string device_code = 2;
      */
-    warnings: string[];
+    deviceCode: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliDeviceAuthorizationStart data = 3;
+     * @generated from field: string user_code = 3;
      */
-    data?: CliDeviceAuthorizationStart;
+    userCode: string;
+
+    /**
+     * @generated from field: string verification_url = 4;
+     */
+    verificationUrl: string;
+
+    /**
+     * @generated from field: string verification_complete_url = 5;
+     */
+    verificationCompleteUrl: string;
+
+    /**
+     * @generated from field: uint32 poll_after_ms = 6;
+     */
+    pollAfterMs: number;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp expires_at = 7;
+     */
+    expiresAt?: Timestamp;
   };
 
 /**
@@ -173,29 +218,19 @@ export const PollDeviceAuthorizationRequestSchema: GenMessage<PollDeviceAuthoriz
 export type PollDeviceAuthorizationResponse =
   Message<"onequery.cli.v1.PollDeviceAuthorizationResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
-     */
-    requestId: string;
-
-    /**
-     * @generated from field: repeated string warnings = 2;
-     */
-    warnings: string[];
-
-    /**
      * @generated from oneof onequery.cli.v1.PollDeviceAuthorizationResponse.outcome
      */
     outcome:
       | {
           /**
-           * @generated from field: onequery.cli.v1.CliPendingDeviceAuthorization pending = 3;
+           * @generated from field: onequery.cli.v1.CliPendingDeviceAuthorization pending = 1;
            */
           value: CliPendingDeviceAuthorization;
           case: "pending";
         }
       | {
           /**
-           * @generated from field: onequery.cli.v1.CliAuthorizedDeviceAuthorization authorized = 4;
+           * @generated from field: onequery.cli.v1.CliAuthorizedDeviceAuthorization authorized = 2;
            */
           value: CliAuthorizedDeviceAuthorization;
           case: "authorized";

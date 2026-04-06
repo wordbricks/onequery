@@ -19,7 +19,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/source.proto.
  */
 export const file_onequery_cli_v1_source: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEixgEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHAoGZmllbGRzGAIgASgJQge6SARyAhABSACIAQESHQoFbGltaXQYAyABKA1CCbpIBioEGGQoAUgBiAEBEhwKBmN1cnNvchgEIAEoCUIHukgEcgIQAUgCiAEBQgkKB19maWVsZHNCCAoGX2xpbWl0QgkKB19jdXJzb3IinwEKE0xpc3RTb3VyY2VzUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIQCgh3YXJuaW5ncxgCIAMoCRIsCgRkYXRhGAMgASgLMh4ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUxpc3QSKwoEcGFnZRgEIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UixgEKEEdldFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEhwKBmZpZWxkcxgDIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiagoRR2V0U291cmNlUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIQCgh3YXJuaW5ncxgCIAMoCRIvCgRkYXRhGAMgASgLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkikwEKHEdldFNvdXJjZUNvbm5lY3RHdWlkZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEjwKBnNvdXJjZRgCIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlckIIukgFggECIAAiewodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USEgoKcmVxdWVzdF9pZBgBIAEoCRIQCgh3YXJuaW5ncxgCIAMoCRI0CgRkYXRhGAMgASgLMiYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RHdWlkZSKPAgoUQ29ubmVjdFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEjwKBnNvdXJjZRgCIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlckIIukgFggECIAASTAoEbmFtZRgDIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQSNAoLY3JlZGVudGlhbHMYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Qga6SAPIAQEicAoVQ29ubmVjdFNvdXJjZVJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSEAoId2FybmluZ3MYAiADKAkSMQoEZGF0YRgDIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb25uZWN0ZWRTb3VyY2UiQwoNQ2xpU291cmNlTGlzdBIyCgdzb3VyY2VzGAEgAygLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkixwEKEENsaVNvdXJjZVN1bW1hcnkSDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARI0Cghwcm92aWRlchgDIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlchIRCglxdWVyeWFibGUYBCABKAgSMAoGc3RhdHVzGAUgASgOMiAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN0YXR1c0IPCg1fZGlzcGxheV9uYW1lIpcCChVDbGlTb3VyY2VDb25uZWN0R3VpZGUSDQoFdGl0bGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSMQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgEIAEoCRIPCgdjb21tYW5kGAUgASgJEkIKDGlucHV0X3NjaGVtYRgGIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESQQoJcHJvdmlkZXJzGAcgAygLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlIokBChtDbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESDAoEdHlwZRgBIAEoCRIQCghyZXF1aXJlZBgCIAMoCRJKCgpwcm9wZXJ0aWVzGAMgASgLMjYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMipgEKJUNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMSOgoEbmFtZRgBIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0U2NoZW1hRmllbGQSQQoLY3JlZGVudGlhbHMYAiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNjaGVtYUZpZWxkIncKG0NsaVNvdXJjZUNvbm5lY3RTY2hlbWFGaWVsZBIMCgR0eXBlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhQKB3BhdHRlcm4YAyABKAlIAIgBARITCgtlbnVtX3ZhbHVlcxgEIAMoCUIKCghfcGF0dGVybiKjAgodQ2xpU291cmNlQ29ubmVjdFByb3ZpZGVyR3VpZGUSNAoIcHJvdmlkZXIYASABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISDwoHc3VtbWFyeRgCIAEoCRIiChpyZXF1aXJlZF9jcmVkZW50aWFsX2ZpZWxkcxgDIAMoCRIiChpvcHRpb25hbF9jcmVkZW50aWFsX2ZpZWxkcxgEIAMoCRINCgVzdGVwcxgFIAMoCRI0ChNjcmVkZW50aWFsX3RlbXBsYXRlGAYgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1leGFtcGxlX2lucHV0GAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCJdChJDbGlDb25uZWN0ZWRTb3VyY2USMQoGc291cmNlGAEgASgLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSFAoMbmV4dF9jb21tYW5kGAIgASgJKo8EChFDbGlTb3VyY2VQcm92aWRlchIjCh9DTElfU09VUkNFX1BST1ZJREVSX1VOU1BFQ0lGSUVEEAASIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9QT1NUR1JFUxABEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfU1VQQUJBU0UQAhIdChlDTElfU09VUkNFX1BST1ZJREVSX01ZU1FMEAMSHwobQ0xJX1NPVVJDRV9QUk9WSURFUl9NT05HT0RCEAQSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9CSUdRVUVSWRAFEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTEFNSU5BUhAGEiwKKENMSV9TT1VSQ0VfUFJPVklERVJfQVdTX0FUSEVOQV9DT05ORUNUT1IQBxIaChZDTElfU09VUkNFX1BST1ZJREVSX0dBEAgSIQodQ0xJX1NPVVJDRV9QUk9WSURFUl9BTVBMSVRVREUQCRIgChxDTElfU09VUkNFX1BST1ZJREVSX01JWFBBTkVMEAoSHwobQ0xJX1NPVVJDRV9QUk9WSURFUl9QT1NUSE9HEAsSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9TRU5UUlkQDBIeChpDTElfU09VUkNFX1BST1ZJREVSX0dJVEhVQhANEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfTElORUFSEA4qkwEKD0NsaVNvdXJjZVN0YXR1cxIhCh1DTElfU09VUkNFX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGENMSV9TT1VSQ0VfU1RBVFVTX0FDVElWRRABEhsKF0NMSV9TT1VSQ0VfU1RBVFVTX0VSUk9SEAISIgoeQ0xJX1NPVVJDRV9TVEFUVVNfRElTQ09OTkVDVEVEEANiBnByb3RvMw",
+  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEixgEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHAoGZmllbGRzGAIgASgJQge6SARyAhABSACIAQESHQoFbGltaXQYAyABKA1CCbpIBioEGGQoAUgBiAEBEhwKBmN1cnNvchgEIAEoCUIHukgEcgIQAUgCiAEBQgkKB19maWVsZHNCCAoGX2xpbWl0QgkKB19jdXJzb3IifwoTTGlzdFNvdXJjZXNSZXNwb25zZRIyCgdzb3VyY2VzGAEgAygLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSKwoEcGFnZRgCIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UixgEKEEdldFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEhwKBmZpZWxkcxgDIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiyAEKEUdldFNvdXJjZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESNAoIcHJvdmlkZXIYAyABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISEQoJcXVlcnlhYmxlGAQgASgIEjAKBnN0YXR1cxgFIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdGF0dXNCDwoNX2Rpc3BsYXlfbmFtZSKTAQocR2V0U291cmNlQ29ubmVjdEd1aWRlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSPAoGc291cmNlGAIgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyQgi6SAWCAQIgACKfAgodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USDQoFdGl0bGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSMQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgEIAEoCRIPCgdjb21tYW5kGAUgASgJEkIKDGlucHV0X3NjaGVtYRgGIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESQQoJcHJvdmlkZXJzGAcgAygLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlIo8CChRDb25uZWN0U291cmNlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSPAoGc291cmNlGAIgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyQgi6SAWCAQIgABJMCgRuYW1lGAMgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJBI0CgtjcmVkZW50aWFscxgEIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RCBrpIA8gBASJgChVDb25uZWN0U291cmNlUmVzcG9uc2USMQoGc291cmNlGAEgASgLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSFAoMbmV4dF9jb21tYW5kGAIgASgJIkMKDUNsaVNvdXJjZUxpc3QSMgoHc291cmNlcxgBIAMoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5IscBChBDbGlTb3VyY2VTdW1tYXJ5EgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESNAoIcHJvdmlkZXIYAyABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISEQoJcXVlcnlhYmxlGAQgASgIEjAKBnN0YXR1cxgFIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdGF0dXNCDwoNX2Rpc3BsYXlfbmFtZSKXAgoVQ2xpU291cmNlQ29ubmVjdEd1aWRlEg0KBXRpdGxlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEjEKBmZvcm1hdBgDIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb250ZW50Rm9ybWF0Eg8KB2NvbnRlbnQYBCABKAkSDwoHY29tbWFuZBgFIAEoCRJCCgxpbnB1dF9zY2hlbWEYBiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdElucHV0U2NoZW1hEkEKCXByb3ZpZGVycxgHIAMoCzIuLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0UHJvdmlkZXJHdWlkZSKJAQobQ2xpU291cmNlQ29ubmVjdElucHV0U2NoZW1hEgwKBHR5cGUYASABKAkSEAoIcmVxdWlyZWQYAiADKAkSSgoKcHJvcGVydGllcxgDIAEoCzI2Lm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWFQcm9wZXJ0aWVzIqYBCiVDbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWFQcm9wZXJ0aWVzEjoKBG5hbWUYASABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNjaGVtYUZpZWxkEkEKC2NyZWRlbnRpYWxzGAIgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RTY2hlbWFGaWVsZCJ3ChtDbGlTb3VyY2VDb25uZWN0U2NoZW1hRmllbGQSDAoEdHlwZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIUCgdwYXR0ZXJuGAMgASgJSACIAQESEwoLZW51bV92YWx1ZXMYBCADKAlCCgoIX3BhdHRlcm4iowIKHUNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlEjQKCHByb3ZpZGVyGAEgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyEg8KB3N1bW1hcnkYAiABKAkSIgoacmVxdWlyZWRfY3JlZGVudGlhbF9maWVsZHMYAyADKAkSIgoab3B0aW9uYWxfY3JlZGVudGlhbF9maWVsZHMYBCADKAkSDQoFc3RlcHMYBSADKAkSNAoTY3JlZGVudGlhbF90ZW1wbGF0ZRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNZXhhbXBsZV9pbnB1dBgHIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiXQoSQ2xpQ29ubmVjdGVkU291cmNlEjEKBnNvdXJjZRgBIAEoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5EhQKDG5leHRfY29tbWFuZBgCIAEoCSqPBAoRQ2xpU291cmNlUHJvdmlkZXISIwofQ0xJX1NPVVJDRV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEdSRVMQARIgChxDTElfU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISHQoZQ0xJX1NPVVJDRV9QUk9WSURFUl9NWVNRTBADEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTU9OR09EQhAEEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIfChtDTElfU09VUkNFX1BST1ZJREVSX0xBTUlOQVIQBhIsCihDTElfU09VUkNFX1BST1ZJREVSX0FXU19BVEhFTkFfQ09OTkVDVE9SEAcSGgoWQ0xJX1NPVVJDRV9QUk9WSURFUl9HQRAIEiEKHUNMSV9TT1VSQ0VfUFJPVklERVJfQU1QTElUVURFEAkSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9NSVhQQU5FTBAKEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfU0VOVFJZEAwSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9HSVRIVUIQDRIeChpDTElfU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKpMBCg9DbGlTb3VyY2VTdGF0dXMSIQodQ0xJX1NPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhDTElfU09VUkNFX1NUQVRVU19BQ1RJVkUQARIbChdDTElfU09VUkNFX1NUQVRVU19FUlJPUhACEiIKHkNMSV9TT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADYgZwcm90bzM",
   [
     file_buf_validate_validate,
     file_google_protobuf_struct,
@@ -66,22 +66,12 @@ export const ListSourcesRequestSchema: GenMessage<ListSourcesRequest> /*@__PURE_
 export type ListSourcesResponse =
   Message<"onequery.cli.v1.ListSourcesResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: repeated onequery.cli.v1.CliSourceSummary sources = 1;
      */
-    requestId: string;
+    sources: CliSourceSummary[];
 
     /**
-     * @generated from field: repeated string warnings = 2;
-     */
-    warnings: string[];
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceList data = 3;
-     */
-    data?: CliSourceList;
-
-    /**
-     * @generated from field: optional onequery.cli.v1.CliPage page = 4;
+     * @generated from field: optional onequery.cli.v1.CliPage page = 2;
      */
     page?: CliPage;
   };
@@ -125,19 +115,29 @@ export const GetSourceRequestSchema: GenMessage<GetSourceRequest> /*@__PURE__*/ 
  */
 export type GetSourceResponse = Message<"onequery.cli.v1.GetSourceResponse"> & {
   /**
-   * @generated from field: string request_id = 1;
+   * @generated from field: string name = 1;
    */
-  requestId: string;
+  name: string;
 
   /**
-   * @generated from field: repeated string warnings = 2;
+   * @generated from field: optional string display_name = 2;
    */
-  warnings: string[];
+  displayName?: string;
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceSummary data = 3;
+   * @generated from field: onequery.cli.v1.CliSourceProvider provider = 3;
    */
-  data?: CliSourceSummary;
+  provider: CliSourceProvider;
+
+  /**
+   * @generated from field: bool queryable = 4;
+   */
+  queryable: boolean;
+
+  /**
+   * @generated from field: onequery.cli.v1.CliSourceStatus status = 5;
+   */
+  status: CliSourceStatus;
 };
 
 /**
@@ -176,19 +176,39 @@ export const GetSourceConnectGuideRequestSchema: GenMessage<GetSourceConnectGuid
 export type GetSourceConnectGuideResponse =
   Message<"onequery.cli.v1.GetSourceConnectGuideResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: string title = 1;
      */
-    requestId: string;
+    title: string;
 
     /**
-     * @generated from field: repeated string warnings = 2;
+     * @generated from field: string description = 2;
      */
-    warnings: string[];
+    description: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectGuide data = 3;
+     * @generated from field: onequery.cli.v1.CliContentFormat format = 3;
      */
-    data?: CliSourceConnectGuide;
+    format: CliContentFormat;
+
+    /**
+     * @generated from field: string content = 4;
+     */
+    content: string;
+
+    /**
+     * @generated from field: string command = 5;
+     */
+    command: string;
+
+    /**
+     * @generated from field: onequery.cli.v1.CliSourceConnectInputSchema input_schema = 6;
+     */
+    inputSchema?: CliSourceConnectInputSchema;
+
+    /**
+     * @generated from field: repeated onequery.cli.v1.CliSourceConnectProviderGuide providers = 7;
+     */
+    providers: CliSourceConnectProviderGuide[];
   };
 
 /**
@@ -237,19 +257,14 @@ export const ConnectSourceRequestSchema: GenMessage<ConnectSourceRequest> /*@__P
 export type ConnectSourceResponse =
   Message<"onequery.cli.v1.ConnectSourceResponse"> & {
     /**
-     * @generated from field: string request_id = 1;
+     * @generated from field: onequery.cli.v1.CliSourceSummary source = 1;
      */
-    requestId: string;
+    source?: CliSourceSummary;
 
     /**
-     * @generated from field: repeated string warnings = 2;
+     * @generated from field: string next_command = 2;
      */
-    warnings: string[];
-
-    /**
-     * @generated from field: onequery.cli.v1.CliConnectedSource data = 3;
-     */
-    data?: CliConnectedSource;
+    nextCommand: string;
   };
 
 /**

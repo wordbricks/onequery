@@ -15,10 +15,8 @@ message ListOrganizationsRequest {
 }
 
 message ListOrganizationsResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliOrganizationList data = 3;
-  optional CliPage page = 4;
+  repeated CliOrganizationSummary organizations = 1;
+  optional CliPage page = 2;
 }
 
 message GetOrganizationRequest {
@@ -30,9 +28,10 @@ message GetOrganizationRequest {
 }
 
 message GetOrganizationResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliOrganizationDetails data = 3;
+  string slug = 1;
+  string name = 2;
+  repeated string roles = 3;
+  repeated CliOrgCapability capabilities = 4;
 }
 
 message CliOrganizationList {

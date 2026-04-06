@@ -18,7 +18,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/use.proto.
  */
 export const file_onequery_cli_v1_use: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvdXNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEijgEKClVzZVJlcXVlc3QSNwoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZUIIukgFggECIAASOgoIb3JnX3NsdWcYAiABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokSACIAQFCCwoJX29yZ19zbHVnImEKC1VzZVJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSEAoId2FybmluZ3MYAiADKAkSLAoEZGF0YRgDIAEoCzIeLm9uZXF1ZXJ5LmNsaS52MS5DbGlVc2VDb250ZW50IqYBCg1DbGlVc2VDb250ZW50Ei0KBnNvdXJjZRgBIAEoDjIdLm9uZXF1ZXJ5LmNsaS52MS5DbGlVc2VTb3VyY2USDQoFdGl0bGUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSMQoGZm9ybWF0GAQgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgFIAEoCSruAQoMQ2xpVXNlU291cmNlEh4KGkNMSV9VU0VfU09VUkNFX1VOU1BFQ0lGSUVEEAASHAoYQ0xJX1VTRV9TT1VSQ0VfQU1QTElUVURFEAESFQoRQ0xJX1VTRV9TT1VSQ0VfR0EQAhIZChVDTElfVVNFX1NPVVJDRV9HSVRIVUIQAxIbChdDTElfVVNFX1NPVVJDRV9NSVhQQU5FTBAEEhoKFkNMSV9VU0VfU09VUkNFX01PTkdPREIQBRIaChZDTElfVVNFX1NPVVJDRV9QT1NUSE9HEAYSGQoVQ0xJX1VTRV9TT1VSQ0VfU0VOVFJZEAdiBnByb3RvMw",
+  "ChlvbmVxdWVyeS9jbGkvdjEvdXNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEijgEKClVzZVJlcXVlc3QSNwoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZUIIukgFggECIAASOgoIb3JnX3NsdWcYAiABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokSACIAQFCCwoJX29yZ19zbHVnIqQBCgtVc2VSZXNwb25zZRItCgZzb3VyY2UYASABKA4yHS5vbmVxdWVyeS5jbGkudjEuQ2xpVXNlU291cmNlEg0KBXRpdGxlGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjEKBmZvcm1hdBgEIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb250ZW50Rm9ybWF0Eg8KB2NvbnRlbnQYBSABKAkipgEKDUNsaVVzZUNvbnRlbnQSLQoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZRINCgV0aXRsZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIxCgZmb3JtYXQYBCABKA4yIS5vbmVxdWVyeS5jbGkudjEuQ2xpQ29udGVudEZvcm1hdBIPCgdjb250ZW50GAUgASgJKu4BCgxDbGlVc2VTb3VyY2USHgoaQ0xJX1VTRV9TT1VSQ0VfVU5TUEVDSUZJRUQQABIcChhDTElfVVNFX1NPVVJDRV9BTVBMSVRVREUQARIVChFDTElfVVNFX1NPVVJDRV9HQRACEhkKFUNMSV9VU0VfU09VUkNFX0dJVEhVQhADEhsKF0NMSV9VU0VfU09VUkNFX01JWFBBTkVMEAQSGgoWQ0xJX1VTRV9TT1VSQ0VfTU9OR09EQhAFEhoKFkNMSV9VU0VfU09VUkNFX1BPU1RIT0cQBhIZChVDTElfVVNFX1NPVVJDRV9TRU5UUlkQB2IGcHJvdG8z",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -49,19 +49,29 @@ export const UseRequestSchema: GenMessage<UseRequest> /*@__PURE__*/ =
  */
 export type UseResponse = Message<"onequery.cli.v1.UseResponse"> & {
   /**
-   * @generated from field: string request_id = 1;
+   * @generated from field: onequery.cli.v1.CliUseSource source = 1;
    */
-  requestId: string;
+  source: CliUseSource;
 
   /**
-   * @generated from field: repeated string warnings = 2;
+   * @generated from field: string title = 2;
    */
-  warnings: string[];
+  title: string;
 
   /**
-   * @generated from field: onequery.cli.v1.CliUseContent data = 3;
+   * @generated from field: string description = 3;
    */
-  data?: CliUseContent;
+  description: string;
+
+  /**
+   * @generated from field: onequery.cli.v1.CliContentFormat format = 4;
+   */
+  format: CliContentFormat;
+
+  /**
+   * @generated from field: string content = 5;
+   */
+  content: string;
 };
 
 /**

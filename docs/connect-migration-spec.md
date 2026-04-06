@@ -10,6 +10,8 @@ Protobuf/Connect RPC contract, using:
 - **TypeScript server:** `connect-es` on top of the existing Hono-based CLI
   server, with Connect owning the RPC layer.
 - **Rust CLI:** `connect-rust`.
+- **TanStack/web consumers:** `connect-query-es` over a standard Connect web
+  transport.
 - **Single source of truth:** `proto/` + Buf config, replacing
   `packages/cli-contract/openapi/**`.
 
@@ -25,8 +27,8 @@ This is a **direct cutover**:
 The migration should be **Connect-native**, not "REST translated into Connect".
 Keep the business behavior. Drop the HTTP-era transport shapes.
 
-Target **Node.js** for the server runtime. A Bun spike is acceptable as a quick
-experiment, but Bun compatibility is explicitly non-blocking.
+Target the repo's existing **Bun + Hono** runtime directly. Do not introduce a
+Node-only adapter layer just to mount Connect.
 
 ---
 
@@ -78,6 +80,7 @@ The two non-obvious migration risks are:
 - Replace the OpenAPI contract with **protobuf definitions** under Buf.
 - Replace orval-generated Hono routes with **Connect RPC services**.
 - Replace progenitor-generated Rust client code with **connect-rust**.
+- Use **connect-query-es** for TanStack consumers of the new API.
 - Keep current CLI features and workflows working after cutover.
 - Reuse existing domain/workflow logic in `packages/cli-server/src/**` where
   practical.
@@ -94,7 +97,7 @@ The two non-obvious migration risks are:
 - No attempt to preserve REST paths, headers, or response envelopes just
   because they exist today.
 - No streaming RPCs in this migration.
-- No Bun-specific adapter work if the Node path is already clean.
+- No REST-specific client wrappers layered on top of Connect for web consumers.
 
 ---
 
@@ -264,47 +267,44 @@ Recommended structure:
 ```text
 packages/cli-server/src/connect/
   gen/...
-  service.ts
   context.ts
-  handler.ts
+  error.ts
+  middleware.ts
+  routes.ts
+  service.ts
+  service/
 ```
 
-Use `connectNodeAdapter()` for the actual RPC handler and keep any Hono glue
-thin. Hono should mount the Node handler under `/api/cli`; it should not become
-the transport abstraction for RPC methods.
+Use a small `honoConnectMiddleware()` in the style of
+`.tmp/hono-connect-example-repo` for the actual RPC mounting and keep the Hono
+glue thin. Hono should mount the middleware under `/api/cli*`; Connect should
+still own RPC dispatch.
 
 ### Integration guidance
 
 - register `CliService` through Connect's router
-- use `requestPathPrefix: "/api/cli"` on the Connect handler
+- expose route registration via a `routes(router)` function
+- mount the Connect middleware at the Hono edge instead of building a custom
+  fetch-to-Node bridge
 - use `ContextValues` / context keys for request-scoped state that service
   methods need
-- if existing Hono middleware already resolves useful state, pass only the
-  minimal derived values into Connect
-- do **not** make `Hono.Context` itself a long-lived dependency of the Connect
-  service layer
+- if existing Hono middleware already resolves useful state, passing the
+  request-scoped `Hono.Context` through a Connect context key is acceptable
+  so long as it stays request-bound
+- do **not** build a REST-shaped compatibility layer inside that middleware
 
-If a small Hono-to-Node mounting wrapper is needed, keep it strictly limited to
-mounting and context extraction. Do **not** build a custom protocol bridge.
+Do **not** build a Node adapter just to re-enter Hono. The middleware should
+only do path matching, context extraction, and handoff to Connect handlers.
 
 ## 7) Runtime target
 
-Target **Node.js** for the final implementation.
+Target **Bun + Hono** for the final implementation.
 
 Reasoning:
 
-- Connect-ES documents and optimizes the Node server/client path clearly
-- `connectNodeAdapter()` gives a standard server path instead of a custom one
-- this removes Bun runtime behavior from the critical path of the migration
-
-### Bun policy
-
-A Bun spike is acceptable before or during the migration, but it is explicitly
-best-effort only:
-
-- if the same Node-oriented integration happens to run on Bun, fine
-- if it does not, do not spend migration time building a Bun-specific transport
-  layer
+- the deployed server runtime in this repo is already Bun-based
+- Hono middleware keeps Connect routing standard without a Node-only adapter
+- this avoids adding an unnecessary bridge layer just for RPC mounting
 
 ## 8) HTTP protocol choice
 
@@ -465,11 +465,13 @@ the resolved values that Connect methods need instead of threading full
 
 - [ ] Create `packages/cli-server/src/connect/service.ts` implementing `CliService`.
 - [ ] Create `packages/cli-server/src/connect/context.ts` for Connect context keys.
-- [ ] Create `packages/cli-server/src/connect/handler.ts` around `connectNodeAdapter()`.
+- [ ] Create `packages/cli-server/src/connect/error.ts` for Connect-native error helpers.
+- [ ] Create `packages/cli-server/src/connect/middleware.ts` for Hono Connect mounting.
+- [ ] Create `packages/cli-server/src/connect/routes.ts` for route registration.
 - [ ] Add Connect validation interceptor.
 - [ ] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
 - [ ] Reuse existing business logic modules instead of rewriting them.
-- [ ] Mount Connect handlers under `/api/cli`.
+- [ ] Mount Connect middleware under `/api/cli*`.
 - [ ] Remove `packages/cli-server/generated/**` from the runtime path.
 - [ ] Delete `packages/cli-server/src/transport/handlers/cliOpenapiDocument.ts`.
 - [ ] Delete or rewrite `packages/cli-server/src/route.ts` to mount the Connect handler instead of the orval route tree.
@@ -489,6 +491,10 @@ provides value for:
 - request timeout configuration
 - request metadata capture
 - user-facing error mapping
+
+TanStack-side consumers should use `connect-query-es` with a standard
+`createConnectTransport()` setup instead of reintroducing REST-specific fetch
+helpers.
 
 ### Recommended generation approach
 
@@ -650,7 +656,6 @@ These paths should disappear or be fully repurposed by the end:
 - `apps/cli/crates/onequery-cli/src/commands/schema/openapi.rs`
 - `apps/cli/crates/onequery-cli` OpenAPI embed/include code
 - `apps/cli/crates/onequery-cli` progenitor build and deps
-- `packages/bun-server/**`
 
 ---
 
@@ -663,11 +668,11 @@ The migration is complete when all of the following are true:
 - [ ] `progenitor` is no longer used by the Rust CLI.
 - [ ] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [ ] The Rust CLI talks to the server via `connect-rust`.
+- [ ] TanStack/web consumers use `connect-query-es` against the same proto-based API.
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
 - [ ] Existing auth, org selection, read controls, and query flows still work.
 - [ ] Request IDs are available through metadata/logging instead of a legacy REST envelope.
 - [ ] OpenAPI-derived command-schema code is removed or intentionally replaced.
-- [ ] Bun runtime APIs are gone from the server runtime path.
 - [ ] CI no longer regenerates or checks OpenAPI artifacts.
 - [ ] CI validates the protobuf contract and generated code path.
 - [ ] There is no generic Problem Details compatibility shim in the new transport.

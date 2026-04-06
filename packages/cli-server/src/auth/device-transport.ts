@@ -103,7 +103,7 @@ export function throwCliLoginRateLimitedProblem(
   });
 }
 
-function parseRetryAfterMs(response: Response) {
+export function parseRetryAfterMs(response: Response) {
   const rawValue = response.headers.get("x-retry-after");
   if (!rawValue) {
     return;

@@ -14,9 +14,11 @@ message UseRequest {
 }
 
 message UseResponse {
-  string request_id = 1;
-  repeated string warnings = 2;
-  CliUseContent data = 3;
+  CliUseSource source = 1;
+  string title = 2;
+  string description = 3;
+  CliContentFormat format = 4;
+  string content = 5;
 }
 
 message CliUseContent {
