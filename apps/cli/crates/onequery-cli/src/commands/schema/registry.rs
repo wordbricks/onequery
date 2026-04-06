@@ -256,16 +256,6 @@ pub(super) fn local_command_registry() -> Vec<LocalCommandRegistryEntry> {
             serve_logs_output_schema(),
         ),
         LocalCommandRegistryEntry::new(
-            "schema openapi",
-            "discovery",
-            "Print the current CLI JSON API discovery document bundled with this build.",
-            empty_object_schema(),
-            Value::Null,
-            json!({
-                "type": "object"
-            }),
-        ),
-        LocalCommandRegistryEntry::new(
             "schema commands",
             "discovery",
             "List the current public CLI command schemas and capability flags.",

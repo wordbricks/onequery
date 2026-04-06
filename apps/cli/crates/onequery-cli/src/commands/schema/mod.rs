@@ -205,7 +205,6 @@ fn supports_headless_auth(command: &str, auth_requirements: &AuthRequirements) -
 
 pub(super) async fn execute(command: &SchemaSubcommand) -> Result<CommandOutput, CliError> {
     match command {
-        SchemaSubcommand::Openapi => render_json_output(openapi_document()?),
         SchemaSubcommand::Commands => render_json_output(json!({
             "commands": public_command_schemas()?,
         })),

@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/commands/schema/tests.rs
+assertion_line: 30
 expression: rendered
 ---
 {
@@ -2556,62 +2557,6 @@ expression: rendered
         "type": "object"
       },
       "summary": "List the current public CLI command schemas and capability flags.",
-      "supportsDryRun": false,
-      "supportsFields": false,
-      "supportsHeadlessAuth": true,
-      "supportsOutputModes": [
-        "text",
-        "json"
-      ],
-      "supportsPagination": false,
-      "supportsRawInput": false,
-      "untrustedResponsePaths": []
-    },
-    {
-      "authRequirements": {
-        "authenticated": false,
-        "modes": [
-          "none"
-        ],
-        "orgScoped": false
-      },
-      "command": "schema openapi",
-      "errorCodes": [],
-      "http": null,
-      "inputSchema": null,
-      "kind": "discovery",
-      "outputSchema": {
-        "type": "object"
-      },
-      "readControls": {
-        "cursor": {
-          "support": "unsupported",
-          "unsupportedReason": "not_paginated"
-        },
-        "fields": {
-          "support": "unsupported",
-          "unsupportedReason": "not_available"
-        },
-        "limit": {
-          "support": "unsupported",
-          "unsupportedReason": "not_paginated"
-        },
-        "sort": {
-          "support": "unsupported",
-          "unsupportedReason": "not_sortable"
-        }
-      },
-      "requiredOrgRole": null,
-      "retryableStatuses": [],
-      "sanitizationProfile": null,
-      "schemaSource": "local-registry",
-      "selectorSchema": {
-        "additionalProperties": false,
-        "properties": {},
-        "required": [],
-        "type": "object"
-      },
-      "summary": "Print the current CLI JSON API discovery document bundled with this build.",
       "supportsDryRun": false,
       "supportsFields": false,
       "supportsHeadlessAuth": true,

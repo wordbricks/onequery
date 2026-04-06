@@ -79,7 +79,6 @@ impl Command {
             Self::Serve(ServeCommand::Status) => "serve status",
             Self::Serve(ServeCommand::Logs) => "serve logs",
             Self::Use(_) => "use",
-            Self::Schema(SchemaSubcommand::Openapi) => "schema openapi",
             Self::Schema(SchemaSubcommand::Commands) => "schema commands",
             Self::Schema(SchemaSubcommand::Command(_)) => "schema command",
             Self::Schema(SchemaSubcommand::Skills) => "schema skills",

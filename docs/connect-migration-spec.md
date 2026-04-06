@@ -563,7 +563,7 @@ metadata model inside protobuf custom options.
 
 ### Checklist
 
-- [ ] Remove `SchemaSubcommand::Openapi` and related command wiring.
+- [x] Remove `SchemaSubcommand::Openapi` and related command wiring.
 - [ ] Remove embedded `cli.openapi.json` include in `commands/schema/mod.rs`.
 - [ ] Delete `commands/schema/openapi.rs`.
 - [ ] Keep or replace `schema commands` with a dedicated non-OpenAPI registry.

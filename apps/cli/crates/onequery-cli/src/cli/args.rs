@@ -301,8 +301,6 @@ pub(crate) struct SchemaCommandArgs {
 
 #[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
 pub(crate) enum SchemaSubcommand {
-    /// Print the canonical OpenAPI contract for the CLI surface.
-    Openapi,
     /// List public commands with schema metadata.
     Commands,
     /// Show one command schema by path.
