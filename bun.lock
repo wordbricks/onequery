@@ -274,6 +274,13 @@
         "react-dom": "18 || ^19",
       },
     },
+    "proto": {
+      "name": "@onequery/proto",
+      "devDependencies": {
+        "@bufbuild/buf": "catalog:",
+        "@bufbuild/protoc-gen-es": "catalog:",
+      },
+    },
   },
   "overrides": {
     "@tanstack/query-core": "5.90.20",
@@ -668,6 +675,8 @@
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
 
     "@onequery/landing": ["@onequery/landing@workspace:apps/landing"],
+
+    "@onequery/proto": ["@onequery/proto@workspace:proto"],
 
     "@onequery/server": ["@onequery/server@workspace:packages/server"],
 

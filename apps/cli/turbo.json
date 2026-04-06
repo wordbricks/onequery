@@ -22,9 +22,6 @@
         "crates/**/build.rs",
         "crates/**/*.rs",
         "$TURBO_ROOT$/proto/**",
-        "$TURBO_ROOT$/buf.yaml",
-        "$TURBO_ROOT$/buf.gen.yaml",
-        "$TURBO_ROOT$/buf.lock",
         "!**/.DS_Store",
         "!**/target/**"
       ],
@@ -51,9 +48,6 @@
         "crates/**/build.rs",
         "crates/**/*.rs",
         "$TURBO_ROOT$/proto/**",
-        "$TURBO_ROOT$/buf.yaml",
-        "$TURBO_ROOT$/buf.gen.yaml",
-        "$TURBO_ROOT$/buf.lock",
         "!**/.DS_Store",
         "!**/target/**"
       ]
@@ -81,9 +75,6 @@
         "crates/**/*.rs",
         "crates/**/*.snap",
         "$TURBO_ROOT$/proto/**",
-        "$TURBO_ROOT$/buf.yaml",
-        "$TURBO_ROOT$/buf.gen.yaml",
-        "$TURBO_ROOT$/buf.lock",
         "!**/.DS_Store",
         "!**/target/**"
       ]
@@ -102,9 +93,6 @@
         ".cargo/**",
         "crates/**",
         "$TURBO_ROOT$/proto/**",
-        "$TURBO_ROOT$/buf.yaml",
-        "$TURBO_ROOT$/buf.gen.yaml",
-        "$TURBO_ROOT$/buf.lock",
         "$TURBO_ROOT$/apps/web/index.html",
         "$TURBO_ROOT$/apps/web/package.json",
         "$TURBO_ROOT$/apps/web/public/**",

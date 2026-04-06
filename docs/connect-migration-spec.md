@@ -10,7 +10,7 @@ Protobuf/Connect RPC contract, using:
 - **TypeScript server:** `connect-es` on top of the existing Hono-based CLI
   server, with Connect owning the RPC layer.
 - **Rust CLI:** `connect-rust`.
-- **Single source of truth:** `proto/` + Buf config, replacing
+- **Single source of truth:** `proto/` with co-located Buf config, replacing
   `packages/cli-contract/openapi/**`.
 
 This is a **direct cutover**:
@@ -104,13 +104,16 @@ The two non-obvious migration risks are:
 
 ## 1) Source of truth
 
-Create a protobuf workspace rooted at the repo root:
+Create a protobuf workspace rooted at `proto/`, with repo-root `proto:*`
+scripts acting as thin delegates:
 
 ```text
 proto/
+  buf.yaml
+  buf.gen.yaml
+  buf.lock
+  package.json
   onequery/cli/v1/*.proto
-buf.yaml
-buf.gen.yaml
 ```
 
 Recommended proto split:
@@ -408,7 +411,7 @@ Start from **business semantics**, not from current REST wrappers.
 
 ### Checklist
 
-- [x] Add `buf.yaml` and `buf.gen.yaml` at repo root.
+- [x] Co-locate `buf.yaml`, `buf.gen.yaml`, and `buf.lock` under `proto/`.
 - [x] Add `proto/onequery/cli/v1/*.proto`.
 - [x] Model shared enums/messages/read controls in proto.
 - [x] Convert current `oneOf` response states to protobuf `oneof`.
@@ -598,7 +601,7 @@ Replace OpenAPI-specific checks with protobuf/Connect-specific checks.
 - [x] Add TS proto generation diff checks.
 - [x] Ensure Rust build/test covers `connectrpc-build` generation.
 - [x] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
-- [x] Add `proto/**` and Buf config files to Turbo inputs where needed.
+- [x] Add `proto/**` to Turbo inputs where needed.
 - [x] Update `apps/cli/justfile` to use proto generation/check commands.
 - [x] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
 - [x] Remove or archive `packages/cli-contract/**` once migration is complete.
@@ -648,6 +651,7 @@ The migration is complete when all of the following are true:
 ## Connect-native cleanup follow-ups
 
 - [x] Use exact prefix-based Hono Connect routing under `/api/cli` instead of suffix fallback matching.
+- [x] Promote `proto/` to the owned protobuf workspace boundary and keep root `proto:*` scripts as delegates.
 
 ---
 

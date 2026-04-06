@@ -41,40 +41,43 @@ fn repo_root(manifest_dir: &Path) -> PathBuf {
 }
 
 fn emit_rerun_triggers(repo_root: &Path) {
+    let proto_root = repo_root.join(PROTO_ROOT);
     println!(
         "cargo:rerun-if-changed={}",
-        repo_root.join("buf.yaml").display()
+        proto_root.join("buf.yaml").display()
     );
     println!(
         "cargo:rerun-if-changed={}",
-        repo_root.join("buf.gen.yaml").display()
+        proto_root.join("buf.gen.yaml").display()
     );
     println!(
         "cargo:rerun-if-changed={}",
-        repo_root.join("buf.lock").display()
+        proto_root.join("buf.lock").display()
     );
     for proto_file in PROTO_FILES {
         println!(
             "cargo:rerun-if-changed={}",
-            repo_root.join(PROTO_ROOT).join(proto_file).display()
+            proto_root.join(proto_file).display()
         );
     }
 }
 
 fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
+    let proto_root = repo_root.join(PROTO_ROOT);
     let mut spawn_errors = Vec::new();
     for executable in candidate_buf_executables(repo_root) {
         let mut buf_command = Command::new(&executable);
+        // Buf config now lives under proto/, so descriptor builds must run from
+        // that workspace root while the generated descriptor still lands in OUT_DIR.
         buf_command
-            .current_dir(repo_root)
+            .current_dir(&proto_root)
             .arg("build")
+            .arg(".")
             .arg("--as-file-descriptor-set")
             .arg("-o")
             .arg(descriptor_path);
         for proto_file in PROTO_FILES {
-            buf_command
-                .arg("--path")
-                .arg(Path::new(PROTO_ROOT).join(proto_file));
+            buf_command.arg("--path").arg(proto_file);
         }
 
         match buf_command.output() {

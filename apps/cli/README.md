@@ -5,8 +5,9 @@ Rust CLI workspace for `onequery` and the companion protobuf/Connect contract.
 Key references:
 
 - CLI workflow architecture note: `docs/ARCHITECTURE.md`
+- Protobuf workspace: `../../proto/`
 - Protobuf source of truth: `../../proto/onequery/cli/v1/*.proto`
-- Buf workspace config: `../../buf.yaml`, `../../buf.gen.yaml`
+- Buf workspace config: `../../proto/buf.yaml`, `../../proto/buf.gen.yaml`
 
 Runtime config:
 
