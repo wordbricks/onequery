@@ -10,8 +10,6 @@ Protobuf/Connect RPC contract, using:
 - **TypeScript server:** `connect-es` on top of the existing Hono-based CLI
   server, with Connect owning the RPC layer.
 - **Rust CLI:** `connect-rust`.
-- **TanStack/web consumers:** `connect-query-es` over a standard Connect web
-  transport.
 - **Single source of truth:** `proto/` + Buf config, replacing
   `packages/cli-contract/openapi/**`.
 
@@ -82,7 +80,6 @@ The two non-obvious migration risks are:
 - Replace the OpenAPI contract with **protobuf definitions** under Buf.
 - Replace orval-generated Hono routes with **Connect RPC services**.
 - Replace progenitor-generated Rust client code with **connect-rust**.
-- Use **connect-query-es** for TanStack consumers of the new API.
 - Keep current CLI features and workflows working after cutover.
 - Reuse existing domain/workflow logic in `packages/cli-server/src/**` where
   practical.
@@ -506,10 +503,6 @@ provides value for:
 - request metadata capture
 - user-facing error mapping
 
-TanStack-side consumers should use `connect-query-es` with a standard
-`createConnectTransport()` setup instead of reintroducing REST-specific fetch
-helpers.
-
 ### Recommended generation approach
 
 Use `connectrpc-build` in `apps/cli/crates/onequery-cli/build.rs` for the first
@@ -640,7 +633,6 @@ The migration is complete when all of the following are true:
 - [x] `progenitor` is no longer used by the Rust CLI.
 - [x] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [x] The Rust CLI talks to the server via `connect-rust`.
-- [ ] TanStack/web consumers use `connect-query-es` against the same proto-based API.
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
 - [ ] Existing auth, org selection, read controls, and query flows still work.
 - [ ] Request IDs are available through metadata/logging instead of a legacy REST envelope.
