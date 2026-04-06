@@ -243,13 +243,16 @@ where
         }
         AuthEffect::BuildBootstrapClient { completion } => {
             match authenticated_api_client(context, runtime) {
-                Ok(client) => AuthEvent::BootstrapClientBuilt { completion, client },
+                Ok(client) => AuthEvent::BootstrapClientBuilt {
+                    completion,
+                    client: Box::new(client),
+                },
                 Err(error) => AuthEvent::BootstrapClientBuildFailed { completion, error },
             }
         }
         AuthEffect::FetchBootstrapOrgs { completion, client } => {
             match org::list_orgs_with_controls(
-                &client,
+                client.as_ref(),
                 &ReadRequestControls {
                     page_all: true,
                     ..ReadRequestControls::default()
