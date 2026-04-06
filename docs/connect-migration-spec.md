@@ -373,8 +373,8 @@ valid follow-up choice.
 
 ### Checklist
 
-- [ ] Confirm protobuf/Buf as the only contract source going forward.
-- [ ] Confirm `schema openapi` will be removed.
+- [x] Confirm protobuf/Buf as the only contract source going forward.
+- [x] Confirm `schema openapi` will be removed.
 - [x] Confirm `schema commands` will be removed.
 - [x] Confirm whether self-host packaged server behavior needs any Connect-specific packaging changes.
 - [x] Confirm `/api/cli` remains the Connect handler prefix.
@@ -481,7 +481,7 @@ the resolved values that Connect methods need instead of threading full
 - [x] Create `packages/cli-server/src/connect/routes.ts` for route registration.
 - [x] Add Connect validation interceptor.
 - [x] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
-- [ ] Reuse existing business logic modules instead of rewriting them.
+- [x] Reuse existing business logic modules instead of rewriting them.
 - [x] Mount Connect middleware under `/api/cli*`.
 - [x] Remove `packages/cli-server/generated/**` from the runtime path.
 - [x] Delete `packages/cli-server/src/transport/handlers/cliOpenapiDocument.ts`.
