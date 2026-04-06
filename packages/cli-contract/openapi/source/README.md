@@ -1,8 +1,8 @@
 # CLI OpenAPI Source Layout
 
 Edit the split YAML source in this directory, then regenerate the bundled JSON
-artifact at `../generated/cli.openapi.json` and Orval outputs with `bun run generate` from `packages/cli-contract`
-or `just regen-openapi` from `apps/cli`.
+artifact at `../generated/cli.openapi.json` and Orval outputs with
+`bun run generate` from `packages/cli-contract`.
 
 Layout:
 

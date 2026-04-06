@@ -443,7 +443,7 @@ packages/cli-server/src/connect/gen/**
 - [x] Add a root script such as `proto:generate`.
 - [x] Check generated TS into the repo.
 - [ ] Remove `orval` from the CLI contract path.
-- [ ] Remove `openapi:cli:generate` / `openapi:cli:check` scripts or replace them with proto equivalents.
+- [x] Remove `openapi:cli:generate` / `openapi:cli:check` scripts or replace them with proto equivalents.
 
 ---
 
@@ -607,7 +607,7 @@ Replace OpenAPI-specific checks with protobuf/Connect-specific checks.
 - [ ] Ensure Rust build/test covers `connectrpc-build` generation.
 - [ ] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
 - [ ] Add `proto/**` and Buf config files to Turbo inputs where needed.
-- [ ] Update `apps/cli/justfile` to use proto generation/check commands.
+- [x] Update `apps/cli/justfile` to use proto generation/check commands.
 - [ ] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
 - [ ] Remove or archive `packages/cli-contract/**` once migration is complete.
 

@@ -37,9 +37,9 @@ Before finalizing a large change, run `just fix -p <project>` to fix any linter 
 
 ### CLI API workflow
 
-1. Modify the canonical split CLI contract source in `packages/cli-contract/openapi/source/cli.openapi.yaml` and the referenced files under `packages/cli-contract/openapi/source/`.
-2. Regenerate the server adapters from `apps/cli`: `just regen-openapi`.
-3. Verify generated server artifacts are current: `just check-openapi`.
+1. Modify the canonical protobuf contract in `proto/onequery/cli/v1/*.proto` and the Buf config files if the generation surface changes.
+2. Regenerate the generated transport artifacts from `apps/cli`: `just regen-proto`.
+3. Verify generated artifacts are current: `just check-proto`.
 4. If contract changes, update `crates/onequery-cli/src/transport/*` to match and run Rust fmt/tests.
 
 ## Tests
