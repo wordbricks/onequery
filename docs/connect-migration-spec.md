@@ -477,15 +477,15 @@ the resolved values that Connect methods need instead of threading full
 
 ### Checklist
 
-- [ ] Create `packages/cli-server/src/connect/service.ts` implementing `CliService`.
-- [ ] Create `packages/cli-server/src/connect/context.ts` for Connect context keys.
+- [x] Create `packages/cli-server/src/connect/service.ts` implementing `CliService`.
+- [x] Create `packages/cli-server/src/connect/context.ts` for Connect context keys.
 - [x] Create `packages/cli-server/src/connect/error.ts` for Connect-native error helpers.
-- [ ] Create `packages/cli-server/src/connect/middleware.ts` for Hono Connect mounting.
-- [ ] Create `packages/cli-server/src/connect/routes.ts` for route registration.
-- [ ] Add Connect validation interceptor.
+- [x] Create `packages/cli-server/src/connect/middleware.ts` for Hono Connect mounting.
+- [x] Create `packages/cli-server/src/connect/routes.ts` for route registration.
+- [x] Add Connect validation interceptor.
 - [ ] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
 - [ ] Reuse existing business logic modules instead of rewriting them.
-- [ ] Mount Connect middleware under `/api/cli*`.
+- [x] Mount Connect middleware under `/api/cli*`.
 - [x] Remove `packages/cli-server/generated/**` from the runtime path.
 - [x] Delete `packages/cli-server/src/transport/handlers/cliOpenapiDocument.ts`.
 - [x] Delete or rewrite `packages/cli-server/src/route.ts` to mount the Connect handler instead of the orval route tree.
@@ -606,7 +606,7 @@ Replace OpenAPI-specific checks with protobuf/Connect-specific checks.
 - [ ] Add TS proto generation diff checks.
 - [ ] Ensure Rust build/test covers `connectrpc-build` generation.
 - [ ] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
-- [ ] Add `proto/**` and Buf config files to Turbo inputs where needed.
+- [x] Add `proto/**` and Buf config files to Turbo inputs where needed.
 - [x] Update `apps/cli/justfile` to use proto generation/check commands.
 - [ ] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
 - [ ] Remove or archive `packages/cli-contract/**` once migration is complete.
