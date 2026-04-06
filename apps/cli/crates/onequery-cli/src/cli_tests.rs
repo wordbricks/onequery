@@ -410,18 +410,6 @@ fn parse_invocation_accepts_auth_session_refresh() {
 }
 
 #[test]
-fn parse_invocation_accepts_schema_command_path_tokens() {
-    let invocation = parse_invocation(&["onequery", "schema", "command", "query", "execute"]);
-
-    assert!(matches!(
-        invocation.command,
-        Command::Schema(super::SchemaSubcommand::Command(
-            super::SchemaCommandArgs { path }
-        )) if path == vec!["query".to_owned(), "execute".to_owned()]
-    ));
-}
-
-#[test]
 fn requested_output_from_args_reads_long_flag_syntax() {
     for (args, expected) in [
         (
@@ -616,7 +604,6 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
     #[derive(Copy, Clone)]
     enum Case {
         OrgUseArgument,
-        SchemaCommandPathSegment,
         SourceFlagValue,
     }
 
@@ -624,10 +611,6 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
         (
             &["onequery", "org", "use", "query"][..],
             Case::OrgUseArgument,
-        ),
-        (
-            &["onequery", "schema", "command", "query"][..],
-            Case::SchemaCommandPathSegment,
         ),
         (
             &[
@@ -643,12 +626,6 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
                 invocation.command,
                 Command::Org(super::OrgSubcommand::Use { org_slug, dry_run })
                     if org_slug == "query" && !dry_run
-            )),
-            Case::SchemaCommandPathSegment => assert!(matches!(
-                invocation.command,
-                Command::Schema(super::SchemaSubcommand::Command(super::SchemaCommandArgs {
-                    path
-                })) if path == vec!["query".to_owned()]
             )),
             Case::SourceFlagValue => assert!(matches!(
                 invocation.command,

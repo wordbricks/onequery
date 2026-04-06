@@ -378,7 +378,7 @@ valid follow-up choice.
 
 - [ ] Confirm protobuf/Buf as the only contract source going forward.
 - [ ] Confirm `schema openapi` will be removed.
-- [ ] Confirm whether `schema commands` must survive this migration.
+- [x] Confirm `schema commands` will be removed.
 - [ ] Confirm whether self-host packaged server behavior needs any Connect-specific packaging changes.
 - [ ] Confirm `/api/cli` remains the Connect handler prefix.
 
@@ -554,9 +554,7 @@ contract**.
 That means:
 
 - remove `schema openapi`
-- stop deriving `schema commands` from the wire contract
-- keep command metadata in a dedicated local registry if the command must
-  survive
+- remove `schema commands`
 
 Do **not** block the Connect migration on recreating the full `x-onequery-*`
 metadata model inside protobuf custom options.
@@ -566,7 +564,7 @@ metadata model inside protobuf custom options.
 - [x] Remove `SchemaSubcommand::Openapi` and related command wiring.
 - [x] Remove embedded `cli.openapi.json` include in `commands/schema/mod.rs`.
 - [x] Delete `commands/schema/openapi.rs`.
-- [x] Keep or replace `schema commands` with a dedicated non-OpenAPI registry.
+- [x] Remove `schema commands` and `schema command`.
 - [x] Update snapshots/tests for command-schema output.
 - [x] Remove any `x-onequery-*` assumptions from the transport migration path.
 
