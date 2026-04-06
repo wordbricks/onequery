@@ -15,11 +15,6 @@ type HonoConnectMiddlewareOptions = ConnectRouterOptions & {
   requestPathPrefix?: string;
 };
 
-type RoutedHandler = {
-  requestPath: string;
-  handler: UniversalHandler;
-};
-
 export function honoConnectMiddleware<E extends CliRouteEnv>(
   options: HonoConnectMiddlewareOptions
 ) {
@@ -27,21 +22,12 @@ export function honoConnectMiddleware<E extends CliRouteEnv>(
   options.routes(router);
 
   const prefix = options.requestPathPrefix ?? "";
-  const routedHandlers: RoutedHandler[] = [];
-  const exactPaths = new Map<string, UniversalHandler>();
-
-  for (const handler of router.handlers) {
-    const requestPath = prefix + handler.requestPath;
-    routedHandlers.push({ requestPath, handler });
-    exactPaths.set(requestPath, handler);
-  }
+  const exactPaths = new Map<string, UniversalHandler>(
+    router.handlers.map((handler) => [prefix + handler.requestPath, handler])
+  );
 
   return createMiddleware<{ Variables: E["Variables"] }>(async (c, next) => {
-    const handler = resolveConnectHandler(
-      c.req.path,
-      exactPaths,
-      routedHandlers
-    );
+    const handler = exactPaths.get(c.req.path);
     if (!handler) {
       return next();
     }
@@ -68,22 +54,4 @@ export function honoConnectMiddleware<E extends CliRouteEnv>(
       throw reason;
     }
   });
-}
-
-function resolveConnectHandler(
-  requestPath: string,
-  exactPaths: ReadonlyMap<string, UniversalHandler>,
-  routedHandlers: readonly RoutedHandler[]
-) {
-  const exactMatch = exactPaths.get(requestPath);
-  if (exactMatch) {
-    return exactMatch;
-  }
-
-  // Comment: mounted Hono sub-apps still see the full request path, so a
-  // Connect app mounted under `/api/...` needs suffix matching unless the
-  // caller passes an explicit requestPathPrefix.
-  return routedHandlers.find(({ requestPath: candidatePath }) =>
-    requestPath.endsWith(candidatePath)
-  )?.handler;
 }

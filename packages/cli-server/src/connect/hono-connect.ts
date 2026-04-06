@@ -20,7 +20,11 @@ const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
   }
 };
 
-export function createCliConnectRoute(input: CreateCliAppOptions) {
+export interface CreateCliConnectRouteOptions extends CreateCliAppOptions {
+  requestPathPrefix?: string;
+}
+
+export function createCliConnectRoute(input: CreateCliConnectRouteOptions) {
   const app = createCliApp(input);
 
   app.use(
@@ -30,6 +34,9 @@ export function createCliConnectRoute(input: CreateCliAppOptions) {
       grpc: false,
       grpcWeb: false,
       interceptors: [cliRequestIdInterceptor, createValidateInterceptor()],
+      // Comment: the outer Bun app owns the `/api/cli` mount, so pass the
+      // prefix explicitly instead of inferring it from Hono's full request path.
+      requestPathPrefix: input.requestPathPrefix,
       routes: registerCliConnectRoutes,
     })
   );

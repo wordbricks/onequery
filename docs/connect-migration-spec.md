@@ -645,6 +645,12 @@ The migration is complete when all of the following are true:
 
 ---
 
+## Connect-native cleanup follow-ups
+
+- [x] Use exact prefix-based Hono Connect routing under `/api/cli` instead of suffix fallback matching.
+
+---
+
 ## Nice-to-have follow-ups after cutover
 
 - [ ] Revisit focused typed error details if the CLI later benefits from them.

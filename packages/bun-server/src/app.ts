@@ -80,6 +80,7 @@ export function createApiApp(input: CreateBunAppOptions) {
       .route(
         CLI_API_ROUTE_PREFIX,
         createCliRoute({
+          requestPathPrefix: CLI_API_ROUTE_PREFIX,
           runtime: input.runtime,
           storage,
         })
