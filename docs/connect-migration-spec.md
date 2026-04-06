@@ -483,7 +483,7 @@ the resolved values that Connect methods need instead of threading full
 - [x] Create `packages/cli-server/src/connect/middleware.ts` for Hono Connect mounting.
 - [x] Create `packages/cli-server/src/connect/routes.ts` for route registration.
 - [x] Add Connect validation interceptor.
-- [ ] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
+- [x] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
 - [ ] Reuse existing business logic modules instead of rewriting them.
 - [x] Mount Connect middleware under `/api/cli*`.
 - [x] Remove `packages/cli-server/generated/**` from the runtime path.

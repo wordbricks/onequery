@@ -3,7 +3,6 @@ import type { ProviderType } from "@onequery/db/server";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
 import type { CliSessionIdentity } from "../../domain/workflows";
-import { getCliRequestId } from "../../error";
 import {
   buildCliRequestLogDetails,
   logCliEvent,
@@ -43,17 +42,13 @@ import {
   sanitizeCliRemoteText,
   sanitizeUndefinedableCliRemoteText,
 } from "../../transport/sanitization";
-import { requireCliConnectHonoContext } from "../context";
+import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
   CliQueryLogicalType,
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../gen/onequery/cli/v1/query_pb";
-import {
-  requireAuthenticatedCliSession,
-  requireAuthorizedCliOrg,
-} from "./access";
 import { toCliQueryLogicalType } from "./conversions";
 import {
   throwForCliConnectQueryPlanResult,
@@ -150,15 +145,15 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
-  const requestId = getCliRequestId(c);
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
+  const requestId = requestContext.requestId;
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: QUERY_VALIDATE_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const session = await requestContext.requireSession();
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "query.execute",
-    c,
     orgSlug: request.orgSlug,
     session,
   });
@@ -278,15 +273,15 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
-  const requestId = getCliRequestId(c);
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
+  const requestId = requestContext.requestId;
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: QUERY_EXECUTE_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const session = await requestContext.requireSession();
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "query.execute",
-    c,
     orgSlug: request.orgSlug,
     session,
   });

@@ -1,26 +1,18 @@
-import {
-  Code,
-  ConnectError,
-  createConnectRouter,
-  createContextValues,
-} from "@connectrpc/connect";
-import type {
-  ConnectRouter,
-  ConnectRouterOptions,
-  ContextKey,
-} from "@connectrpc/connect";
+import { Code, ConnectError, createConnectRouter } from "@connectrpc/connect";
+import type { ConnectRouter, ConnectRouterOptions } from "@connectrpc/connect";
 import type { UniversalHandler } from "@connectrpc/connect/protocol";
 import {
   universalServerRequestFromFetch,
   universalServerResponseToFetch,
 } from "@connectrpc/connect/protocol";
-import type { Context, Env } from "hono";
 import { createMiddleware } from "hono/factory";
 
-type HonoConnectMiddlewareOptions<E extends Env> = ConnectRouterOptions & {
+import type { CliRouteEnv } from "../app";
+import { createCliConnectContextValues } from "./context";
+
+type HonoConnectMiddlewareOptions = ConnectRouterOptions & {
   routes: (router: ConnectRouter) => void;
   requestPathPrefix?: string;
-  honoContextKey: ContextKey<Context<E> | undefined>;
 };
 
 type RoutedHandler = {
@@ -28,8 +20,8 @@ type RoutedHandler = {
   handler: UniversalHandler;
 };
 
-export function honoConnectMiddleware<E extends Env>(
-  options: HonoConnectMiddlewareOptions<E>
+export function honoConnectMiddleware<E extends CliRouteEnv>(
+  options: HonoConnectMiddlewareOptions
 ) {
   const router = createConnectRouter(options);
   options.routes(router);
@@ -44,7 +36,7 @@ export function honoConnectMiddleware<E extends Env>(
     exactPaths.set(requestPath, handler);
   }
 
-  return createMiddleware<E>(async (c, next) => {
+  return createMiddleware<{ Variables: E["Variables"] }>(async (c, next) => {
     const handler = resolveConnectHandler(
       c.req.path,
       exactPaths,
@@ -58,7 +50,7 @@ export function honoConnectMiddleware<E extends Env>(
       ...universalServerRequestFromFetch(c.req.raw, {
         httpVersion: "1.1",
       }),
-      contextValues: createContextValues().set(options.honoContextKey, c),
+      contextValues: createCliConnectContextValues(c),
     };
 
     try {

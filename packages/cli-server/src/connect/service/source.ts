@@ -21,7 +21,7 @@ import {
   buildCliSourceSummary,
 } from "../../source/model";
 import { projectCliSourceSummary } from "../../transport/source-response";
-import { requireCliConnectHonoContext } from "../context";
+import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
   CliSourceProvider,
@@ -30,10 +30,6 @@ import {
   GetSourceResponseSchema,
   GetSourceConnectGuideResponseSchema,
 } from "../gen/onequery/cli/v1/source_pb";
-import {
-  requireAuthenticatedCliSession,
-  requireAuthorizedCliOrg,
-} from "./access";
 import {
   fromCliSourceProvider,
   toCliContentFormat,
@@ -87,16 +83,14 @@ export const handleListSources: CliServiceMethod<"listSources"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: SOURCE_LIST_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.list",
-    c,
     orgSlug: request.orgSlug,
-    session,
   });
   const sources = await runCliListSourcesEffect({
     db: c.var.storage.db,
@@ -134,16 +128,14 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: SOURCE_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.read",
-    c,
     orgSlug: request.orgSlug,
-    session,
   });
   const source = await runCliLoadSourceEffect({
     db: c.var.storage.db,
@@ -190,13 +182,11 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
 export const handleGetSourceConnectGuide: CliServiceMethod<
   "getSourceConnectGuide"
 > = async (request, context) => {
-  const c = requireCliConnectHonoContext(context);
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.connect",
-    c,
     orgSlug: request.orgSlug,
-    session,
   });
   const provider = fromCliSourceProvider(request.source);
   const guide = buildCliSourceConnectGuide(provider);
@@ -218,13 +208,11 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.connect",
-    c,
     orgSlug: request.orgSlug,
-    session,
   });
   const provider = fromCliSourceProvider(request.source);
 

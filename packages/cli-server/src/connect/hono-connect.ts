@@ -29,7 +29,6 @@ export function createCliConnectRoute(input: CreateCliAppOptions) {
       connect: true,
       grpc: false,
       grpcWeb: false,
-      honoContextKey: cliHonoContextKey,
       interceptors: [cliRequestIdInterceptor, createValidateInterceptor()],
       routes: registerCliConnectRoutes,
     })

@@ -27,7 +27,10 @@ import {
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
 import type { CliSelectedFields } from "../../read-controls-policy";
-import { requireCliConnectHonoContext } from "../context";
+import {
+  requireCliConnectHonoContext,
+  requireCliConnectRequestContext,
+} from "../context";
 import { throwCliConnectError } from "../error";
 import {
   CliAuthorizedDeviceAuthorizationSchema,
@@ -69,13 +72,11 @@ export const handleGetSession: CliServiceMethod<"getSession"> = async (
   request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: SESSION_FIELDS,
   });
-  const session = requireCliSessionIdentity(
-    await resolveCliSessionIdentity(c.var.storage, c.req.raw.headers)
-  );
+  const session = await requestContext.requireSession();
 
   return projectCliSessionResponse(session, readControls.selectedFields);
 };
@@ -85,6 +86,8 @@ export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
   context
 ) => {
   const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
+  await requestContext.requireSession();
   const session = requireCliSessionIdentity(
     await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
   );

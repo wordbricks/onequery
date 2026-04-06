@@ -4,15 +4,11 @@ import type { AuthorizedCliOrgContext } from "../../authorization";
 import { runCliListVisibleOrgs } from "../../organization/effects";
 import type { CliSelectedFields } from "../../read-controls-policy";
 import { paginateItems } from "../../read-controls-policy";
-import { requireCliConnectHonoContext } from "../context";
+import { requireCliConnectRequestContext } from "../context";
 import {
   CliOrganizationSummarySchema,
   GetOrganizationResponseSchema,
 } from "../gen/onequery/cli/v1/org_pb";
-import {
-  requireAuthenticatedCliSession,
-  requireAuthorizedCliOrg,
-} from "./access";
 import { toCliOrgCapability } from "./conversions";
 import {
   buildCliPage,
@@ -39,11 +35,12 @@ type GetOrganizationResponseInit = MessageInitShape<
 export const handleListOrganizations: CliServiceMethod<
   "listOrganizations"
 > = async (request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: ORG_LIST_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
+  const session = await requestContext.requireSession();
   const organizations = await runCliListVisibleOrgs({
     db: c.var.storage.db,
     userId: session.user.id,
@@ -61,16 +58,13 @@ export const handleListOrganizations: CliServiceMethod<
 export const handleGetOrganization: CliServiceMethod<
   "getOrganization"
 > = async (request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const requestContext = requireCliConnectRequestContext(context);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: ORG_FIELDS,
   });
-  const session = await requireAuthenticatedCliSession(c);
-  const authorizedOrg = await requireAuthorizedCliOrg({
+  const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "org.read",
-    c,
     orgSlug: request.orgSlug,
-    session,
   });
 
   return projectCliOrganizationDetails(
