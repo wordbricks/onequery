@@ -318,15 +318,15 @@ Start by mirroring current request/response shapes closely enough that the TS an
 
 ### Checklist
 
-- [ ] Add `buf.yaml` and `buf.gen.yaml` at repo root.
-- [ ] Add `proto/onequery/cli/v1/*.proto`.
-- [ ] Model current enums/messages/read controls/pages/warnings/sanitization in proto.
-- [ ] Convert current `oneOf` response states to protobuf `oneof`.
-- [ ] Convert ad hoc headers/query/path params to message fields.
-- [ ] Model arbitrary JSON payloads with `google.protobuf.Struct`/`Value` where required.
-- [ ] Add `CliProblemDetail` protobuf message for typed error details.
+- [x] Add `buf.yaml` and `buf.gen.yaml` at repo root.
+- [x] Add `proto/onequery/cli/v1/*.proto`.
+- [x] Model current enums/messages/read controls/pages/warnings/sanitization in proto.
+- [x] Convert current `oneOf` response states to protobuf `oneof`.
+- [x] Convert ad hoc headers/query/path params to message fields.
+- [x] Model arbitrary JSON payloads with `google.protobuf.Struct`/`Value` where required.
+- [x] Add `CliProblemDetail` protobuf message for typed error details.
 - [ ] Add `buf.validate` options for current transport-level validation rules that are worth preserving.
-- [ ] Add `buf lint` and make it pass.
+- [x] Add `buf lint` and make it pass.
 
 ---
 
@@ -344,9 +344,9 @@ packages/cli-server/src/connect/gen/**
 
 ### Checklist
 
-- [ ] Add TS generation config using Buf + `@bufbuild/protoc-gen-es`.
-- [ ] Add root script such as `proto:generate`.
-- [ ] Check generated TS into the repo.
+- [x] Add TS generation config using Buf + `@bufbuild/protoc-gen-es`.
+- [x] Add root script such as `proto:generate`.
+- [x] Check generated TS into the repo.
 - [ ] Remove `orval` from `packages/cli-contract` usage path.
 - [ ] Remove `openapi:cli:generate` / `openapi:cli:check` scripts or replace them with proto equivalents.
 

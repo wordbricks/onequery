@@ -15,6 +15,7 @@
     "test:integration": "vitest run integration.test.ts"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@onequery/cli-contract": "workspace:*",
     "@onequery/codecs": "workspace:*",

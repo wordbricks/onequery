@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "onequery/cli/v1/auth.proto";
+import "onequery/cli/v1/org.proto";
+import "onequery/cli/v1/query.proto";
+import "onequery/cli/v1/source.proto";
+import "onequery/cli/v1/use.proto";
+
+service CliService {
+  rpc Use(UseRequest) returns (UseResponse);
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
+  rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
+  rpc StartDeviceAuthorization(StartDeviceAuthorizationRequest) returns (StartDeviceAuthorizationResponse);
+  rpc PollDeviceAuthorization(PollDeviceAuthorizationRequest) returns (PollDeviceAuthorizationResponse);
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse);
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  rpc GetSourceConnectGuide(GetSourceConnectGuideRequest) returns (GetSourceConnectGuideResponse);
+  rpc ConnectSource(ConnectSourceRequest) returns (ConnectSourceResponse);
+  rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc ValidateQuery(ValidateQueryRequest) returns (ValidateQueryResponse);
+  rpc ExecuteQuery(ExecuteQueryRequest) returns (ExecuteQueryResponse);
+}

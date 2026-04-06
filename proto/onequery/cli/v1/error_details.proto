@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+message CliValidationIssue {
+  string field = 1;
+  string message = 2;
+  string code = 3;
+}
+
+message CliProblemDetail {
+  CliProblemCode code = 1;
+  CliProblemStage stage = 2;
+  string request_id = 3;
+  bool retryable = 4;
+  optional string hint = 5;
+  optional uint32 retry_after_ms = 6;
+  repeated CliValidationIssue errors = 7;
+}
+
+enum CliProblemCode {
+  CLI_PROBLEM_CODE_UNSPECIFIED = 0;
+  CLI_PROBLEM_CODE_FORBIDDEN = 1;
+  CLI_PROBLEM_CODE_INVALID_REQUEST = 2;
+  CLI_PROBLEM_CODE_LOGIN_DENIED = 3;
+  CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED = 4;
+  CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED = 5;
+  CLI_PROBLEM_CODE_NOT_LOGGED_IN = 6;
+  CLI_PROBLEM_CODE_ORG_NOT_FOUND = 7;
+  CLI_PROBLEM_CODE_QUERY_EXECUTION_FAILED = 8;
+  CLI_PROBLEM_CODE_QUERY_EXECUTION_TIMED_OUT = 9;
+  CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE = 10;
+  CLI_PROBLEM_CODE_QUERY_PREPARATION_FAILED = 11;
+  CLI_PROBLEM_CODE_QUERY_REJECTED = 12;
+  CLI_PROBLEM_CODE_SOURCE_NAME_CONFLICT = 13;
+  CLI_PROBLEM_CODE_SOURCE_NOT_FOUND = 14;
+  CLI_PROBLEM_CODE_SOURCE_NOT_QUERYABLE = 15;
+}
+
+enum CliProblemStage {
+  CLI_PROBLEM_STAGE_UNSPECIFIED = 0;
+  CLI_PROBLEM_STAGE_AUTH = 1;
+  CLI_PROBLEM_STAGE_EXECUTE_QUERY = 2;
+  CLI_PROBLEM_STAGE_READ_QUERY_INPUT = 3;
+  CLI_PROBLEM_STAGE_RESOLVE_ORG = 4;
+  CLI_PROBLEM_STAGE_RESOLVE_SOURCE = 5;
+}
+
+// Comment: the current OpenAPI CliProblem enum omits source_name_conflict even
+// though the source connect route advertises and returns it.

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "onequery/cli/v1/common.proto";
+
+message ListOrganizationsRequest {
+  optional string fields = 1;
+  optional uint32 limit = 2;
+  optional string cursor = 3;
+}
+
+message ListOrganizationsResponse {
+  string request_id = 1;
+  repeated string warnings = 2;
+  CliOrganizationList data = 3;
+  optional CliPage page = 4;
+}
+
+message GetOrganizationRequest {
+  string org_slug = 1;
+  optional string fields = 2;
+}
+
+message GetOrganizationResponse {
+  string request_id = 1;
+  repeated string warnings = 2;
+  CliOrganizationDetails data = 3;
+}
+
+message CliOrganizationList {
+  repeated CliOrganizationSummary organizations = 1;
+}
+
+message CliOrganizationSummary {
+  string slug = 1;
+  string name = 2;
+}
+
+message CliOrganizationDetails {
+  string slug = 1;
+  string name = 2;
+  repeated string roles = 3;
+  repeated CliOrgCapability capabilities = 4;
+}
+
+enum CliOrgCapability {
+  CLI_ORG_CAPABILITY_UNSPECIFIED = 0;
+  CLI_ORG_CAPABILITY_ORG_LIST = 1;
+  CLI_ORG_CAPABILITY_ORG_READ = 2;
+  CLI_ORG_CAPABILITY_SOURCE_CONNECT = 3;
+  CLI_ORG_CAPABILITY_SOURCE_LIST = 4;
+  CLI_ORG_CAPABILITY_SOURCE_READ = 5;
+  CLI_ORG_CAPABILITY_QUERY_EXECUTE = 6;
+}

@@ -24,6 +24,9 @@
       "@vitejs/plugin-react": "6.0.1",
       "@rolldown/plugin-babel": "0.2.1",
       "babel-plugin-react-compiler": "1.0.0",
+      "@bufbuild/buf": "1.67.0",
+      "@bufbuild/protobuf": "2.11.0",
+      "@bufbuild/protoc-gen-es": "2.11.0",
       "better-auth": "1.5.5",
       "@types/node": "25.0.8",
       "@vitest/coverage-v8": "4.1.1",
@@ -57,6 +60,8 @@
     "test:e2e:ui": "cd apps/web && bun run test:e2e:ui",
     "typecheck": "turbo run typecheck typecheck:root",
     "typecheck:root": "tsgo --noEmit -p tsconfig.scripts.json",
+    "proto:generate": "buf generate",
+    "proto:lint": "buf lint",
     "db:generate": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit generate",
     "db:migrate": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit migrate",
     "db:push": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit push",
@@ -68,6 +73,8 @@
     "knip": "knip"
   },
   "devDependencies": {
+    "@bufbuild/buf": "catalog:",
+    "@bufbuild/protoc-gen-es": "catalog:",
     "@onequery/bun-server": "workspace:*",
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",

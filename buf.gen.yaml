@@ -1,0 +1,8 @@
+version: v2
+clean: true
+plugins:
+  - local: protoc-gen-es
+    out: packages/cli-server/src/connect/gen
+    opt:
+      - target=ts
+      - import_extension=.js
