@@ -55,7 +55,6 @@ pub(crate) fn present_api_failure(
 
             CliError::new(title, command, problem.stage, why, try_next)
                 .with_hint(hint)
-                .with_problem_type(problem.problem_type)
                 .with_code(problem.code)
                 .with_status(Some(problem.status.as_u16()))
                 .with_retryable(problem.retryable)
@@ -188,7 +187,6 @@ mod tests {
             "tryNext": error.try_next,
             "requestId": error.request_id,
             "hint": error.hint,
-            "problemType": error.problem_type,
             "code": error.code,
             "status": error.status,
             "retryable": error.retryable,
@@ -235,7 +233,6 @@ mod tests {
                 "tryNext": ["rebuild onequery with a valid default base URL"],
                 "requestId": null,
                 "hint": null,
-                "problemType": null,
                 "code": null,
                 "status": null,
                 "retryable": false,
@@ -264,7 +261,6 @@ mod tests {
                 "tryNext": ["onequery auth logout", "onequery auth login"],
                 "requestId": null,
                 "hint": null,
-                "problemType": null,
                 "code": null,
                 "status": null,
                 "retryable": false,
@@ -296,7 +292,6 @@ mod tests {
                 ],
                 "requestId": null,
                 "hint": null,
-                "problemType": null,
                 "code": null,
                 "status": null,
                 "retryable": false,
@@ -325,7 +320,6 @@ mod tests {
                 "tryNext": ["retry command"],
                 "requestId": null,
                 "hint": null,
-                "problemType": null,
                 "code": null,
                 "status": null,
                 "retryable": false,
@@ -336,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn present_api_failure_prefers_problem_details_fields() {
+    fn present_api_failure_prefers_api_problem_fields() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
                 status: StatusCode::NOT_FOUND,
@@ -373,7 +367,6 @@ mod tests {
                 "tryNext": ["run `onequery source list`"],
                 "requestId": "req_123",
                 "hint": "run `onequery source list`",
-                "problemType": "https://onequery.invalid/problems/cli/source-not-found",
                 "code": "source_not_found",
                 "status": 404,
                 "retryable": false,
@@ -413,7 +406,6 @@ mod tests {
                 "tryNext": ["retry onequery query execute --source warehouse --sql \"select 1\""],
                 "requestId": "req_fallback",
                 "hint": null,
-                "problemType": null,
                 "code": "decode_error",
                 "status": null,
                 "retryable": false,
@@ -539,7 +531,6 @@ mod tests {
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_reauth",
                 "hint": "login via the OneQuery web app and retry",
-                "problemType": "https://onequery.invalid/problems/cli/not-logged-in",
                 "code": "not_logged_in",
                 "status": 401,
                 "retryable": false,
