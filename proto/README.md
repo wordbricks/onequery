@@ -9,9 +9,11 @@ This directory contains:
 
 Supported entrypoints:
 
-- canonical local entrypoint: `bun run --cwd proto lint`, `bun run --cwd proto generate`, `bun run --cwd proto check`
-- root delegates: `bun run proto:lint`, `bun run proto:generate`, `bun run proto:check`
+- canonical entrypoint: `bun run proto:lint`, `bun run proto:generate`, `bun run proto:check`
+- low-level Buf usage from the repo root: `buf lint proto`, `buf generate --template proto/buf.gen.yaml proto`
 
-The generation template writes TypeScript output back into
-`packages/cli-server/src/connect/gen`, and the Rust CLI build consumes this
-workspace for descriptor generation.
+`buf generate` is intentionally run from the repo root because the generated
+TypeScript output lives outside `proto/`, under
+`packages/cli-server/src/connect/gen`.
+
+The Rust CLI build consumes this workspace for descriptor generation.

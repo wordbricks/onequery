@@ -105,14 +105,13 @@ The two non-obvious migration risks are:
 ## 1) Source of truth
 
 Create a protobuf workspace rooted at `proto/`, with repo-root `proto:*`
-scripts acting as thin delegates:
+scripts as the only supported entrypoint:
 
 ```text
 proto/
   buf.yaml
   buf.gen.yaml
   buf.lock
-  package.json
   onequery/cli/v1/*.proto
 ```
 
@@ -651,7 +650,8 @@ The migration is complete when all of the following are true:
 ## Connect-native cleanup follow-ups
 
 - [x] Use exact prefix-based Hono Connect routing under `/api/cli` instead of suffix fallback matching.
-- [x] Promote `proto/` to the owned protobuf workspace boundary and keep root `proto:*` scripts as delegates.
+- [x] Promote `proto/` to the owned protobuf workspace boundary while keeping root `proto:*` scripts as the only supported entrypoint.
+- [x] Keep the proto-owned `generate` command emitting directly into the tracked TS output tree without accidental nested output.
 
 ---
 
