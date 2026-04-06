@@ -379,8 +379,8 @@ valid follow-up choice.
 - [ ] Confirm protobuf/Buf as the only contract source going forward.
 - [ ] Confirm `schema openapi` will be removed.
 - [x] Confirm `schema commands` will be removed.
-- [ ] Confirm whether self-host packaged server behavior needs any Connect-specific packaging changes.
-- [ ] Confirm `/api/cli` remains the Connect handler prefix.
+- [x] Confirm whether self-host packaged server behavior needs any Connect-specific packaging changes.
+- [x] Confirm `/api/cli` remains the Connect handler prefix.
 
 ---
 
@@ -583,10 +583,10 @@ Do **not** expand this spec into a Bun-to-Node runtime migration.
 
 ### Checklist
 
-- [ ] Keep `packages/bun-server` as the runtime package for this migration.
-- [ ] Mount Connect CLI handlers under `/api/cli`.
-- [ ] Verify the existing non-CLI routes still work with the Connect mount in place.
-- [ ] Verify self-host mode still boots and serves the Connect-backed CLI API.
+- [x] Keep `packages/bun-server` as the runtime package for this migration.
+- [x] Mount Connect CLI handlers under `/api/cli`.
+- [x] Verify the existing non-CLI routes still work with the Connect mount in place.
+- [x] Verify self-host mode still boots and serves the Connect-backed CLI API.
 - [ ] Update any Bun packaging/smoke tests only where the Connect route mount changes behavior.
 
 ---
@@ -638,8 +638,8 @@ The migration is complete when all of the following are true:
 - [x] There is no OpenAPI JSON artifact used as transport source of truth anywhere in the repo.
 - [x] `orval` is no longer used for the CLI API.
 - [x] `progenitor` is no longer used by the Rust CLI.
-- [ ] The CLI server exposes the internal CLI API via Connect RPC under Hono.
-- [ ] The Rust CLI talks to the server via `connect-rust`.
+- [x] The CLI server exposes the internal CLI API via Connect RPC under Hono.
+- [x] The Rust CLI talks to the server via `connect-rust`.
 - [ ] TanStack/web consumers use `connect-query-es` against the same proto-based API.
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
 - [ ] Existing auth, org selection, read controls, and query flows still work.
