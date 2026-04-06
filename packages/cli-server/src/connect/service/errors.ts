@@ -41,7 +41,6 @@ export function throwForCliConnectQueryWorkflowResult(
     case "query_preparation_failed":
       return throwCliConnectQueryFailure({
         detail: result.detail,
-        hint: result.hint,
         key: "QUERY_PREPARATION_FAILED",
       });
     case "query_unavailable":
@@ -79,7 +78,6 @@ export function throwForCliConnectQueryPlanResult(
     case "query_preparation_failed":
       return throwCliConnectQueryFailure({
         detail: result.detail,
-        hint: result.hint,
         key: "QUERY_PREPARATION_FAILED",
       });
   }
@@ -115,11 +113,9 @@ function throwCliConnectQueryFailure(input: {
     | "QUERY_EXECUTION_UNAVAILABLE"
     | "QUERY_EXECUTION_TIMED_OUT";
   detail: string;
-  hint?: string;
 }): never {
   throwCliConnectError({
     detail: input.detail,
-    hint: input.hint,
     key: input.key,
   });
 }

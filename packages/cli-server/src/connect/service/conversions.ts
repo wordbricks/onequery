@@ -71,9 +71,7 @@ export function fromCliUseSource(value: CliUseSource): CliUseSkillSource {
     default:
       throwCliConnectError({
         detail: "unsupported use source",
-        hint: "choose one of the supported use sources and retry",
         key: "INVALID_REQUEST",
-        stage: "resolve_source",
       });
   }
 }
@@ -168,9 +166,7 @@ export function fromCliSourceProvider(value: CliSourceProvider): ProviderType {
     default:
       throwCliConnectError({
         detail: "unsupported source provider",
-        hint: "choose a supported source provider and retry",
         key: "INVALID_REQUEST",
-        stage: "resolve_source",
       });
   }
 }

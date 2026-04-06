@@ -154,8 +154,6 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
   const requestId = getCliRequestId(c);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: QUERY_VALIDATE_FIELDS,
-    defaultStage: "read_query_input",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const authorizedOrg = await requireAuthorizedCliOrg({
@@ -284,8 +282,6 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
   const requestId = getCliRequestId(c);
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: QUERY_EXECUTE_FIELDS,
-    defaultStage: "read_query_input",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const authorizedOrg = await requireAuthorizedCliOrg({
@@ -504,7 +500,6 @@ function throwCliQueryActionTrailFailure(input: {
 
   throwCliConnectError({
     detail,
-    hint: "retry the CLI query request when the query action trail store is healthy",
     key: "QUERY_PREPARATION_FAILED",
   });
 }
@@ -1007,9 +1002,7 @@ function throwIfCliQueryParametersProvided(
 
   throwCliConnectError({
     detail: "query parameters are not implemented for the CLI query API yet",
-    hint: "inline literal values in SQL and retry",
     key: "INVALID_REQUEST",
-    stage: "read_query_input",
   });
 }
 

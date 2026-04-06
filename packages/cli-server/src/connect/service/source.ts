@@ -90,8 +90,6 @@ export const handleListSources: CliServiceMethod<"listSources"> = async (
   const c = requireCliConnectHonoContext(context);
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: SOURCE_LIST_FIELDS,
-    defaultStage: "resolve_org",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const authorizedOrg = await requireAuthorizedCliOrg({
@@ -139,8 +137,6 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
   const c = requireCliConnectHonoContext(context);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: SOURCE_FIELDS,
-    defaultStage: "resolve_source",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const authorizedOrg = await requireAuthorizedCliOrg({
@@ -236,9 +232,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
     throwCliConnectError({
       detail:
         "source name must use only letters, numbers, dots, underscores, or hyphens",
-      hint: "rename the source and retry",
       key: "INVALID_REQUEST",
-      stage: "resolve_source",
     });
   }
 
@@ -260,9 +254,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
   ) {
     throwCliConnectError({
       detail: `provider "${parsed.data.provider}" does not match credentials.type "${parsed.data.credentials.type}"`,
-      hint: "align provider and credentials.type, then retry",
       key: "INVALID_REQUEST",
-      stage: "resolve_source",
     });
   }
 
@@ -278,9 +270,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
     if (!organizationCheck.ok) {
       throwCliConnectError({
         detail: organizationCheck.error,
-        hint: "correct the connector reference and retry",
         key: "INVALID_REQUEST",
-        stage: "resolve_source",
       });
     }
   }
@@ -413,12 +403,9 @@ function throwCliConnectSourceValidationError(input: {
   }[];
 }): never {
   const issue = input.issues[0];
-  const field = typeof issue?.path[0] === "string" ? issue.path[0] : null;
 
   throwCliConnectError({
     detail: issue?.message ?? "invalid source connect request",
-    hint: "correct the request body and retry",
     key: "INVALID_REQUEST",
-    stage: field === "organizationId" ? "resolve_org" : "resolve_source",
   });
 }

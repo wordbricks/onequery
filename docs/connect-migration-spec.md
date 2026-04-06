@@ -1,6 +1,6 @@
 # CLI transport migration spec: OpenAPI/orval/progenitor -> Protobuf + Connect RPC
 
-<!-- Comment: the previous draft mixed a Connect-native migration with REST-era Problem Details and response-envelope preservation. This revision removes that mismatch on purpose. -->
+<!-- Comment: the previous draft mixed a Connect-native migration with REST-era Problem Details, response-envelope preservation, and a Bun-to-Node runtime detour. This revision removes those mismatches on purpose. -->
 
 ## Summary
 
@@ -21,8 +21,10 @@ This is a **direct cutover**:
 - no dual stack
 - no REST/OpenAPI preservation work
 - no generic Problem Details shim
+- no typed error-detail rollout in the initial cutover
 - no obligation to preserve current REST paths, headers, or envelopes unless
   they still represent real CLI/domain semantics
+- no Bun-to-Node runtime migration as part of this transport spec
 
 The migration should be **Connect-native**, not "REST translated into Connect".
 Keep the business behavior. Drop the HTTP-era transport shapes.
@@ -200,16 +202,20 @@ to Connect.
 
 ## 4) Error model
 
-The primary error contract is **Connect's native error model**:
+For the initial cutover, the error contract should stay as close as possible to
+**Connect's native error model**:
 
 - **code** for the failure class
 - **message** for the human-readable summary
-- **metadata** for out-of-band values like request ID or retry hints
-- **typed error details** only when a caller needs additional structured data
+- **metadata** for small out-of-band values like request ID or retry hints
 
 Do **not** define or carry forward a generic `CliProblemDetail` message.
 
 Do **not** translate current HTTP problem payloads into a Connect-shaped clone.
+
+Do **not** make typed protobuf error details part of the migration baseline.
+Start with `code` + `message` + minimal metadata. Only add a focused typed
+detail later if a real caller behavior needs it.
 
 ### Default mapping guidance
 
@@ -232,18 +238,25 @@ Use Connect metadata for things like:
 - retry hints such as retry-after
 - operational correlation values that are not part of the business response
 
-### Typed detail guidance
+Do **not** use metadata to rebuild a REST-style error document. Specifically,
+do not treat metadata as a place to preserve RFC 9457 fields, status mirrors,
+or a transport-level clone of the current problem catalog.
 
-Only add typed protobuf error details when the CLI truly needs to branch on
-structured information. For example, a focused validation detail message is
-reasonable if the CLI needs per-field rendering. A catch-all "problem"
-container is not.
+<!-- Comment: the existing internal problem catalog can remain as a server-side
+mapping helper during the refactor, but it should not define the public Connect
+error contract after cutover. -->
+
+### Typed detail deferral
+
+If the CLI later needs to branch on structured error information, add one small
+focused detail message for that case only. A catch-all "problem" container is
+explicitly out of scope for this migration.
 
 Rust should consume errors via `connect-rust`'s `ConnectError` directly:
 
 1. inspect `code`
 2. inspect metadata if needed
-3. decode a focused detail message only if one exists for that specific case
+3. do not assume typed details exist in the initial cutover
 
 ## 5) Validation strategy
 
@@ -356,16 +369,17 @@ valid follow-up choice.
 - command-schema export is decoupled from the wire contract
 - Connect error is the primary error contract
 - no generic Problem Details message
+- no typed error details in the initial cutover
 - request IDs move to metadata/logging instead of response bodies
-- final runtime target is Node.js
-- Bun package manager remains optional and separate from runtime migration
+- final runtime target stays Bun + Hono
+- no Bun-to-Node runtime migration in this spec
 
 ### Checklist
 
 - [ ] Confirm protobuf/Buf as the only contract source going forward.
 - [ ] Confirm `schema openapi` will be removed.
 - [ ] Confirm whether `schema commands` must survive this migration.
-- [ ] Confirm whether self-host packaged server remains required after Bun runtime removal.
+- [ ] Confirm whether self-host packaged server behavior needs any Connect-specific packaging changes.
 - [ ] Confirm `/api/cli` remains the Connect handler prefix.
 
 ---
@@ -465,7 +479,7 @@ the resolved values that Connect methods need instead of threading full
 
 - [ ] Create `packages/cli-server/src/connect/service.ts` implementing `CliService`.
 - [ ] Create `packages/cli-server/src/connect/context.ts` for Connect context keys.
-- [ ] Create `packages/cli-server/src/connect/error.ts` for Connect-native error helpers.
+- [x] Create `packages/cli-server/src/connect/error.ts` for Connect-native error helpers.
 - [ ] Create `packages/cli-server/src/connect/middleware.ts` for Hono Connect mounting.
 - [ ] Create `packages/cli-server/src/connect/routes.ts` for route registration.
 - [ ] Add Connect validation interceptor.
@@ -512,7 +526,8 @@ migration.
 - [ ] Preserve auth token and timeout behavior in the wrapper.
 - [ ] Rewrite transport modules (`auth`, `org`, `source`, `query`, `use_cmd`) to call Connect RPCs.
 - [ ] Replace HTTP status/problem parsing with direct `ConnectError` mapping.
-- [ ] Map `ConnectError.code` first, then metadata, then focused details if any exist.
+- [ ] Map `ConnectError.code` first, then metadata only where the CLI actually needs it.
+- [ ] Do not depend on typed error details in the first cutover.
 - [ ] Remove the checked-in OpenAPI contract assertion test from `transport/mod.rs`.
 
 ---
@@ -556,70 +571,28 @@ metadata model inside protobuf custom options.
 
 ---
 
-## Phase 6 - Bun runtime removal and Node runtime adoption
+## Phase 6 - Bun runtime and self-host verification
 
 ### Work
 
-Replace `packages/bun-server` with a Node runtime package, for example:
+Keep the existing **Bun + Hono** runtime.
 
-```text
-packages/node-server/**
-```
+Mount the Connect handler inside the current Bun server path and verify the
+existing self-host flow still works after the transport cutover.
 
-Use Hono's Node adapter and mount the Connect handler plus the rest of the
-existing server routes.
-
-### Important scope split
-
-Treat these as separate concerns:
-
-1. **server runtime migration off `Bun.*` APIs**
-2. **package manager migration away from `bun run`**
-
-The first is in scope. The second is optional and can be deferred.
+Do **not** expand this spec into a Bun-to-Node runtime migration.
 
 ### Checklist
 
-- [ ] Replace the `Bun.serve` entrypoint with a Node/Hono entrypoint.
-- [ ] Create `packages/node-server/src/index.ts` using `@hono/node-server`.
+- [ ] Keep `packages/bun-server` as the runtime package for this migration.
 - [ ] Mount Connect CLI handlers under `/api/cli`.
-- [ ] Port remaining non-CLI routes from `packages/bun-server`.
-- [ ] Remove `Bun.*` APIs from runtime code paths.
-- [ ] Keep any Bun compatibility spike isolated and non-blocking.
-- [ ] Decide whether root `packageManager` stays Bun for now or moves later.
+- [ ] Verify the existing non-CLI routes still work with the Connect mount in place.
+- [ ] Verify self-host mode still boots and serves the Connect-backed CLI API.
+- [ ] Update any Bun packaging/smoke tests only where the Connect route mount changes behavior.
 
 ---
 
-## Phase 7 - self-host packaging updates
-
-### Work
-
-Current self-host packaging relies on compiling the server into a Bun
-executable. That cannot survive unchanged after the runtime migration.
-
-This needs an explicit replacement plan.
-
-### Recommended order
-
-Do not invent the final packaging approach before the transport works.
-
-First, make the Node runtime work in development and tests. Then choose one of:
-
-- ship the server as a normal Node app in self-host mode
-- package Node separately with the runtime bundle
-- add a Node single-executable or bundling strategy later
-
-### Checklist
-
-- [ ] Remove `Bun.build` dependency from `apps/cli/scripts/build-server-executable.js` or replace the script entirely.
-- [ ] Remove `Bun.spawnSync` from `apps/cli/scripts/self-host-runtime.js`.
-- [ ] Decide whether self-host still requires a single executable server artifact.
-- [ ] Update runtime bundle staging logic for the Node runtime layout.
-- [ ] Update smoke tests for self-host mode.
-
----
-
-## Phase 8 - CI, scripts, and docs cleanup
+## Phase 7 - CI, scripts, and docs cleanup
 
 ### Work
 
@@ -676,6 +649,7 @@ The migration is complete when all of the following are true:
 - [ ] CI no longer regenerates or checks OpenAPI artifacts.
 - [ ] CI validates the protobuf contract and generated code path.
 - [ ] There is no generic Problem Details compatibility shim in the new transport.
+- [ ] The initial transport cutover relies on Connect `code`/`message`/metadata without a custom typed error-detail layer.
 
 ---
 
@@ -697,9 +671,8 @@ The migration is complete when all of the following are true:
 4. implement the TS Connect service and handler mount
 5. migrate the Rust client
 6. remove OpenAPI command-schema dependency
-7. switch runtime from Bun server to Node server
-8. fix self-host packaging
-9. clean CI and docs
+7. verify Bun self-host/runtime behavior
+8. clean CI and docs
 
 This order keeps the hidden dependencies visible early while avoiding packaging
 work before the transport itself is proven.

@@ -22,12 +22,7 @@ export function parseCliFieldsReadControls(
     config.allowedFields
   );
   if (!selectedFields.ok) {
-    throwCliReadControlsProblem({
-      detail: selectedFields.message,
-      field: "fields",
-      hint: config.hint,
-      stage: config.fieldStages?.fields ?? config.defaultStage,
-    });
+    throwCliReadControlsProblem(selectedFields.message);
   }
 
   return {
@@ -44,22 +39,12 @@ export function parseCliPaginatedReadControls(
     config.allowedFields
   );
   if (!selectedFields.ok) {
-    throwCliReadControlsProblem({
-      detail: selectedFields.message,
-      field: "fields",
-      hint: config.hint,
-      stage: config.fieldStages?.fields ?? config.defaultStage,
-    });
+    throwCliReadControlsProblem(selectedFields.message);
   }
 
   const offset = parsePageCursor(input.cursor);
   if (!offset.ok) {
-    throwCliReadControlsProblem({
-      detail: offset.message,
-      field: "cursor",
-      hint: config.hint,
-      stage: config.fieldStages?.cursor ?? config.defaultStage,
-    });
+    throwCliReadControlsProblem(offset.message);
   }
 
   return {
@@ -81,16 +66,9 @@ export function buildCliPage(page: {
   };
 }
 
-function throwCliReadControlsProblem(input: {
-  field: string;
-  detail: string;
-  hint: string;
-  stage: CliReadControlsConfig["defaultStage"];
-}): never {
+function throwCliReadControlsProblem(detail: string): never {
   throwCliConnectError({
-    detail: input.detail,
-    hint: input.hint,
+    detail,
     key: "INVALID_REQUEST",
-    stage: input.stage,
   });
 }

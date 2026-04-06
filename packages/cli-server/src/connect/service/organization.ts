@@ -42,8 +42,6 @@ export const handleListOrganizations: CliServiceMethod<
   const c = requireCliConnectHonoContext(context);
   const readControls = parseCliPaginatedReadControls(request, {
     allowedFields: ORG_LIST_FIELDS,
-    defaultStage: "auth",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const organizations = await runCliListVisibleOrgs({
@@ -66,8 +64,6 @@ export const handleGetOrganization: CliServiceMethod<
   const c = requireCliConnectHonoContext(context);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: ORG_FIELDS,
-    defaultStage: "resolve_org",
-    hint: "correct the read controls and retry",
   });
   const session = await requireAuthenticatedCliSession(c);
   const authorizedOrg = await requireAuthorizedCliOrg({

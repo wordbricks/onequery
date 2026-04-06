@@ -72,8 +72,6 @@ export const handleGetSession: CliServiceMethod<"getSession"> = async (
   const c = requireCliConnectHonoContext(context);
   const readControls = parseCliFieldsReadControls(request, {
     allowedFields: SESSION_FIELDS,
-    defaultStage: "auth",
-    hint: "correct the read controls and retry",
   });
   const session = requireCliSessionIdentity(
     await resolveCliSessionIdentity(c.var.storage, c.req.raw.headers)
@@ -126,7 +124,6 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
       key: "INVALID_REQUEST",
-      stage: "auth",
     });
   }
 
@@ -223,7 +220,6 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
       key: "INVALID_REQUEST",
-      stage: "auth",
     });
   }
 
@@ -346,7 +342,6 @@ function buildAuthorizedDeviceAuthorizationResponse(input: {
     throwCliConnectError({
       detail:
         "device authorization completed, but no authenticated session could be resolved",
-      hint: "run `onequery auth login` again",
       key: "NOT_LOGGED_IN",
     });
   }

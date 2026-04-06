@@ -109,7 +109,6 @@ export async function requireAuthorizedCliOrg(input: {
     });
     throwCliConnectError({
       detail: `you do not have permission to ${input.action} in org "${input.orgSlug}"`,
-      hint: "verify your org role and retry",
       key: "FORBIDDEN",
     });
   }
