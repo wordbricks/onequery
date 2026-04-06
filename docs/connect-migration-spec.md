@@ -517,7 +517,8 @@ migration.
 - [x] Replace `src/transport/generated.rs` include path with Connect-generated output.
 - [x] Rewrite `src/transport/client.rs` around the Connect client.
 - [x] Preserve auth token and timeout behavior in the wrapper.
-- [ ] Rewrite transport modules (`auth`, `org`, `source`, `query`, `use_cmd`) to call Connect RPCs.
+- [x] Rewrite transport modules (`auth`, `org`, `source`, `query`, `use_cmd`) to call Connect RPCs.
+<!-- Comment: `use_cmd` still relays provider execution through `/api/data-sources/{source}/query` on purpose because that call remains outside `CliService`; the internal CLI RPC surface in `use_cmd` now uses Connect. -->
 - [x] Replace HTTP status/problem parsing with direct `ConnectError` mapping.
 - [x] Map `ConnectError.code` first, then metadata only where the CLI actually needs it.
 - [x] Do not depend on typed error details in the first cutover.
@@ -580,7 +581,7 @@ Do **not** expand this spec into a Bun-to-Node runtime migration.
 - [x] Mount Connect CLI handlers under `/api/cli`.
 - [x] Verify the existing non-CLI routes still work with the Connect mount in place.
 - [x] Verify self-host mode still boots and serves the Connect-backed CLI API.
-- [ ] Update any Bun packaging/smoke tests only where the Connect route mount changes behavior.
+- [x] Update any Bun packaging/smoke tests only where the Connect route mount changes behavior.
 
 ---
 
@@ -634,8 +635,8 @@ The migration is complete when all of the following are true:
 - [x] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [x] The Rust CLI talks to the server via `connect-rust`.
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
-- [ ] Existing auth, org selection, read controls, and query flows still work.
-- [ ] Request IDs are available through metadata/logging instead of a legacy REST envelope.
+- [x] Existing auth, org selection, read controls, and query flows still work.
+- [x] Request IDs are available through metadata/logging instead of a legacy REST envelope.
 - [x] OpenAPI-derived command-schema code is removed or intentionally replaced.
 - [x] CI no longer regenerates or checks OpenAPI artifacts.
 - [x] CI validates the protobuf contract and generated code path.

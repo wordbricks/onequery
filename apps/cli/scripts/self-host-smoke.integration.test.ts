@@ -150,6 +150,56 @@ function collectProcessOutput(child: ReturnType<typeof spawn>): {
   };
 }
 
+async function callCliConnectRpc(input: {
+  baseUrl: string;
+  method:
+    | "Use"
+    | "GetSession"
+    | "ListOrganizations"
+    | "GetOrganization"
+    | "GetSourceConnectGuide"
+    | "ConnectSource"
+    | "ListSources"
+    | "GetSource";
+  body?: unknown;
+  cookieHeader?: string | null;
+  requestId: string;
+}): Promise<{ payload: unknown; response: Response }> {
+  const response = await fetch(
+    `${input.baseUrl}/api/cli/onequery.cli.v1.CliService/${input.method}`,
+    {
+      body: JSON.stringify(input.body ?? {}),
+      headers: {
+        "Connect-Protocol-Version": "1",
+        "content-type": "application/json",
+        ...(input.cookieHeader ? { cookie: input.cookieHeader } : {}),
+        "x-request-id": input.requestId,
+      },
+      method: "POST",
+    }
+  );
+
+  const rawBody = await response.text();
+  const payload = rawBody.length === 0 ? null : JSON.parse(rawBody);
+
+  if (!response.ok) {
+    throw new Error(
+      `Connect RPC ${input.method} failed with ${response.status}: ${rawBody}`
+    );
+  }
+
+  expect(response.headers.get("x-request-id")).toBe(input.requestId);
+  expect(response.headers.get("content-type")).toContain("application/json");
+  expect(payload && typeof payload === "object" && "requestId" in payload).toBe(
+    false
+  );
+
+  return {
+    payload,
+    response,
+  };
+}
+
 async function waitForBootstrap(baseUrl: string): Promise<Response> {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   let lastError: unknown = null;
@@ -269,7 +319,7 @@ async function stopServeProcess(input: {
 }
 
 describe("CLI self-host smoke", () => {
-  it("bootstraps a fresh self-host runtime and creates a data source through the packaged serve path", async () => {
+  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged serve path", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-self-host-home-");
 
@@ -326,8 +376,97 @@ describe("CLI self-host smoke", () => {
         },
       });
 
-      const dataSourceResponse = await fetch(`${baseUrl}/api/data-sources`, {
-        body: JSON.stringify({
+      const useResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          source: "CLI_USE_SOURCE_GITHUB",
+        },
+        method: "Use",
+        requestId: "req_cli_use_123",
+      });
+      expect(useResponse.payload).toMatchObject({
+        content: expect.any(String),
+        description: expect.any(String),
+        format: "CLI_CONTENT_FORMAT_MARKDOWN",
+        source: "CLI_USE_SOURCE_GITHUB",
+        title: expect.any(String),
+      });
+
+      const sessionResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "user.email,activeOrgSlug",
+        },
+        cookieHeader,
+        method: "GetSession",
+        requestId: "req_cli_session_123",
+      });
+      expect(sessionResponse.payload).toEqual({
+        user: {
+          email: "owner@example.com",
+        },
+      });
+
+      const organizationsResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "organizations.slug",
+          limit: 1,
+        },
+        cookieHeader,
+        method: "ListOrganizations",
+        requestId: "req_cli_orgs_123",
+      });
+      expect(organizationsResponse.payload).toEqual({
+        organizations: [{ slug: "owner-org" }],
+        page: {
+          returned: 1,
+          hasMore: false,
+        },
+      });
+
+      const organizationResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "slug,capabilities",
+          orgSlug: "owner-org",
+        },
+        cookieHeader,
+        method: "GetOrganization",
+        requestId: "req_cli_org_123",
+      });
+      expect(organizationResponse.payload).toMatchObject({
+        capabilities: expect.arrayContaining([
+          "CLI_ORG_CAPABILITY_SOURCE_CONNECT",
+        ]),
+        slug: "owner-org",
+      });
+
+      const guideResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          orgSlug: "owner-org",
+          source: "CLI_SOURCE_PROVIDER_POSTGRES",
+        },
+        cookieHeader,
+        method: "GetSourceConnectGuide",
+        requestId: "req_cli_guide_123",
+      });
+      expect(guideResponse.payload).toMatchObject({
+        command: expect.stringContaining(
+          "onequery source connect --source postgres"
+        ),
+        providers: expect.arrayContaining([
+          expect.objectContaining({
+            provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          }),
+        ]),
+        title: expect.any(String),
+      });
+
+      const connectSourceResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
           credentials: {
             database: "analytics",
             host: "localhost",
@@ -338,32 +477,61 @@ describe("CLI self-host smoke", () => {
             username: "postgres",
           },
           name: "Warehouse",
-          organizationId: bootstrapPayload.bootstrap.organizationId,
-          provider: "postgres",
-        }),
-        headers: {
-          "content-type": "application/json",
-          cookie: cookieHeader ?? "",
-          origin: baseUrl,
+          orgSlug: "owner-org",
+          source: "CLI_SOURCE_PROVIDER_POSTGRES",
         },
-        method: "POST",
+        cookieHeader,
+        method: "ConnectSource",
+        requestId: "req_cli_connect_source_123",
+      });
+      expect(connectSourceResponse.payload).toMatchObject({
+        nextCommand: "onequery source show Warehouse",
+        source: {
+          name: "Warehouse",
+          provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          queryable: true,
+          status: "CLI_SOURCE_STATUS_ACTIVE",
+        },
       });
 
-      expect(dataSourceResponse.status).toBe(201);
-      const dataSourcePayload = (await dataSourceResponse.json()) as {
-        dataSource: {
-          name: string;
-          provider: string;
-          status: string;
-        };
-      };
-
-      expect(dataSourcePayload).toMatchObject({
-        dataSource: {
-          name: "Warehouse",
-          provider: "postgres",
-          status: "active",
+      const sourcesResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "sources.name,sources.status",
+          limit: 1,
+          orgSlug: "owner-org",
         },
+        cookieHeader,
+        method: "ListSources",
+        requestId: "req_cli_sources_123",
+      });
+      expect(sourcesResponse.payload).toEqual({
+        sources: [
+          {
+            name: "Warehouse",
+            status: "CLI_SOURCE_STATUS_ACTIVE",
+          },
+        ],
+        page: {
+          returned: 1,
+          hasMore: false,
+        },
+      });
+
+      const sourceResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "name,queryable",
+          orgSlug: "owner-org",
+          sourceKey: "Warehouse",
+        },
+        cookieHeader,
+        method: "GetSource",
+        requestId: "req_cli_source_123",
+      });
+      expect(sourceResponse.payload).toEqual({
+        name: "Warehouse",
+        queryable: true,
       });
     } catch (error) {
       throw new Error(
