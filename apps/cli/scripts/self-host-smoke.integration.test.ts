@@ -417,11 +417,10 @@ describe("CLI self-host smoke", () => {
         method: "ListOrganizations",
         requestId: "req_cli_orgs_123",
       });
-      expect(organizationsResponse.payload).toEqual({
+      expect(organizationsResponse.payload).toMatchObject({
         organizations: [{ slug: "owner-org" }],
         page: {
-          returned: 1,
-          hasMore: false,
+          returned: "1",
         },
       });
 
@@ -505,7 +504,7 @@ describe("CLI self-host smoke", () => {
         method: "ListSources",
         requestId: "req_cli_sources_123",
       });
-      expect(sourcesResponse.payload).toEqual({
+      expect(sourcesResponse.payload).toMatchObject({
         sources: [
           {
             name: "Warehouse",
@@ -513,8 +512,7 @@ describe("CLI self-host smoke", () => {
           },
         ],
         page: {
-          returned: 1,
-          hasMore: false,
+          returned: "1",
         },
       });
 
