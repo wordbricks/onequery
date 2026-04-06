@@ -1,4 +1,5 @@
 use std::env;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -61,29 +62,77 @@ fn emit_rerun_triggers(repo_root: &Path) {
 }
 
 fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
-    let mut buf_command = Command::new("buf");
-    buf_command
-        .current_dir(repo_root)
-        .arg("build")
-        .arg("--as-file-descriptor-set")
-        .arg("-o")
-        .arg(descriptor_path);
-    for proto_file in PROTO_FILES {
+    let mut spawn_errors = Vec::new();
+    for executable in candidate_buf_executables(repo_root) {
+        let mut buf_command = Command::new(&executable);
         buf_command
-            .arg("--path")
-            .arg(Path::new(PROTO_ROOT).join(proto_file));
+            .current_dir(repo_root)
+            .arg("build")
+            .arg("--as-file-descriptor-set")
+            .arg("-o")
+            .arg(descriptor_path);
+        for proto_file in PROTO_FILES {
+            buf_command
+                .arg("--path")
+                .arg(Path::new(PROTO_ROOT).join(proto_file));
+        }
+
+        match buf_command.output() {
+            Ok(output) => {
+                if output.status.success() {
+                    return;
+                }
+
+                panic!(
+                    "expected `{} build` descriptor generation to succeed: {}",
+                    executable.display(),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => {
+                spawn_errors.push(format!("{}: {error}", executable.display()));
+            }
+            Err(error) => {
+                panic!(
+                    "expected to spawn `{}` for descriptor generation: {error}",
+                    executable.display()
+                );
+            }
+        }
     }
 
-    let output = buf_command.output().unwrap_or_else(|error| {
-        panic!(
-            "expected to spawn `buf build` for descriptor generation: {error}. \
-             Install `buf` or run `nix shell nixpkgs#buf nixpkgs#protobuf --command cargo test -p onequery-cli`"
-        )
-    });
-    if !output.status.success() {
-        panic!(
-            "expected `buf build` descriptor generation to succeed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+    let workspace_buf = workspace_buf_executable(repo_root);
+    panic!(
+        "expected to find `buf` for descriptor generation. Tried: {}. \
+         Install dependencies with `bun install`, install `buf`, set BUF_BIN, \
+         or run `nix shell nixpkgs#buf nixpkgs#protobuf --command cargo test -p onequery-cli`",
+        if spawn_errors.is_empty() {
+            format!("buf and {}", workspace_buf.display())
+        } else {
+            spawn_errors.join(", ")
+        }
+    );
+}
+
+fn candidate_buf_executables(repo_root: &Path) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Some(configured) = env::var_os("BUF_BIN") {
+        let configured = PathBuf::from(configured);
+        if !configured.as_os_str().is_empty() {
+            candidates.push(configured);
+        }
     }
+    candidates.push(PathBuf::from("buf"));
+    candidates.push(workspace_buf_executable(repo_root));
+    candidates
+}
+
+fn workspace_buf_executable(repo_root: &Path) -> PathBuf {
+    let bin_dir = repo_root.join("node_modules").join(".bin");
+
+    if cfg!(windows) {
+        return bin_dir.join("buf.cmd");
+    }
+
+    bin_dir.join("buf")
 }
