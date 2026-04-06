@@ -486,9 +486,9 @@ the resolved values that Connect methods need instead of threading full
 - [ ] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
 - [ ] Reuse existing business logic modules instead of rewriting them.
 - [ ] Mount Connect middleware under `/api/cli*`.
-- [ ] Remove `packages/cli-server/generated/**` from the runtime path.
+- [x] Remove `packages/cli-server/generated/**` from the runtime path.
 - [ ] Delete `packages/cli-server/src/transport/handlers/cliOpenapiDocument.ts`.
-- [ ] Delete or rewrite `packages/cli-server/src/route.ts` to mount the Connect handler instead of the orval route tree.
+- [x] Delete or rewrite `packages/cli-server/src/route.ts` to mount the Connect handler instead of the orval route tree.
 
 ---
 
