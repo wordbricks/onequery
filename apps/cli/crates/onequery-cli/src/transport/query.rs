@@ -1,6 +1,6 @@
 use buffa::MessageField;
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
-use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -204,7 +204,7 @@ async fn fetch_query_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(execute_query_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(execute_query_problem_stage_for_code),
             ));
         }
     };
@@ -244,7 +244,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(validate_query_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(validate_query_problem_stage_for_code),
             ));
         }
     };
@@ -257,16 +257,22 @@ pub(crate) async fn validate_read_only_query_with_controls(
     })
 }
 
-fn execute_query_problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+fn execute_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
         ErrorStage::Auth
     } else {
         ErrorStage::ExecuteQuery
     }
 }
 
-fn validate_query_problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+fn validate_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
         ErrorStage::Auth
     } else {
         ErrorStage::ReadQueryInput
@@ -507,6 +513,7 @@ fn non_empty(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use reqwest::StatusCode;
@@ -524,8 +531,8 @@ mod tests {
     use super::QueryResult;
     use super::QueryResultWindow;
     use super::QueryValidationResult;
-    use super::execute_query_problem_stage_for_status;
-    use super::validate_query_problem_stage_for_status;
+    use super::execute_query_problem_stage_for_code;
+    use super::validate_query_problem_stage_for_code;
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -658,7 +665,8 @@ mod tests {
         assert_eq!(
             [
                 ApiFailure::Problem(ApiProblem {
-                    status: StatusCode::BAD_GATEWAY,
+                    connect_code: None,
+                    status: Some(StatusCode::BAD_GATEWAY),
                     title: None,
                     detail: None,
                     code: None,
@@ -672,7 +680,8 @@ mod tests {
                 })
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
-                    status: StatusCode::BAD_REQUEST,
+                    connect_code: None,
+                    status: Some(StatusCode::BAD_REQUEST),
                     title: None,
                     detail: None,
                     code: None,
@@ -694,9 +703,9 @@ mod tests {
     fn execute_query_problem_stage_maps_auth_failures_to_auth_stage() {
         assert_eq!(
             [
-                execute_query_problem_stage_for_status(StatusCode::UNAUTHORIZED),
-                execute_query_problem_stage_for_status(StatusCode::FORBIDDEN),
-                execute_query_problem_stage_for_status(StatusCode::BAD_REQUEST),
+                execute_query_problem_stage_for_code(ErrorCode::Unauthenticated),
+                execute_query_problem_stage_for_code(ErrorCode::PermissionDenied),
+                execute_query_problem_stage_for_code(ErrorCode::InvalidArgument),
             ],
             [ErrorStage::Auth, ErrorStage::Auth, ErrorStage::ExecuteQuery,]
         );
@@ -706,9 +715,9 @@ mod tests {
     fn validate_query_problem_stage_maps_auth_failures_to_auth_stage() {
         assert_eq!(
             [
-                validate_query_problem_stage_for_status(StatusCode::UNAUTHORIZED),
-                validate_query_problem_stage_for_status(StatusCode::FORBIDDEN),
-                validate_query_problem_stage_for_status(StatusCode::BAD_REQUEST),
+                validate_query_problem_stage_for_code(ErrorCode::Unauthenticated),
+                validate_query_problem_stage_for_code(ErrorCode::PermissionDenied),
+                validate_query_problem_stage_for_code(ErrorCode::InvalidArgument),
             ],
             [
                 ErrorStage::Auth,

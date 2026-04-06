@@ -36,7 +36,8 @@ impl ApiFailure {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ApiProblem {
-    pub(crate) status: StatusCode,
+    pub(crate) connect_code: Option<ErrorCode>,
+    pub(crate) status: Option<StatusCode>,
     pub(crate) title: Option<String>,
     pub(crate) detail: Option<String>,
     pub(crate) code: Option<String>,
@@ -47,6 +48,19 @@ pub(crate) struct ApiProblem {
     pub(crate) request_id: Option<String>,
     pub(crate) validation_issues: Vec<ApiValidationIssue>,
     pub(crate) raw_body: String,
+}
+
+impl ApiProblem {
+    pub(crate) fn is_auth_error(&self) -> bool {
+        match self.connect_code {
+            Some(ErrorCode::Unauthenticated | ErrorCode::PermissionDenied) => true,
+            Some(_) => false,
+            None => matches!(
+                self.status,
+                Some(StatusCode::UNAUTHORIZED) | Some(StatusCode::FORBIDDEN)
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -80,7 +94,7 @@ pub(crate) struct DecodeFailure {
 #[derive(Clone, Copy)]
 pub(crate) enum ProblemStageFallback {
     Fixed(ErrorStage),
-    FromStatus(fn(StatusCode) -> ErrorStage),
+    FromConnectCode(fn(ErrorCode) -> ErrorStage),
 }
 
 #[derive(Clone, Copy)]
@@ -95,24 +109,25 @@ impl ResponseFailureStages {
         }
     }
 
-    pub(crate) const fn from_status(problem_stage: fn(StatusCode) -> ErrorStage) -> Self {
+    pub(crate) const fn from_connect_code(problem_stage: fn(ErrorCode) -> ErrorStage) -> Self {
         Self {
-            problem_stage: ProblemStageFallback::FromStatus(problem_stage),
+            problem_stage: ProblemStageFallback::FromConnectCode(problem_stage),
         }
     }
 
-    fn resolve_problem_stage(self, status: StatusCode) -> ErrorStage {
+    fn resolve_problem_stage(self, code: ErrorCode) -> ErrorStage {
         match self.problem_stage {
             ProblemStageFallback::Fixed(stage) => stage,
-            ProblemStageFallback::FromStatus(resolve_stage) => resolve_stage(status),
+            ProblemStageFallback::FromConnectCode(resolve_stage) => resolve_stage(code),
         }
     }
 }
 
 pub(crate) fn conversion_failure(stage: ErrorStage, message: impl Into<String>) -> ApiFailure {
     ApiFailure::Problem(ApiProblem {
-        status: StatusCode::UNPROCESSABLE_ENTITY,
-        title: Some("Invalid request".to_owned()),
+        connect_code: Some(ErrorCode::InvalidArgument),
+        status: None,
+        title: None,
         detail: Some(message.into()),
         code: Some("invalid_request".to_owned()),
         retryable: false,
@@ -141,25 +156,24 @@ pub(crate) fn failure_from_connect(
     error: ConnectError,
     stages: ResponseFailureStages,
 ) -> ApiFailure {
-    let status = error.code.http_status();
     let response_headers = &error.response_headers;
     let trailers = &error.trailers;
     let detail = non_empty(error.message);
-    let raw_body = detail.clone().unwrap_or_default();
 
     ApiFailure::Problem(ApiProblem {
-        status,
-        title: Some(connect_title(error.code)),
+        connect_code: Some(error.code),
+        status: None,
+        title: None,
         detail,
         code: Some(error.code.as_str().to_owned()),
         retryable: connect_retryable(error.code),
         retry_after_ms: response_retry_after_ms(response_headers)
             .or_else(|| response_retry_after_ms(trailers)),
-        stage: stages.resolve_problem_stage(status),
+        stage: stages.resolve_problem_stage(error.code),
         hint: None,
         request_id: response_request_id(response_headers).or_else(|| response_request_id(trailers)),
         validation_issues: Vec::new(),
-        raw_body,
+        raw_body: String::new(),
     })
 }
 
@@ -227,7 +241,7 @@ fn connect_retryable(code: ErrorCode) -> bool {
     )
 }
 
-fn connect_title(code: ErrorCode) -> String {
+pub(crate) fn connect_title(code: ErrorCode) -> String {
     match code {
         ErrorCode::InvalidArgument => "Invalid request".to_owned(),
         ErrorCode::Unauthenticated => "Not authenticated".to_owned(),
@@ -249,7 +263,6 @@ mod tests {
     use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
 
     use super::ApiFailure;
     use super::ApiProblem;
@@ -288,8 +301,9 @@ mod tests {
         assert_eq!(
             failure_from_connect(error, ResponseFailureStages::fixed(ErrorStage::Auth)),
             ApiFailure::Problem(ApiProblem {
-                status: StatusCode::TOO_MANY_REQUESTS,
-                title: Some("Rate limited".to_owned()),
+                connect_code: Some(ErrorCode::ResourceExhausted),
+                status: None,
+                title: None,
                 detail: Some("polling is rate limited".to_owned()),
                 code: Some("resource_exhausted".to_owned()),
                 retryable: true,
@@ -298,7 +312,7 @@ mod tests {
                 hint: None,
                 request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: "polling is rate limited".to_owned(),
+                raw_body: String::new(),
             })
         );
     }

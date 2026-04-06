@@ -1,3 +1,4 @@
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -99,7 +100,7 @@ async fn fetch_source_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(list_sources_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(list_sources_problem_stage_for_code),
             ));
         }
     };
@@ -150,7 +151,7 @@ pub(crate) async fn get_source_by_key_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(get_source_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(get_source_problem_stage_for_code),
             ));
         }
     };
@@ -164,10 +165,10 @@ pub(crate) async fn get_source_by_key_with_controls(
     })
 }
 
-fn list_sources_problem_stage_for_status(status: reqwest::StatusCode) -> ErrorStage {
+fn list_sources_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     if matches!(
-        status,
-        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
     ) {
         ErrorStage::Auth
     } else {
@@ -175,10 +176,10 @@ fn list_sources_problem_stage_for_status(status: reqwest::StatusCode) -> ErrorSt
     }
 }
 
-fn get_source_problem_stage_for_status(status: reqwest::StatusCode) -> ErrorStage {
+fn get_source_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     if matches!(
-        status,
-        reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
     ) {
         ErrorStage::Auth
     } else {
@@ -216,26 +217,26 @@ fn non_empty_option(value: Option<String>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use connectrpc::ErrorCode;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
     use serde_json::json;
 
     use crate::transport::read_controls::PageInfo;
 
     use super::SourceListPayload;
     use super::SourceSummary;
-    use super::get_source_problem_stage_for_status;
-    use super::list_sources_problem_stage_for_status;
+    use super::get_source_problem_stage_for_code;
+    use super::list_sources_problem_stage_for_code;
     use onequery_cli_core::error::ErrorStage;
 
     #[test]
     fn source_problem_stage_mappings_preserve_auth_failures() {
         assert_eq!(
             [
-                list_sources_problem_stage_for_status(StatusCode::UNAUTHORIZED),
-                list_sources_problem_stage_for_status(StatusCode::BAD_REQUEST),
-                get_source_problem_stage_for_status(StatusCode::FORBIDDEN),
-                get_source_problem_stage_for_status(StatusCode::NOT_FOUND),
+                list_sources_problem_stage_for_code(ErrorCode::Unauthenticated),
+                list_sources_problem_stage_for_code(ErrorCode::InvalidArgument),
+                get_source_problem_stage_for_code(ErrorCode::PermissionDenied),
+                get_source_problem_stage_for_code(ErrorCode::NotFound),
             ],
             [
                 ErrorStage::Auth,

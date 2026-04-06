@@ -1,5 +1,3 @@
-use reqwest::StatusCode;
-
 use crate::transport::http::ApiFailure;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -26,14 +24,7 @@ pub(crate) enum RetryTransition {
 
 pub(crate) fn classify_retry_directive(failure: &ApiFailure) -> RetryDirective {
     match failure {
-        ApiFailure::Problem(problem)
-            if matches!(
-                problem.status,
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
-            ) =>
-        {
-            RetryDirective::NeedsReauth
-        }
+        ApiFailure::Problem(problem) if problem.is_auth_error() => RetryDirective::NeedsReauth,
         _ if failure.is_retryable() => RetryDirective::RetryAllowed,
         _ => RetryDirective::RetryNotAllowed,
     }
@@ -62,9 +53,9 @@ pub(crate) fn plan_retry_transition(
 
 #[cfg(test)]
 mod tests {
+    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
 
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
@@ -79,7 +70,8 @@ mod tests {
     #[test]
     fn unauthorized_failures_require_reauth_even_if_they_are_not_retryable() {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
-            status: StatusCode::UNAUTHORIZED,
+            connect_code: Some(ErrorCode::Unauthenticated),
+            status: None,
             title: None,
             detail: None,
             code: None,

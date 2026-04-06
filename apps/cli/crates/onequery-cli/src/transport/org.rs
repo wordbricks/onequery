@@ -1,6 +1,6 @@
 use buffa::EnumValue;
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
-use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -61,7 +61,7 @@ pub(crate) async fn get_org_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(get_org_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(get_org_problem_stage_for_code),
             ));
         }
     };
@@ -124,7 +124,7 @@ async fn fetch_org_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(list_org_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(list_org_problem_stage_for_code),
             ));
         }
     };
@@ -151,16 +151,22 @@ async fn fetch_org_page(
     })
 }
 
-fn get_org_problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+fn get_org_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
         ErrorStage::Auth
     } else {
         ErrorStage::ResolveOrg
     }
 }
 
-fn list_org_problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+fn list_org_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
         ErrorStage::Auth
     } else {
         ErrorStage::Http
@@ -219,17 +225,17 @@ fn non_empty(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
 
     use crate::transport::read_controls::PageInfo;
 
     use super::OrgDetails;
     use super::OrgListPayload;
     use super::OrgSummary;
-    use super::get_org_problem_stage_for_status;
-    use super::list_org_problem_stage_for_status;
+    use super::get_org_problem_stage_for_code;
+    use super::list_org_problem_stage_for_code;
     use super::org_details_from_generated;
     use super::org_summary_from_generated;
     use super::types;
@@ -238,10 +244,10 @@ mod tests {
     fn org_problem_stage_mappings_preserve_auth_failures() {
         assert_eq!(
             [
-                list_org_problem_stage_for_status(StatusCode::UNAUTHORIZED),
-                list_org_problem_stage_for_status(StatusCode::BAD_REQUEST),
-                get_org_problem_stage_for_status(StatusCode::FORBIDDEN),
-                get_org_problem_stage_for_status(StatusCode::NOT_FOUND),
+                list_org_problem_stage_for_code(ErrorCode::Unauthenticated),
+                list_org_problem_stage_for_code(ErrorCode::InvalidArgument),
+                get_org_problem_stage_for_code(ErrorCode::PermissionDenied),
+                get_org_problem_stage_for_code(ErrorCode::NotFound),
             ],
             [
                 ErrorStage::Auth,

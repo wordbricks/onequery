@@ -517,17 +517,17 @@ migration.
 
 ### Checklist
 
-- [ ] Remove `progenitor` and `progenitor-client` dependencies from Cargo manifests.
-- [ ] Add `connectrpc-build` as a build dependency.
-- [ ] Add `connectrpc` as a runtime dependency with the needed features.
-- [ ] Point `build.rs` at the new `proto/` definitions.
-- [ ] Replace `src/transport/generated.rs` include path with Connect-generated output.
-- [ ] Rewrite `src/transport/client.rs` around the Connect client.
-- [ ] Preserve auth token and timeout behavior in the wrapper.
+- [x] Remove `progenitor` and `progenitor-client` dependencies from Cargo manifests.
+- [x] Add `connectrpc-build` as a build dependency.
+- [x] Add `connectrpc` as a runtime dependency with the needed features.
+- [x] Point `build.rs` at the new `proto/` definitions.
+- [x] Replace `src/transport/generated.rs` include path with Connect-generated output.
+- [x] Rewrite `src/transport/client.rs` around the Connect client.
+- [x] Preserve auth token and timeout behavior in the wrapper.
 - [ ] Rewrite transport modules (`auth`, `org`, `source`, `query`, `use_cmd`) to call Connect RPCs.
-- [ ] Replace HTTP status/problem parsing with direct `ConnectError` mapping.
-- [ ] Map `ConnectError.code` first, then metadata only where the CLI actually needs it.
-- [ ] Do not depend on typed error details in the first cutover.
+- [x] Replace HTTP status/problem parsing with direct `ConnectError` mapping.
+- [x] Map `ConnectError.code` first, then metadata only where the CLI actually needs it.
+- [x] Do not depend on typed error details in the first cutover.
 - [x] Stop storing RFC 9457 problem types in the shared CLI error model and presentation layer.
 - [x] Remove the checked-in OpenAPI contract assertion test from `transport/mod.rs`.
 
@@ -637,7 +637,7 @@ The migration is complete when all of the following are true:
 
 - [x] There is no OpenAPI JSON artifact used as transport source of truth anywhere in the repo.
 - [x] `orval` is no longer used for the CLI API.
-- [ ] `progenitor` is no longer used by the Rust CLI.
+- [x] `progenitor` is no longer used by the Rust CLI.
 - [ ] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [ ] The Rust CLI talks to the server via `connect-rust`.
 - [ ] TanStack/web consumers use `connect-query-es` against the same proto-based API.
@@ -647,8 +647,8 @@ The migration is complete when all of the following are true:
 - [x] OpenAPI-derived command-schema code is removed or intentionally replaced.
 - [x] CI no longer regenerates or checks OpenAPI artifacts.
 - [x] CI validates the protobuf contract and generated code path.
-- [ ] There is no generic Problem Details compatibility shim in the new transport.
-- [ ] The initial transport cutover relies on Connect `code`/`message`/metadata without a custom typed error-detail layer.
+- [x] There is no generic Problem Details compatibility shim in the new transport.
+- [x] The initial transport cutover relies on Connect `code`/`message`/metadata without a custom typed error-detail layer.
 
 ---
 

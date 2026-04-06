@@ -176,10 +176,15 @@ pub(crate) async fn refresh_session(
 fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
-    let payload = match problem.code.as_deref() {
-        Some("permission_denied") => LoginPollOutcome::Denied,
-        Some("failed_precondition") => LoginPollOutcome::Expired,
-        _ => return Err(ApiFailure::Problem(problem)),
+    let payload = match problem.connect_code {
+        Some(connectrpc::ErrorCode::PermissionDenied) => LoginPollOutcome::Denied,
+        Some(connectrpc::ErrorCode::FailedPrecondition) => LoginPollOutcome::Expired,
+        Some(_) => return Err(ApiFailure::Problem(problem)),
+        None => match problem.code.as_deref() {
+            Some("permission_denied") => LoginPollOutcome::Denied,
+            Some("failed_precondition") => LoginPollOutcome::Expired,
+            _ => return Err(ApiFailure::Problem(problem)),
+        },
     };
 
     Ok(ApiSuccess {
@@ -419,13 +424,11 @@ fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>)
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
-    use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
-
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
     use crate::transport::http::ApiSuccess;
+    use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
 
     use super::LoginPollOutcome;
     use super::LoginSession;
@@ -551,7 +554,8 @@ mod tests {
     #[test]
     fn interpret_login_poll_problem_maps_connect_codes_to_terminal_outcomes() {
         let denied = interpret_login_poll_problem(ApiProblem {
-            status: StatusCode::FORBIDDEN,
+            connect_code: Some(connectrpc::ErrorCode::PermissionDenied),
+            status: None,
             title: Some("Forbidden".to_owned()),
             detail: Some("device authorization was denied".to_owned()),
             code: Some("permission_denied".to_owned()),
@@ -565,7 +569,8 @@ mod tests {
         })
         .expect("expected denied outcome");
         let expired = interpret_login_poll_problem(ApiProblem {
-            status: StatusCode::BAD_REQUEST,
+            connect_code: Some(connectrpc::ErrorCode::FailedPrecondition),
+            status: None,
             title: Some("Failed precondition".to_owned()),
             detail: Some("device authorization session expired".to_owned()),
             code: Some("failed_precondition".to_owned()),
@@ -667,7 +672,8 @@ mod tests {
     #[test]
     fn interpret_login_poll_problem_preserves_retryable_connect_failures() {
         let failure = interpret_login_poll_problem(ApiProblem {
-            status: StatusCode::TOO_MANY_REQUESTS,
+            connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
+            status: None,
             title: Some("Rate limited".to_owned()),
             detail: Some("polling is temporarily rate limited".to_owned()),
             code: Some("resource_exhausted".to_owned()),
@@ -684,7 +690,8 @@ mod tests {
         assert_eq!(
             failure,
             ApiFailure::Problem(ApiProblem {
-                status: StatusCode::TOO_MANY_REQUESTS,
+                connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
+                status: None,
                 title: Some("Rate limited".to_owned()),
                 detail: Some("polling is temporarily rate limited".to_owned()),
                 code: Some("resource_exhausted".to_owned()),

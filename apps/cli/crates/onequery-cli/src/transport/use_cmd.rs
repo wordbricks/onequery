@@ -1,3 +1,4 @@
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -59,7 +60,7 @@ pub(crate) async fn load_use_skill<State>(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(use_problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(use_problem_stage_for_code),
             ));
         }
     };
@@ -155,7 +156,8 @@ pub(crate) async fn execute_use_input(
     };
 
     Err(ApiFailure::Problem(ApiProblem {
-        status,
+        connect_code: None,
+        status: Some(status),
         title: Some("Use Execution Failed".to_owned()),
         detail,
         code: None,
@@ -169,8 +171,11 @@ pub(crate) async fn execute_use_input(
     }))
 }
 
-fn use_problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+fn use_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
         ErrorStage::Auth
     } else {
         ErrorStage::ResolveSource

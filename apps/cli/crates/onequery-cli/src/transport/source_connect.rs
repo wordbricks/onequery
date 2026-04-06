@@ -1,7 +1,7 @@
 use buffa::MessageField;
 use buffa_types::google::protobuf::Struct as ProtoStruct;
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
-use reqwest::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Map;
@@ -108,7 +108,7 @@ pub(crate) async fn load_source_connect_guide(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(problem_stage_for_code),
             ));
         }
     };
@@ -176,7 +176,7 @@ pub(crate) async fn connect_source(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_status(problem_stage_for_status),
+                ResponseFailureStages::from_connect_code(problem_stage_for_code),
             ));
         }
     };
@@ -190,10 +190,10 @@ pub(crate) async fn connect_source(
     })
 }
 
-fn problem_stage_for_status(status: StatusCode) -> ErrorStage {
-    match status {
-        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => ErrorStage::Auth,
-        StatusCode::NOT_FOUND => ErrorStage::ResolveOrg,
+fn problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    match code {
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied => ErrorStage::Auth,
+        ErrorCode::NotFound => ErrorStage::ResolveOrg,
         _ => ErrorStage::ResolveSource,
     }
 }
