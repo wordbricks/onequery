@@ -25,11 +25,7 @@ expression: rendered
     "query_execution_timed_out",
     "invalid_request"
   ],
-  "http": {
-    "method": "POST",
-    "operationId": "cliQueryExecute",
-    "path": "/organizations/{orgSlug}/sources/{sourceKey}/queries:execute"
-  },
+  "http": null,
   "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -214,7 +210,7 @@ expression: rendered
     504
   ],
   "sanitizationProfile": "default-v1",
-  "schemaSource": "http-route",
+  "schemaSource": "command-registry",
   "selectorSchema": {
     "additionalProperties": false,
     "properties": {

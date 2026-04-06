@@ -564,11 +564,11 @@ metadata model inside protobuf custom options.
 ### Checklist
 
 - [x] Remove `SchemaSubcommand::Openapi` and related command wiring.
-- [ ] Remove embedded `cli.openapi.json` include in `commands/schema/mod.rs`.
-- [ ] Delete `commands/schema/openapi.rs`.
-- [ ] Keep or replace `schema commands` with a dedicated non-OpenAPI registry.
-- [ ] Update snapshots/tests for command-schema output.
-- [ ] Remove any `x-onequery-*` assumptions from the transport migration path.
+- [x] Remove embedded `cli.openapi.json` include in `commands/schema/mod.rs`.
+- [x] Delete `commands/schema/openapi.rs`.
+- [x] Keep or replace `schema commands` with a dedicated non-OpenAPI registry.
+- [x] Update snapshots/tests for command-schema output.
+- [x] Remove any `x-onequery-*` assumptions from the transport migration path.
 
 ---
 

@@ -1,0 +1,1098 @@
+[
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": false
+    },
+    "command": "auth session refresh",
+    "errorCodes": ["not_logged_in"],
+    "http": null,
+    "inputSchema": null,
+    "kind": "mutate",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "accessToken": { "minLength": 1, "type": "string" },
+        "activeOrgSlug": { "minLength": 1, "nullable": true, "type": "string" },
+        "authMode": {
+          "enum": ["browser_session", "bearer_token"],
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "nullable": true,
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "type": "string"
+        },
+        "issuedAt": {
+          "format": "date-time",
+          "nullable": true,
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "type": "string"
+        },
+        "user": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": { "type": "string" },
+            "email": {
+              "format": "email",
+              "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+              "type": "string"
+            },
+            "id": { "type": "string" }
+          },
+          "required": ["id", "email", "displayName"],
+          "type": "object"
+        }
+      },
+      "required": [
+        "accessToken",
+        "authMode",
+        "user",
+        "activeOrgSlug",
+        "issuedAt",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": {
+        "support": "unsupported",
+        "unsupportedReason": "not_available"
+      },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": null,
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "summary": "Validate the current CLI bearer session and return the currently valid bearer token plus session metadata.",
+    "supportsDryRun": false,
+    "supportsFields": false,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": false
+    },
+    "command": "auth whoami",
+    "errorCodes": ["not_logged_in"],
+    "http": null,
+    "inputSchema": null,
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "activeOrgSlug": { "minLength": 1, "nullable": true, "type": "string" },
+        "authMode": {
+          "enum": ["browser_session", "bearer_token"],
+          "type": "string"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "nullable": true,
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "type": "string"
+        },
+        "issuedAt": {
+          "format": "date-time",
+          "nullable": true,
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+          "type": "string"
+        },
+        "user": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": { "type": "string" },
+            "email": {
+              "format": "email",
+              "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+              "type": "string"
+            },
+            "id": { "type": "string" }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": null,
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": { "fields": { "minLength": 1, "type": "string" } },
+      "required": [],
+      "type": "object"
+    },
+    "summary": "Return the current authenticated principal and active org context for the CLI surface.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "org get",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "invalid_request"
+    ],
+    "http": null,
+    "inputSchema": null,
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "enum": [
+              "org.list",
+              "org.read",
+              "source.connect",
+              "source.list",
+              "source.read",
+              "query.execute"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "name": { "minLength": 1, "type": "string" },
+        "roles": {
+          "items": { "minLength": 1, "type": "string" },
+          "type": "array"
+        },
+        "slug": { "minLength": 1, "type": "string" }
+      },
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": { "minLength": 1, "type": "string" },
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug"],
+      "type": "object"
+    },
+    "summary": "Show one organization visible to the caller, including normalized org roles and current CLI capabilities.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": false
+    },
+    "command": "org list",
+    "errorCodes": ["not_logged_in"],
+    "http": null,
+    "inputSchema": null,
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "organizations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": { "minLength": 1, "type": "string" },
+              "slug": { "minLength": 1, "type": "string" }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["organizations"],
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": { "support": "supported", "unsupportedReason": null },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": { "support": "supported", "unsupportedReason": null },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": null,
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "minLength": 1, "type": "string" },
+        "fields": { "minLength": 1, "type": "string" },
+        "limit": { "maximum": 100, "minimum": 1, "type": "integer" }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "summary": "List organizations where the authenticated caller is a member.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": true,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "query execute",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "source_not_found",
+      "source_not_queryable",
+      "query_rejected",
+      "query_preparation_failed",
+      "query_execution_failed",
+      "query_execution_unavailable",
+      "query_execution_timed_out",
+      "invalid_request"
+    ],
+    "http": null,
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cellMaxChars": { "maximum": 8000, "minimum": 1, "type": "integer" },
+        "maxBytes": { "maximum": 4194304, "minimum": 1, "type": "integer" },
+        "maxRows": { "maximum": 1000, "minimum": 1, "type": "integer" },
+        "parameters": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": ["string", "number", "boolean", "null"],
+                "type": "string"
+              },
+              "value": {
+                "description": "Positional parameter value encoded as a string.",
+                "nullable": true,
+                "type": "string"
+              }
+            },
+            "required": ["type", "value"],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sql": { "minLength": 1, "type": "string" },
+        "timeoutMs": { "maximum": 120000, "minimum": 1, "type": "integer" }
+      },
+      "required": ["sql"],
+      "type": "object"
+    },
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "logicalType": {
+                "enum": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "bigint",
+                  "datetime",
+                  "array",
+                  "json"
+                ],
+                "nullable": true,
+                "type": "string"
+              },
+              "name": { "minLength": 1, "type": "string" }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "elapsedMs": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rowCount": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rows": {
+          "items": { "items": { "type": "string" }, "type": "array" },
+          "type": "array"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": {
+              "minLength": 1,
+              "nullable": true,
+              "type": "string"
+            },
+            "name": { "minLength": 1, "type": "string" },
+            "provider": {
+              "enum": [
+                "postgres",
+                "supabase",
+                "mysql",
+                "mongodb",
+                "bigquery",
+                "laminar",
+                "aws_athena_connector",
+                "ga",
+                "amplitude",
+                "mixpanel",
+                "posthog",
+                "sentry",
+                "github",
+                "linear"
+              ],
+              "type": "string"
+            },
+            "queryable": { "type": "boolean" },
+            "status": {
+              "enum": ["active", "error", "disconnected"],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "truncated": { "type": "boolean" }
+      },
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": { "support": "supported", "unsupportedReason": null },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": { "support": "supported", "unsupportedReason": null },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [503, 504],
+    "sanitizationProfile": "default-v1",
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "minLength": 1, "type": "string" },
+        "fields": { "minLength": 1, "type": "string" },
+        "limit": { "maximum": 100, "minimum": 1, "type": "integer" },
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "sourceKey": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$",
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug", "sourceKey"],
+      "type": "object"
+    },
+    "summary": "Execute a read-only SQL query for the requested source in the requested org. Any org member can execute queries on the standard CLI surface.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": true,
+    "supportsRawInput": true,
+    "untrustedResponsePaths": ["$.data.columns[*].name", "$.data.rows[*][*]"]
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "query validate",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "source_not_found",
+      "source_not_queryable",
+      "query_rejected",
+      "invalid_request"
+    ],
+    "http": null,
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cellMaxChars": { "maximum": 8000, "minimum": 1, "type": "integer" },
+        "maxBytes": { "maximum": 4194304, "minimum": 1, "type": "integer" },
+        "maxRows": { "maximum": 1000, "minimum": 1, "type": "integer" },
+        "parameters": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "enum": ["string", "number", "boolean", "null"],
+                "type": "string"
+              },
+              "value": {
+                "description": "Positional parameter value encoded as a string.",
+                "nullable": true,
+                "type": "string"
+              }
+            },
+            "required": ["type", "value"],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sql": { "minLength": 1, "type": "string" },
+        "timeoutMs": { "maximum": 120000, "minimum": 1, "type": "integer" }
+      },
+      "required": ["sql"],
+      "type": "object"
+    },
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "declaredResultWindow": {
+          "additionalProperties": false,
+          "properties": {
+            "cellMaxChars": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxBytes": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxRows": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "timeoutMs": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "normalizedSql": { "minLength": 1, "type": "string" },
+        "request": {
+          "additionalProperties": false,
+          "properties": {
+            "cellMaxChars": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxBytes": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxRows": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "parameters": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "enum": ["string", "number", "boolean", "null"],
+                    "type": "string"
+                  },
+                  "value": {
+                    "description": "Positional parameter value encoded as a string.",
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "value"],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "sql": { "minLength": 1, "type": "string" },
+            "timeoutMs": {
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": {
+              "minLength": 1,
+              "nullable": true,
+              "type": "string"
+            },
+            "name": { "minLength": 1, "type": "string" },
+            "provider": {
+              "enum": [
+                "postgres",
+                "supabase",
+                "mysql",
+                "mongodb",
+                "bigquery",
+                "laminar",
+                "aws_athena_connector",
+                "ga",
+                "amplitude",
+                "mixpanel",
+                "posthog",
+                "sentry",
+                "github",
+                "linear"
+              ],
+              "type": "string"
+            },
+            "queryable": { "type": "boolean" },
+            "status": {
+              "enum": ["active", "error", "disconnected"],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "truncated": { "type": "boolean" }
+      },
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": { "minLength": 1, "type": "string" },
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "sourceKey": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$",
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug", "sourceKey"],
+      "type": "object"
+    },
+    "summary": "Validate a read-only SQL query for the requested source and return the canonicalized request plus planned limits.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": true,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "source connect",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "invalid_request",
+      "source_name_conflict"
+    ],
+    "http": null,
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "credentials": { "additionalProperties": true, "type": "object" },
+        "name": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$",
+          "type": "string"
+        }
+      },
+      "required": ["name", "credentials"],
+      "type": "object"
+    },
+    "kind": "mutate",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "nextCommand": { "minLength": 1, "type": "string" },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": {
+              "minLength": 1,
+              "nullable": true,
+              "type": "string"
+            },
+            "name": { "minLength": 1, "type": "string" },
+            "provider": {
+              "enum": [
+                "postgres",
+                "supabase",
+                "mysql",
+                "mongodb",
+                "bigquery",
+                "laminar",
+                "aws_athena_connector",
+                "ga",
+                "amplitude",
+                "mixpanel",
+                "posthog",
+                "sentry",
+                "github",
+                "linear"
+              ],
+              "type": "string"
+            },
+            "queryable": { "type": "boolean" },
+            "status": {
+              "enum": ["active", "error", "disconnected"],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": ["source", "nextCommand"],
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": {
+        "support": "unsupported",
+        "unsupportedReason": "not_available"
+      },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "postgres",
+            "supabase",
+            "mysql",
+            "mongodb",
+            "bigquery",
+            "laminar",
+            "aws_athena_connector",
+            "ga",
+            "amplitude",
+            "mixpanel",
+            "posthog",
+            "sentry",
+            "github",
+            "linear"
+          ],
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug", "source"],
+      "type": "object"
+    },
+    "summary": "Create one new org-scoped source connection for the selected provider from a JSON payload. The CLI injects org context from the selected org rather than taking it from `--input`.",
+    "supportsDryRun": false,
+    "supportsFields": false,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": true,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "source list",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "invalid_request"
+    ],
+    "http": null,
+    "inputSchema": null,
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "displayName": {
+                "minLength": 1,
+                "nullable": true,
+                "type": "string"
+              },
+              "name": { "minLength": 1, "type": "string" },
+              "provider": {
+                "enum": [
+                  "postgres",
+                  "supabase",
+                  "mysql",
+                  "mongodb",
+                  "bigquery",
+                  "laminar",
+                  "aws_athena_connector",
+                  "ga",
+                  "amplitude",
+                  "mixpanel",
+                  "posthog",
+                  "sentry",
+                  "github",
+                  "linear"
+                ],
+                "type": "string"
+              },
+              "queryable": { "type": "boolean" },
+              "status": {
+                "enum": ["active", "error", "disconnected"],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["sources"],
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": { "support": "supported", "unsupportedReason": null },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": { "support": "supported", "unsupportedReason": null },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "minLength": 1, "type": "string" },
+        "fields": { "minLength": 1, "type": "string" },
+        "limit": { "maximum": 100, "minimum": 1, "type": "integer" },
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug"],
+      "type": "object"
+    },
+    "summary": "List source metadata for the requested org. Any org member can read source metadata on the standard CLI surface.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": true,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": true,
+      "modes": ["session_cookie", "bearer_token"],
+      "orgScoped": true
+    },
+    "command": "source show",
+    "errorCodes": [
+      "not_logged_in",
+      "forbidden",
+      "org_not_found",
+      "source_not_found",
+      "invalid_request"
+    ],
+    "http": null,
+    "inputSchema": null,
+    "kind": "read",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "displayName": { "minLength": 1, "nullable": true, "type": "string" },
+        "name": { "minLength": 1, "type": "string" },
+        "provider": {
+          "enum": [
+            "postgres",
+            "supabase",
+            "mysql",
+            "mongodb",
+            "bigquery",
+            "laminar",
+            "aws_athena_connector",
+            "ga",
+            "amplitude",
+            "mixpanel",
+            "posthog",
+            "sentry",
+            "github",
+            "linear"
+          ],
+          "type": "string"
+        },
+        "queryable": { "type": "boolean" },
+        "status": {
+          "enum": ["active", "error", "disconnected"],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": { "support": "supported", "unsupportedReason": null },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": "member",
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": { "minLength": 1, "type": "string" },
+        "orgSlug": {
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "sourceKey": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$",
+          "type": "string"
+        }
+      },
+      "required": ["orgSlug", "sourceKey"],
+      "type": "object"
+    },
+    "summary": "Show one source in the requested org. Any org member can read source metadata on the standard CLI surface.",
+    "supportsDryRun": false,
+    "supportsFields": true,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  },
+  {
+    "authRequirements": {
+      "authenticated": false,
+      "modes": ["none"],
+      "orgScoped": false
+    },
+    "command": "use",
+    "errorCodes": ["invalid_request"],
+    "http": null,
+    "inputSchema": null,
+    "kind": "discovery",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "content": { "minLength": 1, "type": "string" },
+        "description": { "minLength": 1, "type": "string" },
+        "format": { "enum": ["markdown"], "type": "string" },
+        "source": {
+          "enum": [
+            "amplitude",
+            "ga",
+            "github",
+            "mixpanel",
+            "mongodb",
+            "posthog",
+            "sentry"
+          ],
+          "type": "string"
+        },
+        "title": { "minLength": 1, "type": "string" }
+      },
+      "required": ["source", "title", "description", "format", "content"],
+      "type": "object"
+    },
+    "readControls": {
+      "cursor": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "fields": {
+        "support": "unsupported",
+        "unsupportedReason": "not_available"
+      },
+      "limit": {
+        "support": "unsupported",
+        "unsupportedReason": "not_paginated"
+      },
+      "sort": { "support": "unsupported", "unsupportedReason": "not_sortable" }
+    },
+    "requiredOrgRole": null,
+    "retryableStatuses": [],
+    "sanitizationProfile": null,
+    "schemaSource": "command-registry",
+    "selectorSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "amplitude",
+            "ga",
+            "github",
+            "mixpanel",
+            "mongodb",
+            "posthog",
+            "sentry"
+          ],
+          "type": "string"
+        }
+      },
+      "required": ["source"],
+      "type": "object"
+    },
+    "summary": "Return provider-specific skill content for non-SQL OneQuery sources so agents can use the correct relay surface instead of SQL query execution.",
+    "supportsDryRun": false,
+    "supportsFields": false,
+    "supportsHeadlessAuth": true,
+    "supportsOutputModes": ["text", "json"],
+    "supportsPagination": false,
+    "supportsRawInput": false,
+    "untrustedResponsePaths": []
+  }
+]

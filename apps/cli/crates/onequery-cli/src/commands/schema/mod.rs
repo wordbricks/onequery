@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-mod openapi;
 mod registry;
 mod skills;
 
@@ -17,14 +16,10 @@ use serde_json::json;
 use crate::cli::SchemaSubcommand;
 use crate::output::CommandOutput;
 
-use self::openapi::derive_public_http_command_schemas;
 use self::registry::local_command_registry;
 use self::skills::embedded_skill_schemas;
 
-const CLI_OPENAPI_JSON: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../../../packages/cli-contract/openapi/generated/cli.openapi.json"
-));
+const TRANSPORT_COMMAND_SCHEMAS_JSON: &str = include_str!("transport-command-schemas.json");
 const ROOT_SKILL_PATH: &str = "apps/cli/docs/skills/SKILL.md";
 const ROOT_SKILL_CONTENT: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -87,7 +82,7 @@ struct ReadControls {
     sort: ReadControl,
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct HttpOperation {
     method: String,
@@ -95,7 +90,7 @@ struct HttpOperation {
     operation_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct CommandSchema {
     command: String,
@@ -177,15 +172,6 @@ impl ReadControls {
             sort: ReadControl::unsupported(UnsupportedReadControlReason::Unsortable),
         }
     }
-
-    pub(super) fn supports_fields(&self) -> bool {
-        self.fields.support == ReadControlSupport::Supported
-    }
-
-    pub(super) fn supports_pagination(&self) -> bool {
-        self.limit.support == ReadControlSupport::Supported
-            || self.cursor.support == ReadControlSupport::Supported
-    }
 }
 
 fn supports_headless_auth(command: &str, auth_requirements: &AuthRequirements) -> bool {
@@ -260,20 +246,19 @@ fn render_json_output(data: Value) -> Result<CommandOutput, CliError> {
     ))
 }
 
-fn openapi_document() -> Result<Value, CliError> {
-    serde_json::from_str(CLI_OPENAPI_JSON).map_err(|parse_error| {
+fn transport_command_schemas() -> Result<Vec<CommandSchema>, CliError> {
+    serde_json::from_str(TRANSPORT_COMMAND_SCHEMAS_JSON).map_err(|parse_error| {
         CliError::new(
-            "failed to load embedded OpenAPI document",
-            "onequery schema openapi".to_owned(),
+            "failed to load embedded transport command registry",
+            "onequery schema commands".to_owned(),
             ErrorStage::Render,
             parse_error.to_string(),
-            vec!["rebuild onequery with a valid checked-in OpenAPI document".to_owned()],
+            vec!["rebuild onequery with a valid checked-in command registry".to_owned()],
         )
     })
 }
 
 fn public_command_schemas() -> Result<Vec<CommandSchema>, CliError> {
-    let spec = openapi_document()?;
     let mut commands = local_command_registry()
         .into_iter()
         .map(|entry| {
@@ -313,7 +298,7 @@ fn public_command_schemas() -> Result<Vec<CommandSchema>, CliError> {
             }
         })
         .collect::<Vec<_>>();
-    commands.extend(derive_public_http_command_schemas(&spec)?);
+    commands.extend(transport_command_schemas()?);
     ensure_unique_public_command_paths(&commands)?;
     commands.sort_by(|left, right| left.command.cmp(&right.command));
     Ok(commands)

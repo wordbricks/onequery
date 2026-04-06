@@ -1,6 +1,5 @@
 ---
 source: crates/onequery-cli/src/commands/schema/tests.rs
-assertion_line: 30
 expression: rendered
 ---
 {
@@ -473,11 +472,7 @@ expression: rendered
       "errorCodes": [
         "not_logged_in"
       ],
-      "http": {
-        "method": "POST",
-        "operationId": "cliSessionRefresh",
-        "path": "/session:refresh"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "mutate",
       "outputSchema": {
@@ -565,7 +560,7 @@ expression: rendered
       "requiredOrgRole": null,
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {},
@@ -597,11 +592,7 @@ expression: rendered
       "errorCodes": [
         "not_logged_in"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliSessionRead",
-        "path": "/session"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "read",
       "outputSchema": {
@@ -672,7 +663,7 @@ expression: rendered
       "requiredOrgRole": null,
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -955,11 +946,7 @@ expression: rendered
         "org_not_found",
         "invalid_request"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliOrgGet",
-        "path": "/organizations/{orgSlug}"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "read",
       "outputSchema": {
@@ -1018,7 +1005,7 @@ expression: rendered
       "requiredOrgRole": "member",
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1062,11 +1049,7 @@ expression: rendered
       "errorCodes": [
         "not_logged_in"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliOrgList",
-        "path": "/organizations"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "read",
       "outputSchema": {
@@ -1116,7 +1099,7 @@ expression: rendered
       "requiredOrgRole": null,
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1270,11 +1253,7 @@ expression: rendered
         "query_execution_timed_out",
         "invalid_request"
       ],
-      "http": {
-        "method": "POST",
-        "operationId": "cliQueryExecute",
-        "path": "/organizations/{orgSlug}/sources/{sourceKey}/queries:execute"
-      },
+      "http": null,
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1459,7 +1438,7 @@ expression: rendered
         504
       ],
       "sanitizationProfile": "default-v1",
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1527,11 +1506,7 @@ expression: rendered
         "query_rejected",
         "invalid_request"
       ],
-      "http": {
-        "method": "POST",
-        "operationId": "cliQueryValidate",
-        "path": "/organizations/{orgSlug}/sources/{sourceKey}/queries:validate"
-      },
+      "http": null,
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1763,7 +1738,7 @@ expression: rendered
       "requiredOrgRole": "member",
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3391,11 +3366,7 @@ expression: rendered
         "invalid_request",
         "source_name_conflict"
       ],
-      "http": {
-        "method": "POST",
-        "operationId": "cliSourceConnect",
-        "path": "/organizations/{orgSlug}/sources:connect"
-      },
+      "http": null,
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3496,7 +3467,7 @@ expression: rendered
       "requiredOrgRole": "member",
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3559,11 +3530,7 @@ expression: rendered
         "org_not_found",
         "invalid_request"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliSourceList",
-        "path": "/organizations/{orgSlug}/sources"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "read",
       "outputSchema": {
@@ -3644,7 +3611,7 @@ expression: rendered
       "requiredOrgRole": "member",
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3701,11 +3668,7 @@ expression: rendered
         "source_not_found",
         "invalid_request"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliSourceShow",
-        "path": "/organizations/{orgSlug}/sources/{sourceKey}"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "read",
       "outputSchema": {
@@ -3774,7 +3737,7 @@ expression: rendered
       "requiredOrgRole": "member",
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {
@@ -3823,11 +3786,7 @@ expression: rendered
       "errorCodes": [
         "invalid_request"
       ],
-      "http": {
-        "method": "GET",
-        "operationId": "cliUse",
-        "path": "/use"
-      },
+      "http": null,
       "inputSchema": null,
       "kind": "discovery",
       "outputSchema": {
@@ -3894,7 +3853,7 @@ expression: rendered
       "requiredOrgRole": null,
       "retryableStatuses": [],
       "sanitizationProfile": null,
-      "schemaSource": "http-route",
+      "schemaSource": "command-registry",
       "selectorSchema": {
         "additionalProperties": false,
         "properties": {

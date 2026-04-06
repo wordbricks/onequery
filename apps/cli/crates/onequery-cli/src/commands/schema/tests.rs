@@ -7,15 +7,12 @@ use crate::cli::SchemaCommandArgs;
 use crate::cli::SchemaSubcommand;
 use crate::commands::with_command_snapshot_path;
 
-use super::CLI_OPENAPI_JSON;
-use super::ReadControls;
 use super::embedded_skill_schemas;
 use super::execute;
-use super::openapi::derive_public_http_command_schemas;
-use super::openapi_document;
 use super::public_command_schemas;
 use super::registry::local_command_registry;
 use super::render_json_output;
+use super::transport_command_schemas;
 
 #[test]
 fn schema_commands_snapshot() {
@@ -23,6 +20,21 @@ fn schema_commands_snapshot() {
         "commands": public_command_schemas().expect("expected command schemas"),
     }))
     .expect("expected schema command output")
+    .lines
+    .join("\n");
+
+    with_command_snapshot_path(|| {
+        assert_snapshot!(rendered);
+    });
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn schema_command_query_execute_snapshot() {
+    let rendered = execute(&SchemaSubcommand::Command(SchemaCommandArgs {
+        path: vec!["query".to_owned(), "execute".to_owned()],
+    }))
+    .await
+    .expect("expected query execute schema command output")
     .lines
     .join("\n");
 
@@ -114,11 +126,8 @@ fn local_discovery_command_schemas_describe_nested_output_shapes() {
 }
 
 #[test]
-fn public_http_command_schemas_only_expose_flagged_operations() {
-    let commands = derive_public_http_command_schemas(
-        &openapi_document().expect("expected embedded OpenAPI document"),
-    )
-    .expect("expected HTTP command schemas");
+fn transport_command_registry_lists_public_remote_commands_only() {
+    let commands = transport_command_schemas().expect("expected transport command schemas");
     let command_paths = commands
         .iter()
         .map(|command| command.command.as_str())
@@ -165,15 +174,6 @@ fn public_command_schemas_expose_headless_auth_capabilities() {
         ),
         (false, true, true, true)
     );
-}
-
-#[test]
-fn schema_openapi_matches_checked_in_document() {
-    let parsed = openapi_document().expect("expected embedded OpenAPI document");
-    let reparsed = serde_json::from_str::<serde_json::Value>(CLI_OPENAPI_JSON)
-        .expect("expected checked-in OpenAPI document to parse");
-
-    assert_eq!(parsed, reparsed);
 }
 
 #[tokio::test(flavor = "current_thread")]
@@ -228,7 +228,7 @@ async fn execute_schema_command_reports_unknown_public_paths() {
 }
 
 #[test]
-fn http_backed_command_schemas_keep_expected_openapi_bindings() {
+fn transport_backed_command_schemas_use_the_local_registry_source() {
     let commands = public_command_schemas().expect("expected command schemas");
     let query_execute = commands
         .iter()
@@ -238,17 +238,14 @@ fn http_backed_command_schemas_keep_expected_openapi_bindings() {
     assert_eq!(
         (
             query_execute.schema_source.as_str(),
-            query_execute.http.as_ref().map(|http| http.path.as_str()),
+            query_execute.http.is_none(),
         ),
-        (
-            "http-route",
-            Some("/organizations/{orgSlug}/sources/{sourceKey}/queries:execute"),
-        )
+        ("command-registry", true)
     );
 }
 
 #[test]
-fn http_backed_command_schemas_expose_openapi_sanitization_profiles() {
+fn transport_command_schemas_expose_sanitization_profiles() {
     let commands = public_command_schemas().expect("expected command schemas");
 
     let mut sanitization_profiles = commands
@@ -276,138 +273,38 @@ fn http_backed_command_schemas_expose_openapi_sanitization_profiles() {
 }
 
 #[test]
-fn http_backed_command_schemas_derive_capability_and_safety_metadata_from_openapi() {
-    let mut spec = openapi_document().expect("expected embedded OpenAPI document");
-    let operation = spec
-        .get_mut("paths")
-        .and_then(serde_json::Value::as_object_mut)
-        .and_then(|paths| {
-            paths.get_mut("/organizations/{orgSlug}/sources/{sourceKey}/queries:execute")
-        })
-        .and_then(serde_json::Value::as_object_mut)
-        .and_then(|path_item| path_item.get_mut("post"))
-        .and_then(serde_json::Value::as_object_mut)
-        .expect("expected query execute operation");
-
-    operation.insert(
-        "x-onequery-command".to_owned(),
-        serde_json::json!("query execute mutated"),
-    );
-    operation.insert("x-onequery-kind".to_owned(), serde_json::json!("mutate"));
-    operation.insert(
-        "x-onequery-read-controls".to_owned(),
-        serde_json::json!({
-            "fields": {
-                "support": "unsupported",
-                "unsupportedReason": "not_available",
-            },
-            "limit": {
-                "support": "unsupported",
-                "unsupportedReason": "not_paginated",
-            },
-            "cursor": {
-                "support": "unsupported",
-                "unsupportedReason": "not_paginated",
-            },
-            "sort": {
-                "support": "unsupported",
-                "unsupportedReason": "not_sortable",
-            },
-        }),
-    );
-    operation.insert(
-        "x-onequery-supports-fields".to_owned(),
-        serde_json::json!(false),
-    );
-    operation.insert(
-        "x-onequery-supports-pagination".to_owned(),
-        serde_json::json!(false),
-    );
-    operation.insert(
-        "x-onequery-supports-dry-run".to_owned(),
-        serde_json::json!(true),
-    );
-    operation.insert(
-        "x-onequery-supports-raw-input".to_owned(),
-        serde_json::json!(false),
-    );
-    operation.insert(
-        "x-onequery-retryable-statuses".to_owned(),
-        serde_json::json!([429, 503]),
-    );
-    operation.insert(
-        "x-onequery-untrusted-response-paths".to_owned(),
-        serde_json::json!(["$.data.items[*].body"]),
-    );
-    operation.insert(
-        "x-onequery-sanitization-profile".to_owned(),
-        serde_json::json!("default-v1"),
-    );
-
-    let schema = derive_public_http_command_schemas(&spec)
-        .expect("expected command schema derivation")
+fn transport_command_schemas_preserve_capability_and_safety_metadata() {
+    let schema = transport_command_schemas()
+        .expect("expected command schema registry")
         .into_iter()
-        .find(|command| {
-            command.http.as_ref().map(|http| http.path.as_str())
-                == Some("/organizations/{orgSlug}/sources/{sourceKey}/queries:execute")
-        })
-        .expect("expected query execute HTTP command schema");
+        .find(|command| command.command == "query execute")
+        .expect("expected query execute command schema");
 
     assert_eq!(
         (
-            schema.command,
             schema.kind,
-            schema.read_controls,
-            schema.supports_fields,
-            schema.supports_pagination,
-            schema.supports_dry_run,
-            schema.supports_raw_input,
-            schema.supports_headless_auth,
+            schema.read_controls.fields.support,
+            schema.read_controls.limit.support,
             schema.retryable_statuses,
             schema.untrusted_response_paths,
             schema.sanitization_profile,
+            schema.supports_raw_input,
+            schema.supports_headless_auth,
+            schema.http,
         ),
         (
-            "query execute mutated".to_owned(),
-            "mutate".to_owned(),
-            ReadControls::unsupported(),
-            false,
-            false,
-            true,
-            false,
-            true,
-            vec![429, 503],
-            vec!["$.data.items[*].body".to_owned()],
+            "read".to_owned(),
+            super::ReadControlSupport::Supported,
+            super::ReadControlSupport::Supported,
+            vec![503, 504],
+            vec![
+                "$.data.columns[*].name".to_owned(),
+                "$.data.rows[*][*]".to_owned(),
+            ],
             Some("default-v1".to_owned()),
+            true,
+            true,
+            None,
         )
-    );
-}
-
-#[test]
-fn missing_http_command_exposure_metadata_fails_derivation() {
-    let mut spec = openapi_document().expect("expected embedded OpenAPI document");
-    let operation = spec
-        .get_mut("paths")
-        .and_then(serde_json::Value::as_object_mut)
-        .and_then(|paths| paths.get_mut("/session"))
-        .and_then(serde_json::Value::as_object_mut)
-        .and_then(|path_item| path_item.get_mut("get"))
-        .and_then(serde_json::Value::as_object_mut)
-        .expect("expected session read operation");
-    operation.remove("x-onequery-expose-command-schema");
-
-    let error = derive_public_http_command_schemas(&spec)
-        .expect_err("expected HTTP command derivation to fail without exposure metadata");
-
-    assert_eq!(
-        (error.title.clone(), error.stage),
-        (
-            "failed to derive HTTP command schema".to_owned(),
-            ErrorStage::Render,
-        )
-    );
-    assert_eq!(
-        error.why,
-        "x-onequery-expose-command-schema is missing from an embedded OpenAPI operation".to_owned()
     );
 }
