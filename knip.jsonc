@@ -47,13 +47,10 @@
       "project": ["src/**/*.ts", "!src/**/*.test.ts"],
     },
     "packages/cli-server": {
-      "project": ["generated/**/*.ts", "src/**/*.ts", "!src/**/*.test.ts"],
+      "project": ["src/**/*.ts", "!src/**/*.test.ts"],
     },
     "packages/server": {
       "project": ["src/**/*.ts", "!src/**/*.test.ts"],
-    },
-    "packages/cli-contract": {
-      "project": ["src/**/*.ts"],
     },
     "packages/ui": {
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"],

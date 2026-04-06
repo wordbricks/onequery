@@ -442,7 +442,7 @@ packages/cli-server/src/connect/gen/**
 - [x] Add TS generation config using Buf + `@bufbuild/protoc-gen-es`.
 - [x] Add a root script such as `proto:generate`.
 - [x] Check generated TS into the repo.
-- [ ] Remove `orval` from the CLI contract path.
+- [x] Remove `orval` from the CLI contract path.
 - [x] Remove `openapi:cli:generate` / `openapi:cli:check` scripts or replace them with proto equivalents.
 
 ---
@@ -601,15 +601,15 @@ Replace OpenAPI-specific checks with protobuf/Connect-specific checks.
 
 ### Checklist
 
-- [ ] Remove OpenAPI generation/check steps from CI.
-- [ ] Add `buf lint` to CI.
-- [ ] Add TS proto generation diff checks.
-- [ ] Ensure Rust build/test covers `connectrpc-build` generation.
-- [ ] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
+- [x] Remove OpenAPI generation/check steps from CI.
+- [x] Add `buf lint` to CI.
+- [x] Add TS proto generation diff checks.
+- [x] Ensure Rust build/test covers `connectrpc-build` generation.
+- [x] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
 - [x] Add `proto/**` and Buf config files to Turbo inputs where needed.
 - [x] Update `apps/cli/justfile` to use proto generation/check commands.
-- [ ] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
-- [ ] Remove or archive `packages/cli-contract/**` once migration is complete.
+- [x] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
+- [x] Remove or archive `packages/cli-contract/**` once migration is complete.
 
 ### Buf breaking checks
 
@@ -637,8 +637,8 @@ These paths should disappear or be fully repurposed by the end:
 
 The migration is complete when all of the following are true:
 
-- [ ] There is no OpenAPI JSON artifact used as transport source of truth anywhere in the repo.
-- [ ] `orval` is no longer used for the CLI API.
+- [x] There is no OpenAPI JSON artifact used as transport source of truth anywhere in the repo.
+- [x] `orval` is no longer used for the CLI API.
 - [ ] `progenitor` is no longer used by the Rust CLI.
 - [ ] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [ ] The Rust CLI talks to the server via `connect-rust`.
@@ -646,9 +646,9 @@ The migration is complete when all of the following are true:
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
 - [ ] Existing auth, org selection, read controls, and query flows still work.
 - [ ] Request IDs are available through metadata/logging instead of a legacy REST envelope.
-- [ ] OpenAPI-derived command-schema code is removed or intentionally replaced.
-- [ ] CI no longer regenerates or checks OpenAPI artifacts.
-- [ ] CI validates the protobuf contract and generated code path.
+- [x] OpenAPI-derived command-schema code is removed or intentionally replaced.
+- [x] CI no longer regenerates or checks OpenAPI artifacts.
+- [x] CI validates the protobuf contract and generated code path.
 - [ ] There is no generic Problem Details compatibility shim in the new transport.
 - [ ] The initial transport cutover relies on Connect `code`/`message`/metadata without a custom typed error-detail layer.
 

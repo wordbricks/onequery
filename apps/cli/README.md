@@ -1,12 +1,12 @@
 # onequery
 
-Rust CLI workspace for `onequery` and the companion CLI API contract.
+Rust CLI workspace for `onequery` and the companion protobuf/Connect contract.
 
 Key references:
 
 - CLI workflow architecture note: `docs/ARCHITECTURE.md`
-- Split OpenAPI source: `../../packages/cli-contract/openapi/source/cli.openapi.yaml`
-- Generated JSON API contract: `../../packages/cli-contract/openapi/generated/cli.openapi.json`
+- Protobuf source of truth: `../../proto/onequery/cli/v1/*.proto`
+- Buf workspace config: `../../buf.yaml`, `../../buf.gen.yaml`
 
 Runtime config:
 
