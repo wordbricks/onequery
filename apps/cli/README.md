@@ -14,6 +14,7 @@ Runtime config:
 - On Unix-like systems, the user config file is `${XDG_CONFIG_HOME:-~/.config}/onequery/config.toml`.
 - On Windows, the user config file is `%APPDATA%\\onequery\\config.toml`.
 - `config.toml` stores `[org].active`, `[api].server_url`, and `[api].request_timeout_sec`.
+- `[api].server_url` must be an absolute `http://` or `https://` app origin such as `http://127.0.0.1:5656`, not an API path like `/api` or `/api/cli`.
 - Runtime config is resolved in this order: built-in defaults -> user config file -> internal typed runtime overrides.
 - `onequery org use <org>` persists `active_org`. Passing `--org <org>` for a command takes precedence over the stored `active_org` value for that invocation.
 - `onequery auth logout` clears both the stored auth session and the stored `active_org`, so later org-scoped commands fail explicitly until a new org is selected.

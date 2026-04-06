@@ -157,12 +157,6 @@ fn build_client<State>(
             base_url: base_url.to_owned(),
             message: url_error.to_string(),
         })?;
-    let normalized_root = normalized_api_root(base_url.path()).to_owned();
-    base_url.set_path(if normalized_root.is_empty() {
-        "/"
-    } else {
-        normalized_root.as_str()
-    });
     base_url.set_query(None);
     base_url.set_fragment(None);
 
@@ -277,28 +271,7 @@ fn default_tls_config() -> Arc<rustls::ClientConfig> {
 }
 
 fn cli_base_url(base_url: &Url) -> String {
-    let mut cli_url = base_url.clone();
-    cli_url.set_path(match normalized_api_root(base_url.path()) {
-        "" => CLI_BASE_PATH,
-        _ => return format!("{}{CLI_BASE_PATH}", base_url.as_str().trim_end_matches('/')),
-    });
-    cli_url.set_query(None);
-    cli_url.set_fragment(None);
-    cli_url.to_string().trim_end_matches('/').to_owned()
-}
-
-fn normalized_api_root(base_path: &str) -> &str {
-    let normalized_base = base_path.trim_end_matches('/');
-
-    if normalized_base.is_empty() || normalized_base == "/" {
-        return "";
-    }
-
-    if let Some(api_root) = normalized_base.strip_suffix(CLI_BASE_PATH) {
-        return api_root;
-    }
-
-    normalized_base
+    format!("{}{CLI_BASE_PATH}", base_url.as_str().trim_end_matches('/'))
 }
 
 #[cfg(test)]
@@ -317,6 +290,7 @@ mod tests {
     use super::ApiClientBuildFailure;
     use super::AuthenticatedApiClient;
     use super::UnauthenticatedApiClient;
+    use super::cli_base_url;
 
     #[tokio::test]
     async fn unauthenticated_client_does_not_attach_authorization_header() {
@@ -403,6 +377,22 @@ mod tests {
             ApiClientBuildFailure::InvalidRequestId {
                 message: "failed to parse header value".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn unauthenticated_client_builds_cli_base_url_from_origin() {
+        let client = UnauthenticatedApiClient::new("http://example.test", 5)
+            .expect("expected unauthenticated client");
+
+        assert_eq!(client.base_url.as_str(), "http://example.test/");
+        assert_eq!(
+            cli_base_url(&client.base_url),
+            "http://example.test/api/cli"
+        );
+        assert_eq!(
+            client.app_url("/api/data-sources/source/query"),
+            "http://example.test/api/data-sources/source/query"
         );
     }
 

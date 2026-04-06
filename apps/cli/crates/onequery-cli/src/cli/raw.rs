@@ -146,9 +146,9 @@ pub(super) enum ConfigSubcommand {
 
 #[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
 pub(super) enum ConfigSetSubcommand {
-    /// Persist the default server URL used by CLI API commands.
+    /// Persist the default app origin used by CLI API commands.
     Server {
-        /// Set this URL as the default CLI target server.
+        /// Set this origin as the default CLI target server, for example http://127.0.0.1:5656.
         #[arg(value_name = "URL")]
         url: String,
     },

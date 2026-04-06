@@ -15,8 +15,6 @@ mod source_connect;
 pub(crate) mod test_support;
 mod use_cmd;
 
-use url::Url;
-
 use crate::cli::Command;
 use crate::cli::Invocation;
 use crate::cli::ListReadArgs;
@@ -24,7 +22,9 @@ use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::config::ConfigStore;
 use crate::config::TypedConfigOverrides;
+use crate::config::config_set_server_command_example;
 use crate::config::default_base_url;
+use crate::config::normalize_server_url;
 use crate::credentials::AuthSessionStore;
 use crate::output::CommandOutput;
 use crate::platform::BrowserLauncher;
@@ -118,23 +118,13 @@ pub(crate) fn resolve_context<B, T>(
         (None, ResolvedOrgSource::None)
     };
 
-    if base_url.trim().is_empty() {
-        return Err(CliError::new(
-            "invalid base URL",
-            invocation.raw_command.clone(),
-            ErrorStage::LoadConfig,
-            "compiled default base URL is empty",
-            vec!["rebuild onequery with a valid default base URL".to_owned()],
-        ));
-    }
-
-    Url::parse(&base_url).map_err(|url_error| {
+    let base_url = normalize_server_url(&base_url).map_err(|failure| {
         CliError::new(
             "invalid base URL",
             invocation.raw_command.clone(),
             ErrorStage::LoadConfig,
-            format!("{url_error}: {base_url}"),
-            vec!["rebuild onequery with a valid default base URL".to_owned()],
+            failure.render("base URL"),
+            vec![config_set_server_command_example()],
         )
     })?;
 
@@ -152,8 +142,8 @@ fn resolved_base_url(config: &ConfigStore) -> String {
     if let Ok(override_value) = std::env::var("ONEQUERY_BASE_URL") {
         let candidate = override_value.trim();
         if !candidate.is_empty() {
-            // Comment: transport path composition normalizes host-only URLs,
-            // proxy-prefixed URLs, and values that already include `/api/cli`.
+            // Comment: base URL resolution stays strict so the transport can pass a
+            // single app origin into Connect without guessing path semantics.
             return candidate.to_owned();
         }
     }

@@ -12,6 +12,8 @@ pub(crate) use onequery_config::ConfigLayerStatus;
 use serde::Deserialize;
 use serde::Serialize;
 use toml::Value as TomlValue;
+use url::Position;
+use url::Url;
 
 use self::layers::ConfigOrigins;
 use self::layers::ConfigValueOrigin;
@@ -34,12 +36,94 @@ use onequery_cli_core::error::ErrorStage;
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum ServerUrlValidationFailure {
+    Empty,
+    InvalidAbsoluteUrl { message: String },
+    MissingHost,
+    UnsupportedScheme { scheme: String },
+    CredentialsNotAllowed,
+    PathNotAllowed { path: String },
+    QueryNotAllowed,
+    FragmentNotAllowed,
+}
+
+impl ServerUrlValidationFailure {
+    pub(crate) fn render(&self, subject: &str) -> String {
+        match self {
+            Self::Empty => format!("{subject} cannot be empty"),
+            Self::InvalidAbsoluteUrl { message } => {
+                format!("{subject} must be a valid absolute URL: {message}")
+            }
+            Self::MissingHost => format!("{subject} must include a hostname"),
+            Self::UnsupportedScheme { .. } => {
+                format!("{subject} must use http:// or https://")
+            }
+            Self::CredentialsNotAllowed => {
+                format!("{subject} must not include embedded credentials")
+            }
+            Self::PathNotAllowed { path } => {
+                format!("{subject} must be an origin without a path; found path `{path}`")
+            }
+            Self::QueryNotAllowed => format!("{subject} must not include a query string"),
+            Self::FragmentNotAllowed => format!("{subject} must not include a URL fragment"),
+        }
+    }
+}
+
 pub(crate) fn default_base_url() -> String {
     default_public_origin()
 }
 
 pub(crate) fn config_set_server_command_example() -> String {
     format!("onequery config set server {}", default_base_url())
+}
+
+pub(crate) fn normalize_server_url(raw_url: &str) -> Result<String, ServerUrlValidationFailure> {
+    let normalized = raw_url.trim();
+    if normalized.is_empty() {
+        return Err(ServerUrlValidationFailure::Empty);
+    }
+
+    let parsed = Url::parse(normalized).map_err(|parse_error| {
+        ServerUrlValidationFailure::InvalidAbsoluteUrl {
+            message: parse_error.to_string(),
+        }
+    })?;
+
+    if parsed.host_str().is_none() {
+        return Err(ServerUrlValidationFailure::MissingHost);
+    }
+
+    match parsed.scheme() {
+        "http" | "https" => {}
+        scheme => {
+            return Err(ServerUrlValidationFailure::UnsupportedScheme {
+                scheme: scheme.to_owned(),
+            });
+        }
+    }
+
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(ServerUrlValidationFailure::CredentialsNotAllowed);
+    }
+
+    let path = parsed.path();
+    if !path.is_empty() && path != "/" {
+        return Err(ServerUrlValidationFailure::PathNotAllowed {
+            path: path.to_owned(),
+        });
+    }
+
+    if parsed.query().is_some() {
+        return Err(ServerUrlValidationFailure::QueryNotAllowed);
+    }
+
+    if parsed.fragment().is_some() {
+        return Err(ServerUrlValidationFailure::FragmentNotAllowed);
+    }
+
+    Ok(parsed[..Position::BeforePath].to_owned())
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -353,12 +437,14 @@ mod tests {
     use super::ConfigLayerSource;
     use super::ConfigStore;
     use super::DEFAULT_REQUEST_TIMEOUT_SEC;
+    use super::ServerUrlValidationFailure;
     use super::TypedConfigOverrides;
     use super::config_set_server_command_example;
     use super::default_base_url;
     use super::layers::ConfigOrigins;
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
+    use super::normalize_server_url;
     use super::self_host::default_public_origin;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -463,6 +549,24 @@ mod tests {
         assert_eq!(
             config_set_server_command_example(),
             format!("onequery config set server {}", default_public_origin())
+        );
+    }
+
+    #[test]
+    fn normalize_server_url_accepts_origin_and_drops_trailing_slash() {
+        assert_eq!(
+            normalize_server_url("http://127.0.0.1:5656/"),
+            Ok("http://127.0.0.1:5656".to_owned())
+        );
+    }
+
+    #[test]
+    fn normalize_server_url_rejects_api_path_suffix() {
+        assert_eq!(
+            normalize_server_url("http://localhost:4545/api"),
+            Err(ServerUrlValidationFailure::PathNotAllowed {
+                path: "/api".to_owned(),
+            })
         );
     }
 
@@ -1027,6 +1131,40 @@ active = "acme"
                 "invalid config value".to_owned(),
                 format!(
                     "request_timeout_sec must be greater than 0 (from user config file {})",
+                    config_path.display()
+                ),
+            )
+        );
+
+        fs::remove_dir_all(&test_dir).unwrap_or_else(|cleanup_error| {
+            panic!("expected temp config directory cleanup to succeed: {cleanup_error}");
+        });
+    }
+
+    #[test]
+    fn load_reports_user_file_origin_for_server_url_with_path() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
+            panic!("expected config test directory creation to succeed: {error}");
+        });
+
+        let config_path = test_dir.join("config.toml");
+        fs::write(
+            &config_path,
+            "[api]\nserver_url = \"http://localhost:4545/api\"\n",
+        )
+        .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
+
+        let error = ConfigStore::load_from_path(config_path.clone(), "onequery org current")
+            .expect_err("expected invalid user config to fail");
+
+        assert_eq!(
+            (error.title.clone(), error.why.clone()),
+            (
+                "invalid config value".to_owned(),
+                format!(
+                    "server_url must be an origin without a path; found path `/api` (from user config file {})",
                     config_path.display()
                 ),
             )

@@ -287,16 +287,17 @@ fn validate_config(
     startup_command: &str,
 ) -> Result<(), CliError> {
     if let Some(server_url) = data.server_url.as_deref() {
-        url::Url::parse(server_url).map_err(|parse_error| {
+        super::normalize_server_url(server_url).map_err(|failure| {
             CliError::new(
                 "invalid config value",
                 startup_command,
                 ErrorStage::LoadConfig,
                 format!(
-                    "server_url must be a valid absolute URL (from {}): {parse_error}",
+                    "{} (from {})",
+                    failure.render("server_url"),
                     origins.server_url.describe()
                 ),
-                vec!["set server_url to a valid absolute URL".to_owned()],
+                vec![super::config_set_server_command_example()],
             )
         })?;
     }
