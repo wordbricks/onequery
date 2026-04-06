@@ -1,22 +1,39 @@
-# CLI transport migration spec: OpenAPI/orval/progenitor → Protobuf + Connect RPC
+# CLI transport migration spec: OpenAPI/orval/progenitor -> Protobuf + Connect RPC
+
+<!-- Comment: the previous draft mixed a Connect-native migration with REST-era Problem Details and response-envelope preservation. This revision removes that mismatch on purpose. -->
 
 ## Summary
 
-Migrate the internal CLI transport from OpenAPI-generated REST bindings to a Protobuf/Connect RPC contract, using:
+Migrate the internal CLI transport from OpenAPI-generated REST bindings to a
+Protobuf/Connect RPC contract, using:
 
-- **TypeScript server:** `connect-es` on top of the existing Hono-based CLI server.
-- **Rust CLI:** `connect-rust` generated client.
-- **Single source of truth:** `proto/` + Buf config, replacing `packages/cli-contract/openapi/**`.
+- **TypeScript server:** `connect-es` on top of the existing Hono-based CLI
+  server, with Connect owning the RPC layer.
+- **Rust CLI:** `connect-rust`.
+- **Single source of truth:** `proto/` + Buf config, replacing
+  `packages/cli-contract/openapi/**`.
 
-This is a **direct cutover**. There is **no compatibility window**, **no dual stack**, and **no requirement to preserve the current package layout or REST path layout** beyond what is convenient internally.
+This is a **direct cutover**:
 
-A Bun runtime experiment is allowed as an early spike, but the migration target remains **Node.js runtime support**, because Connect-ES v2 is documented for Node.js, and Hono+Connect integration relies on Hono’s Node adapter and raw Node request/response access. Bun should be treated as **best-effort only**, not as a success criterion. citeturn897529view0turn201415view0turn973240view1turn550094view12
+- no compatibility window
+- no dual stack
+- no REST/OpenAPI preservation work
+- no generic Problem Details shim
+- no obligation to preserve current REST paths, headers, or envelopes unless
+  they still represent real CLI/domain semantics
+
+The migration should be **Connect-native**, not "REST translated into Connect".
+Keep the business behavior. Drop the HTTP-era transport shapes.
+
+Target **Node.js** for the server runtime. A Bun spike is acceptable as a quick
+experiment, but Bun compatibility is explicitly non-blocking.
 
 ---
 
 ## Current repo impact (repo-specific)
 
-The current OpenAPI contract is not isolated to one generator step. It leaks into several places that must be addressed explicitly:
+The current OpenAPI contract is not isolated to one generator step. It leaks
+into several places that must be addressed explicitly:
 
 1. **Contract source and generation**
    - `packages/cli-contract/openapi/source/**`
@@ -26,7 +43,7 @@ The current OpenAPI contract is not isolated to one generator step. It leaks int
 
 2. **TypeScript CLI server transport**
    - `packages/cli-server/generated/**`
-   - all handler modules under `packages/cli-server/src/transport/handlers/*`
+   - handler modules under `packages/cli-server/src/transport/handlers/*`
    - `packages/cli-server/src/route.ts`
    - `packages/cli-server/src/contract.test.ts`
 
@@ -34,7 +51,7 @@ The current OpenAPI contract is not isolated to one generator step. It leaks int
    - `apps/cli/crates/onequery-cli/build.rs`
    - `apps/cli/crates/onequery-cli/src/transport/generated.rs`
    - `apps/cli/crates/onequery-cli/src/transport/{auth,org,source,query,http,use_cmd}.rs`
-   - `apps/cli/crates/onequery-cli/src/transport/mod.rs` OpenAPI contract test
+   - `apps/cli/crates/onequery-cli/src/transport/mod.rs`
 
 4. **Command schema / discovery coupling**
    - `apps/cli/crates/onequery-cli/src/commands/schema/openapi.rs`
@@ -51,7 +68,8 @@ The current OpenAPI contract is not isolated to one generator step. It leaks int
 The two non-obvious migration risks are:
 
 - **OpenAPI is also the source for CLI command metadata**, not just HTTP types.
-- **self-host packaging currently depends on Bun runtime compilation**, not just Bun as a package manager.
+- **self-host packaging currently depends on Bun runtime compilation**, not
+  just Bun as a package manager.
 
 ---
 
@@ -59,19 +77,24 @@ The two non-obvious migration risks are:
 
 - Replace the OpenAPI contract with **protobuf definitions** under Buf.
 - Replace orval-generated Hono routes with **Connect RPC services**.
-- Replace progenitor-generated Rust client with **connect-rust**.
-- Keep the existing CLI features and semantics working after cutover.
-- Reuse existing domain/workflow logic in `packages/cli-server/src/**` where practical.
-- Preserve current internal behavior where it reduces migration risk, but do **not** preserve REST/OpenAPI artifacts for their own sake.
+- Replace progenitor-generated Rust client code with **connect-rust**.
+- Keep current CLI features and workflows working after cutover.
+- Reuse existing domain/workflow logic in `packages/cli-server/src/**` where
+  practical.
+- Simplify the wire contract to **Connect-native unary RPCs** instead of
+  translating REST shapes mechanically.
+- Decouple command-schema/discovery from the transport contract.
 
 ## Non-goals
 
 - No backward-compatible REST layer.
 - No dual OpenAPI + Connect generation.
 - No rollout period.
-- No attempt to keep `schema openapi` as a supported public surface.
-- No attempt to preserve the current package names or directory structure unless it makes implementation simpler.
+- No attempt to preserve `schema openapi`.
+- No attempt to preserve REST paths, headers, or response envelopes just
+  because they exist today.
 - No streaming RPCs in this migration.
+- No Bun-specific adapter work if the Node path is already clean.
 
 ---
 
@@ -79,7 +102,7 @@ The two non-obvious migration risks are:
 
 ## 1) Source of truth
 
-Create a new protobuf workspace rooted at the repo root:
+Create a protobuf workspace rooted at the repo root:
 
 ```text
 proto/
@@ -93,15 +116,19 @@ Recommended proto split:
 ```text
 proto/onequery/cli/v1/
   cli.proto              # service definition
-  common.proto           # shared messages/enums/warnings/page/sanitization
+  common.proto           # shared messages/enums used by multiple RPCs
   auth.proto
   org.proto
   source.proto
   query.proto
-  error_details.proto
 ```
 
-Use **Buf** as the canonical schema/build tool. Connect-ES v2 no longer needs its own code generator plugin, so the TypeScript side can generate from Buf + `protoc-gen-es`. citeturn897529view1turn172310view2
+Use **Buf** as the canonical schema/build tool. On the TypeScript side, generate
+from Buf with `protoc-gen-es`. On the Rust side, use either `build.rs` or
+checked-in generation, with the initial preference documented below.
+
+Do **not** create a generic `error_details.proto` up front. Add a focused error
+detail message later only if a specific client behavior genuinely needs it.
 
 ## 2) Service shape
 
@@ -127,125 +154,172 @@ service CliService {
 
 Rationale:
 
-- It mirrors the current Rust `ApiClient` shape, which already wraps a single generated client.
-- It avoids artificial domain splitting during a transport migration.
-- It reduces service registration and client wrapper churn.
+- it matches the current Rust `ApiClient` mental model
+- it keeps the migration mechanical where that helps
+- it avoids service-splitting churn during a transport replacement
 
 Do **not** add an RPC equivalent of `GET /openapi.json`.
 
-If an equivalent discovery surface is still needed later, define it explicitly as a separate protobuf service or as a local CLI-only schema source; do not drag OpenAPI forward just to preserve that endpoint.
-
 ## 3) Request/response modeling
 
-Model current REST semantics in protobuf as follows:
+Model the contract in protobuf directly:
 
-- **path/query/header inputs** → normal request message fields
-- **`oneOf` REST responses** → protobuf `oneof`
-- **pagination/read controls** → explicit request/response fields
-- **arbitrary JSON objects** → `google.protobuf.Struct` / `google.protobuf.Value`
-- **error payloads** → Connect error + typed protobuf detail
+- **path/query/header inputs** -> request message fields
+- **JSON `oneOf` states** -> protobuf `oneof`
+- **pagination/read controls** -> explicit request or response fields
+- **arbitrary JSON payloads** -> `google.protobuf.Struct` /
+  `google.protobuf.Value` only where the shape is genuinely dynamic
 
 Examples:
 
-- `orgSlug`, `sourceKey`, `limit`, `cursor`, `fields`, and `source` all become request fields.
-- `x-onequery-org-slug` for `/use` should become `optional string org_slug` in `UseRequest` rather than stay a custom header.
-- `CliSourceConnectRequest.credentials` should become `google.protobuf.Struct`.
-- current device-auth poll result should become a `oneof` instead of a JSON `oneOf` envelope.
+- `orgSlug`, `sourceKey`, `limit`, `cursor`, `fields`, and `source` become
+  request fields.
+- `x-onequery-org-slug` for `/use` becomes `optional string org_slug` in
+  `UseRequest`.
+- device authorization poll state becomes a protobuf `oneof`.
 
-### Response envelope policy
+### Response policy
 
-Do **not** spend migration effort on “cleaning up” response envelopes unless it clearly simplifies code.
+Prefer **plain RPC result messages**, not HTTP-style envelopes.
 
-Recommended approach for this repo:
+Recommended policy for this repo:
 
-- keep response messages close to today’s success payloads if that reduces refactor risk;
-- remove only wrappers that are purely HTTP-shaped and add no value.
+- keep `warnings` only where they are part of the actual user-visible result
+- keep `page` only for list RPCs that really paginate
+- keep `sanitization` only where the RPC needs to explain a modified or
+  normalized query/result
+- move `request_id` out of response bodies and into metadata/logging
+- delete wrappers that only existed to satisfy REST or OpenAPI conventions
 
-In practice, that means it is acceptable to keep `request_id`, `warnings`, `page`, and `sanitization` as response fields if that lets the Rust transport migration stay mechanical.
+The migration should not preserve `request_id`, `ok`, `error`, `data`, or
+similar envelope fields unless they still carry domain meaning after the move
+to Connect.
 
 ## 4) Error model
 
-Define a protobuf error detail message, for example:
+The primary error contract is **Connect's native error model**:
 
-```proto
-message CliProblemDetail {
-  string code = 1;
-  string stage = 2;
-  string request_id = 3;
-  bool retryable = 4;
-  optional string hint = 5;
-  optional uint32 retry_after_ms = 6;
-  repeated ValidationIssue errors = 7;
-}
-```
+- **code** for the failure class
+- **message** for the human-readable summary
+- **metadata** for out-of-band values like request ID or retry hints
+- **typed error details** only when a caller needs additional structured data
 
-Map current HTTP/OpenAPI problem semantics into Connect’s error model:
+Do **not** define or carry forward a generic `CliProblemDetail` message.
 
-- transport-meaningful failures use Connect codes (`invalid_argument`, `unauthenticated`, `permission_denied`, `not_found`, `unavailable`, etc.)
-- current stable OneQuery error code remains in `CliProblemDetail.code`
-- request ID remains available to the CLI via error detail and/or metadata
+Do **not** translate current HTTP problem payloads into a Connect-shaped clone.
 
-Connect errors support a code, metadata, and strongly typed protobuf error details, so `CliProblem` should migrate naturally into a typed error detail instead of a normal response schema. citeturn865552search0turn865552search2turn865552search3
+### Default mapping guidance
+
+- invalid inputs -> `InvalidArgument`
+- missing or expired auth -> `Unauthenticated`
+- forbidden org/source access -> `PermissionDenied`
+- missing resources -> `NotFound`
+- state/precondition failures -> `FailedPrecondition`
+- conflicts or race-style write failures -> `Aborted` or `AlreadyExists`,
+  whichever is semantically correct
+- rate limiting or temporary upstream failure -> `ResourceExhausted` or
+  `Unavailable`
+- unexpected server failure -> `Internal`
+
+### Metadata guidance
+
+Use Connect metadata for things like:
+
+- request ID
+- retry hints such as retry-after
+- operational correlation values that are not part of the business response
+
+### Typed detail guidance
+
+Only add typed protobuf error details when the CLI truly needs to branch on
+structured information. For example, a focused validation detail message is
+reasonable if the CLI needs per-field rendering. A catch-all "problem"
+container is not.
+
+Rust should consume errors via `connect-rust`'s `ConnectError` directly:
+
+1. inspect `code`
+2. inspect metadata if needed
+3. decode a focused detail message only if one exists for that specific case
 
 ## 5) Validation strategy
 
 Replace OpenAPI/orval-generated validation with a combination of:
 
-- protobuf field types/enums
-- `buf.validate` custom options where practical
-- server-side domain validation for cross-field/business checks
+- protobuf field types and enums
+- `buf.validate` options where practical
+- server-side domain validation for cross-field and workflow checks
 
-On the TypeScript server, wire in Connect validation via `createValidateInterceptor()` for protobuf-declared constraints. Connect’s docs explicitly recommend Protovalidate in server examples, and Connect-ES v2 / Protobuf-ES v2 support custom options. citeturn548872search2turn548872search3turn897529view0
+On the TypeScript server, use `createValidateInterceptor()` so protobuf-declared
+constraints are enforced in the Connect layer.
 
-Do **not** try to preserve the current generated zod file layout.
+Do **not** preserve the current generated zod file layout.
 
 ## 6) TS server runtime model
 
-Keep Hono, but stop using orval-generated Hono routes.
+Keep Hono, but let **Connect own RPC dispatch**.
 
-Instead, add a thin bridge layer under something like:
+Recommended structure:
 
 ```text
 packages/cli-server/src/connect/
   gen/...
   service.ts
   context.ts
-  hono-connect.ts
+  handler.ts
 ```
 
-The bridge should:
+Use `connectNodeAdapter()` for the actual RPC handler and keep any Hono glue
+thin. Hono should mount the Node handler under `/api/cli`; it should not become
+the transport abstraction for RPC methods.
 
-1. build Connect routes from the generated service descriptor;
-2. convert Hono Node adapter `incoming` / `outgoing` to Connect universal requests/responses;
-3. pass Hono `Context` into Connect `ContextValues` so service methods can access request-scoped state.
+### Integration guidance
 
-This follows the known Hono integration pattern: the Hono+Connect article uses Hono’s Node adapter, converts raw Node request/response objects with Connect’s universal bridge, and passes Hono context via a custom context key. Hono’s Node adapter also exposes raw Node APIs at `c.env.incoming` / `c.env.outgoing`. citeturn973240view1turn973240view0turn550094view12
+- register `CliService` through Connect's router
+- use `requestPathPrefix: "/api/cli"` on the Connect handler
+- use `ContextValues` / context keys for request-scoped state that service
+  methods need
+- if existing Hono middleware already resolves useful state, pass only the
+  minimal derived values into Connect
+- do **not** make `Hono.Context` itself a long-lived dependency of the Connect
+  service layer
+
+If a small Hono-to-Node mounting wrapper is needed, keep it strictly limited to
+mounting and context extraction. Do **not** build a custom protocol bridge.
 
 ## 7) Runtime target
 
-Target **Node.js runtime** for the final implementation.
+Target **Node.js** for the final implementation.
 
-Reasons:
+Reasoning:
 
-- Connect-ES v2 requires at least Node.js 18.14.1. citeturn897529view0
-- Hono’s Node adapter also targets Node 18.14.1+ and exposes the raw Node APIs needed for the bridge. citeturn550094view11turn550094view12
-- Connect’s own repo documents Node.js first and treats Bun as an “other platform” rather than a first-class target. citeturn201415view0
+- Connect-ES documents and optimizes the Node server/client path clearly
+- `connectNodeAdapter()` gives a standard server path instead of a custom one
+- this removes Bun runtime behavior from the critical path of the migration
 
 ### Bun policy
 
-A Bun spike is allowed before the Node migration, but it is explicitly **non-blocking**:
+A Bun spike is acceptable before or during the migration, but it is explicitly
+best-effort only:
 
-- if the exact Hono bridge works on Bun unchanged, that is a bonus;
-- if it fails, do **not** spend migration time inventing a Bun-specific adapter;
-- proceed with Node.
+- if the same Node-oriented integration happens to run on Bun, fine
+- if it does not, do not spend migration time building a Bun-specific transport
+  layer
 
 ## 8) HTTP protocol choice
 
 Use **unary RPCs only** in this migration.
 
-Start with **Connect protocol over HTTP/1.1** unless there is a concrete need for gRPC or streaming during the migration. This repo’s current CLI surface is entirely unary, and Connect’s Node docs note that HTTP/2 is what unlocks full gRPC and all streaming variants, while HTTP/1.1 is the constrained mode. citeturn548872search3turn865552search6
+Start with the **Connect protocol over HTTP/1.1**:
 
-## 9) Rust code generation strategy
+- the current CLI surface is unary
+- Connect over HTTP/1.1 is sufficient
+- this keeps the server/client setup simple for both `connect-es` and
+  `connect-rust`
+
+Do not introduce gRPC or streaming unless a real migration blocker appears.
+
+## 9) Code generation strategy
 
 Recommended default for this repo:
 
@@ -254,16 +328,19 @@ Recommended default for this repo:
 
 Why this split:
 
-- TS generation is straightforward with Buf + `protoc-gen-es`. citeturn172310view2turn897529view1
-- `connect-rust` supports two workflows; `buf generate` is recommended for checked-in Rust code, but the Buf remote plugin is still planned, so checked-in Rust generation currently requires local plugin binaries. `build.rs` avoids that extra setup. citeturn928713view1turn550094view14turn928713view2
+- TS generation with Buf + `protoc-gen-es` is straightforward and repo-friendly
+- `connect-rust` supports `build.rs` cleanly
+- `build.rs` avoids requiring local Rust codegen plugin binaries during the
+  initial migration
 
-If the team strongly prefers checked-in Rust generated code diffs, that is a valid alternative. For initial migration, `build.rs` is the lower-friction choice.
+If the team later prefers checked-in Rust generated code diffs, that remains a
+valid follow-up choice.
 
 ---
 
 ## Detailed migration plan
 
-## Phase 0 — lock the migration decisions
+## Phase 0 - lock the migration decisions
 
 ### Deliverables
 
@@ -271,16 +348,17 @@ If the team strongly prefers checked-in Rust generated code diffs, that is a val
 
 ### Decisions to lock
 
-- protobuf + Buf is the new single source of truth
+- protobuf + Buf is the only transport source of truth
 - direct cutover; no compatibility layer
 - one `CliService` for now
 - no `/openapi.json` replacement
 - `schema openapi` is removed
-- `schema commands` is either:
-  - kept but decoupled from wire contract, or
-  - temporarily removed, then rebuilt later
+- command-schema export is decoupled from the wire contract
+- Connect error is the primary error contract
+- no generic Problem Details message
+- request IDs move to metadata/logging instead of response bodies
 - final runtime target is Node.js
-- keep Bun package manager **optional** and separate from runtime migration
+- Bun package manager remains optional and separate from runtime migration
 
 ### Checklist
 
@@ -288,53 +366,56 @@ If the team strongly prefers checked-in Rust generated code diffs, that is a val
 - [ ] Confirm `schema openapi` will be removed.
 - [ ] Confirm whether `schema commands` must survive this migration.
 - [ ] Confirm whether self-host packaged server remains required after Bun runtime removal.
-- [ ] Confirm `/api/cli` remains as internal route prefix for Connect handlers.
+- [ ] Confirm `/api/cli` remains the Connect handler prefix.
 
 ---
 
-## Phase 1 — introduce protobuf contract
+## Phase 1 - introduce protobuf contract
 
 ### Work
 
-Create Buf workspace and author the initial `.proto` files to cover all current public CLI operations except `/openapi.json`.
+Create the Buf workspace and author `.proto` files for all current CLI
+operations except `/openapi.json`.
 
-Start by mirroring current request/response shapes closely enough that the TS and Rust migrations remain mechanical.
+Start from **business semantics**, not from current REST wrappers.
 
 ### Mapping from current REST operations
 
-- `GET /use` → `Use`
-- `GET /session` → `GetSession`
-- `POST /session:refresh` → `RefreshSession`
-- `POST /auth/device-authorizations` → `StartDeviceAuthorization`
-- `POST /auth/device-authorizations:poll` → `PollDeviceAuthorization`
-- `GET /organizations` → `ListOrganizations`
-- `GET /organizations/{orgSlug}` → `GetOrganization`
-- `GET /organizations/{orgSlug}/sources` → `ListSources`
-- `GET /organizations/{orgSlug}/sources:connect` → `GetSourceConnectGuide`
-- `POST /organizations/{orgSlug}/sources:connect` → `ConnectSource`
-- `GET /organizations/{orgSlug}/sources/{sourceKey}` → `GetSource`
-- `POST /organizations/{orgSlug}/sources/{sourceKey}/queries:validate` → `ValidateQuery`
-- `POST /organizations/{orgSlug}/sources/{sourceKey}/queries:execute` → `ExecuteQuery`
+- `GET /use` -> `Use`
+- `GET /session` -> `GetSession`
+- `POST /session:refresh` -> `RefreshSession`
+- `POST /auth/device-authorizations` -> `StartDeviceAuthorization`
+- `POST /auth/device-authorizations:poll` -> `PollDeviceAuthorization`
+- `GET /organizations` -> `ListOrganizations`
+- `GET /organizations/{orgSlug}` -> `GetOrganization`
+- `GET /organizations/{orgSlug}/sources` -> `ListSources`
+- `GET /organizations/{orgSlug}/sources:connect` -> `GetSourceConnectGuide`
+- `POST /organizations/{orgSlug}/sources:connect` -> `ConnectSource`
+- `GET /organizations/{orgSlug}/sources/{sourceKey}` -> `GetSource`
+- `POST /organizations/{orgSlug}/sources/{sourceKey}/queries:validate` -> `ValidateQuery`
+- `POST /organizations/{orgSlug}/sources/{sourceKey}/queries:execute` -> `ExecuteQuery`
 
 ### Checklist
 
 - [x] Add `buf.yaml` and `buf.gen.yaml` at repo root.
 - [x] Add `proto/onequery/cli/v1/*.proto`.
-- [x] Model current enums/messages/read controls/pages/warnings/sanitization in proto.
+- [x] Model shared enums/messages/read controls in proto.
 - [x] Convert current `oneOf` response states to protobuf `oneof`.
 - [x] Convert ad hoc headers/query/path params to message fields.
-- [x] Model arbitrary JSON payloads with `google.protobuf.Struct`/`Value` where required.
-- [x] Add `CliProblemDetail` protobuf message for typed error details.
-- [x] Add `buf.validate` options for current transport-level validation rules that are worth preserving.
+- [x] Model arbitrary JSON payloads with `google.protobuf.Struct`/`Value` only where needed.
+- [x] Remove HTTP-only response envelopes from the schema design.
+- [x] Do **not** add a generic `CliProblemDetail` message.
+- [x] Add `buf.validate` options for transport-level validation worth keeping.
 - [x] Add `buf lint` and make it pass.
 
 ---
 
-## Phase 2 — generate TypeScript code
+## Phase 2 - generate TypeScript code
 
 ### Work
 
-Generate TypeScript protobuf/service code from Buf into a new generated location owned by the CLI server package.
+Generate TypeScript protobuf/service code from Buf into a generated location
+owned by the CLI server package.
 
 Recommended output:
 
@@ -345,86 +426,92 @@ packages/cli-server/src/connect/gen/**
 ### Checklist
 
 - [x] Add TS generation config using Buf + `@bufbuild/protoc-gen-es`.
-- [x] Add root script such as `proto:generate`.
+- [x] Add a root script such as `proto:generate`.
 - [x] Check generated TS into the repo.
-- [ ] Remove `orval` from `packages/cli-contract` usage path.
+- [ ] Remove `orval` from the CLI contract path.
 - [ ] Remove `openapi:cli:generate` / `openapi:cli:check` scripts or replace them with proto equivalents.
 
 ---
 
-## Phase 3 — implement Connect service in the TS server
+## Phase 3 - implement Connect service in the TS server
 
 ### Work
 
-Implement the service methods on top of existing domain logic in `packages/cli-server/src/**`.
+Implement the service methods on top of existing domain logic in
+`packages/cli-server/src/**`.
 
-Do **not** port generated Hono handler structure 1:1.
+Do **not** port the generated Hono handlers 1:1.
 
 Instead:
 
-- keep reusable domain/workflow/effect modules;
-- create one Connect service implementation file;
-- factor request normalization / response projection helpers as needed;
-- move cross-cutting transport concerns into Connect interceptors or shared helpers.
+- keep reusable domain/workflow/effect modules
+- create one Connect service implementation
+- move cross-cutting transport concerns into Connect interceptors/helpers
+- keep Hono's role limited to mounting the Connect handler and sharing common
+  app/runtime integration
 
 ### Server-side context policy
 
-The current Hono app already injects request ID, runtime config, storage, session, DB, and authorized org context through middleware and `c.var`.
+The current Hono app already injects request ID, runtime config, storage,
+session, DB, and authorized org context through middleware and `c.var`.
 
-The Connect implementation should keep the same conceptual state, but surface it through Connect `ContextValues` and service helpers instead of route-specific orval middleware. Connect context values are designed for this request-scoped data flow. citeturn550094view8
+The Connect implementation should expose the needed request-scoped values
+through Connect context keys and `ContextValues`, not through route-specific
+OpenAPI middleware. If reusing existing Hono middleware is cheaper, extract only
+the resolved values that Connect methods need instead of threading full
+`Hono.Context` through the service layer.
 
 ### Checklist
 
 - [ ] Create `packages/cli-server/src/connect/service.ts` implementing `CliService`.
 - [ ] Create `packages/cli-server/src/connect/context.ts` for Connect context keys.
-- [ ] Create `packages/cli-server/src/connect/hono-connect.ts` bridge middleware.
-- [ ] Pass Hono `Context` into Connect `ContextValues`.
-- [ ] Preserve current request ID generation/logging middleware behavior.
+- [ ] Create `packages/cli-server/src/connect/handler.ts` around `connectNodeAdapter()`.
 - [ ] Add Connect validation interceptor.
-- [ ] Port auth/session/org-resolution middleware behavior into interceptors/helpers.
+- [ ] Port request ID, auth/session, and org-resolution behavior into Connect interceptors/helpers.
 - [ ] Reuse existing business logic modules instead of rewriting them.
 - [ ] Mount Connect handlers under `/api/cli`.
 - [ ] Remove `packages/cli-server/generated/**` from the runtime path.
 - [ ] Delete `packages/cli-server/src/transport/handlers/cliOpenapiDocument.ts`.
-- [ ] Delete or rewrite `packages/cli-server/src/route.ts` to export Connect/Hono bridge instead of orval route.
+- [ ] Delete or rewrite `packages/cli-server/src/route.ts` to mount the Connect handler instead of the orval route tree.
 
 ---
 
-## Phase 4 — migrate the Rust CLI transport to connect-rust
+## Phase 4 - migrate the Rust CLI transport to connect-rust
 
 ### Work
 
-Replace progenitor client generation and REST/OpenAPI-specific transport code with a generated Connect client plus a small compatibility wrapper.
-
-Keep the existing `ApiClient` abstraction if it still provides value for:
+Replace progenitor client generation and REST/OpenAPI-specific transport code
+with a generated Connect client plus a thin wrapper where that wrapper still
+provides value for:
 
 - base URL normalization
 - auth token attachment
 - request timeout configuration
-- request ID propagation
+- request metadata capture
 - user-facing error mapping
 
 ### Recommended generation approach
 
-Use `connectrpc-build` in `apps/cli/crates/onequery-cli/build.rs` for the first migration. `connect-rust` explicitly supports this build-time workflow, and it avoids requiring local plugin binaries during the migration. citeturn928713view2
+Use `connectrpc-build` in `apps/cli/crates/onequery-cli/build.rs` for the first
+migration.
 
 ### Checklist
 
 - [ ] Remove `progenitor` and `progenitor-client` dependencies from Cargo manifests.
-- [ ] Add `connectrpc-build` build dependency.
-- [ ] Add `connectrpc` runtime dependency with needed features.
+- [ ] Add `connectrpc-build` as a build dependency.
+- [ ] Add `connectrpc` as a runtime dependency with the needed features.
 - [ ] Point `build.rs` at the new `proto/` definitions.
 - [ ] Replace `src/transport/generated.rs` include path with Connect-generated output.
 - [ ] Rewrite `src/transport/client.rs` around the Connect client.
-- [ ] Preserve auth token, timeout, and request ID behavior in the wrapper.
+- [ ] Preserve auth token and timeout behavior in the wrapper.
 - [ ] Rewrite transport modules (`auth`, `org`, `source`, `query`, `use_cmd`) to call Connect RPCs.
-- [ ] Replace OpenAPI/HTTP problem parsing with Connect error → CLI error mapping.
-- [ ] Decode typed `CliProblemDetail` from Connect errors.
+- [ ] Replace HTTP status/problem parsing with direct `ConnectError` mapping.
+- [ ] Map `ConnectError.code` first, then metadata, then focused details if any exist.
 - [ ] Remove the checked-in OpenAPI contract assertion test from `transport/mod.rs`.
 
 ---
 
-## Phase 5 — deal with command schema / discovery coupling
+## Phase 5 - deal with command schema / discovery coupling
 
 ### Work
 
@@ -434,25 +521,27 @@ Current state:
 
 - Rust CLI embeds the checked-in OpenAPI JSON.
 - `schema openapi` exposes that document.
-- `schema commands` derives public command metadata from OpenAPI `x-onequery-*` extensions.
+- `schema commands` derives public command metadata from OpenAPI
+  `x-onequery-*` extensions.
 
 ### Recommended decision
 
-For this migration, **decouple command schema export from the transport contract**.
+For this migration, **decouple command schema export from the transport
+contract**.
 
 That means:
 
-- remove `schema openapi`;
-- stop deriving `schema commands` from the wire contract;
-- keep command metadata in a dedicated local registry (Rust-side or checked-in JSON) if the command is still needed.
+- remove `schema openapi`
+- stop deriving `schema commands` from the wire contract
+- keep command metadata in a dedicated local registry if the command must
+  survive
 
-Do **not** block the Connect migration on recreating the entire `x-onequery-*` metadata model inside protobuf custom options.
-
-Custom protobuf options can be revisited later if you want to colocate command metadata with the transport schema. Connect-ES v2 / Protobuf-ES v2 now support custom options, but introducing a second round of descriptor/reflection work is unnecessary for the initial cutover. citeturn897529view0
+Do **not** block the Connect migration on recreating the full `x-onequery-*`
+metadata model inside protobuf custom options.
 
 ### Checklist
 
-- [ ] Remove `SchemaSubcommand::Openapi` and related command wiring if no longer needed.
+- [ ] Remove `SchemaSubcommand::Openapi` and related command wiring.
 - [ ] Remove embedded `cli.openapi.json` include in `commands/schema/mod.rs`.
 - [ ] Delete `commands/schema/openapi.rs`.
 - [ ] Keep or replace `schema commands` with a dedicated non-OpenAPI registry.
@@ -461,7 +550,7 @@ Custom protobuf options can be revisited later if you want to colocate command m
 
 ---
 
-## Phase 6 — Bun runtime removal and Node runtime adoption
+## Phase 6 - Bun runtime removal and Node runtime adoption
 
 ### Work
 
@@ -471,34 +560,36 @@ Replace `packages/bun-server` with a Node runtime package, for example:
 packages/node-server/**
 ```
 
-Use Hono’s Node adapter and mount the Connect/Hono bridge plus the rest of the existing server routes.
+Use Hono's Node adapter and mount the Connect handler plus the rest of the
+existing server routes.
 
 ### Important scope split
 
-Treat these as **separate concerns**:
+Treat these as separate concerns:
 
-1. **server runtime migration off `Bun.*` APIs** — in scope
-2. **package manager migration away from `bun run`** — optional / can be deferred
+1. **server runtime migration off `Bun.*` APIs**
+2. **package manager migration away from `bun run`**
 
-There is no hard requirement to switch package manager just because the runtime target becomes Node.js.
+The first is in scope. The second is optional and can be deferred.
 
 ### Checklist
 
-- [ ] Replace `Bun.serve` entrypoint with Node/Hono entrypoint.
+- [ ] Replace the `Bun.serve` entrypoint with a Node/Hono entrypoint.
 - [ ] Create `packages/node-server/src/index.ts` using `@hono/node-server`.
 - [ ] Mount Connect CLI handlers under `/api/cli`.
 - [ ] Port remaining non-CLI routes from `packages/bun-server`.
 - [ ] Remove `Bun.*` APIs from runtime code paths.
-- [ ] Keep Bun compatibility spike isolated and non-blocking.
+- [ ] Keep any Bun compatibility spike isolated and non-blocking.
 - [ ] Decide whether root `packageManager` stays Bun for now or moves later.
 
 ---
 
-## Phase 7 — self-host packaging updates
+## Phase 7 - self-host packaging updates
 
 ### Work
 
-Current self-host packaging relies on compiling the server into a Bun executable. That cannot survive unchanged after runtime migration.
+Current self-host packaging relies on compiling the server into a Bun
+executable. That cannot survive unchanged after the runtime migration.
 
 This needs an explicit replacement plan.
 
@@ -508,9 +599,9 @@ Do not invent the final packaging approach before the transport works.
 
 First, make the Node runtime work in development and tests. Then choose one of:
 
-- ship the server as a normal Node app in self-host mode;
-- package Node separately with the runtime bundle;
-- use a Node single-executable/bundling strategy later.
+- ship the server as a normal Node app in self-host mode
+- package Node separately with the runtime bundle
+- add a Node single-executable or bundling strategy later
 
 ### Checklist
 
@@ -522,7 +613,7 @@ First, make the Node runtime work in development and tests. Then choose one of:
 
 ---
 
-## Phase 8 — CI, scripts, and docs cleanup
+## Phase 8 - CI, scripts, and docs cleanup
 
 ### Work
 
@@ -532,17 +623,19 @@ Replace OpenAPI-specific checks with protobuf/Connect-specific checks.
 
 - [ ] Remove OpenAPI generation/check steps from CI.
 - [ ] Add `buf lint` to CI.
-- [ ] Add TS proto generation diff check.
+- [ ] Add TS proto generation diff checks.
 - [ ] Ensure Rust build/test covers `connectrpc-build` generation.
 - [ ] Remove `packages/cli-contract` from Turbo inputs if the package is deleted.
 - [ ] Add `proto/**` and Buf config files to Turbo inputs where needed.
 - [ ] Update `apps/cli/justfile` to use proto generation/check commands.
-- [ ] Update `apps/cli/README.md` and any docs referencing OpenAPI as the source of truth.
+- [ ] Update `apps/cli/README.md` and any docs that still reference OpenAPI as the source of truth.
 - [ ] Remove or archive `packages/cli-contract/**` once migration is complete.
 
 ### Buf breaking checks
 
-Because this CLI/server pair is internal and updated together, do **not** make `buf breaking` a hard gate in the migration branch. Buf’s own docs note that if you control your clients and can update them easily, breaking schema changes may be perfectly acceptable. You can add breaking checks later once the schema stabilizes. citeturn756401search0turn756401search2
+Because this CLI/server pair is internal and updated together, `buf breaking`
+should **not** be a hard migration gate. Add a breaking-compatibility gate only
+after the protobuf contract is stable enough to justify it.
 
 ---
 
@@ -557,7 +650,7 @@ These paths should disappear or be fully repurposed by the end:
 - `apps/cli/crates/onequery-cli/src/commands/schema/openapi.rs`
 - `apps/cli/crates/onequery-cli` OpenAPI embed/include code
 - `apps/cli/crates/onequery-cli` progenitor build and deps
-- `packages/bun-server/**` (replaced by Node runtime package)
+- `packages/bun-server/**`
 
 ---
 
@@ -572,34 +665,36 @@ The migration is complete when all of the following are true:
 - [ ] The Rust CLI talks to the server via `connect-rust`.
 - [ ] All current CLI operations except `schema openapi` work end-to-end.
 - [ ] Existing auth, org selection, read controls, and query flows still work.
-- [ ] Current request ID / warning / pagination / sanitization behavior is preserved at the CLI UX layer.
+- [ ] Request IDs are available through metadata/logging instead of a legacy REST envelope.
 - [ ] OpenAPI-derived command-schema code is removed or intentionally replaced.
 - [ ] Bun runtime APIs are gone from the server runtime path.
 - [ ] CI no longer regenerates or checks OpenAPI artifacts.
 - [ ] CI validates the protobuf contract and generated code path.
+- [ ] There is no generic Problem Details compatibility shim in the new transport.
 
 ---
 
 ## Nice-to-have follow-ups after cutover
 
-- [ ] Move command metadata into protobuf custom options if you want contract-colocated discovery again.
+- [ ] Revisit focused typed error details if the CLI later benefits from them.
+- [ ] Move command metadata into protobuf custom options only if the team actually wants contract-colocated discovery again.
 - [ ] Revisit checked-in Rust generation if plugin installation becomes easier.
-- [ ] Consider splitting `CliService` into smaller domain services only after the transport stabilizes.
-- [ ] Consider `buf breaking` once the protobuf contract is considered stable.
-- [ ] Consider moving request IDs fully into metadata if that later simplifies payload schemas.
+- [ ] Split `CliService` into smaller domain services only after the transport stabilizes.
+- [ ] Add `buf breaking` once the protobuf contract is considered stable.
 
 ---
 
 ## Recommended implementation order
 
 1. lock decisions
-2. write proto schema
+2. write the proto schema
 3. generate TS code
-4. implement TS Connect service + Hono bridge
-5. migrate Rust client
+4. implement the TS Connect service and handler mount
+5. migrate the Rust client
 6. remove OpenAPI command-schema dependency
 7. switch runtime from Bun server to Node server
 8. fix self-host packaging
-9. clean CI/docs
+9. clean CI and docs
 
-This order keeps the hardest hidden dependencies visible early, while avoiding a packaging rewrite before the transport itself is proven.
+This order keeps the hidden dependencies visible early while avoiding packaging
+work before the transport itself is proven.
