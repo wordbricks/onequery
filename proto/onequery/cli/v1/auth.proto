@@ -2,10 +2,11 @@ syntax = "proto3";
 
 package onequery.cli.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 message GetSessionRequest {
-  optional string fields = 1;
+  optional string fields = 1 [(buf.validate.field).string.min_len = 1];
 }
 
 message GetSessionResponse {
@@ -31,7 +32,7 @@ message StartDeviceAuthorizationResponse {
 }
 
 message PollDeviceAuthorizationRequest {
-  string device_code = 1;
+  string device_code = 1 [(buf.validate.field).string.min_len = 1];
 }
 
 message PollDeviceAuthorizationResponse {

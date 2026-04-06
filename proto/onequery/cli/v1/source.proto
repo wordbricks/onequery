@@ -2,14 +2,21 @@ syntax = "proto3";
 
 package onequery.cli.v1;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
 import "onequery/cli/v1/common.proto";
 
 message ListSourcesRequest {
-  string org_slug = 1;
-  optional string fields = 2;
-  optional uint32 limit = 3;
-  optional string cursor = 4;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  optional string fields = 2 [(buf.validate.field).string.min_len = 1];
+  optional uint32 limit = 3 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  optional string cursor = 4 [(buf.validate.field).string.min_len = 1];
 }
 
 message ListSourcesResponse {
@@ -20,9 +27,15 @@ message ListSourcesResponse {
 }
 
 message GetSourceRequest {
-  string org_slug = 1;
-  string source_key = 2;
-  optional string fields = 3;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message GetSourceResponse {
@@ -32,8 +45,11 @@ message GetSourceResponse {
 }
 
 message GetSourceConnectGuideRequest {
-  string org_slug = 1;
-  CliSourceProvider source = 2;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
 }
 
 message GetSourceConnectGuideResponse {
@@ -43,10 +59,16 @@ message GetSourceConnectGuideResponse {
 }
 
 message ConnectSourceRequest {
-  string org_slug = 1;
-  CliSourceProvider source = 2;
-  string name = 3;
-  google.protobuf.Struct credentials = 4;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
+  string name = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  google.protobuf.Struct credentials = 4 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceResponse {

@@ -325,7 +325,7 @@ Start by mirroring current request/response shapes closely enough that the TS an
 - [x] Convert ad hoc headers/query/path params to message fields.
 - [x] Model arbitrary JSON payloads with `google.protobuf.Struct`/`Value` where required.
 - [x] Add `CliProblemDetail` protobuf message for typed error details.
-- [ ] Add `buf.validate` options for current transport-level validation rules that are worth preserving.
+- [x] Add `buf.validate` options for current transport-level validation rules that are worth preserving.
 - [x] Add `buf lint` and make it pass.
 
 ---

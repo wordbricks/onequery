@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package onequery.cli.v1;
 
+import "buf/validate/validate.proto";
 import "onequery/cli/v1/common.proto";
 
 message UseRequest {
-  CliUseSource source = 1;
-  optional string org_slug = 2;
+  CliUseSource source = 1 [(buf.validate.field).enum.not_in = 0];
+  optional string org_slug = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
 }
 
 message UseResponse {

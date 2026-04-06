@@ -2,14 +2,21 @@ syntax = "proto3";
 
 package onequery.cli.v1;
 
+import "buf/validate/validate.proto";
 import "onequery/cli/v1/common.proto";
 import "onequery/cli/v1/source.proto";
 
 message ValidateQueryRequest {
-  string org_slug = 1;
-  string source_key = 2;
-  optional string fields = 3;
-  CliQueryRequest query = 4;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
+  CliQueryRequest query = 4 [(buf.validate.field).required = true];
 }
 
 message ValidateQueryResponse {
@@ -19,12 +26,21 @@ message ValidateQueryResponse {
 }
 
 message ExecuteQueryRequest {
-  string org_slug = 1;
-  string source_key = 2;
-  optional string fields = 3;
-  optional uint32 limit = 4;
-  optional string cursor = 5;
-  CliQueryRequest query = 6;
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
+  optional uint32 limit = 4 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  optional string cursor = 5 [(buf.validate.field).string.min_len = 1];
+  CliQueryRequest query = 6 [(buf.validate.field).required = true];
 }
 
 message ExecuteQueryResponse {
@@ -37,12 +53,24 @@ message ExecuteQueryResponse {
 }
 
 message CliQueryRequest {
-  string sql = 1;
+  string sql = 1 [(buf.validate.field).string.min_len = 1];
   repeated CliQueryParameter parameters = 2;
-  optional uint32 max_rows = 3;
-  optional uint32 max_bytes = 4;
-  optional uint32 cell_max_chars = 5;
-  optional uint32 timeout_ms = 6;
+  optional uint32 max_rows = 3 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 1000
+  ];
+  optional uint32 max_bytes = 4 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 4194304
+  ];
+  optional uint32 cell_max_chars = 5 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 8000
+  ];
+  optional uint32 timeout_ms = 6 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 120000
+  ];
 }
 
 message CliQueryCanonicalRequest {
@@ -55,7 +83,7 @@ message CliQueryCanonicalRequest {
 }
 
 message CliQueryParameter {
-  CliQueryParameterType type = 1;
+  CliQueryParameterType type = 1 [(buf.validate.field).enum.not_in = 0];
   optional string value = 2;
 }
 
