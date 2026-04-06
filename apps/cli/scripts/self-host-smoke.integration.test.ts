@@ -155,6 +155,7 @@ async function callCliConnectRpc(input: {
   method:
     | "Use"
     | "GetSession"
+    | "RefreshSession"
     | "ListOrganizations"
     | "GetOrganization"
     | "GetSourceConnectGuide"
@@ -197,6 +198,70 @@ async function callCliConnectRpc(input: {
   return {
     payload,
     response,
+  };
+}
+
+async function refreshCliAccessToken(input: {
+  baseUrl: string;
+  cookieHeader: string;
+}): Promise<string> {
+  const refreshResponse = await callCliConnectRpc({
+    baseUrl: input.baseUrl,
+    body: {},
+    cookieHeader: input.cookieHeader,
+    method: "RefreshSession",
+    requestId: "req_cli_refresh_session_123",
+  });
+  const payload = refreshResponse.payload as {
+    accessToken?: unknown;
+  };
+
+  if (
+    typeof payload.accessToken !== "string" ||
+    payload.accessToken.length === 0
+  ) {
+    throw new Error("RefreshSession did not return an accessToken");
+  }
+
+  return payload.accessToken;
+}
+
+function runPackagedCliJsonCommand(input: {
+  args: string[];
+  env: Record<string, string>;
+  stagedBundleRoot: string;
+}): {
+  output: {
+    data: unknown;
+    ok: boolean;
+    requestId?: string;
+  };
+  stderr: string;
+  stdout: string;
+} {
+  const cliPath = resolveStagedCliPath(input.stagedBundleRoot);
+  const result = spawnSync(cliPath, ["--output", "json", ...input.args], {
+    cwd: cliRootDir,
+    encoding: "utf8",
+    env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
+  });
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+
+  if (result.status !== 0) {
+    throw new Error(
+      `CLI command failed (${input.args.join(" ")}):\nstdout:\n${stdout}\nstderr:\n${stderr}`
+    );
+  }
+
+  return {
+    output: JSON.parse(stdout) as {
+      data: unknown;
+      ok: boolean;
+      requestId?: string;
+    },
+    stderr,
+    stdout,
   };
 }
 
@@ -534,6 +599,305 @@ describe("CLI self-host smoke", () => {
     } catch (error) {
       throw new Error(
         `self-host smoke failed.\n${handle.output.read()}\n${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error }
+      );
+    } finally {
+      await stopServeProcess({
+        child: handle.child,
+        env,
+        homeDir,
+        output: handle.output,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("runs the packaged CLI against the self-host Connect API", async () => {
+    const { baseUrl, env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-connect-cli-home-");
+
+    writeSelfHostConfig(homeDir, port);
+
+    const handle = await startServeProcess({
+      env,
+      stagedBundleRoot,
+    });
+
+    try {
+      await waitForBootstrap(baseUrl);
+
+      const bootstrapResponse = await fetch(
+        `${baseUrl}/api/bootstrap/complete`,
+        {
+          body: JSON.stringify({
+            email: "owner@example.com",
+            name: "Owner",
+            organizationName: "Owner Org",
+            organizationSlug: "owner-org",
+            password: "password123",
+          }),
+          headers: {
+            "content-type": "application/json",
+            origin: baseUrl,
+          },
+          method: "POST",
+        }
+      );
+
+      expect(bootstrapResponse.status).toBe(201);
+      const cookieHeader = buildCookieHeader(bootstrapResponse.headers);
+      if (!cookieHeader) {
+        throw new Error("bootstrap did not return a session cookie");
+      }
+
+      const accessToken = await refreshCliAccessToken({
+        baseUrl,
+        cookieHeader,
+      });
+      const cliEnv = {
+        ...env,
+        ONEQUERY_ACCESS_TOKEN: accessToken,
+        ONEQUERY_BASE_URL: baseUrl,
+      };
+
+      const whoami = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_whoami_123",
+          "auth",
+          "whoami",
+          "--fields",
+          "user.email",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(whoami.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_whoami_123",
+        data: {
+          user: {
+            email: "owner@example.com",
+          },
+        },
+      });
+
+      const orgUse = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_org_use_123",
+          "org",
+          "use",
+          "owner-org",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgUse.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_org_use_123",
+        data: {
+          activeOrg: "owner-org",
+          changed: true,
+        },
+      });
+
+      const orgCurrent = runPackagedCliJsonCommand({
+        args: ["org", "current"],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgCurrent.output).toMatchObject({
+        ok: true,
+        data: {
+          org: "owner-org",
+          resolved: true,
+          source: "config",
+        },
+      });
+
+      const authSessionRefresh = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_auth_refresh_123",
+          "auth",
+          "session",
+          "refresh",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(authSessionRefresh.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_auth_refresh_123",
+        data: {
+          accessTokenRedacted: true,
+        },
+      });
+
+      const orgGet = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_org_get_123",
+          "org",
+          "get",
+          "--fields",
+          "slug,capabilities",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgGet.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_org_get_123",
+        data: {
+          slug: "owner-org",
+        },
+      });
+
+      const sourceConnect = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_connect_123",
+          "source",
+          "connect",
+          "--source",
+          "postgres",
+          "--input",
+          JSON.stringify({
+            name: "warehouse-cli",
+            credentials: {
+              database: "analytics",
+              host: "localhost",
+              password: "password",
+              port: 5432,
+              sslMode: "prefer",
+              type: "postgres",
+              username: "postgres",
+            },
+          }),
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceConnect.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_connect_123",
+        data: {
+          nextCommand: "onequery source show warehouse-cli",
+          source: {
+            name: "warehouse-cli",
+            provider: "postgres",
+            queryable: true,
+            status: "active",
+          },
+        },
+      });
+
+      const sourceList = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_list_123",
+          "source",
+          "list",
+          "--fields",
+          "sources.name,sources.status",
+          "--page-size",
+          "1",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceList.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_list_123",
+        data: {
+          sources: [
+            {
+              name: "warehouse-cli",
+              status: "active",
+            },
+          ],
+        },
+      });
+
+      const sourceShow = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_show_123",
+          "source",
+          "show",
+          "warehouse-cli",
+          "--fields",
+          "name,queryable",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceShow.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_show_123",
+        data: {
+          name: "warehouse-cli",
+          queryable: true,
+        },
+      });
+
+      const queryValidate = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_query_validate_123",
+          "query",
+          "validate",
+          "--source",
+          "warehouse-cli",
+          "--sql",
+          "select 1",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(queryValidate.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_query_validate_123",
+        data: {
+          normalizedSql: expect.any(String),
+          source: {
+            name: "warehouse-cli",
+          },
+        },
+      });
+
+      const useSkill = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_use_123",
+          "--org",
+          "owner-org",
+          "use",
+          "--source",
+          "github",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(useSkill.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_use_123",
+        data: {
+          source: "github",
+          title: expect.any(String),
+        },
+      });
+    } catch (error) {
+      throw new Error(
+        `self-host cli smoke failed.\n${handle.output.read()}\n${
           error instanceof Error ? error.message : String(error)
         }`,
         { cause: error }

@@ -634,7 +634,7 @@ The migration is complete when all of the following are true:
 - [x] `progenitor` is no longer used by the Rust CLI.
 - [x] The CLI server exposes the internal CLI API via Connect RPC under Hono.
 - [x] The Rust CLI talks to the server via `connect-rust`.
-- [ ] All current CLI operations except `schema openapi` work end-to-end.
+- [x] All current CLI operations except `schema openapi` work end-to-end.
 - [x] Existing auth, org selection, read controls, and query flows still work.
 - [x] Request IDs are available through metadata/logging instead of a legacy REST envelope.
 - [x] OpenAPI-derived command-schema code is removed or intentionally replaced.
