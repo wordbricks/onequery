@@ -1,6 +1,5 @@
 use buffa::EnumValue;
 use buffa::MessageField;
-use buffa_types::google::protobuf::Struct as ProtoStruct;
 use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
@@ -20,49 +19,8 @@ use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::labels::content_format_to_str;
 use crate::transport::labels::source_provider_from_str;
-use crate::transport::labels::source_provider_to_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SourceConnectSchemaField {
-    #[serde(rename = "type")]
-    pub(crate) field_type: String,
-    pub(crate) description: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) pattern: Option<String>,
-    #[serde(rename = "enum")]
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) enum_values: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SourceConnectInputSchema {
-    #[serde(rename = "type")]
-    pub(crate) field_type: String,
-    pub(crate) required: Vec<String>,
-    pub(crate) properties: SourceConnectInputSchemaProperties,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-pub(crate) struct SourceConnectInputSchemaProperties {
-    pub(crate) name: SourceConnectSchemaField,
-    pub(crate) credentials: SourceConnectSchemaField,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SourceConnectProviderGuide {
-    pub(crate) provider: String,
-    pub(crate) summary: String,
-    pub(crate) required_credential_fields: Vec<String>,
-    pub(crate) optional_credential_fields: Vec<String>,
-    pub(crate) steps: Vec<String>,
-    pub(crate) credential_template: Value,
-    pub(crate) example_input: Value,
-}
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -72,8 +30,6 @@ pub(crate) struct SourceConnectGuide {
     pub(crate) format: String,
     pub(crate) content: String,
     pub(crate) command: String,
-    pub(crate) input_schema: SourceConnectInputSchema,
-    pub(crate) providers: Vec<SourceConnectProviderGuide>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -872,108 +828,14 @@ fn problem_stage_for_code(code: ErrorCode) -> ErrorStage {
 
 fn source_connect_guide_from_generated(
     response: types::GetSourceConnectGuideResponse,
-    request_id: Option<String>,
+    _request_id: Option<String>,
 ) -> Result<SourceConnectGuide, ApiFailure> {
-    let input_schema = response.input_schema.into_option().ok_or_else(|| {
-        decode_failure(
-            ErrorStage::ResolveSource,
-            "source connect guide missing input schema",
-            request_id.clone(),
-        )
-    })?;
-
     Ok(SourceConnectGuide {
         title: response.title,
         description: response.description,
         format: content_format_to_str(response.format),
         content: response.content,
         command: response.command,
-        input_schema: input_schema_from_generated(input_schema, request_id.clone())?,
-        providers: response
-            .providers
-            .into_iter()
-            .map(|provider| provider_guide_from_generated(provider, request_id.clone()))
-            .collect::<Result<Vec<_>, _>>()?,
-    })
-}
-
-fn input_schema_from_generated(
-    schema: types::CliSourceConnectInputSchema,
-    request_id: Option<String>,
-) -> Result<SourceConnectInputSchema, ApiFailure> {
-    let properties = schema.properties.into_option().ok_or_else(|| {
-        decode_failure(
-            ErrorStage::ResolveSource,
-            "source connect guide missing input schema properties",
-            request_id.clone(),
-        )
-    })?;
-
-    Ok(SourceConnectInputSchema {
-        field_type: schema.r#type,
-        required: schema.required,
-        properties: SourceConnectInputSchemaProperties {
-            name: schema_field_from_generated(properties.name.into_option().ok_or_else(|| {
-                decode_failure(
-                    ErrorStage::ResolveSource,
-                    "source connect guide missing input schema name field",
-                    request_id.clone(),
-                )
-            })?),
-            credentials: schema_field_from_generated(
-                properties.credentials.into_option().ok_or_else(|| {
-                    decode_failure(
-                        ErrorStage::ResolveSource,
-                        "source connect guide missing input schema credentials field",
-                        request_id,
-                    )
-                })?,
-            ),
-        },
-    })
-}
-
-fn schema_field_from_generated(
-    field: types::CliSourceConnectSchemaField,
-) -> SourceConnectSchemaField {
-    SourceConnectSchemaField {
-        field_type: field.r#type,
-        description: field.description,
-        pattern: field.pattern,
-        enum_values: (!field.enum_values.is_empty()).then_some(field.enum_values),
-    }
-}
-
-fn provider_guide_from_generated(
-    guide: types::CliSourceConnectProviderGuide,
-    request_id: Option<String>,
-) -> Result<SourceConnectProviderGuide, ApiFailure> {
-    Ok(SourceConnectProviderGuide {
-        provider: source_provider_to_str(guide.provider),
-        summary: guide.summary,
-        required_credential_fields: guide.required_credential_fields,
-        optional_credential_fields: guide.optional_credential_fields,
-        steps: guide.steps,
-        credential_template: struct_to_json(
-            guide.credential_template.into_option().ok_or_else(|| {
-                decode_failure(
-                    ErrorStage::ResolveSource,
-                    "source connect guide missing credential template",
-                    request_id.clone(),
-                )
-            })?,
-            request_id.clone(),
-        )?,
-        example_input: struct_to_json(
-            guide.example_input.into_option().ok_or_else(|| {
-                decode_failure(
-                    ErrorStage::ResolveSource,
-                    "source connect guide missing example input",
-                    request_id,
-                )
-            })?,
-            None,
-        )?,
     })
 }
 
@@ -995,22 +857,13 @@ fn source_connect_result_from_generated(
     })
 }
 
-fn struct_to_json(value: ProtoStruct, request_id: Option<String>) -> Result<Value, ApiFailure> {
-    serde_json::to_value(value)
-        .map_err(|error| decode_failure(ErrorStage::ResolveSource, error.to_string(), request_id))
-}
-
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
     use super::SourceConnectGuide;
-    use super::SourceConnectInputSchema;
-    use super::SourceConnectInputSchemaProperties;
-    use super::SourceConnectProviderGuide;
     use super::SourceConnectResult;
-    use super::SourceConnectSchemaField;
     use super::connect_source_credentials_from_json;
     use super::types;
     use crate::transport::http::ApiFailure;
@@ -1023,31 +876,7 @@ mod tests {
             "description": "Create one source connection.",
             "format": "markdown",
             "content": "1. Gather credentials.\n2. Run the command.",
-            "command": "onequery source connect --source postgres --input '<json>'",
-            "inputSchema": {
-                "type": "object",
-                "required": ["name", "credentials"],
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "CLI-safe org-unique source key",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-                    },
-                    "credentials": {
-                        "type": "object",
-                        "description": "Provider-specific credentials"
-                    }
-                }
-            },
-            "providers": [{
-                "provider": "postgres",
-                "summary": "Connect Postgres.",
-                "requiredCredentialFields": ["type", "host", "database", "username", "password"],
-                "optionalCredentialFields": ["port", "sslMode"],
-                "steps": ["Retrieve connection details.", "Run the command."],
-                "credentialTemplate": {"type": "postgres", "host": "db.example.com"},
-                "exampleInput": {"name": "warehouse", "provider": "postgres", "credentials": {"type": "postgres", "host": "db.example.com"}}
-            }]
+            "command": "onequery source connect --source postgres --input '<json>'"
         });
 
         let parsed = serde_json::from_value::<SourceConnectGuide>(payload)
@@ -1060,54 +889,6 @@ mod tests {
                 format: "markdown".to_owned(),
                 content: "1. Gather credentials.\n2. Run the command.".to_owned(),
                 command: "onequery source connect --source postgres --input '<json>'".to_owned(),
-                input_schema: SourceConnectInputSchema {
-                    field_type: "object".to_owned(),
-                    required: vec!["name".to_owned(), "credentials".to_owned()],
-                    properties: SourceConnectInputSchemaProperties {
-                        name: SourceConnectSchemaField {
-                            field_type: "string".to_owned(),
-                            description: "CLI-safe org-unique source key".to_owned(),
-                            pattern: Some(
-                                "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$".to_owned(),
-                            ),
-                            enum_values: None,
-                        },
-                        credentials: SourceConnectSchemaField {
-                            field_type: "object".to_owned(),
-                            description: "Provider-specific credentials".to_owned(),
-                            pattern: None,
-                            enum_values: None,
-                        },
-                    },
-                },
-                providers: vec![SourceConnectProviderGuide {
-                    provider: "postgres".to_owned(),
-                    summary: "Connect Postgres.".to_owned(),
-                    required_credential_fields: vec![
-                        "type".to_owned(),
-                        "host".to_owned(),
-                        "database".to_owned(),
-                        "username".to_owned(),
-                        "password".to_owned(),
-                    ],
-                    optional_credential_fields: vec!["port".to_owned(), "sslMode".to_owned()],
-                    steps: vec![
-                        "Retrieve connection details.".to_owned(),
-                        "Run the command.".to_owned(),
-                    ],
-                    credential_template: json!({
-                        "type": "postgres",
-                        "host": "db.example.com",
-                    }),
-                    example_input: json!({
-                        "name": "warehouse",
-                        "provider": "postgres",
-                        "credentials": {
-                            "type": "postgres",
-                            "host": "db.example.com",
-                        }
-                    }),
-                }],
             }
         );
     }
@@ -1142,25 +923,25 @@ mod tests {
     }
 
     #[test]
-    fn strict_source_connect_credentials_reject_legacy_type_fields() {
+    fn strict_source_connect_credentials_reject_unknown_fields() {
         let error = connect_source_credentials_from_json(
             types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES,
             json!({
-                "type": "postgres",
                 "host": "db.example.com",
                 "database": "app",
                 "username": "onequery",
                 "password": "secret",
+                "unexpected": true,
             }),
         )
-        .expect_err("legacy credentials.type should be rejected");
+        .expect_err("unknown credentials fields should be rejected");
 
         let ApiFailure::Problem(problem) = error else {
             panic!("expected problem failure");
         };
         let detail = problem.detail.expect("problem detail should be present");
 
-        assert!(detail.contains("unknown field `type`"));
+        assert!(detail.contains("unknown field `unexpected`"));
     }
 
     #[test]

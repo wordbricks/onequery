@@ -459,14 +459,12 @@ describe("CLI self-host smoke", () => {
 
       const sessionResponse = await callCliConnectRpc({
         baseUrl,
-        body: {
-          fields: "user.email,activeOrgSlug",
-        },
         cookieHeader,
         method: "GetSession",
         requestId: "req_cli_session_123",
       });
-      expect(sessionResponse.payload).toEqual({
+      expect(sessionResponse.payload).toMatchObject({
+        authMode: "CLI_AUTH_MODE_BROWSER_SESSION",
         user: {
           email: "owner@example.com",
         },
@@ -475,7 +473,6 @@ describe("CLI self-host smoke", () => {
       const organizationsResponse = await callCliConnectRpc({
         baseUrl,
         body: {
-          fields: "organizations.slug",
           limit: 1,
         },
         cookieHeader,
@@ -492,7 +489,6 @@ describe("CLI self-host smoke", () => {
       const organizationResponse = await callCliConnectRpc({
         baseUrl,
         body: {
-          fields: "slug,capabilities",
           orgSlug: "owner-org",
         },
         cookieHeader,
@@ -520,11 +516,6 @@ describe("CLI self-host smoke", () => {
         command: expect.stringContaining(
           "onequery source connect --source postgres"
         ),
-        providers: expect.arrayContaining([
-          expect.objectContaining({
-            provider: "CLI_SOURCE_PROVIDER_POSTGRES",
-          }),
-        ]),
         title: expect.any(String),
       });
 
@@ -532,17 +523,17 @@ describe("CLI self-host smoke", () => {
         baseUrl,
         body: {
           credentials: {
-            database: "analytics",
-            host: "localhost",
-            password: "password",
-            port: 5432,
-            sslMode: "prefer",
-            type: "postgres",
-            username: "postgres",
+            postgres: {
+              database: "analytics",
+              host: "localhost",
+              password: "password",
+              port: 5432,
+              sslMode: "prefer",
+              username: "postgres",
+            },
           },
           name: "Warehouse",
           orgSlug: "owner-org",
-          source: "CLI_SOURCE_PROVIDER_POSTGRES",
         },
         cookieHeader,
         method: "ConnectSource",
@@ -561,7 +552,6 @@ describe("CLI self-host smoke", () => {
       const sourcesResponse = await callCliConnectRpc({
         baseUrl,
         body: {
-          fields: "sources.name,sources.status",
           limit: 1,
           orgSlug: "owner-org",
         },
@@ -584,7 +574,6 @@ describe("CLI self-host smoke", () => {
       const sourceResponse = await callCliConnectRpc({
         baseUrl,
         body: {
-          fields: "name,queryable",
           orgSlug: "owner-org",
           sourceKey: "Warehouse",
         },
@@ -592,7 +581,7 @@ describe("CLI self-host smoke", () => {
         method: "GetSource",
         requestId: "req_cli_source_123",
       });
-      expect(sourceResponse.payload).toEqual({
+      expect(sourceResponse.payload).toMatchObject({
         name: "Warehouse",
         queryable: true,
       });
@@ -778,7 +767,6 @@ describe("CLI self-host smoke", () => {
               password: "password",
               port: 5432,
               sslMode: "prefer",
-              type: "postgres",
               username: "postgres",
             },
           }),

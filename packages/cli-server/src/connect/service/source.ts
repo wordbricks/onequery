@@ -1,4 +1,4 @@
-import type { JsonObject, MessageInitShape } from "@bufbuild/protobuf";
+import type { MessageInitShape } from "@bufbuild/protobuf";
 import { safeValidateCredentials } from "@onequery/db/server";
 import type {
   Credentials,
@@ -178,7 +178,13 @@ export const handleGetSourceConnectGuide: CliServiceMethod<
     level: "info",
   });
 
-  return buildCliSourceConnectGuideMessage(guide);
+  return {
+    title: guide.title,
+    description: guide.description,
+    format: toCliContentFormat(guide.format),
+    content: guide.content,
+    command: guide.command,
+  } satisfies GetSourceConnectGuideResponseInit;
 };
 
 export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
@@ -289,47 +295,6 @@ export function buildCliSourceSummaryMessage(source: {
 
   return response;
 }
-
-function buildCliSourceConnectGuideMessage(
-  guide: ReturnType<typeof buildCliSourceConnectGuide>
-): GetSourceConnectGuideResponseInit {
-  return {
-    title: guide.title,
-    description: guide.description,
-    format: toCliContentFormat(guide.format),
-    content: guide.content,
-    command: guide.command,
-    inputSchema: {
-      type: guide.inputSchema.type,
-      required: [...guide.inputSchema.required],
-      properties: {
-        name: {
-          type: guide.inputSchema.properties.name.type,
-          description: guide.inputSchema.properties.name.description,
-          ...(guide.inputSchema.properties.name.pattern
-            ? { pattern: guide.inputSchema.properties.name.pattern }
-            : {}),
-          enumValues: [],
-        },
-        credentials: {
-          type: guide.inputSchema.properties.credentials.type,
-          description: guide.inputSchema.properties.credentials.description,
-          enumValues: [],
-        },
-      },
-    },
-    providers: guide.providers.map((providerGuide) => ({
-      provider: toCliSourceProvider(providerGuide.provider),
-      summary: providerGuide.summary,
-      requiredCredentialFields: [...providerGuide.requiredCredentialFields],
-      optionalCredentialFields: [...providerGuide.optionalCredentialFields],
-      steps: [...providerGuide.steps],
-      credentialTemplate: providerGuide.credentialTemplate as JsonObject,
-      exampleInput: providerGuide.exampleInput as JsonObject,
-    })),
-  };
-}
-
 function throwCliConnectSourceValidationError(input: {
   issues: readonly {
     path: ReadonlyArray<PropertyKey>;

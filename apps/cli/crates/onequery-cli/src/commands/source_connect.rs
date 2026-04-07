@@ -409,7 +409,7 @@ fn parse_source_connect_input(
 fn source_connect_input_examples() -> Vec<String> {
     vec![
         "onequery source connect --source <provider>".to_owned(),
-        "onequery --org <org_slug> source connect --source postgres --input '{\"name\":\"warehouse\",\"credentials\":{\"type\":\"postgres\",\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
+        "onequery --org <org_slug> source connect --source postgres --input '{\"name\":\"warehouse\",\"credentials\":{\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
     ]
 }
 
@@ -505,10 +505,7 @@ mod tests {
     use crate::config::default_base_url;
     use crate::transport::source::SourceSummary;
     use crate::transport::source_connect::SourceConnectGuide;
-    use crate::transport::source_connect::SourceConnectInputSchema;
-    use crate::transport::source_connect::SourceConnectInputSchemaProperties;
     use crate::transport::source_connect::SourceConnectResult;
-    use crate::transport::source_connect::SourceConnectSchemaField;
     use crate::workflows::runner::TransitionProgress;
     use onequery_cli_core::error::CliError;
 
@@ -533,25 +530,6 @@ mod tests {
                 "# OneQuery Source Connect Guide\n\n1. Gather credentials.\n2. Run the command.\n"
                     .to_owned(),
             command: "onequery source connect --source postgres --input '<json>'".to_owned(),
-            input_schema: SourceConnectInputSchema {
-                field_type: "object".to_owned(),
-                required: vec!["name".to_owned(), "credentials".to_owned()],
-                properties: SourceConnectInputSchemaProperties {
-                    name: SourceConnectSchemaField {
-                        field_type: "string".to_owned(),
-                        description: "CLI-safe source key".to_owned(),
-                        pattern: None,
-                        enum_values: None,
-                    },
-                    credentials: SourceConnectSchemaField {
-                        field_type: "object".to_owned(),
-                        description: "Provider-specific credentials".to_owned(),
-                        pattern: None,
-                        enum_values: None,
-                    },
-                },
-            },
-            providers: Vec::new(),
         };
 
         let output = render_source_connect_guide_output(guide)
@@ -579,7 +557,7 @@ mod tests {
     #[test]
     fn source_connect_input_rejects_org_fields() {
         let error = parse_source_connect_input(
-            r#"{"name":"warehouse","organizationSlug":"acme","credentials":{"type":"postgres"}}"#,
+            r#"{"name":"warehouse","organizationSlug":"acme","credentials":{"host":"db.example.com"}}"#,
             &CommandContext {
                 command_line: "onequery source connect --source postgres --input <excerpt>"
                     .to_owned(),

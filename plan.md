@@ -145,22 +145,22 @@ Recommended design direction:
 
 ### Phase 4: Remove Hand-Maintained Schema Description Messages
 
-- [ ] Delete JSON-schema-like guide messages if they are not required by a real machine consumer:
+- [x] Delete JSON-schema-like guide messages if they are not required by a real machine consumer:
   - `CliSourceConnectInputSchema`
   - `CliSourceConnectInputSchemaProperties`
   - `CliSourceConnectSchemaField`
-- [ ] Remove `input_schema` from `GetSourceConnectGuideResponse` unless a concrete consumer still depends on it.
-- [ ] If guide metadata is still useful, keep only human-facing material:
+- [x] Remove `input_schema` from `GetSourceConnectGuideResponse` unless a concrete consumer still depends on it.
+- [x] If guide metadata is still useful, keep only human-facing material:
   - title
   - description
   - content
   - command
   - optional typed examples
-- [ ] Remove or simplify `CliSourceConnectProviderGuide` fields that duplicate the canonical typed credential schema.
-- [ ] Refactor guide-building code in:
+- [x] Remove or simplify `CliSourceConnectProviderGuide` fields that duplicate the canonical typed credential schema.
+- [x] Refactor guide-building code in:
   - `packages/cli-server/src/source/connect.ts`
   - `packages/cli-server/src/connect/service/source.ts`
-- [ ] Stop manually maintaining parallel lists like `requiredCredentialFields` and `optionalCredentialFields` if the same information already exists in typed proto definitions or domain validators.
+- [x] Stop manually maintaining parallel lists like `requiredCredentialFields` and `optionalCredentialFields` if the same information already exists in typed proto definitions or domain validators.
 
 Preferred cleanup path:
 
@@ -239,9 +239,9 @@ Run these before considering the refactor done:
 
 - [ ] search for remaining duplicate proto message names and confirm they are either deleted or still intentionally canonical
 - [x] search for `fields` request members and confirm they no longer exist in proto or Connect request builders
-- [ ] search for `google.protobuf.Struct credentials` and confirm it has been removed from the transport contract
-- [ ] search for `PROTO_FILES` and confirm the hardcoded inventory is gone
-- [ ] review `packages/cli-server/src/connect/gen/**` only after regeneration, never by manual edits
+- [x] search for `google.protobuf.Struct credentials` and confirm it has been removed from the transport contract
+- [x] search for `PROTO_FILES` and confirm the hardcoded inventory is gone
+- [x] review `packages/cli-server/src/connect/gen/**` only after regeneration, never by manual edits
 
 ## Definition Of Done
 

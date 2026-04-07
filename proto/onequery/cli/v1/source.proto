@@ -3,7 +3,6 @@ syntax = "proto3";
 package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
-import "google/protobuf/struct.proto";
 import "onequery/cli/v1/common.proto";
 
 message ListSourcesRequest {
@@ -59,8 +58,6 @@ message GetSourceConnectGuideResponse {
   CliContentFormat format = 3;
   string content = 4;
   string command = 5;
-  CliSourceConnectInputSchema input_schema = 6;
-  repeated CliSourceConnectProviderGuide providers = 7;
 }
 
 message ConnectSourceRequest {
@@ -269,34 +266,6 @@ message CliSourceSummary {
   CliSourceProvider provider = 3;
   bool queryable = 4;
   CliSourceStatus status = 5;
-}
-
-message CliSourceConnectInputSchema {
-  string type = 1;
-  repeated string required = 2;
-  CliSourceConnectInputSchemaProperties properties = 3;
-}
-
-message CliSourceConnectInputSchemaProperties {
-  CliSourceConnectSchemaField name = 1;
-  CliSourceConnectSchemaField credentials = 2;
-}
-
-message CliSourceConnectSchemaField {
-  string type = 1;
-  string description = 2;
-  optional string pattern = 3;
-  repeated string enum_values = 4;
-}
-
-message CliSourceConnectProviderGuide {
-  CliSourceProvider provider = 1;
-  string summary = 2;
-  repeated string required_credential_fields = 3;
-  repeated string optional_credential_fields = 4;
-  repeated string steps = 5;
-  google.protobuf.Struct credential_template = 6;
-  google.protobuf.Struct example_input = 7;
 }
 
 enum CliSourceProvider {
