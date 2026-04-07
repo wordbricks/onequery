@@ -14,7 +14,7 @@ pub(crate) fn refresh_session_response_body(
     types::RefreshSessionResponse {
         access_token: access_token.to_owned(),
         auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
-        user: MessageField::some(types::CliAuthSessionUser {
+        user: MessageField::some(types::CliAuthUser {
             id: "user-1".to_owned(),
             email: "alice@example.com".to_owned(),
             display_name: "Alice".to_owned(),

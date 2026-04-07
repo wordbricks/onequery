@@ -18,7 +18,7 @@ import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js
  * Describes the file onequery/cli/v1/auth.proto.
  */
 export const file_onequery_cli_v1_auth: GenFile /*@__PURE__*/ = fileDesc(
-  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIhMKEUdldFNlc3Npb25SZXF1ZXN0IrkCChJHZXRTZXNzaW9uUmVzcG9uc2USLwoJYXV0aF9tb2RlGAEgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEjoKBHVzZXIYAiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFNlc3Npb25Qcm9qZWN0ZWRVc2VyEhwKD2FjdGl2ZV9vcmdfc2x1ZxgDIAEoCUgAiAEBEjIKCWlzc3VlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIzCgpleHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBQhIKEF9hY3RpdmVfb3JnX3NsdWdCDAoKX2lzc3VlZF9hdEINCgtfZXhwaXJlc19hdCIXChVSZWZyZXNoU2Vzc2lvblJlcXVlc3QiygIKFlJlZnJlc2hTZXNzaW9uUmVzcG9uc2USFAoMYWNjZXNzX3Rva2VuGAEgASgJEi8KCWF1dGhfbW9kZRgCIAEoDjIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoTW9kZRIxCgR1c2VyGAMgASgLMiMub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhTZXNzaW9uVXNlchIcCg9hY3RpdmVfb3JnX3NsdWcYBCABKAlIAIgBARIyCglpc3N1ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESMwoKZXhwaXJlc19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAogBAUISChBfYWN0aXZlX29yZ19zbHVnQgwKCl9pc3N1ZWRfYXRCDQoLX2V4cGlyZXNfYXQiIQofU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdCLdAQogU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USDQoFc3RhdGUYASABKAkSEwoLZGV2aWNlX2NvZGUYAiABKAkSEQoJdXNlcl9jb2RlGAMgASgJEhgKEHZlcmlmaWNhdGlvbl91cmwYBCABKAkSIQoZdmVyaWZpY2F0aW9uX2NvbXBsZXRlX3VybBgFIAEoCRIVCg1wb2xsX2FmdGVyX21zGAYgASgNEi4KCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIj4KHlBvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdBIcCgtkZXZpY2VfY29kZRgBIAEoCUIHukgEcgIQASK4AQofUG9sbERldmljZUF1dGhvcml6YXRpb25SZXNwb25zZRJBCgdwZW5kaW5nGAEgASgLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVBlbmRpbmdEZXZpY2VBdXRob3JpemF0aW9uSAASRwoKYXV0aG9yaXplZBgCIAEoCzIxLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRob3JpemVkRGV2aWNlQXV0aG9yaXphdGlvbkgAQgkKB291dGNvbWUiTgobQ2xpQXV0aFNlc3Npb25Qcm9qZWN0ZWRVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCSJFChJDbGlBdXRoU2Vzc2lvblVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJIkUKHUNsaVBlbmRpbmdEZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhUKDXBvbGxfYWZ0ZXJfbXMYAiABKA0i4wIKIENsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhQKDGFjY2Vzc190b2tlbhgCIAEoCRIvCglhdXRoX21vZGUYAyABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSMQoEdXNlchgEIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAUgASgJSACIAQESMgoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0Km8KC0NsaUF1dGhNb2RlEh0KGUNMSV9BVVRIX01PREVfVU5TUEVDSUZJRUQQABIhCh1DTElfQVVUSF9NT0RFX0JST1dTRVJfU0VTU0lPThABEh4KGkNMSV9BVVRIX01PREVfQkVBUkVSX1RPS0VOEAJiBnByb3RvMw",
+  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIhMKEUdldFNlc3Npb25SZXF1ZXN0IqkCChJHZXRTZXNzaW9uUmVzcG9uc2USLwoJYXV0aF9tb2RlGAEgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYAiABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAMgASgJSACIAQESMgoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IhcKFVJlZnJlc2hTZXNzaW9uUmVxdWVzdCLDAgoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSLwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYAyABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAQgASgJSACIAQESMgoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IiEKH1N0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3Qi3QEKIFN0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEg0KBXN0YXRlGAEgASgJEhMKC2RldmljZV9jb2RlGAIgASgJEhEKCXVzZXJfY29kZRgDIAEoCRIYChB2ZXJpZmljYXRpb25fdXJsGAQgASgJEiEKGXZlcmlmaWNhdGlvbl9jb21wbGV0ZV91cmwYBSABKAkSFQoNcG9sbF9hZnRlcl9tcxgGIAEoDRIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI+Ch5Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3QSHAoLZGV2aWNlX2NvZGUYASABKAlCB7pIBHICEAEiuAEKH1BvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USQQoHcGVuZGluZxgBIAEoCzIuLm9uZXF1ZXJ5LmNsaS52MS5DbGlQZW5kaW5nRGV2aWNlQXV0aG9yaXphdGlvbkgAEkcKCmF1dGhvcml6ZWQYAiABKAsyMS5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aG9yaXplZERldmljZUF1dGhvcml6YXRpb25IAEIJCgdvdXRjb21lIj4KC0NsaUF1dGhVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCSJFCh1DbGlQZW5kaW5nRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIVCg1wb2xsX2FmdGVyX21zGAIgASgNItwCCiBDbGlBdXRob3JpemVkRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIUCgxhY2Nlc3NfdG9rZW4YAiABKAkSLwoJYXV0aF9tb2RlGAMgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYBCABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAUgASgJSACIAQESMgoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0Km8KC0NsaUF1dGhNb2RlEh0KGUNMSV9BVVRIX01PREVfVU5TUEVDSUZJRUQQABIhCh1DTElfQVVUSF9NT0RFX0JST1dTRVJfU0VTU0lPThABEh4KGkNMSV9BVVRIX01PREVfQkVBUkVSX1RPS0VOEAJiBnByb3RvMw",
   [file_buf_validate_validate, file_google_protobuf_timestamp]
 );
 
@@ -46,9 +46,9 @@ export type GetSessionResponse =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionProjectedUser user = 2;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 2;
      */
-    user?: CliAuthSessionProjectedUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 3;
@@ -102,9 +102,9 @@ export type RefreshSessionResponse =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 3;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 3;
      */
-    user?: CliAuthSessionUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 4;
@@ -242,60 +242,31 @@ export const PollDeviceAuthorizationResponseSchema: GenMessage<PollDeviceAuthori
   messageDesc(file_onequery_cli_v1_auth, 7);
 
 /**
- * @generated from message onequery.cli.v1.CliAuthSessionProjectedUser
+ * @generated from message onequery.cli.v1.CliAuthUser
  */
-export type CliAuthSessionProjectedUser =
-  Message<"onequery.cli.v1.CliAuthSessionProjectedUser"> & {
-    /**
-     * @generated from field: string id = 1;
-     */
-    id: string;
+export type CliAuthUser = Message<"onequery.cli.v1.CliAuthUser"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
 
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
 
-    /**
-     * @generated from field: string display_name = 3;
-     */
-    displayName: string;
-  };
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+};
 
 /**
- * Describes the message onequery.cli.v1.CliAuthSessionProjectedUser.
- * Use `create(CliAuthSessionProjectedUserSchema)` to create a new message.
+ * Describes the message onequery.cli.v1.CliAuthUser.
+ * Use `create(CliAuthUserSchema)` to create a new message.
  */
-export const CliAuthSessionProjectedUserSchema: GenMessage<CliAuthSessionProjectedUser> /*@__PURE__*/ =
+export const CliAuthUserSchema: GenMessage<CliAuthUser> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_auth, 8);
-
-/**
- * @generated from message onequery.cli.v1.CliAuthSessionUser
- */
-export type CliAuthSessionUser =
-  Message<"onequery.cli.v1.CliAuthSessionUser"> & {
-    /**
-     * @generated from field: string id = 1;
-     */
-    id: string;
-
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
-
-    /**
-     * @generated from field: string display_name = 3;
-     */
-    displayName: string;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliAuthSessionUser.
- * Use `create(CliAuthSessionUserSchema)` to create a new message.
- */
-export const CliAuthSessionUserSchema: GenMessage<CliAuthSessionUser> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 9);
 
 /**
  * @generated from message onequery.cli.v1.CliPendingDeviceAuthorization
@@ -318,7 +289,7 @@ export type CliPendingDeviceAuthorization =
  * Use `create(CliPendingDeviceAuthorizationSchema)` to create a new message.
  */
 export const CliPendingDeviceAuthorizationSchema: GenMessage<CliPendingDeviceAuthorization> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 10);
+  messageDesc(file_onequery_cli_v1_auth, 9);
 
 /**
  * @generated from message onequery.cli.v1.CliAuthorizedDeviceAuthorization
@@ -341,9 +312,9 @@ export type CliAuthorizedDeviceAuthorization =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 4;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 4;
      */
-    user?: CliAuthSessionUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 5;
@@ -366,7 +337,7 @@ export type CliAuthorizedDeviceAuthorization =
  * Use `create(CliAuthorizedDeviceAuthorizationSchema)` to create a new message.
  */
 export const CliAuthorizedDeviceAuthorizationSchema: GenMessage<CliAuthorizedDeviceAuthorization> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 11);
+  messageDesc(file_onequery_cli_v1_auth, 10);
 
 /**
  * @generated from enum onequery.cli.v1.CliAuthMode

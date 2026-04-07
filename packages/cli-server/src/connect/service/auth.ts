@@ -49,7 +49,7 @@ type CliAuthorizedDeviceAuthorizationInit = MessageInitShape<
   typeof CliAuthorizedDeviceAuthorizationSchema
 >;
 
-type CliAuthUserFields = {
+type CliAuthUserInit = {
   id?: string;
   email?: string;
   displayName?: string;
@@ -223,9 +223,7 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
   );
 };
 
-function buildCliAuthSessionUser(
-  user: CliSessionIdentity["user"]
-): CliAuthUserFields {
+function buildCliAuthUser(user: CliSessionIdentity["user"]): CliAuthUserInit {
   return {
     id: user.id,
     email: user.email,
@@ -238,7 +236,7 @@ function buildCliAuthSession(
 ): GetSessionResponseInit {
   return {
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(toCliAuthUserView(session.user)),
+    user: buildCliAuthUser(toCliAuthUserView(session.user)),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }
@@ -255,7 +253,7 @@ function buildCliRefreshSession(
   return {
     accessToken: session.accessToken,
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(session.user),
+    user: buildCliAuthUser(session.user),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }
@@ -283,7 +281,7 @@ function buildAuthorizedDeviceAuthorizationResponse(input: {
     state: "authorized",
     accessToken: input.accessToken,
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(session.user),
+    user: buildCliAuthUser(session.user),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }

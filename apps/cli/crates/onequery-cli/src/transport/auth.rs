@@ -277,7 +277,7 @@ fn whoami_from_generated(
 
     Ok(WhoAmI {
         auth_mode: auth_mode_from_generated(response.auth_mode),
-        user: projected_user_from_response(user, request_id)?,
+        user: auth_user_from_response(user, "session response missing user", request_id)?,
         active_org: non_empty_option(response.active_org_slug),
         issued_at: format_timestamp(response.issued_at.into_option()),
         expires_at: format_timestamp(response.expires_at.into_option()),
@@ -304,7 +304,7 @@ fn refreshed_auth_session_from_generated(
                 request_id.clone(),
             )?,
             auth_mode: auth_mode_from_generated(response.auth_mode),
-            user: session_user_from_response(user, request_id)?,
+            user: auth_user_from_response(user, "refresh session response missing user", request_id)?,
             issued_at: format_timestamp(response.issued_at.into_option()),
             expires_at: format_timestamp(response.expires_at.into_option()),
         },
@@ -312,28 +312,16 @@ fn refreshed_auth_session_from_generated(
     })
 }
 
-fn projected_user_from_response(
-    user: types::CliAuthSessionProjectedUser,
+fn auth_user_from_response(
+    user: types::CliAuthUser,
+    missing_field_prefix: &'static str,
     request_id: Option<String>,
 ) -> Result<UserProfile, ApiFailure> {
     user_profile_from_generated(
         user.id,
         user.email,
         user.display_name,
-        "session response missing user",
-        request_id,
-    )
-}
-
-fn session_user_from_response(
-    user: types::CliAuthSessionUser,
-    request_id: Option<String>,
-) -> Result<UserProfile, ApiFailure> {
-    user_profile_from_generated(
-        user.id,
-        user.email,
-        user.display_name,
-        "refresh session response missing user",
+        missing_field_prefix,
         request_id,
     )
 }
@@ -603,7 +591,7 @@ mod tests {
     fn whoami_from_generated_projects_session_payload() {
         let response = types::GetSessionResponse {
             auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
-            user: buffa::MessageField::some(types::CliAuthSessionProjectedUser {
+            user: buffa::MessageField::some(types::CliAuthUser {
                 id: "user-1".to_owned(),
                 email: "alice@example.com".to_owned(),
                 display_name: "Alice".to_owned(),
@@ -637,7 +625,7 @@ mod tests {
         let response = types::RefreshSessionResponse {
             access_token: "session-token-refreshed".to_owned(),
             auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
-            user: buffa::MessageField::some(types::CliAuthSessionUser {
+            user: buffa::MessageField::some(types::CliAuthUser {
                 id: "user-1".to_owned(),
                 email: "alice@example.com".to_owned(),
                 display_name: "Alice".to_owned(),

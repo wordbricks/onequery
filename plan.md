@@ -114,9 +114,9 @@ Comment:
     - `CliConnectedSource`
   - `proto/onequery/cli/v1/use.proto`
     - `CliUseContent`
-- [ ] Collapse the remaining auth user-message split if `CliAuthSessionProjectedUser` and `CliAuthSessionUser` no longer carry distinct semantics after projection removal.
+- [x] Collapse the remaining auth user-message split by replacing `CliAuthSessionProjectedUser` and `CliAuthSessionUser` with the canonical `CliAuthUser` message.
 - [x] Regenerate TS code and confirm that removed messages had no remaining non-generated consumers.
-- [ ] Rename remaining messages if needed so the surviving names reflect actual wire concepts instead of historical DTO naming.
+- [x] Rename the surviving auth user message so the wire contract reflects the actual concept instead of historical DTO naming.
 
 Rule for this phase:
 

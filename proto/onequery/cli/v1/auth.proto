@@ -9,7 +9,7 @@ message GetSessionRequest {}
 
 message GetSessionResponse {
   CliAuthMode auth_mode = 1;
-  CliAuthSessionProjectedUser user = 2;
+  CliAuthUser user = 2;
   optional string active_org_slug = 3;
   optional google.protobuf.Timestamp issued_at = 4;
   optional google.protobuf.Timestamp expires_at = 5;
@@ -20,7 +20,7 @@ message RefreshSessionRequest {}
 message RefreshSessionResponse {
   string access_token = 1;
   CliAuthMode auth_mode = 2;
-  CliAuthSessionUser user = 3;
+  CliAuthUser user = 3;
   optional string active_org_slug = 4;
   optional google.protobuf.Timestamp issued_at = 5;
   optional google.protobuf.Timestamp expires_at = 6;
@@ -49,13 +49,7 @@ message PollDeviceAuthorizationResponse {
   }
 }
 
-message CliAuthSessionProjectedUser {
-  string id = 1;
-  string email = 2;
-  string display_name = 3;
-}
-
-message CliAuthSessionUser {
+message CliAuthUser {
   string id = 1;
   string email = 2;
   string display_name = 3;
@@ -70,7 +64,7 @@ message CliAuthorizedDeviceAuthorization {
   string state = 1;
   string access_token = 2;
   CliAuthMode auth_mode = 3;
-  CliAuthSessionUser user = 4;
+  CliAuthUser user = 4;
   optional string active_org_slug = 5;
   optional google.protobuf.Timestamp issued_at = 6;
   optional google.protobuf.Timestamp expires_at = 7;
