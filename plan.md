@@ -170,14 +170,14 @@ Preferred cleanup path:
 
 ### Phase 5: Remove Duplicate Proto Inventories In Rust Build Tooling
 
-- [ ] Replace the hardcoded `PROTO_FILES` array in `apps/cli/crates/onequery-cli/build.rs`.
-- [ ] Discover proto files from `proto/onequery/cli/v1/*.proto` at build time, sort them deterministically, and use that discovered list everywhere the current code uses `PROTO_FILES`.
-- [ ] Use the discovered list for:
+- [x] Replace the hardcoded `PROTO_FILES` array in `apps/cli/crates/onequery-cli/build.rs`.
+- [x] Discover proto files from `proto/onequery/cli/v1/*.proto` at build time, sort them deterministically, and use that discovered list everywhere the current code uses `PROTO_FILES`.
+- [x] Use the discovered list for:
   - rerun triggers
   - descriptor generation `--path` flags, if still needed
   - Rust code generation inputs
 - [ ] If `connectrpc_build` can compile from only `cli.proto` plus imports, simplify to that single entrypoint instead of listing every file.
-- [ ] Keep deterministic ordering in the discovered file list so generated output is stable.
+- [x] Keep deterministic ordering in the discovered file list so generated output is stable.
 
 Success condition for this phase:
 

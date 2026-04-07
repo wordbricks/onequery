@@ -6,15 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 const PROTO_ROOT: &str = "proto";
-const PROTO_FILES: [&str; 7] = [
-    "onequery/cli/v1/auth.proto",
-    "onequery/cli/v1/cli.proto",
-    "onequery/cli/v1/common.proto",
-    "onequery/cli/v1/org.proto",
-    "onequery/cli/v1/query.proto",
-    "onequery/cli/v1/source.proto",
-    "onequery/cli/v1/use.proto",
-];
+const CLI_PROTO_DIR: &str = "onequery/cli/v1";
 
 struct BufCommand {
     program: PathBuf,
@@ -44,14 +36,15 @@ impl BufCommand {
 fn main() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let repo_root = repo_root(manifest_dir);
-    emit_rerun_triggers(&repo_root);
+    let proto_files = discover_proto_files(&repo_root);
+    emit_rerun_triggers(&repo_root, &proto_files);
 
     let out_dir = env::var("OUT_DIR").unwrap_or_else(|error| panic!("expected OUT_DIR: {error}"));
     let descriptor_path = Path::new(&out_dir).join("onequery-cli.fds");
-    build_descriptor_set(&repo_root, &descriptor_path);
+    build_descriptor_set(&repo_root, &descriptor_path, &proto_files);
 
     connectrpc_build::Config::new()
-        .files(&PROTO_FILES)
+        .files(&proto_files)
         .descriptor_set(&descriptor_path)
         .emit_register_fn(false)
         .include_file("_connectrpc.rs")
@@ -66,7 +59,59 @@ fn repo_root(manifest_dir: &Path) -> PathBuf {
         .unwrap_or_else(|error| panic!("expected repo root from {manifest_dir:?}: {error}"))
 }
 
-fn emit_rerun_triggers(repo_root: &Path) {
+fn discover_proto_files(repo_root: &Path) -> Vec<PathBuf> {
+    let cli_proto_dir = repo_root.join(PROTO_ROOT).join(CLI_PROTO_DIR);
+    let entries = std::fs::read_dir(&cli_proto_dir).unwrap_or_else(|error| {
+        panic!(
+            "expected to read CLI proto directory {}: {error}",
+            cli_proto_dir.display()
+        )
+    });
+    let mut proto_files = entries
+        .map(|entry| {
+            entry.unwrap_or_else(|error| {
+                panic!(
+                    "expected to read CLI proto directory entry under {}: {error}",
+                    cli_proto_dir.display()
+                )
+            })
+        })
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file()
+                || path
+                    .extension()
+                    .is_none_or(|extension| extension != "proto")
+            {
+                return None;
+            }
+
+            Some(
+                path.strip_prefix(repo_root.join(PROTO_ROOT))
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "expected proto file {} to live under {}: {error}",
+                            path.display(),
+                            repo_root.join(PROTO_ROOT).display()
+                        )
+                    })
+                    .to_path_buf(),
+            )
+        })
+        .collect::<Vec<_>>();
+    proto_files.sort();
+
+    if proto_files.is_empty() {
+        panic!(
+            "expected at least one CLI proto file under {}",
+            cli_proto_dir.display()
+        );
+    }
+
+    proto_files
+}
+
+fn emit_rerun_triggers(repo_root: &Path, proto_files: &[PathBuf]) {
     let proto_root = repo_root.join(PROTO_ROOT);
     println!(
         "cargo:rerun-if-changed={}",
@@ -80,7 +125,11 @@ fn emit_rerun_triggers(repo_root: &Path) {
         "cargo:rerun-if-changed={}",
         proto_root.join("buf.lock").display()
     );
-    for proto_file in PROTO_FILES {
+    println!(
+        "cargo:rerun-if-changed={}",
+        proto_root.join(CLI_PROTO_DIR).display()
+    );
+    for proto_file in proto_files {
         println!(
             "cargo:rerun-if-changed={}",
             proto_root.join(proto_file).display()
@@ -88,7 +137,7 @@ fn emit_rerun_triggers(repo_root: &Path) {
     }
 }
 
-fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
+fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path, proto_files: &[PathBuf]) {
     let proto_root = repo_root.join(PROTO_ROOT);
     let candidates = candidate_buf_commands(repo_root);
     let tried_candidates = candidates
@@ -108,7 +157,7 @@ fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
             .arg("--as-file-descriptor-set")
             .arg("-o")
             .arg(descriptor_path);
-        for proto_file in PROTO_FILES {
+        for proto_file in proto_files {
             buf_command.arg("--path").arg(proto_file);
         }
 
