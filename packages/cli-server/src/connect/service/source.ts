@@ -7,7 +7,6 @@ import type {
 } from "@onequery/db/server";
 import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
 
-import { isCliSourceKey } from "../../identifiers";
 import { buildCliRequestLogDetails, logCliEvent } from "../../observability";
 import { paginateItems } from "../../read-controls-policy";
 import {
@@ -197,14 +196,6 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
     action: "source.connect",
     orgSlug: request.orgSlug,
   });
-
-  if (!isCliSourceKey(request.name)) {
-    throwCliConnectError({
-      detail:
-        "source name must use only letters, numbers, dots, underscores, or hyphens",
-      key: "INVALID_REQUEST",
-    });
-  }
 
   const { credentials, provider } = parseConnectSourceCredentials(
     request.credentials

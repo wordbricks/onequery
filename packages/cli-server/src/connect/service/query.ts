@@ -112,8 +112,6 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
   });
   const query = request.query as NonNullable<typeof request.query>;
 
-  throwIfCliQueryParametersProvided(query.parameters);
-
   const resultWindow = resolveQueryResultWindow(query);
   const actionId = (
     await createCliQueryActionTrail({
@@ -234,8 +232,6 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
     session,
   });
   const query = request.query as NonNullable<typeof request.query>;
-
-  throwIfCliQueryParametersProvided(query.parameters);
 
   const resultWindow = resolveQueryResultWindow(query);
   const startedAtMs = Date.now();
@@ -785,19 +781,6 @@ function getCliQueryFailureHttpStatus(
       return 504;
     }
   }
-}
-
-function throwIfCliQueryParametersProvided(
-  parameters: readonly unknown[] | undefined
-) {
-  if ((parameters?.length ?? 0) === 0) {
-    return;
-  }
-
-  throwCliConnectError({
-    detail: "query parameters are not implemented for the CLI query API yet",
-    key: "INVALID_REQUEST",
-  });
 }
 
 function sanitizeQueryExecuteResponse(

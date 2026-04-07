@@ -193,7 +193,7 @@ Success condition for this phase:
   - `proto/onequery/cli/v1/query.proto`
   - `proto/onequery/cli/v1/source.proto`
 - [ ] Re-check whether other scalar request fields should gain clearer validation once projection and `Struct` blobs are removed.
-- [ ] Keep validation in proto close to transport concerns and avoid re-encoding identical rules in multiple server layers.
+- [x] Keep validation in proto close to transport concerns and avoid re-encoding identical rules in multiple server layers.
 
 ### Phase 7: Clean Up Server And CLI Code That Exists Only For The Old Contract
 
