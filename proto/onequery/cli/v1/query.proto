@@ -85,7 +85,10 @@ message CliQueryCanonicalRequest {
 }
 
 message CliQueryParameter {
-  CliQueryParameterType type = 1 [(buf.validate.field).enum.not_in = 0];
+  CliQueryParameterType type = 1 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   optional string value = 2;
 }
 

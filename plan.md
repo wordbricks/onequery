@@ -185,10 +185,10 @@ Success condition for this phase:
 
 ### Phase 6: Tighten Validation Rules
 
-- [ ] For request enums that must reject unknown numeric values, add both:
+- [x] For request enums that must reject unknown numeric values, add both:
   - `(buf.validate.field).enum.not_in = 0`
   - `(buf.validate.field).enum.defined_only = true`
-- [ ] Review every request enum field in:
+- [x] Review every request enum field in:
   - `proto/onequery/cli/v1/use.proto`
   - `proto/onequery/cli/v1/query.proto`
   - `proto/onequery/cli/v1/source.proto`

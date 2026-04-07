@@ -47,7 +47,10 @@ message GetSourceConnectGuideRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
+  CliSourceProvider source = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
 message GetSourceConnectGuideResponse {
@@ -65,7 +68,10 @@ message ConnectSourceRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
+  CliSourceProvider source = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   string name = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
