@@ -45,20 +45,30 @@ OneQuery is a Bun/Turbo monorepo with three main layers:
 
 ```
 apps/
-  cli/          # Rust CLI binary
-  web/          # React SPA
-  landing/      # Marketing site
-  connector/    # Customer-side connector agent
+  cli/            # Rust CLI workspace (`onequery` binary and support crates)
+  connector/      # Customer-side connector agent
+  landing/        # Marketing site
+  web/            # React SPA
 
 packages/
-  server/       # Shared Hono API routes and middleware
-  bun-server/   # Runtime: serves API + SPA
-  cli-server/   # CLI-specific endpoints (device auth, sessions)
-  db/           # Drizzle schema and migrations
-  contracts/    # Zod-validated API types
-  ui/           # React component library
-  config/       # Workspace-dev resolver and projections
-  config-loader/ # TOML decoding helper
+  base/            # Dependency-free shared types and org permission helpers
+  bun-server/      # Bun runtime that serves API + SPA
+  cli-server/      # CLI-facing endpoints and generated transport bindings
+  codecs/          # Shared encoding and decoding utilities
+  config/          # Workspace-dev resolver and config projections
+  config-loader/   # TOML decoding helper
+  contracts/       # Shared Zod-validated API types
+  datetime/        # Shared date/time formatting utilities
+  db/              # Drizzle schema, migrations, and DB helpers
+  github-rulesets/ # GitHub ruleset planning and apply tooling
+  server/          # Shared Hono API routes, services, and middleware
+  ui/              # React component library
+
+proto/
+  onequery/cli/v1/ # Buf protobuf/Connect contract for the CLI transport
+
+docs/            # Design notes, self-host docs, and migration specs
+scripts/         # Repo automation and local development helpers
 ```
 
 ## Getting started
@@ -67,7 +77,7 @@ packages/
 
 ```bash
 # Install dependencies and bootstrap local config
-bun install --frozen-lockfile
+bun install
 bun run dev:setup
 
 # Start the workspace-dev stack
@@ -103,6 +113,14 @@ bun run db:reset        # Wipe volumes, re-bootstrap, migrate, and seed dev DB
 bun run typecheck
 bun run lint
 bun run test
+```
+
+**Proto contract:**
+
+```bash
+bun run proto:lint
+bun run proto:generate
+bun run proto:check
 ```
 
 ## Installing the CLI
