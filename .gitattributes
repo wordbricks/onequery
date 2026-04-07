@@ -1,0 +1,3 @@
+# Ignore protobuf-generated artifacts in GitHub language statistics.
+packages/cli-server/src/connect/gen/** linguist-generated=true
+apps/cli/crates/onequery-cli/src/transport/generated.rs linguist-generated=true
