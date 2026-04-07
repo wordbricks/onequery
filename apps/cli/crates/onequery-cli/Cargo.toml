@@ -60,7 +60,9 @@ pretty_assertions = { workspace = true }
 insta = { workspace = true }
 
 [build-dependencies]
-connectrpc-build = "0.3.2"
+buffa = { version = "0.3.0", features = ["json"] }
+buffa-codegen = "0.3.0"
+connectrpc-codegen = "0.3.2"
 
 [lints]
 workspace = true

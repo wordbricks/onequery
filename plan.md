@@ -176,7 +176,7 @@ Preferred cleanup path:
   - rerun triggers
   - descriptor generation `--path` flags, if still needed
   - Rust code generation inputs
-- [ ] If `connectrpc_build` can compile from only `cli.proto` plus imports, simplify to that single entrypoint instead of listing every file.
+- [x] If `connectrpc_build` can compile from only `cli.proto` plus imports, simplify to that single entrypoint instead of listing every file.
 - [x] Keep deterministic ordering in the discovered file list so generated output is stable.
 
 Success condition for this phase:
