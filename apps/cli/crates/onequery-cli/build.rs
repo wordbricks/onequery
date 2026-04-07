@@ -1,7 +1,6 @@
 use std::env;
 use std::ffi::OsString;
 use std::io::ErrorKind;
-use std::path::MAIN_SEPARATOR;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -25,6 +24,12 @@ struct BufCommand {
     display: String,
 }
 
+#[derive(Clone, Debug)]
+struct ProtoFile {
+    absolute_path: PathBuf,
+    descriptor_name: String,
+}
+
 impl BufCommand {
     fn direct(program: impl Into<PathBuf>) -> Self {
         let program = program.into();
@@ -44,12 +49,43 @@ impl BufCommand {
     }
 }
 
+impl ProtoFile {
+    fn from_absolute_path(proto_root: &Path, absolute_path: PathBuf) -> Self {
+        let descriptor_name = {
+            let proto_relative_path =
+                absolute_path
+                    .strip_prefix(proto_root)
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "expected proto file {} to live under {}: {error}",
+                            absolute_path.display(),
+                            proto_root.display()
+                        )
+                    });
+            proto_descriptor_name(proto_relative_path)
+        };
+        Self {
+            absolute_path,
+            descriptor_name,
+        }
+    }
+
+    fn from_descriptor_name(proto_root: &Path, descriptor_name: &str) -> Self {
+        let descriptor_name = descriptor_name.replace('\\', "/");
+        Self {
+            absolute_path: proto_root.join(Path::new(&descriptor_name)),
+            descriptor_name,
+        }
+    }
+}
+
 fn main() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let repo_root = repo_root(manifest_dir);
-    let discovered_proto_files = discover_proto_files(&repo_root);
-    let cli_proto_entrypoint = PathBuf::from(CLI_PROTO_ENTRYPOINT);
-    emit_rerun_triggers(&repo_root, &discovered_proto_files);
+    let proto_root = repo_root.join(PROTO_ROOT);
+    let discovered_proto_files = discover_proto_files(&proto_root);
+    let cli_proto_entrypoint = ProtoFile::from_descriptor_name(&proto_root, CLI_PROTO_ENTRYPOINT);
+    emit_rerun_triggers(&proto_root, &discovered_proto_files);
 
     let out_dir = env::var("OUT_DIR").unwrap_or_else(|error| panic!("expected OUT_DIR: {error}"));
     let descriptor_path = Path::new(&out_dir).join("onequery-cli.fds");
@@ -69,8 +105,8 @@ fn repo_root(manifest_dir: &Path) -> PathBuf {
         .unwrap_or_else(|error| panic!("expected repo root from {manifest_dir:?}: {error}"))
 }
 
-fn discover_proto_files(repo_root: &Path) -> Vec<PathBuf> {
-    let cli_proto_dir = repo_root.join(PROTO_ROOT).join(CLI_PROTO_DIR);
+fn discover_proto_files(proto_root: &Path) -> Vec<ProtoFile> {
+    let cli_proto_dir = proto_root.join(CLI_PROTO_DIR);
     let entries = std::fs::read_dir(&cli_proto_dir).unwrap_or_else(|error| {
         panic!(
             "expected to read CLI proto directory {}: {error}",
@@ -96,20 +132,10 @@ fn discover_proto_files(repo_root: &Path) -> Vec<PathBuf> {
                 return None;
             }
 
-            Some(
-                path.strip_prefix(repo_root.join(PROTO_ROOT))
-                    .unwrap_or_else(|error| {
-                        panic!(
-                            "expected proto file {} to live under {}: {error}",
-                            path.display(),
-                            repo_root.join(PROTO_ROOT).display()
-                        )
-                    })
-                    .to_path_buf(),
-            )
+            Some(ProtoFile::from_absolute_path(proto_root, path))
         })
         .collect::<Vec<_>>();
-    proto_files.sort();
+    proto_files.sort_by(|left, right| left.descriptor_name.cmp(&right.descriptor_name));
 
     if proto_files.is_empty() {
         panic!(
@@ -121,8 +147,7 @@ fn discover_proto_files(repo_root: &Path) -> Vec<PathBuf> {
     proto_files
 }
 
-fn emit_rerun_triggers(repo_root: &Path, proto_files: &[PathBuf]) {
-    let proto_root = repo_root.join(PROTO_ROOT);
+fn emit_rerun_triggers(proto_root: &Path, proto_files: &[ProtoFile]) {
     println!(
         "cargo:rerun-if-changed={}",
         proto_root.join("buf.yaml").display()
@@ -142,12 +167,16 @@ fn emit_rerun_triggers(repo_root: &Path, proto_files: &[PathBuf]) {
     for proto_file in proto_files {
         println!(
             "cargo:rerun-if-changed={}",
-            proto_root.join(proto_file).display()
+            proto_file.absolute_path.display()
         );
     }
 }
 
-fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path, cli_proto_entrypoint: &Path) {
+fn build_descriptor_set(
+    repo_root: &Path,
+    descriptor_path: &Path,
+    cli_proto_entrypoint: &ProtoFile,
+) {
     let proto_root = repo_root.join(PROTO_ROOT);
     let candidates = candidate_buf_commands(repo_root);
     let tried_candidates = candidates
@@ -168,7 +197,7 @@ fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path, cli_proto_entr
             .arg("-o")
             .arg(descriptor_path)
             .arg("--path")
-            .arg(cli_proto_entrypoint);
+            .arg(&cli_proto_entrypoint.descriptor_name);
 
         match buf_command.output() {
             Ok(output) => {
@@ -238,8 +267,8 @@ fn workspace_buf_script(repo_root: &Path) -> PathBuf {
 fn generate_connect_modules(
     descriptor_path: &Path,
     out_dir: &Path,
-    discovered_proto_files: &[PathBuf],
-    cli_proto_entrypoint: &Path,
+    discovered_proto_files: &[ProtoFile],
+    cli_proto_entrypoint: &ProtoFile,
 ) {
     let descriptor_bytes = std::fs::read(descriptor_path).unwrap_or_else(|error| {
         panic!(
@@ -255,8 +284,8 @@ fn generate_connect_modules(
             )
         });
 
-    let proto_files_to_generate = proto_relative_names(discovered_proto_files);
-    let cli_service_entrypoint = proto_relative_name(cli_proto_entrypoint);
+    let proto_files_to_generate = proto_descriptor_names(discovered_proto_files);
+    let cli_service_entrypoint = cli_proto_entrypoint.descriptor_name.clone();
     let mut buffa_config = CodeGenConfig::default();
     buffa_config.generate_views = true;
     buffa_config.generate_json = true;
@@ -376,23 +405,23 @@ fn write_if_changed(path: &Path, contents: &[u8]) {
     });
 }
 
-fn proto_relative_names(proto_files: &[PathBuf]) -> Vec<String> {
+fn proto_descriptor_names(proto_files: &[ProtoFile]) -> Vec<String> {
     proto_files
         .iter()
-        .map(|proto_file| proto_relative_name(proto_file))
+        .map(|proto_file| proto_file.descriptor_name.clone())
         .collect()
 }
 
-fn proto_relative_name(proto_file: &Path) -> String {
-    let proto_relative_name = proto_file.to_str().map(str::to_owned).unwrap_or_else(|| {
+fn proto_descriptor_name(proto_file: &Path) -> String {
+    let proto_descriptor_name = proto_file.to_str().map(str::to_owned).unwrap_or_else(|| {
         panic!(
             "expected proto-relative path {} to be valid UTF-8",
             proto_file.display()
         )
     });
 
-    // COMMENT: Buf descriptor names always use `/`, even on Windows runners.
-    // Normalize the discovered proto paths before handing them to Buffa and
-    // Connect codegen so descriptor lookups stay platform-independent.
-    proto_relative_name.replace(MAIN_SEPARATOR, "/")
+    // COMMENT: Buf descriptor names are workspace-relative virtual paths, not
+    // OS-native filesystem paths. Normalize only the descriptor-facing value
+    // to `/` so build-script path handling still has a single filesystem SSoT.
+    proto_descriptor_name.replace('\\', "/")
 }
