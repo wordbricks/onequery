@@ -155,7 +155,7 @@ pub(crate) async fn get_source_by_key_with_controls(
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: source_summary_from_get_response(payload),
+        payload: source_summary_from_generated(payload),
         request_id,
     })
 }
@@ -182,23 +182,13 @@ fn get_source_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     }
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::CliSourceSummary) -> SourceSummary {
+pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
     SourceSummary {
         name: non_empty(summary.name),
         display_name: non_empty_option(summary.display_name),
         provider_kind: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
         status: Some(source_status_to_str(summary.status)),
-    }
-}
-
-fn source_summary_from_get_response(response: types::GetSourceResponse) -> SourceSummary {
-    SourceSummary {
-        name: non_empty(response.name),
-        display_name: non_empty_option(response.display_name),
-        provider_kind: Some(source_provider_to_str(response.provider)),
-        queryable: Some(response.queryable),
-        status: Some(source_status_to_str(response.status)),
     }
 }
 

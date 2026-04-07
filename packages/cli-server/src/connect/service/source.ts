@@ -59,7 +59,7 @@ type ConnectSourceResponseInit = MessageInitShape<
   typeof ConnectSourceResponseSchema
 >;
 
-type CliSourceSummaryMessage = {
+type GetSourceResponseMessage = {
   name?: string;
   displayName?: string;
   provider?: CliSourceProvider;
@@ -265,8 +265,8 @@ export function buildCliSourceSummaryMessage(source: {
   provider?: ProviderType;
   queryable?: boolean;
   status?: DataSourceStatus;
-}): CliSourceSummaryMessage {
-  const response: CliSourceSummaryMessage = {};
+}): GetSourceResponseMessage {
+  const response: GetSourceResponseMessage = {};
 
   if (source.name !== undefined) {
     response.name = source.name;

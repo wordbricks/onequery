@@ -18,7 +18,7 @@ message ListSourcesRequest {
 }
 
 message ListSourcesResponse {
-  repeated CliSourceSummary sources = 1;
+  repeated GetSourceResponse sources = 1;
   optional CliPage page = 2;
 }
 
@@ -256,16 +256,8 @@ message ConnectSourceLinearOAuthCredentials {
 }
 
 message ConnectSourceResponse {
-  CliSourceSummary source = 1;
+  GetSourceResponse source = 1;
   string next_command = 2;
-}
-
-message CliSourceSummary {
-  string name = 1;
-  optional string display_name = 2;
-  CliSourceProvider provider = 3;
-  bool queryable = 4;
-  CliSourceStatus status = 5;
 }
 
 enum CliSourceProvider {

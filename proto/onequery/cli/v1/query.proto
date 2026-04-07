@@ -22,7 +22,7 @@ message ValidateQueryResponse {
   CliQueryCanonicalRequest request = 1;
   string normalized_sql = 2;
   CliDeclaredQueryResultWindow declared_result_window = 3;
-  CliSourceSummary source = 4;
+  GetSourceResponse source = 4;
   bool truncated = 5;
 }
 
@@ -44,7 +44,7 @@ message ExecuteQueryRequest {
 }
 
 message ExecuteQueryResponse {
-  CliSourceSummary source = 1;
+  GetSourceResponse source = 1;
   uint64 row_count = 2;
   uint64 elapsed_ms = 3;
   repeated CliQueryColumn columns = 4;

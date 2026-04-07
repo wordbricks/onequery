@@ -197,7 +197,7 @@ Success condition for this phase:
 
 ### Phase 7: Clean Up Server And CLI Code That Exists Only For The Old Contract
 
-- [ ] Delete transport adapters that only exist to map partial / duplicate protobuf shapes into local presentation structs.
+- [x] Delete transport adapters that only exist to map partial / duplicate protobuf shapes into local presentation structs.
 - [ ] Remove dead conversion helpers after the proto cleanup settles.
 - [ ] Revisit naming in:
   - `packages/cli-server/src/connect/service/*`

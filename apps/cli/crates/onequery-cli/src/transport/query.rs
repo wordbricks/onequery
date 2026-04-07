@@ -774,7 +774,7 @@ mod tests {
     fn query_result_from_generated_projects_execute_response() {
         let result = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
-                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                source: buffa::MessageField::some(super::types::GetSourceResponse {
                     name: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
@@ -885,7 +885,7 @@ mod tests {
                         ..Default::default()
                     },
                 ),
-                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                source: buffa::MessageField::some(super::types::GetSourceResponse {
                     name: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
