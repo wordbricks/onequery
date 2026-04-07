@@ -212,18 +212,6 @@ Comment:
 
 - the current codebase has several places where the protobuf layer and domain layer both describe the same thing in different forms; cleanup should bias toward deleting translation code, not preserving it
 
-### Phase 8: Add Post-Refactor Guardrails
-
-- [ ] Add a breaking-check command after the refactor stabilizes, for example a `proto:breaking` script.
-- [ ] Decide what the baseline is:
-  - current branch after cleanup
-  - or the main branch once the cleanup lands
-- [ ] Wire that breaking check into CI after the contract is in its cleaned-up state.
-- [ ] Keep:
-  - `bun run proto:lint`
-  - `bun run proto:generate`
-  - generated-code diff checks
-
 ## Suggested Execution Order By File
 
 Start here:
