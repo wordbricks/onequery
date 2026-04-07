@@ -192,13 +192,13 @@ Success condition for this phase:
   - `proto/onequery/cli/v1/use.proto`
   - `proto/onequery/cli/v1/query.proto`
   - `proto/onequery/cli/v1/source.proto`
-- [ ] Re-check whether other scalar request fields should gain clearer validation once projection and `Struct` blobs are removed.
+- [x] Re-check whether other scalar request fields should gain clearer validation once projection and `Struct` blobs are removed.
 - [x] Keep validation in proto close to transport concerns and avoid re-encoding identical rules in multiple server layers.
 
 ### Phase 7: Clean Up Server And CLI Code That Exists Only For The Old Contract
 
 - [x] Delete transport adapters that only exist to map partial / duplicate protobuf shapes into local presentation structs.
-- [ ] Remove dead conversion helpers after the proto cleanup settles.
+- [x] Remove dead conversion helpers after the proto cleanup settles.
 - [ ] Revisit naming in:
   - `packages/cli-server/src/connect/service/*`
   - `apps/cli/crates/onequery-cli/src/transport/*`
@@ -206,7 +206,7 @@ Success condition for this phase:
   - protobuf request -> domain input
   - domain result -> protobuf response
 - [x] Remove stale tests that lock in the old projection behavior or duplicate message naming.
-- [ ] Run dead-code detection after the refactor if needed.
+- [x] Run dead-code detection after the refactor if needed.
 
 Comment:
 
