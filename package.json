@@ -61,6 +61,7 @@
     "typecheck": "turbo run typecheck typecheck:root",
     "typecheck:root": "tsgo --noEmit -p tsconfig.scripts.json",
     "proto:generate": "buf generate --template proto/buf.gen.yaml proto",
+    "postproto:generate": "oxfmt packages/cli-server/src/connect/gen",
     "proto:lint": "buf lint proto",
     "proto:check": "bun run proto:lint && bun run proto:generate && git diff --exit-code -- packages/cli-server/src/connect/gen",
     "db:generate": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit generate",
