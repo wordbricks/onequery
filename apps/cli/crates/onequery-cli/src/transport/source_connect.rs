@@ -913,7 +913,7 @@ mod tests {
                 source: SourceSummary {
                     name: Some("warehouse".to_owned()),
                     display_name: None,
-                    provider_kind: Some("postgres".to_owned()),
+                    provider: Some("postgres".to_owned()),
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 },

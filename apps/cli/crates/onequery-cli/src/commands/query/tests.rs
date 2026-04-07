@@ -93,7 +93,7 @@ fn render_query_output_snapshot() {
             source: Some(SourceSummary {
                 name: Some("warehouse".to_owned()),
                 display_name: None,
-                provider_kind: Some("postgres".to_owned()),
+                provider: Some("postgres".to_owned()),
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             }),
@@ -152,7 +152,7 @@ fn render_query_validation_output_snapshot() {
             source: Some(SourceSummary {
                 name: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
-                provider_kind: Some("postgres".to_owned()),
+                provider: Some("postgres".to_owned()),
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             }),
@@ -199,7 +199,7 @@ fn render_query_output_renders_no_columns() {
             source: Some(SourceSummary {
                 name: Some("warehouse".to_owned()),
                 display_name: None,
-                provider_kind: Some("postgres".to_owned()),
+                provider: Some("postgres".to_owned()),
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             }),

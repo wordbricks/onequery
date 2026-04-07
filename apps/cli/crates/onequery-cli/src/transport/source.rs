@@ -28,9 +28,8 @@ pub(crate) struct SourceSummary {
     pub(crate) name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
-    #[serde(rename = "provider")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) provider_kind: Option<String>,
+    pub(crate) provider: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) queryable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -186,7 +185,7 @@ pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -
     SourceSummary {
         name: non_empty(summary.name),
         display_name: non_empty_option(summary.display_name),
-        provider_kind: Some(source_provider_to_str(summary.provider)),
+        provider: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
         status: Some(source_status_to_str(summary.status)),
     }
@@ -265,14 +264,14 @@ mod tests {
                     SourceSummary {
                         name: Some("warehouse".to_owned()),
                         display_name: None,
-                        provider_kind: Some("postgres".to_owned()),
+                        provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
                         name: Some("github_main".to_owned()),
                         display_name: None,
-                        provider_kind: Some("github".to_owned()),
+                        provider: Some("github".to_owned()),
                         queryable: Some(false),
                         status: Some("active".to_owned()),
                     },
@@ -287,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn source_summary_deserializes_provider_field_into_provider_kind() {
+    fn source_summary_deserializes_provider_field_into_provider() {
         let payload = json!({
             "name": "warehouse",
             "displayName": "Warehouse",
@@ -303,7 +302,7 @@ mod tests {
             SourceSummary {
                 name: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
-                provider_kind: Some("mysql".to_owned()),
+                provider: Some("mysql".to_owned()),
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             }

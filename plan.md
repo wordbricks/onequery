@@ -199,7 +199,7 @@ Success condition for this phase:
 
 - [x] Delete transport adapters that only exist to map partial / duplicate protobuf shapes into local presentation structs.
 - [x] Remove dead conversion helpers after the proto cleanup settles.
-- [ ] Revisit naming in:
+- [x] Revisit naming in:
   - `packages/cli-server/src/connect/service/*`
   - `apps/cli/crates/onequery-cli/src/transport/*`
 - [x] Prefer a direct mapping:
@@ -237,7 +237,7 @@ Run these after each major phase:
 
 Run these before considering the refactor done:
 
-- [ ] search for remaining duplicate proto message names and confirm they are either deleted or still intentionally canonical
+- [x] search for remaining duplicate proto message names and confirm they are either deleted or still intentionally canonical
 - [x] search for `fields` request members and confirm they no longer exist in proto or Connect request builders
 - [x] search for `google.protobuf.Struct credentials` and confirm it has been removed from the transport contract
 - [x] search for `PROTO_FILES` and confirm the hardcoded inventory is gone

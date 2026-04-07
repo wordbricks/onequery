@@ -493,7 +493,7 @@ fn render_source_list_output(
         .max("NAME".len());
     let provider_width = sources
         .iter()
-        .map(|source| source.provider_kind.as_deref().unwrap_or("-").len())
+        .map(|source| source.provider.as_deref().unwrap_or("-").len())
         .max()
         .unwrap_or(8)
         .max("PROVIDER".len());
@@ -523,7 +523,7 @@ fn render_source_list_output(
         row.push_str("  ");
         append_padded_cell(
             &mut row,
-            source.provider_kind.as_deref().unwrap_or("-"),
+            source.provider.as_deref().unwrap_or("-"),
             provider_width,
         );
         row.push_str("  ");
@@ -569,10 +569,7 @@ fn render_source_show_output(
 
     let mut lines = vec![
         format!("Source: {}", source.name.as_deref().unwrap_or("-")),
-        format!(
-            "Provider: {}",
-            source.provider_kind.as_deref().unwrap_or("-")
-        ),
+        format!("Provider: {}", source.provider.as_deref().unwrap_or("-")),
         format!("Status: {}", source.status.as_deref().unwrap_or("-")),
         format!(
             "Query (v1): {}",
@@ -652,14 +649,14 @@ mod tests {
                     SourceSummary {
                         name: Some("warehouse".to_owned()),
                         display_name: None,
-                        provider_kind: Some("postgres".to_owned()),
+                        provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
                         name: Some("github_main".to_owned()),
                         display_name: None,
-                        provider_kind: Some("github".to_owned()),
+                        provider: Some("github".to_owned()),
                         queryable: Some(false),
                         status: Some("active".to_owned()),
                     },
@@ -681,7 +678,7 @@ mod tests {
         let source = SourceSummary {
             name: Some("warehouse".to_owned()),
             display_name: Some("Warehouse".to_owned()),
-            provider_kind: Some("postgres".to_owned()),
+            provider: Some("postgres".to_owned()),
             queryable: Some(true),
             status: Some("active".to_owned()),
         };
@@ -696,7 +693,7 @@ mod tests {
         let source = SourceSummary {
             name: Some("github_main".to_owned()),
             display_name: None,
-            provider_kind: Some("github".to_owned()),
+            provider: Some("github".to_owned()),
             queryable: Some(false),
             status: Some("active".to_owned()),
         };
