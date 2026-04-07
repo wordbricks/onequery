@@ -53,7 +53,6 @@ apps/
 packages/
   base/            # Dependency-free shared types and org permission helpers
   bun-server/      # Bun runtime that serves API + SPA
-  cli-contract/    # Legacy OpenAPI contract artifacts kept during transport migration
   cli-server/      # CLI-facing endpoints and generated transport bindings
   codecs/          # Shared encoding and decoding utilities
   config/          # Workspace-dev resolver and config projections
