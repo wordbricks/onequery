@@ -125,17 +125,17 @@ Rule for this phase:
 
 ### Phase 3: Make `source connect` Typed And Proto-Owned
 
-- [ ] Replace `google.protobuf.Struct credentials` in `ConnectSourceRequest` with a typed protobuf message hierarchy.
-- [ ] Add a canonical credential union in proto, for example:
+- [x] Replace `google.protobuf.Struct credentials` in `ConnectSourceRequest` with a typed protobuf message hierarchy.
+- [x] Add a canonical credential union in proto, for example:
   - `message ConnectSourceCredentials`
   - `oneof kind { ... }`
-- [ ] Add concrete credential messages that mirror the real persisted credential schema from `packages/db/src/credentials.ts`.
-- [ ] Model variant unions explicitly in proto where the Zod schema currently uses unions, for example OAuth vs service account variants.
-- [ ] Remove provider / credential mismatches from runtime glue wherever possible by making invalid combinations unrepresentable in the proto shape.
-- [ ] Update Connect handler decoding in:
+- [x] Add concrete credential messages that mirror the real persisted credential schema from `packages/db/src/credentials.ts`.
+- [x] Model variant unions explicitly in proto where the Zod schema currently uses unions, for example OAuth vs service account variants.
+- [x] Remove provider / credential mismatches from runtime glue wherever possible by making invalid combinations unrepresentable in the proto shape.
+- [x] Update Connect handler decoding in:
   - `packages/cli-server/src/connect/service/source.ts`
-- [ ] Replace `CreateDataSourceSchema.safeParse()` as the primary transport-shape authority with conversion from typed protobuf into the domain model.
-- [ ] Keep Zod validation only for domain invariants that are not already enforced by protobuf and protovalidate.
+- [x] Replace `CreateDataSourceSchema.safeParse()` as the primary transport-shape authority with conversion from typed protobuf into the domain model.
+- [x] Keep Zod validation only for domain invariants that are not already enforced by protobuf and protovalidate.
 
 Recommended design direction:
 
