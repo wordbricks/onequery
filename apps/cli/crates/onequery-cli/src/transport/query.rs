@@ -183,8 +183,6 @@ async fn fetch_query_page(
     let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let cursor: Option<String> =
         try_into_option(controls.cursor.as_deref(), ErrorStage::ExecuteQuery)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ExecuteQuery)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::ExecuteQuery)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
@@ -192,7 +190,6 @@ async fn fetch_query_page(
         .execute_query(types::ExecuteQueryRequest {
             org_slug,
             source_key,
-            fields,
             limit,
             cursor,
             query: MessageField::some(query),
@@ -222,19 +219,16 @@ pub(crate) async fn validate_read_only_query_with_controls(
     org: &str,
     source_key: &str,
     payload: &QueryRequestPayload,
-    controls: &ReadRequestControls,
+    _controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<QueryValidationResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ReadQueryInput)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ReadQueryInput)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
         .validate_query(types::ValidateQueryRequest {
             org_slug,
             source_key,
-            fields,
             query: MessageField::some(query),
             ..Default::default()
         })
@@ -566,7 +560,7 @@ mod tests {
                 source: Some(SourceSummary {
                     name: Some("warehouse".to_owned()),
                     display_name: None,
-                    provider_kind: Some("postgres".to_owned()),
+                    provider: Some("postgres".to_owned()),
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 }),
@@ -651,7 +645,7 @@ mod tests {
                 source: Some(SourceSummary {
                     name: Some("warehouse".to_owned()),
                     display_name: None,
-                    provider_kind: Some("postgres".to_owned()),
+                    provider: Some("postgres".to_owned()),
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 }),
@@ -728,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn query_request_from_payload_projects_connect_request() {
+    fn query_request_from_payload_maps_connect_request() {
         let request = super::query_request_from_payload(&QueryRequestPayload {
             sql: "select 42".to_owned(),
             parameters: Some(vec![
@@ -777,10 +771,10 @@ mod tests {
     }
 
     #[test]
-    fn query_result_from_generated_projects_execute_response() {
+    fn query_result_from_generated_maps_execute_response() {
         let result = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
-                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                source: buffa::MessageField::some(super::types::GetSourceResponse {
                     name: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
@@ -816,7 +810,7 @@ mod tests {
             },
             Some("req_query".to_owned()),
         )
-        .expect("expected projected query result");
+        .expect("expected query result");
 
         assert_eq!(
             result,
@@ -824,7 +818,7 @@ mod tests {
                 source: Some(SourceSummary {
                     name: Some("warehouse".to_owned()),
                     display_name: None,
-                    provider_kind: Some("postgres".to_owned()),
+                    provider: Some("postgres".to_owned()),
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 }),
@@ -854,7 +848,7 @@ mod tests {
     }
 
     #[test]
-    fn query_validation_from_generated_projects_validate_response() {
+    fn query_validation_from_generated_maps_validate_response() {
         let validation =
             super::query_validation_from_generated(super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
@@ -891,7 +885,7 @@ mod tests {
                         ..Default::default()
                     },
                 ),
-                source: buffa::MessageField::some(super::types::CliSourceSummary {
+                source: buffa::MessageField::some(super::types::GetSourceResponse {
                     name: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
@@ -932,7 +926,7 @@ mod tests {
                 source: Some(SourceSummary {
                     name: Some("warehouse".to_owned()),
                     display_name: None,
-                    provider_kind: Some("postgres".to_owned()),
+                    provider: Some("postgres".to_owned()),
                     queryable: Some(true),
                     status: Some("active".to_owned()),
                 }),

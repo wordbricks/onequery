@@ -43,16 +43,13 @@ pub(crate) struct OrgDetails {
 pub(crate) async fn get_org_with_controls(
     client: &AuthenticatedApiClient,
     org: &str,
-    controls: &ReadRequestControls,
+    _controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<OrgDetails>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ResolveOrg)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ResolveOrg)?;
     let response = match client
         .cli()
         .get_organization(types::GetOrganizationRequest {
             org_slug,
-            fields,
             ..Default::default()
         })
         .await
@@ -108,12 +105,10 @@ async fn fetch_org_page(
     controls: SinglePageReadControls,
 ) -> Result<ApiSuccess<OrgListPayload>, ApiFailure> {
     let cursor: Option<String> = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
-    let fields: Option<String> = try_into_option(controls.fields.as_deref(), ErrorStage::Http)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::Http)?;
     let response = match client
         .cli()
         .list_organizations(types::ListOrganizationsRequest {
-            fields,
             limit,
             cursor,
             ..Default::default()
@@ -259,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn org_summary_from_generated_projects_connect_payload() {
+    fn org_summary_from_generated_maps_list_payload() {
         let summary = org_summary_from_generated(types::CliOrganizationSummary {
             slug: "acme".to_owned(),
             name: "Acme".to_owned(),
@@ -276,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn org_details_from_generated_projects_capabilities() {
+    fn org_details_from_generated_maps_capabilities() {
         let details = org_details_from_generated(types::GetOrganizationResponse {
             slug: "acme".to_owned(),
             name: "Acme".to_owned(),

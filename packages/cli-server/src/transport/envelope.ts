@@ -1,4 +1,4 @@
-import type { CliPage } from "../read-controls";
+import type { CliPage } from "../read-controls-policy";
 
 type CliSuccessEnvelope<Data> = {
   requestId: string;

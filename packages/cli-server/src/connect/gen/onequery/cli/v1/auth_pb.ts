@@ -18,19 +18,15 @@ import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js
  * Describes the file onequery/cli/v1/auth.proto.
  */
 export const file_onequery_cli_v1_auth: GenFile /*@__PURE__*/ = fileDesc(
-  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIjwKEUdldFNlc3Npb25SZXF1ZXN0EhwKBmZpZWxkcxgBIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiuQIKEkdldFNlc3Npb25SZXNwb25zZRIvCglhdXRoX21vZGUYASABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSOgoEdXNlchgCIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblByb2plY3RlZFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAMgASgJSACIAQESMgoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IhcKFVJlZnJlc2hTZXNzaW9uUmVxdWVzdCLKAgoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSLwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEjEKBHVzZXIYAyABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFNlc3Npb25Vc2VyEhwKD2FjdGl2ZV9vcmdfc2x1ZxgEIAEoCUgAiAEBEjIKCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAYgBARIzCgpleHBpcmVzX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgCiAEBQhIKEF9hY3RpdmVfb3JnX3NsdWdCDAoKX2lzc3VlZF9hdEINCgtfZXhwaXJlc19hdCIhCh9TdGFydERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0It0BCiBTdGFydERldmljZUF1dGhvcml6YXRpb25SZXNwb25zZRINCgVzdGF0ZRgBIAEoCRITCgtkZXZpY2VfY29kZRgCIAEoCRIRCgl1c2VyX2NvZGUYAyABKAkSGAoQdmVyaWZpY2F0aW9uX3VybBgEIAEoCRIhChl2ZXJpZmljYXRpb25fY29tcGxldGVfdXJsGAUgASgJEhUKDXBvbGxfYWZ0ZXJfbXMYBiABKA0SLgoKZXhwaXJlc19hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiPgoeUG9sbERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0EhwKC2RldmljZV9jb2RlGAEgASgJQge6SARyAhABIrgBCh9Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEkEKB3BlbmRpbmcYASABKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb25IABJHCgphdXRob3JpemVkGAIgASgLMjEub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uSABCCQoHb3V0Y29tZSJOChtDbGlBdXRoU2Vzc2lvblByb2plY3RlZFVzZXISCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSFAoMZGlzcGxheV9uYW1lGAMgASgJIkUKEkNsaUF1dGhTZXNzaW9uVXNlchIKCgJpZBgBIAEoCRINCgVlbWFpbBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkitQIKDkNsaUF1dGhTZXNzaW9uEi8KCWF1dGhfbW9kZRgBIAEoDjIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoTW9kZRI6CgR1c2VyGAIgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhTZXNzaW9uUHJvamVjdGVkVXNlchIcCg9hY3RpdmVfb3JnX3NsdWcYAyABKAlIAIgBARIyCglpc3N1ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAGIAQESMwoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBIAogBAUISChBfYWN0aXZlX29yZ19zbHVnQgwKCl9pc3N1ZWRfYXRCDQoLX2V4cGlyZXNfYXQixQIKEUNsaVJlZnJlc2hTZXNzaW9uEhQKDGFjY2Vzc190b2tlbhgBIAEoCRIvCglhdXRoX21vZGUYAiABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSMQoEdXNlchgDIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAQgASgJSACIAQESMgoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0ItgBChtDbGlEZXZpY2VBdXRob3JpemF0aW9uU3RhcnQSDQoFc3RhdGUYASABKAkSEwoLZGV2aWNlX2NvZGUYAiABKAkSEQoJdXNlcl9jb2RlGAMgASgJEhgKEHZlcmlmaWNhdGlvbl91cmwYBCABKAkSIQoZdmVyaWZpY2F0aW9uX2NvbXBsZXRlX3VybBgFIAEoCRIVCg1wb2xsX2FmdGVyX21zGAYgASgNEi4KCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIkUKHUNsaVBlbmRpbmdEZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhUKDXBvbGxfYWZ0ZXJfbXMYAiABKA0i4wIKIENsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uEg0KBXN0YXRlGAEgASgJEhQKDGFjY2Vzc190b2tlbhgCIAEoCRIvCglhdXRoX21vZGUYAyABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGUSMQoEdXNlchgEIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoU2Vzc2lvblVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAUgASgJSACIAQESMgoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0Km8KC0NsaUF1dGhNb2RlEh0KGUNMSV9BVVRIX01PREVfVU5TUEVDSUZJRUQQABIhCh1DTElfQVVUSF9NT0RFX0JST1dTRVJfU0VTU0lPThABEh4KGkNMSV9BVVRIX01PREVfQkVBUkVSX1RPS0VOEAJiBnByb3RvMw",
+  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIhMKEUdldFNlc3Npb25SZXF1ZXN0IqkCChJHZXRTZXNzaW9uUmVzcG9uc2USLwoJYXV0aF9tb2RlGAEgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYAiABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAMgASgJSACIAQESMgoJaXNzdWVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IhcKFVJlZnJlc2hTZXNzaW9uUmVxdWVzdCLDAgoWUmVmcmVzaFNlc3Npb25SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSLwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYAyABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAQgASgJSACIAQESMgoJaXNzdWVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0IiEKH1N0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3Qi3QEKIFN0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEg0KBXN0YXRlGAEgASgJEhMKC2RldmljZV9jb2RlGAIgASgJEhEKCXVzZXJfY29kZRgDIAEoCRIYChB2ZXJpZmljYXRpb25fdXJsGAQgASgJEiEKGXZlcmlmaWNhdGlvbl9jb21wbGV0ZV91cmwYBSABKAkSFQoNcG9sbF9hZnRlcl9tcxgGIAEoDRIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI+Ch5Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3QSHAoLZGV2aWNlX2NvZGUYASABKAlCB7pIBHICEAEiuAEKH1BvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USQQoHcGVuZGluZxgBIAEoCzIuLm9uZXF1ZXJ5LmNsaS52MS5DbGlQZW5kaW5nRGV2aWNlQXV0aG9yaXphdGlvbkgAEkcKCmF1dGhvcml6ZWQYAiABKAsyMS5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aG9yaXplZERldmljZUF1dGhvcml6YXRpb25IAEIJCgdvdXRjb21lIj4KC0NsaUF1dGhVc2VyEgoKAmlkGAEgASgJEg0KBWVtYWlsGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCSJFCh1DbGlQZW5kaW5nRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIVCg1wb2xsX2FmdGVyX21zGAIgASgNItwCCiBDbGlBdXRob3JpemVkRGV2aWNlQXV0aG9yaXphdGlvbhINCgVzdGF0ZRgBIAEoCRIUCgxhY2Nlc3NfdG9rZW4YAiABKAkSLwoJYXV0aF9tb2RlGAMgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlEioKBHVzZXIYBCABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXISHAoPYWN0aXZlX29yZ19zbHVnGAUgASgJSACIAQESMgoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEgBiAEBEjMKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSAKIAQFCEgoQX2FjdGl2ZV9vcmdfc2x1Z0IMCgpfaXNzdWVkX2F0Qg0KC19leHBpcmVzX2F0Km8KC0NsaUF1dGhNb2RlEh0KGUNMSV9BVVRIX01PREVfVU5TUEVDSUZJRUQQABIhCh1DTElfQVVUSF9NT0RFX0JST1dTRVJfU0VTU0lPThABEh4KGkNMSV9BVVRIX01PREVfQkVBUkVSX1RPS0VOEAJiBnByb3RvMw",
   [file_buf_validate_validate, file_google_protobuf_timestamp]
 );
 
 /**
  * @generated from message onequery.cli.v1.GetSessionRequest
  */
-export type GetSessionRequest = Message<"onequery.cli.v1.GetSessionRequest"> & {
-  /**
-   * @generated from field: optional string fields = 1;
-   */
-  fields?: string;
-};
+export type GetSessionRequest =
+  Message<"onequery.cli.v1.GetSessionRequest"> & {};
 
 /**
  * Describes the message onequery.cli.v1.GetSessionRequest.
@@ -50,9 +46,9 @@ export type GetSessionResponse =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionProjectedUser user = 2;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 2;
      */
-    user?: CliAuthSessionProjectedUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 3;
@@ -106,9 +102,9 @@ export type RefreshSessionResponse =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 3;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 3;
      */
-    user?: CliAuthSessionUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 4;
@@ -246,187 +242,31 @@ export const PollDeviceAuthorizationResponseSchema: GenMessage<PollDeviceAuthori
   messageDesc(file_onequery_cli_v1_auth, 7);
 
 /**
- * @generated from message onequery.cli.v1.CliAuthSessionProjectedUser
+ * @generated from message onequery.cli.v1.CliAuthUser
  */
-export type CliAuthSessionProjectedUser =
-  Message<"onequery.cli.v1.CliAuthSessionProjectedUser"> & {
-    /**
-     * @generated from field: string id = 1;
-     */
-    id: string;
+export type CliAuthUser = Message<"onequery.cli.v1.CliAuthUser"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
 
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
 
-    /**
-     * @generated from field: string display_name = 3;
-     */
-    displayName: string;
-  };
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+};
 
 /**
- * Describes the message onequery.cli.v1.CliAuthSessionProjectedUser.
- * Use `create(CliAuthSessionProjectedUserSchema)` to create a new message.
+ * Describes the message onequery.cli.v1.CliAuthUser.
+ * Use `create(CliAuthUserSchema)` to create a new message.
  */
-export const CliAuthSessionProjectedUserSchema: GenMessage<CliAuthSessionProjectedUser> /*@__PURE__*/ =
+export const CliAuthUserSchema: GenMessage<CliAuthUser> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_auth, 8);
-
-/**
- * @generated from message onequery.cli.v1.CliAuthSessionUser
- */
-export type CliAuthSessionUser =
-  Message<"onequery.cli.v1.CliAuthSessionUser"> & {
-    /**
-     * @generated from field: string id = 1;
-     */
-    id: string;
-
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
-
-    /**
-     * @generated from field: string display_name = 3;
-     */
-    displayName: string;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliAuthSessionUser.
- * Use `create(CliAuthSessionUserSchema)` to create a new message.
- */
-export const CliAuthSessionUserSchema: GenMessage<CliAuthSessionUser> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 9);
-
-/**
- * @generated from message onequery.cli.v1.CliAuthSession
- */
-export type CliAuthSession = Message<"onequery.cli.v1.CliAuthSession"> & {
-  /**
-   * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 1;
-   */
-  authMode: CliAuthMode;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliAuthSessionProjectedUser user = 2;
-   */
-  user?: CliAuthSessionProjectedUser;
-
-  /**
-   * @generated from field: optional string active_org_slug = 3;
-   */
-  activeOrgSlug?: string;
-
-  /**
-   * @generated from field: optional google.protobuf.Timestamp issued_at = 4;
-   */
-  issuedAt?: Timestamp;
-
-  /**
-   * @generated from field: optional google.protobuf.Timestamp expires_at = 5;
-   */
-  expiresAt?: Timestamp;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliAuthSession.
- * Use `create(CliAuthSessionSchema)` to create a new message.
- */
-export const CliAuthSessionSchema: GenMessage<CliAuthSession> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 10);
-
-/**
- * @generated from message onequery.cli.v1.CliRefreshSession
- */
-export type CliRefreshSession = Message<"onequery.cli.v1.CliRefreshSession"> & {
-  /**
-   * @generated from field: string access_token = 1;
-   */
-  accessToken: string;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 2;
-   */
-  authMode: CliAuthMode;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 3;
-   */
-  user?: CliAuthSessionUser;
-
-  /**
-   * @generated from field: optional string active_org_slug = 4;
-   */
-  activeOrgSlug?: string;
-
-  /**
-   * @generated from field: optional google.protobuf.Timestamp issued_at = 5;
-   */
-  issuedAt?: Timestamp;
-
-  /**
-   * @generated from field: optional google.protobuf.Timestamp expires_at = 6;
-   */
-  expiresAt?: Timestamp;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliRefreshSession.
- * Use `create(CliRefreshSessionSchema)` to create a new message.
- */
-export const CliRefreshSessionSchema: GenMessage<CliRefreshSession> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 11);
-
-/**
- * @generated from message onequery.cli.v1.CliDeviceAuthorizationStart
- */
-export type CliDeviceAuthorizationStart =
-  Message<"onequery.cli.v1.CliDeviceAuthorizationStart"> & {
-    /**
-     * @generated from field: string state = 1;
-     */
-    state: string;
-
-    /**
-     * @generated from field: string device_code = 2;
-     */
-    deviceCode: string;
-
-    /**
-     * @generated from field: string user_code = 3;
-     */
-    userCode: string;
-
-    /**
-     * @generated from field: string verification_url = 4;
-     */
-    verificationUrl: string;
-
-    /**
-     * @generated from field: string verification_complete_url = 5;
-     */
-    verificationCompleteUrl: string;
-
-    /**
-     * @generated from field: uint32 poll_after_ms = 6;
-     */
-    pollAfterMs: number;
-
-    /**
-     * @generated from field: google.protobuf.Timestamp expires_at = 7;
-     */
-    expiresAt?: Timestamp;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliDeviceAuthorizationStart.
- * Use `create(CliDeviceAuthorizationStartSchema)` to create a new message.
- */
-export const CliDeviceAuthorizationStartSchema: GenMessage<CliDeviceAuthorizationStart> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 12);
 
 /**
  * @generated from message onequery.cli.v1.CliPendingDeviceAuthorization
@@ -449,7 +289,7 @@ export type CliPendingDeviceAuthorization =
  * Use `create(CliPendingDeviceAuthorizationSchema)` to create a new message.
  */
 export const CliPendingDeviceAuthorizationSchema: GenMessage<CliPendingDeviceAuthorization> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 13);
+  messageDesc(file_onequery_cli_v1_auth, 9);
 
 /**
  * @generated from message onequery.cli.v1.CliAuthorizedDeviceAuthorization
@@ -472,9 +312,9 @@ export type CliAuthorizedDeviceAuthorization =
     authMode: CliAuthMode;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthSessionUser user = 4;
+     * @generated from field: onequery.cli.v1.CliAuthUser user = 4;
      */
-    user?: CliAuthSessionUser;
+    user?: CliAuthUser;
 
     /**
      * @generated from field: optional string active_org_slug = 5;
@@ -497,7 +337,7 @@ export type CliAuthorizedDeviceAuthorization =
  * Use `create(CliAuthorizedDeviceAuthorizationSchema)` to create a new message.
  */
 export const CliAuthorizedDeviceAuthorizationSchema: GenMessage<CliAuthorizedDeviceAuthorization> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_auth, 14);
+  messageDesc(file_onequery_cli_v1_auth, 10);
 
 /**
  * @generated from enum onequery.cli.v1.CliAuthMode

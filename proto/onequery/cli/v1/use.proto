@@ -6,7 +6,10 @@ import "buf/validate/validate.proto";
 import "onequery/cli/v1/common.proto";
 
 message UseRequest {
-  CliUseSource source = 1 [(buf.validate.field).enum.not_in = 0];
+  CliUseSource source = 1 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   optional string org_slug = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -14,14 +17,6 @@ message UseRequest {
 }
 
 message UseResponse {
-  CliUseSource source = 1;
-  string title = 2;
-  string description = 3;
-  CliContentFormat format = 4;
-  string content = 5;
-}
-
-message CliUseContent {
   CliUseSource source = 1;
   string title = 2;
   string description = 3;

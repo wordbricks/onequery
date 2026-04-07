@@ -26,7 +26,6 @@ import {
 } from "../../cli-defaults";
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
-import type { CliSelectedFields } from "../../read-controls-policy";
 import {
   requireCliConnectHonoContext,
   requireCliConnectRequestContext,
@@ -40,19 +39,7 @@ import {
 } from "../gen/onequery/cli/v1/auth_pb";
 import { requireCliSessionIdentity } from "./access";
 import { toCliAuthMode, timestampFromIsoString } from "./conversions";
-import { parseCliFieldsReadControls } from "./read-controls";
 import type { CliServiceMethod } from "./types";
-
-const SESSION_FIELDS = [
-  "authMode",
-  "user",
-  "user.id",
-  "user.email",
-  "user.displayName",
-  "activeOrgSlug",
-  "issuedAt",
-  "expiresAt",
-] as const;
 
 type GetSessionResponseInit = MessageInitShape<typeof GetSessionResponseSchema>;
 type RefreshSessionResponseInit = MessageInitShape<
@@ -62,23 +49,20 @@ type CliAuthorizedDeviceAuthorizationInit = MessageInitShape<
   typeof CliAuthorizedDeviceAuthorizationSchema
 >;
 
-type CliAuthUserFields = {
+type CliAuthUserInit = {
   id?: string;
   email?: string;
   displayName?: string;
 };
 
 export const handleGetSession: CliServiceMethod<"getSession"> = async (
-  request,
+  _request,
   context
 ) => {
   const requestContext = requireCliConnectRequestContext(context);
-  const readControls = parseCliFieldsReadControls(request, {
-    allowedFields: SESSION_FIELDS,
-  });
   const session = await requestContext.requireSession();
 
-  return projectCliSessionResponse(session, readControls.selectedFields);
+  return buildCliAuthSession(session);
 };
 
 export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
@@ -239,9 +223,7 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
   );
 };
 
-function buildCliAuthSessionUser(
-  user: CliSessionIdentity["user"]
-): CliAuthUserFields {
+function buildCliAuthUser(user: CliSessionIdentity["user"]): CliAuthUserInit {
   return {
     id: user.id,
     email: user.email,
@@ -254,7 +236,7 @@ function buildCliAuthSession(
 ): GetSessionResponseInit {
   return {
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(toCliAuthUserView(session.user)),
+    user: buildCliAuthUser(toCliAuthUserView(session.user)),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }
@@ -271,7 +253,7 @@ function buildCliRefreshSession(
   return {
     accessToken: session.accessToken,
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(session.user),
+    user: buildCliAuthUser(session.user),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }
@@ -280,60 +262,6 @@ function buildCliRefreshSession(
       ? { expiresAt: timestampFromIsoString(session.expiresAt) }
       : {}),
   };
-}
-
-function projectCliSessionResponse(
-  session: CliSessionIdentity,
-  selectedFields: CliSelectedFields
-): GetSessionResponseInit {
-  const response = buildCliAuthSession(session);
-  if (!selectedFields) {
-    return response;
-  }
-
-  const projected: GetSessionResponseInit = {};
-  if (selectedFields.has("authMode")) {
-    projected.authMode = response.authMode;
-  }
-
-  const projectedUser = projectCliSessionUser(session.user, selectedFields);
-  if (projectedUser) {
-    projected.user = projectedUser;
-  }
-
-  if (selectedFields.has("activeOrgSlug") && session.activeOrg) {
-    projected.activeOrgSlug = session.activeOrg;
-  }
-  if (selectedFields.has("issuedAt") && session.issuedAt) {
-    projected.issuedAt = timestampFromIsoString(session.issuedAt);
-  }
-  if (selectedFields.has("expiresAt") && session.expiresAt) {
-    projected.expiresAt = timestampFromIsoString(session.expiresAt);
-  }
-
-  return projected;
-}
-
-function projectCliSessionUser(
-  user: CliSessionIdentity["user"],
-  selectedFields: Exclude<CliSelectedFields, null>
-): CliAuthUserFields | undefined {
-  if (selectedFields.has("user")) {
-    return buildCliAuthSessionUser(user);
-  }
-
-  const projected: CliAuthUserFields = {};
-  if (selectedFields.has("user.id")) {
-    projected.id = user.id;
-  }
-  if (selectedFields.has("user.email")) {
-    projected.email = user.email;
-  }
-  if (selectedFields.has("user.displayName")) {
-    projected.displayName = user.displayName;
-  }
-
-  return Object.keys(projected).length > 0 ? projected : undefined;
 }
 
 function buildAuthorizedDeviceAuthorizationResponse(input: {
@@ -353,7 +281,7 @@ function buildAuthorizedDeviceAuthorizationResponse(input: {
     state: "authorized",
     accessToken: input.accessToken,
     authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthSessionUser(session.user),
+    user: buildCliAuthUser(session.user),
     ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
     ...(session.issuedAt
       ? { issuedAt: timestampFromIsoString(session.issuedAt) }

@@ -2,7 +2,6 @@ use serde::Deserialize;
 use serde::Serialize;
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub(crate) struct ReadRequestControls {
-    pub(crate) fields: Option<String>,
     pub(crate) page_size: Option<usize>,
     pub(crate) cursor: Option<String>,
     pub(crate) page_all: bool,
@@ -11,7 +10,6 @@ pub(crate) struct ReadRequestControls {
 impl ReadRequestControls {
     pub(crate) fn single_page(&self) -> SinglePageReadControls {
         SinglePageReadControls {
-            fields: self.fields.clone(),
             page_size: self.page_size,
             cursor: self.cursor.clone(),
         }
@@ -19,7 +17,6 @@ impl ReadRequestControls {
 
     pub(crate) fn with_cursor(&self, cursor: Option<String>) -> SinglePageReadControls {
         SinglePageReadControls {
-            fields: self.fields.clone(),
             page_size: self.page_size,
             cursor,
         }
@@ -28,7 +25,6 @@ impl ReadRequestControls {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub(crate) struct SinglePageReadControls {
-    pub(crate) fields: Option<String>,
     pub(crate) page_size: Option<usize>,
     pub(crate) cursor: Option<String>,
 }

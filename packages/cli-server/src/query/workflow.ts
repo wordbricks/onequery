@@ -25,10 +25,7 @@ import type {
   CliQuerySourceRecord,
   CliQuerySuccessResult,
 } from "../domain/workflows";
-import {
-  buildCliSourceSummary,
-  getCliQueryableDatabaseProviderType,
-} from "../source/model";
+import { getCliQueryableDatabaseProviderType } from "../source/model";
 
 type CliQueryWorkflowBase = {
   requestId: string;
@@ -871,7 +868,13 @@ function buildCliQuerySuccessResponse(input: {
     rows: input.rows.map((row) =>
       columns.map((column) => normalizeCell(row[column]))
     ),
-    source: buildCliSourceSummary(input.source),
+    source: {
+      displayName: input.source.displayName,
+      id: input.source.id,
+      provider: input.source.provider,
+      sourceKey: input.source.sourceKey,
+      status: input.source.status,
+    },
     truncated: input.truncated,
   };
 }

@@ -108,7 +108,7 @@ The root commands delegate to `packages/github-rulesets`, which can also be run
 directly:
 
 ```bash
-bun run --cwd packages/github-rulesets check
-bun run --cwd packages/github-rulesets plan
-bun run --cwd packages/github-rulesets apply
+bun run --cwd packages/github-rulesets rulesets:check
+bun run --cwd packages/github-rulesets rulesets:plan
+bun run --cwd packages/github-rulesets rulesets:apply
 ```

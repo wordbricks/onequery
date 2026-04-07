@@ -578,7 +578,7 @@ mod tests {
                 vec!["ok".to_owned()],
                 json!({
                     "sources": [],
-                    "warnings": ["partial projection"],
+                    "warnings": ["server returned advisory metadata"],
                     "page": {
                         "nextCursor": "cursor_123",
                         "returned": 50,
@@ -600,14 +600,14 @@ mod tests {
                 "requestId": "req_page",
                 "data": {
                     "sources": [],
-                    "warnings": ["partial projection"],
+                    "warnings": ["server returned advisory metadata"],
                     "page": {
                         "nextCursor": "cursor_123",
                         "returned": 50,
                         "hasMore": true
                     }
                 },
-                "warnings": ["partial projection"],
+                "warnings": ["server returned advisory metadata"],
                 "page": {
                     "nextCursor": "cursor_123",
                     "returned": 50,

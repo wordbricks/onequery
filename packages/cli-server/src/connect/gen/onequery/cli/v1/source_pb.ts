@@ -2,14 +2,13 @@
 // @generated from file onequery/cli/v1/source.proto (package onequery.cli.v1, syntax proto3)
 /* eslint-disable */
 
-import type { JsonObject, Message } from "@bufbuild/protobuf";
+import type { Message } from "@bufbuild/protobuf";
 import type {
   GenEnum,
   GenFile,
   GenMessage,
 } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
 import type { CliContentFormat, CliPage } from "./common_pb.js";
@@ -19,12 +18,8 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/source.proto.
  */
 export const file_onequery_cli_v1_source: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEixgEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHAoGZmllbGRzGAIgASgJQge6SARyAhABSACIAQESHQoFbGltaXQYAyABKA1CCbpIBioEGGQoAUgBiAEBEhwKBmN1cnNvchgEIAEoCUIHukgEcgIQAUgCiAEBQgkKB19maWVsZHNCCAoGX2xpbWl0QgkKB19jdXJzb3IifwoTTGlzdFNvdXJjZXNSZXNwb25zZRIyCgdzb3VyY2VzGAEgAygLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSKwoEcGFnZRgCIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UixgEKEEdldFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEhwKBmZpZWxkcxgDIAEoCUIHukgEcgIQAUgAiAEBQgkKB19maWVsZHMiyAEKEUdldFNvdXJjZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESNAoIcHJvdmlkZXIYAyABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISEQoJcXVlcnlhYmxlGAQgASgIEjAKBnN0YXR1cxgFIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdGF0dXNCDwoNX2Rpc3BsYXlfbmFtZSKTAQocR2V0U291cmNlQ29ubmVjdEd1aWRlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSPAoGc291cmNlGAIgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyQgi6SAWCAQIgACKfAgodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USDQoFdGl0bGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSMQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgEIAEoCRIPCgdjb21tYW5kGAUgASgJEkIKDGlucHV0X3NjaGVtYRgGIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESQQoJcHJvdmlkZXJzGAcgAygLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlIo8CChRDb25uZWN0U291cmNlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSPAoGc291cmNlGAIgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyQgi6SAWCAQIgABJMCgRuYW1lGAMgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJBI0CgtjcmVkZW50aWFscxgEIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RCBrpIA8gBASJgChVDb25uZWN0U291cmNlUmVzcG9uc2USMQoGc291cmNlGAEgASgLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSFAoMbmV4dF9jb21tYW5kGAIgASgJIkMKDUNsaVNvdXJjZUxpc3QSMgoHc291cmNlcxgBIAMoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5IscBChBDbGlTb3VyY2VTdW1tYXJ5EgwKBG5hbWUYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESNAoIcHJvdmlkZXIYAyABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISEQoJcXVlcnlhYmxlGAQgASgIEjAKBnN0YXR1cxgFIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdGF0dXNCDwoNX2Rpc3BsYXlfbmFtZSKXAgoVQ2xpU291cmNlQ29ubmVjdEd1aWRlEg0KBXRpdGxlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEjEKBmZvcm1hdBgDIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb250ZW50Rm9ybWF0Eg8KB2NvbnRlbnQYBCABKAkSDwoHY29tbWFuZBgFIAEoCRJCCgxpbnB1dF9zY2hlbWEYBiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdElucHV0U2NoZW1hEkEKCXByb3ZpZGVycxgHIAMoCzIuLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0UHJvdmlkZXJHdWlkZSKJAQobQ2xpU291cmNlQ29ubmVjdElucHV0U2NoZW1hEgwKBHR5cGUYASABKAkSEAoIcmVxdWlyZWQYAiADKAkSSgoKcHJvcGVydGllcxgDIAEoCzI2Lm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWFQcm9wZXJ0aWVzIqYBCiVDbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWFQcm9wZXJ0aWVzEjoKBG5hbWUYASABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNjaGVtYUZpZWxkEkEKC2NyZWRlbnRpYWxzGAIgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RTY2hlbWFGaWVsZCJ3ChtDbGlTb3VyY2VDb25uZWN0U2NoZW1hRmllbGQSDAoEdHlwZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIUCgdwYXR0ZXJuGAMgASgJSACIAQESEwoLZW51bV92YWx1ZXMYBCADKAlCCgoIX3BhdHRlcm4iowIKHUNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlEjQKCHByb3ZpZGVyGAEgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyEg8KB3N1bW1hcnkYAiABKAkSIgoacmVxdWlyZWRfY3JlZGVudGlhbF9maWVsZHMYAyADKAkSIgoab3B0aW9uYWxfY3JlZGVudGlhbF9maWVsZHMYBCADKAkSDQoFc3RlcHMYBSADKAkSNAoTY3JlZGVudGlhbF90ZW1wbGF0ZRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSLgoNZXhhbXBsZV9pbnB1dBgHIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiXQoSQ2xpQ29ubmVjdGVkU291cmNlEjEKBnNvdXJjZRgBIAEoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5EhQKDG5leHRfY29tbWFuZBgCIAEoCSqPBAoRQ2xpU291cmNlUHJvdmlkZXISIwofQ0xJX1NPVVJDRV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEdSRVMQARIgChxDTElfU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISHQoZQ0xJX1NPVVJDRV9QUk9WSURFUl9NWVNRTBADEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTU9OR09EQhAEEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIfChtDTElfU09VUkNFX1BST1ZJREVSX0xBTUlOQVIQBhIsCihDTElfU09VUkNFX1BST1ZJREVSX0FXU19BVEhFTkFfQ09OTkVDVE9SEAcSGgoWQ0xJX1NPVVJDRV9QUk9WSURFUl9HQRAIEiEKHUNMSV9TT1VSQ0VfUFJPVklERVJfQU1QTElUVURFEAkSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9NSVhQQU5FTBAKEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfU0VOVFJZEAwSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9HSVRIVUIQDRIeChpDTElfU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKpMBCg9DbGlTb3VyY2VTdGF0dXMSIQodQ0xJX1NPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhDTElfU09VUkNFX1NUQVRVU19BQ1RJVkUQARIbChdDTElfU09VUkNFX1NUQVRVU19FUlJPUhACEiIKHkNMSV9TT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADYgZwcm90bzM",
-  [
-    file_buf_validate_validate,
-    file_google_protobuf_struct,
-    file_onequery_cli_v1_common,
-  ]
+  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEinQEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHQoFbGltaXQYAiABKA1CCbpIBioEGGQoAUgAiAEBEhwKBmN1cnNvchgDIAEoCUIHukgEcgIQAUgBiAEBQggKBl9saW1pdEIJCgdfY3Vyc29yIoABChNMaXN0U291cmNlc1Jlc3BvbnNlEjMKB3NvdXJjZXMYASADKAsyIi5vbmVxdWVyeS5jbGkudjEuR2V0U291cmNlUmVzcG9uc2USKwoEcGFnZRgCIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UinQEKEEdldFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIsgBChFHZXRTb3VyY2VSZXNwb25zZRIMCgRuYW1lGAEgASgJEhkKDGRpc3BsYXlfbmFtZRgCIAEoCUgAiAEBEjQKCHByb3ZpZGVyGAMgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyEhEKCXF1ZXJ5YWJsZRgEIAEoCBIwCgZzdGF0dXMYBSABKA4yIC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlU3RhdHVzQg8KDV9kaXNwbGF5X25hbWUilQEKHEdldFNvdXJjZUNvbm5lY3RHdWlkZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEj4KBnNvdXJjZRgCIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlckIKukgHggEEEAEgACKYAQodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USDQoFdGl0bGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSMQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgEIAEoCRIPCgdjb21tYW5kGAUgASgJIvEBChRDb25uZWN0U291cmNlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSTAoEbmFtZRgDIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQSRgoLY3JlZGVudGlhbHMYBCABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzQga6SAPIAQFKBAgCEANSBnNvdXJjZSKMCAoYQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzEkUKCHBvc3RncmVzGAEgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzSAASRQoIc3VwYWJhc2UYAiABKAsyMS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZVBvc3RncmVzQ3JlZGVudGlhbHNIABI/CgVteXNxbBgDIAEoCzIuLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFsc0gAEkMKB21vbmdvZGIYBCABKAsyMC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFsc0gAEkUKCGJpZ3F1ZXJ5GAUgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VCaWdRdWVyeUNyZWRlbnRpYWxzSAASQwoHbGFtaW5hchgGIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTGFtaW5hckNyZWRlbnRpYWxzSAASWwoUYXdzX2F0aGVuYV9jb25uZWN0b3IYByABKAsyOy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUF3c0F0aGVuYUNvbm5lY3RvckNyZWRlbnRpYWxzSAASRgoCZ2EYCCABKAsyOC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc0NyZWRlbnRpYWxzSAASRwoJYW1wbGl0dWRlGAkgASgLMjIub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VBbXBsaXR1ZGVDcmVkZW50aWFsc0gAEkUKCG1peHBhbmVsGAogASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VNaXhwYW5lbENyZWRlbnRpYWxzSAASQwoHcG9zdGhvZxgLIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlUG9zdEhvZ0NyZWRlbnRpYWxzSAASQQoGc2VudHJ5GAwgASgLMi8ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VTZW50cnlDcmVkZW50aWFsc0gAEkEKBmdpdGh1YhgNIAEoCzIvLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR2l0SHViQ3JlZGVudGlhbHNIABJBCgZsaW5lYXIYDiABKAsyLy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUxpbmVhckNyZWRlbnRpYWxzSABCDQoEa2luZBIFukgCCAEimwIKIENvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzEh0KCGRhdGFiYXNlGAEgASgJQgu6SAhyBhABMgJcUxIZCgRob3N0GAIgASgJQgu6SAhyBhABMgJcUxIdCghwYXNzd29yZBgDIAEoCUILukgIcgYQATICXFMSHgoEcG9ydBgEIAEoDUILukgIKgYY//8DKAFIAIgBARJJCghzc2xfbW9kZRgFIAEoDjIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0U3NsTW9kZUIIukgFggECEAFIAYgBARIdCgh1c2VybmFtZRgGIAEoCUILukgIcgYQATICXFNCBwoFX3BvcnRCCwoJX3NzbF9tb2RlIpgCCh1Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFscxIdCghkYXRhYmFzZRgBIAEoCUILukgIcgYQATICXFMSGQoEaG9zdBgCIAEoCUILukgIcgYQATICXFMSHQoIcGFzc3dvcmQYAyABKAlCC7pICHIGEAEyAlxTEh4KBHBvcnQYBCABKA1CC7pICCoGGP//AygBSACIAQESSQoIc3NsX21vZGUYBSABKA4yKC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNzbE1vZGVCCLpIBYIBAhABSAGIAQESHQoIdXNlcm5hbWUYBiABKAlCC7pICHIGEAEyAlxTQgcKBV9wb3J0QgsKCV9zc2xfbW9kZSKsAQofQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFscxI3ChFjb25uZWN0aW9uX3N0cmluZxgBIAEoCUIcukgZchcQATITXm1vbmdvZGIoXCtzcnYpPzovLxIeCghkYXRhYmFzZRgCIAEoCUIHukgEcgIQAUgAiAEBEiMKCWRhdGFiYXNlcxgDIAMoCUIQukgNkgEKIghyBhABMgJcU0ILCglfZGF0YWJhc2UixQEKJkNvbm5lY3RTb3VyY2VTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzEh8KCnByb2plY3RfaWQYASABKAlCC7pICHIGEAEyAlxTEh8KDGNsaWVudF9lbWFpbBgCIAEoCUIJukgGcgQQAWABEiAKC3ByaXZhdGVfa2V5GAMgASgJQgu6SAhyBhABMgJcUxIkCg5wcml2YXRlX2tleV9pZBgEIAEoCUIHukgEcgIQAUgAiAEBQhEKD19wcml2YXRlX2tleV9pZCKTAQojQ29ubmVjdFNvdXJjZUdvb2dsZU9BdXRoQ3JlZGVudGlhbHMSIQoMYWNjZXNzX3Rva2VuGAEgASgJQgu6SAhyBhABMgJcUxIiCg1yZWZyZXNoX3Rva2VuGAIgASgJQgu6SAhyBhABMgJcUxIlCgpleHBpcmVzX2F0GAMgASgEQhG6SA7IAQEyCRj/////////DyLWAQogQ29ubmVjdFNvdXJjZUJpZ1F1ZXJ5Q3JlZGVudGlhbHMSRwoFb2F1dGgYASABKAsyNi5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUJpZ1F1ZXJ5T0F1dGhDcmVkZW50aWFsc0gAEloKD3NlcnZpY2VfYWNjb3VudBgCIAEoCzI/Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlQmlnUXVlcnlTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEimwEKJUNvbm5lY3RTb3VyY2VCaWdRdWVyeU9BdXRoQ3JlZGVudGlhbHMSHwoKcHJvamVjdF9pZBgBIAEoCUILukgIcgYQATICXFMSUQoLY3JlZGVudGlhbHMYAiABKAsyNC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUdvb2dsZU9BdXRoQ3JlZGVudGlhbHNCBrpIA8gBASKrAQouQ29ubmVjdFNvdXJjZUJpZ1F1ZXJ5U2VydmljZUFjY291bnRDcmVkZW50aWFscxIfCgpwcm9qZWN0X2lkGAEgASgJQgu6SAhyBhABMgJcUxJYCg9zZXJ2aWNlX2FjY291bnQYAiABKAsyNy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZVNlcnZpY2VBY2NvdW50Q3JlZGVudGlhbHNCBrpIA8gBASJ1Ch9Db25uZWN0U291cmNlTGFtaW5hckNyZWRlbnRpYWxzEiMKDGFwaV9iYXNlX3VybBgBIAEoCUIIukgFcgOIAQFIAIgBARIcCgdhcGlfa2V5GAIgASgJQgu6SAhyBhABMgJcU0IPCg1fYXBpX2Jhc2VfdXJsIvsBCipDb25uZWN0U291cmNlQXdzQXRoZW5hQ29ubmVjdG9yQ3JlZGVudGlhbHMSIQoMY29ubmVjdG9yX2lkGAEgASgJQgu6SAhyBhABMgJcUxIdCghkYXRhYmFzZRgCIAEoCUILukgIcgYQATICXFMSHgoIbWF4X3Jvd3MYAyABKA1CB7pIBCoCKAFIAIgBARIgCgp0aW1lb3V0X21zGAQgASgNQge6SAQqAigBSAGIAQESHwoJd29ya2dyb3VwGAUgASgJQge6SARyAhABSAKIAQFCCwoJX21heF9yb3dzQg0KC190aW1lb3V0X21zQgwKCl93b3JrZ3JvdXAi6wEKJ0Nvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NDcmVkZW50aWFscxJOCgVvYXV0aBgBIAEoCzI9Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlQW5hbHl0aWNzT0F1dGhDcmVkZW50aWFsc0gAEmEKD3NlcnZpY2VfYWNjb3VudBgCIAEoCzJGLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlQW5hbHl0aWNzU2VydmljZUFjY291bnRDcmVkZW50aWFsc0gAQg0KBGF1dGgSBbpIAggBIqMBCixDb25uZWN0U291cmNlR29vZ2xlQW5hbHl0aWNzT0F1dGhDcmVkZW50aWFscxIgCgtwcm9wZXJ0eV9pZBgBIAEoCUILukgIcgYQATICXFMSUQoLY3JlZGVudGlhbHMYAiABKAsyNC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUdvb2dsZU9BdXRoQ3JlZGVudGlhbHNCBrpIA8gBASKzAQo1Q29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc1NlcnZpY2VBY2NvdW50Q3JlZGVudGlhbHMSIAoLcHJvcGVydHlfaWQYASABKAlCC7pICHIGEAEyAlxTElgKD3NlcnZpY2VfYWNjb3VudBgCIAEoCzI3Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlU2VydmljZUFjY291bnRDcmVkZW50aWFsc0IGukgDyAEBIr4BCiFDb25uZWN0U291cmNlQW1wbGl0dWRlQ3JlZGVudGlhbHMSHAoHYXBpX2tleRgBIAEoCUILukgIcgYQATICXFMSTwoGcmVnaW9uGAIgASgOMjAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RBbXBsaXR1ZGVSZWdpb25CCLpIBYIBAhABSACIAQESHwoKc2VjcmV0X2tleRgDIAEoCUILukgIcgYQATICXFNCCQoHX3JlZ2lvbiKPAgogQ29ubmVjdFNvdXJjZU1peHBhbmVsQ3JlZGVudGlhbHMSHwoKcHJvamVjdF9pZBgBIAEoCUILukgIcgYQATICXFMSTgoGcmVnaW9uGAIgASgOMi8ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RNaXhwYW5lbFJlZ2lvbkIIukgFggECEAFIAIgBARIbCgZzZWNyZXQYAyABKAlCC7pICHIGEAEyAlxTEh0KCHVzZXJuYW1lGAQgASgJQgu6SAhyBhABMgJcUxIiCgx3b3Jrc3BhY2VfaWQYBSABKAlCB7pIBHICEAFIAYgBAUIJCgdfcmVnaW9uQg8KDV93b3Jrc3BhY2VfaWQihwEKH0Nvbm5lY3RTb3VyY2VQb3N0SG9nQ3JlZGVudGlhbHMSHAoIaG9zdF91cmwYASABKAlCCrpIB3IFEAGIAQESJQoQcGVyc29uYWxfYXBpX2tleRgCIAEoCUILukgIcgYQATICXFMSHwoKcHJvamVjdF9pZBgDIAEoCUILukgIcgYQATICXFMi1AEKHkNvbm5lY3RTb3VyY2VTZW50cnlDcmVkZW50aWFscxIjCgxhcGlfYmFzZV91cmwYASABKAlCCLpIBXIDiAEBSACIAQESHwoKYXV0aF90b2tlbhgCIAEoCUILukgIcgYQATICXFMSJgoRb3JnYW5pemF0aW9uX3NsdWcYAyABKAlCC7pICHIGEAEyAlxTEiIKDHByb2plY3Rfc2x1ZxgEIAEoCUIHukgEcgIQAUgBiAEBQg8KDV9hcGlfYmFzZV91cmxCDwoNX3Byb2plY3Rfc2x1ZyKmAQoeQ29ubmVjdFNvdXJjZUdpdEh1YkNyZWRlbnRpYWxzEiEKDGFjY2Vzc190b2tlbhgBIAEoCUILukgIcgYQATICXFMSJQoPaW5zdGFsbGF0aW9uX2lkGAIgASgJQge6SARyAhABSACIAQESJgoMcmVwb3NpdG9yaWVzGAMgAygJQhC6SA2SAQoiCHIGEAEyAlxTQhIKEF9pbnN0YWxsYXRpb25faWQiwAEKHkNvbm5lY3RTb3VyY2VMaW5lYXJDcmVkZW50aWFscxJICgdhcGlfa2V5GAEgASgLMjUub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJBcGlLZXlDcmVkZW50aWFsc0gAEkUKBW9hdXRoGAIgASgLMjQub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJPQXV0aENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEiRAokQ29ubmVjdFNvdXJjZUxpbmVhckFwaUtleUNyZWRlbnRpYWxzEhwKB2FwaV9rZXkYASABKAlCC7pICHIGEAEyAlxTIrUDCiNDb25uZWN0U291cmNlTGluZWFyT0F1dGhDcmVkZW50aWFscxIhCgxhY2Nlc3NfdG9rZW4YASABKAlCC7pICHIGEAEyAlxTEiEKC2FwcF91c2VyX2lkGAIgASgJQge6SARyAhABSACIAQESIAoKZXhwaXJlc19hdBgDIAEoCUIHukgEcgIQAUgBiAEBEisKFmxpbmVhcl9vcmdhbml6YXRpb25faWQYBCABKAlCC7pICHIGEAEyAlxTEi4KGGxpbmVhcl9vcmdhbml6YXRpb25fbmFtZRgFIAEoCUIHukgEcgIQAUgCiAEBEiMKDXJlZnJlc2hfdG9rZW4YBiABKAlCB7pIBHICEAFIA4gBARIbCgVzY29wZRgHIAEoCUIHukgEcgIQAUgEiAEBEiAKCnRva2VuX3R5cGUYCCABKAlCB7pIBHICEAFIBYgBAUIOCgxfYXBwX3VzZXJfaWRCDQoLX2V4cGlyZXNfYXRCGwoZX2xpbmVhcl9vcmdhbml6YXRpb25fbmFtZUIQCg5fcmVmcmVzaF90b2tlbkIICgZfc2NvcGVCDQoLX3Rva2VuX3R5cGUiYQoVQ29ubmVjdFNvdXJjZVJlc3BvbnNlEjIKBnNvdXJjZRgBIAEoCzIiLm9uZXF1ZXJ5LmNsaS52MS5HZXRTb3VyY2VSZXNwb25zZRIUCgxuZXh0X2NvbW1hbmQYAiABKAkqjwQKEUNsaVNvdXJjZVByb3ZpZGVyEiMKH0NMSV9TT1VSQ0VfUFJPVklERVJfVU5TUEVDSUZJRUQQABIgChxDTElfU09VUkNFX1BST1ZJREVSX1BPU1RHUkVTEAESIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9TVVBBQkFTRRACEh0KGUNMSV9TT1VSQ0VfUFJPVklERVJfTVlTUUwQAxIfChtDTElfU09VUkNFX1BST1ZJREVSX01PTkdPREIQBBIgChxDTElfU09VUkNFX1BST1ZJREVSX0JJR1FVRVJZEAUSHwobQ0xJX1NPVVJDRV9QUk9WSURFUl9MQU1JTkFSEAYSLAooQ0xJX1NPVVJDRV9QUk9WSURFUl9BV1NfQVRIRU5BX0NPTk5FQ1RPUhAHEhoKFkNMSV9TT1VSQ0VfUFJPVklERVJfR0EQCBIhCh1DTElfU09VUkNFX1BST1ZJREVSX0FNUExJVFVERRAJEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfTUlYUEFORUwQChIfChtDTElfU09VUkNFX1BST1ZJREVSX1BPU1RIT0cQCxIeChpDTElfU09VUkNFX1BST1ZJREVSX1NFTlRSWRAMEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfR0lUSFVCEA0SHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9MSU5FQVIQDirAAQoXQ2xpU291cmNlQ29ubmVjdFNzbE1vZGUSKwonQ0xJX1NPVVJDRV9DT05ORUNUX1NTTF9NT0RFX1VOU1BFQ0lGSUVEEAASJwojQ0xJX1NPVVJDRV9DT05ORUNUX1NTTF9NT0RFX0RJU0FCTEUQARImCiJDTElfU09VUkNFX0NPTk5FQ1RfU1NMX01PREVfUFJFRkVSEAISJwojQ0xJX1NPVVJDRV9DT05ORUNUX1NTTF9NT0RFX1JFUVVJUkUQAyquAQofQ2xpU291cmNlQ29ubmVjdEFtcGxpdHVkZVJlZ2lvbhIzCi9DTElfU09VUkNFX0NPTk5FQ1RfQU1QTElUVURFX1JFR0lPTl9VTlNQRUNJRklFRBAAEioKJkNMSV9TT1VSQ0VfQ09OTkVDVF9BTVBMSVRVREVfUkVHSU9OX1VTEAESKgomQ0xJX1NPVVJDRV9DT05ORUNUX0FNUExJVFVERV9SRUdJT05fRVUQAirVAQoeQ2xpU291cmNlQ29ubmVjdE1peHBhbmVsUmVnaW9uEjIKLkNMSV9TT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fVU5TUEVDSUZJRUQQABIpCiVDTElfU09VUkNFX0NPTk5FQ1RfTUlYUEFORUxfUkVHSU9OX1VTEAESKQolQ0xJX1NPVVJDRV9DT05ORUNUX01JWFBBTkVMX1JFR0lPTl9FVRACEikKJUNMSV9TT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fSU4QAyqTAQoPQ2xpU291cmNlU3RhdHVzEiEKHUNMSV9TT1VSQ0VfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYQ0xJX1NPVVJDRV9TVEFUVVNfQUNUSVZFEAESGwoXQ0xJX1NPVVJDRV9TVEFUVVNfRVJST1IQAhIiCh5DTElfU09VUkNFX1NUQVRVU19ESVNDT05ORUNURUQQA2IGcHJvdG8z",
+  [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
 /**
@@ -38,17 +33,12 @@ export type ListSourcesRequest =
     orgSlug: string;
 
     /**
-     * @generated from field: optional string fields = 2;
-     */
-    fields?: string;
-
-    /**
-     * @generated from field: optional uint32 limit = 3;
+     * @generated from field: optional uint32 limit = 2;
      */
     limit?: number;
 
     /**
-     * @generated from field: optional string cursor = 4;
+     * @generated from field: optional string cursor = 3;
      */
     cursor?: string;
   };
@@ -66,9 +56,9 @@ export const ListSourcesRequestSchema: GenMessage<ListSourcesRequest> /*@__PURE_
 export type ListSourcesResponse =
   Message<"onequery.cli.v1.ListSourcesResponse"> & {
     /**
-     * @generated from field: repeated onequery.cli.v1.CliSourceSummary sources = 1;
+     * @generated from field: repeated onequery.cli.v1.GetSourceResponse sources = 1;
      */
-    sources: CliSourceSummary[];
+    sources: GetSourceResponse[];
 
     /**
      * @generated from field: optional onequery.cli.v1.CliPage page = 2;
@@ -96,11 +86,6 @@ export type GetSourceRequest = Message<"onequery.cli.v1.GetSourceRequest"> & {
    * @generated from field: string source_key = 2;
    */
   sourceKey: string;
-
-  /**
-   * @generated from field: optional string fields = 3;
-   */
-  fields?: string;
 };
 
 /**
@@ -199,16 +184,6 @@ export type GetSourceConnectGuideResponse =
      * @generated from field: string command = 5;
      */
     command: string;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectInputSchema input_schema = 6;
-     */
-    inputSchema?: CliSourceConnectInputSchema;
-
-    /**
-     * @generated from field: repeated onequery.cli.v1.CliSourceConnectProviderGuide providers = 7;
-     */
-    providers: CliSourceConnectProviderGuide[];
   };
 
 /**
@@ -229,19 +204,14 @@ export type ConnectSourceRequest =
     orgSlug: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceProvider source = 2;
-     */
-    source: CliSourceProvider;
-
-    /**
      * @generated from field: string name = 3;
      */
     name: string;
 
     /**
-     * @generated from field: google.protobuf.Struct credentials = 4;
+     * @generated from field: onequery.cli.v1.ConnectSourceCredentials credentials = 4;
      */
-    credentials?: JsonObject;
+    credentials?: ConnectSourceCredentials;
   };
 
 /**
@@ -252,14 +222,784 @@ export const ConnectSourceRequestSchema: GenMessage<ConnectSourceRequest> /*@__P
   messageDesc(file_onequery_cli_v1_source, 6);
 
 /**
+ * @generated from message onequery.cli.v1.ConnectSourceCredentials
+ */
+export type ConnectSourceCredentials =
+  Message<"onequery.cli.v1.ConnectSourceCredentials"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.ConnectSourceCredentials.kind
+     */
+    kind:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourcePostgresCredentials postgres = 1;
+           */
+          value: ConnectSourcePostgresCredentials;
+          case: "postgres";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourcePostgresCredentials supabase = 2;
+           */
+          value: ConnectSourcePostgresCredentials;
+          case: "supabase";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceMySqlCredentials mysql = 3;
+           */
+          value: ConnectSourceMySqlCredentials;
+          case: "mysql";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceMongoDbCredentials mongodb = 4;
+           */
+          value: ConnectSourceMongoDbCredentials;
+          case: "mongodb";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceBigQueryCredentials bigquery = 5;
+           */
+          value: ConnectSourceBigQueryCredentials;
+          case: "bigquery";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceLaminarCredentials laminar = 6;
+           */
+          value: ConnectSourceLaminarCredentials;
+          case: "laminar";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials aws_athena_connector = 7;
+           */
+          value: ConnectSourceAwsAthenaConnectorCredentials;
+          case: "awsAthenaConnector";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials ga = 8;
+           */
+          value: ConnectSourceGoogleAnalyticsCredentials;
+          case: "ga";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceAmplitudeCredentials amplitude = 9;
+           */
+          value: ConnectSourceAmplitudeCredentials;
+          case: "amplitude";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceMixpanelCredentials mixpanel = 10;
+           */
+          value: ConnectSourceMixpanelCredentials;
+          case: "mixpanel";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourcePostHogCredentials posthog = 11;
+           */
+          value: ConnectSourcePostHogCredentials;
+          case: "posthog";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceSentryCredentials sentry = 12;
+           */
+          value: ConnectSourceSentryCredentials;
+          case: "sentry";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceGitHubCredentials github = 13;
+           */
+          value: ConnectSourceGitHubCredentials;
+          case: "github";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceLinearCredentials linear = 14;
+           */
+          value: ConnectSourceLinearCredentials;
+          case: "linear";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceCredentials.
+ * Use `create(ConnectSourceCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceCredentialsSchema: GenMessage<ConnectSourceCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 7);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourcePostgresCredentials
+ */
+export type ConnectSourcePostgresCredentials =
+  Message<"onequery.cli.v1.ConnectSourcePostgresCredentials"> & {
+    /**
+     * @generated from field: string database = 1;
+     */
+    database: string;
+
+    /**
+     * @generated from field: string host = 2;
+     */
+    host: string;
+
+    /**
+     * @generated from field: string password = 3;
+     */
+    password: string;
+
+    /**
+     * @generated from field: optional uint32 port = 4;
+     */
+    port?: number;
+
+    /**
+     * @generated from field: optional onequery.cli.v1.CliSourceConnectSslMode ssl_mode = 5;
+     */
+    sslMode?: CliSourceConnectSslMode;
+
+    /**
+     * @generated from field: string username = 6;
+     */
+    username: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourcePostgresCredentials.
+ * Use `create(ConnectSourcePostgresCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourcePostgresCredentialsSchema: GenMessage<ConnectSourcePostgresCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 8);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceMySqlCredentials
+ */
+export type ConnectSourceMySqlCredentials =
+  Message<"onequery.cli.v1.ConnectSourceMySqlCredentials"> & {
+    /**
+     * @generated from field: string database = 1;
+     */
+    database: string;
+
+    /**
+     * @generated from field: string host = 2;
+     */
+    host: string;
+
+    /**
+     * @generated from field: string password = 3;
+     */
+    password: string;
+
+    /**
+     * @generated from field: optional uint32 port = 4;
+     */
+    port?: number;
+
+    /**
+     * @generated from field: optional onequery.cli.v1.CliSourceConnectSslMode ssl_mode = 5;
+     */
+    sslMode?: CliSourceConnectSslMode;
+
+    /**
+     * @generated from field: string username = 6;
+     */
+    username: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceMySqlCredentials.
+ * Use `create(ConnectSourceMySqlCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceMySqlCredentialsSchema: GenMessage<ConnectSourceMySqlCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 9);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceMongoDbCredentials
+ */
+export type ConnectSourceMongoDbCredentials =
+  Message<"onequery.cli.v1.ConnectSourceMongoDbCredentials"> & {
+    /**
+     * @generated from field: string connection_string = 1;
+     */
+    connectionString: string;
+
+    /**
+     * @generated from field: optional string database = 2;
+     */
+    database?: string;
+
+    /**
+     * @generated from field: repeated string databases = 3;
+     */
+    databases: string[];
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceMongoDbCredentials.
+ * Use `create(ConnectSourceMongoDbCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceMongoDbCredentialsSchema: GenMessage<ConnectSourceMongoDbCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 10);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceServiceAccountCredentials
+ */
+export type ConnectSourceServiceAccountCredentials =
+  Message<"onequery.cli.v1.ConnectSourceServiceAccountCredentials"> & {
+    /**
+     * @generated from field: string project_id = 1;
+     */
+    projectId: string;
+
+    /**
+     * @generated from field: string client_email = 2;
+     */
+    clientEmail: string;
+
+    /**
+     * @generated from field: string private_key = 3;
+     */
+    privateKey: string;
+
+    /**
+     * @generated from field: optional string private_key_id = 4;
+     */
+    privateKeyId?: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceServiceAccountCredentials.
+ * Use `create(ConnectSourceServiceAccountCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceServiceAccountCredentialsSchema: GenMessage<ConnectSourceServiceAccountCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 11);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceGoogleOAuthCredentials
+ */
+export type ConnectSourceGoogleOAuthCredentials =
+  Message<"onequery.cli.v1.ConnectSourceGoogleOAuthCredentials"> & {
+    /**
+     * @generated from field: string access_token = 1;
+     */
+    accessToken: string;
+
+    /**
+     * @generated from field: string refresh_token = 2;
+     */
+    refreshToken: string;
+
+    /**
+     * @generated from field: uint64 expires_at = 3;
+     */
+    expiresAt: bigint;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceGoogleOAuthCredentials.
+ * Use `create(ConnectSourceGoogleOAuthCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceGoogleOAuthCredentialsSchema: GenMessage<ConnectSourceGoogleOAuthCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 12);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceBigQueryCredentials
+ */
+export type ConnectSourceBigQueryCredentials =
+  Message<"onequery.cli.v1.ConnectSourceBigQueryCredentials"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.ConnectSourceBigQueryCredentials.auth
+     */
+    auth:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceBigQueryOAuthCredentials oauth = 1;
+           */
+          value: ConnectSourceBigQueryOAuthCredentials;
+          case: "oauth";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials service_account = 2;
+           */
+          value: ConnectSourceBigQueryServiceAccountCredentials;
+          case: "serviceAccount";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceBigQueryCredentials.
+ * Use `create(ConnectSourceBigQueryCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceBigQueryCredentialsSchema: GenMessage<ConnectSourceBigQueryCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 13);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceBigQueryOAuthCredentials
+ */
+export type ConnectSourceBigQueryOAuthCredentials =
+  Message<"onequery.cli.v1.ConnectSourceBigQueryOAuthCredentials"> & {
+    /**
+     * @generated from field: string project_id = 1;
+     */
+    projectId: string;
+
+    /**
+     * @generated from field: onequery.cli.v1.ConnectSourceGoogleOAuthCredentials credentials = 2;
+     */
+    credentials?: ConnectSourceGoogleOAuthCredentials;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceBigQueryOAuthCredentials.
+ * Use `create(ConnectSourceBigQueryOAuthCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceBigQueryOAuthCredentialsSchema: GenMessage<ConnectSourceBigQueryOAuthCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 14);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials
+ */
+export type ConnectSourceBigQueryServiceAccountCredentials =
+  Message<"onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials"> & {
+    /**
+     * @generated from field: string project_id = 1;
+     */
+    projectId: string;
+
+    /**
+     * @generated from field: onequery.cli.v1.ConnectSourceServiceAccountCredentials service_account = 2;
+     */
+    serviceAccount?: ConnectSourceServiceAccountCredentials;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials.
+ * Use `create(ConnectSourceBigQueryServiceAccountCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceBigQueryServiceAccountCredentialsSchema: GenMessage<ConnectSourceBigQueryServiceAccountCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 15);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceLaminarCredentials
+ */
+export type ConnectSourceLaminarCredentials =
+  Message<"onequery.cli.v1.ConnectSourceLaminarCredentials"> & {
+    /**
+     * @generated from field: optional string api_base_url = 1;
+     */
+    apiBaseUrl?: string;
+
+    /**
+     * @generated from field: string api_key = 2;
+     */
+    apiKey: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceLaminarCredentials.
+ * Use `create(ConnectSourceLaminarCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceLaminarCredentialsSchema: GenMessage<ConnectSourceLaminarCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 16);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials
+ */
+export type ConnectSourceAwsAthenaConnectorCredentials =
+  Message<"onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials"> & {
+    /**
+     * @generated from field: string connector_id = 1;
+     */
+    connectorId: string;
+
+    /**
+     * @generated from field: string database = 2;
+     */
+    database: string;
+
+    /**
+     * @generated from field: optional uint32 max_rows = 3;
+     */
+    maxRows?: number;
+
+    /**
+     * @generated from field: optional uint32 timeout_ms = 4;
+     */
+    timeoutMs?: number;
+
+    /**
+     * @generated from field: optional string workgroup = 5;
+     */
+    workgroup?: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials.
+ * Use `create(ConnectSourceAwsAthenaConnectorCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceAwsAthenaConnectorCredentialsSchema: GenMessage<ConnectSourceAwsAthenaConnectorCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 17);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials
+ */
+export type ConnectSourceGoogleAnalyticsCredentials =
+  Message<"onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials.auth
+     */
+    auth:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceGoogleAnalyticsOAuthCredentials oauth = 1;
+           */
+          value: ConnectSourceGoogleAnalyticsOAuthCredentials;
+          case: "oauth";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials service_account = 2;
+           */
+          value: ConnectSourceGoogleAnalyticsServiceAccountCredentials;
+          case: "serviceAccount";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials.
+ * Use `create(ConnectSourceGoogleAnalyticsCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceGoogleAnalyticsCredentialsSchema: GenMessage<ConnectSourceGoogleAnalyticsCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 18);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceGoogleAnalyticsOAuthCredentials
+ */
+export type ConnectSourceGoogleAnalyticsOAuthCredentials =
+  Message<"onequery.cli.v1.ConnectSourceGoogleAnalyticsOAuthCredentials"> & {
+    /**
+     * @generated from field: string property_id = 1;
+     */
+    propertyId: string;
+
+    /**
+     * @generated from field: onequery.cli.v1.ConnectSourceGoogleOAuthCredentials credentials = 2;
+     */
+    credentials?: ConnectSourceGoogleOAuthCredentials;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceGoogleAnalyticsOAuthCredentials.
+ * Use `create(ConnectSourceGoogleAnalyticsOAuthCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceGoogleAnalyticsOAuthCredentialsSchema: GenMessage<ConnectSourceGoogleAnalyticsOAuthCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 19);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials
+ */
+export type ConnectSourceGoogleAnalyticsServiceAccountCredentials =
+  Message<"onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials"> & {
+    /**
+     * @generated from field: string property_id = 1;
+     */
+    propertyId: string;
+
+    /**
+     * @generated from field: onequery.cli.v1.ConnectSourceServiceAccountCredentials service_account = 2;
+     */
+    serviceAccount?: ConnectSourceServiceAccountCredentials;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials.
+ * Use `create(ConnectSourceGoogleAnalyticsServiceAccountCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceGoogleAnalyticsServiceAccountCredentialsSchema: GenMessage<ConnectSourceGoogleAnalyticsServiceAccountCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 20);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceAmplitudeCredentials
+ */
+export type ConnectSourceAmplitudeCredentials =
+  Message<"onequery.cli.v1.ConnectSourceAmplitudeCredentials"> & {
+    /**
+     * @generated from field: string api_key = 1;
+     */
+    apiKey: string;
+
+    /**
+     * @generated from field: optional onequery.cli.v1.CliSourceConnectAmplitudeRegion region = 2;
+     */
+    region?: CliSourceConnectAmplitudeRegion;
+
+    /**
+     * @generated from field: string secret_key = 3;
+     */
+    secretKey: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceAmplitudeCredentials.
+ * Use `create(ConnectSourceAmplitudeCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceAmplitudeCredentialsSchema: GenMessage<ConnectSourceAmplitudeCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 21);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceMixpanelCredentials
+ */
+export type ConnectSourceMixpanelCredentials =
+  Message<"onequery.cli.v1.ConnectSourceMixpanelCredentials"> & {
+    /**
+     * @generated from field: string project_id = 1;
+     */
+    projectId: string;
+
+    /**
+     * @generated from field: optional onequery.cli.v1.CliSourceConnectMixpanelRegion region = 2;
+     */
+    region?: CliSourceConnectMixpanelRegion;
+
+    /**
+     * @generated from field: string secret = 3;
+     */
+    secret: string;
+
+    /**
+     * @generated from field: string username = 4;
+     */
+    username: string;
+
+    /**
+     * @generated from field: optional string workspace_id = 5;
+     */
+    workspaceId?: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceMixpanelCredentials.
+ * Use `create(ConnectSourceMixpanelCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceMixpanelCredentialsSchema: GenMessage<ConnectSourceMixpanelCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 22);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourcePostHogCredentials
+ */
+export type ConnectSourcePostHogCredentials =
+  Message<"onequery.cli.v1.ConnectSourcePostHogCredentials"> & {
+    /**
+     * @generated from field: string host_url = 1;
+     */
+    hostUrl: string;
+
+    /**
+     * @generated from field: string personal_api_key = 2;
+     */
+    personalApiKey: string;
+
+    /**
+     * @generated from field: string project_id = 3;
+     */
+    projectId: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourcePostHogCredentials.
+ * Use `create(ConnectSourcePostHogCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourcePostHogCredentialsSchema: GenMessage<ConnectSourcePostHogCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 23);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceSentryCredentials
+ */
+export type ConnectSourceSentryCredentials =
+  Message<"onequery.cli.v1.ConnectSourceSentryCredentials"> & {
+    /**
+     * @generated from field: optional string api_base_url = 1;
+     */
+    apiBaseUrl?: string;
+
+    /**
+     * @generated from field: string auth_token = 2;
+     */
+    authToken: string;
+
+    /**
+     * @generated from field: string organization_slug = 3;
+     */
+    organizationSlug: string;
+
+    /**
+     * @generated from field: optional string project_slug = 4;
+     */
+    projectSlug?: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceSentryCredentials.
+ * Use `create(ConnectSourceSentryCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceSentryCredentialsSchema: GenMessage<ConnectSourceSentryCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 24);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceGitHubCredentials
+ */
+export type ConnectSourceGitHubCredentials =
+  Message<"onequery.cli.v1.ConnectSourceGitHubCredentials"> & {
+    /**
+     * @generated from field: string access_token = 1;
+     */
+    accessToken: string;
+
+    /**
+     * @generated from field: optional string installation_id = 2;
+     */
+    installationId?: string;
+
+    /**
+     * @generated from field: repeated string repositories = 3;
+     */
+    repositories: string[];
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceGitHubCredentials.
+ * Use `create(ConnectSourceGitHubCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceGitHubCredentialsSchema: GenMessage<ConnectSourceGitHubCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 25);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceLinearCredentials
+ */
+export type ConnectSourceLinearCredentials =
+  Message<"onequery.cli.v1.ConnectSourceLinearCredentials"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.ConnectSourceLinearCredentials.auth
+     */
+    auth:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceLinearApiKeyCredentials api_key = 1;
+           */
+          value: ConnectSourceLinearApiKeyCredentials;
+          case: "apiKey";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.ConnectSourceLinearOAuthCredentials oauth = 2;
+           */
+          value: ConnectSourceLinearOAuthCredentials;
+          case: "oauth";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceLinearCredentials.
+ * Use `create(ConnectSourceLinearCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceLinearCredentialsSchema: GenMessage<ConnectSourceLinearCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 26);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceLinearApiKeyCredentials
+ */
+export type ConnectSourceLinearApiKeyCredentials =
+  Message<"onequery.cli.v1.ConnectSourceLinearApiKeyCredentials"> & {
+    /**
+     * @generated from field: string api_key = 1;
+     */
+    apiKey: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceLinearApiKeyCredentials.
+ * Use `create(ConnectSourceLinearApiKeyCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceLinearApiKeyCredentialsSchema: GenMessage<ConnectSourceLinearApiKeyCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 27);
+
+/**
+ * @generated from message onequery.cli.v1.ConnectSourceLinearOAuthCredentials
+ */
+export type ConnectSourceLinearOAuthCredentials =
+  Message<"onequery.cli.v1.ConnectSourceLinearOAuthCredentials"> & {
+    /**
+     * @generated from field: string access_token = 1;
+     */
+    accessToken: string;
+
+    /**
+     * @generated from field: optional string app_user_id = 2;
+     */
+    appUserId?: string;
+
+    /**
+     * @generated from field: optional string expires_at = 3;
+     */
+    expiresAt?: string;
+
+    /**
+     * @generated from field: string linear_organization_id = 4;
+     */
+    linearOrganizationId: string;
+
+    /**
+     * @generated from field: optional string linear_organization_name = 5;
+     */
+    linearOrganizationName?: string;
+
+    /**
+     * @generated from field: optional string refresh_token = 6;
+     */
+    refreshToken?: string;
+
+    /**
+     * @generated from field: optional string scope = 7;
+     */
+    scope?: string;
+
+    /**
+     * @generated from field: optional string token_type = 8;
+     */
+    tokenType?: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ConnectSourceLinearOAuthCredentials.
+ * Use `create(ConnectSourceLinearOAuthCredentialsSchema)` to create a new message.
+ */
+export const ConnectSourceLinearOAuthCredentialsSchema: GenMessage<ConnectSourceLinearOAuthCredentials> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source, 28);
+
+/**
  * @generated from message onequery.cli.v1.ConnectSourceResponse
  */
 export type ConnectSourceResponse =
   Message<"onequery.cli.v1.ConnectSourceResponse"> & {
     /**
-     * @generated from field: onequery.cli.v1.CliSourceSummary source = 1;
+     * @generated from field: onequery.cli.v1.GetSourceResponse source = 1;
      */
-    source?: CliSourceSummary;
+    source?: GetSourceResponse;
 
     /**
      * @generated from field: string next_command = 2;
@@ -272,264 +1012,7 @@ export type ConnectSourceResponse =
  * Use `create(ConnectSourceResponseSchema)` to create a new message.
  */
 export const ConnectSourceResponseSchema: GenMessage<ConnectSourceResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 7);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceList
- */
-export type CliSourceList = Message<"onequery.cli.v1.CliSourceList"> & {
-  /**
-   * @generated from field: repeated onequery.cli.v1.CliSourceSummary sources = 1;
-   */
-  sources: CliSourceSummary[];
-};
-
-/**
- * Describes the message onequery.cli.v1.CliSourceList.
- * Use `create(CliSourceListSchema)` to create a new message.
- */
-export const CliSourceListSchema: GenMessage<CliSourceList> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 8);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceSummary
- */
-export type CliSourceSummary = Message<"onequery.cli.v1.CliSourceSummary"> & {
-  /**
-   * @generated from field: string name = 1;
-   */
-  name: string;
-
-  /**
-   * @generated from field: optional string display_name = 2;
-   */
-  displayName?: string;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliSourceProvider provider = 3;
-   */
-  provider: CliSourceProvider;
-
-  /**
-   * @generated from field: bool queryable = 4;
-   */
-  queryable: boolean;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliSourceStatus status = 5;
-   */
-  status: CliSourceStatus;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliSourceSummary.
- * Use `create(CliSourceSummarySchema)` to create a new message.
- */
-export const CliSourceSummarySchema: GenMessage<CliSourceSummary> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 9);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectGuide
- */
-export type CliSourceConnectGuide =
-  Message<"onequery.cli.v1.CliSourceConnectGuide"> & {
-    /**
-     * @generated from field: string title = 1;
-     */
-    title: string;
-
-    /**
-     * @generated from field: string description = 2;
-     */
-    description: string;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliContentFormat format = 3;
-     */
-    format: CliContentFormat;
-
-    /**
-     * @generated from field: string content = 4;
-     */
-    content: string;
-
-    /**
-     * @generated from field: string command = 5;
-     */
-    command: string;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectInputSchema input_schema = 6;
-     */
-    inputSchema?: CliSourceConnectInputSchema;
-
-    /**
-     * @generated from field: repeated onequery.cli.v1.CliSourceConnectProviderGuide providers = 7;
-     */
-    providers: CliSourceConnectProviderGuide[];
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectGuide.
- * Use `create(CliSourceConnectGuideSchema)` to create a new message.
- */
-export const CliSourceConnectGuideSchema: GenMessage<CliSourceConnectGuide> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 10);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectInputSchema
- */
-export type CliSourceConnectInputSchema =
-  Message<"onequery.cli.v1.CliSourceConnectInputSchema"> & {
-    /**
-     * @generated from field: string type = 1;
-     */
-    type: string;
-
-    /**
-     * @generated from field: repeated string required = 2;
-     */
-    required: string[];
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectInputSchemaProperties properties = 3;
-     */
-    properties?: CliSourceConnectInputSchemaProperties;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectInputSchema.
- * Use `create(CliSourceConnectInputSchemaSchema)` to create a new message.
- */
-export const CliSourceConnectInputSchemaSchema: GenMessage<CliSourceConnectInputSchema> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 11);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectInputSchemaProperties
- */
-export type CliSourceConnectInputSchemaProperties =
-  Message<"onequery.cli.v1.CliSourceConnectInputSchemaProperties"> & {
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectSchemaField name = 1;
-     */
-    name?: CliSourceConnectSchemaField;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectSchemaField credentials = 2;
-     */
-    credentials?: CliSourceConnectSchemaField;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectInputSchemaProperties.
- * Use `create(CliSourceConnectInputSchemaPropertiesSchema)` to create a new message.
- */
-export const CliSourceConnectInputSchemaPropertiesSchema: GenMessage<CliSourceConnectInputSchemaProperties> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 12);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectSchemaField
- */
-export type CliSourceConnectSchemaField =
-  Message<"onequery.cli.v1.CliSourceConnectSchemaField"> & {
-    /**
-     * @generated from field: string type = 1;
-     */
-    type: string;
-
-    /**
-     * @generated from field: string description = 2;
-     */
-    description: string;
-
-    /**
-     * @generated from field: optional string pattern = 3;
-     */
-    pattern?: string;
-
-    /**
-     * @generated from field: repeated string enum_values = 4;
-     */
-    enumValues: string[];
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectSchemaField.
- * Use `create(CliSourceConnectSchemaFieldSchema)` to create a new message.
- */
-export const CliSourceConnectSchemaFieldSchema: GenMessage<CliSourceConnectSchemaField> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 13);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectProviderGuide
- */
-export type CliSourceConnectProviderGuide =
-  Message<"onequery.cli.v1.CliSourceConnectProviderGuide"> & {
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceProvider provider = 1;
-     */
-    provider: CliSourceProvider;
-
-    /**
-     * @generated from field: string summary = 2;
-     */
-    summary: string;
-
-    /**
-     * @generated from field: repeated string required_credential_fields = 3;
-     */
-    requiredCredentialFields: string[];
-
-    /**
-     * @generated from field: repeated string optional_credential_fields = 4;
-     */
-    optionalCredentialFields: string[];
-
-    /**
-     * @generated from field: repeated string steps = 5;
-     */
-    steps: string[];
-
-    /**
-     * @generated from field: google.protobuf.Struct credential_template = 6;
-     */
-    credentialTemplate?: JsonObject;
-
-    /**
-     * @generated from field: google.protobuf.Struct example_input = 7;
-     */
-    exampleInput?: JsonObject;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectProviderGuide.
- * Use `create(CliSourceConnectProviderGuideSchema)` to create a new message.
- */
-export const CliSourceConnectProviderGuideSchema: GenMessage<CliSourceConnectProviderGuide> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 14);
-
-/**
- * @generated from message onequery.cli.v1.CliConnectedSource
- */
-export type CliConnectedSource =
-  Message<"onequery.cli.v1.CliConnectedSource"> & {
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceSummary source = 1;
-     */
-    source?: CliSourceSummary;
-
-    /**
-     * @generated from field: string next_command = 2;
-     */
-    nextCommand: string;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliConnectedSource.
- * Use `create(CliConnectedSourceSchema)` to create a new message.
- */
-export const CliConnectedSourceSchema: GenMessage<CliConnectedSource> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 15);
+  messageDesc(file_onequery_cli_v1_source, 29);
 
 /**
  * @generated from enum onequery.cli.v1.CliSourceProvider
@@ -618,6 +1101,94 @@ export const CliSourceProviderSchema: GenEnum<CliSourceProvider> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 0);
 
 /**
+ * @generated from enum onequery.cli.v1.CliSourceConnectSslMode
+ */
+export enum CliSourceConnectSslMode {
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_DISABLE = 1;
+   */
+  DISABLE = 1,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_PREFER = 2;
+   */
+  PREFER = 2,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE = 3;
+   */
+  REQUIRE = 3,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.CliSourceConnectSslMode.
+ */
+export const CliSourceConnectSslModeSchema: GenEnum<CliSourceConnectSslMode> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source, 1);
+
+/**
+ * @generated from enum onequery.cli.v1.CliSourceConnectAmplitudeRegion
+ */
+export enum CliSourceConnectAmplitudeRegion {
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_US = 1;
+   */
+  US = 1,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2;
+   */
+  EU = 2,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.CliSourceConnectAmplitudeRegion.
+ */
+export const CliSourceConnectAmplitudeRegionSchema: GenEnum<CliSourceConnectAmplitudeRegion> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source, 2);
+
+/**
+ * @generated from enum onequery.cli.v1.CliSourceConnectMixpanelRegion
+ */
+export enum CliSourceConnectMixpanelRegion {
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_US = 1;
+   */
+  US = 1,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_EU = 2;
+   */
+  EU = 2,
+
+  /**
+   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_IN = 3;
+   */
+  IN = 3,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.CliSourceConnectMixpanelRegion.
+ */
+export const CliSourceConnectMixpanelRegionSchema: GenEnum<CliSourceConnectMixpanelRegion> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source, 3);
+
+/**
  * @generated from enum onequery.cli.v1.CliSourceStatus
  */
 export enum CliSourceStatus {
@@ -646,4 +1217,4 @@ export enum CliSourceStatus {
  * Describes the enum onequery.cli.v1.CliSourceStatus.
  */
 export const CliSourceStatusSchema: GenEnum<CliSourceStatus> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source, 1);
+  enumDesc(file_onequery_cli_v1_source, 4);

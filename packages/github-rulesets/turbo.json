@@ -1,15 +1,15 @@
 {
   "extends": ["//"],
   "tasks": {
-    "check": {
+    "rulesets:check": {
       "cache": false,
       "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
     },
-    "plan": {
+    "rulesets:plan": {
       "cache": false,
       "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
     },
-    "apply": {
+    "rulesets:apply": {
       "cache": false,
       "passThroughEnv": ["GITHUB_ACTIONS_INTEGRATION_ID"]
     }

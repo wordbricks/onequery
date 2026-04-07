@@ -320,16 +320,12 @@ pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
     }
 }
 
-pub(crate) fn read_controls_from_read_args(read: &ReadArgs) -> ReadRequestControls {
-    ReadRequestControls {
-        fields: read.fields().map(ToOwned::to_owned),
-        ..ReadRequestControls::default()
-    }
+pub(crate) fn read_controls_from_read_args(_read: &ReadArgs) -> ReadRequestControls {
+    ReadRequestControls::default()
 }
 
 pub(crate) fn read_controls_from_list_args(read: &ListReadArgs) -> ReadRequestControls {
     ReadRequestControls {
-        fields: read.read.fields().map(ToOwned::to_owned),
         page_size: read.pagination.page_size,
         cursor: read.pagination.cursor().map(ToOwned::to_owned),
         page_all: read.pagination.page_all,

@@ -28,9 +28,8 @@ pub(crate) struct SourceSummary {
     pub(crate) name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
-    #[serde(rename = "provider")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) provider_kind: Option<String>,
+    pub(crate) provider: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) queryable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -83,13 +82,11 @@ async fn fetch_source_page(
 ) -> Result<ApiSuccess<SourceListPayload>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::Http)?;
     let cursor: Option<String> = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
-    let fields: Option<String> = try_into_option(controls.fields.as_deref(), ErrorStage::Http)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::Http)?;
     let response = match client
         .cli()
         .list_sources(types::ListSourcesRequest {
             org_slug,
-            fields,
             limit,
             cursor,
             ..Default::default()
@@ -131,18 +128,15 @@ pub(crate) async fn get_source_by_key_with_controls(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
-    controls: &ReadRequestControls,
+    _controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<SourceSummary>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ResolveSource)?;
     let response = match client
         .cli()
         .get_source(types::GetSourceRequest {
             org_slug,
             source_key,
-            fields,
             ..Default::default()
         })
         .await
@@ -160,7 +154,7 @@ pub(crate) async fn get_source_by_key_with_controls(
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: source_summary_from_get_response(payload),
+        payload: source_summary_from_generated(payload),
         request_id,
     })
 }
@@ -187,23 +181,13 @@ fn get_source_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     }
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::CliSourceSummary) -> SourceSummary {
+pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
     SourceSummary {
         name: non_empty(summary.name),
         display_name: non_empty_option(summary.display_name),
-        provider_kind: Some(source_provider_to_str(summary.provider)),
+        provider: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
         status: Some(source_status_to_str(summary.status)),
-    }
-}
-
-fn source_summary_from_get_response(response: types::GetSourceResponse) -> SourceSummary {
-    SourceSummary {
-        name: non_empty(response.name),
-        display_name: non_empty_option(response.display_name),
-        provider_kind: Some(source_provider_to_str(response.provider)),
-        queryable: Some(response.queryable),
-        status: Some(source_status_to_str(response.status)),
     }
 }
 
@@ -280,14 +264,14 @@ mod tests {
                     SourceSummary {
                         name: Some("warehouse".to_owned()),
                         display_name: None,
-                        provider_kind: Some("postgres".to_owned()),
+                        provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
                         name: Some("github_main".to_owned()),
                         display_name: None,
-                        provider_kind: Some("github".to_owned()),
+                        provider: Some("github".to_owned()),
                         queryable: Some(false),
                         status: Some("active".to_owned()),
                     },
@@ -302,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn source_summary_deserializes_provider_field_into_provider_kind() {
+    fn source_summary_deserializes_provider_field_into_provider() {
         let payload = json!({
             "name": "warehouse",
             "displayName": "Warehouse",
@@ -318,7 +302,7 @@ mod tests {
             SourceSummary {
                 name: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
-                provider_kind: Some("mysql".to_owned()),
+                provider: Some("mysql".to_owned()),
                 queryable: Some(true),
                 status: Some("active".to_owned()),
             }

@@ -251,10 +251,10 @@ describe("cli query execution workflow", () => {
         rowCount: 1,
         rows: [["42"]],
         source: {
-          name: "warehouse",
           displayName: null,
+          id: "source-1",
           provider: "postgres",
-          queryable: true,
+          sourceKey: "warehouse",
           status: "active",
         },
         truncated: true,

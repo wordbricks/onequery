@@ -31,7 +31,7 @@ pub(super) fn render_query_output(
     let provider = result
         .source
         .as_ref()
-        .and_then(|source| source.provider_kind.as_deref())
+        .and_then(|source| source.provider.as_deref())
         .unwrap_or("-");
     let row_count = result
         .row_count
@@ -83,7 +83,7 @@ pub(super) fn render_query_validation_output(
     let provider = result
         .source
         .as_ref()
-        .and_then(|source| source.provider_kind.as_deref())
+        .and_then(|source| source.provider.as_deref())
         .unwrap_or("-");
     let normalized_sql = result
         .normalized_sql
