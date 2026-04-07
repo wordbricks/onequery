@@ -1,0 +1,43 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "src/**",
+        "$TURBO_ROOT$/proto/**",
+        "!src/**/.DS_Store"
+      ]
+    },
+    "test:integration": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "src/**",
+        "$TURBO_ROOT$/proto/**",
+        "!src/**/.DS_Store"
+      ]
+    },
+    "topo": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "src/**",
+        "$TURBO_ROOT$/proto/**",
+        "!src/**/.DS_Store"
+      ]
+    },
+    "typecheck": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "src/**",
+        "$TURBO_ROOT$/proto/**",
+        "!src/**/.DS_Store"
+      ]
+    }
+  }
+}
