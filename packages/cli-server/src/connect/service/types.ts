@@ -12,12 +12,7 @@ export type CliServiceMethod<Name extends keyof CliServiceImplementation> =
 
 export type CliHonoContext = Context<CliRouteEnv>;
 
-export type CliReadControlsConfig = {
-  allowedFields: readonly string[];
-};
-
 export type CliPaginatedQueryInput = {
-  fields?: string;
   limit?: number;
   cursor?: string;
 };

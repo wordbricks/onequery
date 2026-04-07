@@ -5,9 +5,7 @@ package onequery.cli.v1;
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
-message GetSessionRequest {
-  optional string fields = 1 [(buf.validate.field).string.min_len = 1];
-}
+message GetSessionRequest {}
 
 message GetSessionResponse {
   CliAuthMode auth_mode = 1;

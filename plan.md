@@ -62,33 +62,37 @@ That order keeps the refactor understandable and avoids preserving abstractions 
 
 ### Phase 1: Remove Partial Projection From The Connect Contract
 
-- [ ] Delete every `fields` request field from the proto contract:
+- [x] Delete every `fields` request field from the proto contract:
   - `proto/onequery/cli/v1/auth.proto`
   - `proto/onequery/cli/v1/org.proto`
   - `proto/onequery/cli/v1/query.proto`
   - `proto/onequery/cli/v1/source.proto`
-- [ ] Remove all field-selection allowlists and projection code from Connect handlers:
+- [x] Remove all field-selection allowlists and projection code from Connect handlers:
   - `packages/cli-server/src/connect/service/auth.ts`
   - `packages/cli-server/src/connect/service/organization.ts`
   - `packages/cli-server/src/connect/service/query.ts`
   - `packages/cli-server/src/connect/service/source.ts`
-- [ ] Delete Connect-side projection parsing helpers if they become unused:
+- [x] Delete Connect-side projection parsing helpers if they become unused:
   - `packages/cli-server/src/connect/service/read-controls.ts`
-- [ ] Remove CLI transport support for sending field projections over Connect requests:
+- [x] Remove CLI transport support for sending field projections over Connect requests:
   - `apps/cli/crates/onequery-cli/src/transport/auth.rs`
   - `apps/cli/crates/onequery-cli/src/transport/org.rs`
   - `apps/cli/crates/onequery-cli/src/transport/query.rs`
   - `apps/cli/crates/onequery-cli/src/transport/source.rs`
-- [ ] Remove tests that exist only to validate partial projection behavior.
-- [ ] Remove any output warnings or special handling that only exist because responses may be partial:
+- [x] Remove tests that exist only to validate partial projection behavior.
+- [x] Remove any output warnings or special handling that only exist because responses may be partial:
   - `apps/cli/crates/onequery-cli/src/output.rs`
-- [ ] Keep pagination if needed, but only as explicit typed fields such as `limit` and `cursor`.
+- [x] Keep pagination if needed, but only as explicit typed fields such as `limit` and `cursor`.
 
 Recommended simplification:
 
 - return full response messages from Connect RPCs
 - let the CLI perform local output projection for presentation if presentation trimming is still useful
 - do not rebuild server-side projection using `FieldMask` unless there is a hard requirement for it
+
+Comment:
+
+- Phase 1 is complete once Connect always returns full protobuf responses; the CLI may still keep local `--fields` presentation trimming as a non-transport concern.
 
 ### Phase 2: Collapse Duplicate Proto Messages
 
@@ -236,16 +240,16 @@ Do not start in generated code.
 
 Run these after each major phase:
 
-- [ ] `bun run proto:lint`
-- [ ] `bun run proto:generate`
-- [ ] `bun run proto:check`
-- [ ] relevant package tests for Connect handlers and CLI transport
-- [ ] Rust CLI tests affected by transport decoding
+- [x] `bun run proto:lint`
+- [x] `bun run proto:generate`
+- [x] `bun run proto:check`
+- [x] relevant package tests for Connect handlers and CLI transport
+- [x] Rust CLI tests affected by transport decoding
 
 Run these before considering the refactor done:
 
 - [ ] search for deleted proto message names and confirm they are gone from non-generated code
-- [ ] search for `fields` request members and confirm they no longer exist in proto or Connect request builders
+- [x] search for `fields` request members and confirm they no longer exist in proto or Connect request builders
 - [ ] search for `google.protobuf.Struct credentials` and confirm it has been removed from the transport contract
 - [ ] search for `PROTO_FILES` and confirm the hardcoded inventory is gone
 - [ ] review `packages/cli-server/src/connect/gen/**` only after regeneration, never by manual edits

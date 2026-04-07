@@ -183,8 +183,6 @@ async fn fetch_query_page(
     let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let cursor: Option<String> =
         try_into_option(controls.cursor.as_deref(), ErrorStage::ExecuteQuery)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ExecuteQuery)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::ExecuteQuery)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
@@ -192,7 +190,6 @@ async fn fetch_query_page(
         .execute_query(types::ExecuteQueryRequest {
             org_slug,
             source_key,
-            fields,
             limit,
             cursor,
             query: MessageField::some(query),
@@ -222,19 +219,16 @@ pub(crate) async fn validate_read_only_query_with_controls(
     org: &str,
     source_key: &str,
     payload: &QueryRequestPayload,
-    controls: &ReadRequestControls,
+    _controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<QueryValidationResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ReadQueryInput)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ReadQueryInput)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
         .validate_query(types::ValidateQueryRequest {
             org_slug,
             source_key,
-            fields,
             query: MessageField::some(query),
             ..Default::default()
         })

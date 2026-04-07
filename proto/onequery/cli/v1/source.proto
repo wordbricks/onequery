@@ -11,12 +11,11 @@ message ListSourcesRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional string fields = 2 [(buf.validate.field).string.min_len = 1];
-  optional uint32 limit = 3 [
+  optional uint32 limit = 2 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 100
   ];
-  optional string cursor = 4 [(buf.validate.field).string.min_len = 1];
+  optional string cursor = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message ListSourcesResponse {
@@ -33,7 +32,6 @@ message GetSourceRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message GetSourceResponse {

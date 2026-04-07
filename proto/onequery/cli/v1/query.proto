@@ -15,8 +15,7 @@ message ValidateQueryRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
-  CliQueryRequest query = 4 [(buf.validate.field).required = true];
+  CliQueryRequest query = 3 [(buf.validate.field).required = true];
 }
 
 message ValidateQueryResponse {
@@ -36,13 +35,12 @@ message ExecuteQueryRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
-  optional uint32 limit = 4 [
+  optional uint32 limit = 3 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 100
   ];
-  optional string cursor = 5 [(buf.validate.field).string.min_len = 1];
-  CliQueryRequest query = 6 [(buf.validate.field).required = true];
+  optional string cursor = 4 [(buf.validate.field).string.min_len = 1];
+  CliQueryRequest query = 5 [(buf.validate.field).required = true];
 }
 
 message ExecuteQueryResponse {

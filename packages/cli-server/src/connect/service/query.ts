@@ -33,7 +33,6 @@ import type {
   CliQueryExecutionWorkflowResult,
   CliQueryValidationWorkflowResult,
 } from "../../query/workflow";
-import type { CliSelectedFields } from "../../read-controls-policy";
 import { paginateItems } from "../../read-controls-policy";
 import { runCliLoadSourceEffect } from "../../source/effects";
 import { buildCliSourceSummary } from "../../source/model";
@@ -54,52 +53,9 @@ import {
   throwForCliConnectQueryPlanResult,
   throwForCliConnectQueryWorkflowResult,
 } from "./errors";
-import {
-  buildCliPage,
-  parseCliFieldsReadControls,
-  parseCliPaginatedReadControls,
-} from "./read-controls";
+import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
 import { buildCliSourceSummaryMessage } from "./source";
 import type { CliServiceMethod } from "./types";
-
-const QUERY_VALIDATE_FIELDS = [
-  "request",
-  "request.sql",
-  "request.parameters",
-  "request.maxRows",
-  "request.maxBytes",
-  "request.cellMaxChars",
-  "request.timeoutMs",
-  "normalizedSql",
-  "declaredResultWindow",
-  "declaredResultWindow.maxRows",
-  "declaredResultWindow.maxBytes",
-  "declaredResultWindow.cellMaxChars",
-  "declaredResultWindow.timeoutMs",
-  "source",
-  "source.name",
-  "source.displayName",
-  "source.provider",
-  "source.queryable",
-  "source.status",
-  "truncated",
-] as const;
-
-const QUERY_EXECUTE_FIELDS = [
-  "source",
-  "source.name",
-  "source.displayName",
-  "source.provider",
-  "source.queryable",
-  "source.status",
-  "rowCount",
-  "elapsedMs",
-  "columns",
-  "columns.name",
-  "columns.logicalType",
-  "rows",
-  "truncated",
-] as const;
 
 type CliQueryValidationFailure = Exclude<
   CliQueryValidationWorkflowResult,
@@ -148,9 +104,6 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
   const requestContext = requireCliConnectRequestContext(context);
   const c = requestContext.honoContext;
   const requestId = requestContext.requestId;
-  const readControls = parseCliFieldsReadControls(request, {
-    allowedFields: QUERY_VALIDATE_FIELDS,
-  });
   const session = await requestContext.requireSession();
   const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "query.execute",
@@ -245,28 +198,25 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
     truncated: result.truncated,
   });
 
-  return buildQueryValidateResponse(
-    {
-      request: {
-        sql: result.normalizedSql,
-        parameters: [],
-        maxRows: resultWindow.maxRows,
-        maxBytes: resultWindow.maxBytes,
-        cellMaxChars: resultWindow.cellMaxChars,
-        timeoutMs: resultWindow.timeoutMs,
-      },
-      normalizedSql: result.normalizedSql,
-      declaredResultWindow: {
-        maxRows: resultWindow.maxRows,
-        maxBytes: resultWindow.maxBytes,
-        cellMaxChars: resultWindow.cellMaxChars,
-        timeoutMs: resultWindow.timeoutMs,
-      },
-      source: buildCliSourceSummary(result.source),
-      truncated: result.truncated,
+  return buildQueryValidateResponse({
+    request: {
+      sql: result.normalizedSql,
+      parameters: [],
+      maxRows: resultWindow.maxRows,
+      maxBytes: resultWindow.maxBytes,
+      cellMaxChars: resultWindow.cellMaxChars,
+      timeoutMs: resultWindow.timeoutMs,
     },
-    readControls.selectedFields
-  ) satisfies ValidateQueryResponseInit;
+    normalizedSql: result.normalizedSql,
+    declaredResultWindow: {
+      maxRows: resultWindow.maxRows,
+      maxBytes: resultWindow.maxBytes,
+      cellMaxChars: resultWindow.cellMaxChars,
+      timeoutMs: resultWindow.timeoutMs,
+    },
+    source: buildCliSourceSummary(result.source),
+    truncated: result.truncated,
+  }) satisfies ValidateQueryResponseInit;
 };
 
 export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
@@ -276,9 +226,7 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
   const requestContext = requireCliConnectRequestContext(context);
   const c = requestContext.honoContext;
   const requestId = requestContext.requestId;
-  const readControls = parseCliPaginatedReadControls(request, {
-    allowedFields: QUERY_EXECUTE_FIELDS,
-  });
+  const readControls = parseCliPaginatedReadControls(request);
   const session = await requestContext.requireSession();
   const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "query.execute",
@@ -418,19 +366,15 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
   });
 
   const page = paginateItems(windowedResponse.rows, readControls);
-  const data = buildQueryExecuteResponse(
-    {
-      columns: windowedResponse.columns,
-      elapsedMs: windowedResponse.elapsedMs,
-      rowCount: windowedResponse.rowCount,
-      rows: page.items,
-      source: windowedResponse.source,
-      truncated: windowedResponse.truncated,
-    },
-    readControls.selectedFields
-  );
+  const data = buildQueryExecuteResponse({
+    columns: windowedResponse.columns,
+    elapsedMs: windowedResponse.elapsedMs,
+    rowCount: windowedResponse.rowCount,
+    rows: page.items,
+    source: windowedResponse.source,
+    truncated: windowedResponse.truncated,
+  });
   const untrustedPaths = resolveQueryExecuteUntrustedPaths(
-    readControls.selectedFields,
     page.items.length > 0
   );
 
@@ -499,141 +443,44 @@ function throwCliQueryActionTrailFailure(input: {
   });
 }
 
-function buildQueryValidateResponse(
-  response: {
+function buildQueryValidateResponse(response: {
+  request: {
+    sql: string;
+    parameters: readonly unknown[];
+    maxRows: number;
+    maxBytes: number;
+    cellMaxChars: number;
+    timeoutMs: number;
+  };
+  normalizedSql: string;
+  declaredResultWindow: {
+    maxRows: number;
+    maxBytes: number;
+    cellMaxChars: number;
+    timeoutMs: number;
+  };
+  source: ReturnType<typeof buildCliSourceSummary>;
+  truncated: boolean;
+}): ValidateQueryResponseInit {
+  return {
     request: {
-      sql: string;
-      parameters: readonly unknown[];
-      maxRows: number;
-      maxBytes: number;
-      cellMaxChars: number;
-      timeoutMs: number;
-    };
-    normalizedSql: string;
-    declaredResultWindow: {
-      maxRows: number;
-      maxBytes: number;
-      cellMaxChars: number;
-      timeoutMs: number;
-    };
-    source: ReturnType<typeof buildCliSourceSummary>;
-    truncated: boolean;
-  },
-  selectedFields: CliSelectedFields
-): ValidateQueryResponseInit {
-  if (!selectedFields) {
-    return {
-      request: {
-        sql: response.request.sql,
-        parameters: [],
-        maxRows: response.request.maxRows,
-        maxBytes: response.request.maxBytes,
-        cellMaxChars: response.request.cellMaxChars,
-        timeoutMs: response.request.timeoutMs,
-      },
-      normalizedSql: response.normalizedSql,
-      declaredResultWindow: {
-        maxRows: response.declaredResultWindow.maxRows,
-        maxBytes: response.declaredResultWindow.maxBytes,
-        cellMaxChars: response.declaredResultWindow.cellMaxChars,
-        timeoutMs: response.declaredResultWindow.timeoutMs,
-      },
-      source: buildCliSourceSummaryMessage(response.source),
-      truncated: response.truncated,
-    };
-  }
-
-  const projected: ValidateQueryResponseInit = {};
-  if (selectedFields.has("request")) {
-    projected.request = {
       sql: response.request.sql,
       parameters: [],
       maxRows: response.request.maxRows,
       maxBytes: response.request.maxBytes,
       cellMaxChars: response.request.cellMaxChars,
       timeoutMs: response.request.timeoutMs,
-    };
-  } else if (
-    selectedFields.has("request.sql") ||
-    selectedFields.has("request.parameters") ||
-    selectedFields.has("request.maxRows") ||
-    selectedFields.has("request.maxBytes") ||
-    selectedFields.has("request.cellMaxChars") ||
-    selectedFields.has("request.timeoutMs")
-  ) {
-    const requestProjection: NonNullable<ValidateQueryResponseInit["request"]> =
-      {};
-    if (selectedFields.has("request.sql")) {
-      requestProjection.sql = response.request.sql;
-    }
-    if (selectedFields.has("request.parameters")) {
-      requestProjection.parameters = [];
-    }
-    if (selectedFields.has("request.maxRows")) {
-      requestProjection.maxRows = response.request.maxRows;
-    }
-    if (selectedFields.has("request.maxBytes")) {
-      requestProjection.maxBytes = response.request.maxBytes;
-    }
-    if (selectedFields.has("request.cellMaxChars")) {
-      requestProjection.cellMaxChars = response.request.cellMaxChars;
-    }
-    if (selectedFields.has("request.timeoutMs")) {
-      requestProjection.timeoutMs = response.request.timeoutMs;
-    }
-    projected.request = requestProjection;
-  }
-
-  if (selectedFields.has("normalizedSql")) {
-    projected.normalizedSql = response.normalizedSql;
-  }
-
-  if (selectedFields.has("declaredResultWindow")) {
-    projected.declaredResultWindow = {
+    },
+    normalizedSql: response.normalizedSql,
+    declaredResultWindow: {
       maxRows: response.declaredResultWindow.maxRows,
       maxBytes: response.declaredResultWindow.maxBytes,
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
       timeoutMs: response.declaredResultWindow.timeoutMs,
-    };
-  } else if (
-    selectedFields.has("declaredResultWindow.maxRows") ||
-    selectedFields.has("declaredResultWindow.maxBytes") ||
-    selectedFields.has("declaredResultWindow.cellMaxChars") ||
-    selectedFields.has("declaredResultWindow.timeoutMs")
-  ) {
-    const windowProjection: NonNullable<
-      ValidateQueryResponseInit["declaredResultWindow"]
-    > = {};
-    if (selectedFields.has("declaredResultWindow.maxRows")) {
-      windowProjection.maxRows = response.declaredResultWindow.maxRows;
-    }
-    if (selectedFields.has("declaredResultWindow.maxBytes")) {
-      windowProjection.maxBytes = response.declaredResultWindow.maxBytes;
-    }
-    if (selectedFields.has("declaredResultWindow.cellMaxChars")) {
-      windowProjection.cellMaxChars =
-        response.declaredResultWindow.cellMaxChars;
-    }
-    if (selectedFields.has("declaredResultWindow.timeoutMs")) {
-      windowProjection.timeoutMs = response.declaredResultWindow.timeoutMs;
-    }
-    projected.declaredResultWindow = windowProjection;
-  }
-
-  const projectedSource = buildCliSourceSummaryMessage(
-    response.source,
-    selectedFields,
-    "source"
-  );
-  if (Object.keys(projectedSource).length > 0) {
-    projected.source = projectedSource;
-  }
-
-  if (selectedFields.has("truncated")) {
-    projected.truncated = response.truncated;
-  }
-
-  return projected;
+    },
+    source: buildCliSourceSummaryMessage(response.source),
+    truncated: response.truncated,
+  };
 }
 
 function logCliQueryValidationFailure(
@@ -711,73 +558,25 @@ function logCliQueryValidationAccepted(input: {
   });
 }
 
-function buildQueryExecuteResponse(
-  response: {
-    source: ReturnType<typeof buildCliSourceSummary>;
-    rowCount: number;
-    elapsedMs: number;
-    columns: readonly { name: string; logicalType: string | null }[];
-    rows: readonly (readonly string[])[];
-    truncated: boolean;
-  },
-  selectedFields: CliSelectedFields
-): ExecuteQueryPayload {
+function buildQueryExecuteResponse(response: {
+  source: ReturnType<typeof buildCliSourceSummary>;
+  rowCount: number;
+  elapsedMs: number;
+  columns: readonly { name: string; logicalType: string | null }[];
+  rows: readonly (readonly string[])[];
+  truncated: boolean;
+}): ExecuteQueryPayload {
   const columns = response.columns.map(buildCliQueryColumn);
   const rows = response.rows.map(buildCliQueryRow);
 
-  if (!selectedFields) {
-    return {
-      source: buildCliSourceSummaryMessage(response.source),
-      rowCount: BigInt(response.rowCount),
-      elapsedMs: BigInt(response.elapsedMs),
-      columns,
-      rows,
-      truncated: response.truncated,
-    };
-  }
-
-  const projected: ExecuteQueryPayload = {};
-  const projectedSource = buildCliSourceSummaryMessage(
-    response.source,
-    selectedFields,
-    "source"
-  );
-  if (Object.keys(projectedSource).length > 0) {
-    projected.source = projectedSource;
-  }
-  if (selectedFields.has("rowCount")) {
-    projected.rowCount = BigInt(response.rowCount);
-  }
-  if (selectedFields.has("elapsedMs")) {
-    projected.elapsedMs = BigInt(response.elapsedMs);
-  }
-  if (selectedFields.has("columns")) {
-    projected.columns = columns;
-  } else if (
-    selectedFields.has("columns.name") ||
-    selectedFields.has("columns.logicalType")
-  ) {
-    projected.columns = response.columns.map((column) => {
-      const columnProjection: ExecuteQueryColumnMessage = {};
-      if (selectedFields.has("columns.name")) {
-        columnProjection.name = column.name;
-      }
-      if (selectedFields.has("columns.logicalType") && column.logicalType) {
-        columnProjection.logicalType = toCliQueryLogicalType(
-          column.logicalType
-        );
-      }
-      return columnProjection;
-    });
-  }
-  if (selectedFields.has("rows")) {
-    projected.rows = rows;
-  }
-  if (selectedFields.has("truncated")) {
-    projected.truncated = response.truncated;
-  }
-
-  return projected;
+  return {
+    source: buildCliSourceSummaryMessage(response.source),
+    rowCount: BigInt(response.rowCount),
+    elapsedMs: BigInt(response.elapsedMs),
+    columns,
+    rows,
+    truncated: response.truncated,
+  };
 }
 
 function buildCliQueryColumn(column: {
@@ -1023,25 +822,8 @@ function sanitizeQueryExecuteResponse(
   };
 }
 
-function resolveQueryExecuteUntrustedPaths(
-  selectedFields: CliSelectedFields,
-  hasRows: boolean
-) {
-  if (!selectedFields) {
-    return hasRows
-      ? ["$.columns[*].name", "$.rows[*].values[*]"]
-      : ["$.columns[*].name"];
-  }
-
-  const untrustedPaths: string[] = [];
-  if (selectedFields.has("columns") || selectedFields.has("columns.name")) {
-    untrustedPaths.push("$.columns[*].name");
-  }
-  if (hasRows && selectedFields.has("rows")) {
-    // Comment: Connect wraps each row in CliQueryRow.values[], so the
-    // sanitization paths follow the message shape instead of the old tuple array.
-    untrustedPaths.push("$.rows[*].values[*]");
-  }
-
-  return untrustedPaths.length > 0 ? untrustedPaths : undefined;
+function resolveQueryExecuteUntrustedPaths(hasRows: boolean) {
+  return hasRows
+    ? ["$.columns[*].name", "$.rows[*].values[*]"]
+    : ["$.columns[*].name"];
 }

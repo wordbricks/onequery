@@ -5,7 +5,6 @@ import { ensureConnectorOrganization } from "@onequery/server/services/connector
 
 import { isCliSourceKey } from "../../identifiers";
 import { buildCliRequestLogDetails, logCliEvent } from "../../observability";
-import type { CliSelectedFields } from "../../read-controls-policy";
 import { paginateItems } from "../../read-controls-policy";
 import {
   buildCliSourceConnectGuide,
@@ -20,7 +19,6 @@ import {
   buildCliSourceListResult,
   buildCliSourceSummary,
 } from "../../source/model";
-import { projectCliSourceSummary } from "../../transport/source-response";
 import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
@@ -40,29 +38,8 @@ import {
   throwCliConnectSourceNameConflict,
   throwCliConnectSourceNotFound,
 } from "./errors";
-import {
-  buildCliPage,
-  parseCliFieldsReadControls,
-  parseCliPaginatedReadControls,
-} from "./read-controls";
+import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
 import type { CliServiceMethod } from "./types";
-
-const SOURCE_FIELDS = [
-  "name",
-  "displayName",
-  "provider",
-  "queryable",
-  "status",
-] as const;
-
-const SOURCE_LIST_FIELDS = [
-  "sources",
-  "sources.name",
-  "sources.displayName",
-  "sources.provider",
-  "sources.queryable",
-  "sources.status",
-] as const;
 
 type GetSourceConnectGuideResponseInit = MessageInitShape<
   typeof GetSourceConnectGuideResponseSchema
@@ -85,9 +62,7 @@ export const handleListSources: CliServiceMethod<"listSources"> = async (
 ) => {
   const requestContext = requireCliConnectRequestContext(context);
   const c = requestContext.honoContext;
-  const readControls = parseCliPaginatedReadControls(request, {
-    allowedFields: SOURCE_LIST_FIELDS,
-  });
+  const readControls = parseCliPaginatedReadControls(request);
   const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.list",
     orgSlug: request.orgSlug,
@@ -113,13 +88,7 @@ export const handleListSources: CliServiceMethod<"listSources"> = async (
   });
 
   return {
-    sources: page.items.map((source) =>
-      buildCliSourceSummaryMessage(
-        source,
-        readControls.selectedFields,
-        "sources"
-      )
-    ),
+    sources: page.items.map((source) => buildCliSourceSummaryMessage(source)),
     page: buildCliPage(page.page),
   };
 };
@@ -130,9 +99,6 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
 ) => {
   const requestContext = requireCliConnectRequestContext(context);
   const c = requestContext.honoContext;
-  const readControls = parseCliFieldsReadControls(request, {
-    allowedFields: SOURCE_FIELDS,
-  });
   const authorizedOrg = await requestContext.requireAuthorizedOrg({
     action: "source.read",
     orgSlug: request.orgSlug,
@@ -173,10 +139,9 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
     level: "info",
   });
 
-  return buildCliSourceSummaryMessage(
-    summary,
-    readControls.selectedFields
-  ) satisfies MessageInitShape<typeof GetSourceResponseSchema>;
+  return buildCliSourceSummaryMessage(summary) satisfies MessageInitShape<
+    typeof GetSourceResponseSchema
+  >;
 };
 
 export const handleGetSourceConnectGuide: CliServiceMethod<
@@ -300,34 +265,29 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
   } satisfies ConnectSourceResponseInit;
 };
 
-export function buildCliSourceSummaryMessage(
-  source: {
-    name?: string;
-    displayName?: string | null;
-    provider?: ProviderType;
-    queryable?: boolean;
-    status?: DataSourceStatus;
-  },
-  selectedFields: CliSelectedFields = null,
-  scope: "source" | "sources" | null = null
-): CliSourceSummaryMessage {
-  const projected = projectCliSourceSummary(source, selectedFields, scope);
+export function buildCliSourceSummaryMessage(source: {
+  name?: string;
+  displayName?: string | null;
+  provider?: ProviderType;
+  queryable?: boolean;
+  status?: DataSourceStatus;
+}): CliSourceSummaryMessage {
   const response: CliSourceSummaryMessage = {};
 
-  if (projected.name !== undefined) {
-    response.name = projected.name;
+  if (source.name !== undefined) {
+    response.name = source.name;
   }
-  if (projected.displayName) {
-    response.displayName = projected.displayName;
+  if (source.displayName) {
+    response.displayName = source.displayName;
   }
-  if (projected.provider !== undefined) {
-    response.provider = toCliSourceProvider(projected.provider);
+  if (source.provider !== undefined) {
+    response.provider = toCliSourceProvider(source.provider);
   }
-  if (projected.queryable !== undefined) {
-    response.queryable = projected.queryable;
+  if (source.queryable !== undefined) {
+    response.queryable = source.queryable;
   }
-  if (projected.status !== undefined) {
-    response.status = toCliSourceStatus(projected.status);
+  if (source.status !== undefined) {
+    response.status = toCliSourceStatus(source.status);
   }
 
   return response;

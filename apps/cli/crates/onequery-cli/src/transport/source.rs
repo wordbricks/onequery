@@ -83,13 +83,11 @@ async fn fetch_source_page(
 ) -> Result<ApiSuccess<SourceListPayload>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::Http)?;
     let cursor: Option<String> = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
-    let fields: Option<String> = try_into_option(controls.fields.as_deref(), ErrorStage::Http)?;
     let limit = optional_page_size(controls.page_size, ErrorStage::Http)?;
     let response = match client
         .cli()
         .list_sources(types::ListSourcesRequest {
             org_slug,
-            fields,
             limit,
             cursor,
             ..Default::default()
@@ -131,18 +129,15 @@ pub(crate) async fn get_source_by_key_with_controls(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
-    controls: &ReadRequestControls,
+    _controls: &ReadRequestControls,
 ) -> Result<ApiSuccess<SourceSummary>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
-    let fields: Option<String> =
-        try_into_option(controls.fields.as_deref(), ErrorStage::ResolveSource)?;
     let response = match client
         .cli()
         .get_source(types::GetSourceRequest {
             org_slug,
             source_key,
-            fields,
             ..Default::default()
         })
         .await
