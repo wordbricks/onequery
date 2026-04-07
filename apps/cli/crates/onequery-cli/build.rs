@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsString;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
@@ -14,6 +15,31 @@ const PROTO_FILES: [&str; 7] = [
     "onequery/cli/v1/source.proto",
     "onequery/cli/v1/use.proto",
 ];
+
+struct BufCommand {
+    program: PathBuf,
+    prefix_args: Vec<OsString>,
+    display: String,
+}
+
+impl BufCommand {
+    fn direct(program: impl Into<PathBuf>) -> Self {
+        let program = program.into();
+        Self {
+            display: program.display().to_string(),
+            program,
+            prefix_args: Vec::new(),
+        }
+    }
+
+    fn via_interpreter(interpreter: &str, script: &Path) -> Self {
+        Self {
+            display: format!("{interpreter} {}", script.display()),
+            program: PathBuf::from(interpreter),
+            prefix_args: vec![script.as_os_str().to_os_string()],
+        }
+    }
+}
 
 fn main() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -64,12 +90,18 @@ fn emit_rerun_triggers(repo_root: &Path) {
 
 fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
     let proto_root = repo_root.join(PROTO_ROOT);
+    let candidates = candidate_buf_commands(repo_root);
+    let tried_candidates = candidates
+        .iter()
+        .map(|candidate| candidate.display.clone())
+        .collect::<Vec<_>>();
     let mut spawn_errors = Vec::new();
-    for executable in candidate_buf_executables(repo_root) {
-        let mut buf_command = Command::new(&executable);
+    for candidate in candidates {
+        let mut buf_command = Command::new(&candidate.program);
         // Buf config now lives under proto/, so descriptor builds must run from
         // that workspace root while the generated descriptor still lands in OUT_DIR.
         buf_command
+            .args(&candidate.prefix_args)
             .current_dir(&proto_root)
             .arg("build")
             .arg(".")
@@ -87,58 +119,65 @@ fn build_descriptor_set(repo_root: &Path, descriptor_path: &Path) {
                 }
 
                 panic!(
-                    "expected `{} build` descriptor generation to succeed: {}",
-                    executable.display(),
+                    "expected descriptor generation via `{}` to succeed: {}",
+                    candidate.display,
                     String::from_utf8_lossy(&output.stderr)
                 );
             }
             Err(error) if error.kind() == ErrorKind::NotFound => {
-                spawn_errors.push(format!("{}: {error}", executable.display()));
+                spawn_errors.push(format!("{}: {error}", candidate.display));
             }
             Err(error) => {
                 panic!(
                     "expected to spawn `{}` for descriptor generation: {error}",
-                    executable.display()
+                    candidate.display
                 );
             }
         }
     }
 
-    let workspace_buf = workspace_buf_executable(repo_root);
     panic!(
         "expected to find `buf` for descriptor generation. Tried: {}. \
          Install dependencies with `bun install`, install `buf`, set BUF_BIN, \
          or run `nix shell nixpkgs#buf nixpkgs#protobuf --command cargo test -p onequery-cli`",
         if spawn_errors.is_empty() {
-            format!("buf and {}", workspace_buf.display())
+            tried_candidates.join(", ")
         } else {
             spawn_errors.join(", ")
         }
     );
 }
 
-fn candidate_buf_executables(repo_root: &Path) -> Vec<PathBuf> {
+fn candidate_buf_commands(repo_root: &Path) -> Vec<BufCommand> {
     let mut candidates = Vec::new();
     if let Some(configured) = env::var_os("BUF_BIN") {
         let configured = PathBuf::from(configured);
         if !configured.as_os_str().is_empty() {
-            candidates.push(configured);
+            candidates.push(BufCommand::direct(configured));
         }
     }
-    candidates.push(PathBuf::from("buf"));
-    let workspace_buf = workspace_buf_executable(repo_root);
+    candidates.push(BufCommand::direct("buf"));
+
+    let workspace_buf = workspace_buf_script(repo_root);
     if workspace_buf.exists() {
-        candidates.push(workspace_buf);
+        // COMMENT: `@bufbuild/buf` ships a JS launcher. Bun's Windows install
+        // did not materialize a stable `node_modules/.bin/buf.cmd` shim for
+        // Cargo to spawn directly, so invoke the launcher through Bun/Node
+        // instead of guessing platform-specific bin-link names.
+        if !cfg!(windows) {
+            candidates.push(BufCommand::direct(workspace_buf.clone()));
+        }
+        candidates.push(BufCommand::via_interpreter("bun", &workspace_buf));
+        candidates.push(BufCommand::via_interpreter("node", &workspace_buf));
     }
     candidates
 }
 
-fn workspace_buf_executable(repo_root: &Path) -> PathBuf {
-    let bin_dir = repo_root.join("node_modules").join(".bin");
-
-    if cfg!(windows) {
-        return bin_dir.join("buf.cmd");
-    }
-
-    bin_dir.join("buf")
+fn workspace_buf_script(repo_root: &Path) -> PathBuf {
+    repo_root
+        .join("node_modules")
+        .join("@bufbuild")
+        .join("buf")
+        .join("bin")
+        .join("buf")
 }
