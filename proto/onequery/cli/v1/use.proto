@@ -21,14 +21,6 @@ message UseResponse {
   string content = 5;
 }
 
-message CliUseContent {
-  CliUseSource source = 1;
-  string title = 2;
-  string description = 3;
-  CliContentFormat format = 4;
-  string content = 5;
-}
-
 enum CliUseSource {
   CLI_USE_SOURCE_UNSPECIFIED = 0;
   CLI_USE_SOURCE_AMPLITUDE = 1;

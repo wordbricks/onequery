@@ -19,7 +19,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/source.proto.
  */
 export const file_onequery_cli_v1_source: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEinQEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHQoFbGltaXQYAiABKA1CCbpIBioEGGQoAUgAiAEBEhwKBmN1cnNvchgDIAEoCUIHukgEcgIQAUgBiAEBQggKBl9saW1pdEIJCgdfY3Vyc29yIn8KE0xpc3RTb3VyY2VzUmVzcG9uc2USMgoHc291cmNlcxgBIAMoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5EisKBHBhZ2UYAiABKAsyGC5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZUgAiAEBQgcKBV9wYWdlIp0BChBHZXRTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJCLIAQoRR2V0U291cmNlUmVzcG9uc2USDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARI0Cghwcm92aWRlchgDIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlchIRCglxdWVyeWFibGUYBCABKAgSMAoGc3RhdHVzGAUgASgOMiAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN0YXR1c0IPCg1fZGlzcGxheV9uYW1lIpMBChxHZXRTb3VyY2VDb25uZWN0R3VpZGVSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBI8CgZzb3VyY2UYAiABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXJCCLpIBYIBAiAAIp8CCh1HZXRTb3VyY2VDb25uZWN0R3VpZGVSZXNwb25zZRINCgV0aXRsZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIxCgZmb3JtYXQYAyABKA4yIS5vbmVxdWVyeS5jbGkudjEuQ2xpQ29udGVudEZvcm1hdBIPCgdjb250ZW50GAQgASgJEg8KB2NvbW1hbmQYBSABKAkSQgoMaW5wdXRfc2NoZW1hGAYgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYRJBCglwcm92aWRlcnMYByADKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFByb3ZpZGVyR3VpZGUijwIKFENvbm5lY3RTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBI8CgZzb3VyY2UYAiABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXJCCLpIBYIBAiAAEkwKBG5hbWUYAyABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjQKC2NyZWRlbnRpYWxzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIGukgDyAEBImAKFUNvbm5lY3RTb3VyY2VSZXNwb25zZRIxCgZzb3VyY2UYASABKAsyIS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlU3VtbWFyeRIUCgxuZXh0X2NvbW1hbmQYAiABKAkiQwoNQ2xpU291cmNlTGlzdBIyCgdzb3VyY2VzGAEgAygLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkixwEKEENsaVNvdXJjZVN1bW1hcnkSDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARI0Cghwcm92aWRlchgDIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlchIRCglxdWVyeWFibGUYBCABKAgSMAoGc3RhdHVzGAUgASgOMiAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN0YXR1c0IPCg1fZGlzcGxheV9uYW1lIpcCChVDbGlTb3VyY2VDb25uZWN0R3VpZGUSDQoFdGl0bGUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSMQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXQSDwoHY29udGVudBgEIAEoCRIPCgdjb21tYW5kGAUgASgJEkIKDGlucHV0X3NjaGVtYRgGIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESQQoJcHJvdmlkZXJzGAcgAygLMi4ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RQcm92aWRlckd1aWRlIokBChtDbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESDAoEdHlwZRgBIAEoCRIQCghyZXF1aXJlZBgCIAMoCRJKCgpwcm9wZXJ0aWVzGAMgASgLMjYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMipgEKJUNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMSOgoEbmFtZRgBIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0U2NoZW1hRmllbGQSQQoLY3JlZGVudGlhbHMYAiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNjaGVtYUZpZWxkIncKG0NsaVNvdXJjZUNvbm5lY3RTY2hlbWFGaWVsZBIMCgR0eXBlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhQKB3BhdHRlcm4YAyABKAlIAIgBARITCgtlbnVtX3ZhbHVlcxgEIAMoCUIKCghfcGF0dGVybiKjAgodQ2xpU291cmNlQ29ubmVjdFByb3ZpZGVyR3VpZGUSNAoIcHJvdmlkZXIYASABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISDwoHc3VtbWFyeRgCIAEoCRIiChpyZXF1aXJlZF9jcmVkZW50aWFsX2ZpZWxkcxgDIAMoCRIiChpvcHRpb25hbF9jcmVkZW50aWFsX2ZpZWxkcxgEIAMoCRINCgVzdGVwcxgFIAMoCRI0ChNjcmVkZW50aWFsX3RlbXBsYXRlGAYgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1leGFtcGxlX2lucHV0GAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCJdChJDbGlDb25uZWN0ZWRTb3VyY2USMQoGc291cmNlGAEgASgLMiEub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN1bW1hcnkSFAoMbmV4dF9jb21tYW5kGAIgASgJKo8EChFDbGlTb3VyY2VQcm92aWRlchIjCh9DTElfU09VUkNFX1BST1ZJREVSX1VOU1BFQ0lGSUVEEAASIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9QT1NUR1JFUxABEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfU1VQQUJBU0UQAhIdChlDTElfU09VUkNFX1BST1ZJREVSX01ZU1FMEAMSHwobQ0xJX1NPVVJDRV9QUk9WSURFUl9NT05HT0RCEAQSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9CSUdRVUVSWRAFEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTEFNSU5BUhAGEiwKKENMSV9TT1VSQ0VfUFJPVklERVJfQVdTX0FUSEVOQV9DT05ORUNUT1IQBxIaChZDTElfU09VUkNFX1BST1ZJREVSX0dBEAgSIQodQ0xJX1NPVVJDRV9QUk9WSURFUl9BTVBMSVRVREUQCRIgChxDTElfU09VUkNFX1BST1ZJREVSX01JWFBBTkVMEAoSHwobQ0xJX1NPVVJDRV9QUk9WSURFUl9QT1NUSE9HEAsSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9TRU5UUlkQDBIeChpDTElfU09VUkNFX1BST1ZJREVSX0dJVEhVQhANEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfTElORUFSEA4qkwEKD0NsaVNvdXJjZVN0YXR1cxIhCh1DTElfU09VUkNFX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGENMSV9TT1VSQ0VfU1RBVFVTX0FDVElWRRABEhsKF0NMSV9TT1VSQ0VfU1RBVFVTX0VSUk9SEAISIgoeQ0xJX1NPVVJDRV9TVEFUVVNfRElTQ09OTkVDVEVEEANiBnByb3RvMw",
+  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEinQEKEkxpc3RTb3VyY2VzUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSHQoFbGltaXQYAiABKA1CCbpIBioEGGQoAUgAiAEBEhwKBmN1cnNvchgDIAEoCUIHukgEcgIQAUgBiAEBQggKBl9saW1pdEIJCgdfY3Vyc29yIn8KE0xpc3RTb3VyY2VzUmVzcG9uc2USMgoHc291cmNlcxgBIAMoCzIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdW1tYXJ5EisKBHBhZ2UYAiABKAsyGC5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZUgAiAEBQgcKBV9wYWdlIp0BChBHZXRTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJCLIAQoRR2V0U291cmNlUmVzcG9uc2USDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARI0Cghwcm92aWRlchgDIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlchIRCglxdWVyeWFibGUYBCABKAgSMAoGc3RhdHVzGAUgASgOMiAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN0YXR1c0IPCg1fZGlzcGxheV9uYW1lIpMBChxHZXRTb3VyY2VDb25uZWN0R3VpZGVSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBI8CgZzb3VyY2UYAiABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXJCCLpIBYIBAiAAIp8CCh1HZXRTb3VyY2VDb25uZWN0R3VpZGVSZXNwb25zZRINCgV0aXRsZRgBIAEoCRITCgtkZXNjcmlwdGlvbhgCIAEoCRIxCgZmb3JtYXQYAyABKA4yIS5vbmVxdWVyeS5jbGkudjEuQ2xpQ29udGVudEZvcm1hdBIPCgdjb250ZW50GAQgASgJEg8KB2NvbW1hbmQYBSABKAkSQgoMaW5wdXRfc2NoZW1hGAYgASgLMiwub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYRJBCglwcm92aWRlcnMYByADKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFByb3ZpZGVyR3VpZGUijwIKFENvbm5lY3RTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBI8CgZzb3VyY2UYAiABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXJCCLpIBYIBAiAAEkwKBG5hbWUYAyABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjQKC2NyZWRlbnRpYWxzGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIGukgDyAEBImAKFUNvbm5lY3RTb3VyY2VSZXNwb25zZRIxCgZzb3VyY2UYASABKAsyIS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlU3VtbWFyeRIUCgxuZXh0X2NvbW1hbmQYAiABKAkixwEKEENsaVNvdXJjZVN1bW1hcnkSDAoEbmFtZRgBIAEoCRIZCgxkaXNwbGF5X25hbWUYAiABKAlIAIgBARI0Cghwcm92aWRlchgDIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlchIRCglxdWVyeWFibGUYBCABKAgSMAoGc3RhdHVzGAUgASgOMiAub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVN0YXR1c0IPCg1fZGlzcGxheV9uYW1lIokBChtDbGlTb3VyY2VDb25uZWN0SW5wdXRTY2hlbWESDAoEdHlwZRgBIAEoCRIQCghyZXF1aXJlZBgCIAMoCRJKCgpwcm9wZXJ0aWVzGAMgASgLMjYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMipgEKJUNsaVNvdXJjZUNvbm5lY3RJbnB1dFNjaGVtYVByb3BlcnRpZXMSOgoEbmFtZRgBIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VDb25uZWN0U2NoZW1hRmllbGQSQQoLY3JlZGVudGlhbHMYAiABKAsyLC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNjaGVtYUZpZWxkIncKG0NsaVNvdXJjZUNvbm5lY3RTY2hlbWFGaWVsZBIMCgR0eXBlGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhQKB3BhdHRlcm4YAyABKAlIAIgBARITCgtlbnVtX3ZhbHVlcxgEIAMoCUIKCghfcGF0dGVybiKjAgodQ2xpU291cmNlQ29ubmVjdFByb3ZpZGVyR3VpZGUSNAoIcHJvdmlkZXIYASABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXISDwoHc3VtbWFyeRgCIAEoCRIiChpyZXF1aXJlZF9jcmVkZW50aWFsX2ZpZWxkcxgDIAMoCRIiChpvcHRpb25hbF9jcmVkZW50aWFsX2ZpZWxkcxgEIAMoCRINCgVzdGVwcxgFIAMoCRI0ChNjcmVkZW50aWFsX3RlbXBsYXRlGAYgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIuCg1leGFtcGxlX2lucHV0GAcgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCqPBAoRQ2xpU291cmNlUHJvdmlkZXISIwofQ0xJX1NPVVJDRV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEdSRVMQARIgChxDTElfU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISHQoZQ0xJX1NPVVJDRV9QUk9WSURFUl9NWVNRTBADEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTU9OR09EQhAEEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIfChtDTElfU09VUkNFX1BST1ZJREVSX0xBTUlOQVIQBhIsCihDTElfU09VUkNFX1BST1ZJREVSX0FXU19BVEhFTkFfQ09OTkVDVE9SEAcSGgoWQ0xJX1NPVVJDRV9QUk9WSURFUl9HQRAIEiEKHUNMSV9TT1VSQ0VfUFJPVklERVJfQU1QTElUVURFEAkSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9NSVhQQU5FTBAKEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfU0VOVFJZEAwSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9HSVRIVUIQDRIeChpDTElfU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKpMBCg9DbGlTb3VyY2VTdGF0dXMSIQodQ0xJX1NPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhDTElfU09VUkNFX1NUQVRVU19BQ1RJVkUQARIbChdDTElfU09VUkNFX1NUQVRVU19FUlJPUhACEiIKHkNMSV9TT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADYgZwcm90bzM",
   [
     file_buf_validate_validate,
     file_google_protobuf_struct,
@@ -265,23 +265,6 @@ export const ConnectSourceResponseSchema: GenMessage<ConnectSourceResponse> /*@_
   messageDesc(file_onequery_cli_v1_source, 7);
 
 /**
- * @generated from message onequery.cli.v1.CliSourceList
- */
-export type CliSourceList = Message<"onequery.cli.v1.CliSourceList"> & {
-  /**
-   * @generated from field: repeated onequery.cli.v1.CliSourceSummary sources = 1;
-   */
-  sources: CliSourceSummary[];
-};
-
-/**
- * Describes the message onequery.cli.v1.CliSourceList.
- * Use `create(CliSourceListSchema)` to create a new message.
- */
-export const CliSourceListSchema: GenMessage<CliSourceList> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 8);
-
-/**
  * @generated from message onequery.cli.v1.CliSourceSummary
  */
 export type CliSourceSummary = Message<"onequery.cli.v1.CliSourceSummary"> & {
@@ -316,55 +299,7 @@ export type CliSourceSummary = Message<"onequery.cli.v1.CliSourceSummary"> & {
  * Use `create(CliSourceSummarySchema)` to create a new message.
  */
 export const CliSourceSummarySchema: GenMessage<CliSourceSummary> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 9);
-
-/**
- * @generated from message onequery.cli.v1.CliSourceConnectGuide
- */
-export type CliSourceConnectGuide =
-  Message<"onequery.cli.v1.CliSourceConnectGuide"> & {
-    /**
-     * @generated from field: string title = 1;
-     */
-    title: string;
-
-    /**
-     * @generated from field: string description = 2;
-     */
-    description: string;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliContentFormat format = 3;
-     */
-    format: CliContentFormat;
-
-    /**
-     * @generated from field: string content = 4;
-     */
-    content: string;
-
-    /**
-     * @generated from field: string command = 5;
-     */
-    command: string;
-
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectInputSchema input_schema = 6;
-     */
-    inputSchema?: CliSourceConnectInputSchema;
-
-    /**
-     * @generated from field: repeated onequery.cli.v1.CliSourceConnectProviderGuide providers = 7;
-     */
-    providers: CliSourceConnectProviderGuide[];
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliSourceConnectGuide.
- * Use `create(CliSourceConnectGuideSchema)` to create a new message.
- */
-export const CliSourceConnectGuideSchema: GenMessage<CliSourceConnectGuide> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 10);
+  messageDesc(file_onequery_cli_v1_source, 8);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceConnectInputSchema
@@ -392,7 +327,7 @@ export type CliSourceConnectInputSchema =
  * Use `create(CliSourceConnectInputSchemaSchema)` to create a new message.
  */
 export const CliSourceConnectInputSchemaSchema: GenMessage<CliSourceConnectInputSchema> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 11);
+  messageDesc(file_onequery_cli_v1_source, 9);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceConnectInputSchemaProperties
@@ -415,7 +350,7 @@ export type CliSourceConnectInputSchemaProperties =
  * Use `create(CliSourceConnectInputSchemaPropertiesSchema)` to create a new message.
  */
 export const CliSourceConnectInputSchemaPropertiesSchema: GenMessage<CliSourceConnectInputSchemaProperties> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 12);
+  messageDesc(file_onequery_cli_v1_source, 10);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceConnectSchemaField
@@ -448,7 +383,7 @@ export type CliSourceConnectSchemaField =
  * Use `create(CliSourceConnectSchemaFieldSchema)` to create a new message.
  */
 export const CliSourceConnectSchemaFieldSchema: GenMessage<CliSourceConnectSchemaField> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 13);
+  messageDesc(file_onequery_cli_v1_source, 11);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceConnectProviderGuide
@@ -496,30 +431,7 @@ export type CliSourceConnectProviderGuide =
  * Use `create(CliSourceConnectProviderGuideSchema)` to create a new message.
  */
 export const CliSourceConnectProviderGuideSchema: GenMessage<CliSourceConnectProviderGuide> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 14);
-
-/**
- * @generated from message onequery.cli.v1.CliConnectedSource
- */
-export type CliConnectedSource =
-  Message<"onequery.cli.v1.CliConnectedSource"> & {
-    /**
-     * @generated from field: onequery.cli.v1.CliSourceSummary source = 1;
-     */
-    source?: CliSourceSummary;
-
-    /**
-     * @generated from field: string next_command = 2;
-     */
-    nextCommand: string;
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliConnectedSource.
- * Use `create(CliConnectedSourceSchema)` to create a new message.
- */
-export const CliConnectedSourceSchema: GenMessage<CliConnectedSource> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source, 15);
+  messageDesc(file_onequery_cli_v1_source, 12);
 
 /**
  * @generated from enum onequery.cli.v1.CliSourceProvider

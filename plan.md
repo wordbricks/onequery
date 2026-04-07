@@ -96,25 +96,26 @@ Comment:
 
 ### Phase 2: Collapse Duplicate Proto Messages
 
-- [ ] Delete duplicate wrapper messages that mirror RPC response payloads and are not needed as separate wire concepts.
-- [ ] Start with these duplicates:
+- [x] Delete duplicate wrapper messages that mirror RPC response payloads and are not needed as separate wire concepts.
+- [x] Remove dead response-wrapper messages from:
   - `proto/onequery/cli/v1/auth.proto`
-    - remove `CliAuthSession`
-    - remove `CliRefreshSession`
-    - remove `CliDeviceAuthorizationStart`
-    - consider collapsing `CliAuthSessionProjectedUser` and `CliAuthSessionUser` into one canonical user message if they no longer differ meaningfully after projection removal
+    - `CliAuthSession`
+    - `CliRefreshSession`
+    - `CliDeviceAuthorizationStart`
   - `proto/onequery/cli/v1/org.proto`
-    - remove `CliOrganizationList`
-    - remove `CliOrganizationDetails`
+    - `CliOrganizationList`
+    - `CliOrganizationDetails`
   - `proto/onequery/cli/v1/query.proto`
-    - remove `CliValidatedQuery`
-    - remove `CliQuerySuccess`
+    - `CliValidatedQuery`
+    - `CliQuerySuccess`
   - `proto/onequery/cli/v1/source.proto`
-    - remove `CliSourceConnectGuide`
-    - remove `CliConnectedSource`
+    - `CliSourceList`
+    - `CliSourceConnectGuide`
+    - `CliConnectedSource`
   - `proto/onequery/cli/v1/use.proto`
-    - remove `CliUseContent`
-- [ ] Regenerate TS code and confirm that removed messages had no remaining non-generated consumers.
+    - `CliUseContent`
+- [ ] Collapse the remaining auth user-message split if `CliAuthSessionProjectedUser` and `CliAuthSessionUser` no longer carry distinct semantics after projection removal.
+- [x] Regenerate TS code and confirm that removed messages had no remaining non-generated consumers.
 - [ ] Rename remaining messages if needed so the surviving names reflect actual wire concepts instead of historical DTO naming.
 
 Rule for this phase:
@@ -248,7 +249,7 @@ Run these after each major phase:
 
 Run these before considering the refactor done:
 
-- [ ] search for deleted proto message names and confirm they are gone from non-generated code
+- [ ] search for remaining duplicate proto message names and confirm they are either deleted or still intentionally canonical
 - [x] search for `fields` request members and confirm they no longer exist in proto or Connect request builders
 - [ ] search for `google.protobuf.Struct credentials` and confirm it has been removed from the transport contract
 - [ ] search for `PROTO_FILES` and confirm the hardcoded inventory is gone

@@ -18,7 +18,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/use.proto.
  */
 export const file_onequery_cli_v1_use: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvdXNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEijgEKClVzZVJlcXVlc3QSNwoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZUIIukgFggECIAASOgoIb3JnX3NsdWcYAiABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokSACIAQFCCwoJX29yZ19zbHVnIqQBCgtVc2VSZXNwb25zZRItCgZzb3VyY2UYASABKA4yHS5vbmVxdWVyeS5jbGkudjEuQ2xpVXNlU291cmNlEg0KBXRpdGxlGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjEKBmZvcm1hdBgEIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb250ZW50Rm9ybWF0Eg8KB2NvbnRlbnQYBSABKAkipgEKDUNsaVVzZUNvbnRlbnQSLQoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZRINCgV0aXRsZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIxCgZmb3JtYXQYBCABKA4yIS5vbmVxdWVyeS5jbGkudjEuQ2xpQ29udGVudEZvcm1hdBIPCgdjb250ZW50GAUgASgJKu4BCgxDbGlVc2VTb3VyY2USHgoaQ0xJX1VTRV9TT1VSQ0VfVU5TUEVDSUZJRUQQABIcChhDTElfVVNFX1NPVVJDRV9BTVBMSVRVREUQARIVChFDTElfVVNFX1NPVVJDRV9HQRACEhkKFUNMSV9VU0VfU09VUkNFX0dJVEhVQhADEhsKF0NMSV9VU0VfU09VUkNFX01JWFBBTkVMEAQSGgoWQ0xJX1VTRV9TT1VSQ0VfTU9OR09EQhAFEhoKFkNMSV9VU0VfU09VUkNFX1BPU1RIT0cQBhIZChVDTElfVVNFX1NPVVJDRV9TRU5UUlkQB2IGcHJvdG8z",
+  "ChlvbmVxdWVyeS9jbGkvdjEvdXNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEijgEKClVzZVJlcXVlc3QSNwoGc291cmNlGAEgASgOMh0ub25lcXVlcnkuY2xpLnYxLkNsaVVzZVNvdXJjZUIIukgFggECIAASOgoIb3JnX3NsdWcYAiABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokSACIAQFCCwoJX29yZ19zbHVnIqQBCgtVc2VSZXNwb25zZRItCgZzb3VyY2UYASABKA4yHS5vbmVxdWVyeS5jbGkudjEuQ2xpVXNlU291cmNlEg0KBXRpdGxlGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjEKBmZvcm1hdBgEIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlDb250ZW50Rm9ybWF0Eg8KB2NvbnRlbnQYBSABKAkq7gEKDENsaVVzZVNvdXJjZRIeChpDTElfVVNFX1NPVVJDRV9VTlNQRUNJRklFRBAAEhwKGENMSV9VU0VfU09VUkNFX0FNUExJVFVERRABEhUKEUNMSV9VU0VfU09VUkNFX0dBEAISGQoVQ0xJX1VTRV9TT1VSQ0VfR0lUSFVCEAMSGwoXQ0xJX1VTRV9TT1VSQ0VfTUlYUEFORUwQBBIaChZDTElfVVNFX1NPVVJDRV9NT05HT0RCEAUSGgoWQ0xJX1VTRV9TT1VSQ0VfUE9TVEhPRxAGEhkKFUNMSV9VU0VfU09VUkNFX1NFTlRSWRAHYgZwcm90bzM",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -80,43 +80,6 @@ export type UseResponse = Message<"onequery.cli.v1.UseResponse"> & {
  */
 export const UseResponseSchema: GenMessage<UseResponse> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_use, 1);
-
-/**
- * @generated from message onequery.cli.v1.CliUseContent
- */
-export type CliUseContent = Message<"onequery.cli.v1.CliUseContent"> & {
-  /**
-   * @generated from field: onequery.cli.v1.CliUseSource source = 1;
-   */
-  source: CliUseSource;
-
-  /**
-   * @generated from field: string title = 2;
-   */
-  title: string;
-
-  /**
-   * @generated from field: string description = 3;
-   */
-  description: string;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliContentFormat format = 4;
-   */
-  format: CliContentFormat;
-
-  /**
-   * @generated from field: string content = 5;
-   */
-  content: string;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliUseContent.
- * Use `create(CliUseContentSchema)` to create a new message.
- */
-export const CliUseContentSchema: GenMessage<CliUseContent> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_use, 2);
 
 /**
  * @generated from enum onequery.cli.v1.CliUseSource

@@ -96,23 +96,6 @@ message CliDeclaredQueryResultWindow {
   optional uint32 timeout_ms = 4;
 }
 
-message CliValidatedQuery {
-  CliQueryCanonicalRequest request = 1;
-  string normalized_sql = 2;
-  CliDeclaredQueryResultWindow declared_result_window = 3;
-  CliSourceSummary source = 4;
-  bool truncated = 5;
-}
-
-message CliQuerySuccess {
-  CliSourceSummary source = 1;
-  uint64 row_count = 2;
-  uint64 elapsed_ms = 3;
-  repeated CliQueryColumn columns = 4;
-  repeated CliQueryRow rows = 5;
-  bool truncated = 6;
-}
-
 message CliQueryColumn {
   string name = 1;
   optional CliQueryLogicalType logical_type = 2;

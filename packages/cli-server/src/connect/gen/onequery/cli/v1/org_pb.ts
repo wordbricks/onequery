@@ -18,7 +18,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/org.proto.
  */
 export const file_onequery_cli_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEibAoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0Eh0KBWxpbWl0GAEgASgNQgm6SAYqBBhkKAFIAIgBARIcCgZjdXJzb3IYAiABKAlCB7pIBHICEAFIAYgBAUIICgZfbGltaXRCCQoHX2N1cnNvciKRAQoZTGlzdE9yZ2FuaXphdGlvbnNSZXNwb25zZRI+Cg1vcmdhbml6YXRpb25zGAEgAygLMicub25lcXVlcnkuY2xpLnYxLkNsaU9yZ2FuaXphdGlvblN1bW1hcnkSKwoEcGFnZRgCIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UiTwoWR2V0T3JnYW5pemF0aW9uUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQifQoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXJvbGVzGAMgAygJEjcKDGNhcGFiaWxpdGllcxgEIAMoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdDYXBhYmlsaXR5IlUKE0NsaU9yZ2FuaXphdGlvbkxpc3QSPgoNb3JnYW5pemF0aW9ucxgBIAMoCzInLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdhbml6YXRpb25TdW1tYXJ5IjQKFkNsaU9yZ2FuaXphdGlvblN1bW1hcnkSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJInwKFkNsaU9yZ2FuaXphdGlvbkRldGFpbHMSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXJvbGVzGAMgAygJEjcKDGNhcGFiaWxpdGllcxgEIAMoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdDYXBhYmlsaXR5Ko0CChBDbGlPcmdDYXBhYmlsaXR5EiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9VTlNQRUNJRklFRBAAEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfTElTVBABEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfUkVBRBACEiUKIUNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQ09OTkVDVBADEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfTElTVBAEEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfUkVBRBAFEiQKIENMSV9PUkdfQ0FQQUJJTElUWV9RVUVSWV9FWEVDVVRFEAZiBnByb3RvMw",
+  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEibAoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0Eh0KBWxpbWl0GAEgASgNQgm6SAYqBBhkKAFIAIgBARIcCgZjdXJzb3IYAiABKAlCB7pIBHICEAFIAYgBAUIICgZfbGltaXRCCQoHX2N1cnNvciKRAQoZTGlzdE9yZ2FuaXphdGlvbnNSZXNwb25zZRI+Cg1vcmdhbml6YXRpb25zGAEgAygLMicub25lcXVlcnkuY2xpLnYxLkNsaU9yZ2FuaXphdGlvblN1bW1hcnkSKwoEcGFnZRgCIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlSACIAQFCBwoFX3BhZ2UiTwoWR2V0T3JnYW5pemF0aW9uUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQifQoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXJvbGVzGAMgAygJEjcKDGNhcGFiaWxpdGllcxgEIAMoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdDYXBhYmlsaXR5IjQKFkNsaU9yZ2FuaXphdGlvblN1bW1hcnkSDAoEc2x1ZxgBIAEoCRIMCgRuYW1lGAIgASgJKo0CChBDbGlPcmdDYXBhYmlsaXR5EiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9VTlNQRUNJRklFRBAAEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfTElTVBABEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfUkVBRBACEiUKIUNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQ09OTkVDVBADEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfTElTVBAEEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfUkVBRBAFEiQKIENMSV9PUkdfQ0FQQUJJTElUWV9RVUVSWV9FWEVDVVRFEAZiBnByb3RvMw",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -120,24 +120,6 @@ export const GetOrganizationResponseSchema: GenMessage<GetOrganizationResponse> 
   messageDesc(file_onequery_cli_v1_org, 3);
 
 /**
- * @generated from message onequery.cli.v1.CliOrganizationList
- */
-export type CliOrganizationList =
-  Message<"onequery.cli.v1.CliOrganizationList"> & {
-    /**
-     * @generated from field: repeated onequery.cli.v1.CliOrganizationSummary organizations = 1;
-     */
-    organizations: CliOrganizationSummary[];
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliOrganizationList.
- * Use `create(CliOrganizationListSchema)` to create a new message.
- */
-export const CliOrganizationListSchema: GenMessage<CliOrganizationList> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_org, 4);
-
-/**
  * @generated from message onequery.cli.v1.CliOrganizationSummary
  */
 export type CliOrganizationSummary =
@@ -158,40 +140,7 @@ export type CliOrganizationSummary =
  * Use `create(CliOrganizationSummarySchema)` to create a new message.
  */
 export const CliOrganizationSummarySchema: GenMessage<CliOrganizationSummary> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_org, 5);
-
-/**
- * @generated from message onequery.cli.v1.CliOrganizationDetails
- */
-export type CliOrganizationDetails =
-  Message<"onequery.cli.v1.CliOrganizationDetails"> & {
-    /**
-     * @generated from field: string slug = 1;
-     */
-    slug: string;
-
-    /**
-     * @generated from field: string name = 2;
-     */
-    name: string;
-
-    /**
-     * @generated from field: repeated string roles = 3;
-     */
-    roles: string[];
-
-    /**
-     * @generated from field: repeated onequery.cli.v1.CliOrgCapability capabilities = 4;
-     */
-    capabilities: CliOrgCapability[];
-  };
-
-/**
- * Describes the message onequery.cli.v1.CliOrganizationDetails.
- * Use `create(CliOrganizationDetailsSchema)` to create a new message.
- */
-export const CliOrganizationDetailsSchema: GenMessage<CliOrganizationDetails> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_org, 6);
+  messageDesc(file_onequery_cli_v1_org, 4);
 
 /**
  * @generated from enum onequery.cli.v1.CliOrgCapability

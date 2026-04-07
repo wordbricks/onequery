@@ -32,20 +32,9 @@ message GetOrganizationResponse {
   repeated CliOrgCapability capabilities = 4;
 }
 
-message CliOrganizationList {
-  repeated CliOrganizationSummary organizations = 1;
-}
-
 message CliOrganizationSummary {
   string slug = 1;
   string name = 2;
-}
-
-message CliOrganizationDetails {
-  string slug = 1;
-  string name = 2;
-  repeated string roles = 3;
-  repeated CliOrgCapability capabilities = 4;
 }
 
 enum CliOrgCapability {
