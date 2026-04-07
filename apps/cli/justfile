@@ -52,14 +52,14 @@ test-cargo *args:
 check:
     cargo fmt -- --check --config imports_granularity=Item 2>/dev/null
     just lint
-    just check-openapi
+    just check-proto
 
-# Regenerate CLI server adapters from the canonical contract package.
-regen-openapi:
-    bun run --cwd {{justfile_directory()}}/../../packages/cli-server openapi:cli:generate
+# Regenerate CLI transport adapters from the protobuf source of truth.
+regen-proto:
+    bun run --cwd {{justfile_directory()}}/../.. proto:generate
 
-check-openapi:
-    bun run --cwd {{justfile_directory()}}/../../packages/cli-server openapi:cli:check
+check-proto:
+    bun run --cwd {{justfile_directory()}}/../.. proto:check
 
 insta-pending *args:
     cargo insta pending-snapshots "$@"

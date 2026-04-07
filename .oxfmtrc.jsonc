@@ -31,7 +31,6 @@
     "**/bun.lock",
     "**/routeTree.gen.ts",
     "**/*.md",
-    "packages/cli-contract/openapi/generated/cli.openapi.json",
     "packages/ui/src/components/ui",
     "packages/ui/src/hooks",
   ],

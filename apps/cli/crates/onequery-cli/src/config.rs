@@ -3,6 +3,8 @@ mod paths;
 #[allow(dead_code)]
 pub(crate) mod self_host;
 
+use std::fs;
+use std::num::NonZeroU16;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -12,6 +14,8 @@ pub(crate) use onequery_config::ConfigLayerStatus;
 use serde::Deserialize;
 use serde::Serialize;
 use toml::Value as TomlValue;
+use url::Position;
+use url::Url;
 
 use self::layers::ConfigOrigins;
 use self::layers::ConfigValueOrigin;
@@ -33,6 +37,43 @@ use onequery_cli_core::error::ErrorStage;
 
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
+const WORKSPACE_DEV_CONFIG_FILENAME: &str = "onequery.dev.toml";
+const WORKSPACE_DEV_ROOT_FROM_CARGO_MANIFEST_DIR: &str = "../../../..";
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum ServerUrlValidationFailure {
+    Empty,
+    InvalidAbsoluteUrl { message: String },
+    MissingHost,
+    UnsupportedScheme { scheme: String },
+    CredentialsNotAllowed,
+    PathNotAllowed { path: String },
+    QueryNotAllowed,
+    FragmentNotAllowed,
+}
+
+impl ServerUrlValidationFailure {
+    pub(crate) fn render(&self, subject: &str) -> String {
+        match self {
+            Self::Empty => format!("{subject} cannot be empty"),
+            Self::InvalidAbsoluteUrl { message } => {
+                format!("{subject} must be a valid absolute URL: {message}")
+            }
+            Self::MissingHost => format!("{subject} must include a hostname"),
+            Self::UnsupportedScheme { .. } => {
+                format!("{subject} must use http:// or https://")
+            }
+            Self::CredentialsNotAllowed => {
+                format!("{subject} must not include embedded credentials")
+            }
+            Self::PathNotAllowed { path } => {
+                format!("{subject} must be an origin without a path; found path `{path}`")
+            }
+            Self::QueryNotAllowed => format!("{subject} must not include a query string"),
+            Self::FragmentNotAllowed => format!("{subject} must not include a URL fragment"),
+        }
+    }
+}
 
 pub(crate) fn default_base_url() -> String {
     default_public_origin()
@@ -40,6 +81,136 @@ pub(crate) fn default_base_url() -> String {
 
 pub(crate) fn config_set_server_command_example() -> String {
     format!("onequery config set server {}", default_base_url())
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum WorkspaceDevBaseUrlFailure {
+    Read { path: PathBuf, message: String },
+    Parse { path: PathBuf, message: String },
+    InvalidOrigin { path: PathBuf, message: String },
+}
+
+impl WorkspaceDevBaseUrlFailure {
+    pub(crate) fn render(&self) -> String {
+        match self {
+            Self::Read { path, message } => format!(
+                "failed to read workspace-dev config {}: {message}",
+                path.display()
+            ),
+            Self::Parse { path, message } => {
+                format!("invalid workspace-dev config {}: {message}", path.display())
+            }
+            Self::InvalidOrigin { path, message } => format!(
+                "workspace-dev browser origin derived from {} is invalid: {message}",
+                path.display()
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspaceDevConfigProjection {
+    browser: WorkspaceDevBrowserProjection,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WorkspaceDevBrowserProjection {
+    host: String,
+    port: NonZeroU16,
+}
+
+pub(crate) fn workspace_dev_base_url_for_debug_build()
+-> Result<Option<String>, WorkspaceDevBaseUrlFailure> {
+    if !cfg!(debug_assertions) {
+        return Ok(None);
+    }
+
+    Ok(Some(workspace_dev_base_url_from_manifest_dir(Path::new(
+        env!("CARGO_MANIFEST_DIR"),
+    ))?))
+}
+
+fn workspace_dev_base_url_from_manifest_dir(
+    manifest_dir: &Path,
+) -> Result<String, WorkspaceDevBaseUrlFailure> {
+    let config_path = manifest_dir
+        .join(WORKSPACE_DEV_ROOT_FROM_CARGO_MANIFEST_DIR)
+        .join(WORKSPACE_DEV_CONFIG_FILENAME);
+    workspace_dev_base_url_from_path(&config_path)
+}
+
+fn workspace_dev_base_url_from_path(
+    config_path: &Path,
+) -> Result<String, WorkspaceDevBaseUrlFailure> {
+    let raw_config =
+        fs::read_to_string(config_path).map_err(|read_error| WorkspaceDevBaseUrlFailure::Read {
+            path: config_path.to_path_buf(),
+            message: read_error.to_string(),
+        })?;
+    let projection =
+        toml::from_str::<WorkspaceDevConfigProjection>(&raw_config).map_err(|parse_error| {
+            WorkspaceDevBaseUrlFailure::Parse {
+                path: config_path.to_path_buf(),
+                message: parse_error.to_string(),
+            }
+        })?;
+    let host = projection.browser.host.trim();
+    let browser_origin = format!("http://{host}:{}", projection.browser.port);
+
+    normalize_server_url(&browser_origin).map_err(|failure| {
+        WorkspaceDevBaseUrlFailure::InvalidOrigin {
+            path: config_path.to_path_buf(),
+            message: failure.render("browser origin"),
+        }
+    })
+}
+
+pub(crate) fn normalize_server_url(raw_url: &str) -> Result<String, ServerUrlValidationFailure> {
+    let normalized = raw_url.trim();
+    if normalized.is_empty() {
+        return Err(ServerUrlValidationFailure::Empty);
+    }
+
+    let parsed = Url::parse(normalized).map_err(|parse_error| {
+        ServerUrlValidationFailure::InvalidAbsoluteUrl {
+            message: parse_error.to_string(),
+        }
+    })?;
+
+    if parsed.host_str().is_none() {
+        return Err(ServerUrlValidationFailure::MissingHost);
+    }
+
+    match parsed.scheme() {
+        "http" | "https" => {}
+        scheme => {
+            return Err(ServerUrlValidationFailure::UnsupportedScheme {
+                scheme: scheme.to_owned(),
+            });
+        }
+    }
+
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(ServerUrlValidationFailure::CredentialsNotAllowed);
+    }
+
+    let path = parsed.path();
+    if !path.is_empty() && path != "/" {
+        return Err(ServerUrlValidationFailure::PathNotAllowed {
+            path: path.to_owned(),
+        });
+    }
+
+    if parsed.query().is_some() {
+        return Err(ServerUrlValidationFailure::QueryNotAllowed);
+    }
+
+    if parsed.fragment().is_some() {
+        return Err(ServerUrlValidationFailure::FragmentNotAllowed);
+    }
+
+    Ok(parsed[..Position::BeforePath].to_owned())
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -353,13 +524,18 @@ mod tests {
     use super::ConfigLayerSource;
     use super::ConfigStore;
     use super::DEFAULT_REQUEST_TIMEOUT_SEC;
+    use super::ServerUrlValidationFailure;
     use super::TypedConfigOverrides;
+    use super::WORKSPACE_DEV_CONFIG_FILENAME;
+    use super::WorkspaceDevBaseUrlFailure;
     use super::config_set_server_command_example;
     use super::default_base_url;
     use super::layers::ConfigOrigins;
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
+    use super::normalize_server_url;
     use super::self_host::default_public_origin;
+    use super::workspace_dev_base_url_from_manifest_dir;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
     struct CapturedEvent {
@@ -463,6 +639,124 @@ mod tests {
         assert_eq!(
             config_set_server_command_example(),
             format!("onequery config set server {}", default_public_origin())
+        );
+    }
+
+    #[test]
+    fn workspace_dev_base_url_from_manifest_dir_uses_workspace_root_browser_origin() {
+        let workspace_root =
+            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
+        let manifest_dir = workspace_root
+            .join("apps")
+            .join("cli")
+            .join("crates")
+            .join("onequery-cli");
+        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
+            panic!("expected manifest directory creation to succeed: {error}");
+        });
+        fs::write(
+            workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
+            r#"
+[browser]
+host = "localhost"
+port = 4545
+
+[api]
+host = "127.0.0.1"
+port = 4555
+
+[postgres]
+host_port = 5454
+container_port = 5432
+database = "onequery"
+user = "onequery"
+password = "onequery"
+
+[flags]
+disable_rate_limit = true
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
+
+        assert_eq!(
+            workspace_dev_base_url_from_manifest_dir(&manifest_dir),
+            Ok("http://localhost:4545".to_owned())
+        );
+
+        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
+            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
+        });
+    }
+
+    #[test]
+    fn workspace_dev_base_url_from_manifest_dir_reports_missing_workspace_config() {
+        let workspace_root =
+            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
+        let manifest_dir = workspace_root
+            .join("apps")
+            .join("cli")
+            .join("crates")
+            .join("onequery-cli");
+        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
+            panic!("expected manifest directory creation to succeed: {error}");
+        });
+
+        let failure = workspace_dev_base_url_from_manifest_dir(&manifest_dir)
+            .expect_err("expected missing workspace-dev config to fail");
+        assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Read { .. }));
+        assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));
+
+        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
+            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
+        });
+    }
+
+    #[test]
+    fn workspace_dev_base_url_from_manifest_dir_reports_invalid_workspace_config() {
+        let workspace_root =
+            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
+        let manifest_dir = workspace_root
+            .join("apps")
+            .join("cli")
+            .join("crates")
+            .join("onequery-cli");
+        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
+            panic!("expected manifest directory creation to succeed: {error}");
+        });
+        fs::write(
+            workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
+            r#"
+[browser]
+port = 4545
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
+
+        let failure = workspace_dev_base_url_from_manifest_dir(&manifest_dir)
+            .expect_err("expected invalid workspace-dev config to fail");
+        assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Parse { .. }));
+        assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));
+
+        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
+            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
+        });
+    }
+
+    #[test]
+    fn normalize_server_url_accepts_origin_and_drops_trailing_slash() {
+        assert_eq!(
+            normalize_server_url("http://127.0.0.1:5656/"),
+            Ok("http://127.0.0.1:5656".to_owned())
+        );
+    }
+
+    #[test]
+    fn normalize_server_url_rejects_api_path_suffix() {
+        assert_eq!(
+            normalize_server_url("http://localhost:4545/api"),
+            Err(ServerUrlValidationFailure::PathNotAllowed {
+                path: "/api".to_owned(),
+            })
         );
     }
 
@@ -1027,6 +1321,40 @@ active = "acme"
                 "invalid config value".to_owned(),
                 format!(
                     "request_timeout_sec must be greater than 0 (from user config file {})",
+                    config_path.display()
+                ),
+            )
+        );
+
+        fs::remove_dir_all(&test_dir).unwrap_or_else(|cleanup_error| {
+            panic!("expected temp config directory cleanup to succeed: {cleanup_error}");
+        });
+    }
+
+    #[test]
+    fn load_reports_user_file_origin_for_server_url_with_path() {
+        let test_dir =
+            std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&test_dir).unwrap_or_else(|error| {
+            panic!("expected config test directory creation to succeed: {error}");
+        });
+
+        let config_path = test_dir.join("config.toml");
+        fs::write(
+            &config_path,
+            "[api]\nserver_url = \"http://localhost:4545/api\"\n",
+        )
+        .unwrap_or_else(|error| panic!("expected config file write to succeed: {error}"));
+
+        let error = ConfigStore::load_from_path(config_path.clone(), "onequery org current")
+            .expect_err("expected invalid user config to fail");
+
+        assert_eq!(
+            (error.title.clone(), error.why.clone()),
+            (
+                "invalid config value".to_owned(),
+                format!(
+                    "server_url must be an origin without a path; found path `/api` (from user config file {})",
                     config_path.display()
                 ),
             )

@@ -1,6 +1,10 @@
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::Duration;
 
+use connectrpc::client::ClientConfig;
+use connectrpc::client::HttpClient as ConnectHttpClient;
+use connectrpc::rustls;
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderName;
@@ -25,7 +29,7 @@ pub(crate) struct Authenticated;
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) struct Unauthenticated;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct ApiClient<State> {
     pub(crate) base_url: Url,
     cli: GeneratedCliClient,
@@ -38,6 +42,17 @@ pub(crate) struct ApiClient<State> {
 pub(crate) type AuthenticatedApiClient = ApiClient<Authenticated>;
 pub(crate) type UnauthenticatedApiClient = ApiClient<Unauthenticated>;
 
+impl<State> std::fmt::Debug for ApiClient<State> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ApiClient")
+            .field("base_url", &self.base_url)
+            .field("request_timeout", &self.request_timeout)
+            .field("request_id", &self.request_id)
+            .finish_non_exhaustive()
+    }
+}
+
 enum AuthHeader<'a> {
     None,
     Bearer(&'a str),
@@ -47,9 +62,7 @@ impl<State> ApiClient<State> {
     pub(crate) fn cli(&self) -> &GeneratedCliClient {
         &self.cli
     }
-}
 
-impl<State> ApiClient<State> {
     pub(crate) fn http(&self) -> &reqwest::Client {
         &self.http
     }
@@ -144,16 +157,11 @@ fn build_client<State>(
             base_url: base_url.to_owned(),
             message: url_error.to_string(),
         })?;
-    let normalized_root = normalized_api_root(base_url.path()).to_owned();
-    base_url.set_path(if normalized_root.is_empty() {
-        "/"
-    } else {
-        normalized_root.as_str()
-    });
     base_url.set_query(None);
     base_url.set_fragment(None);
 
     let mut headers = HeaderMap::new();
+    let mut auth_token = None;
     if let AuthHeader::Bearer(raw_token) = auth_header {
         let trimmed_token = raw_token.trim();
         if trimmed_token.is_empty() {
@@ -169,9 +177,14 @@ fn build_client<State>(
             }
         })?;
         headers.insert(AUTHORIZATION, value);
+        auth_token = Some(trimmed_token.to_owned());
     }
 
-    if let Some(request_id) = request_id.map(str::trim).filter(|value| !value.is_empty()) {
+    let request_id = request_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+    if let Some(request_id) = request_id.as_deref() {
         let value = HeaderValue::from_str(request_id).map_err(|header_error| {
             ApiClientBuildFailure::InvalidRequestId {
                 message: header_error.to_string(),
@@ -187,42 +200,78 @@ fn build_client<State>(
         .map_err(|client_error| ApiClientBuildFailure::HttpClient {
             message: client_error.to_string(),
         })?;
-    let http_for_cli = http.clone();
-    let cli = GeneratedCliClient::new_with_client(cli_base_url(&base_url).as_str(), http_for_cli);
+    let cli_base_url = cli_base_url(&base_url);
+    let cli = GeneratedCliClient::new(
+        connect_transport_for_base_url(&base_url)?,
+        connect_config(
+            cli_base_url.as_str(),
+            request_timeout,
+            auth_token.as_deref(),
+            request_id.as_deref(),
+        )?,
+    );
 
     Ok(ApiClient {
         base_url,
         cli,
         request_timeout,
-        request_id: request_id.map(ToOwned::to_owned),
+        request_id,
         http,
         _state: PhantomData,
     })
 }
 
-fn cli_base_url(base_url: &Url) -> String {
-    let mut cli_url = base_url.clone();
-    cli_url.set_path(match normalized_api_root(base_url.path()) {
-        "" => CLI_BASE_PATH,
-        _ => return format!("{}{CLI_BASE_PATH}", base_url.as_str().trim_end_matches('/')),
-    });
-    cli_url.set_query(None);
-    cli_url.set_fragment(None);
-    cli_url.to_string().trim_end_matches('/').to_owned()
+fn connect_config(
+    base_url: &str,
+    request_timeout: Duration,
+    auth_token: Option<&str>,
+    request_id: Option<&str>,
+) -> Result<ClientConfig, ApiClientBuildFailure> {
+    let mut config = ClientConfig::new(base_url.parse::<http::Uri>().map_err(|error| {
+        ApiClientBuildFailure::InvalidBaseUrl {
+            base_url: base_url.to_owned(),
+            message: error.to_string(),
+        }
+    })?)
+    .default_timeout(request_timeout);
+
+    if let Some(token) = auth_token {
+        config = config.default_header(AUTHORIZATION.as_str(), format!("Bearer {token}"));
+    }
+
+    if let Some(request_id) = request_id {
+        config = config.default_header("x-request-id", request_id);
+    }
+
+    Ok(config)
 }
 
-fn normalized_api_root(base_path: &str) -> &str {
-    let normalized_base = base_path.trim_end_matches('/');
-
-    if normalized_base.is_empty() || normalized_base == "/" {
-        return "";
+fn connect_transport_for_base_url(
+    base_url: &Url,
+) -> Result<ConnectHttpClient, ApiClientBuildFailure> {
+    match base_url.scheme() {
+        "http" => Ok(ConnectHttpClient::plaintext()),
+        "https" => Ok(ConnectHttpClient::with_tls(default_tls_config())),
+        scheme => Err(ApiClientBuildFailure::InvalidBaseUrl {
+            base_url: base_url.to_string(),
+            message: format!("unsupported URL scheme {scheme}"),
+        }),
     }
+}
 
-    if let Some(api_root) = normalized_base.strip_suffix(CLI_BASE_PATH) {
-        return api_root;
-    }
+fn default_tls_config() -> Arc<rustls::ClientConfig> {
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
-    normalized_base
+    Arc::new(
+        rustls::ClientConfig::builder()
+            .with_root_certificates(roots)
+            .with_no_client_auth(),
+    )
+}
+
+fn cli_base_url(base_url: &Url) -> String {
+    format!("{}{CLI_BASE_PATH}", base_url.as_str().trim_end_matches('/'))
 }
 
 #[cfg(test)]
@@ -241,6 +290,7 @@ mod tests {
     use super::ApiClientBuildFailure;
     use super::AuthenticatedApiClient;
     use super::UnauthenticatedApiClient;
+    use super::cli_base_url;
 
     #[tokio::test]
     async fn unauthenticated_client_does_not_attach_authorization_header() {
@@ -327,6 +377,22 @@ mod tests {
             ApiClientBuildFailure::InvalidRequestId {
                 message: "failed to parse header value".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn unauthenticated_client_builds_cli_base_url_from_origin() {
+        let client = UnauthenticatedApiClient::new("http://example.test", 5)
+            .expect("expected unauthenticated client");
+
+        assert_eq!(client.base_url.as_str(), "http://example.test/");
+        assert_eq!(
+            cli_base_url(&client.base_url),
+            "http://example.test/api/cli"
+        );
+        assert_eq!(
+            client.app_url("/api/data-sources/source/query"),
+            "http://example.test/api/data-sources/source/query"
         );
     }
 

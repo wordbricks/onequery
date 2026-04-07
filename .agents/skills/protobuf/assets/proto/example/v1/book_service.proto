@@ -1,0 +1,179 @@
+// Book service demonstrating comprehensive CRUD patterns.
+syntax = "proto3";
+
+package example.v1;
+
+import "buf/validate/validate.proto";
+import "example/v1/book.proto";
+
+// BookService manages books in the library catalog.
+service BookService {
+  // GetBook retrieves a single book by ID or ISBN.
+  rpc GetBook(GetBookRequest) returns (GetBookResponse);
+
+  // ListBooks retrieves a paginated list of books.
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse);
+
+  // CreateBook adds a new book to the catalog.
+  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
+
+  // UpdateBook modifies an existing book.
+  rpc UpdateBook(UpdateBookRequest) returns (UpdateBookResponse);
+
+  // DeleteBook removes a book from the catalog.
+  rpc DeleteBook(DeleteBookRequest) returns (DeleteBookResponse);
+
+  // BatchGetBooks retrieves multiple books by ID or ISBN.
+  rpc BatchGetBooks(BatchGetBooksRequest) returns (BatchGetBooksResponse);
+
+  // BatchCreateBooks adds multiple books in a single request.
+  rpc BatchCreateBooks(BatchCreateBooksRequest) returns (BatchCreateBooksResponse);
+}
+
+message GetBookRequest {
+  // The book to retrieve.
+  BookRef ref = 1 [(buf.validate.field).required = true];
+}
+
+message GetBookResponse {
+  // The requested book.
+  Book book = 1;
+}
+
+message ListBooksRequest {
+  // The list order.
+  enum Order {
+    ORDER_UNSPECIFIED = 0;
+    // Order by create_time newest to oldest.
+    ORDER_CREATE_TIME_DESC = 1;
+    // Order by create_time oldest to newest.
+    ORDER_CREATE_TIME_ASC = 2;
+    // Order by update_time newest to oldest.
+    ORDER_UPDATE_TIME_DESC = 3;
+    // Order by update_time oldest to newest.
+    ORDER_UPDATE_TIME_ASC = 4;
+  }
+
+  // The maximum number of items to return.
+  //
+  // The default value is 20.
+  uint32 page_size = 1 [(buf.validate.field).uint32.lte = 100];
+
+  // The page to start from.
+  //
+  // If empty, the first page is returned.
+  string page_token = 2 [(buf.validate.field).string.max_len = 4096];
+
+  // Filter by genre.
+  //
+  // If not specified, all genres are returned.
+  Genre genre = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // The order to return results.
+  //
+  // If not specified, defaults to ORDER_CREATE_TIME_DESC.
+  Order order = 4 [(buf.validate.field).enum.defined_only = true];
+}
+
+message ListBooksResponse {
+  // The next page token.
+  //
+  // If empty, there are no more pages.
+  string next_page_token = 1 [(buf.validate.field).string.max_len = 4096];
+
+  // The books.
+  repeated Book books = 2 [(buf.validate.field).repeated.max_items = 100];
+}
+
+message CreateBookRequest {
+  // Title of the book.
+  string title = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ISBN-13 identifier.
+  string isbn = 2 [(buf.validate.field).string.pattern = "^(97[89])?\\d{9}(\\d|X)$"];
+
+  // Reference to the author.
+  string author_id = 3 [(buf.validate.field).string.uuid = true];
+
+  // Publication year.
+  int32 publication_year = 4 [(buf.validate.field).int32 = {
+    gte: 1450
+    lte: 2100
+  }];
+
+  // Genre classifications.
+  repeated Genre genres = 5 [
+    (buf.validate.field).repeated.items.enum.defined_only = true,
+    (buf.validate.field).repeated.items.enum.not_in = 0
+  ];
+}
+
+message CreateBookResponse {
+  // The created book with server-generated fields populated.
+  Book book = 1;
+}
+
+message UpdateBookRequest {
+  // The book to update.
+  BookRef ref = 1 [(buf.validate.field).required = true];
+
+  // Title of the book.
+  optional string title = 2 [(buf.validate.field).string.min_len = 1];
+
+  // ISBN-13 identifier.
+  optional string isbn = 3 [(buf.validate.field).string.pattern = "^(97[89])?\\d{9}(\\d|X)$"];
+
+  // Reference to the author.
+  optional string author_id = 4 [(buf.validate.field).string.uuid = true];
+
+  // Publication year.
+  optional int32 publication_year = 5 [(buf.validate.field).int32 = {
+    gte: 1450
+    lte: 2100
+  }];
+
+  // Genre classifications. Replaces existing genres when set.
+  repeated Genre genres = 6 [
+    (buf.validate.field).repeated.items.enum.defined_only = true,
+    (buf.validate.field).repeated.items.enum.not_in = 0
+  ];
+}
+
+message UpdateBookResponse {
+  // The updated book.
+  Book book = 1;
+}
+
+message DeleteBookRequest {
+  // The book to delete.
+  BookRef ref = 1 [(buf.validate.field).required = true];
+}
+
+message DeleteBookResponse {}
+
+message BatchGetBooksRequest {
+  // Books to retrieve. Max 100.
+  repeated BookRef refs = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 100
+  ];
+}
+
+message BatchGetBooksResponse {
+  // Books in the same order as requested refs.
+  // Missing books are omitted (check count matches request).
+  repeated Book books = 1;
+}
+
+message BatchCreateBooksRequest {
+  // Books to create. Max 100.
+  repeated CreateBookRequest requests = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 100
+  ];
+}
+
+message BatchCreateBooksResponse {
+  // Created books in the same order as requests.
+  repeated Book books = 1;
+}

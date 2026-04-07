@@ -351,7 +351,6 @@ impl WorkflowLabel for SessionRefreshTerminalState {
 mod tests {
     use std::fs;
     use std::io::Read;
-    use std::io::Write;
     use std::net::TcpListener;
     use std::path::PathBuf;
     use std::sync::mpsc;
@@ -362,6 +361,8 @@ mod tests {
     use serde_json::json;
     use uuid::Uuid;
 
+    use crate::commands::test_support::refresh_session_response_body;
+    use crate::commands::test_support::write_proto_response;
     use crate::credentials::AuthSessionStore;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
@@ -464,16 +465,14 @@ mod tests {
             request_tx
                 .send(request)
                 .unwrap_or_else(|error| panic!("expected request send: {error}"));
-            let response_body =
-                refresh_response_body("req_refresh_123", "token_refreshed", Some("acme"));
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\nx-request-id: req_refresh_123\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_100_800,
+                1_773_705_600,
             );
-            stream
-                .write_all(response.as_bytes())
-                .unwrap_or_else(|error| panic!("expected response write: {error}"));
+            write_proto_response(&mut stream, "req_refresh_123", &response_body)
+                .unwrap_or_else(|error| panic!("expected proto response write: {error}"));
         });
 
         let test_dir = std::env::temp_dir().join(format!("onequery-refresh-{}", Uuid::new_v4()));
@@ -502,7 +501,7 @@ mod tests {
                 runtime.auth_session.access_token().map(ToOwned::to_owned),
             ),
             (
-                Some("POST /api/cli/session:refresh HTTP/1.1".to_owned()),
+                Some("POST /api/cli/onequery.cli.v1.CliService/RefreshSession HTTP/1.1".to_owned()),
                 Some("req_refresh_123".to_owned()),
                 json!({
                     "accessTokenRedacted": true,
@@ -542,16 +541,14 @@ mod tests {
             let _ = stream
                 .read(&mut buffer)
                 .unwrap_or_else(|error| panic!("expected request read: {error}"));
-            let response_body =
-                refresh_response_body("req_refresh_env", "token_env_refreshed", None);
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
+            let response_body = refresh_session_response_body(
+                "token_env_refreshed",
+                None,
+                1_773_100_800,
+                1_773_705_600,
             );
-            stream
-                .write_all(response.as_bytes())
-                .unwrap_or_else(|error| panic!("expected response write: {error}"));
+            write_proto_response(&mut stream, "req_refresh_env", &response_body)
+                .unwrap_or_else(|error| panic!("expected proto response write: {error}"));
         });
 
         let test_dir =
@@ -611,30 +608,6 @@ mod tests {
                 ],
             )
         );
-    }
-
-    fn refresh_response_body(
-        request_id: &str,
-        access_token: &str,
-        active_org_slug: Option<&str>,
-    ) -> String {
-        json!({
-            "requestId": request_id,
-            "data": {
-                "accessToken": access_token,
-                "authMode": "bearer_token",
-                "user": {
-                    "id": "user-1",
-                    "email": "alice@example.com",
-                    "displayName": "Alice",
-                },
-                "activeOrgSlug": active_org_slug,
-                "issuedAt": "2026-03-10T00:00:00.000Z",
-                "expiresAt": "2026-03-17T00:00:00.000Z",
-            },
-            "warnings": [],
-        })
-        .to_string()
     }
 
     fn sample_refreshed_session(

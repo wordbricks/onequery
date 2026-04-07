@@ -138,7 +138,7 @@ enum AuthEvent {
     },
     BootstrapClientBuilt {
         completion: LoginCompletion,
-        client: AuthenticatedApiClient,
+        client: Box<AuthenticatedApiClient>,
     },
     BootstrapClientBuildFailed {
         completion: LoginCompletion,
@@ -208,7 +208,7 @@ enum AuthEffect {
     },
     FetchBootstrapOrgs {
         completion: LoginCompletion,
-        client: AuthenticatedApiClient,
+        client: Box<AuthenticatedApiClient>,
     },
     PersistBootstrappedOrg {
         completion: LoginCompletion,

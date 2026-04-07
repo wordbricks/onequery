@@ -5,6 +5,7 @@ expression: "output.lines.join(\"\\n\")"
 Debug: config
 Config path: /tmp/onequery-debug-config/config.toml
 Base URL: http://127.0.0.1:5656
+Base URL source: user config
 Resolved org: acme
 Resolved org source: config
 Values:

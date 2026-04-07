@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "buf/validate/validate.proto";
+import "onequery/cli/v1/common.proto";
+
+message ListOrganizationsRequest {
+  optional string fields = 1 [(buf.validate.field).string.min_len = 1];
+  optional uint32 limit = 2 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  optional string cursor = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message ListOrganizationsResponse {
+  repeated CliOrganizationSummary organizations = 1;
+  optional CliPage page = 2;
+}
+
+message GetOrganizationRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  optional string fields = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetOrganizationResponse {
+  string slug = 1;
+  string name = 2;
+  repeated string roles = 3;
+  repeated CliOrgCapability capabilities = 4;
+}
+
+message CliOrganizationList {
+  repeated CliOrganizationSummary organizations = 1;
+}
+
+message CliOrganizationSummary {
+  string slug = 1;
+  string name = 2;
+}
+
+message CliOrganizationDetails {
+  string slug = 1;
+  string name = 2;
+  repeated string roles = 3;
+  repeated CliOrgCapability capabilities = 4;
+}
+
+enum CliOrgCapability {
+  CLI_ORG_CAPABILITY_UNSPECIFIED = 0;
+  CLI_ORG_CAPABILITY_ORG_LIST = 1;
+  CLI_ORG_CAPABILITY_ORG_READ = 2;
+  CLI_ORG_CAPABILITY_SOURCE_CONNECT = 3;
+  CLI_ORG_CAPABILITY_SOURCE_LIST = 4;
+  CLI_ORG_CAPABILITY_SOURCE_READ = 5;
+  CLI_ORG_CAPABILITY_QUERY_EXECUTE = 6;
+}

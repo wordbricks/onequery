@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "buf/validate/validate.proto";
+import "onequery/cli/v1/common.proto";
+import "onequery/cli/v1/source.proto";
+
+message ValidateQueryRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
+  CliQueryRequest query = 4 [(buf.validate.field).required = true];
+}
+
+message ValidateQueryResponse {
+  CliQueryCanonicalRequest request = 1;
+  string normalized_sql = 2;
+  CliDeclaredQueryResultWindow declared_result_window = 3;
+  CliSourceSummary source = 4;
+  bool truncated = 5;
+}
+
+message ExecuteQueryRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
+  optional uint32 limit = 4 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  optional string cursor = 5 [(buf.validate.field).string.min_len = 1];
+  CliQueryRequest query = 6 [(buf.validate.field).required = true];
+}
+
+message ExecuteQueryResponse {
+  CliSourceSummary source = 1;
+  uint64 row_count = 2;
+  uint64 elapsed_ms = 3;
+  repeated CliQueryColumn columns = 4;
+  repeated CliQueryRow rows = 5;
+  bool truncated = 6;
+  optional CliPage page = 7;
+  optional CliSanitization sanitization = 8;
+}
+
+message CliQueryRequest {
+  string sql = 1 [(buf.validate.field).string.min_len = 1];
+  repeated CliQueryParameter parameters = 2;
+  optional uint32 max_rows = 3 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 1000
+  ];
+  optional uint32 max_bytes = 4 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 4194304
+  ];
+  optional uint32 cell_max_chars = 5 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 8000
+  ];
+  optional uint32 timeout_ms = 6 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 120000
+  ];
+}
+
+message CliQueryCanonicalRequest {
+  string sql = 1;
+  repeated CliQueryParameter parameters = 2;
+  optional uint32 max_rows = 3;
+  optional uint32 max_bytes = 4;
+  optional uint32 cell_max_chars = 5;
+  optional uint32 timeout_ms = 6;
+}
+
+message CliQueryParameter {
+  CliQueryParameterType type = 1 [(buf.validate.field).enum.not_in = 0];
+  optional string value = 2;
+}
+
+message CliDeclaredQueryResultWindow {
+  optional uint32 max_rows = 1;
+  optional uint32 max_bytes = 2;
+  optional uint32 cell_max_chars = 3;
+  optional uint32 timeout_ms = 4;
+}
+
+message CliValidatedQuery {
+  CliQueryCanonicalRequest request = 1;
+  string normalized_sql = 2;
+  CliDeclaredQueryResultWindow declared_result_window = 3;
+  CliSourceSummary source = 4;
+  bool truncated = 5;
+}
+
+message CliQuerySuccess {
+  CliSourceSummary source = 1;
+  uint64 row_count = 2;
+  uint64 elapsed_ms = 3;
+  repeated CliQueryColumn columns = 4;
+  repeated CliQueryRow rows = 5;
+  bool truncated = 6;
+}
+
+message CliQueryColumn {
+  string name = 1;
+  optional CliQueryLogicalType logical_type = 2;
+}
+
+message CliQueryRow {
+  repeated string values = 1;
+}
+
+enum CliQueryParameterType {
+  CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
+  CLI_QUERY_PARAMETER_TYPE_STRING = 1;
+  CLI_QUERY_PARAMETER_TYPE_NUMBER = 2;
+  CLI_QUERY_PARAMETER_TYPE_BOOLEAN = 3;
+  CLI_QUERY_PARAMETER_TYPE_NULL = 4;
+}
+
+enum CliQueryLogicalType {
+  CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
+  CLI_QUERY_LOGICAL_TYPE_STRING = 1;
+  CLI_QUERY_LOGICAL_TYPE_NUMBER = 2;
+  CLI_QUERY_LOGICAL_TYPE_BOOLEAN = 3;
+  CLI_QUERY_LOGICAL_TYPE_BIGINT = 4;
+  CLI_QUERY_LOGICAL_TYPE_DATETIME = 5;
+  CLI_QUERY_LOGICAL_TYPE_ARRAY = 6;
+  CLI_QUERY_LOGICAL_TYPE_JSON = 7;
+}

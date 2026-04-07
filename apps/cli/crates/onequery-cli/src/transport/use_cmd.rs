@@ -1,3 +1,4 @@
+use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -11,14 +12,16 @@ use crate::transport::generated::types;
 use crate::transport::http::ApiFailure;
 use crate::transport::http::ApiProblem;
 use crate::transport::http::ApiSuccess;
+use crate::transport::http::ResponseFailureStages;
 use crate::transport::http::TransportFailure;
 use crate::transport::http::TransportFailureKind;
+use crate::transport::http::conversion_failure;
 use crate::transport::http::decode_failure;
-use crate::transport::http::parse_problem_response;
+use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
-use crate::transport::http::try_into_value;
-
-const CLI_USE_ORG_HEADER: &str = "x-onequery-org-slug";
+use crate::transport::labels::content_format_to_str;
+use crate::transport::labels::use_source_from_str;
+use crate::transport::labels::use_source_to_str;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub(crate) struct UseSkill {
@@ -29,67 +32,55 @@ pub(crate) struct UseSkill {
     pub(crate) content: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct UseSkillEnvelope {
-    data: UseSkill,
-    request_id: Option<String>,
-}
-
 pub(crate) async fn load_use_skill<State>(
     client: &ApiClient<State>,
     source: &str,
     org_slug: Option<&str>,
 ) -> Result<ApiSuccess<UseSkill>, ApiFailure> {
-    let source: types::CliUseSource = try_into_value(source, ErrorStage::ResolveSource)?;
-    let source_query = source.to_string();
-    let url = client.app_url("/api/cli/use");
-    let mut request = client
-        .http()
-        .get(url)
-        .query(&[("source", source_query.as_str())]);
-
-    if let Some(org_slug) = org_slug.map(str::trim).filter(|value| !value.is_empty()) {
-        request = request.header(CLI_USE_ORG_HEADER, org_slug);
-    }
-
-    let response = request.send().await.map_err(|error| {
-        ApiFailure::Transport(TransportFailure {
-            kind: TransportFailureKind::SendRequest,
-            stage: ErrorStage::Http,
-            message: error.to_string(),
-            retryable: error.is_connect() || error.is_timeout(),
-        })
-    })?;
-    let request_id = response_request_id(response.headers());
-    let status = response.status();
-    let body = response.bytes().await.map_err(|error| {
-        ApiFailure::Transport(TransportFailure {
-            kind: TransportFailureKind::ReadResponseBody,
-            stage: ErrorStage::Http,
-            message: error.to_string(),
-            retryable: error.is_connect() || error.is_timeout(),
-        })
-    })?;
-
-    if !status.is_success() {
-        return Err(ApiFailure::Problem(parse_problem_response(
-            status,
-            request_id,
-            &body,
+    let source = use_source_from_str(source).ok_or_else(|| {
+        conversion_failure(
             ErrorStage::ResolveSource,
-        )));
-    }
-
-    let payload = serde_json::from_slice::<UseSkillEnvelope>(&body)
-        .map_err(|error| decode_failure(ErrorStage::Http, error.to_string(), request_id.clone()))?;
+            format!("unsupported use source {source}"),
+        )
+    })?;
+    let org_slug = org_slug
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+    let response = match client
+        .cli()
+        .r#use(types::UseRequest {
+            source: source.into(),
+            org_slug,
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(
+                error,
+                ResponseFailureStages::from_connect_code(use_problem_stage_for_code),
+            ));
+        }
+    };
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: payload.data,
-        request_id: payload.request_id.or(request_id),
+        payload: UseSkill {
+            source: use_source_to_str(payload.source),
+            title: payload.title,
+            description: payload.description,
+            format: content_format_to_str(payload.format),
+            content: payload.content,
+        },
+        request_id,
     })
 }
 
+// Comment: the provider relay still executes against `/api/data-sources/{source}/query`,
+// which remains intentionally outside `CliService` for now.
 pub(crate) async fn execute_use_input(
     client: &AuthenticatedApiClient,
     source: &str,
@@ -165,16 +156,28 @@ pub(crate) async fn execute_use_input(
     };
 
     Err(ApiFailure::Problem(ApiProblem {
-        status,
-        problem_type: None,
+        connect_code: None,
+        status: Some(status),
         title: Some("Use Execution Failed".to_owned()),
         detail,
         code: None,
         retryable: status.is_server_error(),
+        retry_after_ms: None,
         stage,
         hint: None,
         request_id,
         validation_issues: Vec::new(),
         raw_body,
     }))
+}
+
+fn use_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+    if matches!(
+        code,
+        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+    ) {
+        ErrorStage::Auth
+    } else {
+        ErrorStage::ResolveSource
+    }
 }

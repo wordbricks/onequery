@@ -6,8 +6,10 @@ use crate::cli::DebugSubcommand;
 use crate::output::CommandOutput;
 
 use super::CommandContext;
+use super::ResolvedBaseUrlSource;
 use super::ResolvedOrgSource;
 use super::Runtime;
+use super::resolved_base_url;
 
 pub(crate) async fn execute<B, T>(
     command: &DebugSubcommand,
@@ -15,18 +17,26 @@ pub(crate) async fn execute<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
     let output = match command {
-        DebugSubcommand::Config => render_config_output(context, runtime),
+        DebugSubcommand::Config => {
+            let base_url = resolved_base_url(&runtime.config, &context.command_line)?;
+            render_config_output(context, runtime, base_url.source)
+        }
         DebugSubcommand::AuthSession => render_auth_session_output(runtime),
     };
 
     Ok(output)
 }
 
-fn render_config_output<B, T>(context: &CommandContext, runtime: &Runtime<B, T>) -> CommandOutput {
+fn render_config_output<B, T>(
+    context: &CommandContext,
+    runtime: &Runtime<B, T>,
+    base_url_source: ResolvedBaseUrlSource,
+) -> CommandOutput {
     let mut lines = vec![
         "Debug: config".to_owned(),
         format!("Config path: {}", runtime.config.path().display()),
         format!("Base URL: {}", context.base_url),
+        format!("Base URL source: {}", base_url_source.describe()),
         format!(
             "Resolved org: {}",
             display_optional(context.resolved_org.as_deref())
@@ -87,6 +97,7 @@ fn render_config_output<B, T>(context: &CommandContext, runtime: &Runtime<B, T>)
             "kind": "config",
             "configPath": runtime.config.path().display().to_string(),
             "baseUrl": context.base_url,
+            "baseUrlSource": base_url_source.describe(),
             "resolvedOrg": context.resolved_org,
             "resolvedOrgSource": resolved_org_source_label(context.resolved_org_source),
             "values": {
@@ -208,6 +219,7 @@ mod tests {
     use crate::transport::auth::UserProfile;
 
     use super::CommandContext;
+    use super::ResolvedBaseUrlSource;
     use super::ResolvedOrgSource;
     use super::Runtime;
     use super::render_auth_session_output;
@@ -259,7 +271,7 @@ mod tests {
             verbose: false,
         };
 
-        let output = render_config_output(&context, &runtime);
+        let output = render_config_output(&context, &runtime, ResolvedBaseUrlSource::Config);
 
         assert_snapshot!(output.lines.join("\n"));
     }

@@ -11,9 +11,9 @@ mod schema;
 mod serve;
 mod source;
 mod source_connect;
+#[cfg(test)]
+pub(crate) mod test_support;
 mod use_cmd;
-
-use url::Url;
 
 use crate::cli::Command;
 use crate::cli::Invocation;
@@ -22,7 +22,10 @@ use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::config::ConfigStore;
 use crate::config::TypedConfigOverrides;
+use crate::config::config_set_server_command_example;
 use crate::config::default_base_url;
+use crate::config::normalize_server_url;
+use crate::config::workspace_dev_base_url_for_debug_build;
 use crate::credentials::AuthSessionStore;
 use crate::output::CommandOutput;
 use crate::platform::BrowserLauncher;
@@ -41,6 +44,31 @@ pub(crate) enum ResolvedOrgSource {
     Flag,
     Config,
     None,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ResolvedBaseUrlSource {
+    Environment,
+    Config,
+    WorkspaceDev,
+    SelfHostDefault,
+}
+
+impl ResolvedBaseUrlSource {
+    pub(crate) fn describe(self) -> &'static str {
+        match self {
+            Self::Environment => "environment override",
+            Self::Config => "user config",
+            Self::WorkspaceDev => "workspace-dev debug fallback",
+            Self::SelfHostDefault => "self-host default",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct ResolvedBaseUrl {
+    value: String,
+    source: ResolvedBaseUrlSource,
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +119,7 @@ pub(crate) fn resolve_context<B, T>(
     invocation: &Invocation,
     runtime: &Runtime<B, T>,
 ) -> Result<CommandContext, CliError> {
-    let base_url = resolved_base_url(&runtime.config);
+    let base_url = resolved_base_url(&runtime.config, &invocation.raw_command)?;
     let org_from_flag = invocation
         .global
         .org
@@ -116,23 +144,13 @@ pub(crate) fn resolve_context<B, T>(
         (None, ResolvedOrgSource::None)
     };
 
-    if base_url.trim().is_empty() {
-        return Err(CliError::new(
-            "invalid base URL",
-            invocation.raw_command.clone(),
-            ErrorStage::LoadConfig,
-            "compiled default base URL is empty",
-            vec!["rebuild onequery with a valid default base URL".to_owned()],
-        ));
-    }
-
-    Url::parse(&base_url).map_err(|url_error| {
+    let base_url = normalize_server_url(&base_url.value).map_err(|failure| {
         CliError::new(
             "invalid base URL",
             invocation.raw_command.clone(),
             ErrorStage::LoadConfig,
-            format!("{url_error}: {base_url}"),
-            vec!["rebuild onequery with a valid default base URL".to_owned()],
+            failure.render("base URL"),
+            vec![config_set_server_command_example()],
         )
     })?;
 
@@ -146,24 +164,55 @@ pub(crate) fn resolve_context<B, T>(
     })
 }
 
-fn resolved_base_url(config: &ConfigStore) -> String {
+pub(crate) fn resolved_base_url(
+    config: &ConfigStore,
+    command_line: &str,
+) -> Result<ResolvedBaseUrl, CliError> {
     if let Ok(override_value) = std::env::var("ONEQUERY_BASE_URL") {
         let candidate = override_value.trim();
         if !candidate.is_empty() {
-            // Comment: transport path composition normalizes host-only URLs,
-            // proxy-prefixed URLs, and values that already include `/api/cli`.
-            return candidate.to_owned();
+            // Comment: base URL resolution stays strict so the transport can pass a
+            // single app origin into Connect without guessing path semantics.
+            return Ok(ResolvedBaseUrl {
+                value: candidate.to_owned(),
+                source: ResolvedBaseUrlSource::Environment,
+            });
         }
     }
 
     if let Some(server_url) = config.data().server_url.as_deref() {
         let candidate = server_url.trim();
         if !candidate.is_empty() {
-            return candidate.to_owned();
+            return Ok(ResolvedBaseUrl {
+                value: candidate.to_owned(),
+                source: ResolvedBaseUrlSource::Config,
+            });
         }
     }
 
-    default_base_url()
+    // Comment: debug Cargo builds target the tracked workspace-dev browser origin
+    // deterministically, while release builds stay cwd-independent and fall back
+    // to the self-host public origin.
+    match workspace_dev_base_url_for_debug_build() {
+        Ok(Some(workspace_dev_base_url)) => Ok(ResolvedBaseUrl {
+            value: workspace_dev_base_url,
+            source: ResolvedBaseUrlSource::WorkspaceDev,
+        }),
+        Ok(None) => Ok(ResolvedBaseUrl {
+            value: default_base_url(),
+            source: ResolvedBaseUrlSource::SelfHostDefault,
+        }),
+        Err(failure) => Err(CliError::new(
+            "invalid workspace-dev config",
+            command_line.to_owned(),
+            ErrorStage::LoadConfig,
+            failure.render(),
+            vec![
+                "fix onequery.dev.toml".to_owned(),
+                "set ONEQUERY_BASE_URL or run onequery config set server <origin>".to_owned(),
+            ],
+        )),
+    }
 }
 
 pub(crate) async fn execute<B, T>(

@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "onequery/cli/v1/common.proto";
+
+message ListSourcesRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  optional string fields = 2 [(buf.validate.field).string.min_len = 1];
+  optional uint32 limit = 3 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  optional string cursor = 4 [(buf.validate.field).string.min_len = 1];
+}
+
+message ListSourcesResponse {
+  repeated CliSourceSummary sources = 1;
+  optional CliPage page = 2;
+}
+
+message GetSourceRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string fields = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetSourceResponse {
+  string name = 1;
+  optional string display_name = 2;
+  CliSourceProvider provider = 3;
+  bool queryable = 4;
+  CliSourceStatus status = 5;
+}
+
+message GetSourceConnectGuideRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
+}
+
+message GetSourceConnectGuideResponse {
+  string title = 1;
+  string description = 2;
+  CliContentFormat format = 3;
+  string content = 4;
+  string command = 5;
+  CliSourceConnectInputSchema input_schema = 6;
+  repeated CliSourceConnectProviderGuide providers = 7;
+}
+
+message ConnectSourceRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceProvider source = 2 [(buf.validate.field).enum.not_in = 0];
+  string name = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  google.protobuf.Struct credentials = 4 [(buf.validate.field).required = true];
+}
+
+message ConnectSourceResponse {
+  CliSourceSummary source = 1;
+  string next_command = 2;
+}
+
+message CliSourceList {
+  repeated CliSourceSummary sources = 1;
+}
+
+message CliSourceSummary {
+  string name = 1;
+  optional string display_name = 2;
+  CliSourceProvider provider = 3;
+  bool queryable = 4;
+  CliSourceStatus status = 5;
+}
+
+message CliSourceConnectGuide {
+  string title = 1;
+  string description = 2;
+  CliContentFormat format = 3;
+  string content = 4;
+  string command = 5;
+  CliSourceConnectInputSchema input_schema = 6;
+  repeated CliSourceConnectProviderGuide providers = 7;
+}
+
+message CliSourceConnectInputSchema {
+  string type = 1;
+  repeated string required = 2;
+  CliSourceConnectInputSchemaProperties properties = 3;
+}
+
+message CliSourceConnectInputSchemaProperties {
+  CliSourceConnectSchemaField name = 1;
+  CliSourceConnectSchemaField credentials = 2;
+}
+
+message CliSourceConnectSchemaField {
+  string type = 1;
+  string description = 2;
+  optional string pattern = 3;
+  repeated string enum_values = 4;
+}
+
+message CliSourceConnectProviderGuide {
+  CliSourceProvider provider = 1;
+  string summary = 2;
+  repeated string required_credential_fields = 3;
+  repeated string optional_credential_fields = 4;
+  repeated string steps = 5;
+  google.protobuf.Struct credential_template = 6;
+  google.protobuf.Struct example_input = 7;
+}
+
+message CliConnectedSource {
+  CliSourceSummary source = 1;
+  string next_command = 2;
+}
+
+enum CliSourceProvider {
+  CLI_SOURCE_PROVIDER_UNSPECIFIED = 0;
+  CLI_SOURCE_PROVIDER_POSTGRES = 1;
+  CLI_SOURCE_PROVIDER_SUPABASE = 2;
+  CLI_SOURCE_PROVIDER_MYSQL = 3;
+  CLI_SOURCE_PROVIDER_MONGODB = 4;
+  CLI_SOURCE_PROVIDER_BIGQUERY = 5;
+  CLI_SOURCE_PROVIDER_LAMINAR = 6;
+  CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
+  CLI_SOURCE_PROVIDER_GA = 8;
+  CLI_SOURCE_PROVIDER_AMPLITUDE = 9;
+  CLI_SOURCE_PROVIDER_MIXPANEL = 10;
+  CLI_SOURCE_PROVIDER_POSTHOG = 11;
+  CLI_SOURCE_PROVIDER_SENTRY = 12;
+  CLI_SOURCE_PROVIDER_GITHUB = 13;
+  CLI_SOURCE_PROVIDER_LINEAR = 14;
+}
+
+enum CliSourceStatus {
+  CLI_SOURCE_STATUS_UNSPECIFIED = 0;
+  CLI_SOURCE_STATUS_ACTIVE = 1;
+  CLI_SOURCE_STATUS_ERROR = 2;
+  CLI_SOURCE_STATUS_DISCONNECTED = 3;
+}

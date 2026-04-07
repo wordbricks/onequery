@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+message GetSessionRequest {
+  optional string fields = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message GetSessionResponse {
+  CliAuthMode auth_mode = 1;
+  CliAuthSessionProjectedUser user = 2;
+  optional string active_org_slug = 3;
+  optional google.protobuf.Timestamp issued_at = 4;
+  optional google.protobuf.Timestamp expires_at = 5;
+}
+
+message RefreshSessionRequest {}
+
+message RefreshSessionResponse {
+  string access_token = 1;
+  CliAuthMode auth_mode = 2;
+  CliAuthSessionUser user = 3;
+  optional string active_org_slug = 4;
+  optional google.protobuf.Timestamp issued_at = 5;
+  optional google.protobuf.Timestamp expires_at = 6;
+}
+
+message StartDeviceAuthorizationRequest {}
+
+message StartDeviceAuthorizationResponse {
+  string state = 1;
+  string device_code = 2;
+  string user_code = 3;
+  string verification_url = 4;
+  string verification_complete_url = 5;
+  uint32 poll_after_ms = 6;
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+message PollDeviceAuthorizationRequest {
+  string device_code = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message PollDeviceAuthorizationResponse {
+  oneof outcome {
+    CliPendingDeviceAuthorization pending = 1;
+    CliAuthorizedDeviceAuthorization authorized = 2;
+  }
+}
+
+message CliAuthSessionProjectedUser {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+}
+
+message CliAuthSessionUser {
+  string id = 1;
+  string email = 2;
+  string display_name = 3;
+}
+
+message CliAuthSession {
+  CliAuthMode auth_mode = 1;
+  CliAuthSessionProjectedUser user = 2;
+  optional string active_org_slug = 3;
+  optional google.protobuf.Timestamp issued_at = 4;
+  optional google.protobuf.Timestamp expires_at = 5;
+}
+
+message CliRefreshSession {
+  string access_token = 1;
+  CliAuthMode auth_mode = 2;
+  CliAuthSessionUser user = 3;
+  optional string active_org_slug = 4;
+  optional google.protobuf.Timestamp issued_at = 5;
+  optional google.protobuf.Timestamp expires_at = 6;
+}
+
+message CliDeviceAuthorizationStart {
+  string state = 1;
+  string device_code = 2;
+  string user_code = 3;
+  string verification_url = 4;
+  string verification_complete_url = 5;
+  uint32 poll_after_ms = 6;
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+message CliPendingDeviceAuthorization {
+  string state = 1;
+  uint32 poll_after_ms = 2;
+}
+
+message CliAuthorizedDeviceAuthorization {
+  string state = 1;
+  string access_token = 2;
+  CliAuthMode auth_mode = 3;
+  CliAuthSessionUser user = 4;
+  optional string active_org_slug = 5;
+  optional google.protobuf.Timestamp issued_at = 6;
+  optional google.protobuf.Timestamp expires_at = 7;
+}
+
+enum CliAuthMode {
+  CLI_AUTH_MODE_UNSPECIFIED = 0;
+  CLI_AUTH_MODE_BROWSER_SESSION = 1;
+  CLI_AUTH_MODE_BEARER_TOKEN = 2;
+}

@@ -1,11 +1,15 @@
+use connectrpc::ConnectError;
+use connectrpc::ErrorCode;
+use http::HeaderMap;
 use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
-use reqwest::header::HeaderMap;
 
 use crate::output_metadata::SanitizationMetadata;
 use crate::output_metadata::UntrustedOutputMetadata;
-use crate::transport::generated::Error as GeneratedError;
 use crate::transport::generated::types;
+
+const REQUEST_ID_HEADER: &str = "x-request-id";
+const RETRY_AFTER_MS_HEADER: &str = "retry-after-ms";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ApiSuccess<T> {
@@ -32,17 +36,31 @@ impl ApiFailure {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ApiProblem {
-    pub(crate) status: StatusCode,
-    pub(crate) problem_type: Option<String>,
+    pub(crate) connect_code: Option<ErrorCode>,
+    pub(crate) status: Option<StatusCode>,
     pub(crate) title: Option<String>,
     pub(crate) detail: Option<String>,
     pub(crate) code: Option<String>,
     pub(crate) retryable: bool,
+    pub(crate) retry_after_ms: Option<u64>,
     pub(crate) stage: ErrorStage,
     pub(crate) hint: Option<String>,
     pub(crate) request_id: Option<String>,
     pub(crate) validation_issues: Vec<ApiValidationIssue>,
     pub(crate) raw_body: String,
+}
+
+impl ApiProblem {
+    pub(crate) fn is_auth_error(&self) -> bool {
+        match self.connect_code {
+            Some(ErrorCode::Unauthenticated | ErrorCode::PermissionDenied) => true,
+            Some(_) => false,
+            None => matches!(
+                self.status,
+                Some(StatusCode::UNAUTHORIZED) | Some(StatusCode::FORBIDDEN)
+            ),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -76,49 +94,44 @@ pub(crate) struct DecodeFailure {
 #[derive(Clone, Copy)]
 pub(crate) enum ProblemStageFallback {
     Fixed(ErrorStage),
-    FromStatus(fn(StatusCode) -> ErrorStage),
+    FromConnectCode(fn(ErrorCode) -> ErrorStage),
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct ResponseFailureStages {
     problem_stage: ProblemStageFallback,
-    decode_stage: ErrorStage,
 }
 
 impl ResponseFailureStages {
-    pub(crate) const fn fixed(problem_stage: ErrorStage, decode_stage: ErrorStage) -> Self {
+    pub(crate) const fn fixed(problem_stage: ErrorStage) -> Self {
         Self {
             problem_stage: ProblemStageFallback::Fixed(problem_stage),
-            decode_stage,
         }
     }
 
-    pub(crate) const fn from_status(
-        problem_stage: fn(StatusCode) -> ErrorStage,
-        decode_stage: ErrorStage,
-    ) -> Self {
+    pub(crate) const fn from_connect_code(problem_stage: fn(ErrorCode) -> ErrorStage) -> Self {
         Self {
-            problem_stage: ProblemStageFallback::FromStatus(problem_stage),
-            decode_stage,
+            problem_stage: ProblemStageFallback::FromConnectCode(problem_stage),
         }
     }
 
-    fn resolve_problem_stage(self, status: StatusCode) -> ErrorStage {
+    fn resolve_problem_stage(self, code: ErrorCode) -> ErrorStage {
         match self.problem_stage {
             ProblemStageFallback::Fixed(stage) => stage,
-            ProblemStageFallback::FromStatus(resolve_stage) => resolve_stage(status),
+            ProblemStageFallback::FromConnectCode(resolve_stage) => resolve_stage(code),
         }
     }
 }
 
 pub(crate) fn conversion_failure(stage: ErrorStage, message: impl Into<String>) -> ApiFailure {
     ApiFailure::Problem(ApiProblem {
-        status: StatusCode::UNPROCESSABLE_ENTITY,
-        problem_type: None,
-        title: Some("Invalid Request".to_owned()),
+        connect_code: Some(ErrorCode::InvalidArgument),
+        status: None,
+        title: None,
         detail: Some(message.into()),
         code: Some("invalid_request".to_owned()),
         retryable: false,
+        retry_after_ms: None,
         stage,
         hint: None,
         request_id: None,
@@ -139,13 +152,37 @@ pub(crate) fn decode_failure(
     })
 }
 
-fn transport_failure_from_error(kind: TransportFailureKind, error: reqwest::Error) -> ApiFailure {
-    ApiFailure::Transport(TransportFailure {
-        kind,
-        stage: ErrorStage::Http,
-        message: error.to_string(),
-        retryable: error.is_connect() || error.is_timeout(),
+pub(crate) fn failure_from_connect(
+    error: ConnectError,
+    stages: ResponseFailureStages,
+) -> ApiFailure {
+    let response_headers = &error.response_headers;
+    let trailers = &error.trailers;
+    let detail = non_empty(error.message);
+
+    ApiFailure::Problem(ApiProblem {
+        connect_code: Some(error.code),
+        status: None,
+        title: None,
+        detail,
+        code: Some(error.code.as_str().to_owned()),
+        retryable: connect_retryable(error.code),
+        retry_after_ms: response_retry_after_ms(response_headers)
+            .or_else(|| response_retry_after_ms(trailers)),
+        stage: stages.resolve_problem_stage(error.code),
+        hint: None,
+        request_id: response_request_id(response_headers).or_else(|| response_request_id(trailers)),
+        validation_issues: Vec::new(),
+        raw_body: String::new(),
     })
+}
+
+pub(crate) fn response_request_id(headers: &HeaderMap) -> Option<String> {
+    header_value(headers, REQUEST_ID_HEADER)
+}
+
+pub(crate) fn response_retry_after_ms(headers: &HeaderMap) -> Option<u64> {
+    header_value(headers, RETRY_AFTER_MS_HEADER).and_then(|value| value.parse().ok())
 }
 
 pub(crate) fn try_into_value<T, V>(value: V, stage: ErrorStage) -> Result<T, ApiFailure>
@@ -167,99 +204,6 @@ where
     value.map(|value| try_into_value(value, stage)).transpose()
 }
 
-pub(crate) async fn failure_from_generated(
-    error: GeneratedError<types::CliProblem>,
-    stages: ResponseFailureStages,
-) -> ApiFailure {
-    match error {
-        GeneratedError::InvalidRequest(message) | GeneratedError::Custom(message) => {
-            conversion_failure(
-                stages.resolve_problem_stage(StatusCode::UNPROCESSABLE_ENTITY),
-                message,
-            )
-        }
-        GeneratedError::CommunicationError(request_error) => {
-            transport_failure_from_error(TransportFailureKind::SendRequest, request_error)
-        }
-        GeneratedError::InvalidUpgrade(read_error)
-        | GeneratedError::ResponseBodyError(read_error) => {
-            transport_failure_from_error(TransportFailureKind::ReadResponseBody, read_error)
-        }
-        GeneratedError::InvalidResponsePayload(_, decode_error) => {
-            ApiFailure::Decode(DecodeFailure {
-                stage: stages.decode_stage,
-                message: decode_error.to_string(),
-                request_id: None,
-            })
-        }
-        GeneratedError::ErrorResponse(response) => {
-            let status = response.status();
-            let request_id = response_request_id(response.headers());
-            let problem =
-                problem_from_generated_payload(response.into_inner(), status, request_id, None);
-            ApiFailure::Problem(problem)
-        }
-        GeneratedError::UnexpectedResponse(response) => {
-            let status = response.status();
-            let request_id = response_request_id(response.headers());
-            let body_bytes = response.bytes().await.map_err(|read_error| {
-                transport_failure_from_error(TransportFailureKind::ReadResponseBody, read_error)
-            });
-
-            match body_bytes {
-                Ok(_body_bytes) if status.is_success() => ApiFailure::Decode(DecodeFailure {
-                    stage: stages.decode_stage,
-                    message: format!("unexpected response status {status}"),
-                    request_id,
-                }),
-                Ok(body_bytes) => ApiFailure::Problem(parse_problem_response(
-                    status,
-                    request_id,
-                    &body_bytes,
-                    stages.resolve_problem_stage(status),
-                )),
-                Err(failure) => failure,
-            }
-        }
-    }
-}
-
-pub(crate) fn parse_problem_response(
-    status: StatusCode,
-    header_request_id: Option<String>,
-    body_bytes: &[u8],
-    fallback_stage: ErrorStage,
-) -> ApiProblem {
-    let raw_body = String::from_utf8_lossy(body_bytes).into_owned();
-    match serde_json::from_slice::<types::CliProblem>(body_bytes) {
-        Ok(problem) => {
-            problem_from_generated_payload(problem, status, header_request_id, Some(raw_body))
-        }
-        Err(_) => ApiProblem {
-            status,
-            problem_type: None,
-            title: None,
-            detail: None,
-            code: None,
-            retryable: status_implies_retryable(status),
-            stage: fallback_stage,
-            hint: None,
-            request_id: header_request_id,
-            validation_issues: Vec::new(),
-            raw_body,
-        },
-    }
-}
-
-pub(crate) fn response_request_id(headers: &HeaderMap) -> Option<String> {
-    headers
-        .get("x-request-id")
-        .and_then(|value| value.to_str().ok())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
-}
-
 pub(crate) fn untrusted_output_metadata_from_generated<T>(
     untrusted_paths: Vec<T>,
     sanitization: Option<types::CliSanitization>,
@@ -270,253 +214,106 @@ where
     UntrustedOutputMetadata {
         untrusted_paths: untrusted_paths.into_iter().map(Into::into).collect(),
         sanitization: sanitization.map(|sanitization| SanitizationMetadata {
-            profile: sanitization.profile.into(),
-            sanitized_paths: sanitization
-                .sanitized_paths
-                .into_iter()
-                .map(Into::into)
-                .collect(),
+            profile: sanitization.profile,
+            sanitized_paths: sanitization.sanitized_paths.into_iter().collect(),
             raw_available: sanitization.raw_available,
         }),
     }
 }
 
+fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
 fn non_empty(value: Option<String>) -> Option<String> {
-    value.and_then(|candidate| {
-        if candidate.trim().is_empty() {
-            return None;
-        }
-
-        Some(candidate)
-    })
+    value.filter(|candidate| !candidate.trim().is_empty())
 }
 
-fn problem_from_generated_payload(
-    problem: types::CliProblem,
-    status: StatusCode,
-    header_request_id: Option<String>,
-    raw_body: Option<String>,
-) -> ApiProblem {
-    let raw_body = raw_body.unwrap_or_else(|| serde_json::to_string(&problem).unwrap_or_default());
-    let request_id = non_empty(Some(String::from(problem.request_id))).or(header_request_id);
-
-    ApiProblem {
-        status,
-        problem_type: non_empty(Some(problem.type_)),
-        title: non_empty(Some(problem.title)),
-        detail: non_empty(problem.detail),
-        code: Some(problem.code.to_string()),
-        retryable: problem.retryable,
-        stage: generated_problem_stage_to_error_stage(problem.stage),
-        hint: non_empty(problem.hint),
-        request_id,
-        validation_issues: problem
-            .errors
-            .into_iter()
-            .map(|issue| ApiValidationIssue {
-                field: issue.field,
-                message: issue.message,
-                code: issue.code,
-            })
-            .collect(),
-        raw_body,
-    }
-}
-
-fn status_implies_retryable(status: StatusCode) -> bool {
+fn connect_retryable(code: ErrorCode) -> bool {
     matches!(
-        status,
-        StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT
+        code,
+        ErrorCode::Unavailable | ErrorCode::DeadlineExceeded | ErrorCode::ResourceExhausted
     )
 }
 
-fn generated_problem_stage_to_error_stage(stage: types::CliProblemStage) -> ErrorStage {
-    match stage {
-        types::CliProblemStage::Auth => ErrorStage::Auth,
-        types::CliProblemStage::ExecuteQuery => ErrorStage::ExecuteQuery,
-        types::CliProblemStage::ReadQueryInput => ErrorStage::ReadQueryInput,
-        types::CliProblemStage::ResolveOrg => ErrorStage::ResolveOrg,
-        types::CliProblemStage::ResolveSource => ErrorStage::ResolveSource,
+pub(crate) fn connect_title(code: ErrorCode) -> String {
+    match code {
+        ErrorCode::InvalidArgument => "Invalid request".to_owned(),
+        ErrorCode::Unauthenticated => "Not authenticated".to_owned(),
+        ErrorCode::PermissionDenied => "Forbidden".to_owned(),
+        ErrorCode::NotFound => "Not found".to_owned(),
+        ErrorCode::AlreadyExists => "Already exists".to_owned(),
+        ErrorCode::FailedPrecondition => "Failed precondition".to_owned(),
+        ErrorCode::ResourceExhausted => "Rate limited".to_owned(),
+        ErrorCode::DeadlineExceeded => "Deadline exceeded".to_owned(),
+        ErrorCode::Unavailable => "Service unavailable".to_owned(),
+        ErrorCode::Internal => "Internal error".to_owned(),
+        _ => code.as_str().replace('_', " "),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use connectrpc::ConnectError;
+    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
-    use serde_json::json;
 
     use super::ApiFailure;
     use super::ApiProblem;
-    use super::ApiValidationIssue;
-    use super::TransportFailure;
-    use super::TransportFailureKind;
-    use super::parse_problem_response;
+    use super::ResponseFailureStages;
+    use super::failure_from_connect;
+    use super::response_request_id;
+    use super::response_retry_after_ms;
 
     #[test]
-    fn parse_problem_response_reads_cli_problem_extensions() {
-        let problem = parse_problem_response(
-            StatusCode::NOT_FOUND,
-            None,
-            json!({
-                "type": "https://onequery.invalid/problems/cli/source-not-found",
-                "status": 404,
-                "title": "Source Not Found",
-                "detail": "no source named \"warehouse\" exists",
-                "code": "source_not_found",
-                "stage": "resolve_source",
-                "hint": "run `onequery source list`",
-                "requestId": "req_123",
-                "retryable": false
-            })
-            .to_string()
-            .as_bytes(),
-            ErrorStage::Http,
+    fn response_metadata_helpers_read_request_id_and_retry_after() {
+        let mut headers = http::HeaderMap::new();
+        headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_cli_123"),
         );
+        headers.insert("retry-after-ms", http::HeaderValue::from_static("1500"));
 
         assert_eq!(
-            problem,
-            ApiProblem {
-                status: StatusCode::NOT_FOUND,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/source-not-found".to_owned()
-                ),
-                title: Some("Source Not Found".to_owned()),
-                detail: Some("no source named \"warehouse\" exists".to_owned()),
-                code: Some("source_not_found".to_owned()),
-                retryable: false,
-                stage: ErrorStage::ResolveSource,
-                hint: Some("run `onequery source list`".to_owned()),
-                request_id: Some("req_123".to_owned()),
-                validation_issues: Vec::new(),
-                raw_body: json!({
-                    "type": "https://onequery.invalid/problems/cli/source-not-found",
-                    "status": 404,
-                    "title": "Source Not Found",
-                    "detail": "no source named \"warehouse\" exists",
-                    "code": "source_not_found",
-                    "stage": "resolve_source",
-                    "hint": "run `onequery source list`",
-                    "requestId": "req_123",
-                    "retryable": false
-                })
-                .to_string(),
-            }
+            response_request_id(&headers),
+            Some("req_cli_123".to_owned())
         );
+        assert_eq!(response_retry_after_ms(&headers), Some(1500));
     }
 
     #[test]
-    fn parse_problem_response_falls_back_to_header_request_id_for_unstructured_body() {
-        let problem = parse_problem_response(
-            StatusCode::BAD_GATEWAY,
-            Some("req_header".to_owned()),
-            b"<html>bad gateway</html>",
-            ErrorStage::Http,
+    fn failure_from_connect_maps_code_and_metadata() {
+        let mut error = ConnectError::new(ErrorCode::ResourceExhausted, "polling is rate limited");
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_rate_limited"),
         );
+        error
+            .response_headers
+            .insert("retry-after-ms", http::HeaderValue::from_static("10000"));
 
         assert_eq!(
-            problem,
-            ApiProblem {
-                status: StatusCode::BAD_GATEWAY,
-                problem_type: None,
+            failure_from_connect(error, ResponseFailureStages::fixed(ErrorStage::Auth)),
+            ApiFailure::Problem(ApiProblem {
+                connect_code: Some(ErrorCode::ResourceExhausted),
+                status: None,
                 title: None,
-                detail: None,
-                code: None,
+                detail: Some("polling is rate limited".to_owned()),
+                code: Some("resource_exhausted".to_owned()),
                 retryable: true,
-                stage: ErrorStage::Http,
+                retry_after_ms: Some(10_000),
+                stage: ErrorStage::Auth,
                 hint: None,
-                request_id: Some("req_header".to_owned()),
+                request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: "<html>bad gateway</html>".to_owned(),
-            }
-        );
-    }
-
-    #[test]
-    fn parse_problem_response_reads_validation_issues() {
-        let problem = parse_problem_response(
-            StatusCode::BAD_REQUEST,
-            None,
-            json!({
-                "type": "https://onequery.invalid/problems/cli/invalid-request",
-                "status": 400,
-                "title": "Invalid Request",
-                "detail": "source is required",
-                "code": "invalid_request",
-                "stage": "resolve_source",
-                "hint": "correct the request and retry",
-                "requestId": "req_validation",
-                "retryable": false,
-                "errors": [
-                    {
-                        "field": "source",
-                        "message": "source is required",
-                        "code": "too_small"
-                    },
-                    {
-                        "field": "sql",
-                        "message": "query must be read-only",
-                        "code": "custom"
-                    }
-                ]
+                raw_body: String::new(),
             })
-            .to_string()
-            .as_bytes(),
-            ErrorStage::Http,
-        );
-
-        assert_eq!(
-            problem.validation_issues,
-            vec![
-                ApiValidationIssue {
-                    field: "source".to_owned(),
-                    message: "source is required".to_owned(),
-                    code: "too_small".to_owned(),
-                },
-                ApiValidationIssue {
-                    field: "sql".to_owned(),
-                    message: "query must be read-only".to_owned(),
-                    code: "custom".to_owned(),
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn retryable_failures_only_cover_transient_statuses_and_transport_errors() {
-        assert_eq!(
-            [
-                ApiFailure::Problem(ApiProblem {
-                    status: StatusCode::SERVICE_UNAVAILABLE,
-                    problem_type: None,
-                    title: None,
-                    detail: None,
-                    code: None,
-                    retryable: true,
-                    stage: ErrorStage::Http,
-                    hint: None,
-                    request_id: None,
-                    validation_issues: Vec::new(),
-                    raw_body: String::new(),
-                })
-                .is_retryable(),
-                ApiFailure::Transport(TransportFailure {
-                    kind: TransportFailureKind::SendRequest,
-                    stage: ErrorStage::Http,
-                    message: "timeout".to_owned(),
-                    retryable: true,
-                })
-                .is_retryable(),
-                ApiFailure::Transport(TransportFailure {
-                    kind: TransportFailureKind::ReadResponseBody,
-                    stage: ErrorStage::Http,
-                    message: "invalid chunk".to_owned(),
-                    retryable: false,
-                })
-                .is_retryable(),
-            ],
-            [true, true, false]
         );
     }
 }

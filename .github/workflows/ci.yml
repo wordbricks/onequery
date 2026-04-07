@@ -236,14 +236,17 @@ jobs:
       - name: Install dependencies
         run: bun ci
 
+      - name: Add Bun tool binaries to PATH
+        run: echo "${GITHUB_WORKSPACE}/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: CLI Lint & Format
         working-directory: apps/cli
         run: |
           # CONTEXT: Keep CI independent from `just`; invoke the underlying checks directly.
           cargo fmt -- --check --config imports_granularity=Item
           cargo clippy --tests
-          cd ../../packages/cli-server
-          bun run openapi:cli:check
+          cd ../..
+          bun run proto:check
 
       - name: CLI Build
         working-directory: apps/cli

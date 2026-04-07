@@ -150,6 +150,121 @@ function collectProcessOutput(child: ReturnType<typeof spawn>): {
   };
 }
 
+async function callCliConnectRpc(input: {
+  baseUrl: string;
+  method:
+    | "Use"
+    | "GetSession"
+    | "RefreshSession"
+    | "ListOrganizations"
+    | "GetOrganization"
+    | "GetSourceConnectGuide"
+    | "ConnectSource"
+    | "ListSources"
+    | "GetSource";
+  body?: unknown;
+  cookieHeader?: string | null;
+  requestId: string;
+}): Promise<{ payload: unknown; response: Response }> {
+  const response = await fetch(
+    `${input.baseUrl}/api/cli/onequery.cli.v1.CliService/${input.method}`,
+    {
+      body: JSON.stringify(input.body ?? {}),
+      headers: {
+        "Connect-Protocol-Version": "1",
+        "content-type": "application/json",
+        ...(input.cookieHeader ? { cookie: input.cookieHeader } : {}),
+        "x-request-id": input.requestId,
+      },
+      method: "POST",
+    }
+  );
+
+  const rawBody = await response.text();
+  const payload = rawBody.length === 0 ? null : JSON.parse(rawBody);
+
+  if (!response.ok) {
+    throw new Error(
+      `Connect RPC ${input.method} failed with ${response.status}: ${rawBody}`
+    );
+  }
+
+  expect(response.headers.get("x-request-id")).toBe(input.requestId);
+  expect(response.headers.get("content-type")).toContain("application/json");
+  expect(payload && typeof payload === "object" && "requestId" in payload).toBe(
+    false
+  );
+
+  return {
+    payload,
+    response,
+  };
+}
+
+async function refreshCliAccessToken(input: {
+  baseUrl: string;
+  cookieHeader: string;
+}): Promise<string> {
+  const refreshResponse = await callCliConnectRpc({
+    baseUrl: input.baseUrl,
+    body: {},
+    cookieHeader: input.cookieHeader,
+    method: "RefreshSession",
+    requestId: "req_cli_refresh_session_123",
+  });
+  const payload = refreshResponse.payload as {
+    accessToken?: unknown;
+  };
+
+  if (
+    typeof payload.accessToken !== "string" ||
+    payload.accessToken.length === 0
+  ) {
+    throw new Error("RefreshSession did not return an accessToken");
+  }
+
+  return payload.accessToken;
+}
+
+function runPackagedCliJsonCommand(input: {
+  args: string[];
+  env: Record<string, string>;
+  stagedBundleRoot: string;
+}): {
+  output: {
+    data: unknown;
+    ok: boolean;
+    requestId?: string;
+  };
+  stderr: string;
+  stdout: string;
+} {
+  const cliPath = resolveStagedCliPath(input.stagedBundleRoot);
+  const result = spawnSync(cliPath, ["--output", "json", ...input.args], {
+    cwd: cliRootDir,
+    encoding: "utf8",
+    env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
+  });
+  const stdout = result.stdout ?? "";
+  const stderr = result.stderr ?? "";
+
+  if (result.status !== 0) {
+    throw new Error(
+      `CLI command failed (${input.args.join(" ")}):\nstdout:\n${stdout}\nstderr:\n${stderr}`
+    );
+  }
+
+  return {
+    output: JSON.parse(stdout) as {
+      data: unknown;
+      ok: boolean;
+      requestId?: string;
+    },
+    stderr,
+    stdout,
+  };
+}
+
 async function waitForBootstrap(baseUrl: string): Promise<Response> {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   let lastError: unknown = null;
@@ -269,7 +384,7 @@ async function stopServeProcess(input: {
 }
 
 describe("CLI self-host smoke", () => {
-  it("bootstraps a fresh self-host runtime and creates a data source through the packaged serve path", async () => {
+  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged serve path", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-self-host-home-");
 
@@ -326,8 +441,96 @@ describe("CLI self-host smoke", () => {
         },
       });
 
-      const dataSourceResponse = await fetch(`${baseUrl}/api/data-sources`, {
-        body: JSON.stringify({
+      const useResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          source: "CLI_USE_SOURCE_GITHUB",
+        },
+        method: "Use",
+        requestId: "req_cli_use_123",
+      });
+      expect(useResponse.payload).toMatchObject({
+        content: expect.any(String),
+        description: expect.any(String),
+        format: "CLI_CONTENT_FORMAT_MARKDOWN",
+        source: "CLI_USE_SOURCE_GITHUB",
+        title: expect.any(String),
+      });
+
+      const sessionResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "user.email,activeOrgSlug",
+        },
+        cookieHeader,
+        method: "GetSession",
+        requestId: "req_cli_session_123",
+      });
+      expect(sessionResponse.payload).toEqual({
+        user: {
+          email: "owner@example.com",
+        },
+      });
+
+      const organizationsResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "organizations.slug",
+          limit: 1,
+        },
+        cookieHeader,
+        method: "ListOrganizations",
+        requestId: "req_cli_orgs_123",
+      });
+      expect(organizationsResponse.payload).toMatchObject({
+        organizations: [{ slug: "owner-org" }],
+        page: {
+          returned: "1",
+        },
+      });
+
+      const organizationResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "slug,capabilities",
+          orgSlug: "owner-org",
+        },
+        cookieHeader,
+        method: "GetOrganization",
+        requestId: "req_cli_org_123",
+      });
+      expect(organizationResponse.payload).toMatchObject({
+        capabilities: expect.arrayContaining([
+          "CLI_ORG_CAPABILITY_SOURCE_CONNECT",
+        ]),
+        slug: "owner-org",
+      });
+
+      const guideResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          orgSlug: "owner-org",
+          source: "CLI_SOURCE_PROVIDER_POSTGRES",
+        },
+        cookieHeader,
+        method: "GetSourceConnectGuide",
+        requestId: "req_cli_guide_123",
+      });
+      expect(guideResponse.payload).toMatchObject({
+        command: expect.stringContaining(
+          "onequery source connect --source postgres"
+        ),
+        providers: expect.arrayContaining([
+          expect.objectContaining({
+            provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          }),
+        ]),
+        title: expect.any(String),
+      });
+
+      const connectSourceResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
           credentials: {
             database: "analytics",
             host: "localhost",
@@ -338,36 +541,363 @@ describe("CLI self-host smoke", () => {
             username: "postgres",
           },
           name: "Warehouse",
-          organizationId: bootstrapPayload.bootstrap.organizationId,
-          provider: "postgres",
-        }),
-        headers: {
-          "content-type": "application/json",
-          cookie: cookieHeader ?? "",
-          origin: baseUrl,
+          orgSlug: "owner-org",
+          source: "CLI_SOURCE_PROVIDER_POSTGRES",
         },
-        method: "POST",
+        cookieHeader,
+        method: "ConnectSource",
+        requestId: "req_cli_connect_source_123",
+      });
+      expect(connectSourceResponse.payload).toMatchObject({
+        nextCommand: "onequery source show Warehouse",
+        source: {
+          name: "Warehouse",
+          provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          queryable: true,
+          status: "CLI_SOURCE_STATUS_ACTIVE",
+        },
       });
 
-      expect(dataSourceResponse.status).toBe(201);
-      const dataSourcePayload = (await dataSourceResponse.json()) as {
-        dataSource: {
-          name: string;
-          provider: string;
-          status: string;
-        };
-      };
-
-      expect(dataSourcePayload).toMatchObject({
-        dataSource: {
-          name: "Warehouse",
-          provider: "postgres",
-          status: "active",
+      const sourcesResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "sources.name,sources.status",
+          limit: 1,
+          orgSlug: "owner-org",
         },
+        cookieHeader,
+        method: "ListSources",
+        requestId: "req_cli_sources_123",
+      });
+      expect(sourcesResponse.payload).toMatchObject({
+        sources: [
+          {
+            name: "Warehouse",
+            status: "CLI_SOURCE_STATUS_ACTIVE",
+          },
+        ],
+        page: {
+          returned: "1",
+        },
+      });
+
+      const sourceResponse = await callCliConnectRpc({
+        baseUrl,
+        body: {
+          fields: "name,queryable",
+          orgSlug: "owner-org",
+          sourceKey: "Warehouse",
+        },
+        cookieHeader,
+        method: "GetSource",
+        requestId: "req_cli_source_123",
+      });
+      expect(sourceResponse.payload).toEqual({
+        name: "Warehouse",
+        queryable: true,
       });
     } catch (error) {
       throw new Error(
         `self-host smoke failed.\n${handle.output.read()}\n${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error }
+      );
+    } finally {
+      await stopServeProcess({
+        child: handle.child,
+        env,
+        homeDir,
+        output: handle.output,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("runs the packaged CLI against the self-host Connect API", async () => {
+    const { baseUrl, env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-connect-cli-home-");
+
+    writeSelfHostConfig(homeDir, port);
+
+    const handle = await startServeProcess({
+      env,
+      stagedBundleRoot,
+    });
+
+    try {
+      await waitForBootstrap(baseUrl);
+
+      const bootstrapResponse = await fetch(
+        `${baseUrl}/api/bootstrap/complete`,
+        {
+          body: JSON.stringify({
+            email: "owner@example.com",
+            name: "Owner",
+            organizationName: "Owner Org",
+            organizationSlug: "owner-org",
+            password: "password123",
+          }),
+          headers: {
+            "content-type": "application/json",
+            origin: baseUrl,
+          },
+          method: "POST",
+        }
+      );
+
+      expect(bootstrapResponse.status).toBe(201);
+      const cookieHeader = buildCookieHeader(bootstrapResponse.headers);
+      if (!cookieHeader) {
+        throw new Error("bootstrap did not return a session cookie");
+      }
+
+      const accessToken = await refreshCliAccessToken({
+        baseUrl,
+        cookieHeader,
+      });
+      const cliEnv = {
+        ...env,
+        ONEQUERY_ACCESS_TOKEN: accessToken,
+        ONEQUERY_BASE_URL: baseUrl,
+      };
+
+      const whoami = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_whoami_123",
+          "auth",
+          "whoami",
+          "--fields",
+          "user.email",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(whoami.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_whoami_123",
+        data: {
+          user: {
+            email: "owner@example.com",
+          },
+        },
+      });
+
+      const orgUse = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_org_use_123",
+          "org",
+          "use",
+          "owner-org",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgUse.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_org_use_123",
+        data: {
+          activeOrg: "owner-org",
+          changed: true,
+        },
+      });
+
+      const orgCurrent = runPackagedCliJsonCommand({
+        args: ["org", "current"],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgCurrent.output).toMatchObject({
+        ok: true,
+        data: {
+          org: "owner-org",
+          resolved: true,
+          source: "config",
+        },
+      });
+
+      const authSessionRefresh = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_auth_refresh_123",
+          "auth",
+          "session",
+          "refresh",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(authSessionRefresh.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_auth_refresh_123",
+        data: {
+          accessTokenRedacted: true,
+        },
+      });
+
+      const orgGet = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_org_get_123",
+          "org",
+          "get",
+          "--fields",
+          "slug,capabilities",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(orgGet.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_org_get_123",
+        data: {
+          slug: "owner-org",
+        },
+      });
+
+      const sourceConnect = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_connect_123",
+          "source",
+          "connect",
+          "--source",
+          "postgres",
+          "--input",
+          JSON.stringify({
+            name: "warehouse-cli",
+            credentials: {
+              database: "analytics",
+              host: "localhost",
+              password: "password",
+              port: 5432,
+              sslMode: "prefer",
+              type: "postgres",
+              username: "postgres",
+            },
+          }),
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceConnect.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_connect_123",
+        data: {
+          nextCommand: "onequery source show warehouse-cli",
+          source: {
+            name: "warehouse-cli",
+            provider: "postgres",
+            queryable: true,
+            status: "active",
+          },
+        },
+      });
+
+      const sourceList = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_list_123",
+          "source",
+          "list",
+          "--fields",
+          "sources.name,sources.status",
+          "--page-size",
+          "1",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceList.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_list_123",
+        data: {
+          sources: [
+            {
+              name: "warehouse-cli",
+              status: "active",
+            },
+          ],
+        },
+      });
+
+      const sourceShow = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_source_show_123",
+          "source",
+          "show",
+          "warehouse-cli",
+          "--fields",
+          "name,queryable",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(sourceShow.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_source_show_123",
+        data: {
+          name: "warehouse-cli",
+          queryable: true,
+        },
+      });
+
+      const queryValidate = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_query_validate_123",
+          "query",
+          "validate",
+          "--source",
+          "warehouse-cli",
+          "--sql",
+          "select 1",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(queryValidate.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_query_validate_123",
+        data: {
+          normalizedSql: expect.any(String),
+          source: {
+            name: "warehouse-cli",
+          },
+        },
+      });
+
+      const useSkill = runPackagedCliJsonCommand({
+        args: [
+          "--request-id",
+          "req_cli_cmd_use_123",
+          "--org",
+          "owner-org",
+          "use",
+          "--source",
+          "github",
+        ],
+        env: cliEnv,
+        stagedBundleRoot,
+      });
+      expect(useSkill.output).toMatchObject({
+        ok: true,
+        requestId: "req_cli_cmd_use_123",
+        data: {
+          source: "github",
+          title: expect.any(String),
+        },
+      });
+    } catch (error) {
+      throw new Error(
+        `self-host cli smoke failed.\n${handle.output.read()}\n${
           error instanceof Error ? error.message : String(error)
         }`,
         { cause: error }

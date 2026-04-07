@@ -1,4 +1,3 @@
-use reqwest::StatusCode;
 use serde::Deserialize;
 
 use crate::transport::client::AuthenticatedApiClient;
@@ -9,7 +8,7 @@ use crate::transport::http::ApiProblem;
 use crate::transport::http::ApiSuccess;
 use crate::transport::http::ResponseFailureStages;
 use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_generated;
+use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_value;
 use onequery_cli_core::error::ErrorStage;
@@ -62,35 +61,25 @@ pub(crate) enum LoginPollOutcome {
 pub(crate) async fn start_login_session(
     client: &UnauthenticatedApiClient,
 ) -> Result<ApiSuccess<LoginSession>, ApiFailure> {
-    let response = match client.cli().cli_auth_device_authorization_start().await {
+    let response = match client
+        .cli()
+        .start_device_authorization(types::StartDeviceAuthorizationRequest::default())
+        .await
+    {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth, ErrorStage::Auth),
-            )
-            .await);
+                ResponseFailureStages::fixed(ErrorStage::Auth),
+            ));
         }
     };
 
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
-    let seconds_until_expiry = payload
-        .data
-        .expires_at
-        .signed_duration_since(chrono::Utc::now())
-        .num_seconds()
-        .max(0);
+    let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: LoginSession {
-            device_code: payload.data.device_code.into(),
-            user_code: payload.data.user_code.into(),
-            verification_uri: payload.data.verification_url,
-            verification_uri_complete: payload.data.verification_complete_url,
-            poll_interval_ms: payload.data.poll_after_ms.get(),
-            expires_in_sec: u64::try_from(seconds_until_expiry).unwrap_or(0),
-        },
+        payload: login_session_from_generated(payload, request_id.clone())?,
         request_id,
     })
 }
@@ -99,38 +88,26 @@ pub(crate) async fn poll_login_session(
     client: &UnauthenticatedApiClient,
     session: &LoginSession,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
-    let body = types::CliAuthDeviceAuthorizationPollRequest {
+    let body = types::PollDeviceAuthorizationRequest {
         device_code: try_into_value(session.device_code.as_str(), ErrorStage::Auth)?,
+        ..Default::default()
     };
-    let response = match client.cli().cli_auth_device_authorization_poll(&body).await {
+    let response = match client.cli().poll_device_authorization(body).await {
         Ok(response) => Ok(response),
-        Err(error) => Err(failure_from_generated(
+        Err(error) => Err(failure_from_connect(
             error,
-            ResponseFailureStages::fixed(ErrorStage::Auth, ErrorStage::Auth),
-        )
-        .await),
+            ResponseFailureStages::fixed(ErrorStage::Auth),
+        )),
     };
 
     match response {
         Ok(response) => {
             let request_id = response_request_id(response.headers());
-            let payload = response.into_inner();
-            let payload = match payload.data {
-                types::CliAuthDeviceAuthorizationPollEnvelopeData::SuccessResponse(
-                    types::CliAuthDeviceAuthorizationSuccessResponse { access_token, .. },
-                ) => LoginPollOutcome::Authorized {
-                    access_token: access_token.into(),
-                },
-                types::CliAuthDeviceAuthorizationPollEnvelopeData::PendingResponse(
-                    types::CliAuthDeviceAuthorizationPendingResponse { poll_after_ms, .. },
-                ) => {
-                    if poll_after_ms.get() > session.poll_interval_ms {
-                        LoginPollOutcome::SlowDown
-                    } else {
-                        LoginPollOutcome::Pending
-                    }
-                }
-            };
+            let payload = login_poll_outcome_from_generated(
+                response.into_owned(),
+                session.poll_interval_ms,
+                request_id.clone(),
+            )?;
 
             Ok(ApiSuccess {
                 payload,
@@ -145,39 +122,23 @@ pub(crate) async fn poll_login_session(
 pub(crate) async fn whoami(
     client: &AuthenticatedApiClient,
 ) -> Result<ApiSuccess<WhoAmI>, ApiFailure> {
-    // CONTEXT: Part 6 promotes session reads to the top-level `/session` route
-    // rather than nesting them under `/auth`.
-    let response = match client.cli().cli_session_read(None).await {
+    let response = match client
+        .cli()
+        .get_session(types::GetSessionRequest::default())
+        .await
+    {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth, ErrorStage::Auth),
-            )
-            .await);
+                ResponseFailureStages::fixed(ErrorStage::Auth),
+            ));
         }
     };
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
-    let user = payload.data.user.ok_or_else(|| {
-        decode_failure(
-            ErrorStage::Auth,
-            "session response missing user payload",
-            request_id.clone(),
-        )
-    })?;
 
     Ok(ApiSuccess {
-        payload: WhoAmI {
-            auth_mode: payload
-                .data
-                .auth_mode
-                .map(|auth_mode| auth_mode.to_string()),
-            user: projected_user_from_response(user, request_id.clone())?,
-            active_org: payload.data.active_org_slug.map(Into::into),
-            issued_at: format_datetime(payload.data.issued_at),
-            expires_at: format_datetime(payload.data.expires_at),
-        },
+        payload: whoami_from_generated(response.into_owned(), request_id.clone())?,
         request_id,
     })
 }
@@ -191,34 +152,23 @@ pub(crate) struct RefreshedAuthSession {
 pub(crate) async fn refresh_session(
     client: &AuthenticatedApiClient,
 ) -> Result<ApiSuccess<RefreshedAuthSession>, ApiFailure> {
-    let response = match client.cli().cli_session_refresh().await {
+    let response = match client
+        .cli()
+        .refresh_session(types::RefreshSessionRequest::default())
+        .await
+    {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_generated(
+            return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth, ErrorStage::Auth),
-            )
-            .await);
+                ResponseFailureStages::fixed(ErrorStage::Auth),
+            ));
         }
     };
     let request_id = response_request_id(response.headers());
-    let payload = response.into_inner();
 
     Ok(ApiSuccess {
-        payload: RefreshedAuthSession {
-            completion: LoginCompletion {
-                access_token: payload.data.access_token.into(),
-                auth_mode: Some(payload.data.auth_mode.to_string()),
-                user: UserProfile {
-                    id: payload.data.user.id,
-                    email: payload.data.user.email,
-                    display_name: payload.data.user.display_name,
-                },
-                issued_at: format_datetime(payload.data.issued_at),
-                expires_at: format_datetime(payload.data.expires_at),
-            },
-            active_org: payload.data.active_org_slug.map(Into::into),
-        },
+        payload: refreshed_auth_session_from_generated(response.into_owned(), request_id.clone())?,
         request_id,
     })
 }
@@ -226,10 +176,15 @@ pub(crate) async fn refresh_session(
 fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
-    let payload = match (problem.status, problem.code.as_deref()) {
-        (StatusCode::FORBIDDEN, Some("login_denied")) => LoginPollOutcome::Denied,
-        (StatusCode::GONE, Some("login_session_expired")) => LoginPollOutcome::Expired,
-        _ => return Err(ApiFailure::Problem(problem)),
+    let payload = match problem.connect_code {
+        Some(connectrpc::ErrorCode::PermissionDenied) => LoginPollOutcome::Denied,
+        Some(connectrpc::ErrorCode::FailedPrecondition) => LoginPollOutcome::Expired,
+        Some(_) => return Err(ApiFailure::Problem(problem)),
+        None => match problem.code.as_deref() {
+            Some("permission_denied") => LoginPollOutcome::Denied,
+            Some("failed_precondition") => LoginPollOutcome::Expired,
+            _ => return Err(ApiFailure::Problem(problem)),
+        },
     };
 
     Ok(ApiSuccess {
@@ -238,801 +193,516 @@ fn interpret_login_poll_problem(
     })
 }
 
+fn login_session_from_generated(
+    response: types::StartDeviceAuthorizationResponse,
+    request_id: Option<String>,
+) -> Result<LoginSession, ApiFailure> {
+    let expires_at = required_timestamp(
+        response.expires_at.into_option(),
+        "device authorization start response missing expiresAt",
+        request_id.clone(),
+    )?;
+    let seconds_until_expiry = expires_at
+        .signed_duration_since(chrono::Utc::now())
+        .num_seconds()
+        .max(0);
+
+    Ok(LoginSession {
+        device_code: required_auth_string(
+            response.device_code,
+            "device authorization start response missing deviceCode",
+            request_id.clone(),
+        )?,
+        user_code: required_auth_string(
+            response.user_code,
+            "device authorization start response missing userCode",
+            request_id.clone(),
+        )?,
+        verification_uri: required_auth_string(
+            response.verification_url,
+            "device authorization start response missing verificationUrl",
+            request_id.clone(),
+        )?,
+        verification_uri_complete: required_auth_string(
+            response.verification_complete_url,
+            "device authorization start response missing verificationCompleteUrl",
+            request_id,
+        )?,
+        poll_interval_ms: u64::from(response.poll_after_ms),
+        expires_in_sec: u64::try_from(seconds_until_expiry).unwrap_or(0),
+    })
+}
+
+fn login_poll_outcome_from_generated(
+    response: types::PollDeviceAuthorizationResponse,
+    poll_interval_ms: u64,
+    request_id: Option<String>,
+) -> Result<LoginPollOutcome, ApiFailure> {
+    match response.outcome {
+        Some(types::poll_device_authorization_response::Outcome::Pending(pending)) => {
+            if u64::from(pending.poll_after_ms) > poll_interval_ms {
+                Ok(LoginPollOutcome::SlowDown)
+            } else {
+                Ok(LoginPollOutcome::Pending)
+            }
+        }
+        Some(types::poll_device_authorization_response::Outcome::Authorized(authorized)) => {
+            Ok(LoginPollOutcome::Authorized {
+                access_token: required_auth_string(
+                    authorized.access_token,
+                    "device authorization poll response missing accessToken",
+                    request_id,
+                )?,
+            })
+        }
+        None => Err(decode_failure(
+            ErrorStage::Auth,
+            "device authorization poll response missing outcome",
+            request_id,
+        )),
+    }
+}
+
+fn whoami_from_generated(
+    response: types::GetSessionResponse,
+    request_id: Option<String>,
+) -> Result<WhoAmI, ApiFailure> {
+    let user = response.user.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::Auth,
+            "session response missing user payload",
+            request_id.clone(),
+        )
+    })?;
+
+    Ok(WhoAmI {
+        auth_mode: auth_mode_from_generated(response.auth_mode),
+        user: projected_user_from_response(user, request_id)?,
+        active_org: non_empty_option(response.active_org_slug),
+        issued_at: format_timestamp(response.issued_at.into_option()),
+        expires_at: format_timestamp(response.expires_at.into_option()),
+    })
+}
+
+fn refreshed_auth_session_from_generated(
+    response: types::RefreshSessionResponse,
+    request_id: Option<String>,
+) -> Result<RefreshedAuthSession, ApiFailure> {
+    let user = response.user.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::Auth,
+            "refresh session response missing user payload",
+            request_id.clone(),
+        )
+    })?;
+
+    Ok(RefreshedAuthSession {
+        completion: LoginCompletion {
+            access_token: required_auth_string(
+                response.access_token,
+                "refresh session response missing accessToken",
+                request_id.clone(),
+            )?,
+            auth_mode: auth_mode_from_generated(response.auth_mode),
+            user: session_user_from_response(user, request_id)?,
+            issued_at: format_timestamp(response.issued_at.into_option()),
+            expires_at: format_timestamp(response.expires_at.into_option()),
+        },
+        active_org: non_empty_option(response.active_org_slug),
+    })
+}
+
 fn projected_user_from_response(
     user: types::CliAuthSessionProjectedUser,
     request_id: Option<String>,
 ) -> Result<UserProfile, ApiFailure> {
-    let missing_field = |field: &str| {
-        decode_failure(
-            ErrorStage::Auth,
-            format!("session response missing user.{field}"),
-            request_id.clone(),
-        )
-    };
+    user_profile_from_generated(
+        user.id,
+        user.email,
+        user.display_name,
+        "session response missing user",
+        request_id,
+    )
+}
 
+fn session_user_from_response(
+    user: types::CliAuthSessionUser,
+    request_id: Option<String>,
+) -> Result<UserProfile, ApiFailure> {
+    user_profile_from_generated(
+        user.id,
+        user.email,
+        user.display_name,
+        "refresh session response missing user",
+        request_id,
+    )
+}
+
+fn user_profile_from_generated(
+    id: String,
+    email: String,
+    display_name: String,
+    missing_field_prefix: &str,
+    request_id: Option<String>,
+) -> Result<UserProfile, ApiFailure> {
     Ok(UserProfile {
-        id: user.id.ok_or_else(|| missing_field("id"))?,
-        email: user.email.ok_or_else(|| missing_field("email"))?,
-        display_name: user
-            .display_name
-            .ok_or_else(|| missing_field("displayName"))?,
+        id: required_auth_string(id, format!("{missing_field_prefix}.id"), request_id.clone())?,
+        email: required_auth_string(
+            email,
+            format!("{missing_field_prefix}.email"),
+            request_id.clone(),
+        )?,
+        display_name: required_auth_string(
+            display_name,
+            format!("{missing_field_prefix}.displayName"),
+            request_id,
+        )?,
     })
 }
 
-fn format_datetime(datetime: Option<chrono::DateTime<chrono::Utc>>) -> Option<String> {
-    datetime.map(|datetime| datetime.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+fn required_auth_string(
+    value: String,
+    missing_message: impl Into<String>,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    if value.is_empty() {
+        Err(decode_failure(
+            ErrorStage::Auth,
+            missing_message.into(),
+            request_id,
+        ))
+    } else {
+        Ok(value)
+    }
+}
+
+fn required_timestamp(
+    timestamp: Option<buffa_types::google::protobuf::Timestamp>,
+    missing_message: &str,
+    request_id: Option<String>,
+) -> Result<chrono::DateTime<chrono::Utc>, ApiFailure> {
+    let timestamp = timestamp
+        .ok_or_else(|| decode_failure(ErrorStage::Auth, missing_message, request_id.clone()))?;
+
+    timestamp_to_datetime(&timestamp).ok_or_else(|| {
+        decode_failure(
+            ErrorStage::Auth,
+            format!("{missing_message} with an invalid timestamp"),
+            request_id,
+        )
+    })
+}
+
+fn timestamp_to_datetime(
+    timestamp: &buffa_types::google::protobuf::Timestamp,
+) -> Option<chrono::DateTime<chrono::Utc>> {
+    u32::try_from(timestamp.nanos)
+        .ok()
+        .and_then(|nanos| chrono::DateTime::from_timestamp(timestamp.seconds, nanos))
+}
+
+fn auth_mode_from_generated(mode: buffa::EnumValue<types::CliAuthMode>) -> Option<String> {
+    match mode.as_known() {
+        Some(types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION) => {
+            Some("browser_session".to_owned())
+        }
+        Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
+        Some(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED) | None => None,
+    }
+}
+
+fn non_empty_option(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.is_empty())
+}
+
+fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>) -> Option<String> {
+    timestamp
+        .as_ref()
+        .and_then(timestamp_to_datetime)
+        .map(|datetime| datetime.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read;
-    use std::io::Write;
-    use std::net::TcpListener;
-    use std::sync::mpsc;
-    use std::time::Duration;
-
-    use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
-    use serde_json::json;
-    use serde_json::to_string;
-    use time::Duration as TimeDuration;
-    use time::OffsetDateTime;
-    use time::format_description::well_known::Rfc3339;
-
-    use crate::transport::client::AuthenticatedApiClient;
-    use crate::transport::client::UnauthenticatedApiClient;
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
     use crate::transport::http::ApiSuccess;
     use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
 
     use super::LoginPollOutcome;
     use super::LoginSession;
     use super::RefreshedAuthSession;
     use super::UserProfile;
     use super::WhoAmI;
-    use super::poll_login_session;
-    use super::refresh_session;
-    use super::start_login_session;
-    use super::whoami;
+    use super::auth_mode_from_generated;
+    use super::interpret_login_poll_problem;
+    use super::login_poll_outcome_from_generated;
+    use super::login_session_from_generated;
+    use super::refreshed_auth_session_from_generated;
+    use super::types;
+    use super::whoami_from_generated;
 
-    fn sample_session() -> LoginSession {
-        LoginSession {
-            device_code: "device-code-123".to_owned(),
-            user_code: "ABCD1234".to_owned(),
-            verification_uri: "https://example.test/device".to_owned(),
-            verification_uri_complete: "https://example.test/device?user_code=ABCD1234".to_owned(),
-            poll_interval_ms: 5_000,
-            expires_in_sec: 180,
+    fn timestamp(seconds: i64) -> buffa_types::google::protobuf::Timestamp {
+        buffa_types::google::protobuf::Timestamp {
+            seconds,
+            ..Default::default()
         }
     }
 
-    fn future_expires_at(seconds_from_now: i64) -> String {
-        (OffsetDateTime::now_utc() + TimeDuration::seconds(seconds_from_now))
-            .format(&Rfc3339)
-            .expect("expected RFC3339 timestamp")
-    }
-
-    fn success_envelope(request_id: &str, data: serde_json::Value) -> String {
-        json!({
-            "requestId": request_id,
-            "data": data,
-            "warnings": [],
-        })
-        .to_string()
-    }
-
-    #[tokio::test]
-    async fn start_login_session_uses_device_authorization_endpoint() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_tx, request_rx) = mpsc::channel();
-        let expires_at = future_expires_at(180);
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes).into_owned();
-            request_tx
-                .send(request)
-                .expect("expected request receiver for start login");
-
-            let response_body = success_envelope(
-                "req_start",
-                json!({
-                    "state": "pending",
-                    "deviceCode": "device-code-123",
-                    "userCode": "ABCD1234",
-                    "verificationUrl": "https://example.test/device",
-                    "verificationCompleteUrl": "https://example.test/device?user_code=ABCD1234",
-                    "pollAfterMs": 5000,
-                    "expiresAt": expires_at,
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let session = start_login_session(&client)
-            .await
-            .expect("expected device authorization response")
-            .payload;
-        let request = request_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request");
-
+    #[test]
+    fn auth_mode_from_generated_maps_known_values_to_legacy_strings() {
         assert_eq!(
-            (
-                request.lines().next(),
-                session.device_code,
-                session.user_code,
-                session.verification_uri,
-                session.verification_uri_complete,
-                session.poll_interval_ms,
-                session.expires_in_sec >= 179,
-            ),
-            (
-                Some("POST /api/cli/auth/device-authorizations HTTP/1.1"),
-                "device-code-123".to_owned(),
-                "ABCD1234".to_owned(),
-                "https://example.test/device".to_owned(),
-                "https://example.test/device?user_code=ABCD1234".to_owned(),
-                5_000,
-                true,
-            )
+            [
+                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION.into()),
+                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into()),
+                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED.into()),
+            ],
+            [
+                Some("browser_session".to_owned()),
+                Some("bearer_token".to_owned()),
+                None,
+            ]
         );
     }
 
-    #[tokio::test]
-    async fn start_login_session_rewrites_cli_stemmed_base_url_to_auth_endpoint() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_tx, request_rx) = mpsc::channel();
+    #[test]
+    fn login_session_from_generated_projects_connect_response() {
+        let response = types::StartDeviceAuthorizationResponse {
+            device_code: "device-code-123".to_owned(),
+            user_code: "ABCD1234".to_owned(),
+            verification_url: "https://example.test/device".to_owned(),
+            verification_complete_url: "https://example.test/device?user_code=ABCD1234".to_owned(),
+            poll_after_ms: 5_000,
+            expires_at: buffa::MessageField::some(timestamp(4_102_444_800)),
+            ..Default::default()
+        };
 
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
+        let session = login_session_from_generated(response, Some("req_start".to_owned()))
+            .expect("expected projected login session");
 
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes).into_owned();
-            request_tx
-                .send(request)
-                .expect("expected request receiver for start login");
-
-            let response_body = success_envelope(
-                "req_start",
-                json!({
-                    "state": "pending",
-                    "deviceCode": "device-code-123",
-                    "userCode": "ABCD1234",
-                    "verificationUrl": "https://example.test/device",
-                    "verificationCompleteUrl": "https://example.test/device?user_code=ABCD1234",
-                    "pollAfterMs": 5000,
-                    "expiresAt": future_expires_at(180),
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}/api/cli"), 5)
-            .expect("expected API client");
-
-        start_login_session(&client)
-            .await
-            .expect("expected device authorization response");
-
-        let request = request_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request");
         assert_eq!(
-            request.lines().next(),
-            Some("POST /api/cli/auth/device-authorizations HTTP/1.1")
+            session,
+            LoginSession {
+                device_code: "device-code-123".to_owned(),
+                user_code: "ABCD1234".to_owned(),
+                verification_uri: "https://example.test/device".to_owned(),
+                verification_uri_complete: "https://example.test/device?user_code=ABCD1234"
+                    .to_owned(),
+                poll_interval_ms: 5_000,
+                expires_in_sec: session.expires_in_sec,
+            }
+        );
+        assert!(session.expires_in_sec > 0);
+    }
+
+    #[test]
+    fn login_poll_outcome_from_generated_maps_pending_and_slow_down() {
+        let pending = types::PollDeviceAuthorizationResponse {
+            outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
+                Box::new(types::CliPendingDeviceAuthorization {
+                    poll_after_ms: 5_000,
+                    ..Default::default()
+                }),
+            )),
+            ..Default::default()
+        };
+        let slowed = types::PollDeviceAuthorizationResponse {
+            outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
+                Box::new(types::CliPendingDeviceAuthorization {
+                    poll_after_ms: 10_000,
+                    ..Default::default()
+                }),
+            )),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            [
+                login_poll_outcome_from_generated(pending, 5_000, Some("req_pending".to_owned()))
+                    .expect("expected pending outcome"),
+                login_poll_outcome_from_generated(slowed, 5_000, Some("req_slow".to_owned()))
+                    .expect("expected slow-down outcome"),
+            ],
+            [LoginPollOutcome::Pending, LoginPollOutcome::SlowDown]
         );
     }
 
-    #[tokio::test]
-    async fn poll_login_session_uses_device_authorization_poll_endpoint() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_tx, request_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes).into_owned();
-            request_tx
-                .send(request)
-                .expect("expected request receiver for poll login");
-
-            let response_body = success_envelope(
-                "req_poll",
-                json!({
-                    "state": "authorized",
-                    "accessToken": "pat_123",
-                    "authMode": "bearer_token",
-                    "user": {
-                        "id": "user-1",
-                        "email": "alice@example.com",
-                        "displayName": "Alice",
-                    },
-                    "activeOrgSlug": "acme",
-                    "issuedAt": "2026-03-10T00:00:00.000Z",
-                    "expiresAt": "2026-03-17T00:00:00.000Z",
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_poll\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let response = poll_login_session(&client, &sample_session())
-            .await
-            .expect("expected authorized poll response");
-        let request = request_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request");
-
-        assert_eq!(
-            (
-                response,
-                request.lines().next(),
-                request.contains("\"deviceCode\":\"device-code-123\""),
-            ),
-            (
-                ApiSuccess {
-                    payload: LoginPollOutcome::Authorized {
+    #[test]
+    fn login_poll_outcome_from_generated_maps_authorized_response() {
+        let response = types::PollDeviceAuthorizationResponse {
+            outcome: Some(
+                types::poll_device_authorization_response::Outcome::Authorized(Box::new(
+                    types::CliAuthorizedDeviceAuthorization {
                         access_token: "pat_123".to_owned(),
+                        ..Default::default()
                     },
-                    request_id: Some("req_poll".to_owned()),
-                },
-                Some("POST /api/cli/auth/device-authorizations:poll HTTP/1.1"),
-                true,
-            )
-        );
-    }
-
-    #[tokio::test]
-    async fn poll_login_session_maps_pending_response_to_pending_outcome() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let response_body = success_envelope(
-                "req_pending",
-                json!({
-                    "state": "pending",
-                    "pollAfterMs": 5000,
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_pending\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let response = poll_login_session(&client, &sample_session())
-            .await
-            .expect("expected pending poll response");
-
-        assert_eq!(
-            response,
-            ApiSuccess {
-                payload: LoginPollOutcome::Pending,
-                request_id: Some("req_pending".to_owned()),
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn poll_login_session_maps_larger_pending_delay_to_slow_down_outcome() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let response_body = success_envelope(
-                "req_slow",
-                json!({
-                    "state": "pending",
-                    "pollAfterMs": 10000,
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_slow\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let response = poll_login_session(&client, &sample_session())
-            .await
-            .expect("expected slow_down poll response");
-
-        assert_eq!(
-            response,
-            ApiSuccess {
-                payload: LoginPollOutcome::SlowDown,
-                request_id: Some("req_slow".to_owned()),
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn poll_login_session_maps_login_denied_problem_to_denied_outcome() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let response_body = r#"{"type":"https://onequery.invalid/problems/cli/login-denied","title":"Login Denied","status":403,"detail":"device authorization was denied","code":"login_denied","stage":"auth","requestId":"req_denied","retryable":false}"#;
-            let response = format!(
-                "HTTP/1.1 403 Forbidden\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_denied\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let response = poll_login_session(&client, &sample_session())
-            .await
-            .expect("expected denied poll response");
-
-        assert_eq!(
-            response,
-            ApiSuccess {
-                payload: LoginPollOutcome::Denied,
-                request_id: Some("req_denied".to_owned()),
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn poll_login_session_preserves_rate_limited_problem_failures() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let response_body = r#"{"type":"https://onequery.invalid/problems/cli/login-rate-limited","title":"Login Rate Limited","status":429,"detail":"polling is temporarily rate limited","code":"login_rate_limited","stage":"auth","requestId":"req_rate_limited","retryable":true,"retryAfterMs":10000}"#;
-            let response = format!(
-                "HTTP/1.1 429 Too Many Requests\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_rate_limited\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = UnauthenticatedApiClient::new(&format!("http://{address}"), 5)
-            .expect("expected API client");
-
-        let expected_raw_body = to_string(&super::types::CliProblem {
-            code: super::types::CliProblemCode::LoginRateLimited,
-            detail: Some("polling is temporarily rate limited".to_owned()),
-            errors: Vec::new(),
-            hint: None,
-            instance: None,
-            request_id: super::types::CliProblemRequestId::try_from("req_rate_limited".to_owned())
-                .expect("expected request id"),
-            retry_after_ms: Some(
-                std::num::NonZeroU64::new(10_000).expect("expected non-zero retry delay"),
+                )),
             ),
-            retryable: true,
-            stage: super::types::CliProblemStage::Auth,
-            status: 429,
-            title: "Login Rate Limited".to_owned(),
-            type_: "https://onequery.invalid/problems/cli/login-rate-limited".to_owned(),
-        })
-        .expect("expected canonical problem JSON");
+            ..Default::default()
+        };
 
-        let failure = poll_login_session(&client, &sample_session())
-            .await
-            .expect_err("expected rate-limited poll response to remain a problem failure");
+        assert_eq!(
+            login_poll_outcome_from_generated(response, 5_000, Some("req_poll".to_owned()))
+                .expect("expected authorized outcome"),
+            LoginPollOutcome::Authorized {
+                access_token: "pat_123".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn interpret_login_poll_problem_maps_connect_codes_to_terminal_outcomes() {
+        let denied = interpret_login_poll_problem(ApiProblem {
+            connect_code: Some(connectrpc::ErrorCode::PermissionDenied),
+            status: None,
+            title: Some("Forbidden".to_owned()),
+            detail: Some("device authorization was denied".to_owned()),
+            code: Some("permission_denied".to_owned()),
+            retryable: false,
+            retry_after_ms: None,
+            stage: ErrorStage::Auth,
+            hint: None,
+            request_id: Some("req_denied".to_owned()),
+            validation_issues: Vec::new(),
+            raw_body: "device authorization was denied".to_owned(),
+        })
+        .expect("expected denied outcome");
+        let expired = interpret_login_poll_problem(ApiProblem {
+            connect_code: Some(connectrpc::ErrorCode::FailedPrecondition),
+            status: None,
+            title: Some("Failed precondition".to_owned()),
+            detail: Some("device authorization session expired".to_owned()),
+            code: Some("failed_precondition".to_owned()),
+            retryable: false,
+            retry_after_ms: None,
+            stage: ErrorStage::Auth,
+            hint: None,
+            request_id: Some("req_expired".to_owned()),
+            validation_issues: Vec::new(),
+            raw_body: "device authorization session expired".to_owned(),
+        })
+        .expect("expected expired outcome");
+
+        assert_eq!(
+            [denied, expired],
+            [
+                ApiSuccess {
+                    payload: LoginPollOutcome::Denied,
+                    request_id: Some("req_denied".to_owned()),
+                },
+                ApiSuccess {
+                    payload: LoginPollOutcome::Expired,
+                    request_id: Some("req_expired".to_owned()),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn whoami_from_generated_projects_session_payload() {
+        let response = types::GetSessionResponse {
+            auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+            user: buffa::MessageField::some(types::CliAuthSessionProjectedUser {
+                id: "user-1".to_owned(),
+                email: "alice@example.com".to_owned(),
+                display_name: "Alice".to_owned(),
+                ..Default::default()
+            }),
+            active_org_slug: Some("acme".to_owned()),
+            issued_at: buffa::MessageField::some(timestamp(1_773_100_800)),
+            expires_at: buffa::MessageField::some(timestamp(1_773_705_600)),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            whoami_from_generated(response, Some("req_whoami".to_owned()))
+                .expect("expected projected session"),
+            WhoAmI {
+                auth_mode: Some("bearer_token".to_owned()),
+                user: UserProfile {
+                    id: "user-1".to_owned(),
+                    email: "alice@example.com".to_owned(),
+                    display_name: "Alice".to_owned(),
+                },
+                active_org: Some("acme".to_owned()),
+                issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
+                expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn refreshed_auth_session_from_generated_projects_refresh_payload() {
+        let response = types::RefreshSessionResponse {
+            access_token: "session-token-refreshed".to_owned(),
+            auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+            user: buffa::MessageField::some(types::CliAuthSessionUser {
+                id: "user-1".to_owned(),
+                email: "alice@example.com".to_owned(),
+                display_name: "Alice".to_owned(),
+                ..Default::default()
+            }),
+            active_org_slug: Some("acme".to_owned()),
+            issued_at: buffa::MessageField::some(timestamp(1_773_100_800)),
+            expires_at: buffa::MessageField::some(timestamp(1_773_705_600)),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            refreshed_auth_session_from_generated(response, Some("req_refresh".to_owned()))
+                .expect("expected projected refresh payload"),
+            RefreshedAuthSession {
+                completion: super::LoginCompletion {
+                    access_token: "session-token-refreshed".to_owned(),
+                    auth_mode: Some("bearer_token".to_owned()),
+                    user: UserProfile {
+                        id: "user-1".to_owned(),
+                        email: "alice@example.com".to_owned(),
+                        display_name: "Alice".to_owned(),
+                    },
+                    issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
+                    expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
+                },
+                active_org: Some("acme".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn interpret_login_poll_problem_preserves_retryable_connect_failures() {
+        let failure = interpret_login_poll_problem(ApiProblem {
+            connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
+            status: None,
+            title: Some("Rate limited".to_owned()),
+            detail: Some("polling is temporarily rate limited".to_owned()),
+            code: Some("resource_exhausted".to_owned()),
+            retryable: true,
+            retry_after_ms: Some(10_000),
+            stage: ErrorStage::Auth,
+            hint: None,
+            request_id: Some("req_rate_limited".to_owned()),
+            validation_issues: Vec::new(),
+            raw_body: "polling is temporarily rate limited".to_owned(),
+        })
+        .expect_err("expected rate limited failure to remain a problem");
 
         assert_eq!(
             failure,
             ApiFailure::Problem(ApiProblem {
-                status: StatusCode::TOO_MANY_REQUESTS,
-                problem_type: Some(
-                    "https://onequery.invalid/problems/cli/login-rate-limited".to_owned(),
-                ),
-                title: Some("Login Rate Limited".to_owned()),
+                connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
+                status: None,
+                title: Some("Rate limited".to_owned()),
                 detail: Some("polling is temporarily rate limited".to_owned()),
-                code: Some("login_rate_limited".to_owned()),
+                code: Some("resource_exhausted".to_owned()),
                 retryable: true,
+                retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,
                 hint: None,
                 request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: expected_raw_body,
+                raw_body: "polling is temporarily rate limited".to_owned(),
             })
-        );
-    }
-
-    #[tokio::test]
-    async fn whoami_decodes_active_org_and_request_id() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_line_tx, request_line_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes);
-            let request_line = request
-                .lines()
-                .next()
-                .expect("expected HTTP request line")
-                .to_owned();
-            request_line_tx
-                .send(request_line)
-                .expect("expected request line receiver");
-
-            let response_body = success_envelope(
-                "req_whoami",
-                json!({
-                    "authMode": "bearer_token",
-                    "user": {
-                        "id": "user-1",
-                        "email": "alice@example.com",
-                        "displayName": "Alice",
-                    },
-                    "activeOrgSlug": "acme",
-                    "issuedAt": "2026-03-10T00:00:00.000Z",
-                    "expiresAt": "2026-03-17T00:00:00.000Z",
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_whoami\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = AuthenticatedApiClient::new(&format!("http://{address}"), 5, "pat_123")
-            .expect("expected API client");
-
-        let response = whoami(&client).await.expect("expected whoami response");
-        let request_line = request_line_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request line");
-
-        assert_eq!(
-            (response, request_line),
-            (
-                ApiSuccess {
-                    payload: WhoAmI {
-                        auth_mode: Some("bearer_token".to_owned()),
-                        user: UserProfile {
-                            id: "user-1".to_owned(),
-                            email: "alice@example.com".to_owned(),
-                            display_name: "Alice".to_owned(),
-                        },
-                        active_org: Some("acme".to_owned()),
-                        issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
-                        expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
-                    },
-                    request_id: Some("req_whoami".to_owned()),
-                },
-                "GET /api/cli/session HTTP/1.1".to_owned(),
-            )
-        );
-    }
-
-    #[tokio::test]
-    async fn refresh_session_uses_explicit_refresh_endpoint_and_decodes_session_metadata() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_line_tx, request_line_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes);
-            let request_line = request
-                .lines()
-                .next()
-                .expect("expected HTTP request line")
-                .to_owned();
-            request_line_tx
-                .send(request_line)
-                .expect("expected request line receiver");
-
-            let response_body = success_envelope(
-                "req_refresh",
-                json!({
-                    "accessToken": "session-token-refreshed",
-                    "authMode": "bearer_token",
-                    "user": {
-                        "id": "user-1",
-                        "email": "alice@example.com",
-                        "displayName": "Alice",
-                    },
-                    "activeOrgSlug": "acme",
-                    "issuedAt": "2026-03-10T00:00:00.000Z",
-                    "expiresAt": "2026-03-17T00:00:00.000Z",
-                }),
-            );
-            let response = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_refresh\r\nconnection: close\r\n\r\n{}",
-                response_body.len(),
-                response_body
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected response write to CLI");
-        });
-
-        let client = AuthenticatedApiClient::new(&format!("http://{address}"), 5, "pat_123")
-            .expect("expected API client");
-
-        let response = refresh_session(&client)
-            .await
-            .expect("expected refreshed session response");
-        let request_line = request_line_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request line");
-
-        assert_eq!(
-            (response, request_line),
-            (
-                ApiSuccess {
-                    payload: RefreshedAuthSession {
-                        completion: super::LoginCompletion {
-                            access_token: "session-token-refreshed".to_owned(),
-                            auth_mode: Some("bearer_token".to_owned()),
-                            user: UserProfile {
-                                id: "user-1".to_owned(),
-                                email: "alice@example.com".to_owned(),
-                                display_name: "Alice".to_owned(),
-                            },
-                            issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
-                            expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
-                        },
-                        active_org: Some("acme".to_owned()),
-                    },
-                    request_id: Some("req_refresh".to_owned()),
-                },
-                "POST /api/cli/session:refresh HTTP/1.1".to_owned(),
-            )
         );
     }
 }

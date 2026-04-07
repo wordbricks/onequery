@@ -8,15 +8,15 @@
     "./route": "./src/route.ts"
   },
   "scripts": {
-    "openapi:cli:generate": "bun run --cwd ../cli-contract generate",
-    "openapi:cli:check": "bun run openapi:cli:generate && git -C ../.. diff --exit-code -- packages/cli-contract/openapi/generated/cli.openapi.json packages/cli-server/generated packages/cli-server/src/transport/handlers",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run --exclude 'src/**/*.integration.test.ts'",
     "test:integration": "vitest run integration.test.ts"
   },
   "dependencies": {
-    "@hono/zod-validator": "catalog:",
-    "@onequery/cli-contract": "workspace:*",
+    "@bufbuild/protobuf": "catalog:",
+    "@bufbuild/protovalidate": "1.1.1",
+    "@connectrpc/connect": "2.1.1",
+    "@connectrpc/validate": "0.2.0",
     "@onequery/codecs": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/server": "workspace:*",

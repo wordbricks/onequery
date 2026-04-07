@@ -277,9 +277,6 @@ pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> Strin
         EffectiveOutputMode::Text => render_text_error(error),
         EffectiveOutputMode::Json => {
             let mut error_body = Map::new();
-            if let Some(problem_type) = &error.problem_type {
-                error_body.insert("type".to_owned(), Value::String(problem_type.clone()));
-            }
             if let Some(code) = &error.code {
                 error_body.insert("code".to_owned(), Value::String(code.clone()));
             }

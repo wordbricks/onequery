@@ -111,8 +111,6 @@ pub struct CliErrorData {
     pub request_id: Option<String>,
     /// Optional hint returned by the server or synthesized by the CLI.
     pub hint: Option<String>,
-    /// Optional RFC 9457 problem type when the failure originated from the API.
-    pub problem_type: Option<String>,
     /// Stable machine-readable error code when available.
     pub code: Option<String>,
     /// HTTP status returned by the API when the failure originated from the API.
@@ -154,7 +152,6 @@ impl CliError {
             try_next,
             request_id: None,
             hint: None,
-            problem_type: None,
             code: None,
             status: None,
             retryable: false,
@@ -178,12 +175,6 @@ impl CliError {
     /// Attaches a non-empty hint to the error.
     pub fn with_hint(mut self, hint: Option<String>) -> Self {
         self.0.hint = hint.filter(|value| !value.trim().is_empty());
-        self
-    }
-
-    /// Attaches the structured problem type when available.
-    pub fn with_problem_type(mut self, problem_type: Option<String>) -> Self {
-        self.0.problem_type = problem_type.filter(|value| !value.trim().is_empty());
         self
     }
 

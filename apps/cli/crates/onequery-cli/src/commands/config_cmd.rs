@@ -1,10 +1,10 @@
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
-use url::Url;
 
 use crate::cli::ConfigCommand;
 use crate::config::config_set_server_command_example;
+use crate::config::normalize_server_url as normalize_server_origin_url;
 use crate::output::CommandOutput;
 
 use super::CommandContext;
@@ -17,7 +17,7 @@ pub(crate) async fn execute<B, T>(
 ) -> Result<CommandOutput, CliError> {
     match command {
         ConfigCommand::SetServer { url } => {
-            let normalized = normalize_server_url(url, &context.command_line)?;
+            let normalized = normalize_server_url_for_command(url, &context.command_line)?;
             let changed = runtime.config.data().server_url.as_deref() != Some(normalized.as_str());
 
             runtime
@@ -46,39 +46,16 @@ pub(crate) async fn execute<B, T>(
     }
 }
 
-fn normalize_server_url(raw_url: &str, command_line: &str) -> Result<String, CliError> {
-    let normalized = raw_url.trim();
-    if normalized.is_empty() {
-        return Err(CliError::new(
-            "invalid server URL",
-            command_line,
-            ErrorStage::LoadConfig,
-            "server URL cannot be empty",
-            default_server_url_try_next(),
-        ));
-    }
-
-    let parsed = Url::parse(normalized).map_err(|parse_error| {
+fn normalize_server_url_for_command(raw_url: &str, command_line: &str) -> Result<String, CliError> {
+    normalize_server_origin_url(raw_url).map_err(|failure| {
         CliError::new(
             "invalid server URL",
             command_line,
             ErrorStage::LoadConfig,
-            parse_error.to_string(),
+            failure.render("server URL"),
             default_server_url_try_next(),
         )
-    })?;
-
-    if parsed.host_str().is_none() {
-        return Err(CliError::new(
-            "invalid server URL",
-            command_line,
-            ErrorStage::LoadConfig,
-            "server URL must include a hostname",
-            default_server_url_try_next(),
-        ));
-    }
-
-    Ok(parsed.to_string().trim_end_matches('/').to_owned())
+    })
 }
 
 fn default_server_url_try_next() -> Vec<String> {
@@ -155,5 +132,45 @@ mod tests {
         .unwrap_or_else(|error| panic!("expected config set server to succeed: {error}"));
 
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[tokio::test]
+    async fn set_server_rejects_api_path_suffixes() {
+        let mut runtime = Runtime {
+            config: ConfigStore::with_state_for_test(
+                PathBuf::from("/tmp/onequery-config-command/config.toml"),
+                AppConfig::default(),
+            ),
+            auth_session: AuthSessionStore::with_file_access_token_for_test(
+                PathBuf::from("/tmp/onequery-config-command/auth.json"),
+                None,
+            ),
+            browser: NoopBrowser,
+            terminal: NoopTerminal,
+        };
+        let context = CommandContext {
+            command_line: "onequery config set server http://localhost:4545/api".to_owned(),
+            base_url: default_base_url(),
+            request_id: None,
+            resolved_org: None,
+            resolved_org_source: ResolvedOrgSource::None,
+            verbose: false,
+        };
+
+        let error = execute(
+            &ConfigCommand::SetServer {
+                url: "http://localhost:4545/api".to_owned(),
+            },
+            &context,
+            &mut runtime,
+        )
+        .await
+        .expect_err("expected api path suffix to be rejected");
+
+        assert_eq!(error.title, "invalid server URL");
+        assert_eq!(
+            error.why,
+            "server URL must be an origin without a path; found path `/api`"
+        );
     }
 }
