@@ -160,15 +160,10 @@ fn candidate_buf_commands(repo_root: &Path) -> Vec<BufCommand> {
 
     let workspace_buf = workspace_buf_script(repo_root);
     if workspace_buf.exists() {
-        // COMMENT: `@bufbuild/buf` ships a JS launcher. Bun's Windows install
-        // did not materialize a stable `node_modules/.bin/buf.cmd` shim for
-        // Cargo to spawn directly, so invoke the launcher through Bun/Node
-        // instead of guessing platform-specific bin-link names.
-        if !cfg!(windows) {
-            candidates.push(BufCommand::direct(workspace_buf.clone()));
-        }
+        // COMMENT: `@bufbuild/buf` ships a JS launcher, not the real Buf
+        // binary. Keep the fallback aligned with this repo's Bun runtime
+        // instead of guessing platform-specific shims under node_modules/.bin.
         candidates.push(BufCommand::via_interpreter("bun", &workspace_buf));
-        candidates.push(BufCommand::via_interpreter("node", &workspace_buf));
     }
     candidates
 }
