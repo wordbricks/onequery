@@ -55,7 +55,10 @@ message ExecuteQueryResponse {
 }
 
 message CliQueryRequest {
-  string sql = 1 [(buf.validate.field).string.min_len = 1];
+  string sql = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   repeated CliQueryParameter parameters = 2 [(buf.validate.field).repeated.max_items = 0];
   optional uint32 max_rows = 3 [
     (buf.validate.field).uint32.gte = 1,

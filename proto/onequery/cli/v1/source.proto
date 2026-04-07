@@ -96,27 +96,51 @@ message ConnectSourceCredentials {
 }
 
 message ConnectSourcePostgresCredentials {
-  string database = 1 [(buf.validate.field).string.min_len = 1];
-  string host = 2 [(buf.validate.field).string.min_len = 1];
-  string password = 3 [(buf.validate.field).string.min_len = 1];
+  string database = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string host = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string password = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional uint32 port = 4 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
   optional CliSourceConnectSslMode ssl_mode = 5 [(buf.validate.field).enum.defined_only = true];
-  string username = 6 [(buf.validate.field).string.min_len = 1];
+  string username = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceMySqlCredentials {
-  string database = 1 [(buf.validate.field).string.min_len = 1];
-  string host = 2 [(buf.validate.field).string.min_len = 1];
-  string password = 3 [(buf.validate.field).string.min_len = 1];
+  string database = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string host = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string password = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional uint32 port = 4 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
   optional CliSourceConnectSslMode ssl_mode = 5 [(buf.validate.field).enum.defined_only = true];
-  string username = 6 [(buf.validate.field).string.min_len = 1];
+  string username = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceMongoDbCredentials {
@@ -125,23 +149,41 @@ message ConnectSourceMongoDbCredentials {
     (buf.validate.field).string.pattern = "^mongodb(\\+srv)?://"
   ];
   optional string database = 2 [(buf.validate.field).string.min_len = 1];
-  repeated string databases = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+  repeated string databases = 3 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceServiceAccountCredentials {
-  string project_id = 1 [(buf.validate.field).string.min_len = 1];
+  string project_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   string client_email = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.email = true
   ];
-  string private_key = 3 [(buf.validate.field).string.min_len = 1];
+  string private_key = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string private_key_id = 4 [(buf.validate.field).string.min_len = 1];
 }
 
 message ConnectSourceGoogleOAuthCredentials {
-  string access_token = 1 [(buf.validate.field).string.min_len = 1];
-  string refresh_token = 2 [(buf.validate.field).string.min_len = 1];
-  uint64 expires_at = 3 [(buf.validate.field).required = true];
+  string access_token = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string refresh_token = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  uint64 expires_at = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.lte = 9007199254740991
+  ];
 }
 
 message ConnectSourceBigQueryCredentials {
@@ -154,23 +196,38 @@ message ConnectSourceBigQueryCredentials {
 }
 
 message ConnectSourceBigQueryOAuthCredentials {
-  string project_id = 1 [(buf.validate.field).string.min_len = 1];
+  string project_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceBigQueryServiceAccountCredentials {
-  string project_id = 1 [(buf.validate.field).string.min_len = 1];
+  string project_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   ConnectSourceServiceAccountCredentials service_account = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceLaminarCredentials {
   optional string api_base_url = 1 [(buf.validate.field).string.uri = true];
-  string api_key = 2 [(buf.validate.field).string.min_len = 1];
+  string api_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceAwsAthenaConnectorCredentials {
-  string connector_id = 1 [(buf.validate.field).string.min_len = 1];
-  string database = 2 [(buf.validate.field).string.min_len = 1];
+  string connector_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string database = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional uint32 max_rows = 3 [(buf.validate.field).uint32.gte = 1];
   optional uint32 timeout_ms = 4 [(buf.validate.field).uint32.gte = 1];
   optional string workgroup = 5 [(buf.validate.field).string.min_len = 1];
@@ -186,26 +243,47 @@ message ConnectSourceGoogleAnalyticsCredentials {
 }
 
 message ConnectSourceGoogleAnalyticsOAuthCredentials {
-  string property_id = 1 [(buf.validate.field).string.min_len = 1];
+  string property_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-  string property_id = 1 [(buf.validate.field).string.min_len = 1];
+  string property_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   ConnectSourceServiceAccountCredentials service_account = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceAmplitudeCredentials {
-  string api_key = 1 [(buf.validate.field).string.min_len = 1];
+  string api_key = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional CliSourceConnectAmplitudeRegion region = 2 [(buf.validate.field).enum.defined_only = true];
-  string secret_key = 3 [(buf.validate.field).string.min_len = 1];
+  string secret_key = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceMixpanelCredentials {
-  string project_id = 1 [(buf.validate.field).string.min_len = 1];
+  string project_id = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional CliSourceConnectMixpanelRegion region = 2 [(buf.validate.field).enum.defined_only = true];
-  string secret = 3 [(buf.validate.field).string.min_len = 1];
-  string username = 4 [(buf.validate.field).string.min_len = 1];
+  string secret = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string username = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string workspace_id = 5 [(buf.validate.field).string.min_len = 1];
 }
 
@@ -214,21 +292,39 @@ message ConnectSourcePostHogCredentials {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.uri = true
   ];
-  string personal_api_key = 2 [(buf.validate.field).string.min_len = 1];
-  string project_id = 3 [(buf.validate.field).string.min_len = 1];
+  string personal_api_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string project_id = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceSentryCredentials {
   optional string api_base_url = 1 [(buf.validate.field).string.uri = true];
-  string auth_token = 2 [(buf.validate.field).string.min_len = 1];
-  string organization_slug = 3 [(buf.validate.field).string.min_len = 1];
+  string auth_token = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string organization_slug = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string project_slug = 4 [(buf.validate.field).string.min_len = 1];
 }
 
 message ConnectSourceGitHubCredentials {
-  string access_token = 1 [(buf.validate.field).string.min_len = 1];
+  string access_token = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string installation_id = 2 [(buf.validate.field).string.min_len = 1];
-  repeated string repositories = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+  repeated string repositories = 3 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceLinearCredentials {
@@ -241,14 +337,23 @@ message ConnectSourceLinearCredentials {
 }
 
 message ConnectSourceLinearApiKeyCredentials {
-  string api_key = 1 [(buf.validate.field).string.min_len = 1];
+  string api_key = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message ConnectSourceLinearOAuthCredentials {
-  string access_token = 1 [(buf.validate.field).string.min_len = 1];
+  string access_token = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string app_user_id = 2 [(buf.validate.field).string.min_len = 1];
   optional string expires_at = 3 [(buf.validate.field).string.min_len = 1];
-  string linear_organization_id = 4 [(buf.validate.field).string.min_len = 1];
+  string linear_organization_id = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   optional string linear_organization_name = 5 [(buf.validate.field).string.min_len = 1];
   optional string refresh_token = 6 [(buf.validate.field).string.min_len = 1];
   optional string scope = 7 [(buf.validate.field).string.min_len = 1];
