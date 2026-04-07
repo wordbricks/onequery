@@ -22,10 +22,8 @@ interface InvitationsListProps {
   canManageInvitationMutations: boolean;
 }
 
-function formatExpiration(expiresAt: Date): string {
-  const now = new Date();
-  const expiry = new Date(expiresAt);
-  const diffMs = expiry.getTime() - now.getTime();
+function formatExpiration(expiresAt: string): string {
+  const diffMs = Date.parse(expiresAt) - Date.now();
 
   if (diffMs < 0) {
     return "Expired";
@@ -73,7 +71,7 @@ function InvitationRow({
   });
 
   const isExpired = invitation.expiresAt
-    ? new Date(invitation.expiresAt) < new Date()
+    ? Date.parse(invitation.expiresAt) < Date.now()
     : false;
 
   return (

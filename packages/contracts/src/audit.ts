@@ -157,7 +157,9 @@ export const auditListItemSchema = z.object({
     retryable: z.boolean().nullable(),
     rowCount: z.number().int().nullable(),
   }),
-  occurredAt: z.coerce.date(),
+  // Comment: Audit timestamps stay ISO strings on the wire so TanStack Query
+  // persistence and structural sharing keep operating on JSON-compatible data.
+  occurredAt: z.iso.datetime(),
   query: z.object({
     normalizedSql: z.string().nullable(),
     normalizedSqlChanged: z.boolean(),

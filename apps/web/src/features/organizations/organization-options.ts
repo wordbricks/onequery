@@ -6,7 +6,6 @@ import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
 
 export const OrganizationOptionSchema = z.object({
-  createdAt: z.coerce.date(),
   id: z.string(),
   logo: z.string().nullable(),
   name: z.string(),

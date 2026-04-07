@@ -19,9 +19,10 @@ function normalizeOrganizationRole(input: string | null | undefined) {
   };
 }
 
+// Comment: these results are persisted in TanStack Query, so transport
+// timestamps must stay JSON-compatible instead of being coerced to Date.
 const memberSchema = z
   .object({
-    createdAt: z.coerce.date(),
     id: z.string(),
     organizationId: z.string(),
     role: organizationRoleStorageSchema,
@@ -34,7 +35,6 @@ const memberSchema = z
     userId: z.string(),
   })
   .transform((member) => ({
-    createdAt: member.createdAt,
     id: member.id,
     organizationId: member.organizationId,
     ...normalizeOrganizationRole(member.role),
@@ -49,7 +49,7 @@ const membersResponseSchema = z.object({
 const invitationSchema = z
   .object({
     email: z.string(),
-    expiresAt: z.coerce.date().optional(),
+    expiresAt: z.iso.datetime().optional(),
     id: z.string(),
     inviterId: z.string().optional(),
     organizationId: z.string(),

@@ -2,6 +2,7 @@ import {
   CLI_QUERY_ACTION_STATUSES,
   CLI_QUERY_ACTION_TYPES,
 } from "@onequery/contracts/audit";
+import { formatDateTime } from "@onequery/datetime/format-date";
 import { Badge } from "@onequery/ui/components/badge";
 import { Button } from "@onequery/ui/components/button";
 import {
@@ -50,13 +51,6 @@ function formatEnumLabel(value: string): string {
     .join(" ");
 }
 
-function formatTimestamp(value: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
-}
-
 function normalizeSearchValue(value: string): string | undefined {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
@@ -87,7 +81,7 @@ function AuditTableRow({ item }: { item: AuditListItem }) {
     <TableRow>
       <TableCell className="align-top">
         <div className="min-w-[140px]">
-          <div className="font-medium">{formatTimestamp(item.occurredAt)}</div>
+          <div className="font-medium">{formatDateTime(item.occurredAt)}</div>
           <div className="text-muted-foreground text-xs mt-1">
             {item.action.requestId}
           </div>

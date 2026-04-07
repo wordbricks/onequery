@@ -36,19 +36,15 @@ import type { Invitation } from "@/queries/team-queries";
 const InviteMemberFormSchema = z.object({
   email: z.email("Please enter a valid email address"),
 });
-const inviteMemberResponseSchema = z.object({
-  expiresAt: z.coerce.date().optional(),
-  id: z.string(),
-});
 
 type InviteMemberFormData = z.infer<typeof InviteMemberFormSchema>;
 type InviteMemberMutationInput = InviteMemberFormData & {
   roleNames: AssignableTeamRoleName[];
 };
-type InviteMemberResponse = z.infer<typeof inviteMemberResponseSchema>;
+type InviteMemberResponse = Awaited<ReturnType<typeof inviteTeamMember>>;
 
 type InviteLinkState = {
-  expiresAt: Date;
+  expiresAt: string;
   url: string;
 };
 
@@ -88,23 +84,23 @@ export function InviteMemberDialog({
       rawRole: serializeOrganizationRoleNames(data.roleNames),
       roleNames: [...data.roleNames],
       status: "pending",
-      expiresAt: getOrganizationInvitationExpiresAt(),
+      expiresAt: getOrganizationInvitationExpiresAt().toISOString(),
       organizationId,
       inviterId: "current-user",
     }),
     errorMessage: "Failed to create invitation link",
-    mutationFn: async (data) => {
-      const result = await inviteTeamMember({
+    mutationFn: async (data) =>
+      inviteTeamMember({
         email: data.email,
         organizationId,
         roleNames: data.roleNames,
-      });
-      return inviteMemberResponseSchema.parse(result);
-    },
+      }),
     onSuccess: (data) => {
       if (data?.id) {
         setInviteLink({
-          expiresAt: data.expiresAt ?? getOrganizationInvitationExpiresAt(),
+          expiresAt:
+            data.expiresAt ??
+            getOrganizationInvitationExpiresAt().toISOString(),
           url: `${getBrowserOrigin()}${buildInvitePath(data.id)}`,
         });
       }
