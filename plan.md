@@ -202,7 +202,7 @@ Success condition for this phase:
 - [ ] Revisit naming in:
   - `packages/cli-server/src/connect/service/*`
   - `apps/cli/crates/onequery-cli/src/transport/*`
-- [ ] Prefer a direct mapping:
+- [x] Prefer a direct mapping:
   - protobuf request -> domain input
   - domain result -> protobuf response
 - [ ] Remove stale tests that lock in the old projection behavior or duplicate message naming.

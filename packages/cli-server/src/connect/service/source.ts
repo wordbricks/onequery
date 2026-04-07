@@ -19,8 +19,8 @@ import {
   runCliLoadSourceEffect,
 } from "../../source/effects";
 import {
-  buildCliSourceListResult,
-  buildCliSourceSummary,
+  getCliQueryableDatabaseProviderType,
+  sortCliSourceRecords,
 } from "../../source/model";
 import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
@@ -28,8 +28,6 @@ import {
   CliSourceConnectAmplitudeRegion,
   CliSourceConnectMixpanelRegion,
   CliSourceConnectSslMode,
-  CliSourceProvider,
-  CliSourceStatus,
   ConnectSourceResponseSchema,
   GetSourceConnectGuideResponseSchema,
   GetSourceResponseSchema,
@@ -58,14 +56,7 @@ type GetSourceConnectGuideResponseInit = MessageInitShape<
 type ConnectSourceResponseInit = MessageInitShape<
   typeof ConnectSourceResponseSchema
 >;
-
-type GetSourceResponseMessage = {
-  name?: string;
-  displayName?: string;
-  provider?: CliSourceProvider;
-  queryable?: boolean;
-  status?: CliSourceStatus;
-};
+type GetSourceResponseInit = MessageInitShape<typeof GetSourceResponseSchema>;
 
 export const handleListSources: CliServiceMethod<"listSources"> = async (
   request,
@@ -85,21 +76,21 @@ export const handleListSources: CliServiceMethod<"listSources"> = async (
       organizationId: authorizedOrg.org.id,
     },
   });
-  const summaries = buildCliSourceListResult(sources.sources).sources;
-  const page = paginateItems(summaries, readControls);
+  const sortedSources = sortCliSourceRecords(sources.sources);
+  const page = paginateItems(sortedSources, readControls);
 
   logCliEvent({
     details: buildCliRequestLogDetails(c, {
       orgSlug: authorizedOrg.org.slug,
       roles: authorizedOrg.membershipRoles,
-      sourceCount: summaries.length,
+      sourceCount: sortedSources.length,
     }),
     event: "source.list.resolved",
     level: "info",
   });
 
   return {
-    sources: page.items.map((source) => buildCliSourceSummaryMessage(source)),
+    sources: page.items.map((source) => buildGetSourceResponse(source)),
     page: buildCliPage(page.page),
   };
 };
@@ -136,23 +127,25 @@ export const handleGetSource: CliServiceMethod<"getSource"> = async (
     throwCliConnectSourceNotFound(authorizedOrg.org.slug, request.sourceKey);
   }
 
-  const summary = buildCliSourceSummary(source.source);
+  const queryable =
+    getCliQueryableDatabaseProviderType(
+      source.source.provider,
+      source.source.status
+    ) !== null;
 
   logCliEvent({
     details: buildCliRequestLogDetails(c, {
       orgSlug: authorizedOrg.org.slug,
       roles: authorizedOrg.membershipRoles,
       sourceKey: request.sourceKey,
-      provider: summary.provider,
-      queryable: summary.queryable,
+      provider: source.source.provider,
+      queryable,
     }),
     event: "source.lookup.resolved",
     level: "info",
   });
 
-  return buildCliSourceSummaryMessage(summary) satisfies MessageInitShape<
-    typeof GetSourceResponseSchema
-  >;
+  return buildGetSourceResponse(source.source) satisfies GetSourceResponseInit;
 };
 
 export const handleGetSourceConnectGuide: CliServiceMethod<
@@ -247,7 +240,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
       orgSlug: authorizedOrg.org.slug,
       provider: response.source.provider,
       roles: authorizedOrg.membershipRoles,
-      sourceName: response.source.name,
+      sourceName: response.source.sourceKey,
     }),
     event: "source.connect.created",
     level: "info",
@@ -255,33 +248,27 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
 
   return {
     nextCommand: response.nextCommand,
-    source: buildCliSourceSummaryMessage(response.source),
+    source: buildGetSourceResponse(response.source),
   } satisfies ConnectSourceResponseInit;
 };
 
-export function buildCliSourceSummaryMessage(source: {
-  name?: string;
+export function buildGetSourceResponse(source: {
+  sourceKey: string;
   displayName?: string | null;
-  provider?: ProviderType;
-  queryable?: boolean;
-  status?: DataSourceStatus;
-}): GetSourceResponseMessage {
-  const response: GetSourceResponseMessage = {};
+  provider: ProviderType;
+  status: DataSourceStatus;
+}): GetSourceResponseInit {
+  const response: GetSourceResponseInit = {
+    name: source.sourceKey,
+    provider: toCliSourceProvider(source.provider),
+    queryable:
+      getCliQueryableDatabaseProviderType(source.provider, source.status) !==
+      null,
+    status: toCliSourceStatus(source.status),
+  };
 
-  if (source.name !== undefined) {
-    response.name = source.name;
-  }
   if (source.displayName) {
     response.displayName = source.displayName;
-  }
-  if (source.provider !== undefined) {
-    response.provider = toCliSourceProvider(source.provider);
-  }
-  if (source.queryable !== undefined) {
-    response.queryable = source.queryable;
-  }
-  if (source.status !== undefined) {
-    response.status = toCliSourceStatus(source.status);
   }
 
   return response;

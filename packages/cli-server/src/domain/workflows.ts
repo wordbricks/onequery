@@ -79,24 +79,12 @@ export type CliOrgAccessDecision =
       rawMembershipRole: string;
     };
 
-export type CliSourceSummary = {
-  name: string;
-  displayName: string | null;
-  provider: ProviderType;
-  queryable: boolean;
-  status: DataSourceStatus;
-};
-
 export type CliSourceRecord = {
   id: string;
   sourceKey: string;
   displayName: string | null;
   provider: ProviderType;
   status: DataSourceStatus;
-};
-
-export type CliSourceListResult = {
-  sources: CliSourceSummary[];
 };
 
 export type CliQueryColumn = {
@@ -113,7 +101,7 @@ export type CliQueryColumn = {
 };
 
 export type CliQuerySuccessResult = {
-  source: CliSourceSummary;
+  source: CliSourceRecord;
   rowCount: number;
   elapsedMs: number;
   columns: CliQueryColumn[];

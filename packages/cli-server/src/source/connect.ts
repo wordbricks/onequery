@@ -6,7 +6,6 @@ import {
 } from "../cli-defaults";
 import type { CliSourceRecord } from "../domain/workflows";
 import { createCliProblem } from "../error";
-import { buildCliSourceSummary } from "./model";
 
 type SourceConnectProviderGuide = {
   provider: ProviderType;
@@ -309,7 +308,7 @@ export function buildCliSourceConnectGuide(provider: ProviderType) {
 export function buildCliSourceConnectResult(source: CliSourceRecord) {
   return {
     nextCommand: buildCliSourceShowCommand(source.sourceKey),
-    source: buildCliSourceSummary(source),
+    source,
   };
 }
 

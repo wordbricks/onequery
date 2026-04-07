@@ -7,9 +7,7 @@ import type {
 
 import type {
   CliQuerySourceRecord,
-  CliSourceListResult,
   CliSourceRecord,
-  CliSourceSummary,
 } from "../domain/workflows";
 import { createCliProblem } from "../error";
 import { isCliSourceKey } from "../identifiers";
@@ -81,44 +79,17 @@ export function createCliQuerySourceRecord(input: {
   };
 }
 
-export function buildCliSourceSummary(
-  source: CliSourceRecord
-): CliSourceSummary {
-  return {
-    displayName: source.displayName,
-    name: source.sourceKey,
-    provider: source.provider,
-    queryable: isCliSourceQueryable(source.provider, source.status),
-    status: source.status,
-  };
-}
-
-export function buildCliSourceListResult(
+export function sortCliSourceRecords(
   sources: CliSourceRecord[]
-): CliSourceListResult {
-  return {
-    sources: sortCliSourceSummaries(sources.map(buildCliSourceSummary)),
-  };
-}
-
-function sortCliSourceSummaries(
-  sources: CliSourceSummary[]
-): CliSourceSummary[] {
+): CliSourceRecord[] {
   return [...sources].toSorted((left, right) => {
-    const bySourceKey = left.name.localeCompare(right.name);
+    const bySourceKey = left.sourceKey.localeCompare(right.sourceKey);
     if (bySourceKey !== 0) {
       return bySourceKey;
     }
 
     return left.provider.localeCompare(right.provider);
   });
-}
-
-function isCliSourceQueryable(
-  provider: ProviderType,
-  status: DataSourceStatus
-): boolean {
-  return getCliQueryableDatabaseProviderType(provider, status) !== null;
 }
 
 export function getCliQueryableDatabaseProviderType(

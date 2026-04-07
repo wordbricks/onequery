@@ -35,7 +35,6 @@ import type {
 } from "../../query/workflow";
 import { paginateItems } from "../../read-controls-policy";
 import { runCliLoadSourceEffect } from "../../source/effects";
-import { buildCliSourceSummary } from "../../source/model";
 import {
   buildCliSanitization,
   sanitizeCliRemoteText,
@@ -54,7 +53,7 @@ import {
   throwForCliConnectQueryWorkflowResult,
 } from "./errors";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
-import { buildCliSourceSummaryMessage } from "./source";
+import { buildGetSourceResponse } from "./source";
 import type { CliServiceMethod } from "./types";
 
 type CliQueryValidationFailure = Exclude<
@@ -89,7 +88,7 @@ type ExecuteQueryRowMessage = {
 };
 
 type ExecuteQueryPayload = {
-  source?: ReturnType<typeof buildCliSourceSummaryMessage>;
+  source?: ReturnType<typeof buildGetSourceResponse>;
   rowCount?: bigint;
   elapsedMs?: bigint;
   columns?: ExecuteQueryColumnMessage[];
@@ -212,7 +211,7 @@ export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
       cellMaxChars: resultWindow.cellMaxChars,
       timeoutMs: resultWindow.timeoutMs,
     },
-    source: buildCliSourceSummary(result.source),
+    source: result.source,
     truncated: result.truncated,
   }) satisfies ValidateQueryResponseInit;
 };
@@ -455,7 +454,7 @@ function buildQueryValidateResponse(response: {
     cellMaxChars: number;
     timeoutMs: number;
   };
-  source: ReturnType<typeof buildCliSourceSummary>;
+  source: Parameters<typeof buildGetSourceResponse>[0];
   truncated: boolean;
 }): ValidateQueryResponseInit {
   return {
@@ -474,7 +473,7 @@ function buildQueryValidateResponse(response: {
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
       timeoutMs: response.declaredResultWindow.timeoutMs,
     },
-    source: buildCliSourceSummaryMessage(response.source),
+    source: buildGetSourceResponse(response.source),
     truncated: response.truncated,
   };
 }
@@ -555,7 +554,7 @@ function logCliQueryValidationAccepted(input: {
 }
 
 function buildQueryExecuteResponse(response: {
-  source: ReturnType<typeof buildCliSourceSummary>;
+  source: Parameters<typeof buildGetSourceResponse>[0];
   rowCount: number;
   elapsedMs: number;
   columns: readonly { name: string; logicalType: string | null }[];
@@ -566,7 +565,7 @@ function buildQueryExecuteResponse(response: {
   const rows = response.rows.map(buildCliQueryRow);
 
   return {
-    source: buildCliSourceSummaryMessage(response.source),
+    source: buildGetSourceResponse(response.source),
     rowCount: BigInt(response.rowCount),
     elapsedMs: BigInt(response.elapsedMs),
     columns,
