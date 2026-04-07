@@ -66,7 +66,7 @@ function comparePendingInvitations(
   right: PendingUserInvitation
 ): number {
   const createdAtDifference =
-    right.createdAt.getTime() - left.createdAt.getTime();
+    Date.parse(right.createdAt) - Date.parse(left.createdAt);
 
   if (createdAtDifference !== 0) {
     return createdAtDifference;

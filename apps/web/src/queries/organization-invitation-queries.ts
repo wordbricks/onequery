@@ -6,10 +6,12 @@ import { DEFAULT_QUERY_STALE_TIME_MS } from "@/lib/query-timing";
 import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
 
+// Comment: this query is persisted client-side, so invitation timestamps stay
+// as ISO strings and are only interpreted at the UI edge.
 const pendingUserInvitationSchema = z.object({
-  createdAt: z.coerce.date(),
+  createdAt: z.iso.datetime(),
   email: z.string(),
-  expiresAt: z.coerce.date(),
+  expiresAt: z.iso.datetime(),
   id: z.string(),
   inviterId: z.string(),
   organizationId: z.string(),

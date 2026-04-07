@@ -5,7 +5,7 @@ import { buildTeamOrganizationApiPath } from "@/lib/api-paths";
 import type { OrganizationRoleName } from "@/lib/organization-role-access";
 
 const InvitationSchema = z.object({
-  expiresAt: z.coerce.date().optional(),
+  expiresAt: z.iso.datetime().optional(),
   id: z.string(),
   role: z.string().optional(),
 });

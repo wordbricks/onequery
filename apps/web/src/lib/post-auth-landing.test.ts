@@ -8,7 +8,6 @@ describe("resolvePostAuthLandingTarget", () => {
       resolvePostAuthLandingTarget({
         organizations: [
           {
-            createdAt: new Date("2026-03-26T00:00:00.000Z"),
             id: "org_1",
             logo: null,
             name: "Acme",
@@ -30,9 +29,9 @@ describe("resolvePostAuthLandingTarget", () => {
         organizations: [],
         pendingInvitations: [
           {
-            createdAt: new Date("2026-03-26T00:00:00.000Z"),
+            createdAt: "2026-03-26T00:00:00.000Z",
             email: "invitee@example.com",
-            expiresAt: new Date("2026-03-27T00:00:00.000Z"),
+            expiresAt: "2026-03-27T00:00:00.000Z",
             id: "invite_1",
             inviterId: "user_1",
             organizationId: "org_1",
