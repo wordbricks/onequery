@@ -722,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn query_request_from_payload_projects_connect_request() {
+    fn query_request_from_payload_maps_connect_request() {
         let request = super::query_request_from_payload(&QueryRequestPayload {
             sql: "select 42".to_owned(),
             parameters: Some(vec![
@@ -771,7 +771,7 @@ mod tests {
     }
 
     #[test]
-    fn query_result_from_generated_projects_execute_response() {
+    fn query_result_from_generated_maps_execute_response() {
         let result = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::GetSourceResponse {
@@ -810,7 +810,7 @@ mod tests {
             },
             Some("req_query".to_owned()),
         )
-        .expect("expected projected query result");
+        .expect("expected query result");
 
         assert_eq!(
             result,
@@ -848,7 +848,7 @@ mod tests {
     }
 
     #[test]
-    fn query_validation_from_generated_projects_validate_response() {
+    fn query_validation_from_generated_maps_validate_response() {
         let validation =
             super::query_validation_from_generated(super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {

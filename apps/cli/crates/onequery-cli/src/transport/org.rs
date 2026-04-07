@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn org_summary_from_generated_projects_connect_payload() {
+    fn org_summary_from_generated_maps_list_payload() {
         let summary = org_summary_from_generated(types::CliOrganizationSummary {
             slug: "acme".to_owned(),
             name: "Acme".to_owned(),
@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn org_details_from_generated_projects_capabilities() {
+    fn org_details_from_generated_maps_capabilities() {
         let details = org_details_from_generated(types::GetOrganizationResponse {
             slug: "acme".to_owned(),
             name: "Acme".to_owned(),

@@ -304,7 +304,11 @@ fn refreshed_auth_session_from_generated(
                 request_id.clone(),
             )?,
             auth_mode: auth_mode_from_generated(response.auth_mode),
-            user: auth_user_from_response(user, "refresh session response missing user", request_id)?,
+            user: auth_user_from_response(
+                user,
+                "refresh session response missing user",
+                request_id,
+            )?,
             issued_at: format_timestamp(response.issued_at.into_option()),
             expires_at: format_timestamp(response.expires_at.into_option()),
         },
@@ -455,7 +459,7 @@ mod tests {
     }
 
     #[test]
-    fn login_session_from_generated_projects_connect_response() {
+    fn login_session_from_generated_maps_start_response() {
         let response = types::StartDeviceAuthorizationResponse {
             device_code: "device-code-123".to_owned(),
             user_code: "ABCD1234".to_owned(),
@@ -467,7 +471,7 @@ mod tests {
         };
 
         let session = login_session_from_generated(response, Some("req_start".to_owned()))
-            .expect("expected projected login session");
+            .expect("expected login session");
 
         assert_eq!(
             session,
@@ -588,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn whoami_from_generated_projects_session_payload() {
+    fn whoami_from_generated_maps_session_response() {
         let response = types::GetSessionResponse {
             auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
             user: buffa::MessageField::some(types::CliAuthUser {
@@ -605,7 +609,7 @@ mod tests {
 
         assert_eq!(
             whoami_from_generated(response, Some("req_whoami".to_owned()))
-                .expect("expected projected session"),
+                .expect("expected session"),
             WhoAmI {
                 auth_mode: Some("bearer_token".to_owned()),
                 user: UserProfile {
@@ -621,7 +625,7 @@ mod tests {
     }
 
     #[test]
-    fn refreshed_auth_session_from_generated_projects_refresh_payload() {
+    fn refreshed_auth_session_from_generated_maps_refresh_response() {
         let response = types::RefreshSessionResponse {
             access_token: "session-token-refreshed".to_owned(),
             auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
@@ -639,7 +643,7 @@ mod tests {
 
         assert_eq!(
             refreshed_auth_session_from_generated(response, Some("req_refresh".to_owned()))
-                .expect("expected projected refresh payload"),
+                .expect("expected refresh payload"),
             RefreshedAuthSession {
                 completion: super::LoginCompletion {
                     access_token: "session-token-refreshed".to_owned(),

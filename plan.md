@@ -205,7 +205,7 @@ Success condition for this phase:
 - [x] Prefer a direct mapping:
   - protobuf request -> domain input
   - domain result -> protobuf response
-- [ ] Remove stale tests that lock in the old projection behavior or duplicate message naming.
+- [x] Remove stale tests that lock in the old projection behavior or duplicate message naming.
 - [ ] Run dead-code detection after the refactor if needed.
 
 Comment:

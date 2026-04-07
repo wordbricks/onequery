@@ -846,7 +846,7 @@ fn source_connect_result_from_generated(
     let source = response.source.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::ResolveSource,
-            "source connect response missing source summary",
+            "source connect response missing source",
             request_id,
         )
     })?;
