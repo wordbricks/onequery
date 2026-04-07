@@ -1,6 +1,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::io::ErrorKind;
+use std::path::MAIN_SEPARATOR;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -383,10 +384,15 @@ fn proto_relative_names(proto_files: &[PathBuf]) -> Vec<String> {
 }
 
 fn proto_relative_name(proto_file: &Path) -> String {
-    proto_file.to_str().map(str::to_owned).unwrap_or_else(|| {
+    let proto_relative_name = proto_file.to_str().map(str::to_owned).unwrap_or_else(|| {
         panic!(
             "expected proto-relative path {} to be valid UTF-8",
             proto_file.display()
         )
-    })
+    });
+
+    // COMMENT: Buf descriptor names always use `/`, even on Windows runners.
+    // Normalize the discovered proto paths before handing them to Buffa and
+    // Connect codegen so descriptor lookups stay platform-independent.
+    proto_relative_name.replace(MAIN_SEPARATOR, "/")
 }
