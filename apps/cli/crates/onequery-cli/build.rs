@@ -279,7 +279,7 @@ fn generate_connect_modules(
         .push((".".to_owned(), GENERATED_MODULE_ROOT.to_owned()));
     let connect_service_files = connectrpc_codegen::codegen::generate_services(
         &file_descriptor_set.file,
-        &[cli_service_entrypoint.clone()],
+        std::slice::from_ref(&cli_service_entrypoint),
         &connect_options,
     )
     .unwrap_or_else(|error| panic!("expected Connect service generation to succeed: {error}"));
