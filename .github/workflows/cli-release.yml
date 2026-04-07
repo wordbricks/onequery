@@ -187,14 +187,16 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
-        if: ${{ matrix.bundle == 'helpers' }}
         with:
           bun-version-file: ".bun-version"
 
       - name: Install dependencies
-        if: ${{ matrix.bundle == 'helpers' }}
         working-directory: ${{ github.workspace }}
-        run: bun ci
+        run: |
+          # COMMENT: The Rust CLI build.rs shells out to the workspace Buf
+          # binary under node_modules/.bin, so Windows primary bundles need
+          # the same Bun dependency install as the helper bundles.
+          bun ci
 
       - uses: dtolnay/rust-toolchain@1.93.0
         if: ${{ matrix.bundle == 'primary' }}

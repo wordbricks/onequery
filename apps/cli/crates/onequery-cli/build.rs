@@ -126,7 +126,10 @@ fn candidate_buf_executables(repo_root: &Path) -> Vec<PathBuf> {
         }
     }
     candidates.push(PathBuf::from("buf"));
-    candidates.push(workspace_buf_executable(repo_root));
+    let workspace_buf = workspace_buf_executable(repo_root);
+    if workspace_buf.exists() {
+        candidates.push(workspace_buf);
+    }
     candidates
 }
 
