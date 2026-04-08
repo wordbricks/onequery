@@ -82,6 +82,29 @@ onequery query execute --source <source-key> --sql "select 1"
 - **Track costs** — budget monitoring for expensive queries (BigQuery, Athena)
 - **Run on your infrastructure** — a connector agent runs on your EC2 instance to query protected sources without exposing credentials
 
+## Supported source providers
+
+Use `onequery source connect --help` to see the accepted `--source` values in the CLI.
+
+Current provider identifiers:
+
+- `postgres` for PostgreSQL
+- `supabase` for Supabase Postgres
+- `mysql` for MySQL
+- `mongodb` for MongoDB
+- `bigquery` for BigQuery
+- `laminar` for Laminar
+- `aws_athena_connector` for an AWS Athena connector already registered in OneQuery
+- `ga` for Google Analytics
+- `amplitude` for Amplitude
+- `mixpanel` for Mixpanel
+- `posthog` for PostHog
+- `sentry` for Sentry
+- `github` for GitHub
+- `linear` for Linear
+
+For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.
+
 ## How it works
 
 OneQuery is a Bun/Turbo monorepo designed to run as a self-hosted product, with three main layers:

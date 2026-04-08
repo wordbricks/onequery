@@ -106,11 +106,51 @@ pub(crate) enum SourceSubcommand {
     Connect(SourceConnectArgs),
 }
 
-#[derive(Debug, Clone, Args, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
+pub(crate) enum SourceConnectProvider {
+    Postgres,
+    Supabase,
+    Mysql,
+    Mongodb,
+    Bigquery,
+    Laminar,
+    #[value(name = "aws_athena_connector")]
+    AwsAthenaConnector,
+    Ga,
+    Amplitude,
+    Mixpanel,
+    Posthog,
+    Sentry,
+    Github,
+    Linear,
+}
+
+impl SourceConnectProvider {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Postgres => "postgres",
+            Self::Supabase => "supabase",
+            Self::Mysql => "mysql",
+            Self::Mongodb => "mongodb",
+            Self::Bigquery => "bigquery",
+            Self::Laminar => "laminar",
+            Self::AwsAthenaConnector => "aws_athena_connector",
+            Self::Ga => "ga",
+            Self::Amplitude => "amplitude",
+            Self::Mixpanel => "mixpanel",
+            Self::Posthog => "posthog",
+            Self::Sentry => "sentry",
+            Self::Github => "github",
+            Self::Linear => "linear",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct SourceConnectArgs {
-    /// Select the provider to connect, for example `postgres` or `github`.
-    #[arg(long, value_name = "PROVIDER")]
-    pub source: String,
+    /// Select the provider to connect.
+    #[arg(long, value_name = "PROVIDER", value_enum)]
+    pub source: SourceConnectProvider,
     /// Create one source from an inline JSON payload.
     #[arg(long, value_name = "JSON")]
     pub input: Option<String>,
