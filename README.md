@@ -2,6 +2,61 @@
 
 OneQuery is an open-source platform for unified data querying. Connect to your databases, analytics tools, and APIs from a single place — via a CLI or web UI — with centralized credential management, query safety controls, and team collaboration built in.
 
+## Quick Start
+
+If you already have access to a OneQuery server, this is the fastest path from install to first query:
+
+```bash
+# Install the CLI (choose one)
+brew install wordbricks/tap/onequery
+npm install -g @onequery/cli
+bun add -g @onequery/cli
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+
+# Point the CLI at your OneQuery server
+onequery config set server https://onequery.example.com
+
+# Authenticate and select an org
+onequery auth login
+onequery org list
+onequery org use <org-slug>
+
+# Find a queryable source and run a test query
+onequery source list
+onequery source show <source-key>
+onequery query execute --source <source-key> --sql "select 1"
+```
+
+One-off execution also works without a global install:
+
+```bash
+npx @onequery/cli --help
+bunx @onequery/cli --help
+```
+
+Need to add a PostgreSQL source first?
+
+```bash
+onequery source connect --source postgres --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
+onequery source show warehouse
+onequery query execute --source warehouse --sql "select 1"
+```
+
+Running OSS self-host locally instead of connecting to an existing server?
+
+```bash
+onequery serve
+```
+
+Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and point the CLI at your local instance:
+
+```bash
+onequery config set server http://127.0.0.1:5656
+onequery auth login
+```
+
+For more self-host details, see [docs/self-host.md](./docs/self-host.md).
+
 ## What it does
 
 - **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
