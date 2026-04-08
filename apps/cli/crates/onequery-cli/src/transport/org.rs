@@ -1,4 +1,3 @@
-use buffa::EnumValue;
 use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
@@ -14,6 +13,7 @@ use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
+use crate::transport::labels::org_capability_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::read_controls::PageInfo;
@@ -195,22 +195,6 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
                 .map(org_capability_to_str)
                 .collect(),
         ),
-    }
-}
-
-fn org_capability_to_str(value: EnumValue<types::CliOrgCapability>) -> String {
-    match value.as_known() {
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST) => "org.list".to_owned(),
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ) => "org.read".to_owned(),
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_CONNECT) => {
-            "source.connect".to_owned()
-        }
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_LIST) => "source.list".to_owned(),
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_READ) => "source.read".to_owned(),
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE) => {
-            "query.execute".to_owned()
-        }
-        Some(types::CliOrgCapability::CLI_ORG_CAPABILITY_UNSPECIFIED) | None => value.to_string(),
     }
 }
 

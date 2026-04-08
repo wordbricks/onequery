@@ -6,137 +6,161 @@ use clap::builder::PossibleValue;
 
 use crate::transport::generated::types;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum SourceConnectProvider {
-    Postgres,
-    Supabase,
-    Mysql,
-    Mongodb,
-    Bigquery,
-    Laminar,
-    AwsAthenaConnector,
-    Ga,
-    Amplitude,
-    Mixpanel,
-    Posthog,
-    Sentry,
-    Github,
-    Linear,
-}
-
-impl SourceConnectProvider {
-    const ALL: [Self; 14] = [
-        Self::Postgres,
-        Self::Supabase,
-        Self::Mysql,
-        Self::Mongodb,
-        Self::Bigquery,
-        Self::Laminar,
-        Self::AwsAthenaConnector,
-        Self::Ga,
-        Self::Amplitude,
-        Self::Mixpanel,
-        Self::Posthog,
-        Self::Sentry,
-        Self::Github,
-        Self::Linear,
-    ];
-
-    pub(crate) fn supported() -> &'static [Self] {
-        &Self::ALL
-    }
-
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Postgres => "postgres",
-            Self::Supabase => "supabase",
-            Self::Mysql => "mysql",
-            Self::Mongodb => "mongodb",
-            Self::Bigquery => "bigquery",
-            Self::Laminar => "laminar",
-            Self::AwsAthenaConnector => "aws_athena_connector",
-            Self::Ga => "ga",
-            Self::Amplitude => "amplitude",
-            Self::Mixpanel => "mixpanel",
-            Self::Posthog => "posthog",
-            Self::Sentry => "sentry",
-            Self::Github => "github",
-            Self::Linear => "linear",
-        }
-    }
-}
-
-impl ValueEnum for SourceConnectProvider {
-    fn value_variants<'a>() -> &'a [Self] {
-        Self::supported()
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        Some(PossibleValue::new(self.as_str()))
-    }
-}
-
-impl fmt::Display for SourceConnectProvider {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.as_str())
-    }
-}
-
-impl FromStr for SourceConnectProvider {
-    type Err = String;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        <Self as ValueEnum>::from_str(value, false)
-    }
-}
-
-impl From<SourceConnectProvider> for types::CliSourceProvider {
-    fn from(value: SourceConnectProvider) -> Self {
-        match value {
-            SourceConnectProvider::Postgres => Self::CLI_SOURCE_PROVIDER_POSTGRES,
-            SourceConnectProvider::Supabase => Self::CLI_SOURCE_PROVIDER_SUPABASE,
-            SourceConnectProvider::Mysql => Self::CLI_SOURCE_PROVIDER_MYSQL,
-            SourceConnectProvider::Mongodb => Self::CLI_SOURCE_PROVIDER_MONGODB,
-            SourceConnectProvider::Bigquery => Self::CLI_SOURCE_PROVIDER_BIGQUERY,
-            SourceConnectProvider::Laminar => Self::CLI_SOURCE_PROVIDER_LAMINAR,
-            SourceConnectProvider::AwsAthenaConnector => {
-                Self::CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR
+macro_rules! source_connect_providers {
+    (
+        $(
+            $variant:ident => {
+                label: $label:literal,
+                generated: $generated:ident,
             }
-            SourceConnectProvider::Ga => Self::CLI_SOURCE_PROVIDER_GA,
-            SourceConnectProvider::Amplitude => Self::CLI_SOURCE_PROVIDER_AMPLITUDE,
-            SourceConnectProvider::Mixpanel => Self::CLI_SOURCE_PROVIDER_MIXPANEL,
-            SourceConnectProvider::Posthog => Self::CLI_SOURCE_PROVIDER_POSTHOG,
-            SourceConnectProvider::Sentry => Self::CLI_SOURCE_PROVIDER_SENTRY,
-            SourceConnectProvider::Github => Self::CLI_SOURCE_PROVIDER_GITHUB,
-            SourceConnectProvider::Linear => Self::CLI_SOURCE_PROVIDER_LINEAR,
+        ),+ $(,)?
+    ) => {
+        #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+        pub(crate) enum SourceConnectProvider {
+            $(
+                $variant,
+            )+
         }
-    }
+
+        impl SourceConnectProvider {
+            const ALL: [Self; source_connect_providers!(@count $($variant),+)] = [
+                $(
+                    Self::$variant,
+                )+
+            ];
+
+            pub(crate) fn supported() -> &'static [Self] {
+                &Self::ALL
+            }
+
+            pub(crate) fn as_str(self) -> &'static str {
+                match self {
+                    $(
+                        Self::$variant => $label,
+                    )+
+                }
+            }
+        }
+
+        impl ValueEnum for SourceConnectProvider {
+            fn value_variants<'a>() -> &'a [Self] {
+                Self::supported()
+            }
+
+            fn to_possible_value(&self) -> Option<PossibleValue> {
+                Some(PossibleValue::new(self.as_str()))
+            }
+        }
+
+        impl fmt::Display for SourceConnectProvider {
+            fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str(self.as_str())
+            }
+        }
+
+        impl FromStr for SourceConnectProvider {
+            type Err = String;
+
+            fn from_str(value: &str) -> Result<Self, Self::Err> {
+                match value {
+                    $(
+                        $label => Ok(Self::$variant),
+                    )+
+                    _ => Err(format!("invalid source connect provider `{value}`")),
+                }
+            }
+        }
+
+        impl From<SourceConnectProvider> for types::CliSourceProvider {
+            fn from(value: SourceConnectProvider) -> Self {
+                match value {
+                    $(
+                        SourceConnectProvider::$variant => Self::$generated,
+                    )+
+                }
+            }
+        }
+
+        impl TryFrom<types::CliSourceProvider> for SourceConnectProvider {
+            type Error = ();
+
+            fn try_from(value: types::CliSourceProvider) -> Result<Self, Self::Error> {
+                match value {
+                    $(
+                        types::CliSourceProvider::$generated => Ok(Self::$variant),
+                    )+
+                    types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED => Err(()),
+                }
+            }
+        }
+    };
+    (@count $($variant:ident),+) => {
+        <[()]>::len(&[$(source_connect_providers!(@replace $variant ())),+])
+    };
+    (@replace $_variant:ident $value:expr) => {
+        $value
+    };
 }
 
-impl TryFrom<types::CliSourceProvider> for SourceConnectProvider {
-    type Error = ();
-
-    fn try_from(value: types::CliSourceProvider) -> Result<Self, Self::Error> {
-        match value {
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES => Ok(Self::Postgres),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_SUPABASE => Ok(Self::Supabase),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_MYSQL => Ok(Self::Mysql),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_MONGODB => Ok(Self::Mongodb),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_BIGQUERY => Ok(Self::Bigquery),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_LAMINAR => Ok(Self::Laminar),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR => {
-                Ok(Self::AwsAthenaConnector)
-            }
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_GA => Ok(Self::Ga),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_AMPLITUDE => Ok(Self::Amplitude),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_MIXPANEL => Ok(Self::Mixpanel),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTHOG => Ok(Self::Posthog),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_SENTRY => Ok(Self::Sentry),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB => Ok(Self::Github),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_LINEAR => Ok(Self::Linear),
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED => Err(()),
-        }
-    }
+// CONTEXT: Keep the supported connect surface in one declaration so CLI values,
+// labels, and generated transport conversions cannot drift apart.
+source_connect_providers! {
+    Postgres => {
+        label: "postgres",
+        generated: CLI_SOURCE_PROVIDER_POSTGRES,
+    },
+    Supabase => {
+        label: "supabase",
+        generated: CLI_SOURCE_PROVIDER_SUPABASE,
+    },
+    Mysql => {
+        label: "mysql",
+        generated: CLI_SOURCE_PROVIDER_MYSQL,
+    },
+    Mongodb => {
+        label: "mongodb",
+        generated: CLI_SOURCE_PROVIDER_MONGODB,
+    },
+    Bigquery => {
+        label: "bigquery",
+        generated: CLI_SOURCE_PROVIDER_BIGQUERY,
+    },
+    Laminar => {
+        label: "laminar",
+        generated: CLI_SOURCE_PROVIDER_LAMINAR,
+    },
+    AwsAthenaConnector => {
+        label: "aws_athena_connector",
+        generated: CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR,
+    },
+    Ga => {
+        label: "ga",
+        generated: CLI_SOURCE_PROVIDER_GA,
+    },
+    Amplitude => {
+        label: "amplitude",
+        generated: CLI_SOURCE_PROVIDER_AMPLITUDE,
+    },
+    Mixpanel => {
+        label: "mixpanel",
+        generated: CLI_SOURCE_PROVIDER_MIXPANEL,
+    },
+    Posthog => {
+        label: "posthog",
+        generated: CLI_SOURCE_PROVIDER_POSTHOG,
+    },
+    Sentry => {
+        label: "sentry",
+        generated: CLI_SOURCE_PROVIDER_SENTRY,
+    },
+    Github => {
+        label: "github",
+        generated: CLI_SOURCE_PROVIDER_GITHUB,
+    },
+    Linear => {
+        label: "linear",
+        generated: CLI_SOURCE_PROVIDER_LINEAR,
+    },
 }
 
 #[cfg(test)]

@@ -17,8 +17,13 @@ use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
 use crate::transport::http::untrusted_output_metadata_from_generated;
+use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
+use crate::transport::query_parameter::QueryCanonicalParameter;
+use crate::transport::query_parameter::QueryRequestParameter;
+use crate::transport::query_parameter::query_canonical_parameter_from_generated;
+use crate::transport::query_parameter::query_request_parameter_to_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
@@ -55,19 +60,11 @@ pub(crate) struct QueryResult {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
-pub(crate) struct QueryParameter {
-    #[serde(rename = "type")]
-    pub(crate) parameter_type: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) value: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct QueryRequestPayload {
     pub(crate) sql: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) parameters: Option<Vec<QueryParameter>>,
+    pub(crate) parameters: Option<Vec<QueryRequestParameter>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) max_rows: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -102,7 +99,7 @@ pub(crate) struct QueryCanonicalRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) sql: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) parameters: Option<Vec<QueryParameter>>,
+    pub(crate) parameters: Option<Vec<QueryCanonicalParameter>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) max_rows: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -283,8 +280,8 @@ fn query_request_from_payload(
             .clone()
             .unwrap_or_default()
             .into_iter()
-            .map(query_parameter_to_generated)
-            .collect::<Result<Vec<_>, _>>()?,
+            .map(query_request_parameter_to_generated)
+            .collect(),
         max_rows: optional_query_bound(payload.max_rows, ErrorStage::ReadQueryInput)?,
         max_bytes: optional_query_bound(payload.max_bytes, ErrorStage::ReadQueryInput)?,
         cell_max_chars: optional_query_bound(payload.cell_max_chars, ErrorStage::ReadQueryInput)?,
@@ -331,9 +328,7 @@ fn query_result_from_generated(
                 .into_iter()
                 .map(|column| QueryColumn {
                     name: non_empty(column.name),
-                    logical_type: column
-                        .logical_type
-                        .and_then(query_logical_type_from_generated),
+                    logical_type: column.logical_type.and_then(query_logical_type_to_str),
                 })
                 .collect(),
         ),
@@ -371,7 +366,7 @@ fn query_canonical_request_from_generated(
             request
                 .parameters
                 .into_iter()
-                .map(query_parameter_from_generated)
+                .map(query_canonical_parameter_from_generated)
                 .collect()
         }),
         max_rows: request
@@ -404,39 +399,6 @@ fn query_result_window_from_generated(
     }
 }
 
-fn query_parameter_to_generated(
-    parameter: QueryParameter,
-) -> Result<types::CliQueryParameter, ApiFailure> {
-    let parameter_type = query_parameter_type_to_generated(parameter.parameter_type.as_str())
-        .ok_or_else(|| {
-            conversion_failure(
-                ErrorStage::ReadQueryInput,
-                format!(
-                    "unsupported query parameter type {}",
-                    parameter.parameter_type
-                ),
-            )
-        })?;
-
-    Ok(types::CliQueryParameter {
-        r#type: parameter_type.into(),
-        value: parameter.value,
-        ..Default::default()
-    })
-}
-
-fn query_parameter_from_generated(parameter: types::CliQueryParameter) -> QueryParameter {
-    QueryParameter {
-        parameter_type: parameter
-            .r#type
-            .as_known()
-            .and_then(query_parameter_type_from_generated)
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| parameter.r#type.to_string()),
-        value: parameter.value,
-    }
-}
-
 fn optional_query_bound(
     value: Option<usize>,
     stage: ErrorStage,
@@ -464,43 +426,6 @@ fn optional_timeout_ms(value: Option<u64>, stage: ErrorStage) -> Result<Option<u
         .transpose()
 }
 
-fn query_parameter_type_to_generated(value: &str) -> Option<types::CliQueryParameterType> {
-    match value {
-        "string" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING),
-        "number" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NUMBER),
-        "boolean" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN),
-        "null" => Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL),
-        _ => None,
-    }
-}
-
-fn query_parameter_type_from_generated(
-    value: types::CliQueryParameterType,
-) -> Option<&'static str> {
-    match value {
-        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING => Some("string"),
-        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NUMBER => Some("number"),
-        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN => Some("boolean"),
-        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL => Some("null"),
-        types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED => None,
-    }
-}
-
-fn query_logical_type_from_generated(
-    value: buffa::EnumValue<types::CliQueryLogicalType>,
-) -> Option<String> {
-    value.as_known().and_then(|value| match value {
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_STRING => Some("string".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER => Some("number".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BOOLEAN => Some("boolean".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BIGINT => Some("bigint".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_DATETIME => Some("datetime".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_ARRAY => Some("array".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON => Some("json".to_owned()),
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED => None,
-    })
-}
-
 fn non_empty(value: String) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
@@ -516,11 +441,14 @@ mod tests {
     use crate::output_metadata::UntrustedOutputMetadata;
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
+    use crate::transport::query_parameter::QueryCanonicalParameter;
+    use crate::transport::query_parameter::QueryCanonicalParameterType;
+    use crate::transport::query_parameter::QueryRequestParameter;
+    use crate::transport::query_parameter::QueryRequestParameterType;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceSummary;
 
     use super::QueryColumn;
-    use super::QueryParameter;
     use super::QueryRequestPayload;
     use super::QueryResult;
     use super::QueryResultWindow;
@@ -621,12 +549,12 @@ mod tests {
                 request: Some(super::QueryCanonicalRequest {
                     sql: Some("SELECT 1".to_owned()),
                     parameters: Some(vec![
-                        QueryParameter {
-                            parameter_type: "string".to_owned(),
+                        QueryCanonicalParameter {
+                            parameter_type: QueryCanonicalParameterType::String,
                             value: Some("acme".to_owned()),
                         },
-                        QueryParameter {
-                            parameter_type: "null".to_owned(),
+                        QueryCanonicalParameter {
+                            parameter_type: QueryCanonicalParameterType::Null,
                             value: None,
                         },
                     ]),
@@ -726,12 +654,12 @@ mod tests {
         let request = super::query_request_from_payload(&QueryRequestPayload {
             sql: "select 42".to_owned(),
             parameters: Some(vec![
-                QueryParameter {
-                    parameter_type: "string".to_owned(),
+                QueryRequestParameter {
+                    parameter_type: QueryRequestParameterType::String,
                     value: Some("acme".to_owned()),
                 },
-                QueryParameter {
-                    parameter_type: "null".to_owned(),
+                QueryRequestParameter {
+                    parameter_type: QueryRequestParameterType::Null,
                     value: None,
                 },
             ]),
@@ -902,12 +830,12 @@ mod tests {
                 request: Some(super::QueryCanonicalRequest {
                     sql: Some("SELECT 1".to_owned()),
                     parameters: Some(vec![
-                        QueryParameter {
-                            parameter_type: "string".to_owned(),
+                        QueryCanonicalParameter {
+                            parameter_type: QueryCanonicalParameterType::String,
                             value: Some("acme".to_owned()),
                         },
-                        QueryParameter {
-                            parameter_type: "null".to_owned(),
+                        QueryCanonicalParameter {
+                            parameter_type: QueryCanonicalParameterType::Null,
                             value: None,
                         },
                     ]),

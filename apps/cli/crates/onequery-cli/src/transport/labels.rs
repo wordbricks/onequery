@@ -2,13 +2,61 @@ use buffa::EnumValue;
 
 use crate::transport::generated::types;
 use crate::transport::source_connect_provider::SourceConnectProvider;
+use crate::transport::use_source::UseSource;
 
-pub(crate) fn content_format_to_str(value: EnumValue<types::CliContentFormat>) -> String {
-    match value.as_known() {
-        Some(types::CliContentFormat::CLI_CONTENT_FORMAT_MARKDOWN) => "markdown".to_owned(),
-        Some(types::CliContentFormat::CLI_CONTENT_FORMAT_UNSPECIFIED) | None => value.to_string(),
-    }
+macro_rules! generated_label {
+    (
+        $name:ident,
+        $enum_ty:ty,
+        $unspecified:path,
+        {
+            $(
+                $variant:path => $label:literal,
+            )+
+        }
+    ) => {
+        pub(crate) fn $name(value: EnumValue<$enum_ty>) -> String {
+            match value.as_known() {
+                $(
+                    Some($variant) => $label.to_owned(),
+                )+
+                Some($unspecified) | None => value.to_string(),
+            }
+        }
+    };
 }
+
+macro_rules! optional_generated_label {
+    (
+        $name:ident,
+        $enum_ty:ty,
+        $unspecified:path,
+        {
+            $(
+                $variant:path => $label:literal,
+            )+
+        }
+    ) => {
+        pub(crate) fn $name(value: EnumValue<$enum_ty>) -> Option<String> {
+            match value.as_known() {
+                $(
+                    Some($variant) => Some($label.to_owned()),
+                )+
+                Some($unspecified) => None,
+                None => Some(value.to_string()),
+            }
+        }
+    };
+}
+
+generated_label!(
+    content_format_to_str,
+    types::CliContentFormat,
+    types::CliContentFormat::CLI_CONTENT_FORMAT_UNSPECIFIED,
+    {
+        types::CliContentFormat::CLI_CONTENT_FORMAT_MARKDOWN => "markdown",
+    }
+);
 
 pub(crate) fn source_provider_to_str(value: EnumValue<types::CliSourceProvider>) -> String {
     match value
@@ -20,52 +68,69 @@ pub(crate) fn source_provider_to_str(value: EnumValue<types::CliSourceProvider>)
     }
 }
 
-pub(crate) fn source_status_to_str(value: EnumValue<types::CliSourceStatus>) -> String {
-    match value.as_known() {
-        Some(types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE) => "active".to_owned(),
-        Some(types::CliSourceStatus::CLI_SOURCE_STATUS_ERROR) => "error".to_owned(),
-        Some(types::CliSourceStatus::CLI_SOURCE_STATUS_DISCONNECTED) => "disconnected".to_owned(),
-        Some(types::CliSourceStatus::CLI_SOURCE_STATUS_UNSPECIFIED) | None => value.to_string(),
+generated_label!(
+    source_status_to_str,
+    types::CliSourceStatus,
+    types::CliSourceStatus::CLI_SOURCE_STATUS_UNSPECIFIED,
+    {
+        types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE => "active",
+        types::CliSourceStatus::CLI_SOURCE_STATUS_ERROR => "error",
+        types::CliSourceStatus::CLI_SOURCE_STATUS_DISCONNECTED => "disconnected",
     }
-}
-
-pub(crate) fn use_source_from_str(value: &str) -> Option<types::CliUseSource> {
-    match value {
-        "amplitude" => Some(types::CliUseSource::CLI_USE_SOURCE_AMPLITUDE),
-        "ga" => Some(types::CliUseSource::CLI_USE_SOURCE_GA),
-        "github" => Some(types::CliUseSource::CLI_USE_SOURCE_GITHUB),
-        "mixpanel" => Some(types::CliUseSource::CLI_USE_SOURCE_MIXPANEL),
-        "mongodb" => Some(types::CliUseSource::CLI_USE_SOURCE_MONGODB),
-        "posthog" => Some(types::CliUseSource::CLI_USE_SOURCE_POSTHOG),
-        "sentry" => Some(types::CliUseSource::CLI_USE_SOURCE_SENTRY),
-        _ => None,
-    }
-}
+);
 
 pub(crate) fn use_source_to_str(value: EnumValue<types::CliUseSource>) -> String {
-    match value.as_known() {
-        Some(types::CliUseSource::CLI_USE_SOURCE_AMPLITUDE) => "amplitude".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_GA) => "ga".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_GITHUB) => "github".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_MIXPANEL) => "mixpanel".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_MONGODB) => "mongodb".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_POSTHOG) => "posthog".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_SENTRY) => "sentry".to_owned(),
-        Some(types::CliUseSource::CLI_USE_SOURCE_UNSPECIFIED) | None => value.to_string(),
+    match value
+        .as_known()
+        .and_then(|source| UseSource::try_from(source).ok())
+    {
+        Some(source) => source.to_string(),
+        None => value.to_string(),
     }
 }
+
+generated_label!(
+    org_capability_to_str,
+    types::CliOrgCapability,
+    types::CliOrgCapability::CLI_ORG_CAPABILITY_UNSPECIFIED,
+    {
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST => "org.list",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ => "org.read",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_CONNECT => "source.connect",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_LIST => "source.list",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_READ => "source.read",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE => "query.execute",
+    }
+);
+
+optional_generated_label!(
+    query_logical_type_to_str,
+    types::CliQueryLogicalType,
+    types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED,
+    {
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_STRING => "string",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER => "number",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BOOLEAN => "boolean",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BIGINT => "bigint",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_DATETIME => "datetime",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_ARRAY => "array",
+        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON => "json",
+    }
+);
 
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
 
     use super::content_format_to_str;
+    use super::org_capability_to_str;
+    use super::query_logical_type_to_str;
     use super::source_provider_to_str;
     use super::source_status_to_str;
     use super::types;
-    use super::use_source_from_str;
     use super::use_source_to_str;
     use crate::transport::source_connect_provider::SourceConnectProvider;
+    use crate::transport::use_source::UseSource;
 
     #[test]
     fn source_provider_to_str_maps_supported_connect_providers() {
@@ -101,20 +166,42 @@ mod tests {
     }
 
     #[test]
-    fn use_source_mappings_round_trip_known_values() {
+    fn use_source_to_str_maps_supported_use_sources() {
         assert_eq!(
-            [
-                Some(types::CliUseSource::CLI_USE_SOURCE_GITHUB),
-                Some(types::CliUseSource::CLI_USE_SOURCE_SENTRY),
-            ],
-            [use_source_from_str("github"), use_source_from_str("sentry"),]
+            UseSource::supported()
+                .iter()
+                .copied()
+                .map(|source| source.to_string())
+                .collect::<Vec<_>>(),
+            UseSource::supported()
+                .iter()
+                .copied()
+                .map(types::CliUseSource::from)
+                .map(|source| use_source_to_str(source.into()))
+                .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn org_capability_to_str_maps_known_values() {
         assert_eq!(
-            ["github".to_owned(), "sentry".to_owned(),],
             [
-                use_source_to_str(types::CliUseSource::CLI_USE_SOURCE_GITHUB.into()),
-                use_source_to_str(types::CliUseSource::CLI_USE_SOURCE_SENTRY.into()),
-            ]
+                org_capability_to_str(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into()),
+                org_capability_to_str(
+                    types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE.into(),
+                ),
+            ],
+            ["org.list".to_owned(), "query.execute".to_owned()]
+        );
+    }
+
+    #[test]
+    fn query_logical_type_to_str_maps_known_values() {
+        assert_eq!(
+            Some("json".to_owned()),
+            query_logical_type_to_str(
+                types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON.into(),
+            )
         );
     }
 

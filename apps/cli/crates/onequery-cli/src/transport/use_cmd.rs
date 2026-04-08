@@ -15,13 +15,12 @@ use crate::transport::http::ApiSuccess;
 use crate::transport::http::ResponseFailureStages;
 use crate::transport::http::TransportFailure;
 use crate::transport::http::TransportFailureKind;
-use crate::transport::http::conversion_failure;
 use crate::transport::http::decode_failure;
 use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::labels::content_format_to_str;
-use crate::transport::labels::use_source_from_str;
 use crate::transport::labels::use_source_to_str;
+use crate::transport::use_source::UseSource;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub(crate) struct UseSkill {
@@ -34,15 +33,9 @@ pub(crate) struct UseSkill {
 
 pub(crate) async fn load_use_skill<State>(
     client: &ApiClient<State>,
-    source: &str,
+    source: UseSource,
     org_slug: Option<&str>,
 ) -> Result<ApiSuccess<UseSkill>, ApiFailure> {
-    let source = use_source_from_str(source).ok_or_else(|| {
-        conversion_failure(
-            ErrorStage::ResolveSource,
-            format!("unsupported use source {source}"),
-        )
-    })?;
     let org_slug = org_slug
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -50,7 +43,7 @@ pub(crate) async fn load_use_skill<State>(
     let response = match client
         .cli()
         .r#use(types::UseRequest {
-            source: source.into(),
+            source: types::CliUseSource::from(source).into(),
             org_slug,
             ..Default::default()
         })
@@ -83,7 +76,7 @@ pub(crate) async fn load_use_skill<State>(
 // which remains intentionally outside `CliService` for now.
 pub(crate) async fn execute_use_input(
     client: &AuthenticatedApiClient,
-    source: &str,
+    source: UseSource,
     organization_slug: &str,
     mut input: Map<String, Value>,
 ) -> Result<ApiSuccess<Value>, ApiFailure> {

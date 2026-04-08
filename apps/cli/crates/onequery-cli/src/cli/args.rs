@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use clap::Args;
 use clap::Subcommand;
-use clap::ValueEnum;
 
 use crate::transport::source_connect_provider::SourceConnectProvider;
+use crate::transport::use_source::UseSource;
 
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum AuthSubcommand {
@@ -260,31 +260,6 @@ onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
        onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
        onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin")]
     Validate(QueryValidateArgs),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-pub(crate) enum UseSource {
-    Amplitude,
-    Ga,
-    Github,
-    Mixpanel,
-    Mongodb,
-    Posthog,
-    Sentry,
-}
-
-impl UseSource {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Amplitude => "amplitude",
-            Self::Ga => "ga",
-            Self::Github => "github",
-            Self::Mixpanel => "mixpanel",
-            Self::Mongodb => "mongodb",
-            Self::Posthog => "posthog",
-            Self::Sentry => "sentry",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
