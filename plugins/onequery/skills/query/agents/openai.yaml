@@ -1,4 +1,0 @@
-interface:
-  display_name: "OneQuery read-only query"
-  short_description: "Validate and run read-only SQL through OneQuery."
-  default_prompt: "Use OneQuery to validate and run a read-only SQL query."
