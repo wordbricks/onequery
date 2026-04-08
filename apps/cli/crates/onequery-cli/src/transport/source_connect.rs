@@ -18,9 +18,9 @@ use crate::transport::http::decode_failure;
 use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::labels::content_format_to_str;
-use crate::transport::labels::source_provider_from_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -180,22 +180,16 @@ struct LinearSourceConnectCredentialsInput {
 pub(crate) async fn load_source_connect_guide(
     client: &AuthenticatedApiClient,
     org_slug: &str,
-    source: &str,
+    source: SourceConnectProvider,
 ) -> Result<ApiSuccess<SourceConnectGuide>, ApiFailure> {
     let org_slug: String =
         crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
-    let source = source_provider_from_str(source).ok_or_else(|| {
-        conversion_failure(
-            ErrorStage::ResolveSource,
-            format!("unsupported source provider {source}"),
-        )
-    })?;
 
     let response = match client
         .cli()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
             org_slug,
-            source: source.into(),
+            source: types::CliSourceProvider::from(source).into(),
             ..Default::default()
         })
         .await
@@ -221,17 +215,11 @@ pub(crate) async fn load_source_connect_guide(
 pub(crate) async fn connect_source(
     client: &AuthenticatedApiClient,
     org_slug: &str,
-    source: &str,
+    source: SourceConnectProvider,
     mut input: Map<String, Value>,
 ) -> Result<ApiSuccess<SourceConnectResult>, ApiFailure> {
     let org_slug: String =
         crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
-    let provider = source_provider_from_str(source).ok_or_else(|| {
-        conversion_failure(
-            ErrorStage::ResolveSource,
-            format!("unsupported source provider {source}"),
-        )
-    })?;
     let name = input
         .remove("name")
         .and_then(|value| match value {
@@ -250,7 +238,7 @@ pub(crate) async fn connect_source(
             "source connect input must include object field `credentials`",
         )
     })?;
-    let credentials = connect_source_credentials_from_json(provider, credentials)?;
+    let credentials = connect_source_credentials_from_json(source, credentials)?;
 
     let response = match client
         .cli()
@@ -281,11 +269,11 @@ pub(crate) async fn connect_source(
 }
 
 fn connect_source_credentials_from_json(
-    provider: types::CliSourceProvider,
+    provider: SourceConnectProvider,
     value: Value,
 ) -> Result<types::ConnectSourceCredentials, ApiFailure> {
     match provider {
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES => {
+        SourceConnectProvider::Postgres => {
             let input: PostgresSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -296,7 +284,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_SUPABASE => {
+        SourceConnectProvider::Supabase => {
             let input: PostgresSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -307,7 +295,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MYSQL => {
+        SourceConnectProvider::Mysql => {
             let input: MySqlSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -318,7 +306,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MONGODB => {
+        SourceConnectProvider::Mongodb => {
             let input: MongoDbSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -334,7 +322,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_BIGQUERY => {
+        SourceConnectProvider::Bigquery => {
             let input: BigQuerySourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -345,7 +333,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_LAMINAR => {
+        SourceConnectProvider::Laminar => {
             let input: LaminarSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -360,7 +348,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR => {
+        SourceConnectProvider::AwsAthenaConnector => {
             let input: AwsAthenaConnectorSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -378,7 +366,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_GA => {
+        SourceConnectProvider::Ga => {
             let input: GoogleAnalyticsSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -389,7 +377,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_AMPLITUDE => {
+        SourceConnectProvider::Amplitude => {
             let input: AmplitudeSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -405,7 +393,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MIXPANEL => {
+        SourceConnectProvider::Mixpanel => {
             let input: MixpanelSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -423,7 +411,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTHOG => {
+        SourceConnectProvider::Posthog => {
             let input: PostHogSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -439,7 +427,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_SENTRY => {
+        SourceConnectProvider::Sentry => {
             let input: SentrySourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -456,7 +444,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB => {
+        SourceConnectProvider::Github => {
             let input: GitHubSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -472,7 +460,7 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_LINEAR => {
+        SourceConnectProvider::Linear => {
             let input: LinearSourceConnectCredentialsInput =
                 parse_source_connect_credentials(value)?;
 
@@ -483,9 +471,6 @@ fn connect_source_credentials_from_json(
                 ..Default::default()
             })
         }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED => Err(
-            source_connect_input_failure("source connect provider must be specified"),
-        ),
     }
 }
 
@@ -868,6 +853,7 @@ mod tests {
     use super::types;
     use crate::transport::http::ApiFailure;
     use crate::transport::source::SourceSummary;
+    use crate::transport::source_connect_provider::SourceConnectProvider;
 
     #[test]
     fn source_connect_guide_deserializes_canonical_shape() {
@@ -925,7 +911,7 @@ mod tests {
     #[test]
     fn strict_source_connect_credentials_reject_unknown_fields() {
         let error = connect_source_credentials_from_json(
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES,
+            SourceConnectProvider::Postgres,
             json!({
                 "host": "db.example.com",
                 "database": "app",
@@ -947,7 +933,7 @@ mod tests {
     #[test]
     fn bigquery_service_account_credentials_build_typed_auth_shape() {
         let credentials = connect_source_credentials_from_json(
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_BIGQUERY,
+            SourceConnectProvider::Bigquery,
             json!({
                 "projectId": "analytics-project",
                 "serviceAccount": {
@@ -986,7 +972,7 @@ mod tests {
     #[test]
     fn supabase_credentials_build_supabase_oneof_variant() {
         let credentials = connect_source_credentials_from_json(
-            types::CliSourceProvider::CLI_SOURCE_PROVIDER_SUPABASE,
+            SourceConnectProvider::Supabase,
             json!({
                 "host": "db.project-ref.supabase.co",
                 "port": 5432,

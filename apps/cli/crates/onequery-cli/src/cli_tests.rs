@@ -9,6 +9,7 @@ use toml::Value as TomlValue;
 use crate::config::default_base_url;
 use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 
 use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
@@ -22,7 +23,6 @@ use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
 use super::ServeCommand;
-use super::SourceConnectProvider;
 use super::UseSource;
 
 fn argv(args: &[&str]) -> Vec<OsString> {

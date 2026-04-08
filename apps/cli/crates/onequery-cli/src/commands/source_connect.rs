@@ -9,6 +9,7 @@ use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_connect;
 use crate::transport::source_connect::SourceConnectGuide;
 use crate::transport::source_connect::SourceConnectResult;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -28,10 +29,10 @@ use super::require_org;
 #[derive(Debug)]
 enum SourceConnectMode {
     Guide {
-        source: String,
+        source: SourceConnectProvider,
     },
     Connect {
-        source: String,
+        source: SourceConnectProvider,
         input: Map<String, Value>,
     },
 }
@@ -81,11 +82,11 @@ enum SourceConnectEffect {
     EnsureAuthenticated,
     FetchGuide {
         org: String,
-        source: String,
+        source: SourceConnectProvider,
     },
     ConnectSource {
         org: String,
-        source: String,
+        source: SourceConnectProvider,
         input: Map<String, Value>,
     },
 }
@@ -101,16 +102,14 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let source = args.source.as_str();
+    let source = args.source;
 
     let mode = match args.input.as_deref() {
         Some(raw_input) => SourceConnectMode::Connect {
-            source: source.to_owned(),
+            source,
             input: parse_source_connect_input(raw_input, context)?,
         },
-        None => SourceConnectMode::Guide {
-            source: source.to_owned(),
-        },
+        None => SourceConnectMode::Guide { source },
     };
 
     let final_state = run_reducer_workflow(
@@ -304,9 +303,7 @@ async fn execute_effect<B, T>(
                 }
             };
 
-            match source_connect::load_source_connect_guide(&client, org.as_str(), source.as_str())
-                .await
-            {
+            match source_connect::load_source_connect_guide(&client, org.as_str(), source).await {
                 Ok(response) => SourceConnectEvent::GuideLoaded {
                     guide: Box::new(response.payload),
                     request_id: response.request_id,
@@ -341,9 +338,7 @@ async fn execute_effect<B, T>(
                 }
             };
 
-            match source_connect::connect_source(&client, org.as_str(), source.as_str(), input)
-                .await
-            {
+            match source_connect::connect_source(&client, org.as_str(), source, input).await {
                 Ok(response) => SourceConnectEvent::SourceConnected {
                     result: response.payload,
                     request_id: response.request_id,
@@ -496,6 +491,7 @@ mod tests {
     use crate::transport::source::SourceSummary;
     use crate::transport::source_connect::SourceConnectGuide;
     use crate::transport::source_connect::SourceConnectResult;
+    use crate::transport::source_connect_provider::SourceConnectProvider;
     use crate::workflows::runner::TransitionProgress;
     use onequery_cli_core::error::CliError;
 
@@ -612,7 +608,7 @@ mod tests {
         let transition = reduce(
             SourceConnectState::Idle {
                 mode: SourceConnectMode::Guide {
-                    source: "postgres".to_owned(),
+                    source: SourceConnectProvider::Postgres,
                 },
             },
             SourceConnectEvent::Start,
@@ -623,9 +619,10 @@ mod tests {
             TransitionProgress::Continue {
                 next_state: SourceConnectState::CheckingAuth { mode },
                 effect: SourceConnectEffect::EnsureAuthenticated,
-            } => {
-                assert!(matches!(mode, SourceConnectMode::Guide { source } if source == "postgres"))
-            }
+            } => assert!(matches!(
+                mode,
+                SourceConnectMode::Guide { source } if source == SourceConnectProvider::Postgres
+            )),
             other => panic!("expected guide-mode transition, got {other:?}"),
         }
     }

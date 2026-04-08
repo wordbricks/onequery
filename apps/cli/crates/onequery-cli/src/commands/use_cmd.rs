@@ -35,10 +35,10 @@ pub(super) async fn execute<B, T>(
         && ensure_authenticated(context, runtime).await.is_ok()
     {
         let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;
-        crate::transport::use_cmd::load_use_skill(&client, args.source.as_str(), org_slug).await
+        crate::transport::use_cmd::load_use_skill(&client, args.source, org_slug).await
     } else {
         let client = build_unauthenticated_api_client(context, request_timeout)?;
-        crate::transport::use_cmd::load_use_skill(&client, args.source.as_str(), org_slug).await
+        crate::transport::use_cmd::load_use_skill(&client, args.source, org_slug).await
     }
     .map_err(|failure| {
         present_api_failure(
@@ -74,7 +74,7 @@ async fn execute_use_input<B, T>(
     let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;
     let response = crate::transport::use_cmd::execute_use_input(
         &client,
-        args.source.as_str(),
+        args.source,
         organization_slug.as_str(),
         input,
     )

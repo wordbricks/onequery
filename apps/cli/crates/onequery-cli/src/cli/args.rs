@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use clap::Args;
 use clap::Subcommand;
-use clap::ValueEnum;
+
+use crate::transport::source_connect_provider::SourceConnectProvider;
+use crate::transport::use_source::UseSource;
 
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum AuthSubcommand {
@@ -104,46 +106,6 @@ pub(crate) enum SourceSubcommand {
     },
     /// Show instructions or create a new source connection.
     Connect(SourceConnectArgs),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-pub(crate) enum SourceConnectProvider {
-    Postgres,
-    Supabase,
-    Mysql,
-    Mongodb,
-    Bigquery,
-    Laminar,
-    #[value(name = "aws_athena_connector")]
-    AwsAthenaConnector,
-    Ga,
-    Amplitude,
-    Mixpanel,
-    Posthog,
-    Sentry,
-    Github,
-    Linear,
-}
-
-impl SourceConnectProvider {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Postgres => "postgres",
-            Self::Supabase => "supabase",
-            Self::Mysql => "mysql",
-            Self::Mongodb => "mongodb",
-            Self::Bigquery => "bigquery",
-            Self::Laminar => "laminar",
-            Self::AwsAthenaConnector => "aws_athena_connector",
-            Self::Ga => "ga",
-            Self::Amplitude => "amplitude",
-            Self::Mixpanel => "mixpanel",
-            Self::Posthog => "posthog",
-            Self::Sentry => "sentry",
-            Self::Github => "github",
-            Self::Linear => "linear",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
@@ -298,31 +260,6 @@ onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
        onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
        onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin")]
     Validate(QueryValidateArgs),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-pub(crate) enum UseSource {
-    Amplitude,
-    Ga,
-    Github,
-    Mixpanel,
-    Mongodb,
-    Posthog,
-    Sentry,
-}
-
-impl UseSource {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Amplitude => "amplitude",
-            Self::Ga => "ga",
-            Self::Github => "github",
-            Self::Mixpanel => "mixpanel",
-            Self::Mongodb => "mongodb",
-            Self::Posthog => "posthog",
-            Self::Sentry => "sentry",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
