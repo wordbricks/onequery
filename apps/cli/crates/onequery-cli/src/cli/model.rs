@@ -9,7 +9,6 @@ use super::args::DebugSubcommand;
 use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
-use super::args::SchemaSubcommand;
 use super::args::SourceSubcommand;
 use super::args::UseArgs;
 
@@ -47,7 +46,6 @@ pub(crate) enum Command {
     Restore(RestoreArgs),
     Serve(ServeCommand),
     Use(UseArgs),
-    Schema(SchemaSubcommand),
     Debug(DebugSubcommand),
 }
 
@@ -79,7 +77,6 @@ impl Command {
             Self::Serve(ServeCommand::Status) => "serve status",
             Self::Serve(ServeCommand::Logs) => "serve logs",
             Self::Use(_) => "use",
-            Self::Schema(SchemaSubcommand::Skills) => "schema skills",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
         }

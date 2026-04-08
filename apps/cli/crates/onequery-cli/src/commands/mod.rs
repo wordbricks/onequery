@@ -7,7 +7,6 @@ mod json_input;
 mod org;
 mod query;
 mod restore;
-mod schema;
 mod serve;
 mod source;
 mod source_connect;
@@ -236,7 +235,6 @@ where
         Command::Restore(restore_args) => restore::execute(&restore_args, context, runtime).await,
         Command::Serve(serve_command) => serve::execute(serve_command, context, runtime).await,
         Command::Use(use_args) => use_cmd::execute(&use_args, context, runtime).await,
-        Command::Schema(schema_command) => schema::execute(&schema_command).await,
         Command::Debug(debug_command) => debug::execute(&debug_command, context, runtime).await,
     }
 }

@@ -10,7 +10,6 @@ use super::args::DebugSubcommand;
 use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
-use super::args::SchemaSubcommand;
 use super::args::SourceSubcommand;
 use super::args::UseArgs;
 use super::model::Command;
@@ -120,12 +119,6 @@ pub(super) enum RawCommand {
     },
     /// Load provider-specific skill content for non-SQL sources.
     Use(UseArgs),
-    /// Inspect machine-readable CLI schemas and skills.
-    #[command(arg_required_else_help(true))]
-    Schema {
-        #[command(subcommand)]
-        action: SchemaSubcommand,
-    },
     /// Inspect local CLI state and diagnostics.
     #[command(hide = true, arg_required_else_help(true))]
     Debug {
@@ -178,7 +171,6 @@ impl From<RawCommand> for Command {
             RawCommand::Restore(args) => Self::Restore(args),
             RawCommand::Serve { action } => Self::Serve(action.into()),
             RawCommand::Use(args) => Self::Use(args),
-            RawCommand::Schema { action } => Self::Schema(action),
             RawCommand::Debug { action } => Self::Debug(action),
         }
     }

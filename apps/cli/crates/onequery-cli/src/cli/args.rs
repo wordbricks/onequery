@@ -295,12 +295,6 @@ pub(crate) struct UseArgs {
     pub input: Option<String>,
 }
 
-#[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
-pub(crate) enum SchemaSubcommand {
-    /// List packaged skill files for agents.
-    Skills,
-}
-
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum DebugSubcommand {
     /// Inspect the merged local config state.
