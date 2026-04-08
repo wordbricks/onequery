@@ -14,3 +14,23 @@ Release flow for the `onequery` CLI:
 - Linux npm platform tarballs are staged from musl artifacts for the broadest runtime compatibility.
 - Additional GNU Linux tarballs are attached to GitHub releases for direct download, but they are not published to npm.
 - Windows npm tarballs are built on GitHub-hosted Windows runners and now include the bundled self-host runtime.
+
+## Homebrew Tap Automation
+
+The Homebrew release flow reuses the existing stable GitHub release tarballs instead
+of building a second packaging format.
+
+### Automated updates
+
+- `.github/workflows/cli-homebrew-release.yml` runs after the CLI release workflow completes successfully.
+- It resolves the matching `cli-v<version>` tag, downloads the stable macOS/Linux tarballs from the GitHub release, computes SHA-256 checksums, regenerates `Formula/onequery.rb`, validates the Ruby syntax, and pushes the formula update to the tap repo.
+- The formula generator lives at `apps/cli/scripts/generate-homebrew-formula.js`.
+- You can also backfill or retry a formula update manually with the workflow dispatch input `tag=cli-v<version>`.
+
+### User install path
+
+Once the tap repo is live, users can install directly with:
+
+```bash
+brew install wordbricks/tap/onequery
+```
