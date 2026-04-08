@@ -72,11 +72,13 @@ jobs:
             exit 1
           fi
 
-          echo "repo_owner=${repo_owner}" >> "$GITHUB_OUTPUT"
-          echo "repo_name=${repo_name}" >> "$GITHUB_OUTPUT"
-          echo "tap_repository=${tap_repository}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          {
+            echo "repo_owner=${repo_owner}"
+            echo "repo_name=${repo_name}"
+            echo "tap_repository=${tap_repository}"
+            echo "tag=${tag}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Download release assets
         id: assets
@@ -115,10 +117,12 @@ jobs:
             shasum -a 256 "$1" | awk '{print $1}'
           }
 
-          echo "darwin_arm64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-arm64.tgz")" >> "$GITHUB_OUTPUT"
-          echo "darwin_x64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-x64.tgz")" >> "$GITHUB_OUTPUT"
-          echo "linux_arm64=$(checksum "$ASSETS_DIR/onequery-npm-linux-arm64.tgz")" >> "$GITHUB_OUTPUT"
-          echo "linux_x64=$(checksum "$ASSETS_DIR/onequery-npm-linux-x64.tgz")" >> "$GITHUB_OUTPUT"
+          {
+            echo "darwin_arm64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-arm64.tgz")"
+            echo "darwin_x64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-x64.tgz")"
+            echo "linux_arm64=$(checksum "$ASSETS_DIR/onequery-npm-linux-arm64.tgz")"
+            echo "linux_x64=$(checksum "$ASSETS_DIR/onequery-npm-linux-x64.tgz")"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check out Homebrew tap
         uses: actions/checkout@v4
