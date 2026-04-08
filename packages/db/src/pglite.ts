@@ -105,8 +105,8 @@ export function resolvePgliteRuntimeOptions(
   const options = {
     fsBundle: new Blob([readFileSync(fsBundlePath)]),
     initdbWasmModule: new WebAssembly.Module(readFileSync(initdbWasmPath)),
-    // Comment: compiled Bun executables resolve PGlite's internal asset URLs
-    // into `/$bunfs/root`, so load the wasm bundle from the packaged runtime.
+    // Comment: the packaged server runtime loads PGlite's wasm assets from the
+    // staged runtime directory instead of relying on module-relative URLs.
     pgliteWasmModule: new WebAssembly.Module(readFileSync(pgliteWasmPath)),
   } satisfies PGliteRuntimeOptions;
 

@@ -9,7 +9,9 @@ import { createSpaAssetBinding, getDefaultSpaBuildDir } from "./assets";
 const tempDirs: string[] = [];
 
 function createAssetDir() {
-  const assetDir = mkdtempSync(join(tmpdir(), "onequery-bun-server-assets-"));
+  const assetDir = mkdtempSync(
+    join(tmpdir(), "onequery-self-host-runtime-assets-")
+  );
   tempDirs.push(assetDir);
   mkdirSync(join(assetDir, "assets"), { recursive: true });
   writeFileSync(

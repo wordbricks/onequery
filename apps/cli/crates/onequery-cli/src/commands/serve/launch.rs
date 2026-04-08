@@ -8,13 +8,7 @@ use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 
-use super::LINUX_ARM64_GLIBC_LOADER_PATHS;
-use super::LINUX_ARM64_MUSL_LOADER_PATHS;
-use super::LINUX_X64_GLIBC_LOADER_PATHS;
-use super::LINUX_X64_MUSL_LOADER_PATHS;
-use super::PACKAGED_SERVER_FILENAME;
-use super::PACKAGED_SERVER_MUSL_FILENAME;
-use super::PACKAGED_SERVER_WINDOWS_FILENAME;
+use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
 use super::state::ServeRuntimeState;
 
@@ -30,12 +24,6 @@ pub(super) struct ServeLaunchPlan {
     pub(super) migrations_dir: PathBuf,
     pub(super) runtime_entry_path: PathBuf,
     pub(super) web_dist_dir: PathBuf,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub(super) struct PackagedServerCandidate {
-    pub(super) path: PathBuf,
-    pub(super) required_loader_paths: &'static [&'static str],
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -90,7 +78,7 @@ pub(super) fn resolve_launch_plan(
 ) -> Result<ServeLaunchPlan, CliError> {
     let bundle_root = resolve_runtime_bundle_root(command_line)?;
     let bundle_spec = runtime_bundle_spec();
-    let runtime_entry_path = resolve_packaged_server_executable(&bundle_root, command_line)?;
+    let runtime_entry_path = resolve_packaged_server_entry_path(&bundle_root, command_line)?;
     let migrations_dir = bundle_root
         .path
         .join(&bundle_spec.runtime_entries.migrations.relative_path);
@@ -121,57 +109,26 @@ pub(super) fn resolve_launch_plan(
     ))
 }
 
-fn resolve_packaged_server_executable(
+fn resolve_packaged_server_entry_path(
     bundle_root: &RuntimeBundleRoot,
     command_line: &str,
 ) -> Result<PathBuf, CliError> {
     let server_dir = bundle_root.path.join(packaged_server_relative_path());
-    let candidates = packaged_server_candidates(
-        server_dir.as_path(),
-        std::env::consts::OS,
-        std::env::consts::ARCH,
-    )
-    .map_err(|detail| {
-        CliError::new(
-            "failed to resolve self-host runtime server executable",
-            command_line,
-            ErrorStage::LoadConfig,
-            detail,
-            runtime_bundle_resolution_try_next(&bundle_root.source, command_line),
-        )
-    })?;
-    let existing_candidates = candidates
-        .iter()
-        .filter(|candidate| candidate.path.is_file())
-        .collect::<Vec<_>>();
+    let runtime_entry_path = server_dir.join(PACKAGED_SERVER_BUNDLE_FILENAME);
 
-    if existing_candidates.is_empty() {
+    if !runtime_entry_path.is_file() {
         return Err(incomplete_runtime_bundle_error(
             bundle_root,
             command_line,
             format!(
-                "expected one of {} inside {}",
-                render_packaged_server_candidate_paths(&candidates),
+                "expected {} inside {}",
+                runtime_entry_path.display(),
                 server_dir.display()
             ),
         ));
     }
 
-    if let Some(candidate) = select_packaged_server_candidate(&existing_candidates, Path::exists) {
-        return Ok(candidate.path.clone());
-    }
-
-    Err(CliError::new(
-        "self-host runtime bundle is incomplete",
-        command_line,
-        ErrorStage::LoadConfig,
-        format!(
-            "none of the packaged server executables inside {} match an available runtime loader; checked {}",
-            server_dir.display(),
-            render_required_loader_paths(&existing_candidates)
-        ),
-        runtime_bundle_resolution_try_next(&bundle_root.source, command_line),
-    ))
+    Ok(runtime_entry_path)
 }
 
 fn resolve_runtime_bundle_root(command_line: &str) -> Result<RuntimeBundleRoot, CliError> {
@@ -284,97 +241,6 @@ pub(super) fn current_executable_is_cargo_build_output(current_executable: &Path
         build_profile_dir.file_name(),
         Some(name) if name == OsStr::new("debug") || name == OsStr::new("release")
     ) && target_dir.file_name() == Some(OsStr::new("target"))
-}
-
-pub(super) fn packaged_server_candidates(
-    server_dir: &Path,
-    os: &str,
-    arch: &str,
-) -> Result<Vec<PackagedServerCandidate>, String> {
-    let default_candidate = PackagedServerCandidate {
-        path: server_dir.join(packaged_server_filename_for_os(os)),
-        required_loader_paths: &[],
-    };
-
-    if os != "linux" {
-        return Ok(vec![default_candidate]);
-    }
-
-    let glibc_loader_paths = match arch {
-        "x86_64" => LINUX_X64_GLIBC_LOADER_PATHS,
-        "aarch64" => LINUX_ARM64_GLIBC_LOADER_PATHS,
-        _ => {
-            return Err(format!(
-                "unsupported Linux architecture {arch} for packaged self-host runtime"
-            ));
-        }
-    };
-    let musl_loader_paths = match arch {
-        "x86_64" => LINUX_X64_MUSL_LOADER_PATHS,
-        "aarch64" => LINUX_ARM64_MUSL_LOADER_PATHS,
-        _ => {
-            return Err(format!(
-                "unsupported Linux architecture {arch} for packaged self-host runtime"
-            ));
-        }
-    };
-
-    // Comment: Bun's Linux musl executable requires the musl runtime loader at
-    // startup, so package both glibc and musl server executables and select
-    // the one whose loader exists on the host.
-    Ok(vec![
-        PackagedServerCandidate {
-            path: default_candidate.path,
-            required_loader_paths: glibc_loader_paths,
-        },
-        PackagedServerCandidate {
-            path: server_dir.join(PACKAGED_SERVER_MUSL_FILENAME),
-            required_loader_paths: musl_loader_paths,
-        },
-    ])
-}
-
-fn packaged_server_filename_for_os(os: &str) -> &'static str {
-    if os == "windows" {
-        return PACKAGED_SERVER_WINDOWS_FILENAME;
-    }
-
-    PACKAGED_SERVER_FILENAME
-}
-
-pub(super) fn select_packaged_server_candidate<'a, F>(
-    candidates: &'a [&PackagedServerCandidate],
-    loader_exists: F,
-) -> Option<&'a PackagedServerCandidate>
-where
-    F: Fn(&Path) -> bool,
-{
-    candidates.iter().copied().find(|candidate| {
-        candidate.required_loader_paths.is_empty()
-            || candidate
-                .required_loader_paths
-                .iter()
-                .map(Path::new)
-                .any(&loader_exists)
-    })
-}
-
-fn render_packaged_server_candidate_paths(candidates: &[PackagedServerCandidate]) -> String {
-    candidates
-        .iter()
-        .map(|candidate| candidate.path.display().to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn render_required_loader_paths(candidates: &[&PackagedServerCandidate]) -> String {
-    candidates
-        .iter()
-        .flat_map(|candidate| candidate.required_loader_paths.iter().copied())
-        .collect::<std::collections::BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 fn runtime_bundle_spec() -> &'static RuntimeBundleSpec {

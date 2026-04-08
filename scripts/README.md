@@ -42,7 +42,7 @@ bun run dev:setup
 bun dev
 
 # Repo-local self-host smoke through the packaged runtime layout
-bun run --cwd packages/bun-server serve
+bun run --cwd packages/self-host-runtime serve
 ```
 
 Default ports:
@@ -53,10 +53,10 @@ Default ports:
 
 `bun dev` keeps the browser on the workspace-dev browser origin while Vite
 proxies `/api` to a separate local Bun listener for HMR-friendly full-stack
-work. `bun run --cwd packages/bun-server serve` stages the same packaged
+work. `bun run --cwd packages/self-host-runtime serve` stages the same packaged
 self-host bundle layout used in release and then invokes `onequery serve`,
 which uses the self-host config roots and writes a resolved launch contract
-before Bun starts. That runtime, not `dev:setup`, applies the application
+before the packaged server bundle starts. That runtime, not `dev:setup`, applies the application
 schema.
 
 ## Environment Files
@@ -74,7 +74,7 @@ For a higher-level overview, see
 
 - `scripts/dev-setup.ts`: local Postgres bootstrap plus workspace-dev config
   validation.
-- `scripts/run-bun-server.ts`: workspace-dev helper that writes a temporary
+- `scripts/run-self-host-runtime.ts`: workspace-dev helper that writes a temporary
   launch contract and starts the Bun API runtime for `bun dev`.
 - `packages/github-rulesets`: package that owns the repo-tracked GitHub
   ruleset planner and sync CLI for `.github/rulesets/`.

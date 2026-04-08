@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bunx --bun vite",
     "build": "bunx --bun vite build",
-    "preview": "bun run --cwd ../../packages/bun-server serve",
+    "preview": "bun run --cwd ../../packages/self-host-runtime serve",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -17,11 +17,11 @@
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
     "@onequery/base": "workspace:*",
-    "@onequery/bun-server": "workspace:*",
     "@onequery/config": "workspace:*",
     "@onequery/contracts": "workspace:*",
     "@onequery/datetime": "workspace:*",
     "@onequery/db": "workspace:*",
+    "@onequery/self-host-runtime": "workspace:*",
     "@onequery/ui": "workspace:*",
     "@tabler/icons-react": "3.36.1",
     "@tanstack/react-query": "5.90.20",

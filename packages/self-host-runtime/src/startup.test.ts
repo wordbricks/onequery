@@ -17,7 +17,7 @@ function writeLaunchConfig(launchConfigPath: string, value: unknown): void {
   writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
 }
 
-describe("bun-server startup", () => {
+describe("packaged server startup", () => {
   it("accepts an in-memory launch config object", () => {
     const launchConfig = createWorkspaceDevLaunchConfig({
       assetsDistDir: "/tmp/web",

@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import {
-  chmodSync,
-  existsSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-} from "node:fs";
+import { chmodSync, existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,11 +52,10 @@ if (!resolvedVendor) {
   throw new Error(`Unsupported target triple: ${targetTriple}`);
 }
 
-const { binaryPath, bundleRoot, serverBinaryDir } = resolvedVendor;
+const { binaryPath, bundleRoot } = resolvedVendor;
 
 if (platform !== "win32") {
   ensureExecutable(binaryPath);
-  ensureExecutablesInDir(serverBinaryDir);
 }
 
 const child = spawn(binaryPath, process.argv.slice(2), {
@@ -194,10 +187,6 @@ function resolveBundlePaths({ binaryName, bundleRoot, runtimeBundleSpec }) {
   return {
     binaryPath,
     bundleRoot,
-    serverBinaryDir: path.join(
-      bundleRoot,
-      runtimeBundleSpec.directories.server.relativePath
-    ),
   };
 }
 
@@ -269,18 +258,4 @@ function ensureExecutable(filePath) {
   // CONTEXT: npm tarballs store vendored native binaries without execute bits,
   // so restore the expected mode before spawning the packaged CLI binary.
   chmodSync(filePath, currentMode | 0o755);
-}
-
-function ensureExecutablesInDir(dirPath) {
-  if (!existsSync(dirPath)) {
-    return;
-  }
-
-  for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    ensureExecutable(path.join(dirPath, entry.name));
-  }
 }

@@ -5,11 +5,13 @@ import { join } from "node:path";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { describe, expect, it } from "vitest";
 
-import { createLaunchConfig } from "../../../scripts/run-bun-server";
+import { createLaunchConfig } from "../../../scripts/run-self-host-runtime";
 
-describe("bun dev entrypoint", () => {
+describe("self-host runtime dev entrypoint", () => {
   it("writes a launch contract with separate browser and API ports", () => {
-    const rootDir = mkdtempSync(join(tmpdir(), "onequery-bun-dev-entrypoint-"));
+    const rootDir = mkdtempSync(
+      join(tmpdir(), "onequery-self-host-runtime-dev-entrypoint-")
+    );
 
     try {
       writeFileSync(

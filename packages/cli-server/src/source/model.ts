@@ -82,7 +82,7 @@ export function createCliQuerySourceRecord(input: {
 export function sortCliSourceRecords(
   sources: CliSourceRecord[]
 ): CliSourceRecord[] {
-  return [...sources].toSorted((left, right) => {
+  return [...sources].sort((left, right) => {
     const bySourceKey = left.sourceKey.localeCompare(right.sourceKey);
     if (bySourceKey !== 0) {
       return bySourceKey;

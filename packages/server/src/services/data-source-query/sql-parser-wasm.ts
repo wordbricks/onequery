@@ -1,17 +1,15 @@
+import { existsSync } from "node:fs";
+
 import type { Statement } from "@casual-simulation/sql-parser";
-import initWasm, {
+import {
   format,
   initSync,
   parse_sql,
 } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
-import type { InitInput } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
-import { isRecord } from "@onequery/base";
 import {
   resolvePackagedRuntimeAssetPath,
   resolveRuntimeRoot,
 } from "@onequery/base/runtime-bundle";
-
-import { isNodeLike } from "./wasm-runtime";
 
 const SQL_PARSER_RUNTIME_ASSET_FAMILY = "sqlParser";
 const SQL_PARSER_WASM_FILE_ROLE = "wasm";
@@ -25,9 +23,7 @@ export async function ensureSqlParserInit(): Promise<void> {
     return parserState.promise;
   }
 
-  const promise = (
-    isNodeLike ? initSqlParserInNode() : initSqlParserInWorker()
-  ).then(() => {});
+  const promise = initSqlParserInNode().then(() => {});
   parserState.promise = promise;
   return promise;
 }
@@ -45,19 +41,7 @@ export function formatStatement(statement: Statement): string {
   return format(statement);
 }
 
-async function initSqlParserInWorker(): Promise<void> {
-  const wasmImport =
-    await import("@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm");
-  const wasmModule = unwrapDefaultExport(wasmImport);
-  await initWasm(toInitInput(wasmModule));
-}
-
 async function initSqlParserInNode(): Promise<void> {
-  if (!isNodeLike) {
-    await initWasm();
-    return;
-  }
-
   const [{ readFile }, wasmPath] = await Promise.all([
     import("node:fs/promises"),
     resolveSqlParserWasmPath(),
@@ -67,7 +51,7 @@ async function initSqlParserInNode(): Promise<void> {
 }
 
 async function resolveSqlParserWasmPath(): Promise<string> {
-  const explicitWasmPath = await resolvePackagedSqlParserWasmPath();
+  const explicitWasmPath = resolvePackagedSqlParserWasmPath();
   if (explicitWasmPath) {
     return explicitWasmPath;
   }
@@ -77,17 +61,12 @@ async function resolveSqlParserWasmPath(): Promise<string> {
   return require.resolve("@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm");
 }
 
-async function resolvePackagedSqlParserWasmPath(): Promise<string | null> {
-  if (!isNodeLike) {
-    return null;
-  }
-
+function resolvePackagedSqlParserWasmPath(): string | null {
   const runtimeRoot = resolveRuntimeRoot(process.env);
   if (!runtimeRoot) {
     return null;
   }
 
-  const { existsSync } = await import("node:fs");
   const packagedWasmPath = resolvePackagedRuntimeAssetPath(
     runtimeRoot,
     SQL_PARSER_RUNTIME_ASSET_FAMILY,
@@ -98,43 +77,7 @@ async function resolvePackagedSqlParserWasmPath(): Promise<string | null> {
     return null;
   }
 
-  // Comment: compiled Bun executables resolve nested package assets under
-  // `/$bunfs/root`, so the packaged runtime must provide the parser wasm file.
+  // Comment: the packaged server bundle runs under Node and resolves the SQL
+  // parser wasm from the staged runtime asset directory, not from the bundle.
   return packagedWasmPath;
-}
-
-function unwrapDefaultExport(value: unknown): unknown {
-  if (!isRecord(value) || !("default" in value)) {
-    return value;
-  }
-
-  return value.default;
-}
-
-function toInitInput(value: unknown): InitInput {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value instanceof WebAssembly.Module) {
-    return value;
-  }
-
-  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
-    return value;
-  }
-
-  if (typeof Request === "function" && value instanceof Request) {
-    return value;
-  }
-
-  if (typeof Response === "function" && value instanceof Response) {
-    return value;
-  }
-
-  if (typeof URL === "function" && value instanceof URL) {
-    return value;
-  }
-
-  throw new Error("Invalid SQL parser WASM module");
 }

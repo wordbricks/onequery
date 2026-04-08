@@ -4,13 +4,13 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { getDefaultSpaBuildDir } from "@onequery/bun-server/assets";
 import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { resolveWorkspaceDev } from "@onequery/config/workspace-dev";
+import { getDefaultSpaBuildDir } from "@onequery/self-host-runtime/assets";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const bunServerDir = resolve(rootDir, "packages", "bun-server");
+const selfHostRuntimeDir = resolve(rootDir, "packages", "self-host-runtime");
 
 function prependPathEntries(
   entries: readonly string[],
@@ -39,7 +39,7 @@ export function parseRunMode(argv: readonly string[]): "dev" {
   }
 
   throw new Error(
-    `Unknown mode: ${modeFlag}. Use --dev when running scripts/run-bun-server.ts.`
+    `Unknown mode: ${modeFlag}. Use --dev when running scripts/run-self-host-runtime.ts.`
   );
 }
 
@@ -67,7 +67,7 @@ export function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
   launchConfigPath: string;
   tempDir: string;
 } {
-  const tempDir = mkdtempSync(join(tmpdir(), "onequery-bun-server-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "onequery-self-host-runtime-"));
   const launchConfigPath = join(tempDir, "launch.json");
 
   writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
@@ -84,7 +84,7 @@ export function createChildEnv(): NodeJS.ProcessEnv {
     ONEQUERY_RUNTIME_ROOT: rootDir,
     PATH: prependPathEntries(
       [
-        join(bunServerDir, "node_modules/.bin"),
+        join(selfHostRuntimeDir, "node_modules/.bin"),
         join(rootDir, "node_modules/.bin"),
       ],
       process.env.PATH
@@ -94,15 +94,15 @@ export function createChildEnv(): NodeJS.ProcessEnv {
   return childEnv;
 }
 
-export function createBunArgs(launchConfigPath: string): string[] {
-  return ["--watch", "src/index.ts", launchConfigPath];
+export function createRuntimeArgs(launchConfigPath: string): string[] {
+  return ["--watch", "src/bun-entry.ts", launchConfigPath];
 }
 
 export function main(): void {
   parseRunMode(process.argv.slice(2));
   const launchConfig = writeLaunchConfigFile(createLaunchConfig());
-  const child = spawn("bun", createBunArgs(launchConfig.launchConfigPath), {
-    cwd: bunServerDir,
+  const child = spawn("bun", createRuntimeArgs(launchConfig.launchConfigPath), {
+    cwd: selfHostRuntimeDir,
     env: createChildEnv(),
     shell: process.platform === "win32",
     stdio: "inherit",
@@ -135,7 +135,7 @@ export function main(): void {
       force: true,
       recursive: true,
     });
-    console.error(`Failed to start bun-server (dev): ${error.message}`);
+    console.error(`Failed to start self-host runtime (dev): ${error.message}`);
     process.exit(1);
   });
 }

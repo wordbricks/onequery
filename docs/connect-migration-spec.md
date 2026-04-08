@@ -61,17 +61,18 @@ into several places that must be addressed explicitly:
    - `schema openapi` command itself
    - derived `x-onequery-*` metadata usage
 
-5. **Bun runtime and packaging**
-   - `packages/bun-server/**`
-   - `apps/cli/scripts/build-server-executable.js` uses `Bun.build`
+5. **Self-host runtime and packaging**
+   - `packages/self-host-runtime/**`
+   - `apps/cli/scripts/build-server-bundle.js` uses `rolldown` to emit a
+     Node-compatible server bundle
    - `apps/cli/scripts/self-host-runtime.js` uses `Bun.spawnSync`
    - root/package scripts and CI jobs use `bun run`
 
 The two non-obvious migration risks are:
 
 - **OpenAPI is also the source for CLI command metadata**, not just HTTP types.
-- **self-host packaging currently depends on Bun runtime compilation**, not
-  just Bun as a package manager.
+- **self-host packaging now depends on a Node-launched JS bundle**, while the
+  workspace still depends on Bun for local scripts and package management.
 
 ---
 
@@ -566,24 +567,25 @@ metadata model inside protobuf custom options.
 
 ---
 
-## Phase 6 - Bun runtime and self-host verification
+## Phase 6 - Self-host runtime verification
 
 ### Work
 
-Keep the existing **Bun + Hono** runtime.
+Keep the existing **Bun + Hono** runtime package for development.
 
 Mount the Connect handler inside the current Bun server path and verify the
-existing self-host flow still works after the transport cutover.
+existing self-host flow still works after the transport cutover, including the
+packaged Node-launched server bundle.
 
-Do **not** expand this spec into a Bun-to-Node runtime migration.
+Do **not** expand this spec into a broader runtime-package rename.
 
 ### Checklist
 
-- [x] Keep `packages/bun-server` as the runtime package for this migration.
+- [x] Keep `packages/self-host-runtime` as the runtime package for this migration.
 - [x] Mount Connect CLI handlers under `/api/cli`.
 - [x] Verify the existing non-CLI routes still work with the Connect mount in place.
 - [x] Verify self-host mode still boots and serves the Connect-backed CLI API.
-- [x] Update any Bun packaging/smoke tests only where the Connect route mount changes behavior.
+- [x] Update any self-host packaging/smoke tests only where the Connect route mount changes behavior.
 
 ---
 

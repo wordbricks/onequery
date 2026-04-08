@@ -31,9 +31,7 @@
     "fix": "just fix"
   },
   "devDependencies": {
-    "@onequery/base": "workspace:*"
-  },
-  "engines": {
-    "node": ">=18"
+    "@onequery/base": "workspace:*",
+    "rolldown": "1.0.0-rc.11"
   }
 }

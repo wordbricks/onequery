@@ -7,24 +7,22 @@ use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 use uuid::Uuid;
 
-use super::PACKAGED_SERVER_FILENAME;
-use super::PACKAGED_SERVER_MUSL_FILENAME;
-use super::PACKAGED_SERVER_WINDOWS_FILENAME;
+use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootSource;
 use super::launch::packaged_cli_relative_path;
-use super::launch::packaged_server_candidates;
 use super::launch::packaged_server_relative_path;
 use super::launch::resolve_runtime_bundle_root_from_components;
 use super::launch::runtime_root_env_var;
-use super::launch::select_packaged_server_candidate;
 use super::render::render_serve_logs_output;
 use super::render::render_serve_output;
 use super::render::render_serve_start_output;
 use super::render::render_serve_status_output;
 use super::runtime::LogPreview;
 use super::runtime::mark_stop_requested;
+use super::runtime::parse_runtime_major_version;
 use super::runtime::stop_request_matches;
+use super::runtime::validate_runtime_version_output;
 use super::state::ServeRuntimeState;
 use super::state::ServeStateAccessMode;
 use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
@@ -103,7 +101,7 @@ fn render_serve_logs_output_snapshot() {
         &LogPreview {
             lines: vec![
                 format!(
-                    "[bun-server] listening on {}",
+                    "[onequery-server] listening on {}",
                     crate::config::self_host::default_public_origin()
                 ),
                 "[api] GET /api/health 200".to_owned(),
@@ -204,63 +202,18 @@ fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
 }
 
 #[test]
-fn select_packaged_server_candidate_prefers_glibc_binary_when_loader_exists() {
+fn packaged_server_bundle_uses_single_cross_platform_filename() {
     let temp_dir = tempdir().unwrap();
     let server_dir = temp_dir.path().join(packaged_server_relative_path());
     fs::create_dir_all(&server_dir)
         .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
-    fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
-        .unwrap_or_else(|error| panic!("expected glibc server binary: {error}"));
-    fs::write(server_dir.join(PACKAGED_SERVER_MUSL_FILENAME), b"")
-        .unwrap_or_else(|error| panic!("expected musl server binary: {error}"));
-
-    let candidates = packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
-    let existing_candidates = candidates.iter().collect::<Vec<_>>();
-    let selected = select_packaged_server_candidate(&existing_candidates, |loader_path| {
-        loader_path == Path::new("/lib64/ld-linux-x86-64.so.2")
-    })
-    .unwrap_or_else(|| panic!("expected glibc packaged server executable"));
-
-    assert_eq!(selected.path, server_dir.join(PACKAGED_SERVER_FILENAME));
-}
-
-#[test]
-fn select_packaged_server_candidate_falls_back_to_musl_binary() {
-    let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(packaged_server_relative_path());
-    fs::create_dir_all(&server_dir)
-        .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
-    fs::write(server_dir.join(PACKAGED_SERVER_FILENAME), b"")
-        .unwrap_or_else(|error| panic!("expected glibc server binary: {error}"));
-    fs::write(server_dir.join(PACKAGED_SERVER_MUSL_FILENAME), b"")
-        .unwrap_or_else(|error| panic!("expected musl server binary: {error}"));
-
-    let candidates = packaged_server_candidates(server_dir.as_path(), "linux", "x86_64").unwrap();
-    let existing_candidates = candidates.iter().collect::<Vec<_>>();
-    let selected = select_packaged_server_candidate(&existing_candidates, |loader_path| {
-        loader_path == Path::new("/lib/ld-musl-x86_64.so.1")
-    })
-    .unwrap_or_else(|| panic!("expected musl packaged server executable"));
 
     assert_eq!(
-        selected.path,
-        server_dir.join(PACKAGED_SERVER_MUSL_FILENAME)
-    );
-}
-
-#[test]
-fn packaged_server_candidates_use_windows_executable_name() {
-    let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(packaged_server_relative_path());
-    fs::create_dir_all(&server_dir)
-        .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
-
-    let candidates = packaged_server_candidates(server_dir.as_path(), "windows", "x86_64").unwrap();
-
-    assert_eq!(candidates.len(), 1);
-    assert_eq!(
-        candidates[0].path,
-        server_dir.join(PACKAGED_SERVER_WINDOWS_FILENAME)
+        server_dir.join(PACKAGED_SERVER_BUNDLE_FILENAME),
+        temp_dir
+            .path()
+            .join(packaged_server_relative_path())
+            .join("onequery-server.mjs")
     );
 }
 
@@ -388,6 +341,48 @@ fn mark_stop_requested_records_pid_for_managed_shutdown() {
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected stop-request temp dir cleanup: {error}"));
+}
+
+#[test]
+fn parse_runtime_major_version_accepts_node_style_version_output() {
+    assert_eq!(parse_runtime_major_version("v22.13.1\n"), Some(22));
+    assert_eq!(parse_runtime_major_version("22.13.1\n"), Some(22));
+}
+
+#[test]
+fn parse_runtime_major_version_rejects_invalid_version_output() {
+    assert_eq!(parse_runtime_major_version(""), None);
+    assert_eq!(parse_runtime_major_version("lts"), None);
+}
+
+#[test]
+fn validate_runtime_version_output_rejects_node_20() {
+    let error = validate_runtime_version_output(
+        "v20.19.0\n",
+        &std::ffi::OsString::from("node"),
+        "onequery serve",
+    )
+    .expect_err("expected Node 20 to be rejected");
+
+    assert_eq!(error.title.as_str(), "unsupported self-host server runtime");
+    assert_eq!(
+        error.why.as_str(),
+        "node reports major version 20, but packaged onequery serve requires Node.js 22+"
+    );
+    assert_eq!(
+        error.try_next,
+        vec!["install Node.js 22+ and retry onequery serve".to_owned()]
+    );
+}
+
+#[test]
+fn validate_runtime_version_output_accepts_node_22() {
+    validate_runtime_version_output(
+        "v22.13.1\n",
+        &std::ffi::OsString::from("node"),
+        "onequery serve",
+    )
+    .unwrap_or_else(|error| panic!("expected Node 22 to be accepted: {error}"));
 }
 
 fn resolve_runtime_state_with_paths_for_test(

@@ -1,16 +1,17 @@
 {
-  "name": "@onequery/bun-server",
+  "name": "@onequery/self-host-runtime",
   "version": "0.0.0",
   "private": false,
   "type": "module",
   "exports": {
     "./app": "./src/app.ts",
     "./assets": "./src/assets.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./packaged-entry": "./src/node-entry.ts"
   },
   "scripts": {
     "build:web": "bun run --cwd ../../apps/web build",
-    "dev": "bun run ../../scripts/run-bun-server.ts --dev",
+    "dev": "bun run ../../scripts/run-self-host-runtime.ts --dev",
     "start": "bun run ../../scripts/run-self-host-smoke.ts serve",
     "serve": "bun run ../../scripts/run-self-host-smoke.ts serve",
     "test": "vitest run",

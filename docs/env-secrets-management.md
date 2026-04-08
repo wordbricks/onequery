@@ -44,7 +44,7 @@ onequery.dev.toml + onequery.dev.secrets.toml
                 +--> derived test profile
                 |
                 v
-   scripts/run-bun-server.ts writes launch contract
+   scripts/run-self-host-runtime.ts writes launch contract
                 |
                 v
           bun dev runtime startup
@@ -84,7 +84,7 @@ self-host/config.toml + self-host/secrets.toml
               run/launch.json
                      |
                      v
-      packages/bun-server startup reads it once
+      packages/self-host-runtime startup reads it once
 ```
 
 ## Practical Rules
@@ -93,7 +93,7 @@ self-host/config.toml + self-host/secrets.toml
   starts the local Postgres container, and provisions shared local
   infra. It does not apply the application schema.
 - `bun dev` reads repo-local workspace config and keeps browser/API listeners
-  split on purpose. Its Bun runtime applies the application schema on startup.
+  split on purpose. Its packaged runtime applies the application schema on startup.
 - `onequery serve` ignores `onequery.dev.toml` and starts from the resolved
   self-host launch contract.
 - `publicOrigin` is the canonical public URL. Do not introduce separate public
@@ -113,7 +113,7 @@ bun run dev:setup
 # Run the split browser/API workspace-dev flow
 bun dev
 
-# Start the bundled self-host runtime from the Rust-owned config roots
+# Start the packaged self-host runtime from the Rust-owned config roots
 onequery serve
 ```
 
