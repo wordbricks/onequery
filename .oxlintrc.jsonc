@@ -172,6 +172,7 @@
     "no-inline-comments": "off",
     "no-plusplus": "off",
 
+    "onequery/no-typescript-file-imports": "error",
     "onequery/no-vi-mock": "error",
 
     // TEMP: rules to fix incrementally
