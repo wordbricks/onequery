@@ -1,22 +1,57 @@
 # OneQuery
 
-OneQuery is an open-source platform for unified data querying. Connect to your databases, analytics tools, and APIs from a single place — via a CLI or web UI — with centralized credential management, query safety controls, and team collaboration built in.
+OneQuery is an open-source, self-hostable platform for unified data querying. Run the server on your own infrastructure, connect your databases, analytics tools, and APIs from a single place, and use the CLI or web UI with centralized credential management, query safety controls, and team collaboration built in.
 
 ## Quick Start
 
-If you already have access to a OneQuery server, this is the fastest path from install to first query:
+The default OSS path is to self-host OneQuery locally or on your own infrastructure.
 
 ```bash
-# Install the CLI (choose one)
+# Install the CLI and bundled self-host runtime
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+
+# Start OneQuery
+onequery serve
+```
+
+Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and point the CLI at your local instance:
+
+```bash
+onequery config set server http://127.0.0.1:5656
+onequery auth login
+onequery org list
+onequery org use <org-slug>
+```
+
+Once the instance is running, add a source and execute a test query:
+
+```bash
+onequery source connect --source postgres --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
+onequery source show warehouse
+onequery query execute --source warehouse --sql "select 1"
+```
+
+Other install options also work:
+
+```bash
 brew install wordbricks/tap/onequery
 npm install -g @onequery/cli
 bun add -g @onequery/cli
-curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+```
 
-# Point the CLI at your OneQuery server
+One-off execution works without a global install:
+
+```bash
+npx @onequery/cli --help
+bunx @onequery/cli --help
+```
+
+For self-host operations, config, backup, restore, SMTP, and reverse proxy setup, see [docs/self-host.md](./docs/self-host.md).
+
+Already have access to an existing OneQuery server instead?
+
+```bash
 onequery config set server https://onequery.example.com
-
-# Authenticate and select an org
 onequery auth login
 onequery org list
 onequery org use <org-slug>
@@ -27,38 +62,9 @@ onequery source show <source-key>
 onequery query execute --source <source-key> --sql "select 1"
 ```
 
-One-off execution also works without a global install:
-
-```bash
-npx @onequery/cli --help
-bunx @onequery/cli --help
-```
-
-Need to add a PostgreSQL source first?
-
-```bash
-onequery source connect --source postgres --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
-onequery source show warehouse
-onequery query execute --source warehouse --sql "select 1"
-```
-
-Running OSS self-host locally instead of connecting to an existing server?
-
-```bash
-onequery serve
-```
-
-Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and point the CLI at your local instance:
-
-```bash
-onequery config set server http://127.0.0.1:5656
-onequery auth login
-```
-
-For more self-host details, see [docs/self-host.md](./docs/self-host.md).
-
 ## What it does
 
+- **Self-host the full product** — run the API and web UI on your own infrastructure with `onequery serve`
 - **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
 - **Manage credentials centrally** — encrypted credential storage with organization-level access control
 - **Enforce query safety** — read-only validation, rate limiting, and single-statement enforcement
@@ -67,7 +73,7 @@ For more self-host details, see [docs/self-host.md](./docs/self-host.md).
 
 ## How it works
 
-OneQuery is a Bun/Turbo monorepo with three main layers:
+OneQuery is a Bun/Turbo monorepo designed to run as a self-hosted product, with three main layers:
 
 ```
 ┌─────────────────┐   ┌────────────────────┐
