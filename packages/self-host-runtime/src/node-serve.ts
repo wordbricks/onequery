@@ -15,19 +15,8 @@ type HeadersWithGetSetCookie = Headers & {
 export async function serveWithNode(
   options: NodeServeOptions
 ): Promise<Awaited<ReturnType<StartServerDependencies["serve"]>>> {
-  const server = createServer(async (req, res) => {
-    try {
-      const response = await options.fetch(
-        createNodeRequest(req, `${options.hostname}:${options.port}`)
-      );
-      await writeNodeResponse(res, response);
-    } catch (error) {
-      res.statusCode = 500;
-      res.setHeader("content-type", "text/plain; charset=utf-8");
-      res.end(
-        error instanceof Error ? error.message : "Unhandled server error"
-      );
-    }
+  const server = createServer((req, res) => {
+    void handleRequest(req, res, options);
   });
 
   server.keepAliveTimeout = options.idleTimeout * 1000;
@@ -46,6 +35,23 @@ export async function serveWithNode(
       }
     },
   };
+}
+
+async function handleRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  options: NodeServeOptions
+): Promise<void> {
+  try {
+    const response = await options.fetch(
+      createNodeRequest(req, `${options.hostname}:${options.port}`)
+    );
+    await writeNodeResponse(res, response);
+  } catch (error) {
+    res.statusCode = 500;
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.end(error instanceof Error ? error.message : "Unhandled server error");
+  }
 }
 
 function createNodeRequest(
