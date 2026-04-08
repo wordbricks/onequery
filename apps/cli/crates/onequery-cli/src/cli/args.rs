@@ -242,11 +242,14 @@ pub(crate) struct QueryValidateArgs {
 #[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
 pub(crate) enum QuerySubcommand {
     /// Execute a query and return rows.
-    #[command(override_usage = "\
-onequery query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --stdin")]
+    #[command(
+        name = "exec",
+        override_usage = "\
+onequery query exec [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --stdin"
+    )]
     Execute(QueryExecuteArgs),
     /// Validate a query without executing it.
     #[command(override_usage = "\
@@ -290,12 +293,6 @@ pub(crate) struct UseArgs {
     /// Execute one provider-specific relay request from an inline JSON payload.
     #[arg(long, value_name = "JSON")]
     pub input: Option<String>,
-}
-
-#[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
-pub(crate) enum SchemaSubcommand {
-    /// List packaged skill files for agents.
-    Skills,
 }
 
 #[derive(Debug, Clone, Subcommand)]

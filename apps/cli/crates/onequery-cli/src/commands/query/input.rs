@@ -254,7 +254,7 @@ async fn read_query_json_input(
 impl QueryIntent {
     fn command(self) -> &'static str {
         match self {
-            Self::Execute => "onequery query execute",
+            Self::Execute => "onequery query exec",
             Self::Validate => "onequery query validate",
         }
     }

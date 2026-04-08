@@ -895,7 +895,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path,
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "onequery query execute --source acme --sql \"select 1\"",
+            "onequery query exec --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -1082,7 +1082,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path,
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "onequery query execute --source acme --sql \"select 1\"",
+            "onequery query exec --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -1119,7 +1119,7 @@ active = "acme"
             config_path,
             vec![("api.request_timeout_sec".to_owned(), TomlValue::Integer(30))],
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "onequery -c api.request_timeout_sec=30 query execute --source acme --sql \"select 1\"",
+            "onequery -c api.request_timeout_sec=30 query exec --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -1152,7 +1152,7 @@ active = "acme"
         let store = ConfigStore::load_from_path_with_overrides(
             config_path.clone(),
             TypedConfigOverrides::with_request_timeout_sec(15),
-            "onequery query execute --source acme --sql \"select 1\"",
+            "onequery query exec --source acme --sql \"select 1\"",
         )
         .unwrap_or_else(|error| panic!("expected config load to succeed: {error}"));
 
@@ -1165,7 +1165,7 @@ active = "acme"
             (
                 ConfigLayerStack::new(vec![
                     super::layers::default_config_layer(
-                        "onequery query execute --source acme --sql \"select 1\"",
+                        "onequery query exec --source acme --sql \"select 1\"",
                     )
                     .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
                     ConfigLayer::enabled(
@@ -1272,7 +1272,7 @@ active = "acme"
     fn materialize_runtime_config_validates_after_applying_typed_overrides() {
         let layer_stack = ConfigLayerStack::new(vec![
             super::layers::default_config_layer(
-                "onequery query execute --source acme --sql \"select 1\"",
+                "onequery query exec --source acme --sql \"select 1\"",
             )
             .unwrap_or_else(|error| panic!("expected default config layer: {error}")),
         ]);
@@ -1284,7 +1284,7 @@ active = "acme"
             .expect("expected config TOML serialization to succeed"),
             ConfigOrigins::defaults(),
             &TypedConfigOverrides::with_request_timeout_sec(0),
-            "onequery query execute --source acme --sql \"select 1\"",
+            "onequery query exec --source acme --sql \"select 1\"",
             Path::new("/tmp/onequery/config.toml"),
         )
         .map(|_| ())

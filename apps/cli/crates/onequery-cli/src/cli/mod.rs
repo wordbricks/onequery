@@ -24,7 +24,6 @@ pub(crate) use args::QuerySubcommand;
 pub(crate) use args::QueryValidateArgs;
 pub(crate) use args::ReadArgs;
 pub(crate) use args::RestoreArgs;
-pub(crate) use args::SchemaSubcommand;
 pub(crate) use args::SourceConnectArgs;
 pub(crate) use args::SourceSubcommand;
 pub(crate) use args::UseArgs;

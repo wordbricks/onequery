@@ -1,13 +1,13 @@
 ---
-source: crates/onequery-cli/src/cli.rs
-expression: rendered
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"query\", \"--help\"])"
 ---
 Execute or validate source queries
 
 Usage: onequery query [OPTIONS] <COMMAND>
 
 Commands:
-  execute   Execute a query and return rows
+  exec      Execute a query and return rows
   validate  Validate a query without executing it
   help      Print this message or the help of the given subcommand(s)
 

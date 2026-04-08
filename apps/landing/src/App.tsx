@@ -10,7 +10,7 @@ import {
   LANDING_SECTION_IDS,
 } from "./landing-config";
 
-const querySnippet = `onequery query execute \\
+const querySnippet = `onequery query exec \\
   --source postgres-prod \\
   --sql "select team, sum(cost) as spend from monthly_costs group by 1 order by 2 desc"`;
 
