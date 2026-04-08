@@ -82,7 +82,9 @@ fn serve_help_output_snapshot_targets_serve_surface() {
 
 #[test]
 fn source_connect_help_output_lists_supported_providers() {
-    assert_snapshot!(rendered_display(&["onequery", "source", "connect", "--help"]));
+    assert_snapshot!(rendered_display(&[
+        "onequery", "source", "connect", "--help"
+    ]));
 }
 
 #[test]
