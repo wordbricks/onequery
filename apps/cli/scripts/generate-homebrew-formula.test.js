@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buildFormula } from "./generate-homebrew-formula.js";
 
-test("buildFormula renders the supported platform download blocks", () => {
+void test("buildFormula renders the supported platform download blocks", () => {
   const formula = buildFormula({
     repoName: "onequery",
     repoOwner: "wordbricks",
@@ -31,7 +31,7 @@ test("buildFormula renders the supported platform download blocks", () => {
   );
 });
 
-test("buildFormula omits optional Linux arm64 downloads when no checksum is provided", () => {
+void test("buildFormula omits optional Linux arm64 downloads when no checksum is provided", () => {
   const formula = buildFormula({
     repoName: "onequery",
     repoOwner: "wordbricks",
