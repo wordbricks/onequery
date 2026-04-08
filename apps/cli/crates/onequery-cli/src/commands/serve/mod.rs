@@ -31,8 +31,7 @@ const RETRY_SERVE_COMMAND: &str = "retry onequery serve";
 const RETRY_SERVE_STOP_COMMAND: &str = "retry onequery serve stop";
 const CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP: &str =
     "check the server log and retry onequery serve stop";
-const INSTALL_NODE_AND_RETRY_SERVE_COMMAND: &str =
-    "install Node.js 22+ and retry onequery serve";
+const INSTALL_NODE_AND_RETRY_SERVE_COMMAND: &str = "install Node.js 22+ and retry onequery serve";
 const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
 
 pub(super) async fn execute<B, T>(

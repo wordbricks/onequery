@@ -1,5 +1,5 @@
-use std::fs;
 use std::ffi::OsString;
+use std::fs;
 use std::path::Path;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
