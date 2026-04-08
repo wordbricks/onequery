@@ -24,15 +24,16 @@ OSS-safe CLI discovery.
   DDL, or product/documentation questions that do not require CLI access.
 - Once org resolution is clear, prefer `--org <slug>` on org-scoped commands
   rather than relying on persisted local state.
-
-Comment: provider-specific sources are still in scope when OneQuery is the
-access path. If the user asks for "warehouse data" or "run a quick SQL check"
-without naming OneQuery, prefer this skill when the expected path is
-OneQuery-managed rather than direct credentials.
-
-Comment: unlike Velen, the current OSS-safe OneQuery schema surface exposes
-`onequery schema skills` but not `schema commands` or `schema command`.
-Use `--help` for deeper command-shape discovery.
+- Provider-specific sources are still in scope when OneQuery is the access
+  path. If the user asks for "warehouse data" or "run a quick SQL check"
+  without naming OneQuery, prefer this skill when the expected path is
+  OneQuery-managed rather than direct credentials.
+- This skill tracks the releasing `onequery query exec` surface. If a local
+  binary still shows `query execute`, the installed CLI is older than the
+  command set this skill expects.
+- Unlike Velen, the current OSS-safe OneQuery schema surface exposes
+  `onequery schema skills` but not `schema commands` or `schema command`.
+  Use `--help` for deeper command-shape discovery.
 
 ## Prerequisites
 
@@ -88,7 +89,8 @@ Use `--help` for deeper command-shape discovery.
 
 1. For unfamiliar SQL, start with `onequery --org <slug> query validate --source <source_key> ...`.
 2. For execution, start with a cheap query such as `select 1`, a row count, or
-   a bounded aggregate via `onequery --org <slug> query exec --source <source_key> ...`.
+   a bounded aggregate via
+   `onequery --org <slug> query exec --source <source_key> ...`.
 3. Use provider-appropriate read-only SQL only.
 4. Prefer `--file <path.sql>` or `--stdin` for multi-line SQL.
 5. If output is truncated or too broad, narrow the query and rerun with
@@ -118,3 +120,8 @@ Use `--help` for deeper command-shape discovery.
   `onequery --org <slug> source list`.
 - If a failure includes `Request ID`, include it in the summary so the run can
   be traced or escalated.
+
+## References
+
+Read `references/command-patterns.md` for concrete command sequences, bounded
+query examples, and common recovery moves.
