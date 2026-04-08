@@ -22,7 +22,6 @@ use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
 use super::ServeCommand;
-use super::SourceConnectProvider;
 use super::UseSource;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
@@ -492,7 +491,7 @@ fn parse_invocation_accepts_source_connect_input() {
         Command::Source(super::SourceSubcommand::Connect(super::SourceConnectArgs {
             source,
             input: Some(input),
-        })) if source == SourceConnectProvider::Postgres
+        })) if source == "postgres"
             && input == "{\"name\":\"warehouse\"}"
     ));
 }
