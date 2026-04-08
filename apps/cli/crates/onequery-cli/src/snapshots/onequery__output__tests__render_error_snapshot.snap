@@ -3,7 +3,7 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: query failed
-Command: onequery query execute --source warehouse --sql "<excerpt: select ...>"
+Command: onequery query exec --source warehouse --sql "<excerpt: select ...>"
 Stage: execute_query
 Why: server rejected write query
 Request ID: req_123

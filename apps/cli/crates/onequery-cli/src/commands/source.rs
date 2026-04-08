@@ -587,7 +587,7 @@ fn render_source_show_output(
 
     if source.queryable.unwrap_or(false) {
         lines.push(format!(
-            "Sample query: onequery query execute --source {} --sql \"select 1\"",
+            "Sample query: onequery query exec --source {} --sql \"select 1\"",
             source.name.as_deref().unwrap_or("<source>")
         ));
     }

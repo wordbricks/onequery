@@ -86,9 +86,7 @@ fn org_use_help_output_keeps_global_org_override_visible() {
 
 #[test]
 fn query_execute_help_output_uses_explicit_multiline_usage() {
-    assert_snapshot!(rendered_display(&[
-        "onequery", "query", "execute", "--help"
-    ]));
+    assert_snapshot!(rendered_display(&["onequery", "query", "exec", "--help"]));
 }
 
 #[test]
@@ -495,7 +493,7 @@ fn parse_invocation_accepts_query_result_window_args() {
     let invocation = parse_invocation(&[
         "onequery",
         "query",
-        "execute",
+        "exec",
         "--source",
         "warehouse",
         "--sql",
@@ -614,7 +612,7 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
         ),
         (
             &[
-                "onequery", "query", "execute", "--source", "query", "--sql", "select 1",
+                "onequery", "query", "exec", "--source", "query", "--sql", "select 1",
             ][..],
             Case::SourceFlagValue,
         ),
@@ -643,7 +641,7 @@ fn parse_invocation_rejects_raw_query_input_with_result_window_controls() {
     let error = parse_error(&[
         "onequery",
         "query",
-        "execute",
+        "exec",
         "--source",
         "warehouse",
         "--input",
