@@ -1,5 +1,6 @@
 [tools]
 "aqua:casey/just" = "1.48.1"
+"aqua:orhun/git-cliff" = "2.12.0"
 "aqua:rhysd/actionlint" = "1.7.11"
 "aqua:mitsuhiko/insta" = "1.47.1"
 "cargo:cargo-expand" = "1.0.121"
