@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 import {
   access,
+  chmod,
   copyFile,
   cp,
   mkdir,
@@ -28,6 +29,7 @@ import {
 } from "@onequery/base/runtime-bundle";
 
 import {
+  CLI_BINARY_NAME,
   CLI_NPM_PACK_DIR_PREFIX,
   CLI_NPM_STAGE_DIR_PREFIX,
   CLI_NPM_TARBALL_PREFIX,
@@ -35,6 +37,7 @@ import {
   PLATFORM_PACKAGES,
   RELEASE_PLATFORM_PACKAGES,
   EXTRA_RELEASE_PLATFORM_PACKAGES,
+  binaryNameForTargetTriple,
 } from "../bin/package-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -232,6 +235,31 @@ async function copyPlatformVendor({ vendorSrc, stagingDir, targetTriple }) {
 
   await mkdir(path.dirname(targetDestination), { recursive: true });
   await cp(targetSource, targetDestination, { recursive: true });
+  await restorePackagedExecutableModes({
+    targetRoot: targetDestination,
+    targetTriple,
+  });
+}
+
+async function restorePackagedExecutableModes({ targetRoot, targetTriple }) {
+  if (targetTriple.includes("-windows-")) {
+    return;
+  }
+
+  // COMMENT: GitHub artifact downloads normalize uploaded native binaries to
+  // 0644, so reassert the executable bit before npm pack snapshots the vendor
+  // payload into the release tarball.
+  const executablePaths = [
+    path.join(
+      targetRoot,
+      "onequery",
+      binaryNameForTargetTriple(targetTriple, CLI_BINARY_NAME)
+    ),
+  ];
+
+  await Promise.all(
+    executablePaths.map((executablePath) => chmod(executablePath, 0o755))
+  );
 }
 
 export async function stagePackagedRuntime({ runtimeRoot }) {
@@ -488,6 +516,7 @@ function indexWorkspacePackageManifestPaths(workspacePackageManifests) {
 
 export const __internal = {
   indexWorkspacePackageManifestPaths,
+  restorePackagedExecutableModes,
   resolveRuntimeAssetSourcePaths,
   resolveWorkspacePackageManifestPath,
   resolveWorkspacePackageRequire,

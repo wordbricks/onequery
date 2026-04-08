@@ -126,8 +126,12 @@ bun run proto:check
 ## Installing the CLI
 
 ```bash
+# Via Homebrew (tap)
+brew install wordbricks/tap/onequery
+
 # Via npm/bun
 bun add -g @onequery/cli
+npm install -g @onequery/cli
 
 # Or with the install script (self-hosted)
 curl -fsSL https://onequery.wordbricks.ai/install.sh | sh

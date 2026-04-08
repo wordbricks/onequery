@@ -23,6 +23,12 @@ Install the CLI:
 curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
 
+Or install it with Homebrew:
+
+```bash
+brew install wordbricks/tap/onequery
+```
+
 Or install it directly with Bun:
 
 ```bash
