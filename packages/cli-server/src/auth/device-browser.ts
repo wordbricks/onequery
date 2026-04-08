@@ -1,3 +1,4 @@
+import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import type { Auth } from "@onequery/server/auth";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -385,8 +386,7 @@ async function readPostedUserCode(request: Request) {
 }
 
 function normalizeUserCode(value: string | null | undefined) {
-  const normalized = value?.trim().replaceAll("-", "").toUpperCase();
-  return normalized && normalized.length > 0 ? normalized : null;
+  return normalizeDeviceUserCode(value) ?? null;
 }
 
 function readAuthErrorDescription(error: unknown) {

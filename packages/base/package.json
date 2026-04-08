@@ -6,6 +6,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./device-auth": "./src/device-auth.ts",
     "./organization-permissions": "./src/organization-permissions.ts",
     "./runtime-bundle": "./src/runtime-bundle.ts"
   },

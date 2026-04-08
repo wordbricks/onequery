@@ -1,17 +1,18 @@
-import { AUTH_CALLBACK_ROUTE } from "@/lib/app-routes";
+import {
+  AUTH_CALLBACK_ROUTE,
+  buildConnectDatabasePath,
+  buildDeviceAuthPath,
+  DEVICE_ROUTE,
+} from "@/lib/app-routes";
 
 type AuthRedirectTarget = {
   kind: "app";
   path: string;
 };
 
-type AuthRedirectExecutor = {
-  navigateTo: (to: string) => Promise<void> | void;
-  navigateDocument: (input: {
-    href: string;
-    replace: true;
-    reloadDocument: true;
-  }) => Promise<void> | void;
+type BootstrapCompletionRedirectInput = {
+  organizationId: string;
+  redirectPath?: string | null;
 };
 
 export function parseAuthRedirectPath(
@@ -50,11 +51,27 @@ export function buildPostSignUpCallbackPathFromRedirect(
   return `${AUTH_CALLBACK_ROUTE}?${searchParams.toString()}`;
 }
 
-export async function executePostAuthRedirect(
-  target: AuthRedirectTarget,
-  executor: AuthRedirectExecutor
-): Promise<void> {
-  await executor.navigateTo(target.path);
+export function resolveBootstrapCompletionRedirectPath(
+  input: BootstrapCompletionRedirectInput
+): string {
+  const fallbackPath = buildConnectDatabasePath(input.organizationId);
+  const redirectTarget = parseAuthRedirectPath(input.redirectPath);
+  if (!redirectTarget) {
+    return fallbackPath;
+  }
+
+  const redirectUrl = parseAppRedirectUrl(redirectTarget.path);
+  if (!redirectUrl || redirectUrl.pathname !== DEVICE_ROUTE) {
+    return fallbackPath;
+  }
+
+  const deviceRedirectPath = buildDeviceAuthPath(
+    redirectUrl.searchParams.get("user_code"),
+    input.organizationId
+  );
+  return deviceRedirectPath === DEVICE_ROUTE
+    ? fallbackPath
+    : deviceRedirectPath;
 }
 
 export function sanitizeRedirectPath(
@@ -72,4 +89,12 @@ function classifyAuthRedirectTarget(path: string): AuthRedirectTarget {
     kind: "app",
     path,
   };
+}
+
+function parseAppRedirectUrl(path: string): URL | null {
+  try {
+    return new URL(path, "https://onequery.local");
+  } catch {
+    return null;
+  }
 }

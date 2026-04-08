@@ -1,10 +1,9 @@
+import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import type { InferResponseType } from "hono/client";
 import { assertEvent, assign, fromPromise, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import { createApiClient } from "@/lib/api-client";
-
-import { normalizeDeviceUserCode } from "./device-auth-schema";
 
 export type DeviceResultTone = "success" | "error";
 

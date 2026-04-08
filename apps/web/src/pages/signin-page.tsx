@@ -9,7 +9,7 @@ import {
 } from "@onequery/ui/components/card";
 import { Input } from "@onequery/ui/components/input";
 import { Label } from "@onequery/ui/components/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getRouteApi,
   Link,
@@ -25,7 +25,7 @@ import { getApiBaseUrl } from "@/lib/api-base-url";
 import { signIn, signUp } from "@/lib/auth-client";
 import {
   buildPostSignUpCallbackPathFromRedirect,
-  executePostAuthRedirect,
+  resolveBootstrapCompletionRedirectPath,
   resolvePostAuthRedirectPath,
 } from "@/lib/auth-redirect";
 import { authBootstrapStateQueryOptions } from "@/queries/auth-bootstrap-query";
@@ -92,6 +92,7 @@ async function readBootstrapError(response: Response): Promise<string> {
 
 export function SignInPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,10 +146,7 @@ export function SignInPage() {
       }
 
       await router.invalidate();
-      await executePostAuthRedirect(redirectTarget, {
-        navigateDocument: async (options) => navigate(options),
-        navigateTo: async (to) => navigate({ to }),
-      });
+      await navigate({ to: redirectTarget.path });
     } catch (error) {
       console.error("[auth] sign-in failed", {
         error,
@@ -241,10 +239,17 @@ export function SignInPage() {
         return;
       }
 
-      const redirectPath = `/onboarding/connect-database?orgId=${encodeURIComponent(
-        payload.data.bootstrap.organizationId
-      )}`;
+      const redirectPath = resolveBootstrapCompletionRedirectPath({
+        organizationId: payload.data.bootstrap.organizationId,
+        redirectPath: redirect,
+      });
 
+      // Comment: bootstrap creates the Better Auth session before this tab can
+      // reliably observe the cookie, so the shared auth callback still needs to
+      // settle session state before we resume the next route.
+      await queryClient.invalidateQueries({
+        queryKey: authBootstrapStateQueryOptions().queryKey,
+      });
       await router.invalidate({ sync: true });
       await navigate({
         to: buildPostSignUpCallbackPathFromRedirect(redirectPath),
