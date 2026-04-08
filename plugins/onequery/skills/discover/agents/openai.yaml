@@ -1,0 +1,4 @@
+interface:
+  display_name: "OneQuery discovery"
+  short_description: "Resolve auth, org, and source context before a narrower task."
+  default_prompt: "Use OneQuery to resolve the right org and source before querying."

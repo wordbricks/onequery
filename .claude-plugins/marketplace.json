@@ -1,0 +1,17 @@
+{
+  "name": "local-repo",
+  "plugins": [
+    {
+      "name": "onequery",
+      "source": {
+        "source": "local",
+        "path": "./plugins/onequery"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
