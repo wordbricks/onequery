@@ -1,4 +1,0 @@
-interface:
-  display_name: "OneQuery CLI"
-  short_description: "Inspect OneQuery-connected company data"
-  default_prompt: "Use $onequery-cli to resolve org and source context, prefer --org <slug>, inspect OneQuery-connected data, validate or run a read-only query, and summarize the evidence."
