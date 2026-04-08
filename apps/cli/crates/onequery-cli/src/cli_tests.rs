@@ -22,6 +22,7 @@ use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
 use super::ServeCommand;
+use super::SourceConnectProvider;
 use super::UseSource;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
@@ -77,6 +78,11 @@ fn use_help_output_snapshot_targets_use_surface() {
 #[test]
 fn serve_help_output_snapshot_targets_serve_surface() {
     assert_snapshot!(rendered_display(&["onequery", "serve", "--help"]));
+}
+
+#[test]
+fn source_connect_help_output_lists_supported_providers() {
+    assert_snapshot!(rendered_display(&["onequery", "source", "connect", "--help"]));
 }
 
 #[test]
@@ -484,7 +490,8 @@ fn parse_invocation_accepts_source_connect_input() {
         Command::Source(super::SourceSubcommand::Connect(super::SourceConnectArgs {
             source,
             input: Some(input),
-        })) if source == "postgres" && input == "{\"name\":\"warehouse\"}"
+        })) if source == SourceConnectProvider::Postgres
+            && input == "{\"name\":\"warehouse\"}"
     ));
 }
 

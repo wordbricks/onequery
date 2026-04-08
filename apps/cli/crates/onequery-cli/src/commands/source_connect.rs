@@ -17,7 +17,6 @@ use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
 use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use super::CommandContext;
 use super::Runtime;
@@ -102,16 +101,7 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let source = args.source.trim();
-    if source.is_empty() {
-        return Err(CliError::new(
-            "invalid source connect source",
-            context.command_line.clone(),
-            ErrorStage::ResolveSource,
-            "--source must not be empty",
-            vec!["retry with --source <provider>".to_owned()],
-        ));
-    }
+    let source = args.source.as_str();
 
     let mode = match args.input.as_deref() {
         Some(raw_input) => SourceConnectMode::Connect {

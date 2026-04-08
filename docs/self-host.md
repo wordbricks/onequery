@@ -69,6 +69,29 @@ onequery auth login
 - `onequery auth login` uses the same self-hosted device-authorization flow as the
   browser-facing server.
 
+## Supported Source Providers
+
+Use `onequery source connect --help` to see the accepted `--source` values in the CLI.
+
+Current provider identifiers:
+
+- `postgres` for PostgreSQL
+- `supabase` for Supabase Postgres
+- `mysql` for MySQL
+- `mongodb` for MongoDB
+- `bigquery` for BigQuery
+- `laminar` for Laminar
+- `aws_athena_connector` for an AWS Athena connector already registered in OneQuery
+- `ga` for Google Analytics
+- `amplitude` for Amplitude
+- `mixpanel` for Mixpanel
+- `posthog` for PostHog
+- `sentry` for Sentry
+- `github` for GitHub
+- `linear` for Linear
+
+For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.
+
 ## Config Files
 
 Roots on supported hosts:
