@@ -7,10 +7,15 @@
     "./app": "./src/app.ts",
     "./assets": "./src/assets.ts",
     "./client": "./src/client.ts",
-    "./install-script": "./src/install-script.ts",
+    "./install-script": {
+      "types": "./src/install-script.ts",
+      "bun": "./src/install-script.ts",
+      "default": "./dist/install-script.js"
+    },
     "./packaged-entry": "./src/node-entry.ts"
   },
   "scripts": {
+    "build": "bun build ./src/install-script.ts --outfile ./dist/install-script.js --target node --format esm",
     "build:web": "bun run --cwd ../../apps/web build",
     "dev": "bun run ../../scripts/run-self-host-runtime.ts --dev",
     "start": "bun run ../../scripts/run-self-host-smoke.ts serve",
