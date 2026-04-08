@@ -148,6 +148,19 @@ The self-host runtime writes operator-managed files under the standard config
 and data roots, including `self-host/config.toml`, `self-host/secrets.toml`,
 and the resolved startup contract at `run/launch.json`.
 
+## Claude Code plugin
+
+The shared `onequery` Claude Code plugin now ships from the Wordbricks
+marketplace repository instead of this monorepo:
+
+```bash
+/plugin marketplace add wordbricks/skills
+/plugin install onequery@wordbricks
+```
+
+For local plugin work, use the plugin bundle from your `wordbricks/skills`
+checkout at `plugins/onequery`.
+
 ## License
 
 Apache 2.0 — see [LICENSE](./LICENSE).
