@@ -313,15 +313,19 @@ async function waitForExit(
   return Promise.race([exitPromise, timeoutPromise]);
 }
 
-async function startServeProcess(input: {
+async function startGatewayProcess(input: {
   env: Record<string, string>;
   stagedBundleRoot: string;
 }) {
-  const child = spawn(resolveStagedCliPath(input.stagedBundleRoot), ["serve"], {
-    cwd: cliRootDir,
-    env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
-    stdio: "pipe",
-  });
+  const child = spawn(
+    resolveStagedCliPath(input.stagedBundleRoot),
+    ["gateway"],
+    {
+      cwd: cliRootDir,
+      env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
+      stdio: "pipe",
+    }
+  );
 
   const output = collectProcessOutput(child);
 
@@ -331,7 +335,7 @@ async function startServeProcess(input: {
   };
 }
 
-async function stopServeProcess(input: {
+async function stopGatewayProcess(input: {
   child: ReturnType<typeof spawn>;
   env: Record<string, string>;
   homeDir: string;
@@ -339,7 +343,7 @@ async function stopServeProcess(input: {
   stagedBundleRoot: string;
 }): Promise<void> {
   const stagedCliPath = resolveStagedCliPath(input.stagedBundleRoot);
-  const stopResult = spawnSync(stagedCliPath, ["serve", "stop"], {
+  const stopResult = spawnSync(stagedCliPath, ["gateway", "stop"], {
     cwd: cliRootDir,
     encoding: "utf8",
     env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
@@ -362,7 +366,7 @@ async function stopServeProcess(input: {
     }
 
     // Comment: the packaged self-host runtime can finish a managed SIGTERM shutdown
-    // and clear pid/lock markers before the foreground `onequery serve` process
+    // and clear pid/lock markers before the foreground `onequery gateway` process
     // reports a nonzero exit. Smoke cleanup only needs to prove the runtime is
     // no longer live for the temp home directory.
     if (cleanedUp) {
@@ -370,12 +374,12 @@ async function stopServeProcess(input: {
     }
 
     throw new Error(
-      `serve stop exited with status ${stopResult.status} and runtime markers remained`
+      `gateway stop exited with status ${stopResult.status} and runtime markers remained`
     );
   } catch (error) {
     input.child.kill("SIGKILL");
     throw new Error(
-      `self-host serve process failed to stop cleanly.\nstop output:\n${stopOutput}\nserve output:\n${input.output.read()}\n${
+      `self-host gateway process failed to stop cleanly.\nstop output:\n${stopOutput}\ngateway output:\n${input.output.read()}\n${
         error instanceof Error ? error.message : String(error)
       }`,
       { cause: error }
@@ -384,13 +388,13 @@ async function stopServeProcess(input: {
 }
 
 describe("CLI self-host smoke", () => {
-  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged serve path", async () => {
+  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged gateway path", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-self-host-home-");
 
     writeSelfHostConfig(homeDir, port);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });
@@ -593,7 +597,7 @@ describe("CLI self-host smoke", () => {
         { cause: error }
       );
     } finally {
-      await stopServeProcess({
+      await stopGatewayProcess({
         child: handle.child,
         env,
         homeDir,
@@ -613,7 +617,7 @@ describe("CLI self-host smoke", () => {
 
     writeSelfHostConfig(homeDir, port);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });
@@ -891,7 +895,7 @@ describe("CLI self-host smoke", () => {
         { cause: error }
       );
     } finally {
-      await stopServeProcess({
+      await stopGatewayProcess({
         child: handle.child,
         env,
         homeDir,
@@ -912,7 +916,7 @@ describe("CLI self-host smoke", () => {
     writeSelfHostConfig(homeDir, port);
     writeInvalidSecrets(homeDir);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });

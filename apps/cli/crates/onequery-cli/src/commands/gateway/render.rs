@@ -7,15 +7,15 @@ use crate::output::CommandOutput;
 use super::super::is_process_running;
 use super::runtime::LogPreview;
 use super::runtime::read_runtime_pid;
-use super::state::ServeRuntimeState;
+use super::state::GatewayRuntimeState;
 
 #[cfg(test)]
-pub(super) fn render_serve_output(state: &ServeRuntimeState) -> CommandOutput {
+pub(super) fn render_gateway_output(state: &GatewayRuntimeState) -> CommandOutput {
     let listen = server_listen_label(state.config.as_ref());
 
     CommandOutput::structured(
         vec![
-            "Serve foundation ready.".to_owned(),
+            "Gateway foundation ready.".to_owned(),
             format!("Config dir: {}", state.paths.config_dir.display()),
             format!("Data dir: {}", state.paths.data_dir.display()),
             format!("Listen: {listen}"),
@@ -27,10 +27,10 @@ pub(super) fn render_serve_output(state: &ServeRuntimeState) -> CommandOutput {
                 "Created secrets.toml: {}",
                 yes_no_label(state.secrets_created)
             ),
-            "Next step: onequery serve start".to_owned(),
+            "Next step: onequery gateway start".to_owned(),
         ],
         json!({
-            "kind": "serve",
+            "kind": "gateway",
             "phase": "skeleton",
             "bootstrapped": state.bootstrapped,
             "configCreated": state.config_created,
@@ -43,12 +43,12 @@ pub(super) fn render_serve_output(state: &ServeRuntimeState) -> CommandOutput {
 }
 
 #[cfg(test)]
-pub(super) fn render_serve_start_output(state: &ServeRuntimeState) -> CommandOutput {
+pub(super) fn render_gateway_start_output(state: &GatewayRuntimeState) -> CommandOutput {
     let listen = server_listen_label(state.config.as_ref());
 
     CommandOutput::structured(
         vec![
-            "Serve start is wired as a Phase 2 skeleton.".to_owned(),
+            "Gateway start is wired as a Phase 2 skeleton.".to_owned(),
             format!("Bootstrapped: {}", yes_no_label(state.bootstrapped)),
             format!("Listen: {listen}"),
             format!("Log path: {}", state.paths.server_log_path.display()),
@@ -59,7 +59,7 @@ pub(super) fn render_serve_start_output(state: &ServeRuntimeState) -> CommandOut
             "No server process was launched in this milestone.".to_owned(),
         ],
         json!({
-            "kind": "serve-start",
+            "kind": "gateway-start",
             "phase": "skeleton",
             "bootstrapped": state.bootstrapped,
             "processStarted": false,
@@ -70,13 +70,13 @@ pub(super) fn render_serve_start_output(state: &ServeRuntimeState) -> CommandOut
     )
 }
 
-pub(super) fn render_serve_status_output(state: &ServeRuntimeState) -> CommandOutput {
+pub(super) fn render_gateway_status_output(state: &GatewayRuntimeState) -> CommandOutput {
     let listen = server_listen_label(state.config.as_ref());
     let runtime_status = runtime_status_label(state);
 
     CommandOutput::structured(
         vec![
-            "Serve status".to_owned(),
+            "Gateway status".to_owned(),
             format!("Bootstrapped: {}", yes_no_label(state.bootstrapped)),
             format!("Listen: {listen}"),
             format!("Runtime: {runtime_status}"),
@@ -92,7 +92,7 @@ pub(super) fn render_serve_status_output(state: &ServeRuntimeState) -> CommandOu
             ),
         ],
         json!({
-            "kind": "serve-status",
+            "kind": "gateway-status",
             "phase": "managed",
             "bootstrapped": state.bootstrapped,
             "server": state.config.as_ref().map(server_json),
@@ -102,12 +102,12 @@ pub(super) fn render_serve_status_output(state: &ServeRuntimeState) -> CommandOu
     )
 }
 
-pub(super) fn render_serve_logs_output(
-    state: &ServeRuntimeState,
+pub(super) fn render_gateway_logs_output(
+    state: &GatewayRuntimeState,
     preview: &LogPreview,
 ) -> CommandOutput {
     let mut lines = vec![
-        "Serve logs".to_owned(),
+        "Gateway logs".to_owned(),
         format!("Log path: {}", state.paths.server_log_path.display()),
         format!("Log file present: {}", yes_no_label(state.log_file_present)),
     ];
@@ -126,7 +126,7 @@ pub(super) fn render_serve_logs_output(
     CommandOutput::structured(
         lines,
         json!({
-            "kind": "serve-logs",
+            "kind": "gateway-logs",
             "phase": "managed",
             "bootstrapped": state.bootstrapped,
             "logFilePresent": state.log_file_present,
@@ -157,8 +157,8 @@ fn server_json(config: &SelfHostConfig) -> serde_json::Value {
     })
 }
 
-pub(super) fn runtime_state_json(state: &ServeRuntimeState) -> serde_json::Value {
-    let running = read_runtime_pid(state.paths.pid_path.as_path(), "onequery serve status")
+pub(super) fn runtime_state_json(state: &GatewayRuntimeState) -> serde_json::Value {
+    let running = read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
         .ok()
         .flatten()
         .is_some_and(is_process_running);
@@ -180,8 +180,8 @@ pub(super) fn runtime_state_json(state: &ServeRuntimeState) -> serde_json::Value
     })
 }
 
-fn runtime_status_label(state: &ServeRuntimeState) -> &'static str {
-    if read_runtime_pid(state.paths.pid_path.as_path(), "onequery serve status")
+fn runtime_status_label(state: &GatewayRuntimeState) -> &'static str {
+    if read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
         .ok()
         .flatten()
         .is_some_and(is_process_running)

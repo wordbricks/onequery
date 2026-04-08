@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
-use super::state::ServeRuntimeState;
+use super::state::GatewayRuntimeState;
 
 const RUNTIME_BUNDLE_SPEC_RAW: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -19,7 +19,7 @@ const RUNTIME_BUNDLE_SPEC_RAW: &str = include_str!(concat!(
 static RUNTIME_BUNDLE_SPEC: OnceLock<RuntimeBundleSpec> = OnceLock::new();
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(super) struct ServeLaunchPlan {
+pub(super) struct GatewayLaunchPlan {
     pub(super) launch_config_path: PathBuf,
     pub(super) migrations_dir: PathBuf,
     pub(super) runtime_entry_path: PathBuf,
@@ -73,9 +73,9 @@ struct RuntimeBundleWebEntry {
 }
 
 pub(super) fn resolve_launch_plan(
-    state: &ServeRuntimeState,
+    state: &GatewayRuntimeState,
     command_line: &str,
-) -> Result<ServeLaunchPlan, CliError> {
+) -> Result<GatewayLaunchPlan, CliError> {
     let bundle_root = resolve_runtime_bundle_root(command_line)?;
     let bundle_spec = runtime_bundle_spec();
     let runtime_entry_path = resolve_packaged_server_entry_path(&bundle_root, command_line)?;
@@ -88,7 +88,7 @@ pub(super) fn resolve_launch_plan(
     let web_index_path = web_dist_dir.join(&bundle_spec.runtime_entries.web_dist.required_file);
 
     if runtime_entry_path.is_file() && migrations_dir.is_dir() && web_index_path.is_file() {
-        return Ok(ServeLaunchPlan {
+        return Ok(GatewayLaunchPlan {
             launch_config_path: state.paths.launch_config_path.clone(),
             migrations_dir,
             runtime_entry_path,

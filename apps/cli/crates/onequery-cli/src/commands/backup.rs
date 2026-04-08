@@ -160,7 +160,7 @@ fn ensure_backup_inputs_exist(
             command_line,
             ErrorStage::LoadConfig,
             format!("missing {}", paths.config_path.display()),
-            vec!["run onequery serve once before creating a backup".to_owned()],
+            vec!["run onequery gateway once before creating a backup".to_owned()],
         ));
     }
 

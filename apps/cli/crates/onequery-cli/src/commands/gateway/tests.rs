@@ -14,17 +14,17 @@ use super::launch::packaged_cli_relative_path;
 use super::launch::packaged_server_relative_path;
 use super::launch::resolve_runtime_bundle_root_from_components;
 use super::launch::runtime_root_env_var;
-use super::render::render_serve_logs_output;
-use super::render::render_serve_output;
-use super::render::render_serve_start_output;
-use super::render::render_serve_status_output;
+use super::render::render_gateway_logs_output;
+use super::render::render_gateway_output;
+use super::render::render_gateway_start_output;
+use super::render::render_gateway_status_output;
 use super::runtime::LogPreview;
 use super::runtime::mark_stop_requested;
 use super::runtime::parse_runtime_major_version;
 use super::runtime::stop_request_matches;
 use super::runtime::validate_runtime_version_output;
-use super::state::ServeRuntimeState;
-use super::state::ServeStateAccessMode;
+use super::state::GatewayRuntimeState;
+use super::state::GatewayStateAccessMode;
 use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
 use crate::config::self_host::SelfHostConfig;
 use crate::config::self_host::SelfHostRuntimePaths;
@@ -51,8 +51,8 @@ fn sample_paths() -> SelfHostRuntimePaths {
     }
 }
 
-fn sample_state() -> ServeRuntimeState {
-    ServeRuntimeState {
+fn sample_state() -> GatewayRuntimeState {
+    GatewayRuntimeState {
         paths: sample_paths(),
         bootstrapped: true,
         config_created: true,
@@ -66,35 +66,35 @@ fn sample_state() -> ServeRuntimeState {
 }
 
 #[test]
-fn render_serve_output_snapshot() {
-    let output = render_serve_output(&sample_state());
+fn render_gateway_output_snapshot() {
+    let output = render_gateway_output(&sample_state());
     assert_snapshot!(output.lines.join("\n"));
 }
 
 #[test]
-fn render_serve_start_output_snapshot() {
-    let output = render_serve_start_output(&sample_state());
+fn render_gateway_start_output_snapshot() {
+    let output = render_gateway_start_output(&sample_state());
     assert_snapshot!(output.lines.join("\n"));
 }
 
 #[test]
-fn render_serve_status_output_snapshot() {
-    let output = render_serve_status_output(&sample_state());
+fn render_gateway_status_output_snapshot() {
+    let output = render_gateway_status_output(&sample_state());
     assert_snapshot!(output.lines.join("\n"));
 }
 
 #[test]
-fn render_serve_status_output_omits_dead_log_level_json() {
-    let output = render_serve_status_output(&sample_state());
+fn render_gateway_status_output_omits_dead_log_level_json() {
+    let output = render_gateway_status_output(&sample_state());
     let data = output.into_data();
 
     assert_eq!(data.pointer("/server/logLevel"), None);
 }
 
 #[test]
-fn render_serve_logs_output_snapshot() {
-    let output = render_serve_logs_output(
-        &ServeRuntimeState {
+fn render_gateway_logs_output_snapshot() {
+    let output = render_gateway_logs_output(
+        &GatewayRuntimeState {
             log_file_present: true,
             ..sample_state()
         },
@@ -114,7 +114,7 @@ fn render_serve_logs_output_snapshot() {
 
 #[test]
 fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
-    let state = ServeRuntimeState {
+    let state = GatewayRuntimeState {
         pid_file_present: true,
         ..sample_state()
     };
@@ -137,7 +137,7 @@ fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
     let resolved = resolve_runtime_bundle_root_from_components(
         Some(runtime_root_override),
         current_executable.as_path(),
-        "onequery serve",
+        "onequery gateway",
     )
     .expect("expected runtime root override to win");
 
@@ -159,7 +159,7 @@ fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_
     let resolved = resolve_runtime_bundle_root_from_components(
         None,
         current_executable.as_path(),
-        "onequery serve",
+        "onequery gateway",
     )
     .expect("expected packaged executable layout to resolve");
 
@@ -177,7 +177,7 @@ fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
     let error = resolve_runtime_bundle_root_from_components(
         None,
         Path::new("/tmp/project/target/debug/onequery"),
-        "onequery serve",
+        "onequery gateway",
     )
     .expect_err("expected Cargo output guidance");
 
@@ -195,7 +195,7 @@ fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
     assert_eq!(
         error.try_next,
         vec![format!(
-            "set {}=<bundle-root> and retry onequery serve",
+            "set {}=<bundle-root> and retry onequery gateway",
             runtime_root_env_var()
         )]
     );
@@ -218,8 +218,8 @@ fn packaged_server_bundle_uses_single_cross_platform_filename() {
 }
 
 #[test]
-fn serve_bootstrap_creates_phase_two_foundation_and_reports_it() {
-    let test_dir = std::env::temp_dir().join(format!("onequery-serve-proof-{}", Uuid::new_v4()));
+fn gateway_bootstrap_creates_phase_two_foundation_and_reports_it() {
+    let test_dir = std::env::temp_dir().join(format!("onequery-gateway-proof-{}", Uuid::new_v4()));
     let paths = SelfHostRuntimePaths::for_test(
         test_dir.join("config").join("self-host"),
         test_dir.join("data"),
@@ -227,10 +227,10 @@ fn serve_bootstrap_creates_phase_two_foundation_and_reports_it() {
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths.clone(),
-        ServeStateAccessMode::BootstrapIfMissing,
-        "onequery serve",
+        GatewayStateAccessMode::BootstrapIfMissing,
+        "onequery gateway",
     )
-    .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
 
     assert_eq!(state.bootstrapped, true);
     assert_eq!(state.config_created, true);
@@ -242,12 +242,12 @@ fn serve_bootstrap_creates_phase_two_foundation_and_reports_it() {
     assert_eq!(paths.backups_dir.is_dir(), true);
     assert_eq!(paths.run_dir.is_dir(), true);
 
-    let output = render_serve_output(&state);
+    let output = render_gateway_output(&state);
     let data = output.into_data();
 
     assert_eq!(
         data.get("kind").and_then(serde_json::Value::as_str),
-        Some("serve")
+        Some("gateway")
     );
     assert_eq!(
         data.get("bootstrapped")
@@ -266,12 +266,12 @@ fn serve_bootstrap_creates_phase_two_foundation_and_reports_it() {
     );
 
     fs::remove_dir_all(test_dir)
-        .unwrap_or_else(|error| panic!("expected serve proof temp dir cleanup: {error}"));
+        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
 }
 
 #[test]
-fn serve_writes_launch_contract_with_default_self_host_port() {
-    let test_dir = std::env::temp_dir().join(format!("onequery-serve-launch-{}", Uuid::new_v4()));
+fn gateway_writes_launch_contract_with_default_self_host_port() {
+    let test_dir = std::env::temp_dir().join(format!("onequery-gateway-launch-{}", Uuid::new_v4()));
     let paths = SelfHostRuntimePaths::for_test(
         test_dir.join("config").join("self-host"),
         test_dir.join("data"),
@@ -284,18 +284,18 @@ fn serve_writes_launch_contract_with_default_self_host_port() {
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths,
-        ServeStateAccessMode::BootstrapIfMissing,
-        "onequery serve",
+        GatewayStateAccessMode::BootstrapIfMissing,
+        "onequery gateway",
     )
-    .unwrap_or_else(|error| panic!("expected serve bootstrap to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
 
     let launch_config_path = write_self_host_launch_config_for_test(
         state.paths,
         &asset_dir,
         &migrations_dir,
-        "onequery serve",
+        "onequery gateway",
     )
-    .unwrap_or_else(|error| panic!("expected serve launch config write to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected gateway launch config write to succeed: {error}"));
     let launch_config_contents = fs::read_to_string(&launch_config_path)
         .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
     let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
@@ -319,19 +319,19 @@ fn serve_writes_launch_contract_with_default_self_host_port() {
     );
 
     fs::remove_dir_all(test_dir)
-        .unwrap_or_else(|error| panic!("expected serve proof temp dir cleanup: {error}"));
+        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
 }
 
 #[test]
 fn mark_stop_requested_records_pid_for_managed_shutdown() {
     let test_dir =
-        std::env::temp_dir().join(format!("onequery-serve-stop-request-{}", Uuid::new_v4()));
+        std::env::temp_dir().join(format!("onequery-gateway-stop-request-{}", Uuid::new_v4()));
     let stop_request_path = test_dir.join("server.stop");
 
     fs::create_dir_all(&test_dir)
         .unwrap_or_else(|error| panic!("expected temp dir creation to succeed: {error}"));
 
-    mark_stop_requested(stop_request_path.as_path(), 4321, "onequery serve stop")
+    mark_stop_requested(stop_request_path.as_path(), 4321, "onequery gateway stop")
         .unwrap_or_else(|error| panic!("expected stop request write to succeed: {error}"));
 
     assert_eq!(
@@ -360,18 +360,18 @@ fn validate_runtime_version_output_rejects_node_20() {
     let error = validate_runtime_version_output(
         "v20.19.0\n",
         &std::ffi::OsString::from("node"),
-        "onequery serve",
+        "onequery gateway",
     )
     .expect_err("expected Node 20 to be rejected");
 
     assert_eq!(error.title.as_str(), "unsupported self-host server runtime");
     assert_eq!(
         error.why.as_str(),
-        "node reports major version 20, but packaged onequery serve requires Node.js 22+"
+        "node reports major version 20, but packaged onequery gateway requires Node.js 22+"
     );
     assert_eq!(
         error.try_next,
-        vec!["install Node.js 22+ and retry onequery serve".to_owned()]
+        vec!["install Node.js 22+ and retry onequery gateway".to_owned()]
     );
 }
 
@@ -380,22 +380,21 @@ fn validate_runtime_version_output_accepts_node_22() {
     validate_runtime_version_output(
         "v22.13.1\n",
         &std::ffi::OsString::from("node"),
-        "onequery serve",
+        "onequery gateway",
     )
     .unwrap_or_else(|error| panic!("expected Node 22 to be accepted: {error}"));
 }
 
 fn resolve_runtime_state_with_paths_for_test(
     paths: SelfHostRuntimePaths,
-    access_mode: ServeStateAccessMode,
+    access_mode: GatewayStateAccessMode,
     command_line: &str,
-) -> Result<ServeRuntimeState, onequery_cli_core::error::CliError> {
+) -> Result<GatewayRuntimeState, onequery_cli_core::error::CliError> {
     let bootstrap_result = match access_mode {
-        ServeStateAccessMode::BootstrapIfMissing => Some(bootstrap_self_host_foundation_for_test(
-            paths.clone(),
-            command_line,
-        )?),
-        ServeStateAccessMode::ReadOnly => None,
+        GatewayStateAccessMode::BootstrapIfMissing => Some(
+            bootstrap_self_host_foundation_for_test(paths.clone(), command_line)?,
+        ),
+        GatewayStateAccessMode::ReadOnly => None,
     };
 
     let config = if paths.config_path.is_file() && paths.secrets_path.is_file() {
@@ -404,7 +403,7 @@ fn resolve_runtime_state_with_paths_for_test(
         None
     };
 
-    Ok(ServeRuntimeState {
+    Ok(GatewayRuntimeState {
         bootstrapped: paths.config_path.is_file()
             && paths.secrets_path.is_file()
             && paths.config_dir.is_dir()

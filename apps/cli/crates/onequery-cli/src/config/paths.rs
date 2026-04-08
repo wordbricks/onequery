@@ -283,7 +283,7 @@ mod tests {
         let data_dir = app_home_dir(
             Some(app_home.clone()),
             APP_HOME_DATA_DIR_NAME,
-            "onequery serve",
+            "onequery gateway",
             "data",
         )
         .unwrap_or_else(|error| panic!("expected ONEQUERY_HOME data resolution: {error}"));
@@ -483,7 +483,7 @@ mod tests {
         let resolved = unix_data_root(
             Some(xdg_data_home.join(".")),
             Some(PathBuf::from("/Users/alice")),
-            "onequery serve",
+            "onequery gateway",
         )
         .unwrap_or_else(|error| panic!("expected XDG data home resolution: {error}"));
 
@@ -503,7 +503,7 @@ mod tests {
         let error = unix_data_root(
             Some(missing_xdg_data_home),
             Some(PathBuf::from("/Users/alice")),
-            "onequery serve",
+            "onequery gateway",
         )
         .expect_err("expected missing XDG data home resolution to fail");
 
@@ -525,7 +525,7 @@ mod tests {
         let error = unix_data_root(
             Some(file_path),
             Some(PathBuf::from("/Users/alice")),
-            "onequery serve",
+            "onequery gateway",
         )
         .expect_err("expected file XDG data home resolution to fail");
 
@@ -540,8 +540,12 @@ mod tests {
 
     #[test]
     fn unix_data_root_falls_back_to_home_local_share() {
-        let resolved = unix_data_root(None, Some(PathBuf::from("/Users/alice")), "onequery serve")
-            .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
+        let resolved = unix_data_root(
+            None,
+            Some(PathBuf::from("/Users/alice")),
+            "onequery gateway",
+        )
+        .unwrap_or_else(|error| panic!("expected HOME fallback resolution: {error}"));
 
         assert_eq!(resolved, PathBuf::from("/Users/alice/.local/share"));
     }
@@ -549,7 +553,7 @@ mod tests {
     #[test]
     fn unix_data_root_reports_missing_directories() {
         let error =
-            unix_data_root(None, None, "onequery serve").expect_err("expected missing data root");
+            unix_data_root(None, None, "onequery gateway").expect_err("expected missing data root");
 
         assert_eq!(
             (
@@ -569,7 +573,7 @@ mod tests {
     fn windows_data_root_uses_platform_data_directory() {
         let resolved = windows_data_root(
             Some(PathBuf::from(r"C:\Users\alice\AppData\Local")),
-            "onequery serve",
+            "onequery gateway",
         )
         .unwrap_or_else(|error| panic!("expected Windows data directory resolution: {error}"));
 
@@ -579,7 +583,7 @@ mod tests {
     #[test]
     fn windows_data_root_reports_missing_localappdata() {
         let error =
-            windows_data_root(None, "onequery serve").expect_err("expected missing LOCALAPPDATA");
+            windows_data_root(None, "onequery gateway").expect_err("expected missing LOCALAPPDATA");
 
         assert_eq!(
             (

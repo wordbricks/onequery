@@ -13,20 +13,20 @@ use crate::config::self_host::write_self_host_launch_config;
 use crate::output::CommandOutput;
 
 use super::super::is_process_running;
-use super::CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP;
-use super::INSTALL_NODE_AND_RETRY_SERVE_COMMAND;
+use super::CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP;
+use super::GATEWAY_LOG_PREVIEW_LINE_COUNT;
+use super::GATEWAY_STOP_POLL_ATTEMPTS;
+use super::GATEWAY_STOP_POLL_INTERVAL_MS;
+use super::INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND;
 use super::PACKAGED_SERVER_JS_RUNTIME_ENV_VAR;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
-use super::RETRY_SERVE_COMMAND;
-use super::RETRY_SERVE_STOP_COMMAND;
-use super::SERVE_LOG_PREVIEW_LINE_COUNT;
-use super::SERVE_STOP_POLL_ATTEMPTS;
-use super::SERVE_STOP_POLL_INTERVAL_MS;
+use super::RETRY_GATEWAY_COMMAND;
+use super::RETRY_GATEWAY_STOP_COMMAND;
 use super::launch::resolve_launch_plan;
 use super::render::paths_json;
 use super::render::runtime_state_json;
-use super::state::ServeRuntimeState;
-use super::state::ServeStateAccessMode;
+use super::state::GatewayRuntimeState;
+use super::state::GatewayStateAccessMode;
 use super::state::resolve_runtime_state;
 
 const MINIMUM_NODE_MAJOR_VERSION: u32 = 22;
@@ -47,7 +47,7 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
 
     let contents = fs::read_to_string(path).map_err(|read_error| {
         CliError::new(
-            "failed to read serve log",
+            "failed to read gateway log",
             command_line,
             ErrorStage::LoadConfig,
             format!("{read_error} ({})", path.display()),
@@ -56,7 +56,9 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
     })?;
 
     let all_lines = contents.lines().map(ToOwned::to_owned).collect::<Vec<_>>();
-    let keep_from = all_lines.len().saturating_sub(SERVE_LOG_PREVIEW_LINE_COUNT);
+    let keep_from = all_lines
+        .len()
+        .saturating_sub(GATEWAY_LOG_PREVIEW_LINE_COUNT);
 
     Ok(LogPreview {
         truncated: keep_from > 0,
@@ -64,8 +66,8 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
     })
 }
 
-pub(super) fn run_serve_foreground(
-    state: &ServeRuntimeState,
+pub(super) fn run_gateway_foreground(
+    state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let mut launch_plan = resolve_launch_plan(state, command_line)?;
@@ -98,13 +100,13 @@ pub(super) fn run_serve_foreground(
                     launch_plan.runtime_entry_path.display()
                 ),
                 vec![
-                    INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
+                    INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned(),
                     REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
                 ],
             ),
             _ => (
                 spawn_error.to_string(),
-                vec![RETRY_SERVE_COMMAND.to_owned()],
+                vec![RETRY_GATEWAY_COMMAND.to_owned()],
             ),
         };
         CliError::new(
@@ -123,7 +125,7 @@ pub(super) fn run_serve_foreground(
             command_line,
             ErrorStage::Internal,
             wait_error.to_string(),
-            vec![RETRY_SERVE_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_COMMAND.to_owned()],
         )
     })?;
     let stop_requested = stop_request_matches(state.paths.stop_request_path.as_path(), child_pid);
@@ -133,7 +135,7 @@ pub(super) fn run_serve_foreground(
         return Ok(CommandOutput::structured(
             Vec::new(),
             json!({
-                "kind": "serve",
+                "kind": "gateway",
                 "status": "stopped",
                 "exitCode": status.code(),
                 "signal": exit_signal_label(status),
@@ -148,7 +150,7 @@ pub(super) fn run_serve_foreground(
         describe_exit_status(status),
         vec![
             format!("check log file {}", state.paths.server_log_path.display()),
-            format!("{RETRY_SERVE_COMMAND} after fixing the startup issue"),
+            format!("{RETRY_GATEWAY_COMMAND} after fixing the startup issue"),
         ],
     ))
 }
@@ -179,7 +181,7 @@ fn ensure_runtime_command_support(
                         runtime_entry_path.display()
                     ),
                     vec![
-                        INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
+                        INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned(),
                         REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
                     ],
                 ),
@@ -188,7 +190,7 @@ fn ensure_runtime_command_support(
                         "failed to run {} --version: {probe_error}",
                         Path::new(runtime_command).display()
                     ),
-                    vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+                    vec![INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned()],
                 ),
             };
 
@@ -221,7 +223,7 @@ fn ensure_runtime_command_support(
                     Path::new(runtime_command).display()
                 )
             },
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned()],
         ));
     }
 
@@ -247,7 +249,7 @@ pub(super) fn validate_runtime_version_output(
                 Path::new(runtime_command).display(),
                 version_output.trim()
             ),
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned()],
         ));
     };
 
@@ -257,10 +259,10 @@ pub(super) fn validate_runtime_version_output(
             command_line,
             ErrorStage::Internal,
             format!(
-                "{} reports major version {major_version}, but packaged onequery serve requires Node.js {MINIMUM_NODE_MAJOR_VERSION}+",
+                "{} reports major version {major_version}, but packaged onequery gateway requires Node.js {MINIMUM_NODE_MAJOR_VERSION}+",
                 Path::new(runtime_command).display()
             ),
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![INSTALL_NODE_AND_RETRY_GATEWAY_COMMAND.to_owned()],
         ));
     }
 
@@ -298,7 +300,7 @@ fn is_expected_termination(status: ExitStatus) -> bool {
 }
 
 pub(super) fn stop_runtime(
-    state: &ServeRuntimeState,
+    state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?;
@@ -319,10 +321,11 @@ pub(super) fn stop_runtime(
             remove_if_exists(state.paths.stop_request_path.as_path());
             return Err(error);
         }
-        let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
+        let refreshed_state =
+            resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
         return Ok(CommandOutput::structured(
             vec![
-                "Serve stop completed.".to_owned(),
+                "Gateway stop completed.".to_owned(),
                 format!("Stopped pid: {pid}"),
                 format!(
                     "Log path: {}",
@@ -330,7 +333,7 @@ pub(super) fn stop_runtime(
                 ),
             ],
             json!({
-                "kind": "serve-stop",
+                "kind": "gateway-stop",
                 "phase": "managed",
                 "bootstrapped": refreshed_state.bootstrapped,
                 "stopIssued": true,
@@ -344,17 +347,17 @@ pub(super) fn stop_runtime(
     remove_if_exists(state.paths.pid_path.as_path());
     remove_if_exists(state.paths.lock_path.as_path());
     remove_if_exists(state.paths.stop_request_path.as_path());
-    let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
+    let refreshed_state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
     Ok(CommandOutput::structured(
         vec![
-            "Serve stop found no running process.".to_owned(),
+            "Gateway stop found no running process.".to_owned(),
             format!(
                 "Log path: {}",
                 refreshed_state.paths.server_log_path.display()
             ),
         ],
         json!({
-            "kind": "serve-stop",
+            "kind": "gateway-stop",
             "phase": "managed",
             "bootstrapped": refreshed_state.bootstrapped,
             "stopIssued": false,
@@ -370,7 +373,7 @@ fn wait_for_runtime_stop(
     pid: u32,
     command_line: &str,
 ) -> Result<(), CliError> {
-    for _ in 0..SERVE_STOP_POLL_ATTEMPTS {
+    for _ in 0..GATEWAY_STOP_POLL_ATTEMPTS {
         if !is_process_running(pid) {
             remove_if_exists(pid_path);
             remove_if_exists(lock_path);
@@ -380,7 +383,7 @@ fn wait_for_runtime_stop(
             return Ok(());
         }
         std::thread::sleep(std::time::Duration::from_millis(
-            SERVE_STOP_POLL_INTERVAL_MS,
+            GATEWAY_STOP_POLL_INTERVAL_MS,
         ));
     }
 
@@ -389,7 +392,7 @@ fn wait_for_runtime_stop(
         command_line,
         ErrorStage::Internal,
         format!("pid {pid} is still active"),
-        vec![CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP.to_owned()],
+        vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
     ))
 }
 
@@ -427,7 +430,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
             command_line,
             ErrorStage::Internal,
             format!("unable to send SIGTERM to pid {pid}"),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         ))
     }
 
@@ -445,12 +448,12 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
                 command_line,
                 ErrorStage::Internal,
                 format!("unable to open pid {pid} for termination"),
-                vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+                vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
             ));
         }
 
         // Comment: Windows release builds do not yet expose a graceful
-        // cross-process shutdown channel, so `serve stop` terminates the
+        // cross-process shutdown channel, so `gateway stop` terminates the
         // helper process and then clears lifecycle markers once it exits.
         let result = unsafe { TerminateProcess(handle, 1) };
         let _ = unsafe { CloseHandle(handle) };
@@ -464,7 +467,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
             command_line,
             ErrorStage::Internal,
             format!("unable to terminate pid {pid}"),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         ))
     }
 
@@ -472,7 +475,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
     {
         let _ = pid;
         Err(CliError::new(
-            "serve stop is not supported on this platform",
+            "gateway stop is not supported on this platform",
             command_line,
             ErrorStage::Internal,
             "process signaling is unavailable".to_owned(),
@@ -496,7 +499,7 @@ pub(super) fn mark_stop_requested(
             command_line,
             ErrorStage::Internal,
             format!("{error} ({})", path.display()),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         )
     })
 }

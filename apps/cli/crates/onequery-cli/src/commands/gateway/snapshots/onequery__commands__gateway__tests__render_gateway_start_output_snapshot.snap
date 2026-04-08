@@ -1,8 +1,8 @@
 ---
-source: crates/onequery-cli/src/commands/serve/tests.rs
+source: crates/onequery-cli/src/commands/gateway/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-Serve start is wired as a Phase 2 skeleton.
+Gateway start is wired as a Phase 2 skeleton.
 Bootstrapped: yes
 Listen: 127.0.0.1:5656
 Log path: /tmp/onequery/data/logs/server.log
