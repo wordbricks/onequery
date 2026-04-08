@@ -9,8 +9,13 @@ with the same CLI.
 Prerequisites:
 
 - `curl` and `tar`
-- Node.js 22+ on `PATH`
 - a supported published CLI package for macOS, Linux, or Windows
+
+The hosted install script is for macOS and Linux. It downloads a managed
+official Node.js 24.x runtime under the OneQuery install directory when `node`
+24+ is not already available. Direct `bun install -g`, `npm install -g`,
+`bunx`, and `npx` flows still require Node.js 22+ on `PATH` or
+`ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
 
 Install the CLI:
 

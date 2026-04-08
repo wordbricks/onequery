@@ -29,16 +29,21 @@ describe("install script surface", () => {
     const response = createInstallScriptResponse(
       new Request("https://onequery.wordbricks.ai/install.sh")
     );
+    const script = await response.text();
 
     expect(response.headers.get("content-type")).toContain(
       "text/x-shellscript"
     );
-    await expect(response.text()).resolves.toContain(
+    expect(script).toContain(
       'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
+    );
+    expect(script).toContain(
+      'NODE_DIST_BASE_URL="$' +
+        '{ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/latest-v24.x}"'
     );
   });
 
-  it("builds an installer that links the packaged runtime and binary", () => {
+  it("builds an installer that links the packaged runtime and provisions managed Node.js 24 when needed", () => {
     const script = createInstallScript();
 
     expect(script).toContain(
@@ -49,6 +54,16 @@ describe("install script surface", () => {
     );
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
+    );
+    expect(script).toContain(
+      "Installing managed Node.js 24.x for onequery serve..."
+    );
+    expect(script).toContain(
+      'if [ -z "$' +
+        '{ONEQUERY_SERVER_JS_RUNTIME:-}" ] && [ -x "$managed_node_path" ]; then'
+    );
+    expect(script).toContain(
+      'export ONEQUERY_SERVER_JS_RUNTIME="$managed_node_path"'
     );
     expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
   });

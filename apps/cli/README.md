@@ -41,6 +41,6 @@ Install:
 - `bunx @onequery/cli --help`
 - `npx @onequery/cli --help`
 - The published npm package supports macOS, Linux, and Windows.
-- Packaged `onequery serve` uses a bundled Rolldown-built server runtime and launches it with Node.js, so Node.js 22+ must be available on `PATH`.
+- Packaged `onequery serve` uses a bundled Rolldown-built server runtime and launches it with Node.js. The hosted `install.sh` bootstrap now installs managed official Node.js 24.x on macOS/Linux when `node` 24+ is not already available. Direct npm/bun installs still require Node.js 22+ on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME`.
 - Linux npm installs ship musl-linked binaries so the CLI runs on both glibc and musl-based distributions, including Alpine.
 - Packaged self-host commands now work on Windows as well as macOS and Linux.

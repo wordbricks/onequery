@@ -133,6 +133,11 @@ bun add -g @onequery/cli
 curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
 
+On macOS and Linux, the hosted install script now downloads a managed official
+Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
+not already available. Direct `npm`/`bun` installs still require Node.js 22+
+on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
+
 CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
 
 The self-host runtime writes operator-managed files under the standard config
