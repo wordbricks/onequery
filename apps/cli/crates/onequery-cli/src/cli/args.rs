@@ -4,7 +4,7 @@ use clap::Args;
 use clap::Subcommand;
 use clap::ValueEnum;
 
-use crate::transport::labels::source_connect_provider_parser;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum AuthSubcommand {
@@ -111,12 +111,8 @@ pub(crate) enum SourceSubcommand {
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct SourceConnectArgs {
     /// Select the provider to connect.
-    #[arg(
-        long,
-        value_name = "PROVIDER",
-        value_parser = source_connect_provider_parser()
-    )]
-    pub source: String,
+    #[arg(long, value_name = "PROVIDER", value_enum)]
+    pub source: SourceConnectProvider,
     /// Create one source from an inline JSON payload.
     #[arg(long, value_name = "JSON")]
     pub input: Option<String>,

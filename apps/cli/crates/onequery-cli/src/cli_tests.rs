@@ -9,6 +9,7 @@ use toml::Value as TomlValue;
 use crate::config::default_base_url;
 use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 
 use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
@@ -491,7 +492,7 @@ fn parse_invocation_accepts_source_connect_input() {
         Command::Source(super::SourceSubcommand::Connect(super::SourceConnectArgs {
             source,
             input: Some(input),
-        })) if source == "postgres"
+        })) if source == SourceConnectProvider::Postgres
             && input == "{\"name\":\"warehouse\"}"
     ));
 }

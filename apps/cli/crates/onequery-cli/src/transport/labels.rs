@@ -1,28 +1,7 @@
 use buffa::EnumValue;
-use clap::builder::PossibleValuesParser;
 
 use crate::transport::generated::types;
-
-const SUPPORTED_SOURCE_CONNECT_PROVIDERS: [types::CliSourceProvider; 14] = [
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_SUPABASE,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_MYSQL,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_MONGODB,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_BIGQUERY,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_LAMINAR,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_GA,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_AMPLITUDE,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_MIXPANEL,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTHOG,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_SENTRY,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB,
-    types::CliSourceProvider::CLI_SOURCE_PROVIDER_LINEAR,
-];
-
-pub(crate) fn source_connect_provider_parser() -> PossibleValuesParser {
-    PossibleValuesParser::new(SUPPORTED_SOURCE_CONNECT_PROVIDERS.map(source_provider_name))
-}
+use crate::transport::source_connect_provider::SourceConnectProvider;
 
 pub(crate) fn content_format_to_str(value: EnumValue<types::CliContentFormat>) -> String {
     match value.as_known() {
@@ -31,40 +10,13 @@ pub(crate) fn content_format_to_str(value: EnumValue<types::CliContentFormat>) -
     }
 }
 
-pub(crate) fn source_provider_from_str(value: &str) -> Option<types::CliSourceProvider> {
-    SUPPORTED_SOURCE_CONNECT_PROVIDERS
-        .into_iter()
-        .find(|provider| source_provider_name(*provider) == value)
-}
-
 pub(crate) fn source_provider_to_str(value: EnumValue<types::CliSourceProvider>) -> String {
-    match value.as_known() {
-        Some(types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED) | None => value.to_string(),
-        Some(provider) => source_provider_name(provider).to_owned(),
-    }
-}
-
-fn source_provider_name(provider: types::CliSourceProvider) -> &'static str {
-    match provider {
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES => "postgres",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_SUPABASE => "supabase",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MYSQL => "mysql",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MONGODB => "mongodb",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_BIGQUERY => "bigquery",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_LAMINAR => "laminar",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR => {
-            "aws_athena_connector"
-        }
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_GA => "ga",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_AMPLITUDE => "amplitude",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_MIXPANEL => "mixpanel",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTHOG => "posthog",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_SENTRY => "sentry",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB => "github",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_LINEAR => "linear",
-        types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED => {
-            unreachable!("unspecified providers are not part of the supported connect surface")
-        }
+    match value
+        .as_known()
+        .and_then(|provider| SourceConnectProvider::try_from(provider).ok())
+    {
+        Some(provider) => provider.to_string(),
+        None => value.to_string(),
     }
 }
 
@@ -107,30 +59,28 @@ pub(crate) fn use_source_to_str(value: EnumValue<types::CliUseSource>) -> String
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use super::SUPPORTED_SOURCE_CONNECT_PROVIDERS;
     use super::content_format_to_str;
-    use super::source_provider_from_str;
-    use super::source_provider_name;
     use super::source_provider_to_str;
     use super::source_status_to_str;
     use super::types;
     use super::use_source_from_str;
     use super::use_source_to_str;
+    use crate::transport::source_connect_provider::SourceConnectProvider;
 
     #[test]
-    fn source_provider_mappings_share_one_supported_provider_table() {
+    fn source_provider_to_str_maps_supported_connect_providers() {
         assert_eq!(
-            SUPPORTED_SOURCE_CONNECT_PROVIDERS.map(Some),
-            SUPPORTED_SOURCE_CONNECT_PROVIDERS
-                .map(source_provider_name)
-                .map(source_provider_from_str)
-        );
-        assert_eq!(
-            SUPPORTED_SOURCE_CONNECT_PROVIDERS
-                .map(source_provider_name)
-                .map(str::to_owned),
-            SUPPORTED_SOURCE_CONNECT_PROVIDERS
+            SourceConnectProvider::supported()
+                .iter()
+                .copied()
+                .map(|provider| provider.to_string())
+                .collect::<Vec<_>>(),
+            SourceConnectProvider::supported()
+                .iter()
+                .copied()
+                .map(types::CliSourceProvider::from)
                 .map(|provider| source_provider_to_str(provider.into()))
+                .collect::<Vec<_>>()
         );
     }
 
