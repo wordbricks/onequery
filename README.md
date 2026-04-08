@@ -1,9 +1,81 @@
 # OneQuery
 
-OneQuery is an open-source platform for unified data querying. Connect to your databases, analytics tools, and APIs from a single place — via a CLI or web UI — with centralized credential management, query safety controls, and team collaboration built in.
+OneQuery is an open-source, self-hostable platform for unified data querying. Run the server on your own infrastructure, connect your databases, analytics tools, and APIs from a single place, and use the CLI or web UI with centralized credential management, query safety controls, and team collaboration built in.
+
+## Install Options
+
+Install the published CLI with whichever flow fits your environment:
+
+```bash
+# Install script (macOS/Linux, self-host friendly)
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+
+# Homebrew
+brew install wordbricks/tap/onequery
+
+# npm
+npm install -g @onequery/cli
+
+# Bun
+bun add -g @onequery/cli
+```
+
+One-off execution also works without a global install:
+
+```bash
+npx @onequery/cli --help
+bunx @onequery/cli --help
+```
+
+On macOS and Linux, the hosted install script downloads a managed official
+Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
+not already available. Direct `npm`/`bun` installs still require Node.js 22+
+on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve start`.
+
+## Quick Start
+
+The default OSS path is to self-host OneQuery locally or on your own infrastructure.
+
+```bash
+# Start OneQuery
+onequery serve start
+```
+
+Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and log in from the CLI. Local self-host defaults to that server URL already:
+
+```bash
+onequery auth login
+onequery org list
+onequery org use <org-slug>
+```
+
+Once the instance is running, add a source and execute a test query:
+
+```bash
+onequery source connect --source postgres --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
+onequery source show warehouse
+onequery query execute --source warehouse --sql "select 1"
+```
+
+For self-host operations, config, backup, restore, SMTP, and reverse proxy setup, see [docs/self-host.md](./docs/self-host.md).
+
+Already have access to an existing OneQuery server instead?
+
+```bash
+onequery config set server https://onequery.example.com
+onequery auth login
+onequery org list
+onequery org use <org-slug>
+
+# Find a queryable source and run a test query
+onequery source list
+onequery source show <source-key>
+onequery query execute --source <source-key> --sql "select 1"
+```
 
 ## What it does
 
+- **Self-host the full product** — run the API and web UI on your own infrastructure with `onequery serve start`
 - **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
 - **Manage credentials centrally** — encrypted credential storage with organization-level access control
 - **Enforce query safety** — read-only validation, rate limiting, and single-statement enforcement
@@ -35,7 +107,7 @@ For provider-specific setup steps and example JSON, run `onequery source connect
 
 ## How it works
 
-OneQuery is a Bun/Turbo monorepo with three main layers:
+OneQuery is a Bun/Turbo monorepo designed to run as a self-hosted product, with three main layers:
 
 ```
 ┌─────────────────┐   ┌────────────────────┐
@@ -118,7 +190,7 @@ Default local ports:
 - Bun API listener: `http://127.0.0.1:4555`
 - self-host bundled runtime: `http://127.0.0.1:5656`
 
-Use `bun dev` for workspace development only. Use `onequery serve` for the
+Use `bun dev` for workspace development only. Use `onequery serve start` for the
 bundled self-host runtime.
 
 **Database commands:**
@@ -145,25 +217,6 @@ bun run proto:lint
 bun run proto:generate
 bun run proto:check
 ```
-
-## Installing the CLI
-
-```bash
-# Via Homebrew (tap)
-brew install wordbricks/tap/onequery
-
-# Via npm/bun
-bun add -g @onequery/cli
-npm install -g @onequery/cli
-
-# Or with the install script (self-hosted)
-curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
-```
-
-On macOS and Linux, the hosted install script now downloads a managed official
-Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
-not already available. Direct `npm`/`bun` installs still require Node.js 22+
-on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
 
 CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
 

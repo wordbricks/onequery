@@ -15,7 +15,7 @@ The hosted install script is for macOS and Linux. It downloads a managed
 official Node.js 24.x runtime under the OneQuery install directory when `node`
 24+ is not already available. Direct `bun install -g`, `npm install -g`,
 `bunx`, and `npx` flows still require Node.js 22+ on `PATH` or
-`ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
+`ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve start`.
 
 Install the CLI:
 
@@ -43,22 +43,21 @@ npx @onequery/cli --help
 ```
 
 Published `onequery serve` packages include the bundled self-host runtime and
-launch it with Node.js. Bun is not required on `PATH`. `onequery serve` is the
-self-host launch entrypoint; repo-local workspace development keeps using
+launch it with Node.js. Bun is not required on `PATH`. `onequery serve start`
+is the self-host launch entrypoint; repo-local workspace development keeps using
 `bun dev` instead.
 
 Start the server:
 
 ```bash
-onequery serve
+onequery serve start
 ```
 
 Then open `http://127.0.0.1:5656` and complete the first-user bootstrap.
 
-Point the CLI at that server:
+Then log in from the CLI. Local self-host defaults to that server URL already:
 
 ```bash
-onequery config set server http://127.0.0.1:5656
 onequery auth login
 ```
 
@@ -119,7 +118,7 @@ Files under those roots:
 - `run/server.lock`
 - `run/launch.json`
 
-The CLI creates these paths on first `onequery serve`. `run/launch.json` is a
+The CLI creates these paths on first `onequery serve start`. `run/launch.json` is a
 resolved runtime artifact written by the CLI; it is not a user-edited config
 file.
 
@@ -150,11 +149,11 @@ Self-host currently supports PGlite only:
 
 - database path: `pglite/onequery/` under the OneQuery data root
 - no external database dependency
-- `onequery serve` ignores ambient `DATABASE_URL`
+- `onequery serve start` ignores ambient `DATABASE_URL`
 
 Runtime behavior:
 
-- `onequery serve` applies the checked-in Drizzle migrations on startup.
+- `onequery serve start` applies the checked-in Drizzle migrations on startup.
 - startup fails closed if migration application fails.
 - if explicit external Postgres support is added later, it should be modeled in
   self-host config rather than ambient env.
@@ -168,7 +167,7 @@ scripts:
   provisions shared local databases/extensions only
 - `bun dev` starts workspace-dev and the packaged runtime applies the application
   schema on startup
-- `onequery serve` starts self-host and the packaged runtime applies the application
+- `onequery serve start` starts self-host and the packaged runtime applies the application
   schema on startup
 
 ## SMTP And Manual-Link Fallback
@@ -200,7 +199,7 @@ password = "replace-me"
 Serve lifecycle:
 
 ```bash
-onequery serve
+onequery serve start
 onequery serve status
 onequery serve logs
 onequery serve stop
@@ -231,7 +230,7 @@ Upgrade flow:
 onequery serve stop
 onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
 curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
-onequery serve
+onequery serve start
 ```
 
 The hosted installer refreshes the stable release assets in place. `npx`/`bunx`
