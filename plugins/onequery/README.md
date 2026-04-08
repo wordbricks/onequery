@@ -11,8 +11,6 @@ Instead, the skills guide the agent to use the existing `onequery` CLI and prefe
 
 ## Included skills
 
-- `discover` — inspect the CLI surface, auth state, org context, and available sources
-- `query` — validate and run read-only SQL through OneQuery
 - `local-state` — explicit-only local auth and org-state changes
 - `source-connect` — explicit-only source creation workflow
 

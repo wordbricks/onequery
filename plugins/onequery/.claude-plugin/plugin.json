@@ -1,10 +1,10 @@
 {
   "name": "onequery",
   "version": "0.1.0",
-  "description": "Use the OneQuery CLI from Claude Code for authenticated org discovery, source inspection, and read-only query workflows.",
+  "description": "Use the OneQuery CLI from Claude Code for local auth/org state changes and source connection workflows.",
   "homepage": "https://onequery.wordbricks.ai/",
   "repository": "https://github.com/wordbricks/onequery",
   "license": "Apache-2.0",
-  "keywords": ["onequery", "data", "sql", "cli"],
+  "keywords": ["onequery", "cli", "auth", "sources"],
   "skills": "./skills/"
 }
