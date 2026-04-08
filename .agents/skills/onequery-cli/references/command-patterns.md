@@ -19,10 +19,6 @@ unclear. Unlike Velen, OneQuery's OSS-safe schema surface currently exposes
 `schema skills` but not `schema commands`, so subcommand `--help` is the
 fallback for deeper discovery.
 
-These references track the releasing `query exec` surface. If a local binary
-still shows `query execute`, the installed CLI is older than the command set
-documented here.
-
 ## Establish Context
 
 ```bash

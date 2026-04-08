@@ -28,9 +28,6 @@ OSS-safe CLI discovery.
   path. If the user asks for "warehouse data" or "run a quick SQL check"
   without naming OneQuery, prefer this skill when the expected path is
   OneQuery-managed rather than direct credentials.
-- This skill tracks the releasing `onequery query exec` surface. If a local
-  binary still shows `query execute`, the installed CLI is older than the
-  command set this skill expects.
 - Unlike Velen, the current OSS-safe OneQuery schema surface exposes
   `onequery schema skills` but not `schema commands` or `schema command`.
   Use `--help` for deeper command-shape discovery.
