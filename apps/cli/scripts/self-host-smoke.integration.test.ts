@@ -361,7 +361,7 @@ async function stopServeProcess(input: {
       return;
     }
 
-    // Comment: the packaged Bun server can finish a managed SIGTERM shutdown
+    // Comment: the packaged self-host runtime can finish a managed SIGTERM shutdown
     // and clear pid/lock markers before the foreground `onequery serve` process
     // reports a nonzero exit. Smoke cleanup only needs to prove the runtime is
     // no longer live for the temp home directory.

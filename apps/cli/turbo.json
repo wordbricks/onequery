@@ -81,7 +81,11 @@
     },
     "test:integration": {
       "dependsOn": [],
-      "env": ["CARGO_TARGET_DIR", "ONEQUERY_RUNTIME_ROOT"],
+      "env": [
+        "CARGO_TARGET_DIR",
+        "ONEQUERY_SERVER_JS_RUNTIME",
+        "ONEQUERY_RUNTIME_ROOT"
+      ],
       "inputs": [
         "package.json",
         "bin/**",
@@ -101,7 +105,7 @@
         "$TURBO_ROOT$/apps/web/tsconfig.json",
         "$TURBO_ROOT$/apps/web/vite.config.ts",
         "$TURBO_ROOT$/packages/base/src/**",
-        "$TURBO_ROOT$/packages/bun-server/src/**",
+        "$TURBO_ROOT$/packages/self-host-runtime/src/**",
         "$TURBO_ROOT$/packages/cli-server/src/**",
         "$TURBO_ROOT$/packages/codecs/src/**",
         "$TURBO_ROOT$/packages/config-loader/src/**",

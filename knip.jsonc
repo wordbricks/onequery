@@ -28,9 +28,10 @@
       "project": ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}"],
     },
     "apps/cli": {
+      "bun": false,
       "entry": [
         "bin/*.js",
-        "scripts/build-server-executable.js",
+        "scripts/build-server-bundle.js",
         "scripts/stage-npm-packages.js",
       ],
       "project": ["bin/*.js", "scripts/*.js"],

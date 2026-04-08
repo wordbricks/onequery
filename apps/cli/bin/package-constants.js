@@ -1,7 +1,6 @@
 export const CLI_PACKAGE_NAME = "@onequery/cli";
 export const CLI_BINARY_NAME = "onequery";
-export const CLI_SERVER_BINARY_NAME = "onequery-server";
-export const CLI_SERVER_MUSL_BINARY_NAME = "onequery-server-musl";
+export const CLI_SERVER_BUNDLE_FILENAME = "onequery-server.mjs";
 export const CLI_NPM_TARBALL_PREFIX = "onequery-npm";
 export const CLI_NPM_STAGE_DIR_PREFIX = `${CLI_NPM_TARBALL_PREFIX}-stage-`;
 export const CLI_NPM_PACK_DIR_PREFIX = `${CLI_NPM_TARBALL_PREFIX}-pack-`;
@@ -84,78 +83,17 @@ export const PLATFORM_PACKAGE_BY_TARGET = Object.fromEntries(
   ])
 );
 
-export function serverBuildsForTargetTriple(targetTriple) {
+export function serverBundleFilenameForTargetTriple(targetTriple) {
   switch (targetTriple) {
     case "aarch64-apple-darwin":
-      return [
-        {
-          compileTarget: "bun-darwin-arm64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-      ];
     case "aarch64-unknown-linux-musl":
-      return [
-        {
-          compileTarget: "bun-linux-arm64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-        {
-          compileTarget: "bun-linux-arm64-musl",
-          filename: CLI_SERVER_MUSL_BINARY_NAME,
-        },
-      ];
     case "aarch64-unknown-linux-gnu":
-      return [
-        {
-          compileTarget: "bun-linux-arm64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-      ];
     case "aarch64-pc-windows-msvc":
-      return [
-        {
-          compileTarget: "bun-windows-arm64",
-          filename: binaryNameForTargetTriple(
-            targetTriple,
-            CLI_SERVER_BINARY_NAME
-          ),
-        },
-      ];
     case "x86_64-apple-darwin":
-      return [
-        {
-          compileTarget: "bun-darwin-x64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-      ];
     case "x86_64-unknown-linux-musl":
-      return [
-        {
-          compileTarget: "bun-linux-x64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-        {
-          compileTarget: "bun-linux-x64-musl",
-          filename: CLI_SERVER_MUSL_BINARY_NAME,
-        },
-      ];
     case "x86_64-unknown-linux-gnu":
-      return [
-        {
-          compileTarget: "bun-linux-x64",
-          filename: CLI_SERVER_BINARY_NAME,
-        },
-      ];
     case "x86_64-pc-windows-msvc":
-      return [
-        {
-          compileTarget: "bun-windows-x64",
-          filename: binaryNameForTargetTriple(
-            targetTriple,
-            CLI_SERVER_BINARY_NAME
-          ),
-        },
-      ];
+      return CLI_SERVER_BUNDLE_FILENAME;
     default:
       throw new Error(`Unsupported server target triple '${targetTriple}'.`);
   }

@@ -35,7 +35,7 @@ OneQuery is a Bun/Turbo monorepo with three main layers:
 
 **CLI** — a Rust binary (`onequery`) that authenticates via OAuth2 device flow and sends queries to the API. It uses a reducer/state-machine pattern for workflows like login, polling, and retries.
 
-**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or PGlite. The `packages/bun-server` runtime serves both the API and the React SPA.
+**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or PGlite. Workspace-dev runs it through the Bun-backed `packages/self-host-runtime` package, while packaged self-host ships a Rolldown-built Node server bundle that serves both the API and the React SPA.
 
 **Web UI** — a React 19 SPA with TanStack Router, TanStack Query, and XState for complex state. Provides data source management, team admin, budget dashboards, and audit logs.
 
@@ -52,7 +52,7 @@ apps/
 
 packages/
   base/            # Dependency-free shared types and org permission helpers
-  bun-server/      # Bun runtime that serves API + SPA
+  self-host-runtime/ # Self-host runtime that serves API + SPA
   cli-server/      # CLI-facing endpoints and generated transport bindings
   codecs/          # Shared encoding and decoding utilities
   config/          # Workspace-dev resolver and config projections
@@ -134,8 +134,13 @@ bun add -g @onequery/cli
 npm install -g @onequery/cli
 
 # Or with the install script (self-hosted)
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
+
+On macOS and Linux, the hosted install script now downloads a managed official
+Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
+not already available. Direct `npm`/`bun` installs still require Node.js 22+
+on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
 
 CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
 

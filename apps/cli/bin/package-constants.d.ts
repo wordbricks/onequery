@@ -32,15 +32,9 @@ export type ReleasePlatformPackage = {
   cpu: RuntimeArch;
 };
 
-export type ServerBuildPlan = {
-  compileTarget: string;
-  filename: string;
-};
-
 export const CLI_PACKAGE_NAME: "@onequery/cli";
 export const CLI_BINARY_NAME: "onequery";
-export const CLI_SERVER_BINARY_NAME: "onequery-server";
-export const CLI_SERVER_MUSL_BINARY_NAME: "onequery-server-musl";
+export const CLI_SERVER_BUNDLE_FILENAME: "onequery-server.mjs";
 export const CLI_NPM_TARBALL_PREFIX: "onequery-npm";
 export const CLI_NPM_STAGE_DIR_PREFIX: `${typeof CLI_NPM_TARBALL_PREFIX}-stage-`;
 export const CLI_NPM_PACK_DIR_PREFIX: `${typeof CLI_NPM_TARBALL_PREFIX}-pack-`;
@@ -54,9 +48,9 @@ export const EXTRA_RELEASE_PLATFORM_PACKAGES: Record<
 export const RELEASE_PLATFORM_PACKAGES: Record<string, ReleasePlatformPackage>;
 export const PLATFORM_PACKAGE_BY_TARGET: Record<NpmTargetTriple, string>;
 
-export function serverBuildsForTargetTriple(
+export function serverBundleFilenameForTargetTriple(
   targetTriple: TargetTriple
-): ServerBuildPlan[];
+): string;
 
 export function packageStagingDirPrefix(packageName: string): string;
 

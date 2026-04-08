@@ -8,25 +8,26 @@ The self-host startup boundary has one owner per concern:
 
 - `packages/config/src/server-launch.ts`, exported as
   `@onequery/config/server-launch`, is the canonical launch-contract owner for
-  Bun runtime shape and validation.
+  packaged runtime shape and validation.
 - Rust CLI owns self-host defaults, config parsing, secret parsing, path
   discovery, and validation.
 - Rust CLI resolves a complete launch contract that matches the canonical
   config-package owner and writes it to `run/launch.json`.
-- `packages/bun-server` reads that launch contract exactly once at process
+- `packages/self-host-runtime` reads that launch contract exactly once at
+  process
   start.
 - runtime startup owns application-schema convergence after launch-config
   resolution.
 - `packages/server` consumes the typed runtime object built from that launch
   contract.
 
-Bun does not parse `self-host/config.toml`, Bun does not parse
-`self-host/secrets.toml`, and Bun does not fall back to `onequery.dev.toml`.
+The packaged runtime does not parse `self-host/config.toml`, does not parse
+`self-host/secrets.toml`, and does not fall back to `onequery.dev.toml`.
 
-The current parity bar is deliberate: Rust and Bun stay aligned through the
-canonical config-package validator plus focused Rust/Bun contract tests. We are
-not introducing a separate neutral schema artifact unless that parity workflow
-becomes painful enough to justify extra machinery.
+The current parity bar is deliberate: Rust and the packaged runtime stay
+aligned through the canonical config-package validator plus focused contract
+tests. We are not introducing a separate neutral schema artifact unless that
+parity workflow becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
@@ -64,7 +65,7 @@ vendor/<target>/
   onequery/
     onequery[.exe]
   server/
-    onequery-server[platform-specific]
+    onequery-server.mjs
   runtime/
     migrations/
     web/
@@ -100,20 +101,20 @@ self-host/config.toml + self-host/secrets.toml
               write run/launch.json
                      |
                      v
-      start packages/bun-server with launch-config path only
+      start the packaged server bundle with launch-config path only
                      |
                      v
-      Bun reads launch.json once and starts the process runtime
+      packaged runtime reads launch.json once and starts the process runtime
 ```
 
 Repo-local self-host smoke uses the same packaged layout: the helper stages a
 temporary `vendor/<target>` bundle and then invokes unchanged `onequery serve`
 from that staged CLI binary. Workspace-dev remains separate and continues to
-use `scripts/run-bun-server.ts`.
+use `scripts/run-self-host-runtime.ts`.
 
-The Bun runtime owns the process-local guarantees:
+The packaged runtime owns the process-local guarantees:
 
-- acquire the runtime lease before calling `Bun.serve`
+- acquire the runtime lease before accepting requests
 - fail fast if `server.lock` belongs to a live process
 - replace stale pid and lock markers only when the recorded pid is gone
 - append lifecycle events to `logs/server.log`
@@ -122,7 +123,8 @@ The Bun runtime owns the process-local guarantees:
   requests
 
 Workspace-dev follows the same migration-ownership rule through
-`scripts/run-bun-server.ts`: `bun run dev:setup` prepares infra only, while the
+`scripts/run-self-host-runtime.ts`: `bun run dev:setup` prepares infra only,
+while the
 runtime launched by `bun dev` converges the application schema from the launch
 contract at startup.
 
@@ -133,13 +135,13 @@ The current repo checks that prove this boundary are:
 - `cargo test -p onequery-cli self_host::tests`
 - `cargo test -p onequery-cli serve::tests`
 - `bun test apps/cli/scripts/self-host-smoke.integration.test.ts`
-- `bun run --cwd packages/bun-server test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
+- `bun run --cwd packages/self-host-runtime test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
 
 Those checks cover:
 
 - Rust-owned self-host config resolution and launch-contract generation
 - packaged self-host bootstrap, startup failure on invalid secrets, and
   data-source creation through `onequery serve`
-- launch-config parsing and validation at Bun startup
-- starting the Bun runtime from serialized launch config input
+- launch-config parsing and validation at packaged-runtime startup
+- starting the packaged runtime from serialized launch config input
 - lifecycle lease, stale lock replacement, log append, and shutdown cleanup

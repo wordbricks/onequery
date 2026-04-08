@@ -94,8 +94,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           # COMMENT: setup-bun only installs the Bun runtime. The self-host
-          # executable build compiles packages/bun-server and must resolve the
-          # workspace graph from bun.lock first.
+          # server bundle still needs the workspace graph from bun.lock first.
           bun ci
 
       - uses: dtolnay/rust-toolchain@1.93.0
@@ -135,10 +134,10 @@ jobs:
           # linker wiring, and C toolchain setup are visible in workflow logs.
           cargo build --locked --release --bin onequery --target ${{ matrix.target }}
 
-      - name: Build self-host server executable
+      - name: Build self-host server bundle
         run: |
           set -euo pipefail
-          bun scripts/build-server-executable.js --target-triple "${{ matrix.target }}"
+          bun scripts/build-server-bundle.js --target-triple "${{ matrix.target }}"
 
       - name: Stage vendor payload
         run: |
@@ -212,10 +211,10 @@ jobs:
         run: |
           & "target/${{ matrix.target }}/release/onequery.exe" --help | Out-Null
 
-      - name: Build self-host server executable
+      - name: Build self-host server bundle
         if: ${{ matrix.bundle == 'helpers' }}
         run: |
-          bun scripts/build-server-executable.js --target-triple "${{ matrix.target }}"
+          bun scripts/build-server-bundle.js --target-triple "${{ matrix.target }}"
 
       - name: Stage Windows binaries
         run: |
@@ -270,14 +269,14 @@ jobs:
       - name: Verify Windows binaries
         run: |
           Get-Item "target/${{ matrix.target }}/release/onequery.exe" | Out-Null
-          Get-Item "target/${{ matrix.target }}/release/onequery-server.exe" | Out-Null
+          Get-Item "target/${{ matrix.target }}/release/onequery-server.mjs" | Out-Null
 
       - name: Stage vendor payload
         run: |
           New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/onequery" | Out-Null
           New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/server" | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/onequery.exe" "dist/vendor/${{ matrix.target }}/onequery/onequery.exe"
-          Copy-Item "target/${{ matrix.target }}/release/onequery-server.exe" "dist/vendor/${{ matrix.target }}/server/onequery-server.exe"
+          Copy-Item "target/${{ matrix.target }}/release/onequery-server.mjs" "dist/vendor/${{ matrix.target }}/server/onequery-server.mjs"
 
       - uses: actions/upload-artifact@v6
         with:
@@ -320,7 +319,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # COMMENT: npm staging builds apps/web and packages the Bun runtime,
+          # COMMENT: npm staging builds apps/web and packages the self-host runtime,
           # so this release job also needs the workspace dependencies hydrated.
           bun ci
 

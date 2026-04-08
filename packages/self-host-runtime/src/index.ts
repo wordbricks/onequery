@@ -13,7 +13,7 @@ import fsLiteDriver from "unstorage/drivers/fs-lite";
 import { createApp } from "./app";
 import { createSpaAssetBinding } from "./assets";
 import {
-  DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS,
+  DEFAULT_SERVER_IDLE_TIMEOUT_SECONDS,
   RUNTIME_RATE_LIMIT_API_DIRNAME,
   RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
 } from "./constants";
@@ -25,17 +25,16 @@ import {
   toLifecyclePaths,
 } from "./self-host/lifecycle";
 import type { RuntimeLifecycleLease } from "./self-host/lifecycle";
-import {
-  loadStartupLaunchConfig,
-  resolveStartupInputFromArgv,
-} from "./startup";
-import type { BunServerStartupInput } from "./startup";
+import { loadStartupLaunchConfig } from "./startup";
+import type { ServerStartupInput } from "./startup";
 
 type AppFetchHandler = {
   fetch(request: Request): Response | Promise<Response>;
 };
 
-type StartBunServerHandle = {
+const RUNTIME_LOG_PREFIX = "[onequery-server]";
+
+type StartedServer = {
   hostname: string;
   port: number;
   stop(closeActiveConnections?: boolean): void;
@@ -45,13 +44,13 @@ type LifecycleLogWriter = {
   append(message: string): Promise<void>;
 };
 
-export interface StartBunServerDependencies {
+export interface StartServerDependencies {
   acquireRuntimeLifecycleLease: typeof acquireRuntimeLifecycleLease;
   appendLifecycleLog: typeof appendLifecycleLog;
   attachGracefulShutdownHandlers(args: {
     lease: RuntimeLifecycleLease;
     logWriter: LifecycleLogWriter;
-    server: StartBunServerHandle;
+    server: StartedServer;
   }): unknown;
   createApp(input: {
     runtime: ServerRuntimeConfig;
@@ -68,11 +67,11 @@ export interface StartBunServerDependencies {
     hostname: string;
     idleTimeout: number;
     port: number;
-  }): StartBunServerHandle;
+  }): StartedServer | Promise<StartedServer>;
   toLifecyclePaths: typeof toLifecyclePaths;
 }
 
-const defaultStartBunServerDependencies: StartBunServerDependencies = {
+const defaultStartServerDependencies: StartServerDependencies = {
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
@@ -121,10 +120,8 @@ function resolveApiRateLimitStorage(
 }
 
 function createLifecycleLogWriter(
-  selfHostPaths: ReturnType<
-    StartBunServerDependencies["toLifecyclePaths"]
-  > | null,
-  append: StartBunServerDependencies["appendLifecycleLog"]
+  selfHostPaths: ReturnType<StartServerDependencies["toLifecyclePaths"]> | null,
+  append: StartServerDependencies["appendLifecycleLog"]
 ): LifecycleLogWriter {
   return {
     append(message: string) {
@@ -137,58 +134,66 @@ function createLifecycleLogWriter(
   };
 }
 
-export function createStartBunServer(
-  dependencies: StartBunServerDependencies = defaultStartBunServerDependencies
+export function createStartServer(
+  dependencies: Partial<StartServerDependencies> = {}
 ) {
-  return async function startBunServer(startupInput: BunServerStartupInput) {
-    const launchConfig = dependencies.loadStartupLaunchConfig(startupInput);
+  const resolvedDependencies = {
+    ...defaultStartServerDependencies,
+    ...dependencies,
+  } satisfies StartServerDependencies;
+
+  return async function startServer(startupInput: ServerStartupInput) {
+    const launchConfig =
+      resolvedDependencies.loadStartupLaunchConfig(startupInput);
     const selfHostPaths =
       launchConfig.mode === "self-host"
-        ? dependencies.toLifecyclePaths(launchConfig)
+        ? resolvedDependencies.toLifecyclePaths(launchConfig)
         : null;
     const lifecycleLogWriter = createLifecycleLogWriter(
       selfHostPaths,
-      dependencies.appendLifecycleLog
+      resolvedDependencies.appendLifecycleLog
     );
     const lifecycleLease = selfHostPaths
-      ? await dependencies.acquireRuntimeLifecycleLease(selfHostPaths, {
+      ? await resolvedDependencies.acquireRuntimeLifecycleLease(selfHostPaths, {
           logWriter: lifecycleLogWriter,
         })
       : null;
 
     try {
-      const runtime = dependencies.createServerRuntimeConfig(launchConfig);
-      // Comment: The Bun runtime is the single owner of main application schema
-      // convergence; local bootstrap only guarantees the shared Postgres container.
-      await dependencies.prepareRuntimeDatabase({
+      const runtime =
+        resolvedDependencies.createServerRuntimeConfig(launchConfig);
+      // Comment: The launched runtime process is the single owner of main
+      // application schema convergence; local bootstrap only guarantees the
+      // shared Postgres container.
+      await resolvedDependencies.prepareRuntimeDatabase({
         databaseUrl: runtime.storage.connectionString,
         migrationsDir: launchConfig.migrations.dir,
       });
-      const storage = dependencies.createServerStorage(
+      const storage = resolvedDependencies.createServerStorage(
         runtime,
         resolveApiRateLimitStorage(launchConfig)
       );
-      const app = dependencies.createApp({
+      const app = resolvedDependencies.createApp({
         runtime,
-        spaAssets: dependencies.createSpaAssetBinding({
+        spaAssets: resolvedDependencies.createSpaAssetBinding({
           assetDir: launchConfig.assets.distDir,
         }),
         storage,
       });
 
-      const server = dependencies.serve({
+      const server = await resolvedDependencies.serve({
         fetch(request) {
           return app.fetch(request);
         },
         hostname: launchConfig.listen.host,
-        idleTimeout: DEFAULT_BUN_SERVER_IDLE_TIMEOUT_SECONDS,
+        idleTimeout: DEFAULT_SERVER_IDLE_TIMEOUT_SECONDS,
         port: launchConfig.listen.port,
       });
 
       const listenAddress = `http://${launchConfig.listen.host}:${server.port}`;
 
       if (lifecycleLease) {
-        dependencies.attachGracefulShutdownHandlers({
+        resolvedDependencies.attachGracefulShutdownHandlers({
           lease: lifecycleLease,
           logWriter: lifecycleLogWriter,
           server,
@@ -196,9 +201,9 @@ export function createStartBunServer(
       }
 
       await lifecycleLogWriter.append(
-        `[bun-server] listening on ${listenAddress}`
+        `${RUNTIME_LOG_PREFIX} listening on ${listenAddress}`
       );
-      console.log(`[bun-server] listening on ${listenAddress}`);
+      console.log(`${RUNTIME_LOG_PREFIX} listening on ${listenAddress}`);
 
       return server;
     } catch (error) {
@@ -213,8 +218,4 @@ export function createStartBunServer(
   };
 }
 
-export const startBunServer = createStartBunServer();
-
-if (import.meta.main) {
-  await startBunServer(resolveStartupInputFromArgv(process.argv));
-}
+export const startServer = createStartServer();

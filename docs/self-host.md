@@ -1,7 +1,7 @@
 # Self-Hosting OneQuery OSS
 
 This guide covers the current OSS product shape: install the published CLI,
-start the bundled Bun runtime, bootstrap the first user, and operate the server
+start the bundled self-host runtime, bootstrap the first user, and operate the server
 with the same CLI.
 
 ## Install And First Run
@@ -11,10 +11,16 @@ Prerequisites:
 - `curl` and `tar`
 - a supported published CLI package for macOS, Linux, or Windows
 
+The hosted install script is for macOS and Linux. It downloads a managed
+official Node.js 24.x runtime under the OneQuery install directory when `node`
+24+ is not already available. Direct `bun install -g`, `npm install -g`,
+`bunx`, and `npx` flows still require Node.js 22+ on `PATH` or
+`ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve`.
+
 Install the CLI:
 
 ```bash
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
 
 Or install it with Homebrew:
@@ -37,8 +43,9 @@ npx @onequery/cli --help
 ```
 
 Published `onequery serve` packages include the bundled self-host runtime and
-do not require Bun on `PATH`. `onequery serve` is the self-host launch
-entrypoint; repo-local workspace development keeps using `bun dev` instead.
+launch it with Node.js. Bun is not required on `PATH`. `onequery serve` is the
+self-host launch entrypoint; repo-local workspace development keeps using
+`bun dev` instead.
 
 Start the server:
 
@@ -136,9 +143,9 @@ scripts:
 
 - `bun run dev:setup` creates workspace-dev secrets, starts local Postgres, and
   provisions shared local databases/extensions only
-- `bun dev` starts workspace-dev and the Bun runtime applies the application
+- `bun dev` starts workspace-dev and the packaged runtime applies the application
   schema on startup
-- `onequery serve` starts self-host and the Bun runtime applies the application
+- `onequery serve` starts self-host and the packaged runtime applies the application
   schema on startup
 
 ## SMTP And Manual-Link Fallback
@@ -200,7 +207,7 @@ Upgrade flow:
 ```bash
 onequery serve stop
 onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 onequery serve
 ```
 
@@ -213,7 +220,7 @@ local install.
 Current repo validation for the self-host path includes:
 
 - `bun run --cwd apps/cli test`
-- `bun run --cwd packages/bun-server test`
+- `bun run --cwd packages/self-host-runtime test`
 - `bun run --cwd packages/db typecheck`
 
 Important covered surfaces:
@@ -224,8 +231,8 @@ Important covered surfaces:
   [`apps/cli/crates/onequery-cli/src/commands/auth/tests.rs`](../apps/cli/crates/onequery-cli/src/commands/auth/tests.rs)
 - packaged self-host smoke:
   [`apps/cli/scripts/self-host-smoke.integration.test.ts`](../apps/cli/scripts/self-host-smoke.integration.test.ts)
-- Bun runtime lifecycle:
-  [`packages/bun-server/src/self-host/lifecycle.test.ts`](../packages/bun-server/src/self-host/lifecycle.test.ts)
+- Self-host runtime lifecycle:
+  [`packages/self-host-runtime/src/self-host/lifecycle.test.ts`](../packages/self-host-runtime/src/self-host/lifecycle.test.ts)
 - backup archive coverage:
   [`apps/cli/crates/onequery-cli/src/commands/backup.rs`](../apps/cli/crates/onequery-cli/src/commands/backup.rs)
 - restore archive coverage:

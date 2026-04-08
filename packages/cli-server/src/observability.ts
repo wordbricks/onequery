@@ -43,10 +43,11 @@ function normalizeCliMetricTags(
   tags: Record<string, CliMetricTagValue | null | undefined>
 ): CliMetricTags {
   const normalized: CliMetricTags = {};
-
-  for (const [key, value] of Object.entries(tags).toSorted(([left], [right]) =>
+  const sortedEntries = Object.entries(tags).sort(([left], [right]) =>
     left.localeCompare(right)
-  )) {
+  );
+
+  for (const [key, value] of sortedEntries) {
     if (value === null || value === undefined) {
       continue;
     }

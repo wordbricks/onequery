@@ -87,14 +87,13 @@ export function buildCliBinary() {
   return binaryPath;
 }
 
-function buildServerExecutableArtifacts({ outdir, targetTriple }) {
-  // Comment: `Bun.build` module resolution is inconsistent when this helper is
-  // invoked from `bun test`; shelling out through the existing script keeps the
-  // packaged-server build on the same path used by local smoke commands.
+function buildServerBundleArtifacts({ outdir, targetTriple }) {
+  // Comment: local smoke should exercise the same packaging wrapper as release
+  // staging so both paths keep using the same Rolldown server bundle.
   const result = Bun.spawnSync(
     [
       process.execPath,
-      join(cliRootDir, "scripts", "build-server-executable.js"),
+      join(cliRootDir, "scripts", "build-server-bundle.js"),
       "--target-triple",
       targetTriple,
       "--outdir",
@@ -127,7 +126,7 @@ export async function createStagedBundleRoot() {
     chmodSync(stagedCliPath, 0o755);
   }
 
-  buildServerExecutableArtifacts({
+  buildServerBundleArtifacts({
     outdir: serverDir,
     targetTriple,
   });

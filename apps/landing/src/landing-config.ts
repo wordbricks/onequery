@@ -8,11 +8,12 @@ export const LANDING_REPOSITORY_URL =
   "https://github.com/wordbricks/onequery" as const;
 export const LANDING_CLI_SOURCE_URL =
   `${LANDING_REPOSITORY_URL}/tree/main/apps/cli` as const;
-export const LANDING_INSTALLER_URL = "https://onequery.wordbricks.ai/" as const;
+export const LANDING_INSTALL_SCRIPT_URL =
+  "https://onequery.wordbricks.ai/install.sh" as const;
 const LANDING_LOCAL_SERVER_URL = "http://127.0.0.1:5656" as const;
 
 export const LANDING_DOWNLOAD_COMMAND =
-  `curl -fsSL ${LANDING_INSTALLER_URL} | sh` as const;
+  `curl -fsSL ${LANDING_INSTALL_SCRIPT_URL} | sh` as const;
 
 export const LANDING_INSTALL_SNIPPET = `${LANDING_DOWNLOAD_COMMAND}
 

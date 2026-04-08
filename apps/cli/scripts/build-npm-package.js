@@ -38,7 +38,6 @@ import {
   RELEASE_PLATFORM_PACKAGES,
   EXTRA_RELEASE_PLATFORM_PACKAGES,
   binaryNameForTargetTriple,
-  serverBuildsForTargetTriple,
 } from "../bin/package-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -255,9 +254,6 @@ async function restorePackagedExecutableModes({ targetRoot, targetTriple }) {
       targetRoot,
       "onequery",
       binaryNameForTargetTriple(targetTriple, CLI_BINARY_NAME)
-    ),
-    ...serverBuildsForTargetTriple(targetTriple).map(({ filename }) =>
-      path.join(targetRoot, "server", filename)
     ),
   ];
 

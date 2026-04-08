@@ -22,9 +22,8 @@ use runtime::stop_runtime;
 use state::ServeStateAccessMode;
 use state::resolve_runtime_state;
 
-const PACKAGED_SERVER_FILENAME: &str = "onequery-server";
-const PACKAGED_SERVER_WINDOWS_FILENAME: &str = "onequery-server.exe";
-const PACKAGED_SERVER_MUSL_FILENAME: &str = "onequery-server-musl";
+const PACKAGED_SERVER_BUNDLE_FILENAME: &str = "onequery-server.mjs";
+const PACKAGED_SERVER_JS_RUNTIME_ENV_VAR: &str = "ONEQUERY_SERVER_JS_RUNTIME";
 const SERVE_LOG_PREVIEW_LINE_COUNT: usize = 20;
 const SERVE_STOP_POLL_ATTEMPTS: usize = 50;
 const SERVE_STOP_POLL_INTERVAL_MS: u64 = 100;
@@ -32,18 +31,8 @@ const RETRY_SERVE_COMMAND: &str = "retry onequery serve";
 const RETRY_SERVE_STOP_COMMAND: &str = "retry onequery serve stop";
 const CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP: &str =
     "check the server log and retry onequery serve stop";
+const INSTALL_NODE_AND_RETRY_SERVE_COMMAND: &str = "install Node.js 22+ and retry onequery serve";
 const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
-const LINUX_X64_GLIBC_LOADER_PATHS: &[&str] = &[
-    "/lib64/ld-linux-x86-64.so.2",
-    "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2",
-];
-const LINUX_X64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-x86_64.so.1"];
-const LINUX_ARM64_GLIBC_LOADER_PATHS: &[&str] = &[
-    "/lib/ld-linux-aarch64.so.1",
-    "/lib64/ld-linux-aarch64.so.1",
-    "/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1",
-];
-const LINUX_ARM64_MUSL_LOADER_PATHS: &[&str] = &["/lib/ld-musl-aarch64.so.1"];
 
 pub(super) async fn execute<B, T>(
     command: ServeCommand,

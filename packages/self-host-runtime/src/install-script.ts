@@ -11,6 +11,14 @@ const RELEASE_BASE_URL =
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
 const PACKAGED_CLI_DIR = getRuntimeBundleDirectoryConfig("cli").relativePath;
+const PACKAGED_SERVER_JS_RUNTIME_ENV_VAR = "ONEQUERY_SERVER_JS_RUNTIME";
+export const INSTALL_SCRIPT_PATH = "/install.sh" as const;
+export const INSTALL_SCRIPT_HEADERS = {
+  "cache-control": "public, max-age=300",
+  "content-disposition": 'inline; filename="install-onequery.sh"',
+  "content-type": "text/x-shellscript; charset=utf-8",
+  "x-content-type-options": "nosniff",
+} as const;
 
 export function shouldServeInstallScript(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -18,7 +26,7 @@ export function shouldServeInstallScript(request: Request): boolean {
   }
 
   const url = new URL(request.url);
-  if (url.pathname === "/install.sh") {
+  if (url.pathname === INSTALL_SCRIPT_PATH) {
     return true;
   }
 
@@ -47,12 +55,7 @@ export function createInstallScriptResponse(request: Request): Response {
   return new Response(
     request.method === "HEAD" ? null : createInstallScript(),
     {
-      headers: {
-        "cache-control": "public, max-age=300",
-        "content-disposition": 'inline; filename="install-onequery.sh"',
-        "content-type": "text/x-shellscript; charset=utf-8",
-        "x-content-type-options": "nosniff",
-      },
+      headers: INSTALL_SCRIPT_HEADERS,
     }
   );
 }
@@ -62,8 +65,10 @@ export function createInstallScript(): string {
 set -eu
 
 RELEASE_BASE_URL="\${ONEQUERY_RELEASE_BASE_URL:-${RELEASE_BASE_URL}}"
+NODE_DIST_BASE_URL="\${ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/latest-v24.x}"
 INSTALL_ROOT="\${ONEQUERY_INSTALL_ROOT:-$HOME/.local/share/onequery}"
 BIN_DIR="\${ONEQUERY_BIN_DIR:-$HOME/.local/bin}"
+MANAGED_NODE_BIN_RELATIVE_PATH="runtime/node/bin/node"
 
 need_cmd() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -153,19 +158,106 @@ read_package_version() {
   printf '%s\\n' "$version"
 }
 
+read_runtime_major_version() {
+  runtime_command="$1"
+  version_output="$("$runtime_command" --version 2>/dev/null || true)"
+
+  printf '%s\\n' "$version_output" | sed -n 's/^v\\([0-9][0-9]*\\).*/\\1/p' | head -n 1
+}
+
+should_install_managed_node() {
+  if ! command -v node >/dev/null 2>&1; then
+    return 0
+  fi
+
+  node_major_version="$(read_runtime_major_version node)"
+  if [ -z "$node_major_version" ]; then
+    return 0
+  fi
+
+  [ "$node_major_version" -lt 24 ]
+}
+
+resolve_managed_node_archive_suffix() {
+  case "$1" in
+    darwin-arm64) printf '%s\\n' 'darwin-arm64.tar.gz' ;;
+    darwin-x64) printf '%s\\n' 'darwin-x64.tar.gz' ;;
+    linux-arm64) printf '%s\\n' 'linux-arm64.tar.gz' ;;
+    linux-x64) printf '%s\\n' 'linux-x64.tar.gz' ;;
+    *)
+      printf 'onequery installer: unsupported platform tag for managed Node.js: %s\\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+resolve_managed_node_archive_name() {
+  platform_tag="$1"
+  archive_suffix="$(resolve_managed_node_archive_suffix "$platform_tag")"
+  archive_name="$(
+    curl -fsSL "$NODE_DIST_BASE_URL/SHASUMS256.txt" | while IFS= read -r line; do
+      case "$line" in
+        *"  node-v"*"-$archive_suffix")
+          printf '%s\\n' "\${line#*  }"
+          break
+          ;;
+      esac
+    done
+  )"
+
+  if [ -z "$archive_name" ]; then
+    printf 'onequery installer: failed to resolve a managed Node.js 24.x archive for %s from %s\\n' "$platform_tag" "$NODE_DIST_BASE_URL" >&2
+    exit 1
+  fi
+
+  printf '%s\\n' "$archive_name"
+}
+
+install_managed_node() {
+  install_dir="$1"
+  platform_tag="$2"
+  node_archive_name="$(resolve_managed_node_archive_name "$platform_tag")"
+  node_archive_path="$tmp_dir/$node_archive_name"
+  node_extract_root="$tmp_dir/node"
+  node_extract_dir="\${node_archive_name%.tar.gz}"
+  managed_node_dir="$install_dir/runtime/node"
+
+  printf 'Installing managed Node.js 24.x for onequery serve...\\n'
+  rm -rf "$node_extract_root" "$managed_node_dir"
+  mkdir -p "$node_extract_root" "$install_dir/runtime"
+  curl -fsSL "$NODE_DIST_BASE_URL/$node_archive_name" -o "$node_archive_path"
+  tar -xzf "$node_archive_path" -C "$node_extract_root"
+
+  if [ ! -x "$node_extract_root/$node_extract_dir/bin/node" ]; then
+    printf 'onequery installer: extracted managed Node.js archive is missing bin/node\\n' >&2
+    exit 1
+  fi
+
+  mv "$node_extract_root/$node_extract_dir" "$managed_node_dir"
+}
+
 write_launcher() {
   install_dir="$1"
   target_triple="$2"
   launcher_path="$install_dir/bin/onequery"
 
   mkdir -p "$install_dir/bin"
-  cat > "$launcher_path" <<EOF
+  {
+    cat <<EOF
 #!/bin/sh
 set -eu
-INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/\${target_triple}}"
-exec "$INSTALL_DIR/vendor/\${target_triple}/${PACKAGED_CLI_DIR}/onequery" "$@"
+TARGET_TRIPLE="$target_triple"
 EOF
+    cat <<'EOF'
+INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/$TARGET_TRIPLE}"
+managed_node_path="$INSTALL_DIR/$MANAGED_NODE_BIN_RELATIVE_PATH"
+if [ -z "\${${PACKAGED_SERVER_JS_RUNTIME_ENV_VAR}:-}" ] && [ -x "$managed_node_path" ]; then
+  export ${PACKAGED_SERVER_JS_RUNTIME_ENV_VAR}="$managed_node_path"
+fi
+exec "$INSTALL_DIR/vendor/$TARGET_TRIPLE/${PACKAGED_CLI_DIR}/onequery" "$@"
+EOF
+  } > "$launcher_path"
   chmod 755 "$launcher_path"
 }
 
@@ -192,12 +284,20 @@ tar -xzf "$tmp_dir/platform.tgz" -C "$tmp_dir/platform"
 version="$(read_package_version "$tmp_dir/root")"
 install_dir="$INSTALL_ROOT/versions/$version"
 staging_dir="$INSTALL_ROOT/versions/$version.tmp.$$"
+managed_node_required=0
+
+if should_install_managed_node; then
+  managed_node_required=1
+fi
 
 rm -rf "$staging_dir"
 mkdir -p "$INSTALL_ROOT/versions" "$BIN_DIR"
 cp -R "$tmp_dir/root/package" "$staging_dir"
 mkdir -p "$staging_dir/vendor"
 cp -R "$tmp_dir/platform/package/vendor/." "$staging_dir/vendor/"
+if [ "$managed_node_required" -eq 1 ]; then
+  install_managed_node "$staging_dir" "$platform_tag"
+fi
 write_launcher "$staging_dir" "$target_triple"
 
 rm -rf "$install_dir"

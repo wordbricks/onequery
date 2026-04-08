@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
 use std::process::Command as ProcessCommand;
@@ -13,6 +14,8 @@ use crate::output::CommandOutput;
 
 use super::super::is_process_running;
 use super::CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP;
+use super::INSTALL_NODE_AND_RETRY_SERVE_COMMAND;
+use super::PACKAGED_SERVER_JS_RUNTIME_ENV_VAR;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
 use super::RETRY_SERVE_COMMAND;
 use super::RETRY_SERVE_STOP_COMMAND;
@@ -25,6 +28,8 @@ use super::render::runtime_state_json;
 use super::state::ServeRuntimeState;
 use super::state::ServeStateAccessMode;
 use super::state::resolve_runtime_state;
+
+const MINIMUM_NODE_MAJOR_VERSION: u32 = 22;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct LogPreview {
@@ -64,13 +69,20 @@ pub(super) fn run_serve_foreground(
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let mut launch_plan = resolve_launch_plan(state, command_line)?;
+    let runtime_command = resolve_runtime_command();
+    ensure_runtime_command_support(
+        &runtime_command,
+        launch_plan.runtime_entry_path.as_path(),
+        command_line,
+    )?;
     launch_plan.launch_config_path = write_self_host_launch_config(
         command_line,
         &launch_plan.web_dist_dir,
         &launch_plan.migrations_dir,
     )?;
     remove_if_exists(state.paths.stop_request_path.as_path());
-    let mut child = ProcessCommand::new(&launch_plan.runtime_entry_path);
+    let mut child = ProcessCommand::new(&runtime_command);
+    child.arg(&launch_plan.runtime_entry_path);
     child.arg(&launch_plan.launch_config_path);
     child
         .stdin(Stdio::inherit())
@@ -81,12 +93,13 @@ pub(super) fn run_serve_foreground(
         let (why, try_next) = match spawn_error.kind() {
             std::io::ErrorKind::NotFound => (
                 format!(
-                    "compiled self-host server executable was not found at {}",
+                    "JavaScript runtime executable was not found at {} while launching {}",
+                    Path::new(&runtime_command).display(),
                     launch_plan.runtime_entry_path.display()
                 ),
                 vec![
+                    INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
                     REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                    RETRY_SERVE_COMMAND.to_owned(),
                 ],
             ),
             _ => (
@@ -138,6 +151,132 @@ pub(super) fn run_serve_foreground(
             format!("{RETRY_SERVE_COMMAND} after fixing the startup issue"),
         ],
     ))
+}
+
+fn resolve_runtime_command() -> OsString {
+    std::env::var_os(PACKAGED_SERVER_JS_RUNTIME_ENV_VAR)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| OsString::from("node"))
+}
+
+fn ensure_runtime_command_support(
+    runtime_command: &OsString,
+    runtime_entry_path: &Path,
+    command_line: &str,
+) -> Result<(), CliError> {
+    let version_output = ProcessCommand::new(runtime_command)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|probe_error| {
+            let (why, try_next) = match probe_error.kind() {
+                std::io::ErrorKind::NotFound => (
+                    format!(
+                        "JavaScript runtime executable was not found at {} while launching {}",
+                        Path::new(runtime_command).display(),
+                        runtime_entry_path.display()
+                    ),
+                    vec![
+                        INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
+                        REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+                    ],
+                ),
+                _ => (
+                    format!(
+                        "failed to run {} --version: {probe_error}",
+                        Path::new(runtime_command).display()
+                    ),
+                    vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+                ),
+            };
+
+            CliError::new(
+                "failed to validate self-host server runtime",
+                command_line,
+                ErrorStage::Internal,
+                why,
+                try_next,
+            )
+        })?;
+
+    if !version_output.status.success() {
+        let stderr = String::from_utf8_lossy(&version_output.stderr);
+        let detail = stderr.trim();
+
+        return Err(CliError::new(
+            "failed to validate self-host server runtime",
+            command_line,
+            ErrorStage::Internal,
+            if detail.is_empty() {
+                format!(
+                    "{} --version exited with {}",
+                    Path::new(runtime_command).display(),
+                    describe_exit_status(version_output.status)
+                )
+            } else {
+                format!(
+                    "{} --version failed: {detail}",
+                    Path::new(runtime_command).display()
+                )
+            },
+            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+        ));
+    }
+
+    validate_runtime_version_output(
+        &String::from_utf8_lossy(&version_output.stdout),
+        runtime_command,
+        command_line,
+    )
+}
+
+pub(super) fn validate_runtime_version_output(
+    version_output: &str,
+    runtime_command: &OsString,
+    command_line: &str,
+) -> Result<(), CliError> {
+    let Some(major_version) = parse_runtime_major_version(version_output) else {
+        return Err(CliError::new(
+            "failed to validate self-host server runtime",
+            command_line,
+            ErrorStage::Internal,
+            format!(
+                "unable to parse {} --version output: {}",
+                Path::new(runtime_command).display(),
+                version_output.trim()
+            ),
+            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+        ));
+    };
+
+    if major_version < MINIMUM_NODE_MAJOR_VERSION {
+        return Err(CliError::new(
+            "unsupported self-host server runtime",
+            command_line,
+            ErrorStage::Internal,
+            format!(
+                "{} reports major version {major_version}, but packaged onequery serve requires Node.js {MINIMUM_NODE_MAJOR_VERSION}+",
+                Path::new(runtime_command).display()
+            ),
+            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+        ));
+    }
+
+    Ok(())
+}
+
+pub(super) fn parse_runtime_major_version(version_output: &str) -> Option<u32> {
+    let trimmed = version_output.trim();
+    let trimmed = trimmed.strip_prefix('v').unwrap_or(trimmed);
+    let major = trimmed.split('.').next()?;
+
+    if major.is_empty() {
+        return None;
+    }
+
+    major.parse::<u32>().ok()
 }
 
 fn describe_exit_status(status: ExitStatus) -> String {

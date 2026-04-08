@@ -98,7 +98,7 @@ export function createSpaAssetBinding(options: {
 
   if (!isReadableFile(spaEntryPath)) {
     throw new Error(
-      `SPA build output missing: expected ${spaEntryPath}. Run \`bun run --cwd apps/web build\` before starting the Bun server.`
+      `SPA build output missing: expected ${spaEntryPath}. Run \`bun run --cwd apps/web build\` before starting the packaged server runtime.`
     );
   }
 

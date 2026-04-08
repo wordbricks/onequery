@@ -112,7 +112,7 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
-  it("stops the Bun server and removes pid and lock files on SIGTERM", async () => {
+  it("stops the packaged server runtime and removes pid and lock files on SIGTERM", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-bun-signal-"));
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -151,12 +151,12 @@ describe("self-host lifecycle lease", () => {
 
     await appendLifecycleLog(
       paths,
-      "[bun-server] listening on http://127.0.0.1:5656",
+      "[onequery-server] listening on http://127.0.0.1:5656",
       () => new Date("2026-03-25T00:00:00.000Z")
     );
 
     await expect(readFile(paths.serverLogPath, "utf8")).resolves.toContain(
-      "2026-03-25T00:00:00.000Z [bun-server] listening on http://127.0.0.1:5656"
+      "2026-03-25T00:00:00.000Z [onequery-server] listening on http://127.0.0.1:5656"
     );
   });
 });

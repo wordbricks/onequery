@@ -13,8 +13,8 @@ import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createStartBunServer } from "./index";
-import type { StartBunServerDependencies } from "./index";
+import { createStartServer } from "./index";
+import type { StartServerDependencies } from "./index";
 import { loadStartupLaunchConfig } from "./startup";
 
 function writeLaunchConfigFile(value: unknown): string {
@@ -42,14 +42,14 @@ function createTempSelfHostRuntimePaths() {
 }
 
 function createMocks() {
-  const createApp: StartBunServerDependencies["createApp"] = vi.fn(() => ({
+  const createApp: StartServerDependencies["createApp"] = vi.fn(() => ({
     fetch: vi.fn(async () => new Response("ok")),
   }));
-  const createSpaAssetBinding: StartBunServerDependencies["createSpaAssetBinding"] =
+  const createSpaAssetBinding: StartServerDependencies["createSpaAssetBinding"] =
     vi.fn(() => ({
       fetch: vi.fn(async () => new Response("ok")),
     }));
-  const createServerRuntimeConfig: StartBunServerDependencies["createServerRuntimeConfig"] =
+  const createServerRuntimeConfig: StartServerDependencies["createServerRuntimeConfig"] =
     vi.fn(
       (launchConfig): ServerRuntimeConfig => ({
         auth: {
@@ -89,12 +89,12 @@ function createMocks() {
               },
       })
     );
-  const createServerStorage: StartBunServerDependencies["createServerStorage"] =
+  const createServerStorage: StartServerDependencies["createServerStorage"] =
     vi.fn(
       (_runtime, apiRateLimitStorage): ServerStorage =>
         ({ apiRateLimitStorage }) as ServerStorage
     );
-  const prepareRuntimeDatabase: StartBunServerDependencies["prepareRuntimeDatabase"] =
+  const prepareRuntimeDatabase: StartServerDependencies["prepareRuntimeDatabase"] =
     vi.fn(
       async (): Promise<DatabasePreparationResult> => ({
         engine: "postgres",
@@ -102,7 +102,7 @@ function createMocks() {
       })
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
-  const acquireRuntimeLifecycleLease: StartBunServerDependencies["acquireRuntimeLifecycleLease"] =
+  const acquireRuntimeLifecycleLease: StartServerDependencies["acquireRuntimeLifecycleLease"] =
     vi.fn(async () => ({
       paths: {
         dataDir: "/tmp/onequery/data",
@@ -112,12 +112,13 @@ function createMocks() {
       },
       release: releaseLifecycleLease,
     }));
-  const appendLifecycleLog: StartBunServerDependencies["appendLifecycleLog"] =
+  const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
     vi.fn(async () => undefined);
   const attachGracefulShutdownHandlers = vi.fn();
-  const toLifecyclePaths: StartBunServerDependencies["toLifecyclePaths"] =
-    vi.fn((launchConfig) => launchConfig.runtimePaths);
-  const serve: StartBunServerDependencies["serve"] = vi.fn(
+  const toLifecyclePaths: StartServerDependencies["toLifecyclePaths"] = vi.fn(
+    (launchConfig) => launchConfig.runtimePaths
+  );
+  const serve: StartServerDependencies["serve"] = vi.fn(
     ({ hostname, port }) => ({
       hostname,
       port,
@@ -142,7 +143,7 @@ function createMocks() {
 
 function createDependencies(
   mocks: ReturnType<typeof createMocks>
-): StartBunServerDependencies {
+): StartServerDependencies {
   return {
     acquireRuntimeLifecycleLease: mocks.acquireRuntimeLifecycleLease,
     appendLifecycleLog: mocks.appendLifecycleLog,
@@ -158,13 +159,13 @@ function createDependencies(
   };
 }
 
-describe("startBunServer", () => {
+describe("startServer", () => {
   let mocks: ReturnType<typeof createMocks>;
-  let startBunServer: ReturnType<typeof createStartBunServer>;
+  let startServer: ReturnType<typeof createStartServer>;
 
   beforeEach(() => {
     mocks = createMocks();
-    startBunServer = createStartBunServer(createDependencies(mocks));
+    startServer = createStartServer(createDependencies(mocks));
   });
 
   it("starts from a serialized workspace-dev launch config file", async () => {
@@ -175,7 +176,7 @@ describe("startBunServer", () => {
       })
     );
 
-    const server = await startBunServer({
+    const server = await startServer({
       launchConfigPath,
     });
 
@@ -213,7 +214,7 @@ describe("startBunServer", () => {
       })
     );
 
-    const server = await startBunServer({
+    const server = await startServer({
       launchConfigPath,
     });
 
@@ -254,7 +255,7 @@ describe("startBunServer", () => {
     );
     expect(mocks.appendLifecycleLog).toHaveBeenCalledWith(
       runtimePaths,
-      "[bun-server] listening on http://127.0.0.1:5656"
+      "[onequery-server] listening on http://127.0.0.1:5656"
     );
     expect(server).toMatchObject({
       hostname: "127.0.0.1",

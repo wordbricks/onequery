@@ -76,11 +76,7 @@ describe("build-npm-package runtime asset resolution", () => {
         "vendor",
         "x86_64-unknown-linux-musl"
       );
-      const executablePaths = [
-        path.join(targetRoot, "onequery", "onequery"),
-        path.join(targetRoot, "server", "onequery-server"),
-        path.join(targetRoot, "server", "onequery-server-musl"),
-      ];
+      const executablePaths = [path.join(targetRoot, "onequery", "onequery")];
 
       await Promise.all(
         executablePaths.map(async (executablePath) => {
@@ -102,7 +98,7 @@ describe("build-npm-package runtime asset resolution", () => {
         })
       );
 
-      expect(executableModes).toEqual([0o755, 0o755, 0o755]);
+      expect(executableModes).toEqual([0o755]);
     } finally {
       await rm(stagingDir, { force: true, recursive: true });
     }

@@ -4,7 +4,7 @@ import {
   LANDING_CLI_SOURCE_URL,
   LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
   LANDING_DOWNLOAD_COMMAND,
-  LANDING_INSTALLER_URL,
+  LANDING_INSTALL_SCRIPT_URL,
   LANDING_INSTALL_SNIPPET,
   LANDING_REPOSITORY_URL,
   LANDING_SECTION_IDS,
@@ -275,7 +275,7 @@ export function App() {
           </div>
           <div className="cta-actions">
             <a
-              href={LANDING_INSTALLER_URL}
+              href={LANDING_INSTALL_SCRIPT_URL}
               target="_blank"
               rel="noreferrer"
               className="action-link action-link-dark"

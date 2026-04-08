@@ -77,9 +77,9 @@
   "devDependencies": {
     "@bufbuild/buf": "catalog:",
     "@bufbuild/protoc-gen-es": "catalog:",
-    "@onequery/bun-server": "workspace:*",
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
+    "@onequery/self-host-runtime": "workspace:*",
     "@testing-library/jest-dom": "6.9.1",
     "@types/bun": "catalog:",
     "@types/nodemailer": "7.0.11",

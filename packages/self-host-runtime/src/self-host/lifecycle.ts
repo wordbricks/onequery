@@ -42,7 +42,7 @@ interface ProcessSignalSource {
   pid?: number;
 }
 
-interface BunServerHandle {
+interface ServerHandle {
   stop(closeActiveConnections?: boolean): void;
 }
 
@@ -118,7 +118,7 @@ export async function acquireRuntimeLifecycleLease(
 export function attachGracefulShutdownHandlers(args: {
   lease: RuntimeLifecycleLease;
   processSignals?: ProcessSignalSource;
-  server: BunServerHandle;
+  server: ServerHandle;
   logWriter?: LifecycleLogWriter;
 }): GracefulShutdownController {
   const processSignals = args.processSignals ?? process;

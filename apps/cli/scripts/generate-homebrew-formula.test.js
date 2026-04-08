@@ -25,7 +25,7 @@ void test("buildFormula renders the supported platform download blocks", () => {
     /url "https:\/\/github\.com\/wordbricks\/onequery\/releases\/download\/cli-v1\.2\.3\/onequery-npm-linux-x64\.tgz"/
   );
   assert.match(formula, /libexec\.install "vendor"/);
-  assert.match(formula, /chmod 0755, cli_binary, \*server_binaries/);
+  assert.match(formula, /chmod 0755, cli_binary/);
   assert.match(formula, /\(bin\/"onequery"\)\.write_env_script\(/);
   assert.match(
     formula,

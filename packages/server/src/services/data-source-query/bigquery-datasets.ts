@@ -131,7 +131,7 @@ function dedupeDatasetInfos(
     }
   });
 
-  return [...byId.values()].toSorted((left, right) =>
+  return [...byId.values()].sort((left, right) =>
     left.id.localeCompare(right.id)
   );
 }
