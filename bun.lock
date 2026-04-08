@@ -61,10 +61,12 @@
         "react-dom": "catalog:",
       },
       "devDependencies": {
+        "@onequery/self-host-runtime": "workspace:*",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "catalog:",
         "vite": "catalog:",
+        "vitest": "catalog:",
       },
     },
     "apps/web": {

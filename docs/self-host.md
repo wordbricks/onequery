@@ -15,7 +15,7 @@ Prerequisites:
 Install the CLI:
 
 ```bash
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
 
 Or install it directly with Bun:
@@ -196,7 +196,7 @@ Upgrade flow:
 ```bash
 onequery serve stop
 onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 onequery serve
 ```
 

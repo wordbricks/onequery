@@ -11,6 +11,13 @@ const RELEASE_BASE_URL =
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
 const PACKAGED_CLI_DIR = getRuntimeBundleDirectoryConfig("cli").relativePath;
+export const INSTALL_SCRIPT_PATH = "/install.sh" as const;
+export const INSTALL_SCRIPT_HEADERS = {
+  "cache-control": "public, max-age=300",
+  "content-disposition": 'inline; filename="install-onequery.sh"',
+  "content-type": "text/x-shellscript; charset=utf-8",
+  "x-content-type-options": "nosniff",
+} as const;
 
 export function shouldServeInstallScript(request: Request): boolean {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -18,7 +25,7 @@ export function shouldServeInstallScript(request: Request): boolean {
   }
 
   const url = new URL(request.url);
-  if (url.pathname === "/install.sh") {
+  if (url.pathname === INSTALL_SCRIPT_PATH) {
     return true;
   }
 
@@ -47,12 +54,7 @@ export function createInstallScriptResponse(request: Request): Response {
   return new Response(
     request.method === "HEAD" ? null : createInstallScript(),
     {
-      headers: {
-        "cache-control": "public, max-age=300",
-        "content-disposition": 'inline; filename="install-onequery.sh"',
-        "content-type": "text/x-shellscript; charset=utf-8",
-        "x-content-type-options": "nosniff",
-      },
+      headers: INSTALL_SCRIPT_HEADERS,
     }
   );
 }

@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import runtimeBundleLayoutJson from "./runtime-bundle.json";
+import runtimeBundleLayoutJson from "./runtime-bundle.json" with { type: "json" };
 
 type RuntimeBundlePathConfig = {
   relativePath: string;

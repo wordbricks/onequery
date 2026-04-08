@@ -130,7 +130,7 @@ bun run proto:check
 bun add -g @onequery/cli
 
 # Or with the install script (self-hosted)
-curl -fsSL https://onequery.wordbricks.ai/ | sh
+curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
 ```
 
 CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
