@@ -67,4 +67,26 @@ describe("install script surface", () => {
     );
     expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
   });
+
+  it("escapes launcher runtime references while baking the resolved target triple", () => {
+    const script = createInstallScript();
+    const dollar = "$";
+    const runtimeRootDefault = `${dollar}{ONEQUERY_RUNTIME_ROOT:-$INSTALL_DIR/vendor/$TARGET_TRIPLE}`;
+    const escapedTargetTriple = `\\${dollar}{target_triple}`;
+
+    expect(script).toContain("cat <<'EOF'");
+    expect(script).toContain('TARGET_TRIPLE="$target_triple"');
+    expect(script).toContain(
+      'INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)'
+    );
+    expect(script).toContain(
+      `export ONEQUERY_RUNTIME_ROOT="${runtimeRootDefault}"`
+    );
+    expect(script).toContain(
+      'exec "$INSTALL_DIR/vendor/$TARGET_TRIPLE/onequery/onequery" "$@"'
+    );
+    expect(script).not.toContain(
+      `vendor/${escapedTargetTriple}/onequery/onequery`
+    );
+  });
 });

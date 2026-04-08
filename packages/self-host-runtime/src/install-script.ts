@@ -242,17 +242,22 @@ write_launcher() {
   launcher_path="$install_dir/bin/onequery"
 
   mkdir -p "$install_dir/bin"
-  cat > "$launcher_path" <<EOF
+  {
+    cat <<EOF
 #!/bin/sh
 set -eu
+TARGET_TRIPLE="$target_triple"
+EOF
+    cat <<'EOF'
 INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/\${target_triple}}"
+export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/$TARGET_TRIPLE}"
 managed_node_path="$INSTALL_DIR/$MANAGED_NODE_BIN_RELATIVE_PATH"
 if [ -z "\${${PACKAGED_SERVER_JS_RUNTIME_ENV_VAR}:-}" ] && [ -x "$managed_node_path" ]; then
   export ${PACKAGED_SERVER_JS_RUNTIME_ENV_VAR}="$managed_node_path"
 fi
-exec "$INSTALL_DIR/vendor/\${target_triple}/${PACKAGED_CLI_DIR}/onequery" "$@"
+exec "$INSTALL_DIR/vendor/$TARGET_TRIPLE/${PACKAGED_CLI_DIR}/onequery" "$@"
 EOF
+  } > "$launcher_path"
   chmod 755 "$launcher_path"
 }
 
