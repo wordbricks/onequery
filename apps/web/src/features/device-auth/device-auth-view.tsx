@@ -13,7 +13,11 @@ import { IconLogin2, IconSparkles } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 
 import { ThemeToggle } from "@/features/theme/theme-toggle";
-import { ROOT_ROUTE, SIGNIN_ROUTE } from "@/lib/app-routes";
+import {
+  CONNECT_DATABASE_ROUTE,
+  ROOT_ROUTE,
+  SIGNIN_ROUTE,
+} from "@/lib/app-routes";
 
 import type { DeviceAuthController } from "./device-auth-controller";
 import {
@@ -274,6 +278,26 @@ function renderPanelContent(controller: DeviceAuthController) {
             value={controller.activeUserCode ?? ""}
             emphasis={controller.result.tone}
           />
+          {controller.result.tone === "success" &&
+          controller.onboardingOrganizationId ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your CLI session is ready. Connect a data source now, or come
+                back later from the dashboard.
+              </p>
+              <Link
+                to={CONNECT_DATABASE_ROUTE}
+                search={{ orgId: controller.onboardingOrganizationId }}
+                className={buttonVariants({
+                  variant: "default",
+                  size: "lg",
+                  className: "h-11 w-full",
+                })}
+              >
+                Continue setup
+              </Link>
+            </div>
+          ) : null}
         </div>
       ) : null;
     }

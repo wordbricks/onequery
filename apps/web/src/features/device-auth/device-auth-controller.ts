@@ -1,3 +1,4 @@
+import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useActorRef, useSelector } from "@xstate/react";
 import { useEffect } from "react";
@@ -12,7 +13,6 @@ import {
   readSessionSnapshot,
 } from "./device-auth-machine";
 import type { DevicePanelView, DeviceResult } from "./device-auth-machine";
-import { normalizeDeviceUserCode } from "./device-auth-schema";
 import { getPanelMeta } from "./device-auth-ui";
 import type { PanelMeta } from "./device-auth-ui";
 
@@ -23,6 +23,7 @@ export type DeviceAuthController = {
   panelMeta: PanelMeta;
   inputCode: string;
   activeUserCode: string | null;
+  onboardingOrganizationId: string | null;
   errorMessage: string | null;
   result: DeviceResult | null;
   sessionEmail: string | null;
@@ -38,8 +39,9 @@ export type DeviceAuthController = {
 
 export function useDeviceAuthController(): DeviceAuthController {
   const navigate = useNavigate();
-  const { user_code } = routeApi.useSearch();
+  const { orgId, user_code } = routeApi.useSearch();
   const { auth } = routeApi.useRouteContext();
+  const onboardingOrganizationId = orgId ?? null;
   const requestedUserCode = normalizeDeviceUserCode(user_code ?? null) ?? null;
   const actorRef = useActorRef(deviceAuthMachine);
   const panelView = useSelector(actorRef, readPanelView);
@@ -72,7 +74,7 @@ export function useDeviceAuthController(): DeviceAuthController {
     snapshot.matches({ pending: "submittingDecision" })
   );
   const currentCode = activeUserCode ?? requestedUserCode;
-  const resumePath = buildDeviceAuthPath(currentCode);
+  const resumePath = buildDeviceAuthPath(currentCode, onboardingOrganizationId);
   const panelMeta = getPanelMeta({ panelView, result });
 
   useEffect(() => {
@@ -108,12 +110,21 @@ export function useDeviceAuthController(): DeviceAuthController {
       type: "deviceAuth/navigationStarted",
     });
 
+    // Comment: keep the bootstrap orgId attached only while the device code is
+    // present so URL-driven router sync stays canonical and deterministic.
     // Comment: TanStack navigation only exists in React, so the machine
     // models completion/failure while this effect remains the bridge.
     navigate({
       replace: navigation.replace,
       search:
-        navigation.userCode === null ? {} : { user_code: navigation.userCode },
+        navigation.userCode === null
+          ? {}
+          : {
+              user_code: navigation.userCode,
+              ...(onboardingOrganizationId
+                ? { orgId: onboardingOrganizationId }
+                : {}),
+            },
       to: DEVICE_ROUTE,
     })
       .then(() => {
@@ -134,7 +145,7 @@ export function useDeviceAuthController(): DeviceAuthController {
           type: "deviceAuth/navigationFailed",
         });
       });
-  }, [actorRef, navigate, navigation]);
+  }, [actorRef, navigate, navigation, onboardingOrganizationId]);
 
   return {
     activeUserCode,
@@ -142,6 +153,7 @@ export function useDeviceAuthController(): DeviceAuthController {
     inputCode,
     isSubmittingApprove: isSubmittingDecision && decisionAction === "approve",
     isSubmittingDeny: isSubmittingDecision && decisionAction === "deny",
+    onboardingOrganizationId,
     onApprove: () => {
       actorRef.send({ type: "deviceAuth/approve" });
     },

@@ -2,10 +2,7 @@ import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { organizationsQueryOptions } from "@/features/organizations/organization-options";
-import {
-  executePostAuthRedirect,
-  parseAuthRedirectPath,
-} from "@/lib/auth-redirect";
+import { parseAuthRedirectPath } from "@/lib/auth-redirect";
 import { resolvePostAuthLandingTarget } from "@/lib/post-auth-landing";
 import { authBootstrapStateQueryOptions } from "@/queries/auth-bootstrap-query";
 import { pendingUserInvitationsQueryOptions } from "@/queries/organization-invitation-queries";
@@ -68,10 +65,7 @@ export function AuthCallbackPage() {
         }
 
         if (redirectTarget && redirectTarget.path !== "/auth/callback") {
-          await executePostAuthRedirect(redirectTarget, {
-            navigateDocument: async (options) => navigate(options),
-            navigateTo: async (to) => navigate({ to }),
-          });
+          await navigate({ to: redirectTarget.path });
           return;
         }
 

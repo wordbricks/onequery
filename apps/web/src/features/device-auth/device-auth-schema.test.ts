@@ -1,6 +1,5 @@
+import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import { describe, expect, it } from "vitest";
-
-import { normalizeDeviceUserCode } from "./device-auth-schema";
 
 describe("normalizeDeviceUserCode", () => {
   it("normalizes valid device codes into the canonical uppercase format", () => {
