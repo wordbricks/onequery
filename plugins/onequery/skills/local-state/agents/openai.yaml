@@ -1,6 +1,0 @@
-interface:
-  display_name: "OneQuery local state"
-  short_description: "Login, import auth, logout, or persist the active org."
-  default_prompt: "Use OneQuery to log in or change the active org."
-policy:
-  allow_implicit_invocation: false

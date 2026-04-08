@@ -1,6 +1,0 @@
-interface:
-  display_name: "OneQuery source connect"
-  short_description: "Fetch the provider guide and create a OneQuery source."
-  default_prompt: "Use OneQuery to add a new data source connection."
-policy:
-  allow_implicit_invocation: false
