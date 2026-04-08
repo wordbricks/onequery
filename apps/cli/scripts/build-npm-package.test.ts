@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
+import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -63,5 +65,46 @@ describe("build-npm-package runtime asset resolution", () => {
     ).toThrow(
       "Duplicate workspace package name '@onequery/server' in '/tmp/workspace-a/package.json' and '/tmp/workspace-b/package.json'."
     );
+  });
+
+  it("restores executable bits for packaged unix vendor binaries", async () => {
+    const stagingDir = await mkdtemp(path.join(tmpdir(), "onequery-vendor-"));
+
+    try {
+      const targetRoot = path.join(
+        stagingDir,
+        "vendor",
+        "x86_64-unknown-linux-musl"
+      );
+      const executablePaths = [
+        path.join(targetRoot, "onequery", "onequery"),
+        path.join(targetRoot, "server", "onequery-server"),
+        path.join(targetRoot, "server", "onequery-server-musl"),
+      ];
+
+      await Promise.all(
+        executablePaths.map(async (executablePath) => {
+          await mkdir(path.dirname(executablePath), { recursive: true });
+          await writeFile(executablePath, "placeholder");
+          await chmod(executablePath, 0o644);
+        })
+      );
+
+      await __internal.restorePackagedExecutableModes({
+        targetRoot,
+        targetTriple: "x86_64-unknown-linux-musl",
+      });
+
+      const executableModes = await Promise.all(
+        executablePaths.map(async (executablePath) => {
+          const fileStat = await stat(executablePath);
+          return fileStat.mode & 0o777;
+        })
+      );
+
+      expect(executableModes).toEqual([0o755, 0o755, 0o755]);
+    } finally {
+      await rm(stagingDir, { force: true, recursive: true });
+    }
   });
 });
