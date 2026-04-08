@@ -430,7 +430,7 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "query failed",
-                "onequery query execute --source warehouse --sql \"<excerpt: select ...>\"",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
                 ErrorStage::ExecuteQuery,
                 "server rejected write query",
                 vec![
@@ -538,12 +538,12 @@ mod tests {
         let rendered = render_error(
             &CliError::new(
                 "query failed",
-                "onequery query execute --source warehouse --sql \"<excerpt: select ...>\"",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
                 ErrorStage::ExecuteQuery,
                 "server rejected write query",
                 vec!["retry with a read-only SELECT".to_owned()],
             )
-            .with_command_path(Some("query execute".to_owned()))
+            .with_command_path(Some("query exec".to_owned()))
             .with_code(Some("query_rejected".to_owned()))
             .with_status(Some(400))
             .with_request_id(Some("req_123".to_owned()))
@@ -556,7 +556,7 @@ mod tests {
                 .expect("expected JSON error envelope"),
             json!({
                 "ok": false,
-                "command": "query execute",
+                "command": "query exec",
                 "requestId": "req_123",
                 "error": {
                     "code": "query_rejected",
@@ -632,7 +632,7 @@ mod tests {
                     }
                 }),
             )
-            .with_command("query execute")
+            .with_command("query exec")
             .with_request_id(Some("req_sanitized".to_owned())),
             EffectiveOutputMode::Json,
         );
@@ -642,7 +642,7 @@ mod tests {
                 .expect("expected JSON success envelope"),
             json!({
                 "ok": true,
-                "command": "query execute",
+                "command": "query exec",
                 "requestId": "req_sanitized",
                 "data": {
                     "rows": [["[sanitized]"]],
@@ -673,7 +673,7 @@ mod tests {
                     "rows": [["[sanitized]"]]
                 }),
             )
-            .with_command("query execute")
+            .with_command("query exec")
             .with_request_id(Some("req_sanitized".to_owned()))
             .with_untrusted_output_metadata(
                 crate::output_metadata::UntrustedOutputMetadata {
@@ -693,7 +693,7 @@ mod tests {
                 .expect("expected JSON success envelope"),
             json!({
                 "ok": true,
-                "command": "query execute",
+                "command": "query exec",
                 "requestId": "req_sanitized",
                 "data": {
                     "rows": [["[sanitized]"]]

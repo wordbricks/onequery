@@ -324,14 +324,14 @@ mod tests {
             ApiClientBuildFailure::HttpClient {
                 message: "tls backend initialization failed".to_owned(),
             },
-            "onequery query execute --source warehouse --sql \"select 1\"",
+            "onequery query exec --source warehouse --sql \"select 1\"",
         );
 
         assert_eq!(
             error_summary(&error),
             json!({
                 "title": "failed to create HTTP client",
-                "command": "onequery query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "http",
                 "why": "tls backend initialization failed",
                 "tryNext": ["retry command"],
@@ -410,11 +410,11 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
-                fallback_try_next: vec!["retry onequery query execute".to_owned()],
+                fallback_try_next: vec!["retry onequery query exec".to_owned()],
                 unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
         );
@@ -423,7 +423,7 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "Not authenticated",
-                "command": "onequery query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
                 "tryNext": ["onequery auth login"],
@@ -456,12 +456,12 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
@@ -471,7 +471,7 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "Not authenticated",
-                "command": "onequery query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
                 "tryNext": ["onequery auth login"],
@@ -495,12 +495,12 @@ mod tests {
                 request_id: Some("req_fallback".to_owned()),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: None,
             },
@@ -510,10 +510,10 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "query failed",
-                "command": "onequery query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "execute_query",
                 "why": "failed to decode query response: expected value at line 1 column 1",
-                "tryNext": ["retry onequery query execute --source warehouse --sql \"select 1\""],
+                "tryNext": ["retry onequery query exec --source warehouse --sql \"select 1\""],
                 "requestId": "req_fallback",
                 "hint": null,
                 "code": "decode_error",
@@ -586,12 +586,12 @@ mod tests {
                 request_id: Some("req_decode".to_owned()),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: None,
             },
@@ -618,12 +618,12 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
@@ -633,7 +633,7 @@ mod tests {
             error_summary(&error),
             json!({
                 "title": "Not Logged In",
-                "command": "onequery query execute --source warehouse --sql \"select 1\"",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
                 "tryNext": ["onequery auth login"],
@@ -666,12 +666,12 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source warehouse --sql \"select 1\"",
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec![
-                    "retry onequery query execute --source warehouse --sql \"select 1\"".to_owned(),
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
                 unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
             },
@@ -775,7 +775,7 @@ mod tests {
                 raw_body: String::new(),
             }),
             ApiErrorPresentation {
-                command: "onequery query execute --source '' --sql \"delete from events\"",
+                command: "onequery query exec --source '' --sql \"delete from events\"",
                 title: "query failed",
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",

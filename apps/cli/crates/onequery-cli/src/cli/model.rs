@@ -70,7 +70,7 @@ impl Command {
             Self::Source(SourceSubcommand::List { .. }) => "source list",
             Self::Source(SourceSubcommand::Show { .. }) => "source show",
             Self::Source(SourceSubcommand::Connect(_)) => "source connect",
-            Self::Query(QuerySubcommand::Execute(_)) => "query execute",
+            Self::Query(QuerySubcommand::Execute(_)) => "query exec",
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",
             Self::Restore(_) => "restore",
             Self::Serve(ServeCommand::Root) => "serve",

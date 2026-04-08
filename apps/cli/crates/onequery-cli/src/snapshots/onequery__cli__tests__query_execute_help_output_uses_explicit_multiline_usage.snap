@@ -1,13 +1,13 @@
 ---
-source: crates/onequery-cli/src/cli.rs
-expression: rendered
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"query\", \"exec\", \"--help\"])"
 ---
 Execute a query and return rows
 
-Usage: onequery query execute [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       onequery query execute [OPTIONS] --source <SOURCE_KEY> --stdin
+Usage: onequery query exec [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --file <PATH>
+       onequery query exec [OPTIONS] --source <SOURCE_KEY> --stdin
 
 Options:
       --source <SOURCE_KEY>  Execute the query against this source key
