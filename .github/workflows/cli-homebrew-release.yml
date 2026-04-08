@@ -1,0 +1,171 @@
+name: cli-homebrew-release
+
+on:
+  workflow_run:
+    workflows:
+      - CLI Release
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: CLI release tag to publish to Homebrew (for example cli-v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  update-homebrew-tap:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+    steps:
+      - name: Validate Homebrew tap configuration
+        run: |
+          if [ -z "${HOMEBREW_TAP_GITHUB_TOKEN}" ]; then
+            echo "::error::HOMEBREW_TAP_GITHUB_TOKEN must be configured to update the Homebrew tap."
+            exit 1
+          fi
+
+      - name: Check out source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release metadata
+        id: release
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+          WORKFLOW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          repo_owner="${GITHUB_REPOSITORY%%/*}"
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          tap_repository="${repo_owner}/homebrew-tap"
+
+          if [ -n "${DISPATCH_TAG}" ]; then
+            tag="${DISPATCH_TAG}"
+          else
+            if [ -z "${WORKFLOW_HEAD_SHA}" ]; then
+              echo "::error::workflow_run.head_sha was empty and no manual tag input was provided."
+              exit 1
+            fi
+
+            mapfile -t matching_tags < <(git tag --points-at "${WORKFLOW_HEAD_SHA}" 'cli-v*' | sort -V)
+            if [ "${#matching_tags[@]}" -eq 0 ]; then
+              echo "::error::Could not find a cli-v* tag that points at ${WORKFLOW_HEAD_SHA}."
+              exit 1
+            fi
+
+            tag="${matching_tags[$((${#matching_tags[@]} - 1))]}"
+          fi
+
+          version="${tag#cli-v}"
+          if [ "${version}" = "${tag}" ] || [ -z "${version}" ]; then
+            echo "::error::Expected a tag like cli-v0.1.0, got ${tag}."
+            exit 1
+          fi
+
+          echo "repo_owner=${repo_owner}" >> "$GITHUB_OUTPUT"
+          echo "repo_name=${repo_name}" >> "$GITHUB_OUTPUT"
+          echo "tap_repository=${tap_repository}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Download release assets
+        id: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          assets_dir="$RUNNER_TEMP/onequery-homebrew-assets"
+          rm -rf "$assets_dir"
+          mkdir -p "$assets_dir"
+
+          for asset_name in \
+            onequery-npm-darwin-arm64.tgz \
+            onequery-npm-darwin-x64.tgz \
+            onequery-npm-linux-arm64.tgz \
+            onequery-npm-linux-x64.tgz
+          do
+            gh release download "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern "$asset_name" \
+              --dir "$assets_dir"
+          done
+
+          echo "assets_dir=${assets_dir}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute Homebrew checksums
+        id: shas
+        env:
+          ASSETS_DIR: ${{ steps.assets.outputs.assets_dir }}
+        run: |
+          set -euo pipefail
+
+          checksum() {
+            shasum -a 256 "$1" | awk '{print $1}'
+          }
+
+          echo "darwin_arm64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-arm64.tgz")" >> "$GITHUB_OUTPUT"
+          echo "darwin_x64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-x64.tgz")" >> "$GITHUB_OUTPUT"
+          echo "linux_arm64=$(checksum "$ASSETS_DIR/onequery-npm-linux-arm64.tgz")" >> "$GITHUB_OUTPUT"
+          echo "linux_x64=$(checksum "$ASSETS_DIR/onequery-npm-linux-x64.tgz")" >> "$GITHUB_OUTPUT"
+
+      - name: Check out Homebrew tap
+        uses: actions/checkout@v4
+        with:
+          path: homebrew-tap
+          repository: ${{ steps.release.outputs.tap_repository }}
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      - name: Generate Homebrew formula
+        env:
+          DARWIN_ARM64_SHA256: ${{ steps.shas.outputs.darwin_arm64 }}
+          DARWIN_X64_SHA256: ${{ steps.shas.outputs.darwin_x64 }}
+          LINUX_ARM64_SHA256: ${{ steps.shas.outputs.linux_arm64 }}
+          LINUX_X64_SHA256: ${{ steps.shas.outputs.linux_x64 }}
+          REPO_NAME: ${{ steps.release.outputs.repo_name }}
+          REPO_OWNER: ${{ steps.release.outputs.repo_owner }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          node apps/cli/scripts/generate-homebrew-formula.js \
+            --output homebrew-tap/Formula/onequery.rb \
+            --repo-name "$REPO_NAME" \
+            --repo-owner "$REPO_OWNER" \
+            --version "$VERSION" \
+            --darwin-arm64-sha256 "$DARWIN_ARM64_SHA256" \
+            --darwin-x64-sha256 "$DARWIN_X64_SHA256" \
+            --linux-arm64-sha256 "$LINUX_ARM64_SHA256" \
+            --linux-x64-sha256 "$LINUX_X64_SHA256"
+
+      - name: Validate generated formula syntax
+        run: ruby -c homebrew-tap/Formula/onequery.rb
+
+      - name: Commit and push Homebrew tap update
+        working-directory: homebrew-tap
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- Formula/onequery.rb; then
+            echo "Homebrew formula is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/onequery.rb
+          git commit -m "onequery ${VERSION}"
+          git push
