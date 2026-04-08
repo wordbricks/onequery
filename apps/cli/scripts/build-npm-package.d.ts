@@ -9,6 +9,10 @@ export const __internal: {
       packageJsonPath: string;
     }>
   ): Map<string, string>;
+  restorePackagedExecutableModes(options: {
+    targetRoot: string;
+    targetTriple: string;
+  }): Promise<void>;
   resolveRuntimeAssetSourcePaths(family: string): Promise<
     Array<{
       filename: string;
