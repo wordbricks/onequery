@@ -23,6 +23,12 @@ pub(crate) enum EffectiveOutputMode {
     Json,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum RenderedOutput {
+    Text(String),
+    Binary(Vec<u8>),
+}
+
 enum CommandData {
     Ready(Value),
     Deferred(Box<dyn FnOnce() -> Result<Value, CliError>>),
@@ -50,6 +56,21 @@ impl Default for CommandData {
     }
 }
 
+struct RawStdout {
+    bytes: Vec<u8>,
+    tty_error: CliError,
+}
+
+impl fmt::Debug for RawStdout {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("RawStdout")
+            .field("bytes_len", &self.bytes.len())
+            .field("tty_error", &self.tty_error)
+            .finish()
+    }
+}
+
 impl fmt::Debug for CommandData {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -67,6 +88,7 @@ pub(crate) struct CommandOutput {
     pub(crate) command: Option<String>,
     pub(crate) request_id: Option<String>,
     untrusted_output: Option<UntrustedOutputMetadata>,
+    raw_stdout: Option<RawStdout>,
 }
 
 impl fmt::Debug for CommandOutput {
@@ -79,6 +101,7 @@ impl fmt::Debug for CommandOutput {
             .field("command", &self.command)
             .field("request_id", &self.request_id)
             .field("untrusted_output", &self.untrusted_output)
+            .field("raw_stdout", &self.raw_stdout)
             .finish()
     }
 }
@@ -92,6 +115,7 @@ impl CommandOutput {
             command: None,
             request_id: None,
             untrusted_output: None,
+            raw_stdout: None,
         }
     }
 
@@ -103,6 +127,7 @@ impl CommandOutput {
             command: None,
             request_id: None,
             untrusted_output: None,
+            raw_stdout: None,
         }
     }
 
@@ -115,6 +140,7 @@ impl CommandOutput {
             command: None,
             request_id: None,
             untrusted_output: None,
+            raw_stdout: None,
         }
     }
 
@@ -129,6 +155,7 @@ impl CommandOutput {
             command: None,
             request_id: None,
             untrusted_output: None,
+            raw_stdout: None,
         }
     }
 
@@ -142,6 +169,7 @@ impl CommandOutput {
             command: None,
             request_id: None,
             untrusted_output: None,
+            raw_stdout: None,
         }
     }
 
@@ -155,6 +183,11 @@ impl CommandOutput {
 
     pub(crate) fn with_request_id(mut self, request_id: Option<String>) -> Self {
         self.request_id = request_id.filter(|value| !value.trim().is_empty());
+        self
+    }
+
+    pub(crate) fn with_raw_stdout(mut self, bytes: Vec<u8>, tty_error: CliError) -> Self {
+        self.raw_stdout = Some(RawStdout { bytes, tty_error });
         self
     }
 
@@ -246,6 +279,7 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
                 command,
                 request_id,
                 untrusted_output,
+                raw_stdout: _,
             } = output;
             let data = match data.into_value() {
                 Ok(data) => data,
@@ -297,6 +331,31 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
             }
             Value::Object(envelope).to_string()
         }
+    }
+}
+
+pub(crate) fn render_output_payload(
+    output: CommandOutput,
+    mode: EffectiveOutputMode,
+    stdout_is_tty: bool,
+) -> Result<RenderedOutput, CliError> {
+    match mode {
+        EffectiveOutputMode::Text => {
+            let CommandOutput {
+                lines, raw_stdout, ..
+            } = output;
+            match raw_stdout {
+                Some(raw_stdout) => {
+                    if stdout_is_tty {
+                        Err(raw_stdout.tty_error)
+                    } else {
+                        Ok(RenderedOutput::Binary(raw_stdout.bytes))
+                    }
+                }
+                None => Ok(RenderedOutput::Text(lines.join("\n"))),
+            }
+        }
+        EffectiveOutputMode::Json => Ok(RenderedOutput::Text(render_output(output, mode))),
     }
 }
 

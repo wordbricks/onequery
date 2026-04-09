@@ -75,7 +75,12 @@ pub(super) fn render_execute_output(
     let response = assemble_execute_response(responses, &render)?;
     let data = serialize_command_data(&response, "onequery use")?;
     let lines = render_response_lines(&response, &render)?;
-    Ok(CommandOutput::raw_json(lines, data))
+    let raw_stdout = render_response_stdout_bytes(&response, &render)?;
+    let output = CommandOutput::raw_json(lines, data);
+    Ok(match raw_stdout {
+        Some(raw_stdout) => output.with_raw_stdout(raw_stdout, binary_tty_render_error()),
+        None => output,
+    })
 }
 
 fn assemble_execute_response(
@@ -439,17 +444,7 @@ fn render_response_lines(
         SourceApiResponseBody::None => Vec::new(),
         SourceApiResponseBody::Json { value } => pretty_json_lines(value),
         SourceApiResponseBody::Text { value } => value.lines().map(ToOwned::to_owned).collect(),
-        SourceApiResponseBody::Binary { .. } => {
-            // Comment: `CommandOutput` still models text-mode stdout as UTF-8 lines,
-            // so keep binary responses explicit instead of silently lossy-decoding them.
-            return Err(CliError::new(
-                "failed to render source API response",
-                "onequery use",
-                ErrorStage::Render,
-                "binary source API responses currently require `--output json`",
-                vec!["retry onequery use --output json ...".to_owned()],
-            ));
-        }
+        SourceApiResponseBody::Binary { .. } => Vec::new(),
     };
 
     if render.include && !body_lines.is_empty() {
@@ -457,6 +452,54 @@ fn render_response_lines(
     }
     lines.extend(body_lines);
     Ok(lines)
+}
+
+fn render_response_stdout_bytes(
+    response: &ExecuteSourceApiResponse,
+    render: &SourceApiRenderOptions,
+) -> Result<Option<Vec<u8>>, CliError> {
+    if render.silent {
+        return Ok(None);
+    }
+
+    let SourceApiResponseBody::Binary { value_base64 } = &response.body else {
+        return Ok(None);
+    };
+
+    let body = base64::engine::general_purpose::STANDARD
+        .decode(value_base64)
+        .map_err(|decode_error| {
+            source_api_render_error(
+                format!("failed to decode binary source API response: {decode_error}"),
+                vec!["retry onequery use --output json ...".to_owned()],
+            )
+        })?;
+
+    let mut rendered = Vec::new();
+    if render.include {
+        rendered.extend_from_slice(status_line(response.status).as_bytes());
+        rendered.push(b'\n');
+
+        for header in &response.headers {
+            rendered.extend_from_slice(format!("{}: {}", header.name, header.value).as_bytes());
+            rendered.push(b'\n');
+        }
+
+        rendered.push(b'\n');
+    }
+    rendered.extend_from_slice(&body);
+
+    Ok(Some(rendered))
+}
+
+fn binary_tty_render_error() -> CliError {
+    source_api_render_error(
+        "binary source API responses require non-TTY stdout; pipe the output or use `--output json`",
+        vec![
+            "retry onequery use --output json ...".to_owned(),
+            "pipe stdout to a file or another command".to_owned(),
+        ],
+    )
 }
 
 fn operation_kind_label(kind: &SourceApiOperationKind) -> &'static str {
@@ -481,10 +524,13 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use base64::Engine;
     use serde_json::json;
 
     use crate::output::EffectiveOutputMode;
+    use crate::output::RenderedOutput;
     use crate::output::render_output;
+    use crate::output::render_output_payload;
     use crate::transport::source_api::SourceApiSource;
 
     use super::ExecuteSourceApiResponse;
@@ -662,6 +708,45 @@ mod tests {
         .expect_err("expected non-JSON `--jq` to fail");
 
         assert_eq!(error.why, "`--jq` requires a JSON source API response body");
+    }
+
+    #[test]
+    fn render_execute_output_emits_binary_stdout_when_stdout_is_not_a_tty() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Binary {
+                value_base64: base64::engine::general_purpose::STANDARD.encode(b"hello"),
+            })],
+            SourceApiRenderOptions {
+                include: true,
+                ..render_options()
+            },
+        )
+        .expect("expected binary source API response to render");
+
+        assert_eq!(
+            render_output_payload(output, EffectiveOutputMode::Text, false)
+                .expect("expected binary stdout payload"),
+            RenderedOutput::Binary(b"HTTP 200\n\nhello".to_vec())
+        );
+    }
+
+    #[test]
+    fn render_execute_output_rejects_binary_stdout_when_stdout_is_a_tty() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Binary {
+                value_base64: base64::engine::general_purpose::STANDARD.encode(b"hello"),
+            })],
+            render_options(),
+        )
+        .expect("expected binary source API response to render");
+
+        let error = render_output_payload(output, EffectiveOutputMode::Text, true)
+            .expect_err("expected TTY binary output to fail");
+
+        assert_eq!(
+            error.why,
+            "binary source API responses require non-TTY stdout; pipe the output or use `--output json`"
+        );
     }
 
     fn json_response(body: SourceApiResponseBody) -> ExecuteSourceApiResponse {

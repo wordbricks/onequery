@@ -15,6 +15,7 @@ mod version;
 mod workflows;
 
 use std::io::IsTerminal;
+use std::io::Write;
 
 use commands::Runtime;
 
@@ -32,9 +33,16 @@ async fn main() {
             *invocation
         }
         Ok(cli::ParseOutcome::Display(display_output)) => {
-            let rendered = output::render_output(display_output, fallback_output_mode);
-            if !rendered.is_empty() {
-                println!("{rendered}");
+            match output::render_output_payload(display_output, fallback_output_mode, stdout_is_tty)
+            {
+                Ok(rendered) => emit_success(rendered),
+                Err(error) => {
+                    emit_failure(
+                        &output::render_error(&error, fallback_output_mode),
+                        fallback_output_mode,
+                    );
+                    std::process::exit(error.exit_code());
+                }
             }
             std::process::exit(0);
         }
@@ -61,15 +69,39 @@ async fn main() {
 
     match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
-            let rendered = output::render_output(command_output, output_mode);
-            if !rendered.is_empty() {
-                println!("{rendered}");
+            match output::render_output_payload(command_output, output_mode, stdout_is_tty) {
+                Ok(rendered) => emit_success(rendered),
+                Err(error) => {
+                    emit_failure(&output::render_error(&error, output_mode), output_mode);
+                    std::process::exit(error.exit_code());
+                }
             }
             std::process::exit(0);
         }
         Err(error) => {
             emit_failure(&output::render_error(&error, output_mode), output_mode);
             std::process::exit(error.exit_code());
+        }
+    }
+}
+
+fn emit_success(rendered: output::RenderedOutput) {
+    match rendered {
+        output::RenderedOutput::Text(rendered) => {
+            if !rendered.is_empty() {
+                println!("{rendered}");
+            }
+        }
+        output::RenderedOutput::Binary(rendered) => {
+            if rendered.is_empty() {
+                return;
+            }
+
+            let mut stdout = std::io::stdout().lock();
+            stdout
+                .write_all(&rendered)
+                .expect("expected stdout to accept rendered command output");
+            stdout.flush().expect("expected stdout flush to succeed");
         }
     }
 }
