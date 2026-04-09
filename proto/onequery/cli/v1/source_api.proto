@@ -169,9 +169,9 @@ message CliSourceApiOperation {
     (buf.validate.field).enum.defined_only = true
   ];
   optional string selector_label = 6 [(buf.validate.field).string.min_len = 1];
-  CliSourceApiMethodPolicy method_policy = 7;
-  CliSourceApiFieldPolicy field_policy = 8;
-  CliSourceApiHeaderPolicy header_policy = 9;
+  CliSourceApiMethodPolicy method_policy = 7 [(buf.validate.field).required = true];
+  CliSourceApiFieldPolicy field_policy = 8 [(buf.validate.field).required = true];
+  CliSourceApiHeaderPolicy header_policy = 9 [(buf.validate.field).required = true];
   CliSourceApiPaginationPolicy pagination_policy = 10 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true

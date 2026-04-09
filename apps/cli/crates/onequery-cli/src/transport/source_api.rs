@@ -382,7 +382,7 @@ fn source_api_descriptor_from_generated(
         decode_failure(
             ErrorStage::ResolveSource,
             "source API descriptor response missing source metadata",
-            request_id,
+            request_id.clone(),
         )
     })?;
 
@@ -393,8 +393,8 @@ fn source_api_descriptor_from_generated(
         operations: value
             .operations
             .into_iter()
-            .map(source_api_operation_from_generated)
-            .collect(),
+            .map(|operation| source_api_operation_from_generated(operation, request_id.clone()))
+            .collect::<Result<Vec<_>, _>>()?,
         examples: value
             .examples
             .into_iter()
@@ -404,29 +404,40 @@ fn source_api_descriptor_from_generated(
     })
 }
 
-fn source_api_operation_from_generated(value: types::CliSourceApiOperation) -> SourceApiOperation {
-    SourceApiOperation {
+fn source_api_operation_from_generated(
+    value: types::CliSourceApiOperation,
+    request_id: Option<String>,
+) -> Result<SourceApiOperation, ApiFailure> {
+    let operation_name = value.name.clone();
+    let method_policy = required_source_api_operation_message(
+        value.method_policy,
+        &operation_name,
+        "method policy",
+        request_id.clone(),
+    )?;
+    let field_policy = required_source_api_operation_message(
+        value.field_policy,
+        &operation_name,
+        "field policy",
+        request_id.clone(),
+    )?;
+    let header_policy = required_source_api_operation_message(
+        value.header_policy,
+        &operation_name,
+        "header policy",
+        request_id,
+    )?;
+
+    Ok(SourceApiOperation {
         name: value.name,
         kind: source_api_operation_kind_from_generated(value.kind),
         summary: value.summary,
         description: value.description,
         selector_kind: source_api_selector_kind_from_generated(value.selector_kind),
         selector_label: non_empty(value.selector_label),
-        method_policy: value
-            .method_policy
-            .into_option()
-            .map(source_api_method_policy_from_generated)
-            .unwrap_or_default(),
-        field_policy: value
-            .field_policy
-            .into_option()
-            .map(source_api_field_policy_from_generated)
-            .unwrap_or_default(),
-        header_policy: value
-            .header_policy
-            .into_option()
-            .map(source_api_header_policy_from_generated)
-            .unwrap_or_default(),
+        method_policy: source_api_method_policy_from_generated(method_policy),
+        field_policy: source_api_field_policy_from_generated(field_policy),
+        header_policy: source_api_header_policy_from_generated(header_policy),
         pagination_policy: source_api_pagination_policy_from_generated(value.pagination_policy),
         examples: value
             .examples
@@ -434,7 +445,22 @@ fn source_api_operation_from_generated(value: types::CliSourceApiOperation) -> S
             .map(source_api_example_from_generated)
             .collect(),
         notes: value.notes,
-    }
+    })
+}
+
+fn required_source_api_operation_message<T: Default>(
+    value: buffa::MessageField<T>,
+    operation_name: &str,
+    field_name: &str,
+    request_id: Option<String>,
+) -> Result<T, ApiFailure> {
+    value.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            format!("source API operation `{operation_name}` missing {field_name}"),
+            request_id,
+        )
+    })
 }
 
 fn source_api_method_policy_from_generated(
@@ -764,13 +790,16 @@ fn non_empty(value: Option<String>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use super::NormalizedSourceApiPlan;
     use super::SourceApiBodyKind;
     use super::SourceApiOperationKind;
     use super::normalized_source_api_plan_from_generated;
+    use super::source_api_descriptor_from_generated;
     use super::types;
+    use crate::transport::http::ApiFailure;
 
     #[test]
     fn normalized_source_api_plan_from_generated_maps_typed_plan_payload() {
@@ -819,6 +848,55 @@ mod tests {
                 request_fingerprint: "fp_123".to_owned(),
                 descriptor_version: Some("github.v1".to_owned()),
             }
+        );
+    }
+
+    #[test]
+    fn source_api_descriptor_from_generated_requires_operation_policies() {
+        let error = source_api_descriptor_from_generated(
+            types::DescribeSourceApiResponse {
+                source: buffa::MessageField::some(types::CliSourceApiSource {
+                    key: "github-prod".to_owned(),
+                    provider: "github".to_owned(),
+                    ..Default::default()
+                }),
+                descriptor_version: "github.v1".to_owned(),
+                operations: vec![types::CliSourceApiOperation {
+                    name: "fetch".to_owned(),
+                    kind:
+                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                            .into(),
+                    summary: "Fetch a resource".to_owned(),
+                    description: "Fetches a GitHub resource.".to_owned(),
+                    selector_kind:
+                        types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into(),
+                    pagination_policy:
+                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
+                            .into(),
+                    field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
+                        supports_raw_fields: true,
+                        supports_typed_fields: true,
+                        ..Default::default()
+                    }),
+                    header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
+                        allowed_names: vec!["accept".to_owned()],
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            Some("req_missing_policy".to_owned()),
+        )
+        .expect_err("expected missing method policy to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+                stage: ErrorStage::ResolveSource,
+                message: "source API operation `fetch` missing method policy".to_owned(),
+                request_id: Some("req_missing_policy".to_owned()),
+            })
         );
     }
 }
