@@ -448,11 +448,11 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### 4) CLI server transport
 
-- [ ] Add `packages/cli-server/src/connect/service/source_api.ts`.
-- [ ] Replace `handleUse` registration in `packages/cli-server/src/connect/service.ts`.
+- [x] Add `packages/cli-server/src/connect/service/source_api.ts`.
+- [x] Replace `handleUse` registration in `packages/cli-server/src/connect/service.ts`.
 - [ ] Remove `packages/cli-server/src/use/skills.ts`.
-- [ ] Remove `fromCliUseSource` / `toCliUseSourceEnum` from `packages/cli-server/src/connect/service/conversions.ts`.
-- [ ] Add conversions for source-api descriptor and execute response messages.
+- [x] Remove `fromCliUseSource` / `toCliUseSourceEnum` from `packages/cli-server/src/connect/service/conversions.ts`.
+- [x] Add conversions for source-api descriptor and execute response messages.
 - [ ] Update tests to call `DescribeSourceApi` and `ExecuteSourceApi`.
 
 ### 5) Rust CLI parser and transport

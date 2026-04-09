@@ -12,16 +12,10 @@ const source: PreparedSourceConnection = {
     database: "analytics",
     type: "mongodb",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "MongoDB Prod",
   id: "source_1",
-  name: "mongodb-prod",
-  organizationId: "org_1",
   provider: "mongodb",
   sourceKey: "mongodb-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

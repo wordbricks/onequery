@@ -1,5 +1,18 @@
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
+import type {
+  SourceApiDescriptor,
+  SourceApiExample,
+  SourceApiExecuteRequest,
+  SourceApiExecutionResponse,
+  SourceApiFieldPolicy,
+  SourceApiHeader,
+  SourceApiJsonValue,
+  SourceApiOperation,
+  SourceApiRequestBody,
+  SourceApiResponseBody,
+  SourceApiSource,
+} from "@onequery/server/source-api";
 
 import type { CliAction } from "../../authorization";
 import type { CliSessionIdentity } from "../../domain/workflows";
@@ -8,6 +21,12 @@ import { CliAuthMode } from "../gen/onequery/cli/v1/auth_pb";
 import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
+import type { ExecuteSourceApiRequest } from "../gen/onequery/cli/v1/source_api_pb";
+import {
+  CliSourceApiOperationKind,
+  CliSourceApiPaginationPolicy,
+  CliSourceApiSelectorKind,
+} from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceProvider,
   CliSourceStatus,
@@ -160,4 +179,229 @@ export function toCliQueryLogicalType(value: string) {
     default:
       return undefined;
   }
+}
+
+export function fromCliExecuteSourceApiRequest(
+  request: ExecuteSourceApiRequest
+): SourceApiExecuteRequest {
+  return {
+    body: fromCliSourceApiRequestBody(request.body),
+    descriptorVersion: request.descriptorVersion,
+    fieldPatch: request.fieldPatch,
+    headers: request.headers.map(fromCliSourceApiHeader),
+    methodOverride: request.methodOverride,
+    operation: request.operation,
+    pageToken: request.pageToken,
+    selector: request.selector,
+  };
+}
+
+export function toCliDescribeSourceApiResponse(value: SourceApiDescriptor) {
+  return {
+    defaultPathOperation: value.defaultPathOperation,
+    descriptorVersion: value.descriptorVersion,
+    examples: value.examples.map(toCliSourceApiExample),
+    notes: [...value.notes],
+    operations: value.operations.map(toCliSourceApiOperation),
+    source: toCliSourceApiSource(value.source),
+  };
+}
+
+export function toCliExecuteSourceApiResponse(
+  value: SourceApiExecutionResponse
+) {
+  return {
+    body: toCliSourceApiResponseBody(value.body),
+    contentType: value.contentType,
+    headers: value.headers.map(toCliSourceApiHeader),
+    nextPageToken: value.nextPageToken,
+    operation: value.operation,
+    requestId: value.requestId,
+    selector: value.selector,
+    source: toCliSourceApiSource(value.source),
+    status: value.status,
+  };
+}
+
+function fromCliSourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function fromCliSourceApiRequestBody(
+  body: ExecuteSourceApiRequest["body"]
+): SourceApiRequestBody {
+  switch (body.case) {
+    case "jsonBody":
+      return {
+        kind: "json",
+        value: body.value as SourceApiJsonValue,
+      };
+    case "textBody":
+      return {
+        kind: "text",
+        value: body.value,
+      };
+    case "binaryBody":
+      return {
+        kind: "binary",
+        value: body.value,
+      };
+    case undefined:
+      return {
+        kind: "none",
+      };
+  }
+}
+
+function listCliSourceApiFieldSyntaxes(value: SourceApiFieldPolicy) {
+  const syntaxes: string[] = [];
+  if (value.allowsRawFields) {
+    syntaxes.push("-f KEY=VALUE");
+  }
+  if (value.allowsTypedFields) {
+    syntaxes.push("-F KEY=VALUE");
+  }
+  if (value.supportsNestedPaths) {
+    syntaxes.push("key[subkey]=value");
+  }
+  if (value.supportsArrayPaths) {
+    syntaxes.push("key[]=value");
+  }
+
+  return syntaxes;
+}
+
+function listCliSourceApiTransportRules(value: SourceApiFieldPolicy) {
+  const rules = [
+    value.acceptsInput
+      ? `supports --input (${value.inputMode})`
+      : "does not support --input",
+  ];
+
+  if (value.acceptsInput) {
+    rules.push(
+      value.mergePatches
+        ? "field patches merge over input"
+        : "field patches do not merge over input"
+    );
+  }
+
+  return rules;
+}
+
+function toCliSourceApiExample(value: SourceApiExample) {
+  return {
+    command: value.command,
+    description: value.description,
+    label: value.label,
+  };
+}
+
+function toCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
+  return {
+    supportsRawFields: value.allowsRawFields,
+    supportsTypedFields: value.allowsTypedFields,
+    syntaxes: listCliSourceApiFieldSyntaxes(value),
+    transportRules: listCliSourceApiTransportRules(value),
+  };
+}
+
+function toCliSourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function toCliSourceApiOperation(value: SourceApiOperation) {
+  return {
+    description: value.description,
+    examples: value.examples.map(toCliSourceApiExample),
+    fieldPolicy: toCliSourceApiFieldPolicy(value.fieldPolicy),
+    headerPolicy: {
+      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+    },
+    kind: toCliSourceApiOperationKind(value.kind),
+    methodPolicy: {
+      allowedMethods: [...value.methodPolicy.allowedMethods],
+      defaultMethod: value.methodPolicy.defaultMethod,
+    },
+    name: value.name,
+    notes: [...value.notes],
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    selectorKind: toCliSourceApiSelectorKind(value.selectorKind),
+    selectorLabel: value.selectorLabel,
+    summary: value.summary,
+  };
+}
+
+function toCliSourceApiOperationKind(
+  value: SourceApiOperation["kind"]
+): CliSourceApiOperationKind {
+  switch (value) {
+    case "http_request":
+      return CliSourceApiOperationKind.HTTP_REQUEST;
+    case "structured_request":
+      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+  }
+}
+
+function toCliSourceApiPaginationPolicy(
+  value: SourceApiOperation["paginationPolicy"]
+): CliSourceApiPaginationPolicy {
+  switch (value) {
+    case "none":
+      return CliSourceApiPaginationPolicy.NONE;
+    case "opaque_token":
+      return CliSourceApiPaginationPolicy.OPAQUE_TOKEN;
+  }
+}
+
+function toCliSourceApiResponseBody(value: SourceApiResponseBody) {
+  switch (value.kind) {
+    case "json":
+      return {
+        case: "json" as const,
+        value: value.value as never,
+      };
+    case "text":
+      return {
+        case: "text" as const,
+        value: value.value,
+      };
+    case "binary":
+      return {
+        case: "binary" as const,
+        value: value.value,
+      };
+    case "none":
+      return {
+        case: undefined,
+        value: undefined,
+      };
+  }
+}
+
+function toCliSourceApiSelectorKind(
+  value: SourceApiOperation["selectorKind"]
+): CliSourceApiSelectorKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiSelectorKind.NONE;
+    case "path":
+      return CliSourceApiSelectorKind.PATH;
+    case "identifier":
+      return CliSourceApiSelectorKind.IDENTIFIER;
+  }
+}
+
+function toCliSourceApiSource(value: SourceApiSource) {
+  return {
+    displayName: value.displayName ?? undefined,
+    key: value.key,
+    provider: value.provider,
+  };
 }

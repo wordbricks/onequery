@@ -18,16 +18,10 @@ const actor = {
 
 const source: PreparedSourceConnection = {
   credentials: { accessToken: "token", repositories: [], type: "github" },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: null,
   id: "source_id",
-  name: "github-prod",
-  organizationId: "org_1",
   provider: "github",
   sourceKey: "github-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 const descriptor = {

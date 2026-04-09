@@ -12,16 +12,10 @@ const source: PreparedSourceConnection = {
     projectSlug: "web",
     type: "sentry",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "Sentry Prod",
   id: "source_1",
-  name: "sentry-prod",
-  organizationId: "org_1",
   provider: "sentry",
   sourceKey: "sentry-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

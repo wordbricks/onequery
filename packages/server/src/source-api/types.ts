@@ -1,8 +1,4 @@
-import type {
-  Credentials,
-  DataSourceStatus,
-  ProviderType,
-} from "@onequery/db/server";
+import type { Credentials, ProviderType } from "@onequery/db/server";
 
 import type { OrganizationRoleName } from "../auth/organization-permissions";
 
@@ -25,13 +21,7 @@ export type SourceApiJsonValue =
 export type ConnectedSourceRecord = {
   id: string;
   sourceKey: string;
-  name: string;
-  organizationId: string;
   provider: ProviderType;
-  status: DataSourceStatus;
-  credentialsEncrypted: string;
-  credentialsIv: string;
-  useAsDataSource: boolean;
   displayName: string | null;
 };
 

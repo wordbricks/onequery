@@ -14,16 +14,10 @@ const source: PreparedSourceConnection = {
     refreshToken: "refresh-token",
     type: "ga",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "Google Analytics Prod",
   id: "source_1",
-  name: "ga-prod",
-  organizationId: "org_1",
   provider: "ga",
   sourceKey: "ga-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

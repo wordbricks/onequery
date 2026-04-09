@@ -11,16 +11,10 @@ const source: PreparedSourceConnection = {
     repositories: ["openai/example"],
     type: "github",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "GitHub Prod",
   id: "source_1",
-  name: "github-prod",
-  organizationId: "org_1",
   provider: "github",
   sourceKey: "github-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

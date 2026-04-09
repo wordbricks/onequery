@@ -14,16 +14,10 @@ const source: PreparedSourceConnection = {
     username: "mixpanel-user",
     workspaceId: "456",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "Mixpanel Prod",
   id: "source_1",
-  name: "mixpanel-prod",
-  organizationId: "org_1",
   provider: "mixpanel",
   sourceKey: "mixpanel-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

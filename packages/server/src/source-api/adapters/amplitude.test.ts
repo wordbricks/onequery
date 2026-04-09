@@ -12,16 +12,10 @@ const source: PreparedSourceConnection = {
     secretKey: "amp-secret-key",
     type: "amplitude",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "Amplitude Prod",
   id: "source_1",
-  name: "amplitude-prod",
-  organizationId: "org_1",
   provider: "amplitude",
   sourceKey: "amplitude-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {

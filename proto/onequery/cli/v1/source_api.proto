@@ -132,24 +132,9 @@ message CliSourceApiHeaderPolicy {
 }
 
 message CliSourceApiExample {
-  string title = 1 [(buf.validate.field).string.min_len = 1];
-  optional string summary = 2 [(buf.validate.field).string.min_len = 1];
-  string operation = 3 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
-  ];
-  optional string selector = 4 [(buf.validate.field).string.min_len = 1];
-  optional string method_override = 5 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.pattern = "^[A-Z]+$"
-  ];
-  repeated CliSourceApiHeader headers = 6;
-  optional google.protobuf.Struct field_patch = 7;
-  oneof body {
-    google.protobuf.Value json_body = 8;
-    string text_body = 9;
-    bytes binary_body = 10;
-  }
+  string label = 1 [(buf.validate.field).string.min_len = 1];
+  optional string description = 2 [(buf.validate.field).string.min_len = 1];
+  string command = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiHeader {

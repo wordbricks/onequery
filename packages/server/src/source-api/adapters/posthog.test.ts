@@ -12,16 +12,10 @@ const source: PreparedSourceConnection = {
     projectId: "12345",
     type: "posthog",
   },
-  credentialsEncrypted: "enc",
-  credentialsIv: "iv",
   displayName: "PostHog Prod",
   id: "source_1",
-  name: "posthog-prod",
-  organizationId: "org_1",
   provider: "posthog",
   sourceKey: "posthog-prod",
-  status: "active",
-  useAsDataSource: true,
 };
 
 afterEach(() => {
