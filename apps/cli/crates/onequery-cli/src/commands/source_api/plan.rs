@@ -13,6 +13,7 @@ use onequery_cli_core::error::CliError;
 
 use super::CommandContext;
 use super::args::SourceApiInputReader;
+use super::field_patch::field_path_policy_from_syntaxes;
 use super::field_patch::parse_field_patch;
 use super::intent::ResolvedIntent;
 use super::intent::resolve_intent;
@@ -108,6 +109,8 @@ pub(super) async fn build_plan(
     let field_patch = parse_field_patch(
         &args.raw_fields,
         &args.fields,
+        field_path_policy_from_syntaxes(&operation.field_policy.syntaxes),
+        operation.name.as_str(),
         &mut reader,
         context,
         descriptor.source.key.as_str(),
@@ -653,6 +656,64 @@ mod tests {
 
         assert_eq!(error.stage, ErrorStage::ParseCommand);
         assert_eq!(error.why, "operation `fetch` does not accept `--input`");
+    }
+
+    #[tokio::test]
+    async fn build_plan_rejects_nested_field_paths_when_operation_disallows_them() {
+        let error = build_plan(
+            &UseArgs {
+                fields: vec!["request[database]=analytics".to_owned()],
+                target: None,
+                ..use_args()
+            },
+            &descriptor_with_operation(SourceApiOperation {
+                selector_kind: SourceApiSelectorKind::None,
+                field_policy: SourceApiFieldPolicy {
+                    supports_typed_fields: true,
+                    syntaxes: vec!["-F KEY=VALUE".to_owned()],
+                    ..SourceApiFieldPolicy::default()
+                },
+                ..operation(SourceApiPaginationPolicy::None)
+            }),
+            &context(),
+        )
+        .await
+        .expect_err("expected unsupported nested field path to fail locally");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "operation `fetch` does not support nested field paths like `key[subkey]=value`"
+        );
+    }
+
+    #[tokio::test]
+    async fn build_plan_rejects_array_field_paths_when_operation_disallows_them() {
+        let error = build_plan(
+            &UseArgs {
+                fields: vec!["database[]=analytics".to_owned()],
+                target: None,
+                ..use_args()
+            },
+            &descriptor_with_operation(SourceApiOperation {
+                selector_kind: SourceApiSelectorKind::None,
+                field_policy: SourceApiFieldPolicy {
+                    supports_typed_fields: true,
+                    syntaxes: vec!["-F KEY=VALUE".to_owned(), "key[subkey]=value".to_owned()],
+                    ..SourceApiFieldPolicy::default()
+                },
+                ..operation(SourceApiPaginationPolicy::None)
+            }),
+            &context(),
+        )
+        .await
+        .expect_err("expected unsupported array field path to fail locally");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "operation `fetch` does not support array field paths like `key[]=value`"
+        );
     }
 
     fn context() -> CommandContext {

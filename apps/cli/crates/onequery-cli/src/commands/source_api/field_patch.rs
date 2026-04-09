@@ -9,15 +9,46 @@ use super::args::SourceApiInputReader;
 use super::source_api_examples;
 use super::source_api_parse_error;
 
+const NESTED_FIELD_PATH_SYNTAX: &str = "key[subkey]=value";
+const ARRAY_FIELD_PATH_SYNTAX: &str = "key[]=value";
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum FieldPathSegment {
     Key(String),
     Append,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) struct FieldPathPolicy {
+    pub(super) supports_nested_paths: bool,
+    pub(super) supports_array_paths: bool,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum UnsupportedFieldPathFeature {
+    NestedPaths,
+    ArrayPaths,
+}
+
+pub(super) fn field_path_policy_from_syntaxes(syntaxes: &[String]) -> FieldPathPolicy {
+    // Comment: the descriptor transport currently exposes bracket-path support as
+    // advertised syntax strings, so the CLI infers local enforcement from those
+    // stable examples until the wire shape carries dedicated nested/array flags.
+    FieldPathPolicy {
+        supports_nested_paths: syntaxes
+            .iter()
+            .any(|syntax| syntax.trim() == NESTED_FIELD_PATH_SYNTAX),
+        supports_array_paths: syntaxes
+            .iter()
+            .any(|syntax| syntax.trim() == ARRAY_FIELD_PATH_SYNTAX),
+    }
+}
+
 pub(super) async fn parse_field_patch(
     raw_fields: &[String],
     fields: &[String],
+    policy: FieldPathPolicy,
+    operation_name: &str,
     reader: &mut SourceApiInputReader,
     context: &CommandContext,
     source_key: &str,
@@ -25,13 +56,15 @@ pub(super) async fn parse_field_patch(
     let mut root = Map::new();
 
     for raw_field in raw_fields {
-        let (path, raw_value) = split_field_assignment(raw_field, context, source_key)?;
+        let (path, raw_value) =
+            split_field_assignment(raw_field, policy, operation_name, context, source_key)?;
         let parsed_value = parse_raw_value(raw_value, reader, context, source_key).await?;
         insert_value(&mut root, &path, parsed_value, context, source_key)?;
     }
 
     for field in fields {
-        let (path, raw_value) = split_field_assignment(field, context, source_key)?;
+        let (path, raw_value) =
+            split_field_assignment(field, policy, operation_name, context, source_key)?;
         let parsed_value = parse_typed_value(raw_value, reader, context, source_key).await?;
         insert_value(&mut root, &path, parsed_value, context, source_key)?;
     }
@@ -45,6 +78,8 @@ pub(super) async fn parse_field_patch(
 
 fn split_field_assignment<'a>(
     input: &'a str,
+    policy: FieldPathPolicy,
+    operation_name: &str,
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(Vec<FieldPathSegment>, &'a str), CliError> {
@@ -65,8 +100,58 @@ fn split_field_assignment<'a>(
             source_key,
         )
     })?;
+    validate_field_path_policy(&path, policy).map_err(|feature| {
+        unsupported_field_path_error(feature, operation_name, context, source_key)
+    })?;
 
     Ok((path, raw_value))
+}
+
+fn validate_field_path_policy(
+    path: &[FieldPathSegment],
+    policy: FieldPathPolicy,
+) -> Result<(), UnsupportedFieldPathFeature> {
+    let uses_nested_paths = path[1..]
+        .iter()
+        .any(|segment| matches!(segment, FieldPathSegment::Key(_)));
+    if uses_nested_paths && !policy.supports_nested_paths {
+        return Err(UnsupportedFieldPathFeature::NestedPaths);
+    }
+
+    let uses_array_paths = path
+        .iter()
+        .any(|segment| matches!(segment, FieldPathSegment::Append));
+    if uses_array_paths && !policy.supports_array_paths {
+        return Err(UnsupportedFieldPathFeature::ArrayPaths);
+    }
+
+    Ok(())
+}
+
+fn unsupported_field_path_error(
+    feature: UnsupportedFieldPathFeature,
+    operation_name: &str,
+    context: &CommandContext,
+    source_key: &str,
+) -> CliError {
+    match feature {
+        UnsupportedFieldPathFeature::NestedPaths => source_api_parse_error(
+            context,
+            "nested field patches are not supported",
+            format!(
+                "operation `{operation_name}` does not support nested field paths like `{NESTED_FIELD_PATH_SYNTAX}`"
+            ),
+            source_key,
+        ),
+        UnsupportedFieldPathFeature::ArrayPaths => source_api_parse_error(
+            context,
+            "array field patches are not supported",
+            format!(
+                "operation `{operation_name}` does not support array field paths like `{ARRAY_FIELD_PATH_SYNTAX}`"
+            ),
+            source_key,
+        ),
+    }
 }
 
 fn parse_field_path(input: &str) -> Result<Vec<FieldPathSegment>, String> {
@@ -250,8 +335,10 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
 
+    use super::FieldPathPolicy;
     use super::FieldPathSegment;
     use super::SourceApiInputReader;
+    use super::field_path_policy_from_syntaxes;
     use super::parse_field_patch;
     use super::parse_field_path;
 
@@ -285,6 +372,11 @@ mod tests {
                 "body[ids][]=2".to_owned(),
                 "body[metadata]=null".to_owned(),
             ],
+            FieldPathPolicy {
+                supports_nested_paths: true,
+                supports_array_paths: true,
+            },
+            "fetch",
             &mut reader,
             &context(),
             "github-prod",
@@ -323,6 +415,11 @@ mod tests {
         let value = parse_field_patch(
             &[format!("params[source]=@{}", raw_value_path.display())],
             &[format!("body[dimension]=@{}", typed_value_path.display())],
+            FieldPathPolicy {
+                supports_nested_paths: true,
+                supports_array_paths: true,
+            },
+            "fetch",
             &mut reader,
             &context(),
             "github-prod",
@@ -342,6 +439,72 @@ mod tests {
                     }
                 }
             }))
+        );
+    }
+
+    #[test]
+    fn field_path_policy_from_syntaxes_tracks_nested_and_array_support() {
+        let policy = field_path_policy_from_syntaxes(&[
+            "-F KEY=VALUE".to_owned(),
+            "key[subkey]=value".to_owned(),
+        ]);
+
+        assert_eq!(
+            policy,
+            FieldPathPolicy {
+                supports_nested_paths: true,
+                supports_array_paths: false,
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn parse_field_patch_rejects_nested_paths_when_policy_disallows_them() {
+        let mut reader = SourceApiInputReader::default();
+
+        let error = parse_field_patch(
+            &[],
+            &["request[database]=analytics".to_owned()],
+            FieldPathPolicy {
+                supports_nested_paths: false,
+                supports_array_paths: false,
+            },
+            "list_collections",
+            &mut reader,
+            &context(),
+            "mongo-prod",
+        )
+        .await
+        .expect_err("expected nested field path to be rejected locally");
+
+        assert_eq!(
+            error.why,
+            "operation `list_collections` does not support nested field paths like `key[subkey]=value`"
+        );
+    }
+
+    #[tokio::test]
+    async fn parse_field_patch_rejects_array_paths_when_policy_disallows_them() {
+        let mut reader = SourceApiInputReader::default();
+
+        let error = parse_field_patch(
+            &[],
+            &["database[]=analytics".to_owned()],
+            FieldPathPolicy {
+                supports_nested_paths: true,
+                supports_array_paths: false,
+            },
+            "list_collections",
+            &mut reader,
+            &context(),
+            "mongo-prod",
+        )
+        .await
+        .expect_err("expected array field path to be rejected locally");
+
+        assert_eq!(
+            error.why,
+            "operation `list_collections` does not support array field paths like `key[]=value`"
         );
     }
 
