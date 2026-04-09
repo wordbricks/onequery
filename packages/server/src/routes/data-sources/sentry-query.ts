@@ -1,38 +1,15 @@
 import type { SentryCredentials } from "@onequery/db/server";
-import { z } from "zod";
 
-import { MAX_PROVIDER_REQUEST_TIMEOUT_MS } from "../../services/provider-http";
-import { fetchSentryApi } from "../../services/sentry/relay";
+import type { SentryProviderRouteRequest } from "../../source-api/adapters/sentry";
+import {
+  SentryInvalidRequestError,
+  isSentrySourceCredentials,
+  parseSentryProviderRouteRequest,
+  requestSentrySourceApi,
+  sentrySourceApiOperationSchema,
+} from "../../source-api/adapters/sentry";
+import { buildSourceApiRouteResponse } from "./build-source-api-route-response";
 import { createProviderRoute } from "./create-provider-route";
-import { parseProviderRequest } from "./query-validation";
-
-const methodSchema = z.enum(["fetch_api"]);
-
-const sentryFetchOptionsSchema = z.object({
-  body: z.record(z.string(), z.unknown()).optional(),
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-    .optional(),
-});
-
-const sentryFetchApiRequestSchema = z.object({
-  endpoint: z.string().min(1),
-  options: sentryFetchOptionsSchema.optional(),
-});
-
-function isSentryCredentials(value: unknown): value is SentryCredentials {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "sentry"
-  );
-}
 
 function buildConflictMessage(input: { multipleDefaults: boolean }): string {
   if (input.multipleDefaults) {
@@ -44,25 +21,37 @@ function buildConflictMessage(input: { multipleDefaults: boolean }): string {
 
 export const dataSourcesSentryQueryRoute = createProviderRoute<
   SentryCredentials,
-  typeof methodSchema,
-  z.output<typeof sentryFetchApiRequestSchema>,
+  typeof sentrySourceApiOperationSchema,
+  SentryProviderRouteRequest,
   "/sentry/query"
 >({
   buildConflictMessage,
-  credentialsGuard: isSentryCredentials,
-  execute: ({ credentials, request }) =>
-    fetchSentryApi({
-      credentials,
-      endpoint: request.endpoint,
-      options: request.options,
-    }),
-  methodSchema,
+  credentialsGuard: isSentrySourceCredentials,
+  execute: async ({ c, credentials, request }) => {
+    try {
+      const response = await requestSentrySourceApi({
+        body: request.body,
+        credentials,
+        method: request.method ?? "GET",
+        params: request.params,
+        selector: request.selector,
+        timeoutMs: request.timeoutMs,
+      });
+
+      return buildSourceApiRouteResponse(response);
+    } catch (error) {
+      if (error instanceof SentryInvalidRequestError) {
+        return c.json({ error: error.message }, 400);
+      }
+
+      throw error;
+    }
+  },
+  methodSchema: sentrySourceApiOperationSchema,
   parseRequest: (input) =>
-    parseProviderRequest(
-      sentryFetchApiRequestSchema,
-      input.request,
-      "Invalid Sentry fetch_api request payload"
-    ),
+    parseSentryProviderRouteRequest({
+      request: input.request,
+    }),
   provider: "sentry",
   providerLabel: "Sentry",
   routePath: "/sentry/query",

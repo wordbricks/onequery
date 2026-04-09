@@ -1,54 +1,47 @@
 import type { PostHogCredentials } from "@onequery/db/server";
-import { z } from "zod";
 
-import { runPostHogQuery } from "../../services/posthog/relay";
-import { MAX_PROVIDER_REQUEST_TIMEOUT_MS } from "../../services/provider-http";
+import {
+  PostHogInvalidRequestError,
+  isPostHogSourceCredentials,
+  parsePostHogProviderRouteRequest,
+  postHogSourceApiOperationSchema,
+  requestPostHogSourceApi,
+} from "../../source-api/adapters/posthog";
+import { buildSourceApiRouteResponse } from "./build-source-api-route-response";
 import { createProviderRoute } from "./create-provider-route";
-import { parseProviderRequest } from "./query-validation";
-
-const methodSchema = z.enum(["run_query"]);
-
-const postHogRunQueryRequestSchema = z.object({
-  query: z.record(z.string(), z.unknown()),
-  refresh: z.string().min(1).optional(),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-    .optional(),
-});
-
-function isPostHogCredentials(value: unknown): value is PostHogCredentials {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "posthog"
-  );
-}
 
 export const dataSourcesPostHogQueryRoute = createProviderRoute<
   PostHogCredentials,
-  typeof methodSchema,
-  z.output<typeof postHogRunQueryRequestSchema>,
+  typeof postHogSourceApiOperationSchema,
+  {
+    query: Record<string, unknown>;
+    refresh?: string;
+    timeoutMs?: number;
+  },
   "/posthog/query"
 >({
-  credentialsGuard: isPostHogCredentials,
-  execute: ({ credentials, request }) =>
-    runPostHogQuery({
-      credentials,
-      query: request.query,
-      refresh: request.refresh,
-      timeoutMs: request.timeoutMs,
-    }),
-  methodSchema,
+  credentialsGuard: isPostHogSourceCredentials,
+  execute: async ({ c, credentials, request }) => {
+    try {
+      const response = await requestPostHogSourceApi({
+        credentials,
+        request,
+      });
+
+      return buildSourceApiRouteResponse(response);
+    } catch (error) {
+      if (error instanceof PostHogInvalidRequestError) {
+        return c.json({ error: error.message }, 400);
+      }
+
+      throw error;
+    }
+  },
+  methodSchema: postHogSourceApiOperationSchema,
   parseRequest: (input) =>
-    parseProviderRequest(
-      postHogRunQueryRequestSchema,
-      input.request,
-      "Invalid PostHog run_query request payload"
-    ),
+    parsePostHogProviderRouteRequest({
+      request: input.request,
+    }),
   provider: "posthog",
   providerLabel: "PostHog",
   routePath: "/posthog/query",

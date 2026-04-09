@@ -7,6 +7,7 @@ import type {
   SourceApiOperation,
   SourceApiPaginationPolicy,
   SourceApiRequestBody,
+  SourceApiResponseBody,
   SourceApiSelectorKind,
 } from "../types";
 
@@ -124,4 +125,78 @@ export function getSourceApiBodyKind(
   body: SourceApiRequestBody
 ): SourceApiRequestBody["kind"] {
   return body.kind;
+}
+
+export type SourceApiHttpTransportResponse = {
+  body: SourceApiResponseBody;
+  contentType: string;
+  headers: SourceApiHeader[];
+  status: number;
+};
+
+export async function readSourceApiHttpTransportResponse(
+  response: Response
+): Promise<SourceApiHttpTransportResponse> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const bytes = new Uint8Array(await response.arrayBuffer());
+
+  return {
+    body: parseSourceApiHttpResponseBody({
+      bytes,
+      contentType,
+      status: response.status,
+    }),
+    contentType,
+    headers: Array.from(response.headers.entries()).map(([name, value]) => ({
+      name,
+      value,
+    })),
+    status: response.status,
+  };
+}
+
+export function parseSourceApiHttpResponseBody(input: {
+  bytes: Uint8Array;
+  contentType: string;
+  status: number;
+}): SourceApiResponseBody {
+  if (input.status === 204 || input.bytes.length === 0) {
+    return { kind: "none" };
+  }
+
+  if (
+    input.contentType.includes("application/json") ||
+    input.contentType.includes("+json")
+  ) {
+    const text = new TextDecoder().decode(input.bytes);
+    if (text.trim().length === 0) {
+      return { kind: "none" };
+    }
+
+    return {
+      kind: "json",
+      value: JSON.parse(text),
+    };
+  }
+
+  if (
+    input.contentType.startsWith("text/") ||
+    input.contentType.includes("application/xml") ||
+    input.contentType.includes("application/x-www-form-urlencoded")
+  ) {
+    const text = new TextDecoder().decode(input.bytes);
+    if (text.trim().length === 0) {
+      return { kind: "none" };
+    }
+
+    return {
+      kind: "text",
+      value: text,
+    };
+  }
+
+  return {
+    kind: "binary",
+    value: input.bytes,
+  };
 }

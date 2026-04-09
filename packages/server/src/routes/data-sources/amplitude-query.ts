@@ -1,60 +1,48 @@
 import type { AmplitudeCredentials } from "@onequery/db/server";
-import { z } from "zod";
 
-import { fetchAmplitudeApi } from "../../services/amplitude/relay";
-import type { AmplitudeFetchOptions } from "../../services/amplitude/relay";
-import { MAX_PROVIDER_REQUEST_TIMEOUT_MS } from "../../services/provider-http";
+import type { AmplitudeProviderRouteRequest } from "../../source-api/adapters/amplitude";
+import {
+  AmplitudeInvalidRequestError,
+  amplitudeSourceApiOperationSchema,
+  isAmplitudeSourceCredentials,
+  parseAmplitudeProviderRouteRequest,
+  requestAmplitudeSourceApi,
+} from "../../source-api/adapters/amplitude";
+import { buildSourceApiRouteResponse } from "./build-source-api-route-response";
 import { createProviderRoute } from "./create-provider-route";
-import { parseProviderRequest } from "./query-validation";
-
-const methodSchema = z.enum(["fetch_api"]);
-
-const amplitudeFetchOptionsSchema = z.object({
-  body: z.record(z.string(), z.unknown()).optional(),
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-    .optional(),
-});
-
-const amplitudeFetchApiRequestSchema = z.object({
-  endpoint: z.string().min(1),
-  options: amplitudeFetchOptionsSchema.optional(),
-});
-
-function isAmplitudeCredentials(value: unknown): value is AmplitudeCredentials {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "amplitude"
-  );
-}
 
 export const dataSourcesAmplitudeQueryRoute = createProviderRoute<
   AmplitudeCredentials,
-  typeof methodSchema,
-  z.output<typeof amplitudeFetchApiRequestSchema>,
+  typeof amplitudeSourceApiOperationSchema,
+  AmplitudeProviderRouteRequest,
   "/amplitude/query"
 >({
-  credentialsGuard: isAmplitudeCredentials,
-  execute: ({ credentials, request }) =>
-    fetchAmplitudeApi({
-      credentials,
-      endpoint: request.endpoint,
-      options: request.options as AmplitudeFetchOptions | undefined,
-    }),
-  methodSchema,
+  credentialsGuard: isAmplitudeSourceCredentials,
+  execute: async ({ c, credentials, request }) => {
+    try {
+      const response = await requestAmplitudeSourceApi({
+        body: request.body,
+        credentials,
+        method: request.method ?? "GET",
+        params: request.params,
+        selector: request.selector,
+        timeoutMs: request.timeoutMs,
+      });
+
+      return buildSourceApiRouteResponse(response);
+    } catch (error) {
+      if (error instanceof AmplitudeInvalidRequestError) {
+        return c.json({ error: error.message }, 400);
+      }
+
+      throw error;
+    }
+  },
+  methodSchema: amplitudeSourceApiOperationSchema,
   parseRequest: (input) =>
-    parseProviderRequest(
-      amplitudeFetchApiRequestSchema,
-      input.request,
-      "Invalid Amplitude fetch_api request payload"
-    ),
+    parseAmplitudeProviderRouteRequest({
+      request: input.request,
+    }),
   provider: "amplitude",
   providerLabel: "Amplitude",
   routePath: "/amplitude/query",

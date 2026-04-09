@@ -7,6 +7,7 @@ import {
   isGoogleAnalyticsSourceCredentials,
   requestGoogleAnalyticsSourceApi,
 } from "../../source-api/adapters/ga";
+import { buildSourceApiRouteResponse } from "./build-source-api-route-response";
 import { createProviderRoute } from "./create-provider-route";
 import { createPrefixedQueryError } from "./query-errors";
 
@@ -53,7 +54,7 @@ export const dataSourcesGaQueryRoute = createProviderRoute<
       );
     }
 
-    return buildGoogleAnalyticsRouteResponse(outcome.value);
+    return buildSourceApiRouteResponse(outcome.value);
   },
   methodSchema: googleAnalyticsSourceApiOperationSchema,
   missingDataSourceMessage: "Active Google Analytics data source not found",
@@ -62,51 +63,3 @@ export const dataSourcesGaQueryRoute = createProviderRoute<
   providerLabel: "Google Analytics",
   routePath: "/ga/query",
 });
-
-function buildGoogleAnalyticsRouteResponse(input: {
-  body:
-    | { kind: "none" }
-    | { kind: "json"; value: unknown }
-    | { kind: "text"; value: string }
-    | { kind: "binary"; value: Uint8Array };
-  contentType: string;
-  headers: { name: string; value: string }[];
-  status: number;
-}) {
-  const headers = new Headers();
-  for (const header of input.headers) {
-    headers.set(header.name, header.value);
-  }
-  if (input.contentType.trim().length > 0 && !headers.has("content-type")) {
-    headers.set("content-type", input.contentType);
-  }
-
-  switch (input.body.kind) {
-    case "none":
-      return new Response(null, {
-        headers,
-        status: input.status,
-      });
-    case "json":
-      return new Response(JSON.stringify(input.body.value), {
-        headers,
-        status: input.status,
-      });
-    case "text":
-      return new Response(input.body.value, {
-        headers,
-        status: input.status,
-      });
-    case "binary":
-      return new Response(copyBinaryBody(input.body.value), {
-        headers,
-        status: input.status,
-      });
-  }
-}
-
-function copyBinaryBody(value: Uint8Array): ArrayBuffer {
-  const copied = new Uint8Array(value.byteLength);
-  copied.set(value);
-  return copied.buffer;
-}

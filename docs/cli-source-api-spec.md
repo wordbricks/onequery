@@ -442,7 +442,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 - [x] Move GitHub relay behavior from `routes/data-sources/github-query.ts` into `source-api/adapters/github.ts`.
 - [x] Move GA relay behavior from `routes/data-sources/ga-query.ts` into `source-api/adapters/ga.ts`.
 - [x] Move MongoDB relay behavior from `routes/data-sources/mongodb-query.ts` into `source-api/adapters/mongodb.ts`.
-- [ ] Move Amplitude, Mixpanel, PostHog, and Sentry relay behavior into corresponding adapters.
+- [x] Move Amplitude, Mixpanel, PostHog, and Sentry relay behavior into corresponding adapters.
 - [x] Keep request validation next to the adapter definition; do not leave runtime schema in the old route file.
 - [ ] Remove markdown skill content as a source of truth.
 

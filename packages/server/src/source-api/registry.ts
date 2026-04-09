@@ -1,8 +1,12 @@
 import type { ProviderType } from "@onequery/db/server";
 
+import { amplitudeSourceApiAdapter } from "./adapters/amplitude";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
+import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
+import { postHogSourceApiAdapter } from "./adapters/posthog";
+import { sentrySourceApiAdapter } from "./adapters/sentry";
 import type { SourceApiAdapter } from "./types";
 
 export type SourceApiRegistry = {
@@ -47,7 +51,11 @@ export function getSourceApiAdapter(
 }
 
 export const sourceApiRegistry = createSourceApiRegistry([
+  amplitudeSourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
+  mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
+  postHogSourceApiAdapter,
+  sentrySourceApiAdapter,
 ]);
