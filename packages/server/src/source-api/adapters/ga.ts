@@ -10,6 +10,7 @@ import {
 import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
+  normalizeSourceApiContentType,
 } from "../helpers/http-rest";
 import {
   createStructuredRequestOperation,
@@ -224,7 +225,9 @@ export async function requestGoogleAnalyticsSourceApi(input: {
     propertyPath: resolvedPropertyPath,
     requestBody,
   });
-  const contentType = response.headers.get("content-type") ?? "";
+  const contentType = normalizeSourceApiContentType(
+    response.headers.get("content-type")
+  );
   const bytes = new Uint8Array(await response.arrayBuffer());
 
   return {

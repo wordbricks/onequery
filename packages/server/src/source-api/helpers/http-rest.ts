@@ -37,6 +37,8 @@ const DEFAULT_HTTP_FIELD_POLICY: SourceApiFieldPolicy = {
   supportsNestedPaths: true,
 };
 
+export const DEFAULT_SOURCE_API_CONTENT_TYPE = "application/octet-stream";
+
 export function createHttpRequestOperation(
   input: CreateHttpRequestOperationInput
 ): SourceApiOperation {
@@ -177,10 +179,21 @@ export type SourceApiHttpTransportResponse = {
   status: number;
 };
 
+export function normalizeSourceApiContentType(
+  contentType: string | null | undefined
+): string {
+  const normalized = contentType?.trim();
+  return normalized && normalized.length > 0
+    ? normalized
+    : DEFAULT_SOURCE_API_CONTENT_TYPE;
+}
+
 export async function readSourceApiHttpTransportResponse(
   response: Response
 ): Promise<SourceApiHttpTransportResponse> {
-  const contentType = response.headers.get("content-type") ?? "";
+  const contentType = normalizeSourceApiContentType(
+    response.headers.get("content-type")
+  );
   const bytes = new Uint8Array(await response.arrayBuffer());
 
   return {

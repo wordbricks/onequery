@@ -152,4 +152,53 @@ describe("github source api adapter", () => {
       value: "github.com",
     });
   });
+
+  it("normalizes missing GitHub response content types to octet-stream", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        headers: {
+          etag: '"abc123"',
+        },
+        status: 200,
+      })
+    ) as unknown as typeof fetch;
+
+    const response = await githubSourceApiAdapter.execute({
+      actor: {
+        capabilities: ["source_api.execute"],
+        membershipRoles: ["owner"],
+        organizationId: "org_1",
+        organizationSlug: "acme",
+        userId: "user_1",
+      },
+      plan: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        descriptorVersion: "github.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch",
+        provider: "github",
+        requestFingerprint: "fingerprint",
+        selector: "/issues",
+        sourceId: "source_1",
+        sourceKey: "github-prod",
+        url: "https://api.github.com/repos/openai/example/issues",
+      },
+      source,
+    });
+
+    expect(response).toMatchObject({
+      contentType: "application/octet-stream",
+      operation: "fetch",
+      selector: "/issues",
+      status: 200,
+    });
+    expect(response.body).toEqual({
+      kind: "binary",
+      value: new Uint8Array([1, 2, 3]),
+    });
+  });
 });

@@ -16,6 +16,7 @@ import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
+  normalizeSourceApiContentType,
   resolveHttpMethodOverride,
   toHeaderRecord,
 } from "../helpers/http-rest";
@@ -384,7 +385,9 @@ export async function requestGitHubApi(input: {
     method: input.method,
     timeoutMs: input.timeoutMs,
   });
-  const contentType = response.headers.get("content-type") ?? "";
+  const contentType = normalizeSourceApiContentType(
+    response.headers.get("content-type")
+  );
   const bytes = new Uint8Array(await response.arrayBuffer());
 
   return {

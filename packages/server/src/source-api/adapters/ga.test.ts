@@ -184,4 +184,58 @@ describe("google analytics source api adapter", () => {
       limit: 25,
     });
   });
+
+  it("normalizes missing Google Analytics response content types to octet-stream", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const response = await googleAnalyticsSourceApiAdapter.execute({
+      actor: {
+        capabilities: ["source_api.execute"],
+        membershipRoles: ["owner"],
+        organizationId: "org_1",
+        organizationSlug: "acme",
+        userId: "user_1",
+      },
+      plan: {
+        body: {
+          kind: "json",
+          value: {
+            limit: 25,
+            property: "properties/123456789",
+          },
+        },
+        bodyKind: "json",
+        descriptorVersion: "ga.v1",
+        headerNames: [],
+        headers: [],
+        kind: "structured_request",
+        operation: "run_report",
+        provider: "ga",
+        request: {
+          limit: 25,
+          property: "properties/123456789",
+        },
+        requestFingerprint: "fingerprint",
+        selector: "properties/123456789",
+        sourceId: "source_1",
+        sourceKey: "ga-prod",
+      },
+      source,
+    });
+
+    expect(response).toMatchObject({
+      contentType: "application/octet-stream",
+      operation: "run_report",
+      status: 200,
+    });
+    expect(response.body).toEqual({
+      kind: "binary",
+      value: new Uint8Array([1, 2, 3]),
+    });
+  });
 });
