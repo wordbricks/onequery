@@ -3,6 +3,8 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CliSourceApiBodyKind,
+  CliSourceApiOperationKind,
   DescribeSourceApiRequestSchema,
   ExecuteSourceApiRequestSchema,
   NormalizeSourceApiRequestSchema,
@@ -510,11 +512,11 @@ describe("source api connect service", () => {
     expect(harness.adapterExecute).not.toHaveBeenCalled();
     expect(response).toMatchObject({
       plan: {
-        bodyKind: "text",
+        bodyKind: CliSourceApiBodyKind.TEXT,
         descriptorVersion: "github-v1",
         headerNames: ["accept"],
         host: "api.github.com",
-        kind: "http_request",
+        kind: CliSourceApiOperationKind.HTTP_REQUEST,
         method: "POST",
         operation: "fetch",
         provider: "github",

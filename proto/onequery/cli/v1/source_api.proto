@@ -55,7 +55,7 @@ message NormalizeSourceApiRequest {
 }
 
 message NormalizeSourceApiResponse {
-  google.protobuf.Struct plan = 1;
+  CliSourceApiPlan plan = 1 [(buf.validate.field).required = true];
 }
 
 message ExecuteSourceApiRequest {
@@ -101,6 +101,44 @@ message ExecuteSourceApiResponse {
   }
   optional string request_id = 10;
   optional string next_page_token = 11;
+}
+
+message CliSourceApiPlan {
+  string source_id = 1 [(buf.validate.field).string.min_len = 1];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  string provider = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  string operation = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  CliSourceApiOperationKind kind = 5 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  optional string method = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  optional string selector = 7 [(buf.validate.field).string.min_len = 1];
+  optional string selector_template = 8 [(buf.validate.field).string.min_len = 1];
+  optional string host = 9 [(buf.validate.field).string.min_len = 1];
+  repeated string header_names = 10 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
+  ];
+  CliSourceApiBodyKind body_kind = 11 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  repeated string body_paths = 12 [(buf.validate.field).repeated.items.string.min_len = 1];
+  string request_fingerprint = 13 [(buf.validate.field).string.min_len = 1];
+  optional string descriptor_version = 14 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiSource {
@@ -192,4 +230,12 @@ enum CliSourceApiPaginationPolicy {
   CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
   CLI_SOURCE_API_PAGINATION_POLICY_NONE = 1;
   CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN = 2;
+}
+
+enum CliSourceApiBodyKind {
+  CLI_SOURCE_API_BODY_KIND_UNSPECIFIED = 0;
+  CLI_SOURCE_API_BODY_KIND_NONE = 1;
+  CLI_SOURCE_API_BODY_KIND_JSON = 2;
+  CLI_SOURCE_API_BODY_KIND_TEXT = 3;
+  CLI_SOURCE_API_BODY_KIND_BINARY = 4;
 }

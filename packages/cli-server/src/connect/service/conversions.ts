@@ -1,10 +1,11 @@
 import { toJson } from "@bufbuild/protobuf";
-import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
+import type { JsonValue } from "@bufbuild/protobuf";
 import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 import type {
   NormalizedExecutionPlan,
   SourceApiDescriptor,
+  SourceApiBodyKind,
   SourceApiExample,
   SourceApiExecuteRequest,
   SourceApiExecutionResponse,
@@ -29,6 +30,7 @@ import type {
   NormalizeSourceApiRequest,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
+  CliSourceApiBodyKind,
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
   CliSourceApiSelectorKind,
@@ -201,37 +203,25 @@ export function fromCliNormalizeSourceApiRequest(
 
 export function toCliNormalizeSourceApiResponse(
   value: NormalizedExecutionPlan
-): { plan: JsonObject } {
-  const plan: JsonObject = {
-    bodyKind: value.bodyKind,
-    headerNames: [...value.headerNames],
-    kind: value.kind,
-    operation: value.operation,
-    provider: value.provider,
-    requestFingerprint: value.requestFingerprint,
-    sourceId: value.sourceId,
-    sourceKey: value.sourceKey,
+) {
+  return {
+    plan: {
+      bodyKind: toCliSourceApiBodyKind(value.bodyKind),
+      bodyPaths: [...(value.bodyPaths ?? [])],
+      descriptorVersion: value.descriptorVersion,
+      headerNames: [...value.headerNames],
+      host: value.host,
+      kind: toCliSourceApiOperationKind(value.kind),
+      method: value.method,
+      operation: value.operation,
+      provider: value.provider,
+      requestFingerprint: value.requestFingerprint,
+      selector: value.selector,
+      selectorTemplate: value.selectorTemplate,
+      sourceId: value.sourceId,
+      sourceKey: value.sourceKey,
+    },
   };
-  if (value.method) {
-    plan.method = value.method;
-  }
-  if (value.selector) {
-    plan.selector = value.selector;
-  }
-  if (value.selectorTemplate) {
-    plan.selectorTemplate = value.selectorTemplate;
-  }
-  if (value.host) {
-    plan.host = value.host;
-  }
-  if (value.bodyPaths?.length) {
-    plan.bodyPaths = [...value.bodyPaths];
-  }
-  if (value.descriptorVersion) {
-    plan.descriptorVersion = value.descriptorVersion;
-  }
-
-  return { plan };
 }
 
 function fromCliSourceApiExecutionRequest(
@@ -421,6 +411,21 @@ function toCliSourceApiOperationKind(
       return CliSourceApiOperationKind.HTTP_REQUEST;
     case "structured_request":
       return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+  }
+}
+
+function toCliSourceApiBodyKind(
+  value: SourceApiBodyKind
+): CliSourceApiBodyKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiBodyKind.NONE;
+    case "json":
+      return CliSourceApiBodyKind.JSON;
+    case "text":
+      return CliSourceApiBodyKind.TEXT;
+    case "binary":
+      return CliSourceApiBodyKind.BINARY;
   }
 }
 

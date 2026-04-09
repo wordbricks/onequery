@@ -108,6 +108,7 @@ Example JSON-mode shape:
   - remove `import "onequery/cli/v1/use.proto";`
   - remove `rpc Use(UseRequest) returns (UseResponse);`
   - add `rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse);`
+  - add `rpc NormalizeSourceApi(NormalizeSourceApiRequest) returns (NormalizeSourceApiResponse);`
   - add `rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);`
 
 ### Proto shape
@@ -127,6 +128,27 @@ message DescribeSourceApiResponse {
   repeated CliSourceApiOperation operations = 4;
   repeated CliSourceApiExample examples = 5;
   repeated string notes = 6;
+}
+
+message NormalizeSourceApiRequest {
+  string org_slug = 1;
+  string source_key = 2;
+  optional string descriptor_version = 3;
+  string operation = 4;
+  optional string selector = 5;
+  optional string method_override = 6;
+  repeated CliSourceApiHeader headers = 7;
+  optional google.protobuf.Struct field_patch = 8;
+  oneof body {
+    google.protobuf.Value json_body = 9;
+    string text_body = 10;
+    bytes binary_body = 11;
+  }
+  optional string page_token = 12;
+}
+
+message NormalizeSourceApiResponse {
+  CliSourceApiPlan plan = 1;
 }
 
 message ExecuteSourceApiRequest {
@@ -161,7 +183,26 @@ message ExecuteSourceApiResponse {
   optional string request_id = 10;
   optional string next_page_token = 11;
 }
+
+message CliSourceApiPlan {
+  string source_id = 1;
+  string source_key = 2;
+  string provider = 3;
+  string operation = 4;
+  CliSourceApiOperationKind kind = 5;
+  optional string method = 6;
+  optional string selector = 7;
+  optional string selector_template = 8;
+  optional string host = 9;
+  repeated string header_names = 10;
+  CliSourceApiBodyKind body_kind = 11;
+  repeated string body_paths = 12;
+  string request_fingerprint = 13;
+  optional string descriptor_version = 14;
+}
 ```
+
+`CliSourceApiPlan` is the public, redacted projection of normalization. It must stay limited to stable planning data needed for `--dry-run`, pagination binding, and policy inspection. It must not expose transport-only execution internals such as the finalized request URL, normalized header values, request body payloads, adapter metadata, or structured request objects.
 
 Required descriptor fields:
 
@@ -182,6 +223,7 @@ Required descriptor fields:
 ### RPC rules
 
 - `DescribeSourceApi` must validate org access and source access.
+- `NormalizeSourceApi` must validate org access, source access, operation validity, and return the canonical normalized plan without executing.
 - `ExecuteSourceApi` must validate org access, source access, operation validity, and permission hooks before execution.
 - Pagination tokens are opaque, short-lived, and bound to source key, operation, normalized request fingerprint, and descriptor version.
 - The CLI never invents or decodes page tokens.
@@ -270,6 +312,8 @@ type NormalizedExecutionPlan = {
 };
 ```
 
+`NormalizeSourceApiResponse.plan` is the typed public projection of this normalized plan, not the full internal execution object.
+
 ### Adapter families
 
 Start with two helper families:
@@ -312,7 +356,7 @@ Responsibilities:
 - Delete `packages/cli-server/src/use/skills.ts`.
 - Delete `packages/cli-server/src/connect/service/use.ts`.
 - Remove `CliUseSource` conversion helpers from `packages/cli-server/src/connect/service/conversions.ts`.
-- Update `packages/cli-server/src/connect/service.ts` to register `describeSourceApi` and `executeSourceApi`.
+- Update `packages/cli-server/src/connect/service.ts` to register `describeSourceApi`, `normalizeSourceApi`, and `executeSourceApi`.
 - Regenerate `packages/cli-server/src/connect/gen/**` from proto.
 
 ## Rust CLI architecture
@@ -452,8 +496,8 @@ The initial implementation may only enforce coarse capability checks, but it mus
 - [x] Replace `handleUse` registration in `packages/cli-server/src/connect/service.ts`.
 - [x] Remove `packages/cli-server/src/use/skills.ts`.
 - [x] Remove `fromCliUseSource` / `toCliUseSourceEnum` from `packages/cli-server/src/connect/service/conversions.ts`.
-- [x] Add conversions for source-api descriptor and execute response messages.
-- [x] Update tests to call `DescribeSourceApi` and `ExecuteSourceApi`.
+- [x] Add conversions for source-api descriptor, normalize plan, and execute response messages.
+- [x] Update tests to call `DescribeSourceApi`, `NormalizeSourceApi`, and `ExecuteSourceApi`.
 
 ### 5) Rust CLI parser and transport
 

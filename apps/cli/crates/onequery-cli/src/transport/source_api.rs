@@ -523,6 +523,21 @@ fn source_api_pagination_policy_from_generated(
     }
 }
 
+fn source_api_body_kind_from_generated(
+    value: buffa::EnumValue<types::CliSourceApiBodyKind>,
+) -> SourceApiBodyKind {
+    match value.as_known() {
+        Some(types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON) => SourceApiBodyKind::Json,
+        Some(types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT) => SourceApiBodyKind::Text,
+        Some(types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_BINARY) => {
+            SourceApiBodyKind::Binary
+        }
+        Some(types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE)
+        | Some(types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_UNSPECIFIED)
+        | None => SourceApiBodyKind::None,
+    }
+}
+
 fn source_api_header_to_generated(value: &SourceApiHeader) -> types::CliSourceApiHeader {
     types::CliSourceApiHeader {
         name: value.name.clone(),
@@ -640,20 +655,21 @@ fn normalized_source_api_plan_from_generated(
         )
     })?;
 
-    let plan = serde_json::to_value(plan).map_err(|error| {
-        decode_failure(
-            ErrorStage::ExecuteQuery,
-            format!("failed to decode source API normalize response: {error}"),
-            request_id.clone(),
-        )
-    })?;
-
-    serde_json::from_value(plan).map_err(|error| {
-        decode_failure(
-            ErrorStage::ExecuteQuery,
-            format!("failed to decode source API normalize response: {error}"),
-            request_id,
-        )
+    Ok(NormalizedSourceApiPlan {
+        source_id: plan.source_id,
+        source_key: plan.source_key,
+        provider: plan.provider,
+        operation: plan.operation,
+        kind: source_api_operation_kind_from_generated(plan.kind),
+        method: non_empty(plan.method),
+        selector: non_empty(plan.selector),
+        selector_template: non_empty(plan.selector_template),
+        host: non_empty(plan.host),
+        header_names: plan.header_names,
+        body_kind: source_api_body_kind_from_generated(plan.body_kind),
+        body_paths: plan.body_paths,
+        request_fingerprint: plan.request_fingerprint,
+        descriptor_version: non_empty(plan.descriptor_version),
     })
 }
 
@@ -744,4 +760,65 @@ fn execute_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
 
 fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|candidate| !candidate.trim().is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::NormalizedSourceApiPlan;
+    use super::SourceApiBodyKind;
+    use super::SourceApiOperationKind;
+    use super::normalized_source_api_plan_from_generated;
+    use super::types;
+
+    #[test]
+    fn normalized_source_api_plan_from_generated_maps_typed_plan_payload() {
+        let plan = normalized_source_api_plan_from_generated(
+            types::NormalizeSourceApiResponse {
+                plan: buffa::MessageField::some(types::CliSourceApiPlan {
+                    source_id: "source-1".to_owned(),
+                    source_key: "github-prod".to_owned(),
+                    provider: "github".to_owned(),
+                    operation: "fetch".to_owned(),
+                    kind:
+                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                            .into(),
+                    method: Some("POST".to_owned()),
+                    selector: Some("/issues".to_owned()),
+                    selector_template: Some("/{path}".to_owned()),
+                    host: Some("api.github.com".to_owned()),
+                    header_names: vec!["accept".to_owned()],
+                    body_kind: types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT.into(),
+                    body_paths: vec!["payload".to_owned()],
+                    request_fingerprint: "fp_123".to_owned(),
+                    descriptor_version: Some("github.v1".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some("req_cli_123".to_owned()),
+        )
+        .expect("expected typed normalize payload to decode");
+
+        assert_eq!(
+            plan,
+            NormalizedSourceApiPlan {
+                source_id: "source-1".to_owned(),
+                source_key: "github-prod".to_owned(),
+                provider: "github".to_owned(),
+                operation: "fetch".to_owned(),
+                kind: SourceApiOperationKind::HttpRequest,
+                method: Some("POST".to_owned()),
+                selector: Some("/issues".to_owned()),
+                selector_template: Some("/{path}".to_owned()),
+                host: Some("api.github.com".to_owned()),
+                header_names: vec!["accept".to_owned()],
+                body_kind: SourceApiBodyKind::Text,
+                body_paths: vec!["payload".to_owned()],
+                request_fingerprint: "fp_123".to_owned(),
+                descriptor_version: Some("github.v1".to_owned()),
+            }
+        );
+    }
 }
