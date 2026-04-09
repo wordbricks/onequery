@@ -6,6 +6,7 @@ use tokio::time::sleep;
 use crate::cli::ListReadArgs;
 use crate::cli::OrgSubcommand;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::org;
@@ -82,7 +83,7 @@ pub(super) enum OrgState {
 
 #[derive(Debug)]
 pub(super) enum OrgTerminalState {
-    Completed { output: CommandOutput },
+    Completed { output: TerminalOutput },
     NeedsReauth { error: CliError },
     Failed { error: CliError },
 }
@@ -156,7 +157,7 @@ where
     .await?;
 
     match final_state {
-        OrgTerminalState::Completed { output } => Ok(output),
+        OrgTerminalState::Completed { output } => Ok(output.into_inner()),
         OrgTerminalState::NeedsReauth { error } | OrgTerminalState::Failed { error } => Err(error),
     }
 }
@@ -201,7 +202,7 @@ pub(super) fn reduce(
         OrgState::Idle { mode } => match event {
             OrgEvent::Start => match mode {
                 OrgMode::Current => Transition::done(OrgTerminalState::Completed {
-                    output: current(context),
+                    output: TerminalOutput::new(current(context)),
                 }),
                 OrgMode::List { .. } | OrgMode::Use { .. } => Transition::continue_with_effect(
                     OrgState::CheckingAuth { mode },
@@ -284,7 +285,7 @@ pub(super) fn reduce(
             } => match request {
                 OrgLoadRequest::List { read } => match render_org_list_output(payload, &read) {
                     Ok(output) => Transition::done(OrgTerminalState::Completed {
-                        output: output.with_request_id(request_id),
+                        output: TerminalOutput::new(output.with_request_id(request_id)),
                     }),
                     Err(error) => Transition::done(OrgTerminalState::Failed { error }),
                 },
@@ -321,14 +322,16 @@ pub(super) fn reduce(
                             render_use_org_unchanged_output(next_org.as_str())
                         };
                         return Transition::done(OrgTerminalState::Completed {
-                            output: output.with_request_id(request_id),
+                            output: TerminalOutput::new(output.with_request_id(request_id)),
                         });
                     }
 
                     if dry_run {
                         return Transition::done(OrgTerminalState::Completed {
-                            output: render_use_org_dry_run_output(next_org.as_str(), true)
-                                .with_request_id(request_id),
+                            output: TerminalOutput::new(
+                                render_use_org_dry_run_output(next_org.as_str(), true)
+                                    .with_request_id(request_id),
+                            ),
                         });
                     }
 
@@ -410,7 +413,9 @@ pub(super) fn reduce(
                 Transition::done(OrgTerminalState::Failed { error })
             }
             OrgEvent::ActiveOrgPersisted { org } => Transition::done(OrgTerminalState::Completed {
-                output: render_use_org_updated_output(org.as_str()).with_request_id(request_id),
+                output: TerminalOutput::new(
+                    render_use_org_updated_output(org.as_str()).with_request_id(request_id),
+                ),
             }),
             OrgEvent::Start
             | OrgEvent::Authenticated

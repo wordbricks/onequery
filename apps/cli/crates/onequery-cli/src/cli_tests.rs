@@ -44,7 +44,7 @@ fn parse_display(args: &[&str]) -> crate::output::CommandOutput {
     let ParseOutcome::Display(display) = parse_outcome(args) else {
         panic!("expected display output");
     };
-    display
+    display.into_inner()
 }
 
 fn rendered_display(args: &[&str]) -> String {
@@ -170,6 +170,7 @@ fn version_output_matches_current_package_version() {
             // Version output is derived from release metadata, so snapshotting it creates
             // avoidable churn whenever the tag changes.
             ParseOutcome::Display(display) => {
+                let display = display.into_inner();
                 assert_eq!(
                     display.lines.join("\n").trim(),
                     format!("{binary_name} {}", env!("CARGO_PKG_VERSION"))

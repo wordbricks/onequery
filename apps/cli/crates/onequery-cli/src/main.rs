@@ -33,24 +33,35 @@ async fn main() {
             *invocation
         }
         Ok(cli::ParseOutcome::Display(display_output)) => {
-            match output::render_output_payload(display_output, fallback_output_mode, stdout_is_tty)
-            {
-                Ok(rendered) => emit_success(rendered),
+            match output::render_output_payload(
+                display_output.into_inner(),
+                fallback_output_mode,
+                stdout_is_tty,
+            ) {
+                Ok(rendered) => {
+                    if let Err(error) = emit_success(rendered) {
+                        exit_for_output_error(error);
+                    }
+                }
                 Err(error) => {
-                    emit_failure(
+                    if let Err(write_error) = emit_failure(
                         &output::render_error(&error, fallback_output_mode),
                         fallback_output_mode,
-                    );
+                    ) {
+                        exit_for_output_error(write_error);
+                    }
                     std::process::exit(error.exit_code());
                 }
             }
             std::process::exit(0);
         }
         Err(error) => {
-            emit_failure(
+            if let Err(write_error) = emit_failure(
                 &output::render_error(&error, fallback_output_mode),
                 fallback_output_mode,
-            );
+            ) {
+                exit_for_output_error(write_error);
+            }
             std::process::exit(error.exit_code());
         }
     };
@@ -62,7 +73,11 @@ async fn main() {
     ) {
         Ok(runtime) => runtime,
         Err(error) => {
-            emit_failure(&output::render_error(&error, output_mode), output_mode);
+            if let Err(write_error) =
+                emit_failure(&output::render_error(&error, output_mode), output_mode)
+            {
+                exit_for_output_error(write_error);
+            }
             std::process::exit(error.exit_code());
         }
     };
@@ -70,62 +85,90 @@ async fn main() {
     match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
             match output::render_output_payload(command_output, output_mode, stdout_is_tty) {
-                Ok(rendered) => emit_success(rendered),
+                Ok(rendered) => {
+                    if let Err(error) = emit_success(rendered) {
+                        exit_for_output_error(error);
+                    }
+                }
                 Err(error) => {
-                    emit_failure(&output::render_error(&error, output_mode), output_mode);
+                    if let Err(write_error) =
+                        emit_failure(&output::render_error(&error, output_mode), output_mode)
+                    {
+                        exit_for_output_error(write_error);
+                    }
                     std::process::exit(error.exit_code());
                 }
             }
             std::process::exit(0);
         }
         Err(error) => {
-            emit_failure(&output::render_error(&error, output_mode), output_mode);
+            if let Err(write_error) =
+                emit_failure(&output::render_error(&error, output_mode), output_mode)
+            {
+                exit_for_output_error(write_error);
+            }
             std::process::exit(error.exit_code());
         }
     }
 }
 
-fn emit_success(rendered: output::RenderedOutput) {
+fn emit_success(rendered: output::RenderedOutput) -> std::io::Result<()> {
     match rendered {
         output::RenderedOutput::Text(rendered) => {
             if !rendered.is_empty() {
-                println!("{rendered}");
+                let mut stdout = std::io::stdout().lock();
+                writeln!(stdout, "{rendered}")?;
             }
+            Ok(())
         }
         output::RenderedOutput::VerbatimText(rendered) => {
             if rendered.is_empty() {
-                return;
+                return Ok(());
             }
 
             let mut stdout = std::io::stdout().lock();
-            stdout
-                .write_all(rendered.as_bytes())
-                .expect("expected stdout to accept rendered command output");
-            stdout.flush().expect("expected stdout flush to succeed");
+            stdout.write_all(rendered.as_bytes())?;
+            stdout.flush()
         }
         output::RenderedOutput::Binary(rendered) => {
             if rendered.is_empty() {
-                return;
+                return Ok(());
             }
 
             let mut stdout = std::io::stdout().lock();
-            stdout
-                .write_all(&rendered)
-                .expect("expected stdout to accept rendered command output");
-            stdout.flush().expect("expected stdout flush to succeed");
+            stdout.write_all(&rendered)?;
+            stdout.flush()
         }
     }
 }
 
-fn emit_failure(rendered: &str, output_mode: output::EffectiveOutputMode) {
+fn emit_failure(rendered: &str, output_mode: output::EffectiveOutputMode) -> std::io::Result<()> {
     if rendered.is_empty() {
-        return;
+        return Ok(());
     }
 
     match output_mode {
-        output::EffectiveOutputMode::Json => println!("{rendered}"),
-        output::EffectiveOutputMode::Text => eprintln!("{rendered}"),
+        output::EffectiveOutputMode::Json => {
+            let mut stdout = std::io::stdout().lock();
+            writeln!(stdout, "{rendered}")
+        }
+        output::EffectiveOutputMode::Text => {
+            let mut stderr = std::io::stderr().lock();
+            writeln!(stderr, "{rendered}")
+        }
     }
+}
+
+fn exit_for_output_error(error: std::io::Error) -> ! {
+    if error.kind() == std::io::ErrorKind::BrokenPipe {
+        std::process::exit(0);
+    }
+
+    let _ = writeln!(
+        std::io::stderr().lock(),
+        "onequery: failed to write output: {error}"
+    );
+    std::process::exit(1);
 }
 
 fn init_tracing(verbose: bool) {

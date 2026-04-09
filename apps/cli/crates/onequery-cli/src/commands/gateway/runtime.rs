@@ -178,14 +178,16 @@ pub(super) fn run_gateway_background(
     let child_pid = child.id();
 
     wait_for_background_runtime_start(
-        state.paths.pid_path.as_path(),
-        state.paths.server_log_path.as_path(),
-        child_pid,
-        &config.server.listen_host,
-        config.server.port,
         &mut child,
-        command_line,
-        retry_command,
+        BackgroundRuntimeStartCheck {
+            pid_path: state.paths.pid_path.as_path(),
+            log_path: state.paths.server_log_path.as_path(),
+            expected_pid: child_pid,
+            listen_host: &config.server.listen_host,
+            listen_port: config.server.port,
+            command_line,
+            retry_command,
+        },
     )?;
 
     let refreshed_state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
@@ -463,23 +465,27 @@ fn configure_background_process(child: &mut ProcessCommand) {
     }
 }
 
-fn wait_for_background_runtime_start(
-    pid_path: &Path,
-    log_path: &Path,
+struct BackgroundRuntimeStartCheck<'a> {
+    pid_path: &'a Path,
+    log_path: &'a Path,
     expected_pid: u32,
-    listen_host: &str,
+    listen_host: &'a str,
     listen_port: u16,
+    command_line: &'a str,
+    retry_command: &'a str,
+}
+
+fn wait_for_background_runtime_start(
     child: &mut Child,
-    command_line: &str,
-    retry_command: &str,
+    check: BackgroundRuntimeStartCheck<'_>,
 ) -> Result<(), CliError> {
     // Comment: background start returns only after the runtime rewrites the pid
     // file with the launched process ID and starts accepting connections, so
     // `gateway start` does not report success before the packaged runtime has
     // actually finished its own bootstrap work.
     for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
-        if read_runtime_pid(pid_path, command_line)? == Some(expected_pid)
-            && runtime_accepting_connections(listen_host, listen_port)
+        if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid)
+            && runtime_accepting_connections(check.listen_host, check.listen_port)
         {
             return Ok(());
         }
@@ -487,23 +493,23 @@ fn wait_for_background_runtime_start(
         if let Some(status) = child.try_wait().map_err(|error| {
             CliError::new(
                 "failed while monitoring self-host background start",
-                command_line,
+                check.command_line,
                 ErrorStage::Internal,
                 error.to_string(),
                 vec![
-                    format!("check log file {}", log_path.display()),
-                    retry_command_hint(retry_command),
+                    format!("check log file {}", check.log_path.display()),
+                    retry_command_hint(check.retry_command),
                 ],
             )
         })? {
             return Err(CliError::new(
                 "self-host server exited during background start",
-                command_line,
+                check.command_line,
                 ErrorStage::Internal,
                 describe_exit_status(status),
                 vec![
-                    format!("check log file {}", log_path.display()),
-                    retry_command_hint(retry_command),
+                    format!("check log file {}", check.log_path.display()),
+                    retry_command_hint(check.retry_command),
                 ],
             ));
         }
@@ -513,34 +519,36 @@ fn wait_for_background_runtime_start(
         ));
     }
 
-    let probe_host = runtime_probe_host(listen_host);
+    let probe_host = runtime_probe_host(check.listen_host);
 
-    if read_runtime_pid(pid_path, command_line)? == Some(expected_pid) {
+    if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid) {
         return Err(CliError::new(
             "self-host server did not report startup",
-            command_line,
+            check.command_line,
             ErrorStage::Internal,
             format!(
-                "{probe_host}:{listen_port} did not accept connections after pid {expected_pid} started"
+                "{probe_host}:{} did not accept connections after pid {} started",
+                check.listen_port, check.expected_pid
             ),
             vec![
-                format!("check log file {}", log_path.display()),
-                retry_command_hint(retry_command),
+                format!("check log file {}", check.log_path.display()),
+                retry_command_hint(check.retry_command),
             ],
         ));
     }
 
     Err(CliError::new(
         "self-host server did not report startup",
-        command_line,
+        check.command_line,
         ErrorStage::Internal,
         format!(
-            "pid file {} did not report pid {expected_pid}",
-            pid_path.display()
+            "pid file {} did not report pid {}",
+            check.pid_path.display(),
+            check.expected_pid
         ),
         vec![
-            format!("check log file {}", log_path.display()),
-            retry_command_hint(retry_command),
+            format!("check log file {}", check.log_path.display()),
+            retry_command_hint(check.retry_command),
         ],
     ))
 }

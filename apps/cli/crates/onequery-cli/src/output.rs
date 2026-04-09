@@ -93,6 +93,23 @@ pub(crate) struct CommandOutput {
     raw_stdout: Option<RawStdout>,
 }
 
+#[derive(Debug)]
+pub(crate) struct TerminalOutput(Box<CommandOutput>);
+
+impl TerminalOutput {
+    pub(crate) fn new(output: CommandOutput) -> Self {
+        Self(Box::new(output))
+    }
+
+    pub(crate) fn into_inner(self) -> CommandOutput {
+        *self.0
+    }
+
+    pub(crate) fn request_id(&self) -> Option<&str> {
+        self.0.request_id.as_deref()
+    }
+}
+
 impl fmt::Debug for CommandOutput {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter

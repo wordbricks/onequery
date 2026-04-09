@@ -193,29 +193,20 @@ fn assemble_paginated_response(
     remaining: Vec<ExecuteSourceApiResponse>,
     slurp: bool,
 ) -> Result<ExecuteSourceApiResponse, CliError> {
-    let mut pages = Vec::with_capacity(remaining.len() + 1);
-    pages.push(first);
-    pages.extend(remaining);
-
-    let last_page = pages
-        .last()
-        .cloned()
-        .expect("expected paginated response pages to be non-empty");
+    let last_page = remaining.last().unwrap_or(&first);
+    let request_id = last_page.request_id.clone();
+    let next_page_token = last_page.next_page_token.clone();
     let body = assemble_paginated_body(
-        pages
-            .iter()
+        std::iter::once(&first)
+            .chain(remaining.iter())
             .map(|response| &response.body)
             .collect::<Vec<_>>(),
         slurp,
     )?;
-
-    let mut response = pages
-        .into_iter()
-        .next()
-        .expect("expected paginated response pages to be non-empty");
+    let mut response = first;
     response.body = body;
-    response.request_id = last_page.request_id;
-    response.next_page_token = last_page.next_page_token;
+    response.request_id = request_id;
+    response.next_page_token = next_page_token;
     Ok(response)
 }
 

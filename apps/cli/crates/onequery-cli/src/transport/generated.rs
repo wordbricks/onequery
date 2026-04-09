@@ -5,6 +5,7 @@
 // rather than patching emitted files under OUT_DIR.
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::enum_variant_names)]
 #![allow(clippy::uninlined_format_args)]
 
 include!(concat!(env!("OUT_DIR"), "/_connectrpc.rs"));

@@ -14,6 +14,7 @@ use crate::cli::QuerySubcommand;
 use crate::cli::QueryValidateArgs;
 use crate::cli::ReadArgs;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::transport::query::QueryRequestPayload;
 use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
@@ -108,8 +109,7 @@ pub(super) struct ValidateQueryRequest {
 
 #[derive(Debug)]
 struct CompletedState {
-    output: CommandOutput,
-    request_id: Option<String>,
+    output: TerminalOutput,
 }
 
 #[derive(Debug)]
@@ -243,9 +243,9 @@ where
             let final_state = run_query_workflow(args, context, runtime).await?;
 
             match final_state {
-                QueryTerminalState::Completed(CompletedState { output, request_id }) => {
-                    emit_request_id_if_verbose(runtime, context, request_id.as_deref());
-                    Ok(output.with_request_id(request_id))
+                QueryTerminalState::Completed(CompletedState { output }) => {
+                    emit_request_id_if_verbose(runtime, context, output.request_id());
+                    Ok(output.into_inner())
                 }
                 QueryTerminalState::NeedsReauth(FailedState { error })
                 | QueryTerminalState::Failed(FailedState { error }) => Err(error),
@@ -255,9 +255,9 @@ where
             let final_state = run_query_validate_workflow(args, context, runtime).await?;
 
             match final_state {
-                QueryValidateTerminalState::Completed(CompletedState { output, request_id }) => {
-                    emit_request_id_if_verbose(runtime, context, request_id.as_deref());
-                    Ok(output.with_request_id(request_id))
+                QueryValidateTerminalState::Completed(CompletedState { output }) => {
+                    emit_request_id_if_verbose(runtime, context, output.request_id());
+                    Ok(output.into_inner())
                 }
                 QueryValidateTerminalState::NeedsReauth(FailedState { error })
                 | QueryValidateTerminalState::Failed(FailedState { error }) => Err(error),

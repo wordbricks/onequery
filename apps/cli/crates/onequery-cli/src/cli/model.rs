@@ -1,6 +1,6 @@
 use crate::config::RawCliConfigOverrides;
-use crate::output::CommandOutput;
 use crate::output::EffectiveOutputMode;
+use crate::output::TerminalOutput;
 
 use super::args::AuthSessionSubcommand;
 use super::args::AuthSubcommand;
@@ -15,7 +15,7 @@ use super::args::UseArgs;
 #[derive(Debug)]
 pub(crate) enum ParseOutcome {
     Invocation(Box<Invocation>),
-    Display(CommandOutput),
+    Display(TerminalOutput),
 }
 
 #[derive(Debug, Clone)]

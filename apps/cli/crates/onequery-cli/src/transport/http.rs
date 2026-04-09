@@ -72,7 +72,6 @@ pub(crate) struct ApiValidationIssue {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum TransportFailureKind {
     SendRequest,
-    ReadResponseBody,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
