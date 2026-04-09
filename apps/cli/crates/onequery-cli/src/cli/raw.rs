@@ -14,7 +14,9 @@ use super::args::SourceSubcommand;
 use super::args::UseArgs;
 use super::model::Command;
 use super::model::ConfigCommand;
-use super::model::ServeCommand;
+use super::model::GatewayCommand;
+
+const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
 
 #[derive(Debug, Clone, Parser)]
 #[command(
@@ -112,11 +114,14 @@ pub(super) enum RawCommand {
     },
     /// Restore a self-host backup archive into the runtime directories.
     Restore(RestoreArgs),
-    /// Bootstrap or inspect the self-host runtime lifecycle surface.
-    Serve {
+    /// Run the self-host gateway in foreground by default or manage the background lifecycle.
+    #[command(after_help = GATEWAY_AFTER_HELP)]
+    Gateway {
         #[command(subcommand)]
-        action: Option<ServeSubcommand>,
+        action: Option<GatewaySubcommand>,
     },
+    /// Upgrade this published CLI installation in place.
+    Upgrade,
     /// Load provider-specific skill content for non-SQL sources.
     Use(UseArgs),
     /// Inspect local CLI state and diagnostics.
@@ -148,14 +153,14 @@ pub(super) enum ConfigSetSubcommand {
 }
 
 #[derive(Debug, Clone, Subcommand, Copy, Eq, PartialEq)]
-pub(super) enum ServeSubcommand {
-    /// Bootstrap the self-host runtime foundation and prepare to launch.
+pub(super) enum GatewaySubcommand {
+    /// Start the self-host gateway in background.
     Start,
-    /// Stop the self-host runtime if a managed process is present.
+    /// Stop the self-host gateway if a managed process is present.
     Stop,
-    /// Show the current self-host runtime state and derived paths.
+    /// Show the current self-host gateway state and derived paths.
     Status,
-    /// Show the current self-host server log path and any available preview.
+    /// Show the current self-host gateway log path and any available preview.
     Logs,
 }
 
@@ -169,7 +174,8 @@ impl From<RawCommand> for Command {
             RawCommand::Source { action } => Self::Source(action),
             RawCommand::Query { action } => Self::Query(action),
             RawCommand::Restore(args) => Self::Restore(args),
-            RawCommand::Serve { action } => Self::Serve(action.into()),
+            RawCommand::Gateway { action } => Self::Gateway(action.into()),
+            RawCommand::Upgrade => Self::Upgrade,
             RawCommand::Use(args) => Self::Use(args),
             RawCommand::Debug { action } => Self::Debug(action),
         }
@@ -192,14 +198,14 @@ impl From<ConfigSetSubcommand> for ConfigCommand {
     }
 }
 
-impl From<Option<ServeSubcommand>> for ServeCommand {
-    fn from(action: Option<ServeSubcommand>) -> Self {
+impl From<Option<GatewaySubcommand>> for GatewayCommand {
+    fn from(action: Option<GatewaySubcommand>) -> Self {
         match action {
-            None => Self::Root,
-            Some(ServeSubcommand::Start) => Self::Start,
-            Some(ServeSubcommand::Stop) => Self::Stop,
-            Some(ServeSubcommand::Status) => Self::Status,
-            Some(ServeSubcommand::Logs) => Self::Logs,
+            None => Self::Foreground,
+            Some(GatewaySubcommand::Start) => Self::Start,
+            Some(GatewaySubcommand::Stop) => Self::Stop,
+            Some(GatewaySubcommand::Status) => Self::Status,
+            Some(GatewaySubcommand::Logs) => Self::Logs,
         }
     }
 }

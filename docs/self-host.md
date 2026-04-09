@@ -15,7 +15,7 @@ The hosted install script is for macOS and Linux. It downloads a managed
 official Node.js 24.x runtime under the OneQuery install directory when `node`
 24+ is not already available. Direct `bun install -g`, `npm install -g`,
 `bunx`, and `npx` flows still require Node.js 22+ on `PATH` or
-`ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve start`.
+`ONEQUERY_SERVER_JS_RUNTIME` for the packaged `onequery gateway` commands.
 
 Install the CLI:
 
@@ -42,15 +42,24 @@ bunx @onequery/cli --help
 npx @onequery/cli --help
 ```
 
-Published `onequery serve` packages include the bundled self-host runtime and
-launch it with Node.js. Bun is not required on `PATH`. `onequery serve start`
-is the self-host launch entrypoint; repo-local workspace development keeps using
-`bun dev` instead.
+Published `onequery gateway` packages include the bundled self-host runtime and
+launch it with Node.js. Bun is not required on `PATH`. `onequery gateway` runs
+the server in foreground, `onequery gateway start` runs the same server in
+background, and repo-local workspace development keeps using `bun dev` instead.
 
-Start the server:
+After a published install, `onequery upgrade` upgrades the CLI in place when it
+can map the current binary back to the original installer family.
+
+Start the server in background:
 
 ```bash
-onequery serve start
+onequery gateway start
+```
+
+Or keep it attached to your terminal in foreground:
+
+```bash
+onequery gateway
 ```
 
 Then open `http://127.0.0.1:5656` and complete the first-user bootstrap.
@@ -118,9 +127,9 @@ Files under those roots:
 - `run/server.lock`
 - `run/launch.json`
 
-The CLI creates these paths on first `onequery serve start`. `run/launch.json` is a
-resolved runtime artifact written by the CLI; it is not a user-edited config
-file.
+The CLI creates these paths on first `onequery gateway` or
+`onequery gateway start`. `run/launch.json` is a resolved runtime artifact
+written by the CLI; it is not a user-edited config file.
 
 ## Reverse Proxy And Public Origin
 
@@ -149,11 +158,12 @@ Self-host currently supports PGlite only:
 
 - database path: `pglite/onequery/` under the OneQuery data root
 - no external database dependency
-- `onequery serve start` ignores ambient `DATABASE_URL`
+- `onequery gateway` and `onequery gateway start` ignore ambient `DATABASE_URL`
 
 Runtime behavior:
 
-- `onequery serve start` applies the checked-in Drizzle migrations on startup.
+- `onequery gateway` and `onequery gateway start` apply the checked-in Drizzle
+  migrations on startup.
 - startup fails closed if migration application fails.
 - if explicit external Postgres support is added later, it should be modeled in
   self-host config rather than ambient env.
@@ -167,8 +177,8 @@ scripts:
   provisions shared local databases/extensions only
 - `bun dev` starts workspace-dev and the packaged runtime applies the application
   schema on startup
-- `onequery serve start` starts self-host and the packaged runtime applies the application
-  schema on startup
+- `onequery gateway` and `onequery gateway start` start self-host and the
+  packaged runtime applies the application schema on startup
 
 ## SMTP And Manual-Link Fallback
 
@@ -196,13 +206,14 @@ password = "replace-me"
 
 ## Operations
 
-Serve lifecycle:
+Gateway lifecycle:
 
 ```bash
-onequery serve start
-onequery serve status
-onequery serve logs
-onequery serve stop
+onequery gateway
+onequery gateway start
+onequery gateway status
+onequery gateway logs
+onequery gateway stop
 ```
 
 Backups:
@@ -227,10 +238,10 @@ Rules:
 Upgrade flow:
 
 ```bash
-onequery serve stop
+onequery gateway stop
 onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
 curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
-onequery serve start
+onequery gateway start
 ```
 
 The hosted installer refreshes the stable release assets in place. `npx`/`bunx`
@@ -259,5 +270,5 @@ Important covered surfaces:
   [`apps/cli/crates/onequery-cli/src/commands/backup.rs`](../apps/cli/crates/onequery-cli/src/commands/backup.rs)
 - restore archive coverage:
   [`apps/cli/crates/onequery-cli/src/commands/restore.rs`](../apps/cli/crates/onequery-cli/src/commands/restore.rs)
-- serve status/stop command coverage:
-  [`apps/cli/crates/onequery-cli/src/commands/serve.rs`](../apps/cli/crates/onequery-cli/src/commands/serve.rs)
+- gateway status/stop command coverage:
+  [`apps/cli/crates/onequery-cli/src/commands/gateway/mod.rs`](../apps/cli/crates/onequery-cli/src/commands/gateway/mod.rs)

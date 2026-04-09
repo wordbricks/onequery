@@ -20,6 +20,9 @@ npm install -g @onequery/cli
 bun add -g @onequery/cli
 ```
 
+After a published install, run `onequery upgrade` to update in place with the
+same installer family when the CLI can detect it.
+
 One-off execution also works without a global install:
 
 ```bash
@@ -30,7 +33,7 @@ bunx @onequery/cli --help
 On macOS and Linux, the hosted install script downloads a managed official
 Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
 not already available. Direct `npm`/`bun` installs still require Node.js 22+
-on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery serve start`.
+on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery gateway start`.
 
 ## Quick Start
 
@@ -38,7 +41,7 @@ The default OSS path is to self-host OneQuery locally or on your own infrastruct
 
 ```bash
 # Start OneQuery
-onequery serve start
+onequery gateway start
 ```
 
 Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and log in from the CLI. Local self-host defaults to that server URL already:
@@ -75,7 +78,7 @@ onequery query execute --source <source-key> --sql "select 1"
 
 ## What it does
 
-- **Self-host the full product** — run the API and web UI on your own infrastructure with `onequery serve start`
+- **Self-host the full product** — run the API and web UI on your own infrastructure with `onequery gateway start`
 - **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
 - **Manage credentials centrally** — encrypted credential storage with organization-level access control
 - **Enforce query safety** — read-only validation, rate limiting, and single-statement enforcement
@@ -190,7 +193,7 @@ Default local ports:
 - Bun API listener: `http://127.0.0.1:4555`
 - self-host bundled runtime: `http://127.0.0.1:5656`
 
-Use `bun dev` for workspace development only. Use `onequery serve start` for the
+Use `bun dev` for workspace development only. Use `onequery gateway start` for the
 bundled self-host runtime.
 
 **Database commands:**

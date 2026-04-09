@@ -15,6 +15,7 @@ use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
 use super::Command;
 use super::ConfigCommand;
+use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
 use super::ParseOutcome;
@@ -22,7 +23,6 @@ use super::QueryInputArgs;
 use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
-use super::ServeCommand;
 use super::UseSource;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
@@ -76,8 +76,13 @@ fn use_help_output_snapshot_targets_use_surface() {
 }
 
 #[test]
-fn serve_help_output_snapshot_targets_serve_surface() {
-    assert_snapshot!(rendered_display(&["onequery", "serve", "--help"]));
+fn gateway_help_output_snapshot_targets_gateway_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "gateway", "--help"]));
+}
+
+#[test]
+fn upgrade_help_output_snapshot_targets_upgrade_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "upgrade", "--help"]));
 }
 
 #[test]
@@ -188,18 +193,29 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
 }
 
 #[test]
-fn parse_invocation_accepts_serve_root_and_status_subcommands() {
+fn parse_invocation_accepts_gateway_foreground_start_and_status_subcommands() {
     for (args, expected) in [
-        (&["onequery", "serve"][..], ServeCommand::Root),
-        (&["onequery", "serve", "status"][..], ServeCommand::Status),
+        (&["onequery", "gateway"][..], GatewayCommand::Foreground),
+        (&["onequery", "gateway", "start"][..], GatewayCommand::Start),
+        (
+            &["onequery", "gateway", "status"][..],
+            GatewayCommand::Status,
+        ),
     ] {
         let invocation = parse_invocation(args);
 
         assert!(matches!(
             invocation.command,
-            Command::Serve(command) if command == expected
+            Command::Gateway(command) if command == expected
         ));
     }
+}
+
+#[test]
+fn parse_invocation_accepts_upgrade_command() {
+    let invocation = parse_invocation(&["onequery", "upgrade"]);
+
+    assert!(matches!(invocation.command, Command::Upgrade));
 }
 
 #[test]

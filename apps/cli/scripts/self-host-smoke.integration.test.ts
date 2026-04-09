@@ -239,6 +239,34 @@ function runPackagedCliJsonCommand(input: {
   stderr: string;
   stdout: string;
 } {
+  const result = runPackagedCliCommand(input);
+
+  if (result.status !== 0) {
+    throw new Error(
+      `CLI command failed (${input.args.join(" ")}):\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`
+    );
+  }
+
+  return {
+    output: JSON.parse(result.stdout) as {
+      data: unknown;
+      ok: boolean;
+      requestId?: string;
+    },
+    stderr: result.stderr,
+    stdout: result.stdout,
+  };
+}
+
+function runPackagedCliCommand(input: {
+  args: string[];
+  env: Record<string, string>;
+  stagedBundleRoot: string;
+}): {
+  status: number | null;
+  stderr: string;
+  stdout: string;
+} {
   const cliPath = resolveStagedCliPath(input.stagedBundleRoot);
   const result = spawnSync(cliPath, ["--output", "json", ...input.args], {
     cwd: cliRootDir,
@@ -248,18 +276,8 @@ function runPackagedCliJsonCommand(input: {
   const stdout = result.stdout ?? "";
   const stderr = result.stderr ?? "";
 
-  if (result.status !== 0) {
-    throw new Error(
-      `CLI command failed (${input.args.join(" ")}):\nstdout:\n${stdout}\nstderr:\n${stderr}`
-    );
-  }
-
   return {
-    output: JSON.parse(stdout) as {
-      data: unknown;
-      ok: boolean;
-      requestId?: string;
-    },
+    status: result.status,
     stderr,
     stdout,
   };
@@ -297,6 +315,34 @@ async function waitForBootstrap(baseUrl: string): Promise<Response> {
   );
 }
 
+async function waitForGatewayShutdown(baseUrl: string): Promise<void> {
+  const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
+  let lastError: unknown = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${baseUrl}/api/bootstrap`, {
+        headers: {
+          accept: "application/json",
+        },
+      });
+      lastError = new Error(
+        `gateway still responded with ${response.status}: ${await response.text()}`
+      );
+    } catch {
+      return;
+    }
+
+    await Bun.sleep(250);
+  }
+
+  throw new Error(
+    `timed out waiting for self-host shutdown: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`
+  );
+}
+
 async function waitForExit(
   child: ReturnType<typeof spawn>,
   timeoutMs: number
@@ -313,15 +359,19 @@ async function waitForExit(
   return Promise.race([exitPromise, timeoutPromise]);
 }
 
-async function startServeProcess(input: {
+async function startGatewayProcess(input: {
   env: Record<string, string>;
   stagedBundleRoot: string;
 }) {
-  const child = spawn(resolveStagedCliPath(input.stagedBundleRoot), ["serve"], {
-    cwd: cliRootDir,
-    env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
-    stdio: "pipe",
-  });
+  const child = spawn(
+    resolveStagedCliPath(input.stagedBundleRoot),
+    ["gateway"],
+    {
+      cwd: cliRootDir,
+      env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
+      stdio: "pipe",
+    }
+  );
 
   const output = collectProcessOutput(child);
 
@@ -331,7 +381,7 @@ async function startServeProcess(input: {
   };
 }
 
-async function stopServeProcess(input: {
+async function stopGatewayProcess(input: {
   child: ReturnType<typeof spawn>;
   env: Record<string, string>;
   homeDir: string;
@@ -339,7 +389,7 @@ async function stopServeProcess(input: {
   stagedBundleRoot: string;
 }): Promise<void> {
   const stagedCliPath = resolveStagedCliPath(input.stagedBundleRoot);
-  const stopResult = spawnSync(stagedCliPath, ["serve", "stop"], {
+  const stopResult = spawnSync(stagedCliPath, ["gateway", "stop"], {
     cwd: cliRootDir,
     encoding: "utf8",
     env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),
@@ -362,7 +412,7 @@ async function stopServeProcess(input: {
     }
 
     // Comment: the packaged self-host runtime can finish a managed SIGTERM shutdown
-    // and clear pid/lock markers before the foreground `onequery serve` process
+    // and clear pid/lock markers before the foreground `onequery gateway` process
     // reports a nonzero exit. Smoke cleanup only needs to prove the runtime is
     // no longer live for the temp home directory.
     if (cleanedUp) {
@@ -370,12 +420,12 @@ async function stopServeProcess(input: {
     }
 
     throw new Error(
-      `serve stop exited with status ${stopResult.status} and runtime markers remained`
+      `gateway stop exited with status ${stopResult.status} and runtime markers remained`
     );
   } catch (error) {
     input.child.kill("SIGKILL");
     throw new Error(
-      `self-host serve process failed to stop cleanly.\nstop output:\n${stopOutput}\nserve output:\n${input.output.read()}\n${
+      `self-host gateway process failed to stop cleanly.\nstop output:\n${stopOutput}\ngateway output:\n${input.output.read()}\n${
         error instanceof Error ? error.message : String(error)
       }`,
       { cause: error }
@@ -384,13 +434,106 @@ async function stopServeProcess(input: {
 }
 
 describe("CLI self-host smoke", () => {
-  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged serve path", async () => {
+  it("starts and stops the packaged gateway in background", async () => {
+    const { baseUrl, env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-background-gateway-home-");
+    const pidPath = join(homeDir, "data", "run", "server.pid");
+    const lockPath = join(homeDir, "data", "run", "server.lock");
+
+    writeSelfHostConfig(homeDir, port);
+
+    try {
+      const start = runPackagedCliJsonCommand({
+        args: ["gateway", "start"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(start.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-start",
+          processStarted: true,
+          runtimeState: {
+            running: true,
+            status: "running",
+          },
+        },
+      });
+
+      await waitForBootstrap(baseUrl);
+
+      const statusWhileRunning = runPackagedCliJsonCommand({
+        args: ["gateway", "status"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(statusWhileRunning.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-status",
+          runtimeState: {
+            running: true,
+            status: "running",
+          },
+        },
+      });
+
+      const stop = runPackagedCliJsonCommand({
+        args: ["gateway", "stop"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(stop.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-stop",
+          stopIssued: true,
+          runtimeState: {
+            running: false,
+            status: "not_running",
+          },
+        },
+      });
+
+      await waitForGatewayShutdown(baseUrl);
+      expect(existsSync(pidPath)).toBe(false);
+      expect(existsSync(lockPath)).toBe(false);
+
+      const statusAfterStop = runPackagedCliJsonCommand({
+        args: ["gateway", "status"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(statusAfterStop.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-status",
+          runtimeState: {
+            running: false,
+            status: "not_running",
+          },
+        },
+      });
+    } finally {
+      runPackagedCliCommand({
+        args: ["gateway", "stop"],
+        env,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged gateway path", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-self-host-home-");
 
     writeSelfHostConfig(homeDir, port);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });
@@ -593,7 +736,7 @@ describe("CLI self-host smoke", () => {
         { cause: error }
       );
     } finally {
-      await stopServeProcess({
+      await stopGatewayProcess({
         child: handle.child,
         env,
         homeDir,
@@ -613,7 +756,7 @@ describe("CLI self-host smoke", () => {
 
     writeSelfHostConfig(homeDir, port);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });
@@ -891,7 +1034,7 @@ describe("CLI self-host smoke", () => {
         { cause: error }
       );
     } finally {
-      await stopServeProcess({
+      await stopGatewayProcess({
         child: handle.child,
         env,
         homeDir,
@@ -912,7 +1055,7 @@ describe("CLI self-host smoke", () => {
     writeSelfHostConfig(homeDir, port);
     writeInvalidSecrets(homeDir);
 
-    const handle = await startServeProcess({
+    const handle = await startGatewayProcess({
       env,
       stagedBundleRoot,
     });

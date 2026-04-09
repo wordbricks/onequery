@@ -1,17 +1,10 @@
 ---
-source: crates/onequery-cli/src/cli.rs
-expression: rendered
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"upgrade\", \"--help\"])"
 ---
-Bootstrap or inspect the self-host runtime lifecycle surface
+Upgrade this published CLI installation in place
 
-Usage: onequery serve [OPTIONS] [COMMAND]
-
-Commands:
-  start   Bootstrap the self-host runtime foundation and prepare to launch
-  stop    Stop the self-host runtime if a managed process is present
-  status  Show the current self-host runtime state and derived paths
-  logs    Show the current self-host server log path and any available preview
-  help    Print this message or the help of the given subcommand(s)
+Usage: onequery upgrade [OPTIONS]
 
 Options:
   -h, --help     Print help

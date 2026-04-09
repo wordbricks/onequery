@@ -1,0 +1,7 @@
+---
+source: crates/onequery-cli/src/commands/upgrade.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Upgrade completed.
+Installer: Bun
+Command: bun install -g @onequery/cli@latest

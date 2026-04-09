@@ -1,5 +1,6 @@
 <!--
 Do not include private or machine-specific details in the PR, such as a local username.
+Be concise.
 -->
 
 ## One-Line Summary

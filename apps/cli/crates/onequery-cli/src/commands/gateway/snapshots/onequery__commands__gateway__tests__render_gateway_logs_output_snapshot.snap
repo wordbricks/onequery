@@ -1,8 +1,8 @@
 ---
-source: crates/onequery-cli/src/commands/serve/tests.rs
+source: crates/onequery-cli/src/commands/gateway/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-Serve logs
+Gateway logs
 Log path: /tmp/onequery/data/logs/server.log
 Log file present: yes
 Preview:

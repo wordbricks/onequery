@@ -1,0 +1,29 @@
+---
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"gateway\", \"--help\"])"
+---
+Run the self-host gateway in foreground by default or manage the background lifecycle
+
+Usage: onequery gateway [OPTIONS] [COMMAND]
+
+Commands:
+  start   Start the self-host gateway in background
+  stop    Stop the self-host gateway if a managed process is present
+  status  Show the current self-host gateway state and derived paths
+  logs    Show the current self-host gateway log path and any available preview
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+Global Options:
+      --org <ORG_SLUG>           Override the active org for this invocation
+  -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
+      --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
+      --timeout <SECONDS>        Override the request timeout in seconds for this invocation
+      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --verbose                  Emit workflow progress and retry tracing to stderr
+
+Without a subcommand, `onequery gateway` runs in foreground.
+Use `onequery gateway start` to run the managed gateway in background.

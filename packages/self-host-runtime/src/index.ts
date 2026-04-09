@@ -37,7 +37,7 @@ const RUNTIME_LOG_PREFIX = "[onequery-server]";
 type StartedServer = {
   hostname: string;
   port: number;
-  stop(closeActiveConnections?: boolean): void;
+  stop(closeActiveConnections?: boolean): Promise<void> | void;
 };
 
 type LifecycleLogWriter = {
@@ -88,7 +88,9 @@ const defaultStartServerDependencies: StartServerDependencies = {
       hostname: server.hostname ?? options.hostname,
       port: server.port ?? options.port,
       stop(closeActiveConnections) {
-        void server.stop(closeActiveConnections);
+        return Promise.resolve(server.stop(closeActiveConnections)).then(
+          () => undefined
+        );
       },
     };
   },

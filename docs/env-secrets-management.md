@@ -3,7 +3,7 @@
 OneQuery now has two distinct config owners:
 
 - `workspace-dev` for `bun dev`
-- `self-host` for `onequery serve`
+- `self-host` for `onequery gateway`
 
 The repo does not use a generated env-shaped local config file anymore, and
 startup does not round-trip config through committed env-shaped files.
@@ -59,7 +59,7 @@ Self-host is owned by the Rust CLI, not by the repo-local dev resolver:
 - `run/launch.json`: resolved startup contract written by the CLI
 - `apps/cli/.../config/self_host.rs`: defaults, validation, and path rules
 
-`onequery serve` uses this profile only.
+`onequery gateway` uses this profile only.
 
 Overlapping secret keys stay aligned with workspace-dev while values stay
 independent:
@@ -94,13 +94,13 @@ self-host/config.toml + self-host/secrets.toml
   infra. It does not apply the application schema.
 - `bun dev` reads repo-local workspace config and keeps browser/API listeners
   split on purpose. Its packaged runtime applies the application schema on startup.
-- `onequery serve` ignores `onequery.dev.toml` and starts from the resolved
+- `onequery gateway` ignores `onequery.dev.toml` and starts from the resolved
   self-host launch contract.
 - `publicOrigin` is the canonical public URL. Do not introduce separate public
   URL aliases alongside it.
 - `DATABASE_URL` is a projection for consumers that need it. It is not the
   authored source of truth for workspace dev.
-- `onequery serve` does not support ambient `DATABASE_URL`; self-host storage is
+- `onequery gateway` does not support ambient `DATABASE_URL`; self-host storage is
   currently the bundled PGlite runtime only.
 - Optional secrets for integrations can stay unset until you need them locally.
 
@@ -114,11 +114,11 @@ bun run dev:setup
 bun dev
 
 # Start the packaged self-host runtime from the Rust-owned config roots
-onequery serve
+onequery gateway
 ```
 
 For direct CLI development without a global install:
 
 ```bash
-cargo run --manifest-path apps/cli/Cargo.toml --bin onequery -- serve
+cargo run --manifest-path apps/cli/Cargo.toml --bin onequery -- gateway
 ```

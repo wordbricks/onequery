@@ -3,15 +3,16 @@ mod auth_session;
 mod backup;
 mod config_cmd;
 mod debug;
+mod gateway;
 mod json_input;
 mod org;
 mod query;
 mod restore;
-mod serve;
 mod source;
 mod source_connect;
 #[cfg(test)]
 pub(crate) mod test_support;
+mod upgrade;
 mod use_cmd;
 
 use crate::cli::Command;
@@ -233,7 +234,10 @@ where
         Command::Source(source_command) => source::execute(&source_command, context, runtime).await,
         Command::Query(query_command) => query::execute(query_command, context, runtime).await,
         Command::Restore(restore_args) => restore::execute(&restore_args, context, runtime).await,
-        Command::Serve(serve_command) => serve::execute(serve_command, context, runtime).await,
+        Command::Gateway(gateway_command) => {
+            gateway::execute(gateway_command, context, runtime).await
+        }
+        Command::Upgrade => upgrade::execute(context, runtime).await,
         Command::Use(use_args) => use_cmd::execute(&use_args, context, runtime).await,
         Command::Debug(debug_command) => debug::execute(&debug_command, context, runtime).await,
     }
@@ -250,7 +254,7 @@ pub(crate) fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(
         ErrorStage::Internal,
         "the published self-host runtime currently supports macOS, Linux, and Windows".to_owned(),
         vec![
-            "run onequery serve, backup, and restore on macOS, Linux, or Windows".to_owned(),
+            "run onequery gateway, backup, and restore on macOS, Linux, or Windows".to_owned(),
             "use a supported host and point remote clients at that server".to_owned(),
         ],
     ))
