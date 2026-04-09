@@ -20,7 +20,7 @@ official Node.js 24.x runtime under the OneQuery install directory when `node`
 Install the CLI:
 
 ```bash
-curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+curl -fsSL https://onequery.dev/install.sh | sh
 ```
 
 Or install it with Homebrew:
@@ -240,7 +240,7 @@ Upgrade flow:
 ```bash
 onequery gateway stop
 onequery backup --include-secrets --archive-path ./pre-upgrade.tar.gz
-curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+curl -fsSL https://onequery.dev/install.sh | sh
 onequery gateway start
 ```
 

@@ -8,7 +8,7 @@ Install the published CLI with whichever flow fits your environment:
 
 ```bash
 # Install script (macOS/Linux, self-host friendly)
-curl -fsSL https://onequery.wordbricks.ai/install.sh | sh
+curl -fsSL https://onequery.dev/install.sh | sh
 
 # Homebrew
 brew install wordbricks/tap/onequery

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
-    "build": "bunx --bun vite build",
+    "build": "bun run --cwd ../../packages/self-host-runtime build && bunx --bun vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
