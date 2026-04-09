@@ -498,10 +498,10 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### CLI server / proto
 
-- [ ] `DescribeSourceApi` rejects missing org/source access.
-- [ ] `ExecuteSourceApi` rejects unsupported operations and invalid headers.
-- [ ] `descriptor_version` mismatch returns a deterministic invalid-request or failed-precondition error.
-- [ ] pagination tokens round-trip only for the same normalized request.
+- [x] `DescribeSourceApi` rejects missing org/source access.
+- [x] `ExecuteSourceApi` rejects unsupported operations and invalid headers.
+- [x] `descriptor_version` mismatch returns a deterministic invalid-request or failed-precondition error.
+- [x] pagination tokens round-trip only for the same normalized request.
 
 ### Source-api domain
 

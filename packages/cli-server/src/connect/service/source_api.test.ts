@@ -261,6 +261,62 @@ describe("source api connect service", () => {
     ]);
   });
 
+  it("rejects describe when org access cannot be resolved", async () => {
+    const harness = createHarness();
+    harness.requestContext.requireAuthorizedOrg.mockRejectedValue(
+      new ConnectError("Organization not found", Code.NotFound)
+    );
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expect(
+      harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.NotFound);
+      expect((error as ConnectError).message).toContain(
+        "Organization not found"
+      );
+      return true;
+    });
+
+    expect(harness.dependencies.runCliLoadSourceEffect).not.toHaveBeenCalled();
+    expect(harness.dependencies.describeSourceApi).not.toHaveBeenCalled();
+  });
+
+  it("rejects describe when the source is not accessible in the org", async () => {
+    const harness = createHarness();
+    harness.dependencies.runCliLoadSourceEffect.mockResolvedValue({
+      kind: "not_found",
+    });
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expect(
+      harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.NotFound);
+      expect((error as ConnectError).message).toContain(
+        'no source named "github-prod" exists in org "acme"'
+      );
+      return true;
+    });
+
+    expect(
+      harness.dependencies.prepareDataSourceCredentials
+    ).not.toHaveBeenCalled();
+    expect(harness.dependencies.describeSourceApi).not.toHaveBeenCalled();
+  });
+
   it("executes the source API through the Connect handler", async () => {
     const harness = createHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -366,6 +422,68 @@ describe("source api connect service", () => {
       case: "text",
       value: "ok",
     });
+  });
+
+  it("rejects unsupported operations as invalid arguments", async () => {
+    const harness = createHarness();
+    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
+      new Error("Unsupported source API operation: mutate")
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      operation: "mutate",
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.InvalidArgument);
+      expect((error as ConnectError).message).toContain(
+        "Unsupported source API operation: mutate"
+      );
+      return true;
+    });
+
+    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
+    expect(harness.adapterExecute).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid request headers as invalid arguments", async () => {
+    const harness = createHarness();
+    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
+      new Error("Unsupported request header: authorization")
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      headers: [
+        {
+          name: "authorization",
+          value: "Bearer bad",
+        },
+      ],
+      operation: "fetch",
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.InvalidArgument);
+      expect((error as ConnectError).message).toContain(
+        "Unsupported request header: authorization"
+      );
+      return true;
+    });
+
+    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
+    expect(harness.adapterExecute).not.toHaveBeenCalled();
   });
 
   it("maps descriptor version mismatches to failed precondition", async () => {
