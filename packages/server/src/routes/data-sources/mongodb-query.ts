@@ -1,190 +1,59 @@
-import { zValidator } from "@hono/zod-validator";
+import type { MongoDBCredentials } from "@onequery/db/server";
+import { isMongoCredentials } from "@onequery/db/server";
+
+import type { MongoDbSourceApiRequest } from "../../source-api/adapters/mongodb";
 import {
-  and,
-  CredentialsSchema,
-  eq,
-  getDatabaseSchema,
-  isMongoCredentials,
-} from "@onequery/db/server";
-import { Hono } from "hono";
-import { z } from "zod";
+  MongoDbInvalidRequestError,
+  mongodbSourceApiOperationSchema,
+  parseMongoDbProviderRouteRequest,
+  requestMongoDbSourceApi,
+} from "../../source-api/adapters/mongodb";
+import { createProviderRoute } from "./create-provider-route";
 
-import type { SessionVariables } from "../../middleware/session";
-import { zodProblemHook } from "../../problem-details/zod-problem-hook";
-import type { ServerRuntimeVariables } from "../../runtime-context";
-import { decryptCredentialsObject } from "../../services/crypto/credential-encryption";
-import {
-  findMongoDocuments,
-  listMongoCollections,
-  listMongoDatabases,
-} from "../../services/mongodb/relay";
-import {
-  createCredentialTypeQueryError,
-  createPrefixedQueryError,
-} from "./query-errors";
-import { resolveAccessibleOrganizationId } from "./query-organization";
-import {
-  createProviderQuerySchema,
-  parseProviderRequest,
-} from "./query-validation";
-
-const methodSchema = z.enum([
-  "list_databases",
-  "list_collections",
-  "find_documents",
-]);
-
-const mongodbQuerySchema = createProviderQuerySchema(methodSchema);
-
-const listCollectionsRequestSchema = z.object({
-  database: z.string().min(1).optional(),
-});
-
-const findDocumentsRequestSchema = z.object({
-  collection: z.string().min(1),
-  database: z.string().min(1).optional(),
-  filter: z.record(z.string(), z.unknown()).optional(),
-  limit: z.number().int().optional(),
-  maxTimeMs: z.number().int().optional(),
-  projection: z.record(z.string(), z.unknown()).optional(),
-  skip: z.number().int().optional(),
-  sort: z.record(z.string(), z.unknown()).optional(),
-});
-
-export const dataSourcesMongoDbQueryRoute = new Hono<{
-  Variables: ServerRuntimeVariables & SessionVariables;
-}>().post(
-  "/mongodb/query",
-  zValidator("json", mongodbQuerySchema, zodProblemHook()),
-  async (c) => {
-    const input = c.req.valid("json");
-    const db = c.var.storage.db;
-    const { dataSources } = getDatabaseSchema(db);
-    const organizationAccess = await resolveAccessibleOrganizationId(
-      c,
-      db,
-      input
-    );
-    if (!organizationAccess.ok) {
-      return organizationAccess.response;
-    }
-    const { organizationId } = organizationAccess;
-
-    const mongodbDataSources = await db.query.dataSources.findMany({
-      where: and(
-        eq(dataSources.organizationId, organizationId),
-        eq(dataSources.provider, "mongodb"),
-        eq(dataSources.status, "active")
-      ),
-    });
-    if (mongodbDataSources.length === 0) {
-      return c.json({ error: "Active MongoDB data source not found" }, 404);
-    }
-
-    const defaultDataSources = mongodbDataSources.filter(
-      (dataSource: { useAsDataSource: boolean }) => dataSource.useAsDataSource
-    );
-    if (defaultDataSources.length > 1) {
-      return c.json(
-        {
-          error:
-            "Multiple default MongoDB data sources found. Keep only one MongoDB data source with useAsDataSource=true.",
-        },
-        409
-      );
-    }
-
-    const dataSource =
-      defaultDataSources[0] ??
-      (mongodbDataSources.length === 1 ? mongodbDataSources[0] : null);
-    if (!dataSource) {
-      return c.json(
-        {
-          error:
-            "Multiple active MongoDB data sources found. Set exactly one as default (useAsDataSource=true).",
-        },
-        409
-      );
-    }
-
-    const credentialsOutcome = await Promise.resolve()
-      .then(() =>
-        decryptCredentialsObject(
-          dataSource.credentialsEncrypted,
-          dataSource.credentialsIv,
-          c.var.runtime.crypto.masterEncryptionKey,
-          CredentialsSchema
-        )
-      )
-      .then((credentials) => ({ credentials, ok: true as const }))
-      .catch((error: unknown) => ({ error, ok: false as const }));
-    if (!credentialsOutcome.ok) {
-      return c.json(
-        createPrefixedQueryError(
-          "Failed to decrypt credentials",
-          credentialsOutcome.error
-        ),
-        500
-      );
-    }
-    if (!isMongoCredentials(credentialsOutcome.credentials)) {
-      return c.json(createCredentialTypeQueryError("MongoDB"), 400);
-    }
-    const mongoCredentials = credentialsOutcome.credentials;
-
-    let relayPromise: Promise<unknown>;
-
-    if (input.method === "list_databases") {
-      relayPromise = listMongoDatabases({
-        credentials: mongoCredentials,
+export const dataSourcesMongoDbQueryRoute = createProviderRoute<
+  MongoDBCredentials,
+  typeof mongodbSourceApiOperationSchema,
+  MongoDbSourceApiRequest["request"],
+  "/mongodb/query"
+>({
+  buildConflictMessage: ({ multipleDefaults }) =>
+    multipleDefaults
+      ? "Multiple default MongoDB data sources found. Keep only one MongoDB data source with useAsDataSource=true."
+      : "Multiple active MongoDB data sources found. Set exactly one as default (useAsDataSource=true).",
+  credentialsGuard: (creds): creds is MongoDBCredentials =>
+    typeof creds === "object" &&
+    creds !== null &&
+    "type" in creds &&
+    isMongoCredentials(creds as Parameters<typeof isMongoCredentials>[0]),
+  execute: async ({ c, credentials, method, request }) => {
+    try {
+      const response = await requestMongoDbSourceApi({
+        credentials,
+        operation: method,
+        request,
       });
-    } else if (input.method === "list_collections") {
-      const requestResult = parseProviderRequest(
-        listCollectionsRequestSchema,
-        input.request,
-        "Invalid MongoDB list_collections request payload"
-      );
-      if (!requestResult.ok) {
-        return c.json({ error: requestResult.error }, 400);
+
+      if (response.body.kind !== "json") {
+        throw new Error("MongoDB route expected a JSON response body");
       }
-      relayPromise = listMongoCollections({
-        credentials: mongoCredentials,
-        request: requestResult.data,
-      });
-    } else {
-      const requestResult = parseProviderRequest(
-        findDocumentsRequestSchema,
-        input.request,
-        "Invalid MongoDB find_documents request payload"
-      );
-      if (!requestResult.ok) {
-        return c.json({ error: requestResult.error }, 400);
+
+      return response.body.value;
+    } catch (error) {
+      if (error instanceof MongoDbInvalidRequestError) {
+        return c.json({ error: error.message }, 400);
       }
-      relayPromise = findMongoDocuments({
-        credentials: mongoCredentials,
-        request: requestResult.data,
-      });
+
+      throw error;
     }
-
-    const resultOutcome = await relayPromise
-      .then((value) => ({ ok: true as const, value }))
-      .catch((error: unknown) => ({ error, ok: false as const }));
-
-    if (!resultOutcome.ok) {
-      return c.json(
-        createPrefixedQueryError(
-          "MongoDB relay request failed",
-          resultOutcome.error
-        ),
-        502
-      );
-    }
-
-    await db
-      .update(dataSources)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(dataSources.id, dataSource.id));
-
-    return c.json(resultOutcome.value);
-  }
-);
+  },
+  methodSchema: mongodbSourceApiOperationSchema,
+  missingDataSourceMessage: "Active MongoDB data source not found",
+  parseRequest: (input) =>
+    parseMongoDbProviderRouteRequest({
+      operation: input.method,
+      request: input.request,
+    }),
+  provider: "mongodb",
+  providerLabel: "MongoDB",
+  routePath: "/mongodb/query",
+});
