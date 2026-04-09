@@ -47,6 +47,9 @@ launch it with Node.js. Bun is not required on `PATH`. `onequery gateway start`
 is the self-host launch entrypoint; repo-local workspace development keeps using
 `bun dev` instead.
 
+After a published install, `onequery upgrade` upgrades the CLI in place when it
+can map the current binary back to the original installer family.
+
 Start the server:
 
 ```bash

@@ -20,6 +20,9 @@ npm install -g @onequery/cli
 bun add -g @onequery/cli
 ```
 
+After a published install, run `onequery upgrade` to update in place with the
+same installer family when the CLI can detect it.
+
 One-off execution also works without a global install:
 
 ```bash

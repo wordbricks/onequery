@@ -45,6 +45,7 @@ pub(crate) enum Command {
     Query(QuerySubcommand),
     Restore(RestoreArgs),
     Gateway(GatewayCommand),
+    Upgrade,
     Use(UseArgs),
     Debug(DebugSubcommand),
 }
@@ -76,6 +77,7 @@ impl Command {
             Self::Gateway(GatewayCommand::Stop) => "gateway stop",
             Self::Gateway(GatewayCommand::Status) => "gateway status",
             Self::Gateway(GatewayCommand::Logs) => "gateway logs",
+            Self::Upgrade => "upgrade",
             Self::Use(_) => "use",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",

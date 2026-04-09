@@ -81,6 +81,11 @@ fn gateway_help_output_snapshot_targets_gateway_surface() {
 }
 
 #[test]
+fn upgrade_help_output_snapshot_targets_upgrade_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "upgrade", "--help"]));
+}
+
+#[test]
 fn source_connect_help_output_lists_supported_providers() {
     assert_snapshot!(rendered_display(&[
         "onequery", "source", "connect", "--help"
@@ -203,6 +208,13 @@ fn parse_invocation_accepts_gateway_root_and_status_subcommands() {
             Command::Gateway(command) if command == expected
         ));
     }
+}
+
+#[test]
+fn parse_invocation_accepts_upgrade_command() {
+    let invocation = parse_invocation(&["onequery", "upgrade"]);
+
+    assert!(matches!(invocation.command, Command::Upgrade));
 }
 
 #[test]

@@ -117,6 +117,8 @@ pub(super) enum RawCommand {
         #[command(subcommand)]
         action: Option<GatewaySubcommand>,
     },
+    /// Upgrade this published CLI installation in place.
+    Upgrade,
     /// Load provider-specific skill content for non-SQL sources.
     Use(UseArgs),
     /// Inspect local CLI state and diagnostics.
@@ -170,6 +172,7 @@ impl From<RawCommand> for Command {
             RawCommand::Query { action } => Self::Query(action),
             RawCommand::Restore(args) => Self::Restore(args),
             RawCommand::Gateway { action } => Self::Gateway(action.into()),
+            RawCommand::Upgrade => Self::Upgrade,
             RawCommand::Use(args) => Self::Use(args),
             RawCommand::Debug { action } => Self::Debug(action),
         }
