@@ -370,7 +370,7 @@ fn query_validation_from_generated(
 
     Ok(QueryValidationResult {
         request: Some(query_canonical_request_from_generated(request)),
-        normalized_sql: non_empty(result.normalized_sql),
+        normalized_sql: Some(result.normalized_sql),
         declared_result_window: Some(query_result_window_from_generated(declared_result_window)),
         source: Some(source_summary_from_generated(source)),
         truncated: Some(result.truncated),

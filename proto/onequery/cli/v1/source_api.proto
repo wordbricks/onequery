@@ -19,7 +19,7 @@ message DescribeSourceApiRequest {
 message DescribeSourceApiResponse {
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
   string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
-  optional string default_path_operation = 3;
+  optional string default_path_operation = 3 [(buf.validate.field).string.min_len = 1];
   repeated CliSourceApiOperation operations = 4;
   repeated CliSourceApiExample examples = 5;
   repeated string notes = 6;
@@ -72,17 +72,17 @@ message ExecuteSourceApiResponse {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string selector = 3;
+  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
   uint32 status = 4;
   repeated CliSourceApiHeader headers = 5;
-  string content_type = 6;
+  string content_type = 6 [(buf.validate.field).string.min_len = 1];
   oneof body {
     google.protobuf.Value json = 7;
     string text = 8;
     bytes binary = 9;
   }
-  optional string request_id = 10;
-  optional string next_page_token = 11;
+  optional string request_id = 10 [(buf.validate.field).string.min_len = 1];
+  optional string next_page_token = 11 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiPlan {

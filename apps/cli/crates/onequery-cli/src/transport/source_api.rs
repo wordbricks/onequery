@@ -359,7 +359,7 @@ fn source_api_descriptor_from_generated(
     Ok(SourceApiDescriptor {
         source: source_api_source_from_generated(source),
         descriptor_version: value.descriptor_version,
-        default_path_operation: non_empty(value.default_path_operation),
+        default_path_operation: value.default_path_operation,
         operations: value
             .operations
             .into_iter()
@@ -404,7 +404,7 @@ fn source_api_operation_from_generated(
         summary: value.summary,
         description: value.description,
         selector_kind: source_api_selector_kind_from_generated(value.selector_kind),
-        selector_label: non_empty(value.selector_label),
+        selector_label: value.selector_label,
         method_policy: source_api_method_policy_from_generated(method_policy),
         field_policy: source_api_field_policy_from_generated(field_policy),
         header_policy: source_api_header_policy_from_generated(header_policy),
@@ -437,7 +437,7 @@ fn source_api_method_policy_from_generated(
     value: types::CliSourceApiMethodPolicy,
 ) -> SourceApiMethodPolicy {
     SourceApiMethodPolicy {
-        default_method: non_empty(value.default_method),
+        default_method: value.default_method,
         allowed_methods: value.allowed_methods,
     }
 }
@@ -465,14 +465,14 @@ fn source_api_source_from_generated(value: types::CliSourceApiSource) -> SourceA
     SourceApiSource {
         key: value.key,
         provider: value.provider,
-        display_name: non_empty(value.display_name),
+        display_name: value.display_name,
     }
 }
 
 fn source_api_example_from_generated(value: types::CliSourceApiExample) -> SourceApiExample {
     SourceApiExample {
         label: value.label,
-        description: non_empty(value.description),
+        description: value.description,
         command: value.command,
     }
 }
@@ -652,15 +652,15 @@ fn normalized_source_api_plan_from_generated(
         provider: plan.provider,
         operation: plan.operation,
         kind: source_api_operation_kind_from_generated(plan.kind),
-        method: non_empty(plan.method),
-        selector: non_empty(plan.selector),
-        selector_template: non_empty(plan.selector_template),
-        host: non_empty(plan.host),
+        method: plan.method,
+        selector: plan.selector,
+        selector_template: plan.selector_template,
+        host: plan.host,
         header_names: plan.header_names,
         body_kind: source_api_body_kind_from_generated(plan.body_kind),
         body_paths: plan.body_paths,
         request_fingerprint: plan.request_fingerprint,
-        descriptor_version: non_empty(plan.descriptor_version),
+        descriptor_version: plan.descriptor_version,
     })
 }
 
@@ -679,7 +679,7 @@ fn source_api_response_from_generated(
     Ok(ExecuteSourceApiResponse {
         source: source_api_source_from_generated(source),
         operation: value.operation,
-        selector: non_empty(value.selector),
+        selector: value.selector,
         status: value.status,
         headers: value
             .headers
@@ -691,8 +691,8 @@ fn source_api_response_from_generated(
             .collect(),
         content_type: value.content_type,
         body: source_api_response_body_from_generated(value.body)?,
-        request_id: non_empty(value.request_id),
-        next_page_token: non_empty(value.next_page_token),
+        request_id: value.request_id,
+        next_page_token: value.next_page_token,
     })
 }
 
@@ -747,10 +747,6 @@ fn execute_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     } else {
         ErrorStage::ExecuteQuery
     }
-}
-
-fn non_empty(value: Option<String>) -> Option<String> {
-    value.filter(|candidate| !candidate.trim().is_empty())
 }
 
 #[cfg(test)]
