@@ -492,7 +492,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 - [x] Parse `-f`, `-F`, nested object syntax, array syntax, and `@file` input.
 - [x] Resolve describe vs execute intent correctly.
-- [ ] Resolve `TARGET` as operation vs selector correctly.
+- [x] Resolve `TARGET` as operation vs selector correctly.
 - [ ] Render JSON/text/binary responses correctly.
 - [ ] Render `--include`, `--paginate`, `--slurp`, and `--jq` correctly.
 

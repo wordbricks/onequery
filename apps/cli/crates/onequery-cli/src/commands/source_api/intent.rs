@@ -138,6 +138,88 @@ mod tests {
         );
     }
 
+    #[test]
+    fn resolve_intent_treats_bare_target_as_operation() {
+        let intent = resolve_intent(
+            &UseArgs {
+                target: Some("search".to_owned()),
+                ..use_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected bare target to resolve as an operation");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "search".to_owned(),
+                selector: None,
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_treats_path_target_as_selector() {
+        let intent = resolve_intent(
+            &UseArgs {
+                target: Some("/pulls".to_owned()),
+                ..use_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected path target to resolve as a selector");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "fetch".to_owned(),
+                selector: Some("/pulls".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_treats_url_target_as_selector() {
+        let intent = resolve_intent(
+            &UseArgs {
+                target: Some("https://api.github.com/repos/acme/widgets/pulls".to_owned()),
+                ..use_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected URL target to resolve as a selector");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "fetch".to_owned(),
+                selector: Some("https://api.github.com/repos/acme/widgets/pulls".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_rejects_selector_target_without_default_path_operation() {
+        let error = resolve_intent(
+            &UseArgs {
+                target: Some("/pulls".to_owned()),
+                ..use_args()
+            },
+            &descriptor_without_default_path_operation(),
+            &context(),
+        )
+        .expect_err("expected selector target without default path operation to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "this source API descriptor does not define a default path operation"
+        );
+    }
+
     fn descriptor() -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: SourceApiSource {
@@ -150,6 +232,13 @@ mod tests {
             operations: Vec::new(),
             examples: Vec::new(),
             notes: Vec::new(),
+        }
+    }
+
+    fn descriptor_without_default_path_operation() -> SourceApiDescriptor {
+        SourceApiDescriptor {
+            default_path_operation: None,
+            ..descriptor()
         }
     }
 
