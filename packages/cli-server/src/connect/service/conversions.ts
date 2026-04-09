@@ -3,7 +3,6 @@ import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 
 import type { CliAction } from "../../authorization";
 import type { CliSessionIdentity } from "../../domain/workflows";
-import type { CliUseSource as CliUseSkillSource } from "../../use/skills";
 import { throwCliConnectError } from "../error";
 import { CliAuthMode } from "../gen/onequery/cli/v1/auth_pb";
 import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
@@ -13,7 +12,6 @@ import {
   CliSourceProvider,
   CliSourceStatus,
 } from "../gen/onequery/cli/v1/source_pb";
-import { CliUseSource } from "../gen/onequery/cli/v1/use_pb";
 
 export function timestampFromIsoString(value: string) {
   const parsed = new Date(value);
@@ -30,49 +28,6 @@ export function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
       return CliAuthMode.BROWSER_SESSION;
     case "bearer_token":
       return CliAuthMode.BEARER_TOKEN;
-  }
-}
-
-export function toCliUseSourceEnum(value: CliUseSkillSource) {
-  switch (value) {
-    case "amplitude":
-      return CliUseSource.AMPLITUDE;
-    case "ga":
-      return CliUseSource.GA;
-    case "github":
-      return CliUseSource.GITHUB;
-    case "mixpanel":
-      return CliUseSource.MIXPANEL;
-    case "mongodb":
-      return CliUseSource.MONGODB;
-    case "posthog":
-      return CliUseSource.POSTHOG;
-    case "sentry":
-      return CliUseSource.SENTRY;
-  }
-}
-
-export function fromCliUseSource(value: CliUseSource): CliUseSkillSource {
-  switch (value) {
-    case CliUseSource.AMPLITUDE:
-      return "amplitude";
-    case CliUseSource.GA:
-      return "ga";
-    case CliUseSource.GITHUB:
-      return "github";
-    case CliUseSource.MIXPANEL:
-      return "mixpanel";
-    case CliUseSource.MONGODB:
-      return "mongodb";
-    case CliUseSource.POSTHOG:
-      return "posthog";
-    case CliUseSource.SENTRY:
-      return "sentry";
-    default:
-      throwCliConnectError({
-        detail: "unsupported use source",
-        key: "INVALID_REQUEST",
-      });
   }
 }
 

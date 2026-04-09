@@ -18,11 +18,9 @@ import {
   handleGetSourceConnectGuide,
   handleListSources,
 } from "./service/source";
-import { handleUse } from "./service/use";
 
 export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
   return {
-    use: handleUse,
     getSession: handleGetSession,
     refreshSession: handleRefreshSession,
     startDeviceAuthorization: handleStartDeviceAuthorization,

@@ -6,10 +6,11 @@ import "onequery/cli/v1/auth.proto";
 import "onequery/cli/v1/org.proto";
 import "onequery/cli/v1/query.proto";
 import "onequery/cli/v1/source.proto";
-import "onequery/cli/v1/use.proto";
+import "onequery/cli/v1/source_api.proto";
 
 service CliService {
-  rpc Use(UseRequest) returns (UseResponse);
+  rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse);
+  rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);
   rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
   rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
   rpc StartDeviceAuthorization(StartDeviceAuthorizationRequest) returns (StartDeviceAuthorizationResponse);
