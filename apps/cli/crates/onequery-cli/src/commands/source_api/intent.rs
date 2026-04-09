@@ -75,3 +75,112 @@ pub(super) fn resolve_intent(
 fn is_selector_target(target: &str) -> bool {
     target.starts_with('/') || target.starts_with("http://") || target.starts_with("https://")
 }
+
+#[cfg(test)]
+mod tests {
+    use onequery_cli_core::error::ErrorStage;
+
+    use crate::cli::UseArgs;
+    use crate::commands::ResolvedOrgSource;
+    use crate::config::default_base_url;
+    use crate::transport::source_api::SourceApiDescriptor;
+    use crate::transport::source_api::SourceApiSource;
+
+    use super::CommandContext;
+    use super::ResolvedIntent;
+    use super::resolve_intent;
+
+    #[test]
+    fn resolve_intent_describes_when_only_source_is_provided() {
+        let intent = resolve_intent(&use_args(), &descriptor(), &context())
+            .expect("expected bare source usage to describe");
+
+        assert_eq!(intent, ResolvedIntent::Describe);
+    }
+
+    #[test]
+    fn resolve_intent_executes_when_explicit_operation_is_provided() {
+        let intent = resolve_intent(
+            &UseArgs {
+                op: Some(" fetch ".to_owned()),
+                ..use_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected explicit operation to resolve execution intent");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "fetch".to_owned(),
+                selector: None,
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_rejects_execute_flags_without_operation_or_selector() {
+        let error = resolve_intent(
+            &UseArgs {
+                method: Some("POST".to_owned()),
+                ..use_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect_err("expected method override without target or op to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "request flags require either an operation name or a selector target"
+        );
+    }
+
+    fn descriptor() -> SourceApiDescriptor {
+        SourceApiDescriptor {
+            source: SourceApiSource {
+                key: "github-prod".to_owned(),
+                provider: "github".to_owned(),
+                display_name: Some("GitHub".to_owned()),
+            },
+            descriptor_version: "2026-04-09".to_owned(),
+            default_path_operation: Some("fetch".to_owned()),
+            operations: Vec::new(),
+            examples: Vec::new(),
+            notes: Vec::new(),
+        }
+    }
+
+    fn context() -> CommandContext {
+        CommandContext {
+            command_line: "onequery use --source github-prod".to_owned(),
+            base_url: default_base_url(),
+            request_id: None,
+            resolved_org: Some("acme".to_owned()),
+            resolved_org_source: ResolvedOrgSource::Config,
+            verbose: false,
+        }
+    }
+
+    fn use_args() -> UseArgs {
+        UseArgs {
+            source: "github-prod".to_owned(),
+            op: None,
+            target: None,
+            method: None,
+            headers: Vec::new(),
+            raw_fields: Vec::new(),
+            fields: Vec::new(),
+            input: None,
+            paginate: false,
+            slurp: false,
+            max_pages: None,
+            include: false,
+            silent: false,
+            jq: None,
+            dry_run: false,
+        }
+    }
+}
