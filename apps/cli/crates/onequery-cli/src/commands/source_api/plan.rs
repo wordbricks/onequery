@@ -95,6 +95,7 @@ pub(super) async fn build_plan(
     validate_pagination(args, operation, context, descriptor.source.key.as_str())?;
     validate_method(args, operation, context, descriptor.source.key.as_str())?;
     validate_field_flags(args, operation, context, descriptor.source.key.as_str())?;
+    validate_input(args, operation, context, descriptor.source.key.as_str())?;
 
     let headers = parse_headers(
         &args.headers,
@@ -307,6 +308,35 @@ fn validate_field_flags(
     Ok(())
 }
 
+fn validate_input(
+    args: &UseArgs,
+    operation: &SourceApiOperation,
+    context: &CommandContext,
+    source_key: &str,
+) -> Result<(), CliError> {
+    if args.input.is_none() || source_api_operation_supports_input(operation) {
+        return Ok(());
+    }
+
+    Err(source_api_parse_error(
+        context,
+        "source API request input is not supported",
+        format!("operation `{}` does not accept `--input`", operation.name),
+        source_key,
+    ))
+}
+
+fn source_api_operation_supports_input(operation: &SourceApiOperation) -> bool {
+    // Comment: the descriptor transport currently exposes `--input` support as one
+    // human-readable transport rule, so the planner infers the local parse check from
+    // the stable rule string until the wire shape carries a dedicated input flag.
+    !operation
+        .field_policy
+        .transport_rules
+        .iter()
+        .any(|rule| rule.trim() == "does not support --input")
+}
+
 fn parse_headers(
     values: &[String],
     operation: &SourceApiOperation,
@@ -459,6 +489,7 @@ mod tests {
     use crate::cli::UseArgs;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
+    use crate::transport::source_api::SourceApiDescriptor;
     use crate::transport::source_api::SourceApiFieldPolicy;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiHeaderPolicy;
@@ -469,6 +500,7 @@ mod tests {
     use crate::transport::source_api::SourceApiSelectorKind;
 
     use super::CommandContext;
+    use super::build_plan;
     use super::parse_headers;
     use super::validate_pagination;
 
@@ -600,6 +632,29 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn build_plan_rejects_input_when_operation_disallows_it() {
+        let error = build_plan(
+            &UseArgs {
+                input: Some("request.json".to_owned()),
+                ..use_args()
+            },
+            &descriptor_with_operation(SourceApiOperation {
+                field_policy: SourceApiFieldPolicy {
+                    transport_rules: vec!["does not support --input".to_owned()],
+                    ..SourceApiFieldPolicy::default()
+                },
+                ..operation(SourceApiPaginationPolicy::None)
+            }),
+            &context(),
+        )
+        .await
+        .expect_err("expected unsupported `--input` to fail before reading input");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(error.why, "operation `fetch` does not accept `--input`");
+    }
+
     fn context() -> CommandContext {
         CommandContext {
             command_line: "onequery use --source github-prod".to_owned(),
@@ -645,6 +700,21 @@ mod tests {
             silent: false,
             jq: None,
             dry_run: false,
+        }
+    }
+
+    fn descriptor_with_operation(operation: SourceApiOperation) -> SourceApiDescriptor {
+        SourceApiDescriptor {
+            source: crate::transport::source_api::SourceApiSource {
+                key: "github-prod".to_owned(),
+                provider: "github".to_owned(),
+                display_name: Some("GitHub".to_owned()),
+            },
+            descriptor_version: "2026-04-09".to_owned(),
+            default_path_operation: Some("fetch".to_owned()),
+            operations: vec![operation],
+            examples: Vec::new(),
+            notes: Vec::new(),
         }
     }
 }
