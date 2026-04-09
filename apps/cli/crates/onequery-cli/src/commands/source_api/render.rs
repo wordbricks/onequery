@@ -19,11 +19,31 @@ use jaq_core::unwrap_valr;
 use jaq_json::Val as JaqValue;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Serialize;
 
 use super::format::push_section;
 use super::format::status_line;
 use super::plan::DryRunPlan;
 use super::plan::SourceApiRenderOptions;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct JsonExecuteSourceApiResponse<'a> {
+    source: &'a crate::transport::source_api::SourceApiSource,
+    operation: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selector: Option<&'a String>,
+    status: u32,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    headers: Vec<&'a crate::transport::source_api::SourceApiHeader>,
+    content_type: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    body: Option<&'a SourceApiResponseBody>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    request_id: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    next_page_token: Option<&'a String>,
+}
 
 pub(super) fn render_descriptor_output(
     descriptor: SourceApiDescriptor,
@@ -73,7 +93,7 @@ pub(super) fn render_execute_output(
     render: SourceApiRenderOptions,
 ) -> Result<CommandOutput, CliError> {
     let response = assemble_execute_response(responses, &render)?;
-    let data = serialize_command_data(&response, "onequery use")?;
+    let data = serialize_execute_response(&response, &render)?;
     let lines = render_response_lines(&response, &render)?;
     let raw_stdout = render_response_stdout_bytes(&response, &render)?;
     let output = CommandOutput::raw_json(lines, data);
@@ -81,6 +101,25 @@ pub(super) fn render_execute_output(
         Some(raw_stdout) => output.with_raw_stdout(raw_stdout, binary_tty_render_error()),
         None => output,
     })
+}
+
+fn serialize_execute_response(
+    response: &ExecuteSourceApiResponse,
+    render: &SourceApiRenderOptions,
+) -> Result<serde_json::Value, CliError> {
+    let json_response = JsonExecuteSourceApiResponse {
+        source: &response.source,
+        operation: response.operation.as_str(),
+        selector: response.selector.as_ref(),
+        status: response.status,
+        headers: response.headers.iter().collect(),
+        content_type: response.content_type.as_str(),
+        body: (!render.silent).then_some(&response.body),
+        request_id: response.request_id.as_ref(),
+        next_page_token: response.next_page_token.as_ref(),
+    };
+
+    serialize_command_data(&json_response, "onequery use")
 }
 
 fn assemble_execute_response(
@@ -804,6 +843,50 @@ mod tests {
             render_output_payload(output, EffectiveOutputMode::Text, true)
                 .expect("expected silent text payload"),
             RenderedOutput::Text("HTTP 200\ncontent-type: application/json".to_owned())
+        );
+    }
+
+    #[test]
+    fn render_execute_output_omits_body_in_json_mode_when_silent() {
+        let mut response = json_response(SourceApiResponseBody::Json {
+            value: json!({"items": [1, 2]}),
+        });
+        response.headers = vec![SourceApiHeader {
+            name: "content-type".to_owned(),
+            value: "application/json".to_owned(),
+        }];
+
+        let output = render_execute_output(
+            vec![response],
+            SourceApiRenderOptions {
+                silent: true,
+                ..render_options()
+            },
+        )
+        .expect("expected silent source API response to render");
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&render_output(
+                output,
+                EffectiveOutputMode::Json
+            ))
+            .expect("expected raw JSON output"),
+            json!({
+                "source": {
+                    "key": "github-prod",
+                    "provider": "github",
+                },
+                "operation": "fetch",
+                "status": 200,
+                "headers": [
+                    {
+                        "name": "content-type",
+                        "value": "application/json"
+                    }
+                ],
+                "contentType": "application/json",
+                "requestId": "req_1"
+            })
         );
     }
 
