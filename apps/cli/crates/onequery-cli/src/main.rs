@@ -92,6 +92,17 @@ fn emit_success(rendered: output::RenderedOutput) {
                 println!("{rendered}");
             }
         }
+        output::RenderedOutput::VerbatimText(rendered) => {
+            if rendered.is_empty() {
+                return;
+            }
+
+            let mut stdout = std::io::stdout().lock();
+            stdout
+                .write_all(rendered.as_bytes())
+                .expect("expected stdout to accept rendered command output");
+            stdout.flush().expect("expected stdout flush to succeed");
+        }
         output::RenderedOutput::Binary(rendered) => {
             if rendered.is_empty() {
                 return;

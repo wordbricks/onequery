@@ -76,8 +76,13 @@ pub(super) fn render_execute_output(
     let response = assemble_execute_response(responses, &render)?;
     let data = serialize_execute_response(&response, &render)?;
     let lines = render_response_lines(&response, &render)?;
+    let text_stdout = render_response_text_stdout(&response, &render);
     let raw_stdout = render_response_stdout_bytes(&response, &render)?;
     let output = CommandOutput::raw_json(lines, data);
+    let output = match text_stdout {
+        Some(text_stdout) => output.with_text_stdout(text_stdout),
+        None => output,
+    };
     Ok(match raw_stdout {
         Some(raw_stdout) => output.with_raw_stdout(raw_stdout, binary_tty_render_error()),
         None => output,
@@ -528,6 +533,36 @@ fn render_response_lines(
     Ok(lines)
 }
 
+fn render_response_text_stdout(
+    response: &ExecuteSourceApiResponse,
+    render: &SourceApiRenderOptions,
+) -> Option<String> {
+    if render.silent {
+        return None;
+    }
+
+    let SourceApiResponseBody::Text { value } = &response.body else {
+        return None;
+    };
+
+    // Comment: `CommandOutput.lines` is lossy for trailing newlines, so source-api
+    // text bodies keep an exact stdout copy to satisfy the verbatim render contract.
+    let mut rendered = String::new();
+    if render.include {
+        rendered.push_str(&status_line(response.status));
+        rendered.push('\n');
+
+        for header in &response.headers {
+            rendered.push_str(&format!("{}: {}", header.name, header.value));
+            rendered.push('\n');
+        }
+
+        rendered.push('\n');
+    }
+    rendered.push_str(value);
+    Some(rendered)
+}
+
 fn render_response_stdout_bytes(
     response: &ExecuteSourceApiResponse,
     render: &SourceApiRenderOptions,
@@ -696,7 +731,7 @@ mod tests {
     fn render_execute_output_renders_text_body_verbatim_in_text_mode() {
         let output = render_execute_output(
             vec![json_response(SourceApiResponseBody::Text {
-                value: "plain text\nnext line".to_owned(),
+                value: "plain text\r\nnext line\n".to_owned(),
             })],
             render_options(),
         )
@@ -705,7 +740,7 @@ mod tests {
         assert_eq!(
             render_output_payload(output, EffectiveOutputMode::Text, true)
                 .expect("expected text payload"),
-            RenderedOutput::Text("plain text\nnext line".to_owned())
+            RenderedOutput::VerbatimText("plain text\r\nnext line\n".to_owned())
         );
     }
 
@@ -865,7 +900,7 @@ mod tests {
         assert_eq!(
             render_output_payload(output, EffectiveOutputMode::Text, true)
                 .expect("expected included text payload"),
-            RenderedOutput::Text(
+            RenderedOutput::VerbatimText(
                 "HTTP 200\ncontent-type: text/plain\nx-request-id: rq_upstream_123\n\nplain text\nnext line"
                     .to_owned(),
             )

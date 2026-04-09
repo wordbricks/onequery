@@ -26,6 +26,7 @@ pub(crate) enum EffectiveOutputMode {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum RenderedOutput {
     Text(String),
+    VerbatimText(String),
     Binary(Vec<u8>),
 }
 
@@ -83,6 +84,7 @@ impl fmt::Debug for CommandData {
 #[derive(Default)]
 pub(crate) struct CommandOutput {
     pub(crate) lines: Vec<String>,
+    text_stdout: Option<String>,
     data: CommandData,
     json_render: JsonRenderMode,
     pub(crate) command: Option<String>,
@@ -96,6 +98,7 @@ impl fmt::Debug for CommandOutput {
         formatter
             .debug_struct("CommandOutput")
             .field("lines", &self.lines)
+            .field("text_stdout", &self.text_stdout)
             .field("data", &self.data)
             .field("json_render", &self.json_render)
             .field("command", &self.command)
@@ -110,6 +113,7 @@ impl CommandOutput {
     pub(crate) fn structured(lines: Vec<String>, data: Value) -> Self {
         Self {
             lines,
+            text_stdout: None,
             data: CommandData::Ready(data),
             json_render: JsonRenderMode::Envelope,
             command: None,
@@ -122,6 +126,7 @@ impl CommandOutput {
     pub(crate) fn raw_json(lines: Vec<String>, data: Value) -> Self {
         Self {
             lines,
+            text_stdout: None,
             data: CommandData::Ready(data),
             json_render: JsonRenderMode::Raw,
             command: None,
@@ -135,6 +140,7 @@ impl CommandOutput {
     pub(crate) fn deferred(lines: Vec<String>, data: impl FnOnce() -> Value + 'static) -> Self {
         Self {
             lines,
+            text_stdout: None,
             data: CommandData::Deferred(Box::new(move || Ok(data()))),
             json_render: JsonRenderMode::Envelope,
             command: None,
@@ -150,6 +156,7 @@ impl CommandOutput {
     ) -> Self {
         Self {
             lines,
+            text_stdout: None,
             data: CommandData::Deferred(Box::new(data)),
             json_render: JsonRenderMode::Envelope,
             command: None,
@@ -162,6 +169,7 @@ impl CommandOutput {
     pub(crate) fn display(text: String) -> Self {
         Self {
             lines: text.lines().map(ToOwned::to_owned).collect(),
+            text_stdout: None,
             data: CommandData::Ready(json!({
                 "display": text,
             })),
@@ -183,6 +191,11 @@ impl CommandOutput {
 
     pub(crate) fn with_request_id(mut self, request_id: Option<String>) -> Self {
         self.request_id = request_id.filter(|value| !value.trim().is_empty());
+        self
+    }
+
+    pub(crate) fn with_text_stdout(mut self, text: String) -> Self {
+        self.text_stdout = Some(text);
         self
     }
 
@@ -270,10 +283,16 @@ pub(crate) fn resolve_output_mode(
 
 pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) -> String {
     match mode {
-        EffectiveOutputMode::Text => output.lines.join("\n"),
+        EffectiveOutputMode::Text => {
+            let CommandOutput {
+                lines, text_stdout, ..
+            } = output;
+            text_stdout.unwrap_or_else(|| lines.join("\n"))
+        }
         EffectiveOutputMode::Json => {
             let CommandOutput {
                 lines: _,
+                text_stdout: _,
                 data,
                 json_render,
                 command,
@@ -342,7 +361,10 @@ pub(crate) fn render_output_payload(
     match mode {
         EffectiveOutputMode::Text => {
             let CommandOutput {
-                lines, raw_stdout, ..
+                lines,
+                text_stdout,
+                raw_stdout,
+                ..
             } = output;
             match raw_stdout {
                 Some(raw_stdout) => {
@@ -352,7 +374,10 @@ pub(crate) fn render_output_payload(
                         Ok(RenderedOutput::Binary(raw_stdout.bytes))
                     }
                 }
-                None => Ok(RenderedOutput::Text(lines.join("\n"))),
+                None => Ok(match text_stdout {
+                    Some(text_stdout) => RenderedOutput::VerbatimText(text_stdout),
+                    None => RenderedOutput::Text(lines.join("\n")),
+                }),
             }
         }
         EffectiveOutputMode::Json => Ok(RenderedOutput::Text(render_output(output, mode))),
@@ -520,9 +545,11 @@ mod tests {
 
     use super::CommandOutput;
     use super::EffectiveOutputMode;
+    use super::RenderedOutput;
     use super::RequestedOutputMode;
     use super::render_error;
     use super::render_output;
+    use super::render_output_payload;
     use super::resolve_output_mode;
 
     #[test]
@@ -659,6 +686,22 @@ mod tests {
                 "status": 200,
                 "requestId": "req_raw",
             })
+        );
+    }
+
+    #[test]
+    fn render_output_payload_preserves_explicit_verbatim_text_stdout() {
+        let rendered = render_output_payload(
+            CommandOutput::structured(vec!["normalized".to_owned()], json!({}))
+                .with_text_stdout("first line\r\nsecond line\n".to_owned()),
+            EffectiveOutputMode::Text,
+            true,
+        )
+        .expect("expected text payload");
+
+        assert_eq!(
+            rendered,
+            RenderedOutput::VerbatimText("first line\r\nsecond line\n".to_owned())
         );
     }
 
