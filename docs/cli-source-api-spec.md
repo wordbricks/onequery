@@ -453,7 +453,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 - [x] Remove `packages/cli-server/src/use/skills.ts`.
 - [x] Remove `fromCliUseSource` / `toCliUseSourceEnum` from `packages/cli-server/src/connect/service/conversions.ts`.
 - [x] Add conversions for source-api descriptor and execute response messages.
-- [ ] Update tests to call `DescribeSourceApi` and `ExecuteSourceApi`.
+- [x] Update tests to call `DescribeSourceApi` and `ExecuteSourceApi`.
 
 ### 5) Rust CLI parser and transport
 
