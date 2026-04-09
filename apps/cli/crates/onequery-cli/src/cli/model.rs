@@ -45,6 +45,7 @@ pub(crate) enum Command {
     Query(QuerySubcommand),
     Restore(RestoreArgs),
     Serve(ServeCommand),
+    Upgrade,
     Use(UseArgs),
     Debug(DebugSubcommand),
 }
@@ -76,6 +77,7 @@ impl Command {
             Self::Serve(ServeCommand::Stop) => "serve stop",
             Self::Serve(ServeCommand::Status) => "serve status",
             Self::Serve(ServeCommand::Logs) => "serve logs",
+            Self::Upgrade => "upgrade",
             Self::Use(_) => "use",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
