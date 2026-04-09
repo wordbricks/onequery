@@ -2,6 +2,7 @@ use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
+use crate::transport::source_api::NormalizedSourceApiPlan;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiOperation;
@@ -23,7 +24,6 @@ use onequery_cli_core::error::ErrorStage;
 
 use super::format::push_section;
 use super::format::status_line;
-use super::plan::DryRunPlan;
 use super::plan::SourceApiRenderOptions;
 
 pub(super) fn render_descriptor_output(
@@ -64,7 +64,9 @@ pub(super) fn render_descriptor_output(
     Ok(CommandOutput::raw_json(lines, data))
 }
 
-pub(super) fn render_dry_run_output(plan: DryRunPlan) -> Result<CommandOutput, CliError> {
+pub(super) fn render_dry_run_output(
+    plan: NormalizedSourceApiPlan,
+) -> Result<CommandOutput, CliError> {
     let data = serialize_command_data(&plan, "onequery use")?;
     Ok(CommandOutput::raw_json(pretty_json_lines(&data), data))
 }
@@ -634,19 +636,92 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use base64::Engine;
+    use insta::assert_snapshot;
     use serde_json::json;
 
     use crate::output::EffectiveOutputMode;
     use crate::output::RenderedOutput;
     use crate::output::render_output;
     use crate::output::render_output_payload;
+    use crate::transport::source_api::NormalizedSourceApiPlan;
+    use crate::transport::source_api::SourceApiBodyKind;
     use crate::transport::source_api::SourceApiHeader;
+    use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiSource;
 
     use super::ExecuteSourceApiResponse;
     use super::SourceApiRenderOptions;
     use super::SourceApiResponseBody;
+    use super::render_dry_run_output;
     use super::render_execute_output;
+
+    #[test]
+    fn render_dry_run_output_serializes_normalized_plan_shape() {
+        let output = render_dry_run_output(NormalizedSourceApiPlan {
+            source_id: "source-1".to_owned(),
+            source_key: "github-prod".to_owned(),
+            provider: "github".to_owned(),
+            operation: "fetch".to_owned(),
+            kind: SourceApiOperationKind::HttpRequest,
+            method: Some("GET".to_owned()),
+            selector: Some("/pulls".to_owned()),
+            selector_template: Some("/{path}".to_owned()),
+            host: Some("api.github.com".to_owned()),
+            header_names: vec!["accept".to_owned()],
+            body_kind: SourceApiBodyKind::Json,
+            body_paths: vec!["params".to_owned()],
+            request_fingerprint: "fp_123".to_owned(),
+            descriptor_version: Some("github.v1".to_owned()),
+        })
+        .expect("expected normalized dry-run plan to render");
+
+        let rendered = render_output(output, EffectiveOutputMode::Text);
+        assert_snapshot!(
+            rendered,
+            @r#"
+            {
+              "bodyKind": "json",
+              "bodyPaths": [
+                "params"
+              ],
+              "descriptorVersion": "github.v1",
+              "headerNames": [
+                "accept"
+              ],
+              "host": "api.github.com",
+              "kind": "http_request",
+              "method": "GET",
+              "operation": "fetch",
+              "provider": "github",
+              "requestFingerprint": "fp_123",
+              "selector": "/pulls",
+              "selectorTemplate": "/{path}",
+              "sourceId": "source-1",
+              "sourceKey": "github-prod"
+            }
+            "#
+        );
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered).expect("expected raw JSON output"),
+            json!({
+                "sourceId": "source-1",
+                "sourceKey": "github-prod",
+                "provider": "github",
+                "operation": "fetch",
+                "kind": "http_request",
+                "method": "GET",
+                "selector": "/pulls",
+                "selectorTemplate": "/{path}",
+                "host": "api.github.com",
+                "headerNames": ["accept"],
+                "bodyKind": "json",
+                "bodyPaths": ["params"],
+                "requestFingerprint": "fp_123",
+                "descriptorVersion": "github.v1"
+            })
+        );
+    }
 
     #[test]
     fn render_execute_output_keeps_single_page_json_shape_without_slurp() {

@@ -43,6 +43,16 @@ pub(crate) enum SourceApiPaginationPolicy {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum SourceApiBodyKind {
+    #[default]
+    None,
+    Json,
+    Text,
+    Binary,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SourceApiSource {
     pub(crate) key: String,
@@ -149,33 +159,27 @@ pub(crate) struct ExecuteSourceApiRequestPayload {
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Default)]
 pub(crate) enum SourceApiRequestBody {
+    #[default]
     None,
     Json { value: Value },
     Text { value: String },
     Binary { value_base64: String },
 }
 
-impl Default for SourceApiRequestBody {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Default)]
 pub(crate) enum SourceApiResponseBody {
+    #[default]
     None,
     Json { value: Value },
     Text { value: String },
     Binary { value_base64: String },
 }
 
-impl Default for SourceApiResponseBody {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -193,6 +197,32 @@ pub(crate) struct ExecuteSourceApiResponse {
     pub(crate) request_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) next_page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct NormalizedSourceApiPlan {
+    pub(crate) source_id: String,
+    pub(crate) source_key: String,
+    pub(crate) provider: String,
+    pub(crate) operation: String,
+    pub(crate) kind: SourceApiOperationKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) selector: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) selector_template: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) host: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) header_names: Vec<String>,
+    pub(crate) body_kind: SourceApiBodyKind,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) body_paths: Vec<String>,
+    pub(crate) request_fingerprint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) descriptor_version: Option<String>,
 }
 
 pub(crate) async fn describe_source_api(
@@ -226,6 +256,58 @@ pub(crate) async fn describe_source_api(
 
     Ok(ApiSuccess {
         payload: source_api_descriptor_from_generated(payload, request_id.clone())?,
+        request_id,
+    })
+}
+
+pub(crate) async fn normalize_source_api(
+    client: &AuthenticatedApiClient,
+    org: &str,
+    source_key: &str,
+    payload: &ExecuteSourceApiRequestPayload,
+) -> Result<ApiSuccess<NormalizedSourceApiPlan>, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
+    let response = match client
+        .cli()
+        .normalize_source_api(types::NormalizeSourceApiRequest {
+            org_slug,
+            source_key,
+            descriptor_version: try_into_option(
+                payload.descriptor_version.as_deref(),
+                ErrorStage::ExecuteQuery,
+            )?,
+            operation: try_into_value(payload.operation.as_str(), ErrorStage::ExecuteQuery)?,
+            selector: try_into_option(payload.selector.as_deref(), ErrorStage::ExecuteQuery)?,
+            method_override: try_into_option(
+                payload.method_override.as_deref(),
+                ErrorStage::ExecuteQuery,
+            )?,
+            headers: payload
+                .headers
+                .iter()
+                .map(source_api_header_to_generated)
+                .collect(),
+            field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
+            body: normalize_source_api_request_body_to_generated(&payload.body)?,
+            page_token: try_into_option(payload.page_token.as_deref(), ErrorStage::ExecuteQuery)?,
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(
+                error,
+                ResponseFailureStages::from_connect_code(execute_source_api_problem_stage_for_code),
+            ));
+        }
+    };
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
+
+    Ok(ApiSuccess {
+        payload: normalized_source_api_plan_from_generated(payload, request_id.clone())?,
         request_id,
     })
 }
@@ -474,6 +556,41 @@ fn source_api_request_body_to_generated(
     }
 }
 
+fn normalize_source_api_request_body_to_generated(
+    value: &SourceApiRequestBody,
+) -> Result<Option<types::normalize_source_api_request::Body>, ApiFailure> {
+    match value {
+        SourceApiRequestBody::None => Ok(None),
+        SourceApiRequestBody::Json { value } => Ok(Some(
+            types::normalize_source_api_request::Body::JsonBody(Box::new(
+                serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone())
+                    .map_err(|error| {
+                        conversion_failure(
+                            ErrorStage::ExecuteQuery,
+                            format!("invalid JSON source API request body: {error}"),
+                        )
+                    })?,
+            )),
+        )),
+        SourceApiRequestBody::Text { value } => Ok(Some(
+            types::normalize_source_api_request::Body::TextBody(value.clone()),
+        )),
+        SourceApiRequestBody::Binary { value_base64 } => {
+            let bytes =
+                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, value_base64)
+                    .map_err(|error| {
+                        conversion_failure(
+                            ErrorStage::ExecuteQuery,
+                            format!("invalid source API binary request body: {error}"),
+                        )
+                    })?;
+            Ok(Some(types::normalize_source_api_request::Body::BinaryBody(
+                bytes,
+            )))
+        }
+    }
+}
+
 fn field_patch_to_generated(
     value: Option<&Value>,
 ) -> Result<MessageField<buffa_types::google::protobuf::Struct>, ApiFailure> {
@@ -499,6 +616,35 @@ fn field_patch_to_generated(
     })?;
 
     Ok(MessageField::some(struct_value))
+}
+
+fn normalized_source_api_plan_from_generated(
+    value: types::NormalizeSourceApiResponse,
+    request_id: Option<String>,
+) -> Result<NormalizedSourceApiPlan, ApiFailure> {
+    let plan = value.plan.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API normalize response missing plan",
+            request_id.clone(),
+        )
+    })?;
+
+    let plan = serde_json::to_value(plan).map_err(|error| {
+        decode_failure(
+            ErrorStage::ExecuteQuery,
+            format!("failed to decode source API normalize response: {error}"),
+            request_id.clone(),
+        )
+    })?;
+
+    serde_json::from_value(plan).map_err(|error| {
+        decode_failure(
+            ErrorStage::ExecuteQuery,
+            format!("failed to decode source API normalize response: {error}"),
+            request_id,
+        )
+    })
 }
 
 fn source_api_response_from_generated(

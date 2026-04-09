@@ -1,6 +1,9 @@
-import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { toJson } from "@bufbuild/protobuf";
+import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
+import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 import type {
+  NormalizedExecutionPlan,
   SourceApiDescriptor,
   SourceApiExample,
   SourceApiExecuteRequest,
@@ -21,7 +24,10 @@ import { CliAuthMode } from "../gen/onequery/cli/v1/auth_pb";
 import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
-import type { ExecuteSourceApiRequest } from "../gen/onequery/cli/v1/source_api_pb";
+import type {
+  ExecuteSourceApiRequest,
+  NormalizeSourceApiRequest,
+} from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
@@ -184,6 +190,53 @@ export function toCliQueryLogicalType(value: string) {
 export function fromCliExecuteSourceApiRequest(
   request: ExecuteSourceApiRequest
 ): SourceApiExecuteRequest {
+  return fromCliSourceApiExecutionRequest(request);
+}
+
+export function fromCliNormalizeSourceApiRequest(
+  request: NormalizeSourceApiRequest
+): SourceApiExecuteRequest {
+  return fromCliSourceApiExecutionRequest(request);
+}
+
+export function toCliNormalizeSourceApiResponse(
+  value: NormalizedExecutionPlan
+): { plan: JsonObject } {
+  const plan: JsonObject = {
+    bodyKind: value.bodyKind,
+    headerNames: [...value.headerNames],
+    kind: value.kind,
+    operation: value.operation,
+    provider: value.provider,
+    requestFingerprint: value.requestFingerprint,
+    sourceId: value.sourceId,
+    sourceKey: value.sourceKey,
+  };
+  if (value.method) {
+    plan.method = value.method;
+  }
+  if (value.selector) {
+    plan.selector = value.selector;
+  }
+  if (value.selectorTemplate) {
+    plan.selectorTemplate = value.selectorTemplate;
+  }
+  if (value.host) {
+    plan.host = value.host;
+  }
+  if (value.bodyPaths?.length) {
+    plan.bodyPaths = [...value.bodyPaths];
+  }
+  if (value.descriptorVersion) {
+    plan.descriptorVersion = value.descriptorVersion;
+  }
+
+  return { plan };
+}
+
+function fromCliSourceApiExecutionRequest(
+  request: ExecuteSourceApiRequest | NormalizeSourceApiRequest
+): SourceApiExecuteRequest {
   return {
     body: fromCliSourceApiRequestBody(request.body),
     descriptorVersion: request.descriptorVersion,
@@ -231,13 +284,13 @@ function fromCliSourceApiHeader(value: SourceApiHeader) {
 }
 
 function fromCliSourceApiRequestBody(
-  body: ExecuteSourceApiRequest["body"]
+  body: ExecuteSourceApiRequest["body"] | NormalizeSourceApiRequest["body"]
 ): SourceApiRequestBody {
   switch (body.case) {
     case "jsonBody":
       return {
         kind: "json",
-        value: body.value as SourceApiJsonValue,
+        value: toSourceApiJsonValue(toJson(ValueSchema, body.value)),
       };
     case "textBody":
       return {
@@ -254,6 +307,28 @@ function fromCliSourceApiRequestBody(
         kind: "none",
       };
   }
+}
+
+function toSourceApiJsonValue(value: JsonValue): SourceApiJsonValue {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toSourceApiJsonValue);
+  }
+
+  const object: Record<string, SourceApiJsonValue> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    object[key] = toSourceApiJsonValue(nestedValue);
+  }
+
+  return object;
 }
 
 function listCliSourceApiFieldSyntaxes(value: SourceApiFieldPolicy) {

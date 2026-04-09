@@ -26,11 +26,14 @@ import { requireCliConnectRequestContext } from "../context";
 import {
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiResponseSchema,
+  NormalizeSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   fromCliExecuteSourceApiRequest,
+  fromCliNormalizeSourceApiRequest,
   toCliDescribeSourceApiResponse,
   toCliExecuteSourceApiResponse,
+  toCliNormalizeSourceApiResponse,
 } from "./conversions";
 import { throwCliConnectSourceNotFound } from "./errors";
 import type { CliHonoContext, CliServiceMethod } from "./types";
@@ -40,6 +43,9 @@ type DescribeSourceApiResponseInit = MessageInitShape<
 >;
 type ExecuteSourceApiResponseInit = MessageInitShape<
   typeof ExecuteSourceApiResponseSchema
+>;
+type NormalizeSourceApiResponseInit = MessageInitShape<
+  typeof NormalizeSourceApiResponseSchema
 >;
 
 type SourceApiServiceDependencies = {
@@ -202,6 +208,78 @@ export function createHandleDescribeSourceApi(
 }
 
 export const handleDescribeSourceApi = createHandleDescribeSourceApi();
+
+export function createHandleNormalizeSourceApi(
+  dependencies: Partial<SourceApiServiceDependencies> = {}
+): CliServiceMethod<"normalizeSourceApi"> {
+  const resolvedDependencies = {
+    ...sourceApiServiceDependencies,
+    ...dependencies,
+  } satisfies SourceApiServiceDependencies;
+
+  return async (request, context) => {
+    const requestContext =
+      resolvedDependencies.requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const session = await requestContext.requireSession();
+    const authorizedOrg = await requestContext.requireAuthorizedOrg({
+      action: "source_api.execute",
+      orgSlug: request.orgSlug,
+      session,
+    });
+    const source = await requirePreparedCliSourceApiSource(
+      {
+        authorizedOrg,
+        c,
+        sourceKey: request.sourceKey,
+      },
+      resolvedDependencies
+    );
+    const actor = buildSourceApiActor({
+      authorizedOrg,
+      requestId: requestContext.requestId,
+      session,
+    });
+    const descriptor = await resolvedDependencies.describeSourceApi({
+      actor,
+      source,
+    });
+    const normalizedRequest = fromCliNormalizeSourceApiRequest(request);
+    const plan = await Promise.resolve()
+      .then(() =>
+        resolvedDependencies.normalizeSourceApiRequest({
+          actor,
+          descriptor,
+          request: normalizedRequest,
+          source,
+        })
+      )
+      .catch((error: unknown) => {
+        throw toSourceApiRequestConnectError(
+          error,
+          resolvedDependencies.toCliErrorMessage
+        );
+      });
+
+    resolvedDependencies.logCliEvent({
+      details: resolvedDependencies.buildCliRequestLogDetails(c, {
+        kind: plan.kind,
+        operation: plan.operation,
+        orgSlug: authorizedOrg.org.slug,
+        provider: plan.provider,
+        sourceKey: plan.sourceKey,
+      }),
+      event: "source_api.normalize.resolved",
+      level: "info",
+    });
+
+    return toCliNormalizeSourceApiResponse(
+      plan
+    ) satisfies NormalizeSourceApiResponseInit;
+  };
+}
+
+export const handleNormalizeSourceApi = createHandleNormalizeSourceApi();
 
 export function createHandleExecuteSourceApi(
   dependencies: Partial<SourceApiServiceDependencies> = {}

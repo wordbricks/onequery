@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DescribeSourceApiRequestSchema,
   ExecuteSourceApiRequestSchema,
+  NormalizeSourceApiRequestSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
+  createHandleNormalizeSourceApi,
 } from "./source_api";
 
 const session = {
@@ -168,9 +170,16 @@ function createHarness() {
   const adapterExecute = vi.fn().mockResolvedValue(executionResponse);
   const dependencies = {
     authorizeSourceApi: vi.fn().mockResolvedValue(undefined),
-    buildCliRequestLogDetails: vi.fn((_: unknown, details: unknown) => details),
+    buildCliRequestLogDetails: vi.fn(
+      (_: unknown, details?: Record<string, unknown>) => ({
+        method: "POST",
+        path: "/connectrpc/onequery.cli.v1.CliService/DescribeSourceApi",
+        requestId: "req_cli_123",
+        ...(details ?? {}),
+      })
+    ),
     describeSourceApi: vi.fn().mockResolvedValue(descriptor),
-    getCliLogLevelForStatus: vi.fn(() => "info"),
+    getCliLogLevelForStatus: vi.fn((): "info" => "info"),
     getSourceApiAdapter: vi.fn().mockReturnValue({
       execute: adapterExecute,
     }),
@@ -184,7 +193,10 @@ function createHarness() {
     }),
     requireCliConnectRequestContext: vi.fn().mockReturnValue(requestContext),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),
-    sourceApiRegistry: { kind: "test-registry" },
+    sourceApiRegistry: {
+      adapters: new Map(),
+      get: vi.fn(() => null),
+    },
     toCliErrorMessage: vi.fn((error: unknown) =>
       error instanceof Error ? error.message : String(error)
     ),
@@ -195,6 +207,7 @@ function createHarness() {
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
+    handleNormalizeSourceApi: createHandleNormalizeSourceApi(dependencies),
     requestContext,
   };
 }
@@ -256,7 +269,7 @@ describe("source api connect service", () => {
         provider: "github",
       },
     });
-    expect(response.operations.map((operation) => operation.name)).toEqual([
+    expect(response.operations?.map((operation) => operation.name)).toEqual([
       "fetch",
     ]);
   });
@@ -422,6 +435,99 @@ describe("source api connect service", () => {
       case: "text",
       value: "ok",
     });
+  });
+
+  it("normalizes the source API request through the Connect handler", async () => {
+    const harness = createHarness();
+    const request = create(NormalizeSourceApiRequestSchema, {
+      body: {
+        case: "textBody",
+        value: "body text",
+      },
+      descriptorVersion: "github-v1",
+      fieldPatch: {
+        perPage: 50,
+      },
+      headers: [
+        {
+          name: "accept",
+          value: "application/json",
+        },
+      ],
+      methodOverride: "POST",
+      operation: "fetch",
+      orgSlug: "acme",
+      selector: "/issues",
+      sourceKey: "github-prod",
+    });
+
+    const response = await harness.handleNormalizeSourceApi(request, {
+      values: new Map(),
+    } as never);
+
+    expect(harness.requestContext.requireAuthorizedOrg).toHaveBeenCalledWith({
+      action: "source_api.execute",
+      orgSlug: "acme",
+      session,
+    });
+    expect(harness.dependencies.normalizeSourceApiRequest).toHaveBeenCalledWith(
+      {
+        actor: {
+          capabilities: authorizedOrg.capabilities,
+          membershipRoles: authorizedOrg.membershipRoles,
+          organizationId: "org-1",
+          organizationSlug: "acme",
+          requestId: "req_cli_123",
+          userId: "user-1",
+        },
+        descriptor: {
+          ...descriptor,
+        },
+        request: {
+          body: {
+            kind: "text",
+            value: "body text",
+          },
+          descriptorVersion: "github-v1",
+          fieldPatch: {
+            perPage: 50,
+          },
+          headers: [
+            {
+              name: "accept",
+              value: "application/json",
+            },
+          ],
+          methodOverride: "POST",
+          operation: "fetch",
+          pageToken: undefined,
+          selector: "/issues",
+        },
+        source: preparedSource,
+      }
+    );
+    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
+    expect(harness.adapterExecute).not.toHaveBeenCalled();
+    expect(response).toMatchObject({
+      plan: {
+        bodyKind: "text",
+        descriptorVersion: "github-v1",
+        headerNames: ["accept"],
+        host: "api.github.com",
+        kind: "http_request",
+        method: "POST",
+        operation: "fetch",
+        provider: "github",
+        requestFingerprint: "fp_123",
+        selector: "/issues",
+        selectorTemplate: "/{path}",
+        sourceId: "source-1",
+        sourceKey: "github-prod",
+      },
+    });
+    expect((response.plan as Record<string, unknown>).headers).toBeUndefined();
+    expect((response.plan as Record<string, unknown>).body).toBeUndefined();
+    expect((response.plan as Record<string, unknown>).url).toBeUndefined();
   });
 
   it("rejects unsupported operations as invalid arguments", async () => {

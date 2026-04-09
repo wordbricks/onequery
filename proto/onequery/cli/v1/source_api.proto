@@ -25,6 +25,39 @@ message DescribeSourceApiResponse {
   repeated string notes = 6;
 }
 
+message NormalizeSourceApiRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string descriptor_version = 3 [(buf.validate.field).string.min_len = 1];
+  string operation = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  optional string selector = 5 [(buf.validate.field).string.min_len = 1];
+  optional string method_override = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  repeated CliSourceApiHeader headers = 7;
+  optional google.protobuf.Struct field_patch = 8;
+  oneof body {
+    google.protobuf.Value json_body = 9;
+    string text_body = 10;
+    bytes binary_body = 11;
+  }
+  optional string page_token = 12 [(buf.validate.field).string.min_len = 1];
+}
+
+message NormalizeSourceApiResponse {
+  google.protobuf.Struct plan = 1;
+}
+
 message ExecuteSourceApiRequest {
   string org_slug = 1 [
     (buf.validate.field).string.min_len = 1,

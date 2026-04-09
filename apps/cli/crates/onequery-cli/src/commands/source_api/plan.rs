@@ -41,40 +41,15 @@ pub(super) struct ExecutePlan {
     pub(super) render: SourceApiRenderOptions,
 }
 
-#[derive(Debug, Clone, serde::Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct DryRunPlan {
-    pub(super) source: String,
-    pub(super) provider: String,
-    pub(super) descriptor_version: String,
-    pub(super) request: DryRunRequestPayload,
-}
-
-#[derive(Debug, Clone, serde::Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct DryRunRequestPayload {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) descriptor_version: Option<String>,
-    pub(super) operation: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) selector: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) method_override: Option<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(super) headers: Vec<SourceApiHeader>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) field_patch: Option<Value>,
-    #[serde(flatten)]
-    pub(super) body: SourceApiRequestBody,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) page_token: Option<String>,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum PlannedCommand {
     Describe,
-    DryRun { plan: DryRunPlan },
-    Execute { plan: ExecutePlan },
+    DryRun {
+        request: ExecuteSourceApiRequestPayload,
+    },
+    Execute {
+        plan: ExecutePlan,
+    },
 }
 
 pub(super) async fn build_plan(
@@ -158,14 +133,7 @@ pub(super) async fn build_plan(
     };
 
     if args.dry_run {
-        return Ok(PlannedCommand::DryRun {
-            plan: DryRunPlan {
-                source: descriptor.source.key.clone(),
-                provider: descriptor.source.provider.clone(),
-                descriptor_version: descriptor.descriptor_version.clone(),
-                request: redact_request_for_dry_run(&request),
-            },
-        });
+        return Ok(PlannedCommand::DryRun { request });
     }
 
     Ok(PlannedCommand::Execute {
@@ -470,90 +438,25 @@ fn normalized_method_override(value: Option<&str>) -> Option<String> {
     value
         .map(str::trim)
         .filter(|candidate| !candidate.is_empty())
-        .map(|method| method.to_ascii_uppercase())
-}
-
-fn redact_request_for_dry_run(request: &ExecuteSourceApiRequestPayload) -> DryRunRequestPayload {
-    DryRunRequestPayload {
-        descriptor_version: request.descriptor_version.clone(),
-        operation: request.operation.clone(),
-        selector: request.selector.clone(),
-        method_override: request.method_override.clone(),
-        headers: request
-            .headers
-            .iter()
-            .map(|header| SourceApiHeader {
-                name: header.name.clone(),
-                value: redacted_label(),
-            })
-            .collect(),
-        field_patch: request.field_patch.as_ref().map(redact_json_value),
-        body: redact_request_body(&request.body),
-        page_token: request.page_token.as_ref().map(|_| redacted_label()),
-    }
-}
-
-fn redact_request_body(body: &SourceApiRequestBody) -> SourceApiRequestBody {
-    match body {
-        SourceApiRequestBody::None => SourceApiRequestBody::None,
-        SourceApiRequestBody::Json { value } => SourceApiRequestBody::Json {
-            value: redact_json_value(value),
-        },
-        SourceApiRequestBody::Text { .. } => SourceApiRequestBody::Text {
-            value: redacted_label(),
-        },
-        SourceApiRequestBody::Binary { .. } => SourceApiRequestBody::Binary {
-            value_base64: redacted_label(),
-        },
-    }
-}
-
-fn redact_json_value(value: &Value) -> Value {
-    match value {
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
-            Value::String(redacted_label())
-        }
-        Value::Array(items) => Value::Array(items.iter().map(redact_json_value).collect()),
-        Value::Object(map) => Value::Object(
-            map.iter()
-                .map(|(key, value)| (key.clone(), redact_json_value(value)))
-                .collect(),
-        ),
-    }
-}
-
-fn redacted_label() -> String {
-    "<redacted>".to_owned()
+        .map(str::to_ascii_uppercase)
 }
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
-    use serde_json::json;
-    use tempfile::tempdir;
-
     use onequery_cli_core::error::ErrorStage;
 
     use crate::cli::UseArgs;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
-    use crate::transport::source_api::SourceApiDescriptor;
     use crate::transport::source_api::SourceApiFieldPolicy;
-    use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiHeaderPolicy;
     use crate::transport::source_api::SourceApiMethodPolicy;
     use crate::transport::source_api::SourceApiOperation;
     use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiPaginationPolicy;
     use crate::transport::source_api::SourceApiSelectorKind;
-    use crate::transport::source_api::SourceApiSource;
 
     use super::CommandContext;
-    use super::DryRunPlan;
-    use super::DryRunRequestPayload;
-    use super::PlannedCommand;
-    use super::SourceApiRequestBody;
-    use super::build_plan;
     use super::validate_pagination;
 
     #[test]
@@ -646,83 +549,6 @@ mod tests {
         .expect("expected opaque-token pagination to validate");
     }
 
-    #[tokio::test]
-    async fn build_plan_redacts_dry_run_request_values() {
-        let temp_dir = tempdir().expect("expected temp dir");
-        let input_path = temp_dir.path().join("payload.json");
-        std::fs::write(
-            &input_path,
-            r#"{"token":"top-secret","count":3,"items":[true,null]}"#,
-        )
-        .expect("expected request input fixture");
-
-        let plan = build_plan(
-            &UseArgs {
-                headers: vec![
-                    "authorization:Bearer secret-token".to_owned(),
-                    "x-trace-id:trace-secret".to_owned(),
-                ],
-                raw_fields: vec!["params[q]=private".to_owned()],
-                fields: vec![
-                    "body[limit]=10".to_owned(),
-                    "body[filters][]=true".to_owned(),
-                    "body[filters][]=null".to_owned(),
-                ],
-                input: Some(input_path.display().to_string()),
-                dry_run: true,
-                ..use_args()
-            },
-            &descriptor(),
-            &context(),
-        )
-        .await
-        .expect("expected dry-run plan");
-
-        assert_eq!(
-            plan,
-            PlannedCommand::DryRun {
-                plan: DryRunPlan {
-                    source: "github-prod".to_owned(),
-                    provider: "github".to_owned(),
-                    descriptor_version: "desc_v1".to_owned(),
-                    request: DryRunRequestPayload {
-                        descriptor_version: Some("desc_v1".to_owned()),
-                        operation: "fetch".to_owned(),
-                        selector: Some("/pulls".to_owned()),
-                        method_override: None,
-                        headers: vec![
-                            SourceApiHeader {
-                                name: "authorization".to_owned(),
-                                value: "<redacted>".to_owned(),
-                            },
-                            SourceApiHeader {
-                                name: "x-trace-id".to_owned(),
-                                value: "<redacted>".to_owned(),
-                            },
-                        ],
-                        field_patch: Some(json!({
-                            "params": {
-                                "q": "<redacted>"
-                            },
-                            "body": {
-                                "limit": "<redacted>",
-                                "filters": ["<redacted>", "<redacted>"]
-                            }
-                        })),
-                        body: SourceApiRequestBody::Json {
-                            value: json!({
-                                "token": "<redacted>",
-                                "count": "<redacted>",
-                                "items": ["<redacted>", "<redacted>"]
-                            }),
-                        },
-                        page_token: None,
-                    },
-                },
-            }
-        );
-    }
-
     fn context() -> CommandContext {
         CommandContext {
             command_line: "onequery use --source github-prod".to_owned(),
@@ -731,32 +557,6 @@ mod tests {
             resolved_org: Some("demo-org".to_owned()),
             resolved_org_source: ResolvedOrgSource::Flag,
             verbose: false,
-        }
-    }
-
-    fn descriptor() -> SourceApiDescriptor {
-        SourceApiDescriptor {
-            source: SourceApiSource {
-                key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
-                display_name: None,
-            },
-            descriptor_version: "desc_v1".to_owned(),
-            default_path_operation: Some("fetch".to_owned()),
-            operations: vec![SourceApiOperation {
-                field_policy: SourceApiFieldPolicy {
-                    supports_raw_fields: true,
-                    supports_typed_fields: true,
-                    syntaxes: Vec::new(),
-                    transport_rules: Vec::new(),
-                },
-                header_policy: SourceApiHeaderPolicy {
-                    allowed_names: vec!["authorization".to_owned(), "x-trace-id".to_owned()],
-                },
-                ..operation(SourceApiPaginationPolicy::None)
-            }],
-            examples: Vec::new(),
-            notes: Vec::new(),
         }
     }
 

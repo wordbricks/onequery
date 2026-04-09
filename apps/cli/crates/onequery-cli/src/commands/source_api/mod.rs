@@ -61,8 +61,19 @@ pub(super) async fn execute<B, T>(
     match plan {
         PlannedCommand::Describe => render_descriptor_output(descriptor_response.payload)
             .map(|output| output.with_request_id(descriptor_response.request_id)),
-        PlannedCommand::DryRun { plan } => render_dry_run_output(plan)
-            .map(|output| output.with_request_id(descriptor_response.request_id)),
+        PlannedCommand::DryRun { request } => {
+            let normalize_response = source_api::normalize_source_api(
+                &client,
+                org_slug.as_str(),
+                args.source.as_str(),
+                &request,
+            )
+            .await
+            .map_err(|failure| present_source_api_normalize_failure(failure, args, context))?;
+
+            render_dry_run_output(normalize_response.payload)
+                .map(|output| output.with_request_id(normalize_response.request_id))
+        }
         PlannedCommand::Execute { plan } => {
             let execute_response = execute_source_api_pages(
                 &client,
@@ -122,6 +133,27 @@ async fn execute_source_api_pages(
     }
 
     Ok(ExecuteSourceApiPages { pages, request_id })
+}
+
+fn present_source_api_normalize_failure(
+    failure: crate::transport::http::ApiFailure,
+    args: &UseArgs,
+    context: &CommandContext,
+) -> CliError {
+    present_api_failure(
+        failure,
+        ApiErrorPresentation {
+            command: &context.command_line,
+            title: "source API dry run failed",
+            transport_why_prefix: "failed to reach source API service",
+            decode_why_prefix: "failed to decode source API normalized plan",
+            fallback_try_next: vec![
+                format!("onequery use --source {}", args.source),
+                format!("retry {}", context.command_line),
+            ],
+            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+        },
+    )
 }
 
 fn present_source_api_execute_failure(
