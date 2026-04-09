@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { finalizeSourceApiPolicyPlan } from "./policy";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
@@ -41,9 +42,10 @@ export function requireSourceApiOperation(input: {
 export function finalizeNormalizedExecutionPlan(
   plan: UnfingerprintedNormalizedExecutionPlan
 ): NormalizedExecutionPlan {
+  const policyPlan = finalizeSourceApiPolicyPlan(plan);
   return {
-    ...plan,
-    requestFingerprint: createSourceApiRequestFingerprint(plan),
+    ...policyPlan,
+    requestFingerprint: createSourceApiRequestFingerprint(policyPlan),
   };
 }
 
@@ -72,12 +74,14 @@ export async function normalizeSourceApiRequest(input: {
   const registry = input.registry ?? sourceApiRegistry;
   const adapter = getSourceApiAdapter(registry, input.source.provider);
 
-  return adapter.normalize({
-    actor: input.actor,
-    descriptor: input.descriptor,
-    request: input.request,
-    source: input.source,
-  });
+  return finalizeNormalizedExecutionPlan(
+    await adapter.normalize({
+      actor: input.actor,
+      descriptor: input.descriptor,
+      request: input.request,
+      source: input.source,
+    })
+  );
 }
 
 function stableStringify(value: unknown): string {

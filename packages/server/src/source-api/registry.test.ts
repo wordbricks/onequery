@@ -35,16 +35,13 @@ function createAdapter(
     async normalize() {
       return {
         body: { kind: "none" },
-        bodyKind: "none",
         descriptorVersion: "v1",
         headers: [],
-        headerNames: [],
         kind: "structured_request",
         metadata: {},
         operation: "noop",
         provider,
         request: {},
-        requestFingerprint: "fingerprint",
         sourceId: "source-id",
         sourceKey: "source",
       };

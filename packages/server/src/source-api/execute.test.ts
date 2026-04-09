@@ -39,14 +39,11 @@ describe("executeSourceApi", () => {
         calls.push("normalize");
         return {
           body: { kind: "none" },
-          bodyKind: "none",
           headers: [],
-          headerNames: [],
           kind: "structured_request",
           operation: "fetch",
           provider: "github",
           request: {},
-          requestFingerprint: "fingerprint",
           sourceId: "source-id",
           sourceKey: "github-prod",
         };
@@ -87,5 +84,79 @@ describe("executeSourceApi", () => {
 
     expect(calls).toEqual(["describe", "normalize", "execute"]);
     expect(response.status).toBe(200);
+  });
+
+  it("authorizes after normalization and before execute", async () => {
+    const calls: string[] = [];
+    const adapter: SourceApiAdapter = {
+      async describe() {
+        calls.push("describe");
+        return {
+          descriptorVersion: "v1",
+          examples: [],
+          notes: [],
+          operations: [],
+          source: {
+            key: "github-prod",
+            provider: "github",
+          },
+        };
+      },
+      async execute() {
+        calls.push("execute");
+        throw new Error("should not execute");
+      },
+      async normalize() {
+        calls.push("normalize");
+        return {
+          body: { kind: "none" },
+          headers: [],
+          kind: "structured_request",
+          operation: "fetch",
+          provider: "github",
+          request: {},
+          sourceId: "source-id",
+          sourceKey: "github-prod",
+        };
+      },
+      provider: "github",
+    };
+
+    const source: PreparedSourceConnection = {
+      credentials: { accessToken: "token", repositories: [], type: "github" },
+      credentialsEncrypted: "enc",
+      credentialsIv: "iv",
+      displayName: null,
+      id: "source-id",
+      name: "github-prod",
+      organizationId: "org_1",
+      provider: "github",
+      sourceKey: "github-prod",
+      status: "active",
+      useAsDataSource: true,
+    };
+
+    await expect(
+      executeSourceApi({
+        actor: {
+          capabilities: [],
+          membershipRoles: ["owner"],
+          organizationId: "org_1",
+          organizationSlug: "acme",
+          userId: "user_1",
+        },
+        registry: createSourceApiRegistry([adapter]),
+        request: {
+          body: { kind: "none" },
+          headers: [],
+          operation: "fetch",
+        },
+        source,
+      })
+    ).rejects.toThrow(
+      'Actor "user_1" is not allowed to execute source API operation "fetch"'
+    );
+
+    expect(calls).toEqual(["describe", "normalize"]);
   });
 });

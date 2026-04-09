@@ -184,9 +184,29 @@ export type NormalizedExecutionPlan =
   | NormalizedHttpRequestPlan
   | NormalizedStructuredRequestPlan;
 
-export type UnfingerprintedNormalizedExecutionPlan =
+export type FinalizedNormalizedExecutionPlan =
   | Omit<NormalizedHttpRequestPlan, "requestFingerprint">
   | Omit<NormalizedStructuredRequestPlan, "requestFingerprint">;
+
+export type UnfingerprintedNormalizedHttpRequestPlan = Omit<
+  NormalizedHttpRequestPlan,
+  "bodyKind" | "headerNames" | "requestFingerprint"
+> & {
+  bodyKind?: SourceApiBodyKind;
+  headerNames?: readonly string[];
+};
+
+export type UnfingerprintedNormalizedStructuredRequestPlan = Omit<
+  NormalizedStructuredRequestPlan,
+  "bodyKind" | "headerNames" | "requestFingerprint"
+> & {
+  bodyKind?: SourceApiBodyKind;
+  headerNames?: readonly string[];
+};
+
+export type UnfingerprintedNormalizedExecutionPlan =
+  | UnfingerprintedNormalizedHttpRequestPlan
+  | UnfingerprintedNormalizedStructuredRequestPlan;
 
 export type SourceApiPaginationTokenPayload = {
   sourceKey: string;
@@ -209,7 +229,7 @@ export type SourceApiAdapter = {
     actor: SourceApiActorContext;
     descriptor: SourceApiDescriptor;
     request: SourceApiExecuteRequest;
-  }): Promise<NormalizedExecutionPlan>;
+  }): Promise<UnfingerprintedNormalizedExecutionPlan>;
   execute(input: {
     source: PreparedSourceConnection;
     actor: SourceApiActorContext;

@@ -475,9 +475,9 @@ The initial implementation may only enforce coarse capability checks, but it mus
 ### 7) Authorization hook
 
 - [x] Add `source_api.describe` and `source_api.execute` to `packages/cli-server/src/authorization.ts` and underlying org permission wiring.
-- [ ] Add `authorizeSourceApi(plan, actor)` to the server source-api domain.
-- [ ] Call the authorization hook after normalization and before execution.
-- [ ] Ensure the plan includes method, selector, headers, and body kind even before fine-grained policy rules ship.
+- [x] Add `authorizeSourceApi(plan, actor)` to the server source-api domain.
+- [x] Call the authorization hook after normalization and before execution.
+- [x] Ensure the plan includes method, selector, headers, and body kind even before fine-grained policy rules ship.
 
 ### 8) Remove current `use` architecture
 
