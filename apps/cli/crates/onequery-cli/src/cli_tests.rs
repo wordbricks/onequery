@@ -193,9 +193,10 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
 }
 
 #[test]
-fn parse_invocation_accepts_gateway_root_and_status_subcommands() {
+fn parse_invocation_accepts_gateway_foreground_start_and_status_subcommands() {
     for (args, expected) in [
-        (&["onequery", "gateway"][..], GatewayCommand::Root),
+        (&["onequery", "gateway"][..], GatewayCommand::Foreground),
+        (&["onequery", "gateway", "start"][..], GatewayCommand::Start),
         (
             &["onequery", "gateway", "status"][..],
             GatewayCommand::Status,

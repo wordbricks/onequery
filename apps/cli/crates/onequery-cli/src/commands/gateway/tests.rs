@@ -73,7 +73,7 @@ fn render_gateway_output_snapshot() {
 
 #[test]
 fn render_gateway_start_output_snapshot() {
-    let output = render_gateway_start_output(&sample_state());
+    let output = render_gateway_start_output(&sample_state(), 4242);
     assert_snapshot!(output.lines.join("\n"));
 }
 
@@ -361,6 +361,7 @@ fn validate_runtime_version_output_rejects_node_20() {
         "v20.19.0\n",
         &std::ffi::OsString::from("node"),
         "onequery gateway",
+        "onequery gateway",
     )
     .expect_err("expected Node 20 to be rejected");
 
@@ -380,6 +381,7 @@ fn validate_runtime_version_output_accepts_node_22() {
     validate_runtime_version_output(
         "v22.13.1\n",
         &std::ffi::OsString::from("node"),
+        "onequery gateway",
         "onequery gateway",
     )
     .unwrap_or_else(|error| panic!("expected Node 22 to be accepted: {error}"));

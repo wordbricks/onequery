@@ -27,7 +27,8 @@ pub(super) fn render_gateway_output(state: &GatewayRuntimeState) -> CommandOutpu
                 "Created secrets.toml: {}",
                 yes_no_label(state.secrets_created)
             ),
-            "Next step: onequery gateway start".to_owned(),
+            "Next steps: onequery gateway (foreground) or onequery gateway start (background)"
+                .to_owned(),
         ],
         json!({
             "kind": "gateway",
@@ -42,27 +43,27 @@ pub(super) fn render_gateway_output(state: &GatewayRuntimeState) -> CommandOutpu
     )
 }
 
-#[cfg(test)]
-pub(super) fn render_gateway_start_output(state: &GatewayRuntimeState) -> CommandOutput {
+pub(super) fn render_gateway_start_output(
+    state: &GatewayRuntimeState,
+    started_pid: u32,
+) -> CommandOutput {
     let listen = server_listen_label(state.config.as_ref());
 
     CommandOutput::structured(
         vec![
-            "Gateway start is wired as a Phase 2 skeleton.".to_owned(),
-            format!("Bootstrapped: {}", yes_no_label(state.bootstrapped)),
+            "Gateway started in background.".to_owned(),
+            format!("PID: {started_pid}"),
             format!("Listen: {listen}"),
             format!("Log path: {}", state.paths.server_log_path.display()),
-            format!(
-                "Running markers present: {}",
-                yes_no_label(state.pid_file_present || state.lock_file_present)
-            ),
-            "No server process was launched in this milestone.".to_owned(),
+            "Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop"
+                .to_owned(),
         ],
         json!({
             "kind": "gateway-start",
-            "phase": "skeleton",
+            "phase": "managed",
             "bootstrapped": state.bootstrapped,
-            "processStarted": false,
+            "processStarted": true,
+            "startedPid": started_pid,
             "server": state.config.as_ref().map(server_json),
             "runtimeState": runtime_state_json(state),
             "paths": paths_json(&state.paths),

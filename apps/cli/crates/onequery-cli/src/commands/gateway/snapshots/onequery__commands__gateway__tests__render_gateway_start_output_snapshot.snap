@@ -2,9 +2,8 @@
 source: crates/onequery-cli/src/commands/gateway/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-Gateway start is wired as a Phase 2 skeleton.
-Bootstrapped: yes
+Gateway started in background.
+PID: 4242
 Listen: 127.0.0.1:5656
 Log path: /tmp/onequery/data/logs/server.log
-Running markers present: no
-No server process was launched in this milestone.
+Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop

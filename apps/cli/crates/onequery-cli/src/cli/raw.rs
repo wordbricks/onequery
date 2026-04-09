@@ -16,6 +16,8 @@ use super::model::Command;
 use super::model::ConfigCommand;
 use super::model::GatewayCommand;
 
+const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
+
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "onequery",
@@ -112,7 +114,8 @@ pub(super) enum RawCommand {
     },
     /// Restore a self-host backup archive into the runtime directories.
     Restore(RestoreArgs),
-    /// Bootstrap or inspect the self-host gateway lifecycle surface.
+    /// Run the self-host gateway in foreground by default or manage the background lifecycle.
+    #[command(after_help = GATEWAY_AFTER_HELP)]
     Gateway {
         #[command(subcommand)]
         action: Option<GatewaySubcommand>,
@@ -151,7 +154,7 @@ pub(super) enum ConfigSetSubcommand {
 
 #[derive(Debug, Clone, Subcommand, Copy, Eq, PartialEq)]
 pub(super) enum GatewaySubcommand {
-    /// Bootstrap the self-host gateway foundation and prepare to launch.
+    /// Start the self-host gateway in background.
     Start,
     /// Stop the self-host gateway if a managed process is present.
     Stop,
@@ -198,7 +201,7 @@ impl From<ConfigSetSubcommand> for ConfigCommand {
 impl From<Option<GatewaySubcommand>> for GatewayCommand {
     fn from(action: Option<GatewaySubcommand>) -> Self {
         match action {
-            None => Self::Root,
+            None => Self::Foreground,
             Some(GatewaySubcommand::Start) => Self::Start,
             Some(GatewaySubcommand::Stop) => Self::Stop,
             Some(GatewaySubcommand::Status) => Self::Status,

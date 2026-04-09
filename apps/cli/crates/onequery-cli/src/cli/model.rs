@@ -72,7 +72,7 @@ impl Command {
             Self::Query(QuerySubcommand::Execute(_)) => "query exec",
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",
             Self::Restore(_) => "restore",
-            Self::Gateway(GatewayCommand::Root) => "gateway",
+            Self::Gateway(GatewayCommand::Foreground) => "gateway",
             Self::Gateway(GatewayCommand::Start) => "gateway start",
             Self::Gateway(GatewayCommand::Stop) => "gateway stop",
             Self::Gateway(GatewayCommand::Status) => "gateway status",
@@ -92,7 +92,7 @@ pub(crate) enum ConfigCommand {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum GatewayCommand {
-    Root,
+    Foreground,
     Start,
     Stop,
     Status,

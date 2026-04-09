@@ -72,10 +72,10 @@ vendor/<target>/
     pglite/
 ```
 
-`onequery gateway` resolves `vendor/<target>` from `current_exe()` and then reads
-`runtime/web`, `runtime/migrations`, and `server/` from that bundle root only.
-There is no repo-local asset fallback and no alternate self-host launch path in
-the gateway command.
+`onequery gateway` and `onequery gateway start` resolve `vendor/<target>` from
+`current_exe()` and then read `runtime/web`, `runtime/migrations`, and
+`server/` from that bundle root only. There is no repo-local asset fallback and
+no alternate self-host launch path in the gateway command surface.
 
 ## Operator Note
 
@@ -84,12 +84,13 @@ These three files have different roles:
 - `config.toml` is the human-edited operator config.
 - `secrets.toml` stores generated or operator-managed secrets.
 - `run/launch.json` is a private resolved artifact. Do not edit it manually;
-  `onequery gateway` rewrites it from the Rust-owned config model each time the
-  runtime starts.
+  `onequery gateway` and `onequery gateway start` rewrite it from the
+  Rust-owned config model each time the runtime starts.
 
 ## Lifecycle Rules
 
-`onequery gateway` now performs this startup sequence:
+`onequery gateway` and `onequery gateway start` now perform this startup
+sequence:
 
 ```text
 self-host/config.toml + self-host/secrets.toml
