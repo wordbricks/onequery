@@ -243,8 +243,16 @@ fn insert_value_into_object(
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use serde_json::json;
+    use tempfile::tempdir;
+
+    use crate::commands::CommandContext;
+    use crate::commands::ResolvedOrgSource;
+    use crate::config::default_base_url;
 
     use super::FieldPathSegment;
+    use super::SourceApiInputReader;
+    use super::parse_field_patch;
     use super::parse_field_path;
 
     #[test]
@@ -257,5 +265,94 @@ mod tests {
                 FieldPathSegment::Append,
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn parse_field_patch_supports_raw_and_typed_nested_values() {
+        let mut reader = SourceApiInputReader::default();
+
+        let value = parse_field_patch(
+            &[
+                "params[state]=open".to_owned(),
+                "params[labels][]=bug".to_owned(),
+                "params[labels][]=feature".to_owned(),
+                "params[truthy]=true".to_owned(),
+            ],
+            &[
+                "params[per_page]=20".to_owned(),
+                "body={\"viewer\":true}".to_owned(),
+                "body[ids][]=1".to_owned(),
+                "body[ids][]=2".to_owned(),
+                "body[metadata]=null".to_owned(),
+            ],
+            &mut reader,
+            &context(),
+            "github-prod",
+        )
+        .await
+        .expect("expected nested field patch to parse");
+
+        assert_eq!(
+            value,
+            Some(json!({
+                "params": {
+                    "state": "open",
+                    "labels": ["bug", "feature"],
+                    "truthy": "true",
+                    "per_page": 20
+                },
+                "body": {
+                    "viewer": true,
+                    "ids": [1, 2],
+                    "metadata": null
+                }
+            }))
+        );
+    }
+
+    #[tokio::test]
+    async fn parse_field_patch_reads_file_inputs_before_parsing() {
+        let temp_dir = tempdir().expect("expected temp dir");
+        let raw_value_path = temp_dir.path().join("raw.txt");
+        let typed_value_path = temp_dir.path().join("typed.json");
+        std::fs::write(&raw_value_path, "api").expect("expected raw value file");
+        std::fs::write(&typed_value_path, "{\"name\":\"country\"}")
+            .expect("expected typed value file");
+
+        let mut reader = SourceApiInputReader::default();
+        let value = parse_field_patch(
+            &[format!("params[source]=@{}", raw_value_path.display())],
+            &[format!("body[dimension]=@{}", typed_value_path.display())],
+            &mut reader,
+            &context(),
+            "github-prod",
+        )
+        .await
+        .expect("expected file-backed field patch to parse");
+
+        assert_eq!(
+            value,
+            Some(json!({
+                "params": {
+                    "source": "api"
+                },
+                "body": {
+                    "dimension": {
+                        "name": "country"
+                    }
+                }
+            }))
+        );
+    }
+
+    fn context() -> CommandContext {
+        CommandContext {
+            command_line: "onequery use --source github-prod".to_owned(),
+            base_url: default_base_url(),
+            request_id: None,
+            resolved_org: Some("acme".to_owned()),
+            resolved_org_source: ResolvedOrgSource::Config,
+            verbose: false,
+        }
     }
 }

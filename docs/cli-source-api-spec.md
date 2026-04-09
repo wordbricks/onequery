@@ -490,7 +490,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### Rust CLI
 
-- [ ] Parse `-f`, `-F`, nested object syntax, array syntax, and `@file` input.
+- [x] Parse `-f`, `-F`, nested object syntax, array syntax, and `@file` input.
 - [ ] Resolve describe vs execute intent correctly.
 - [ ] Resolve `TARGET` as operation vs selector correctly.
 - [ ] Render JSON/text/binary responses correctly.
