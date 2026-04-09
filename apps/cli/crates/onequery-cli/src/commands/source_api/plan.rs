@@ -342,10 +342,21 @@ fn parse_headers(
                 ));
             }
 
-            if !allowed_names.is_empty()
-                && !allowed_names
-                    .iter()
-                    .any(|candidate| candidate == &name.to_ascii_lowercase())
+            if allowed_names.is_empty() {
+                return Err(source_api_parse_error(
+                    context,
+                    "source API headers are not supported",
+                    format!(
+                        "operation `{}` does not accept `-H/--header`",
+                        operation.name
+                    ),
+                    source_key,
+                ));
+            }
+
+            if !allowed_names
+                .iter()
+                .any(|candidate| candidate == &name.to_ascii_lowercase())
             {
                 return Err(source_api_parse_error(
                     context,
@@ -449,6 +460,7 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
     use crate::transport::source_api::SourceApiFieldPolicy;
+    use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiHeaderPolicy;
     use crate::transport::source_api::SourceApiMethodPolicy;
     use crate::transport::source_api::SourceApiOperation;
@@ -457,6 +469,7 @@ mod tests {
     use crate::transport::source_api::SourceApiSelectorKind;
 
     use super::CommandContext;
+    use super::parse_headers;
     use super::validate_pagination;
 
     #[test]
@@ -547,6 +560,44 @@ mod tests {
             "github-prod",
         )
         .expect("expected opaque-token pagination to validate");
+    }
+
+    #[test]
+    fn parse_headers_rejects_headers_when_operation_disallows_them() {
+        let error = parse_headers(
+            &["Accept: application/json".to_owned()],
+            &operation(SourceApiPaginationPolicy::None),
+            &context(),
+            "github-prod",
+        )
+        .expect_err("expected headers to be rejected when no allowlist is present");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(error.why, "operation `fetch` does not accept `-H/--header`");
+    }
+
+    #[test]
+    fn parse_headers_accepts_allowlisted_headers_case_insensitively() {
+        let headers = parse_headers(
+            &["accept: application/json".to_owned()],
+            &SourceApiOperation {
+                header_policy: SourceApiHeaderPolicy {
+                    allowed_names: vec!["Accept".to_owned()],
+                },
+                ..operation(SourceApiPaginationPolicy::None)
+            },
+            &context(),
+            "github-prod",
+        )
+        .expect("expected allowlisted header to validate");
+
+        assert_eq!(
+            headers,
+            vec![SourceApiHeader {
+                name: "accept".to_owned(),
+                value: "application/json".to_owned(),
+            }]
+        );
     }
 
     fn context() -> CommandContext {
