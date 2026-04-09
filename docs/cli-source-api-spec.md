@@ -444,13 +444,13 @@ The initial implementation may only enforce coarse capability checks, but it mus
 - [x] Move MongoDB relay behavior from `routes/data-sources/mongodb-query.ts` into `source-api/adapters/mongodb.ts`.
 - [x] Move Amplitude, Mixpanel, PostHog, and Sentry relay behavior into corresponding adapters.
 - [x] Keep request validation next to the adapter definition; do not leave runtime schema in the old route file.
-- [ ] Remove markdown skill content as a source of truth.
+- [x] Remove markdown skill content as a source of truth.
 
 ### 4) CLI server transport
 
 - [x] Add `packages/cli-server/src/connect/service/source_api.ts`.
 - [x] Replace `handleUse` registration in `packages/cli-server/src/connect/service.ts`.
-- [ ] Remove `packages/cli-server/src/use/skills.ts`.
+- [x] Remove `packages/cli-server/src/use/skills.ts`.
 - [x] Remove `fromCliUseSource` / `toCliUseSourceEnum` from `packages/cli-server/src/connect/service/conversions.ts`.
 - [x] Add conversions for source-api descriptor and execute response messages.
 - [ ] Update tests to call `DescribeSourceApi` and `ExecuteSourceApi`.
@@ -482,7 +482,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 ### 8) Remove current `use` architecture
 
 - [ ] Delete all `CliUseSource` references from proto, TS, and Rust.
-- [ ] Delete markdown skill registry behavior.
+- [x] Delete markdown skill registry behavior.
 - [ ] Delete direct CLI HTTP calls to `/api/data-sources/{provider}/query`.
 - [ ] Delete provider-specific retry/help text that assumes `--source` is a provider enum.
 
