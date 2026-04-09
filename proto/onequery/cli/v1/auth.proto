@@ -8,9 +8,15 @@ import "google/protobuf/timestamp.proto";
 message GetSessionRequest {}
 
 message GetSessionResponse {
-  CliAuthMode auth_mode = 1;
-  CliAuthUser user = 2;
-  optional string active_org_slug = 3;
+  CliAuthMode auth_mode = 1 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  CliAuthUser user = 2 [(buf.validate.field).required = true];
+  optional string active_org_slug = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
   optional google.protobuf.Timestamp issued_at = 4;
   optional google.protobuf.Timestamp expires_at = 5;
 }
@@ -18,10 +24,19 @@ message GetSessionResponse {
 message RefreshSessionRequest {}
 
 message RefreshSessionResponse {
-  string access_token = 1;
-  CliAuthMode auth_mode = 2;
-  CliAuthUser user = 3;
-  optional string active_org_slug = 4;
+  string access_token = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  CliAuthMode auth_mode = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  CliAuthUser user = 3 [(buf.validate.field).required = true];
+  optional string active_org_slug = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
   optional google.protobuf.Timestamp issued_at = 5;
   optional google.protobuf.Timestamp expires_at = 6;
 }
@@ -29,13 +44,19 @@ message RefreshSessionResponse {
 message StartDeviceAuthorizationRequest {}
 
 message StartDeviceAuthorizationResponse {
-  string state = 1;
-  string device_code = 2;
-  string user_code = 3;
-  string verification_url = 4;
-  string verification_complete_url = 5;
-  uint32 poll_after_ms = 6;
-  google.protobuf.Timestamp expires_at = 7;
+  string state = 1 [(buf.validate.field).string.min_len = 1];
+  string device_code = 2 [(buf.validate.field).string.min_len = 1];
+  string user_code = 3 [(buf.validate.field).string.min_len = 1];
+  string verification_url = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.uri = true
+  ];
+  string verification_complete_url = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.uri = true
+  ];
+  uint32 poll_after_ms = 6 [(buf.validate.field).uint32.gte = 1];
+  google.protobuf.Timestamp expires_at = 7 [(buf.validate.field).required = true];
 }
 
 message PollDeviceAuthorizationRequest {
@@ -44,28 +65,42 @@ message PollDeviceAuthorizationRequest {
 
 message PollDeviceAuthorizationResponse {
   oneof outcome {
+    option (buf.validate.oneof).required = true;
+
     CliPendingDeviceAuthorization pending = 1;
     CliAuthorizedDeviceAuthorization authorized = 2;
   }
 }
 
 message CliAuthUser {
-  string id = 1;
-  string email = 2;
-  string display_name = 3;
+  string id = 1 [(buf.validate.field).string.min_len = 1];
+  string email = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.email = true
+  ];
+  string display_name = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliPendingDeviceAuthorization {
-  string state = 1;
-  uint32 poll_after_ms = 2;
+  string state = 1 [(buf.validate.field).string.min_len = 1];
+  uint32 poll_after_ms = 2 [(buf.validate.field).uint32.gte = 1];
 }
 
 message CliAuthorizedDeviceAuthorization {
-  string state = 1;
-  string access_token = 2;
-  CliAuthMode auth_mode = 3;
-  CliAuthUser user = 4;
-  optional string active_org_slug = 5;
+  string state = 1 [(buf.validate.field).string.min_len = 1];
+  string access_token = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  CliAuthMode auth_mode = 3 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  CliAuthUser user = 4 [(buf.validate.field).required = true];
+  optional string active_org_slug = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
   optional google.protobuf.Timestamp issued_at = 6;
   optional google.protobuf.Timestamp expires_at = 7;
 }

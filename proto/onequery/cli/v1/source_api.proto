@@ -17,8 +17,8 @@ message DescribeSourceApiRequest {
 }
 
 message DescribeSourceApiResponse {
-  CliSourceApiSource source = 1;
-  string descriptor_version = 2;
+  CliSourceApiSource source = 1 [(buf.validate.field).required = true];
+  string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
   optional string default_path_operation = 3;
   repeated CliSourceApiOperation operations = 4;
   repeated CliSourceApiExample examples = 5;
@@ -88,8 +88,11 @@ message ExecuteSourceApiRequest {
 }
 
 message ExecuteSourceApiResponse {
-  CliSourceApiSource source = 1;
-  string operation = 2;
+  CliSourceApiSource source = 1 [(buf.validate.field).required = true];
+  string operation = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
   optional string selector = 3;
   uint32 status = 4;
   repeated CliSourceApiHeader headers = 5;

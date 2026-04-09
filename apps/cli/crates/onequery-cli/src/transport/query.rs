@@ -243,7 +243,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: query_validation_from_generated(payload),
+        payload: query_validation_from_generated(payload, request_id.clone())?,
         request_id,
     })
 }
@@ -294,6 +294,13 @@ fn query_result_from_generated(
     result: types::ExecuteQueryResponse,
     request_id: Option<String>,
 ) -> Result<QueryResult, ApiFailure> {
+    let source = result.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ExecuteQuery,
+            "query execution response missing source metadata",
+            request_id.clone(),
+        )
+    })?;
     let page = result.page.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::ExecuteQuery,
@@ -316,10 +323,7 @@ fn query_result_from_generated(
             untrusted_paths,
             result.sanitization.into_option(),
         ),
-        source: result
-            .source
-            .into_option()
-            .map(source_summary_from_generated),
+        source: Some(source_summary_from_generated(source)),
         row_count: usize::try_from(result.row_count).ok(),
         elapsed_ms: Some(result.elapsed_ms),
         columns: Some(
@@ -338,23 +342,39 @@ fn query_result_from_generated(
     })
 }
 
-fn query_validation_from_generated(result: types::ValidateQueryResponse) -> QueryValidationResult {
-    QueryValidationResult {
-        request: result
-            .request
-            .into_option()
-            .map(query_canonical_request_from_generated),
+fn query_validation_from_generated(
+    result: types::ValidateQueryResponse,
+    request_id: Option<String>,
+) -> Result<QueryValidationResult, ApiFailure> {
+    let request = result.request.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ReadQueryInput,
+            "query validation response missing request payload",
+            request_id.clone(),
+        )
+    })?;
+    let declared_result_window = result.declared_result_window.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ReadQueryInput,
+            "query validation response missing result window",
+            request_id.clone(),
+        )
+    })?;
+    let source = result.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ReadQueryInput,
+            "query validation response missing source metadata",
+            request_id,
+        )
+    })?;
+
+    Ok(QueryValidationResult {
+        request: Some(query_canonical_request_from_generated(request)),
         normalized_sql: non_empty(result.normalized_sql),
-        declared_result_window: result
-            .declared_result_window
-            .into_option()
-            .map(query_result_window_from_generated),
-        source: result
-            .source
-            .into_option()
-            .map(source_summary_from_generated),
+        declared_result_window: Some(query_result_window_from_generated(declared_result_window)),
+        source: Some(source_summary_from_generated(source)),
         truncated: Some(result.truncated),
-    }
+    })
 }
 
 fn query_canonical_request_from_generated(
@@ -777,8 +797,8 @@ mod tests {
 
     #[test]
     fn query_validation_from_generated_maps_validate_response() {
-        let validation =
-            super::query_validation_from_generated(super::types::ValidateQueryResponse {
+        let validation = super::query_validation_from_generated(
+            super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
                     sql: "SELECT 1".to_owned(),
                     parameters: vec![
@@ -822,7 +842,10 @@ mod tests {
                 }),
                 truncated: false,
                 ..Default::default()
-            });
+            },
+            Some("req_validation".to_owned()),
+        )
+        .expect("expected query validation result");
 
         assert_eq!(
             validation,
@@ -864,9 +887,48 @@ mod tests {
     }
 
     #[test]
+    fn query_validation_from_generated_requires_source_metadata() {
+        let error = super::query_validation_from_generated(
+            super::types::ValidateQueryResponse {
+                request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
+                    sql: "SELECT 1".to_owned(),
+                    ..Default::default()
+                }),
+                normalized_sql: "SELECT 1".to_owned(),
+                declared_result_window: buffa::MessageField::some(
+                    super::types::CliDeclaredQueryResultWindow {
+                        max_rows: Some(100),
+                        ..Default::default()
+                    },
+                ),
+                truncated: false,
+                ..Default::default()
+            },
+            Some("req_missing_validation_source".to_owned()),
+        )
+        .expect_err("expected missing source metadata to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+                stage: ErrorStage::ReadQueryInput,
+                message: "query validation response missing source metadata".to_owned(),
+                request_id: Some("req_missing_validation_source".to_owned()),
+            })
+        );
+    }
+
+    #[test]
     fn query_result_from_generated_requires_page_metadata() {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
+                source: buffa::MessageField::some(super::types::GetSourceResponse {
+                    name: "warehouse".to_owned(),
+                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    queryable: true,
+                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    ..Default::default()
+                }),
                 row_count: 1,
                 ..Default::default()
             },
@@ -880,6 +942,32 @@ mod tests {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing page metadata".to_owned(),
                 request_id: Some("req_missing_page".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn query_result_from_generated_requires_source_metadata() {
+        let error = super::query_result_from_generated(
+            super::types::ExecuteQueryResponse {
+                page: buffa::MessageField::some(super::types::CliPage {
+                    returned: 1,
+                    has_more: false,
+                    ..Default::default()
+                }),
+                row_count: 1,
+                ..Default::default()
+            },
+            Some("req_missing_query_source".to_owned()),
+        )
+        .expect_err("expected missing source metadata to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+                stage: ErrorStage::ExecuteQuery,
+                message: "query execution response missing source metadata".to_owned(),
+                request_id: Some("req_missing_query_source".to_owned()),
             })
         );
     }

@@ -15,7 +15,7 @@ message ListOrganizationsRequest {
 
 message ListOrganizationsResponse {
   repeated CliOrganizationSummary organizations = 1;
-  optional CliPage page = 2;
+  CliPage page = 2 [(buf.validate.field).required = true];
 }
 
 message GetOrganizationRequest {
@@ -26,15 +26,21 @@ message GetOrganizationRequest {
 }
 
 message GetOrganizationResponse {
-  string slug = 1;
-  string name = 2;
-  repeated string roles = 3;
+  string slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  repeated string roles = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
   repeated CliOrgCapability capabilities = 4;
 }
 
 message CliOrganizationSummary {
-  string slug = 1;
-  string name = 2;
+  string slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string name = 2 [(buf.validate.field).string.min_len = 1];
 }
 
 enum CliOrgCapability {

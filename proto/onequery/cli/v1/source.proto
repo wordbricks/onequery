@@ -19,7 +19,7 @@ message ListSourcesRequest {
 
 message ListSourcesResponse {
   repeated GetSourceResponse sources = 1;
-  optional CliPage page = 2;
+  CliPage page = 2 [(buf.validate.field).required = true];
 }
 
 message GetSourceRequest {
@@ -34,11 +34,20 @@ message GetSourceRequest {
 }
 
 message GetSourceResponse {
-  string name = 1;
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
   optional string display_name = 2;
-  CliSourceProvider provider = 3;
+  CliSourceProvider provider = 3 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   bool queryable = 4;
-  CliSourceStatus status = 5;
+  CliSourceStatus status = 5 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
 message GetSourceConnectGuideRequest {
@@ -361,7 +370,7 @@ message ConnectSourceLinearOAuthCredentials {
 }
 
 message ConnectSourceResponse {
-  GetSourceResponse source = 1;
+  GetSourceResponse source = 1 [(buf.validate.field).required = true];
   string next_command = 2;
 }
 
