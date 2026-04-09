@@ -574,6 +574,40 @@ mod tests {
     }
 
     #[test]
+    fn render_execute_output_pretty_prints_json_body_in_text_mode() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Json {
+                value: json!({"items": [1, 2]}),
+            })],
+            render_options(),
+        )
+        .expect("expected source API response to render");
+
+        assert_eq!(
+            render_output_payload(output, EffectiveOutputMode::Text, true)
+                .expect("expected text payload"),
+            RenderedOutput::Text("{\n  \"items\": [\n    1,\n    2\n  ]\n}".to_owned())
+        );
+    }
+
+    #[test]
+    fn render_execute_output_renders_text_body_verbatim_in_text_mode() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Text {
+                value: "plain text\nnext line".to_owned(),
+            })],
+            render_options(),
+        )
+        .expect("expected source API response to render");
+
+        assert_eq!(
+            render_output_payload(output, EffectiveOutputMode::Text, true)
+                .expect("expected text payload"),
+            RenderedOutput::Text("plain text\nnext line".to_owned())
+        );
+    }
+
+    #[test]
     fn render_execute_output_collects_paginated_json_pages_without_slurp() {
         let output = render_execute_output(
             vec![
