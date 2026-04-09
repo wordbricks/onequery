@@ -421,7 +421,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### 1) Proto and generation
 
-- [ ] Add `proto/onequery/cli/v1/source_api.proto`.
+- [x] Add `proto/onequery/cli/v1/source_api.proto`.
 - [ ] Delete `proto/onequery/cli/v1/use.proto`.
 - [ ] Update `proto/onequery/cli/v1/cli.proto` imports and RPCs.
 - [ ] Add generated TS and Rust code for the new RPCs and messages.

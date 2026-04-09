@@ -1,0 +1,177 @@
+syntax = "proto3";
+
+package onequery.cli.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+message DescribeSourceApiRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message DescribeSourceApiResponse {
+  CliSourceApiSource source = 1;
+  string descriptor_version = 2;
+  optional string default_path_operation = 3;
+  repeated CliSourceApiOperation operations = 4;
+  repeated CliSourceApiExample examples = 5;
+  repeated string notes = 6;
+}
+
+message ExecuteSourceApiRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string descriptor_version = 3 [(buf.validate.field).string.min_len = 1];
+  string operation = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  optional string selector = 5 [(buf.validate.field).string.min_len = 1];
+  optional string method_override = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  repeated CliSourceApiHeader headers = 7;
+  optional google.protobuf.Struct field_patch = 8;
+  oneof body {
+    google.protobuf.Value json_body = 9;
+    string text_body = 10;
+    bytes binary_body = 11;
+  }
+  optional string page_token = 12 [(buf.validate.field).string.min_len = 1];
+}
+
+message ExecuteSourceApiResponse {
+  CliSourceApiSource source = 1;
+  string operation = 2;
+  optional string selector = 3;
+  uint32 status = 4;
+  repeated CliSourceApiHeader headers = 5;
+  string content_type = 6;
+  oneof body {
+    google.protobuf.Value json = 7;
+    string text = 8;
+    bytes binary = 9;
+  }
+  optional string request_id = 10;
+  optional string next_page_token = 11;
+}
+
+message CliSourceApiSource {
+  string key = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  string provider = 2 [(buf.validate.field).string.min_len = 1];
+  optional string display_name = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+message CliSourceApiOperation {
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  CliSourceApiOperationKind kind = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string summary = 3 [(buf.validate.field).string.min_len = 1];
+  string description = 4 [(buf.validate.field).string.min_len = 1];
+  CliSourceApiSelectorKind selector_kind = 5 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  optional string selector_label = 6 [(buf.validate.field).string.min_len = 1];
+  CliSourceApiMethodPolicy method_policy = 7;
+  CliSourceApiFieldPolicy field_policy = 8;
+  CliSourceApiHeaderPolicy header_policy = 9;
+  CliSourceApiPaginationPolicy pagination_policy = 10 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  repeated CliSourceApiExample examples = 11;
+  repeated string notes = 12 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
+
+message CliSourceApiMethodPolicy {
+  optional string default_method = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  repeated string allowed_methods = 2 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[A-Z]+$"
+  ];
+}
+
+message CliSourceApiFieldPolicy {
+  bool supports_raw_fields = 1;
+  bool supports_typed_fields = 2;
+  repeated string syntaxes = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+  repeated string transport_rules = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
+
+message CliSourceApiHeaderPolicy {
+  repeated string allowed_names = 1 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
+  ];
+}
+
+message CliSourceApiExample {
+  string title = 1 [(buf.validate.field).string.min_len = 1];
+  optional string summary = 2 [(buf.validate.field).string.min_len = 1];
+  string operation = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  optional string selector = 4 [(buf.validate.field).string.min_len = 1];
+  optional string method_override = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  repeated CliSourceApiHeader headers = 6;
+  optional google.protobuf.Struct field_patch = 7;
+  oneof body {
+    google.protobuf.Value json_body = 8;
+    string text_body = 9;
+    bytes binary_body = 10;
+  }
+}
+
+message CliSourceApiHeader {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string value = 2;
+}
+
+enum CliSourceApiOperationKind {
+  CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED = 0;
+  CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST = 1;
+  CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST = 2;
+}
+
+enum CliSourceApiSelectorKind {
+  CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED = 0;
+  CLI_SOURCE_API_SELECTOR_KIND_NONE = 1;
+  CLI_SOURCE_API_SELECTOR_KIND_PATH = 2;
+  CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER = 3;
+}
+
+enum CliSourceApiPaginationPolicy {
+  CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
+  CLI_SOURCE_API_PAGINATION_POLICY_NONE = 1;
+  CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN = 2;
+}
