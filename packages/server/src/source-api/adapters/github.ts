@@ -14,6 +14,7 @@ import {
 } from "../../services/provider-utils";
 import {
   createHttpRequestOperation,
+  filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
   resolveHttpMethodOverride,
   toHeaderRecord,
@@ -50,6 +51,14 @@ const GITHUB_ALLOWED_REQUEST_HEADERS = [
   "If-None-Match",
   "If-Unmodified-Since",
   "X-GitHub-Api-Version",
+] as const;
+const GITHUB_ALLOWED_RESPONSE_HEADERS = [
+  "content-type",
+  "etag",
+  "link",
+  "x-ratelimit-limit",
+  "x-ratelimit-remaining",
+  "x-ratelimit-reset",
 ] as const;
 const BLOCKED_QUERY_PARAM_NAMES = new Set([
   "access_token",
@@ -149,14 +158,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
         createHttpRequestOperation({
           allowedMethods: GITHUB_ALLOWED_METHODS,
           allowedRequestHeaders: GITHUB_ALLOWED_REQUEST_HEADERS,
-          allowedResponseHeaders: [
-            "content-type",
-            "etag",
-            "link",
-            "x-ratelimit-limit",
-            "x-ratelimit-remaining",
-            "x-ratelimit-reset",
-          ],
+          allowedResponseHeaders: GITHUB_ALLOWED_RESPONSE_HEADERS,
           defaultMethod: "GET",
           description:
             "Call the GitHub REST API for the connected source, using source-scoped repository constraints and safe request normalization.",
@@ -197,7 +199,11 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
     return {
       body: response.body,
       contentType: response.contentType,
-      headers: response.headers,
+      headers: filterAllowedResponseHeaders({
+        allowedNames: GITHUB_ALLOWED_RESPONSE_HEADERS,
+        contentType: response.contentType,
+        headers: response.headers,
+      }),
       operation: plan.operation,
       selector: plan.selector,
       source: {

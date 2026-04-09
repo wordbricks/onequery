@@ -8,7 +8,10 @@ import {
   listMongoCollections,
   listMongoDatabases,
 } from "../../services/mongodb/relay";
-import { normalizeAllowedHeaders } from "../helpers/http-rest";
+import {
+  filterAllowedResponseHeaders,
+  normalizeAllowedHeaders,
+} from "../helpers/http-rest";
 import {
   createStructuredRequestOperation,
   mergeStructuredFieldPatch,
@@ -555,7 +558,11 @@ function buildMongoDbExecutionResponse(input: {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
-    headers: input.response.headers,
+    headers: filterAllowedResponseHeaders({
+      allowedNames: MONGODB_ALLOWED_RESPONSE_HEADERS,
+      contentType: input.response.contentType,
+      headers: input.response.headers,
+    }),
     operation: input.operation,
     selector: input.selector,
     source: {

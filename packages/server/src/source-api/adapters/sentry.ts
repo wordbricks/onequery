@@ -13,6 +13,7 @@ import {
 } from "../../services/provider-utils";
 import {
   createHttpRequestOperation,
+  filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
   readSourceApiHttpTransportResponse,
   resolveHttpMethodOverride,
@@ -576,7 +577,11 @@ function buildSentryExecutionResponse(input: {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
-    headers: input.response.headers,
+    headers: filterAllowedResponseHeaders({
+      allowedNames: SENTRY_ALLOWED_RESPONSE_HEADERS,
+      contentType: input.response.contentType,
+      headers: input.response.headers,
+    }),
     operation: input.operation,
     selector: input.selector,
     source: {

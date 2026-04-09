@@ -113,6 +113,49 @@ export function normalizeAllowedHeaders(input: {
   });
 }
 
+export function filterAllowedResponseHeaders(input: {
+  headers: readonly SourceApiHeader[];
+  allowedNames: readonly string[];
+  contentType?: string;
+}): SourceApiHeader[] {
+  const allowlist = new Set(
+    input.allowedNames.map((name) => name.toLowerCase())
+  );
+  if (allowlist.size === 0) {
+    return [];
+  }
+
+  const filtered: SourceApiHeader[] = [];
+  const seen = new Set<string>();
+  for (const header of input.headers) {
+    const name = header.name.trim();
+    const lowerName = name.toLowerCase();
+    if (name.length === 0 || !allowlist.has(lowerName) || seen.has(lowerName)) {
+      continue;
+    }
+
+    seen.add(lowerName);
+    filtered.push({
+      name,
+      value: header.value,
+    });
+  }
+
+  const contentType = input.contentType?.trim();
+  if (
+    contentType &&
+    allowlist.has("content-type") &&
+    !seen.has("content-type")
+  ) {
+    filtered.push({
+      name: "content-type",
+      value: contentType,
+    });
+  }
+
+  return filtered;
+}
+
 export function toHeaderRecord(
   headers: readonly SourceApiHeader[]
 ): Record<string, string> {

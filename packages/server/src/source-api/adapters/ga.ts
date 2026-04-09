@@ -7,7 +7,10 @@ import {
   resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "../../services/google-analytics/relay";
-import { normalizeAllowedHeaders } from "../helpers/http-rest";
+import {
+  filterAllowedResponseHeaders,
+  normalizeAllowedHeaders,
+} from "../helpers/http-rest";
 import {
   createStructuredRequestOperation,
   mergeStructuredFieldPatch,
@@ -339,7 +342,11 @@ function buildGoogleAnalyticsExecutionResponse(input: {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
-    headers: input.response.headers,
+    headers: filterAllowedResponseHeaders({
+      allowedNames: GOOGLE_ANALYTICS_ALLOWED_RESPONSE_HEADERS,
+      contentType: input.response.contentType,
+      headers: input.response.headers,
+    }),
     operation: input.operation,
     source: {
       displayName: input.source.displayName,

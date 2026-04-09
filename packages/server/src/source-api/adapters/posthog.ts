@@ -9,6 +9,7 @@ import {
 import { ProviderHttpClient } from "../../services/provider-http-client";
 import { hasControlCharacters } from "../../services/provider-utils";
 import {
+  filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
   readSourceApiHttpTransportResponse,
 } from "../helpers/http-rest";
@@ -383,7 +384,11 @@ function buildPostHogExecutionResponse(input: {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
-    headers: input.response.headers,
+    headers: filterAllowedResponseHeaders({
+      allowedNames: POSTHOG_ALLOWED_RESPONSE_HEADERS,
+      contentType: input.response.contentType,
+      headers: input.response.headers,
+    }),
     operation: input.operation,
     source: {
       displayName: input.source.displayName,

@@ -96,6 +96,7 @@ describe("github source api adapter", () => {
         headers: {
           "content-type": "application/json",
           etag: '"abc123"',
+          server: "github.com",
         },
         status: 201,
       })
@@ -141,6 +142,14 @@ describe("github source api adapter", () => {
     expect(response.headers).toContainEqual({
       name: "content-type",
       value: "application/json",
+    });
+    expect(response.headers).toContainEqual({
+      name: "etag",
+      value: '"abc123"',
+    });
+    expect(response.headers).not.toContainEqual({
+      name: "server",
+      value: "github.com",
     });
   });
 });

@@ -109,6 +109,7 @@ describe("posthog source api adapter", () => {
       new Response(JSON.stringify({ results: [] }), {
         headers: {
           "content-type": "application/json",
+          "x-request-id": "rq_123",
         },
         status: 200,
       })
@@ -160,6 +161,12 @@ describe("posthog source api adapter", () => {
       kind: "json",
       value: { results: [] },
     });
+    expect(response.headers).toEqual([
+      {
+        name: "content-type",
+        value: "application/json",
+      },
+    ]);
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(
