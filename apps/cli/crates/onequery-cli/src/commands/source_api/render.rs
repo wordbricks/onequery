@@ -3,6 +3,7 @@ use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiResponseBody;
@@ -19,31 +20,11 @@ use jaq_core::unwrap_valr;
 use jaq_json::Val as JaqValue;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
-use serde::Serialize;
 
 use super::format::push_section;
 use super::format::status_line;
 use super::plan::DryRunPlan;
 use super::plan::SourceApiRenderOptions;
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct JsonExecuteSourceApiResponse<'a> {
-    source: &'a crate::transport::source_api::SourceApiSource,
-    operation: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    selector: Option<&'a String>,
-    status: u32,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    headers: Vec<&'a crate::transport::source_api::SourceApiHeader>,
-    content_type: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    body: Option<&'a SourceApiResponseBody>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    request_id: Option<&'a String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_page_token: Option<&'a String>,
-}
 
 pub(super) fn render_descriptor_output(
     descriptor: SourceApiDescriptor,
@@ -107,19 +88,73 @@ fn serialize_execute_response(
     response: &ExecuteSourceApiResponse,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
-    let json_response = JsonExecuteSourceApiResponse {
-        source: &response.source,
-        operation: response.operation.as_str(),
-        selector: response.selector.as_ref(),
-        status: response.status,
-        headers: response.headers.iter().collect(),
-        content_type: response.content_type.as_str(),
-        body: (!render.silent).then_some(&response.body),
-        request_id: response.request_id.as_ref(),
-        next_page_token: response.next_page_token.as_ref(),
-    };
+    let mut object = serde_json::Map::new();
+    object.insert(
+        "source".to_owned(),
+        serialize_command_data(&response.source, "onequery use")?,
+    );
+    object.insert(
+        "operation".to_owned(),
+        serde_json::Value::String(response.operation.clone()),
+    );
+    if let Some(selector) = response.selector.as_ref() {
+        object.insert(
+            "selector".to_owned(),
+            serde_json::Value::String(selector.clone()),
+        );
+    }
+    object.insert(
+        "status".to_owned(),
+        serde_json::Value::from(response.status),
+    );
+    if !response.headers.is_empty() {
+        object.insert("headers".to_owned(), json_headers(&response.headers));
+    }
+    object.insert(
+        "contentType".to_owned(),
+        serde_json::Value::String(response.content_type.clone()),
+    );
+    if !render.silent
+        && let Some(body) = json_body_value(&response.body)
+    {
+        object.insert("body".to_owned(), body);
+    }
+    if let Some(request_id) = response.request_id.as_ref() {
+        object.insert(
+            "requestId".to_owned(),
+            serde_json::Value::String(request_id.clone()),
+        );
+    }
+    if let Some(next_page_token) = response.next_page_token.as_ref() {
+        object.insert(
+            "nextPageToken".to_owned(),
+            serde_json::Value::String(next_page_token.clone()),
+        );
+    }
 
-    serialize_command_data(&json_response, "onequery use")
+    Ok(serde_json::Value::Object(object))
+}
+
+fn json_headers(headers: &[SourceApiHeader]) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    for header in headers {
+        object.insert(
+            header.name.clone(),
+            serde_json::Value::String(header.value.clone()),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn json_body_value(body: &SourceApiResponseBody) -> Option<serde_json::Value> {
+    match body {
+        SourceApiResponseBody::None => None,
+        SourceApiResponseBody::Json { value } => Some(value.clone()),
+        SourceApiResponseBody::Text { value } => Some(serde_json::Value::String(value.clone())),
+        SourceApiResponseBody::Binary { value_base64 } => {
+            Some(serde_json::Value::String(value_base64.clone()))
+        }
+    }
 }
 
 fn assemble_execute_response(
@@ -603,11 +638,38 @@ mod tests {
                 "status": 200,
                 "contentType": "application/json",
                 "body": {
-                    "kind": "json",
-                    "value": {
-                        "items": [1, 2]
-                    }
+                    "items": [1, 2]
                 },
+                "requestId": "req_1"
+            })
+        );
+    }
+
+    #[test]
+    fn render_execute_output_serializes_text_body_as_plain_string_in_json_mode() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Text {
+                value: "plain text\nnext line".to_owned(),
+            })],
+            render_options(),
+        )
+        .expect("expected source API response to render");
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&render_output(
+                output,
+                EffectiveOutputMode::Json
+            ))
+            .expect("expected raw JSON output"),
+            json!({
+                "source": {
+                    "key": "github-prod",
+                    "provider": "github",
+                },
+                "operation": "fetch",
+                "status": 200,
+                "contentType": "application/json",
+                "body": "plain text\nnext line",
                 "requestId": "req_1"
             })
         );
@@ -676,13 +738,10 @@ mod tests {
                 "operation": "fetch",
                 "status": 200,
                 "contentType": "application/json",
-                "body": {
-                    "kind": "json",
-                    "value": [
-                        [{"id": 1}],
-                        [{"id": 2}]
-                    ]
-                },
+                "body": [
+                    [{"id": 1}],
+                    [{"id": 2}]
+                ],
                 "requestId": "req_1"
             })
         );
@@ -720,13 +779,10 @@ mod tests {
                 "operation": "fetch",
                 "status": 200,
                 "contentType": "application/json",
-                "body": {
-                    "kind": "json",
-                    "value": [
-                        {"id": 1},
-                        {"id": 2}
-                    ]
-                },
+                "body": [
+                    {"id": 1},
+                    {"id": 2}
+                ],
                 "requestId": "req_1"
             })
         );
@@ -759,10 +815,7 @@ mod tests {
                 "operation": "fetch",
                 "status": 200,
                 "contentType": "application/json",
-                "body": {
-                    "kind": "json",
-                    "value": [1, 2]
-                },
+                "body": [1, 2],
                 "requestId": "req_1"
             })
         );
@@ -878,12 +931,9 @@ mod tests {
                 },
                 "operation": "fetch",
                 "status": 200,
-                "headers": [
-                    {
-                        "name": "content-type",
-                        "value": "application/json"
-                    }
-                ],
+                "headers": {
+                    "content-type": "application/json"
+                },
                 "contentType": "application/json",
                 "requestId": "req_1"
             })
