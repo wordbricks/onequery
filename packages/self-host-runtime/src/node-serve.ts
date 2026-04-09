@@ -27,12 +27,25 @@ export async function serveWithNode(
     hostname: options.hostname,
     port: options.port,
     stop(closeActiveConnections) {
-      server.close(() => undefined);
+      return new Promise<void>((resolve, reject) => {
+        try {
+          server.close((error) => {
+            if (error) {
+              reject(error);
+              return;
+            }
 
-      if (closeActiveConnections) {
-        server.closeAllConnections?.();
-        server.closeIdleConnections?.();
-      }
+            resolve();
+          });
+
+          if (closeActiveConnections) {
+            server.closeAllConnections?.();
+            server.closeIdleConnections?.();
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
     },
   };
 }

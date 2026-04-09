@@ -43,7 +43,7 @@ interface ProcessSignalSource {
 }
 
 interface ServerHandle {
-  stop(closeActiveConnections?: boolean): void;
+  stop(closeActiveConnections?: boolean): Promise<void> | void;
 }
 
 interface RuntimeLockRecord {
@@ -72,6 +72,22 @@ export interface RuntimeLifecycleLease {
 interface GracefulShutdownController {
   shutdown(reason: string): Promise<void>;
 }
+
+type ShutdownResult =
+  | {
+      error: null;
+      exitCode: 0;
+    }
+  | {
+      error: unknown;
+      exitCode: 1;
+    };
+
+type ShutdownState = {
+  completion: "cleanup_only" | "cleanup_and_exit";
+  exitScheduled: boolean;
+  result: Promise<ShutdownResult>;
+};
 
 const defaultLifecycleOptions: Required<LifecycleOptions> = {
   isProcessRunning: defaultIsProcessRunning,
@@ -116,39 +132,108 @@ export async function acquireRuntimeLifecycleLease(
 }
 
 export function attachGracefulShutdownHandlers(args: {
+  exitProcess?: (code: number) => void;
   lease: RuntimeLifecycleLease;
   processSignals?: ProcessSignalSource;
   server: ServerHandle;
   logWriter?: LifecycleLogWriter;
 }): GracefulShutdownController {
+  const exitProcess =
+    args.exitProcess ?? ((code: number) => process.exit(code));
   const processSignals = args.processSignals ?? process;
   const logWriter = args.logWriter ?? { append: async () => {} };
-  let shuttingDown: Promise<void> | null = null;
+  let shutdownState: ShutdownState | null = null;
 
-  const shutdown = async (reason: string) => {
-    if (shuttingDown) {
-      return shuttingDown;
+  const executeShutdown = async (reason: string): Promise<ShutdownResult> => {
+    await logWriter.append(
+      `[runtime] graceful shutdown requested reason=${reason}`
+    );
+
+    const errors: unknown[] = [];
+
+    try {
+      await args.server.stop(true);
+    } catch (error) {
+      errors.push(error);
     }
 
-    shuttingDown = (async () => {
-      await logWriter.append(
-        `[runtime] graceful shutdown requested reason=${reason}`
-      );
-      args.server.stop(true);
+    try {
       await args.lease.release({
         reason,
         stopServer: true,
       });
-    })();
+    } catch (error) {
+      errors.push(error);
+    }
 
-    return shuttingDown;
+    if (errors.length === 0) {
+      return {
+        error: null,
+        exitCode: 0,
+      };
+    }
+
+    return {
+      error:
+        errors.length === 1
+          ? errors[0]
+          : new AggregateError(
+              errors,
+              `failed to shut down runtime for ${reason}`
+            ),
+      exitCode: 1,
+    };
+  };
+
+  const scheduleExit = (state: ShutdownState) => {
+    if (state.exitScheduled) {
+      return;
+    }
+
+    state.exitScheduled = true;
+    void state.result.then((result) => {
+      // Comment: keep one shutdown state so signal-driven exits and direct
+      // cleanup callers converge on the same lease-release path.
+      exitProcess(result.exitCode);
+    });
+  };
+
+  const shutdown = (
+    reason: string,
+    completion: ShutdownState["completion"] = "cleanup_only"
+  ) => {
+    if (!shutdownState) {
+      shutdownState = {
+        completion,
+        exitScheduled: false,
+        result: executeShutdown(reason),
+      };
+    } else if (completion === "cleanup_and_exit") {
+      shutdownState.completion = "cleanup_and_exit";
+    }
+
+    if (shutdownState.completion === "cleanup_and_exit") {
+      scheduleExit(shutdownState);
+    }
+
+    return shutdownState.result.then((result) => {
+      if (result.error === null) {
+        return;
+      }
+
+      throw result.error;
+    });
+  };
+
+  const requestShutdown = (reason: "SIGINT" | "SIGTERM") => {
+    void shutdown(reason, "cleanup_and_exit").catch(() => undefined);
   };
 
   processSignals.once("SIGINT", () => {
-    shutdown("SIGINT").catch(() => undefined);
+    requestShutdown("SIGINT");
   });
   processSignals.once("SIGTERM", () => {
-    shutdown("SIGTERM").catch(() => undefined);
+    requestShutdown("SIGTERM");
   });
 
   return {

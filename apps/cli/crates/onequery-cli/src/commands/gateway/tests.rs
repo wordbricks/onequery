@@ -1,4 +1,5 @@
 use std::fs;
+use std::net::TcpListener;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -21,6 +22,8 @@ use super::render::render_gateway_status_output;
 use super::runtime::LogPreview;
 use super::runtime::mark_stop_requested;
 use super::runtime::parse_runtime_major_version;
+use super::runtime::runtime_accepting_connections;
+use super::runtime::runtime_probe_host;
 use super::runtime::stop_request_matches;
 use super::runtime::validate_runtime_version_output;
 use super::state::GatewayRuntimeState;
@@ -353,6 +356,25 @@ fn parse_runtime_major_version_accepts_node_style_version_output() {
 fn parse_runtime_major_version_rejects_invalid_version_output() {
     assert_eq!(parse_runtime_major_version(""), None);
     assert_eq!(parse_runtime_major_version("lts"), None);
+}
+
+#[test]
+fn runtime_probe_host_normalizes_unspecified_bind_addresses() {
+    assert_eq!(runtime_probe_host("0.0.0.0"), "127.0.0.1");
+    assert_eq!(runtime_probe_host("::"), "::1");
+    assert_eq!(runtime_probe_host("localhost"), "localhost");
+}
+
+#[test]
+fn runtime_accepting_connections_treats_unspecified_ipv4_bind_as_localhost() {
+    let listener = TcpListener::bind(("127.0.0.1", 0))
+        .unwrap_or_else(|error| panic!("expected test listener bind to succeed: {error}"));
+    let port = listener
+        .local_addr()
+        .unwrap_or_else(|error| panic!("expected test listener local addr: {error}"))
+        .port();
+
+    assert_eq!(runtime_accepting_connections("0.0.0.0", port), true);
 }
 
 #[test]

@@ -121,16 +121,73 @@ describe("self-host lifecycle lease", () => {
       pid: 333,
     });
     const processSignals = new EventEmitter();
+    let resolveServerStop = () => {};
+    const serverStopPromise = new Promise<void>((resolve) => {
+      resolveServerStop = resolve;
+    });
+    const events: string[] = [];
     const server = {
-      stop: vi.fn(),
+      stop: vi.fn(async () => {
+        events.push("stop:start");
+        await serverStopPromise;
+        events.push("stop:done");
+      }),
     };
+    const exitProcess = vi.fn((code: number) => {
+      events.push(`exit:${code}`);
+    });
     const logWriter = {
       append: vi.fn(async () => {}),
     };
 
     attachGracefulShutdownHandlers({
+      exitProcess,
       lease,
       logWriter,
+      processSignals: processSignals as unknown as NodeJS.Process,
+      server,
+    });
+
+    processSignals.emit("SIGTERM");
+    processSignals.emit("SIGINT");
+
+    await waitUntil(async () => {
+      expect(server.stop).toHaveBeenCalledWith(true);
+    });
+    expect(exitProcess).not.toHaveBeenCalled();
+    await expect(access(paths.pidPath)).resolves.toBeUndefined();
+    await expect(access(paths.lockPath)).resolves.toBeUndefined();
+
+    resolveServerStop();
+
+    await waitUntil(async () => {
+      expect(exitProcess).toHaveBeenCalledWith(0);
+      await expect(access(paths.pidPath)).rejects.toBeDefined();
+      await expect(access(paths.lockPath)).rejects.toBeDefined();
+      expect(events).toEqual(["stop:start", "stop:done", "exit:0"]);
+    });
+  });
+
+  it("releases the lifecycle lease and exits with failure when server shutdown errors", async () => {
+    const root = await mkdtemp(join(tmpdir(), "onequery-bun-signal-failure-"));
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      pid: 444,
+    });
+    const processSignals = new EventEmitter();
+    const stopError = new Error("server close failed");
+    const server = {
+      stop: vi.fn(async () => {
+        throw stopError;
+      }),
+    };
+    const exitProcess = vi.fn();
+
+    attachGracefulShutdownHandlers({
+      exitProcess,
+      lease,
       processSignals: processSignals as unknown as NodeJS.Process,
       server,
     });
@@ -139,6 +196,7 @@ describe("self-host lifecycle lease", () => {
 
     await waitUntil(async () => {
       expect(server.stop).toHaveBeenCalledWith(true);
+      expect(exitProcess).toHaveBeenCalledWith(1);
       await expect(access(paths.pidPath)).rejects.toBeDefined();
       await expect(access(paths.lockPath)).rejects.toBeDefined();
     });
