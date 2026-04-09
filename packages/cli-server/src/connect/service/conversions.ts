@@ -95,6 +95,10 @@ export function toCliOrgCapability(value: CliAction) {
       return CliOrgCapability.SOURCE_LIST;
     case "source.read":
       return CliOrgCapability.SOURCE_READ;
+    // The legacy org capabilities proto does not expose source_api actions yet.
+    case "source_api.describe":
+    case "source_api.execute":
+      return undefined;
     case "query.execute":
       return CliOrgCapability.QUERY_EXECUTE;
   }

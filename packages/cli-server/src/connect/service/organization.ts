@@ -54,6 +54,9 @@ function buildCliOrganizationDetails(
     slug: authorizedOrg.org.slug,
     name: authorizedOrg.org.name,
     roles: authorizedOrg.membershipRoles.map((role) => role),
-    capabilities: authorizedOrg.capabilities.map(toCliOrgCapability),
+    capabilities: authorizedOrg.capabilities.flatMap((capability) => {
+      const converted = toCliOrgCapability(capability);
+      return converted === undefined ? [] : [converted];
+    }),
   } satisfies GetOrganizationResponseInit;
 }
