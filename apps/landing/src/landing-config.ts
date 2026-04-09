@@ -17,7 +17,7 @@ export const LANDING_DOWNLOAD_COMMAND =
 
 export const LANDING_INSTALL_SNIPPET = `${LANDING_DOWNLOAD_COMMAND}
 
-onequery serve
+onequery gateway
 onequery config set server ${LANDING_LOCAL_SERVER_URL}
 onequery auth login` as const;
 

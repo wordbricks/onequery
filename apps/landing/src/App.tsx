@@ -28,7 +28,7 @@ const cards = [
   {
     label: "RUN LOCALLY",
     title: "Start the control plane on your machine",
-    body: "Use `onequery serve` to bring up the local runtime, then point the browser UI and CLI at the same instance.",
+    body: "Use `onequery gateway` to bring up the local runtime, then point the browser UI and CLI at the same instance.",
   },
   {
     label: "AUTH CLEARLY",
@@ -51,7 +51,7 @@ const explicitItems = [
 
 const timeline = [
   "Install the published `onequery` package with curl, bunx, or npx.",
-  "Run `onequery serve` and open the local browser UI.",
+  "Run `onequery gateway` and open the local browser UI.",
   "Bootstrap the instance once, then point the CLI at it.",
   "Use the same runtime for authentication, organization context, and query workflows.",
 ];

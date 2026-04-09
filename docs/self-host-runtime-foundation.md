@@ -72,10 +72,10 @@ vendor/<target>/
     pglite/
 ```
 
-`onequery serve` resolves `vendor/<target>` from `current_exe()` and then reads
+`onequery gateway` resolves `vendor/<target>` from `current_exe()` and then reads
 `runtime/web`, `runtime/migrations`, and `server/` from that bundle root only.
 There is no repo-local asset fallback and no alternate self-host launch path in
-the serve command.
+the gateway command.
 
 ## Operator Note
 
@@ -84,12 +84,12 @@ These three files have different roles:
 - `config.toml` is the human-edited operator config.
 - `secrets.toml` stores generated or operator-managed secrets.
 - `run/launch.json` is a private resolved artifact. Do not edit it manually;
-  `onequery serve` rewrites it from the Rust-owned config model each time the
+  `onequery gateway` rewrites it from the Rust-owned config model each time the
   runtime starts.
 
 ## Lifecycle Rules
 
-`onequery serve` now performs this startup sequence:
+`onequery gateway` now performs this startup sequence:
 
 ```text
 self-host/config.toml + self-host/secrets.toml
@@ -108,7 +108,7 @@ self-host/config.toml + self-host/secrets.toml
 ```
 
 Repo-local self-host smoke uses the same packaged layout: the helper stages a
-temporary `vendor/<target>` bundle and then invokes unchanged `onequery serve`
+temporary `vendor/<target>` bundle and then invokes unchanged `onequery gateway`
 from that staged CLI binary. Workspace-dev remains separate and continues to
 use `scripts/run-self-host-runtime.ts`.
 
@@ -133,7 +133,7 @@ contract at startup.
 The current repo checks that prove this boundary are:
 
 - `cargo test -p onequery-cli self_host::tests`
-- `cargo test -p onequery-cli serve::tests`
+- `cargo test -p onequery-cli gateway::tests`
 - `bun test apps/cli/scripts/self-host-smoke.integration.test.ts`
 - `bun run --cwd packages/self-host-runtime test -- src/index.test.ts src/launch-config.test.ts src/startup.test.ts src/self-host/lifecycle.test.ts`
 
@@ -141,7 +141,7 @@ Those checks cover:
 
 - Rust-owned self-host config resolution and launch-contract generation
 - packaged self-host bootstrap, startup failure on invalid secrets, and
-  data-source creation through `onequery serve`
+  data-source creation through `onequery gateway`
 - launch-config parsing and validation at packaged-runtime startup
 - starting the packaged runtime from serialized launch config input
 - lifecycle lease, stale lock replacement, log append, and shutdown cleanup
