@@ -429,13 +429,13 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### 2) Server source-api domain
 
-- [ ] Add `packages/server/src/source-api/types.ts` with canonical descriptor, plan, response, and policy types.
-- [ ] Add `packages/server/src/source-api/registry.ts`.
-- [ ] Add `describe.ts`, `normalize.ts`, `authorize.ts`, and `execute.ts`.
-- [ ] Add `helpers/http-rest.ts`.
-- [ ] Add `helpers/structured.ts`.
-- [ ] Add opaque pagination token helper in `helpers/pagination.ts`.
-- [ ] Export the new domain from `@onequery/server` if needed by `@onequery/cli-server`.
+- [x] Add `packages/server/src/source-api/types.ts` with canonical descriptor, plan, response, and policy types.
+- [x] Add `packages/server/src/source-api/registry.ts`.
+- [x] Add `describe.ts`, `normalize.ts`, `authorize.ts`, and `execute.ts`.
+- [x] Add `helpers/http-rest.ts`.
+- [x] Add `helpers/structured.ts`.
+- [x] Add opaque pagination token helper in `helpers/pagination.ts`.
+- [x] Export the new domain from `@onequery/server` if needed by `@onequery/cli-server`.
 
 ### 3) Provider migration
 
