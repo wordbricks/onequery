@@ -9,7 +9,6 @@ mod raw;
 #[path = "../cli_tests.rs"]
 mod tests;
 
-pub(crate) use crate::transport::use_source::UseSource;
 pub(crate) use args::AuthImportArgs;
 pub(crate) use args::AuthSessionSubcommand;
 pub(crate) use args::AuthSubcommand;
@@ -17,6 +16,7 @@ pub(crate) use args::BackupArgs;
 pub(crate) use args::DebugSubcommand;
 pub(crate) use args::ListReadArgs;
 pub(crate) use args::OrgSubcommand;
+#[cfg(test)]
 pub(crate) use args::PaginationArgs;
 pub(crate) use args::QueryExecuteArgs;
 pub(crate) use args::QueryInputArgs;
@@ -31,6 +31,7 @@ pub(crate) use args::UseArgs;
 pub(crate) use model::Command;
 pub(crate) use model::ConfigCommand;
 pub(crate) use model::GatewayCommand;
+#[cfg(test)]
 pub(crate) use model::GlobalOptions;
 pub(crate) use model::Invocation;
 pub(crate) use model::ParseOutcome;

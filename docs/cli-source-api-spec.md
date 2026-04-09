@@ -457,18 +457,18 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### 5) Rust CLI parser and transport
 
-- [ ] Replace `UseArgs` in `apps/cli/crates/onequery-cli/src/cli/args.rs`.
-- [ ] Remove `UseSource` enum usage from `cli/mod.rs`, `labels.rs`, and any snapshots.
-- [ ] Add `commands/source_api/*` modules.
-- [ ] Add `transport/source_api.rs`.
-- [ ] Delete `transport/use_source.rs` and `transport/use_cmd.rs`.
-- [ ] Replace `commands/use_cmd.rs` implementation.
-- [ ] Update help text and usage snapshots for `onequery use`.
+- [x] Replace `UseArgs` in `apps/cli/crates/onequery-cli/src/cli/args.rs`.
+- [x] Remove `UseSource` enum usage from `cli/mod.rs`, `labels.rs`, and any snapshots.
+- [x] Add `commands/source_api/*` modules.
+- [x] Add `transport/source_api.rs`.
+- [x] Delete `transport/use_source.rs` and `transport/use_cmd.rs`.
+- [x] Replace `commands/use_cmd.rs` implementation.
+- [x] Update help text and usage snapshots for `onequery use`.
 
 ### 6) Output and formatting
 
-- [ ] Extend `apps/cli/crates/onequery-cli/src/output.rs` with API output mode.
-- [ ] Ensure JSON mode for `onequery use` bypasses the generic `{ ok, data }` envelope.
+- [x] Extend `apps/cli/crates/onequery-cli/src/output.rs` with API output mode.
+- [x] Ensure JSON mode for `onequery use` bypasses the generic `{ ok, data }` envelope.
 - [ ] Support `--include`, `--silent`, `--paginate`, `--slurp`, and `--jq` in the source-api renderer.
 - [ ] Reject binary-to-TTY output with a clear render error.
 

@@ -1,16 +1,33 @@
 ---
-source: crates/onequery-cli/src/cli.rs
-expression: rendered
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"use\", \"--help\"])"
 ---
-Load provider-specific skill content for non-SQL sources
+Describe or execute a connected source API
 
-Usage: onequery use [OPTIONS] --source <SOURCE>
+Usage: onequery use [OPTIONS] --source <SOURCE_KEY>
+       onequery use [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
+       onequery use [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]
+
+Arguments:
+  [TARGET]  Provide the selector or inferred operation target
 
 Options:
-      --source <SOURCE>  Load skill content for this non-SQL source provider [possible values: amplitude, ga, github, mixpanel, mongodb, posthog, sentry]
-      --input <JSON>     Execute one provider-specific relay request from an inline JSON payload
-  -h, --help             Print help
-  -V, --version          Print version
+      --source <SOURCE_KEY>    Describe or execute this connected source API
+      --op <OPERATION>         Override the inferred source API operation
+  -X, --method <METHOD>        Override the HTTP method for `http_request` operations
+  -H, --header <KEY:VALUE>     Add one request header using `KEY:VALUE`
+  -f, --raw-field <KEY=VALUE>  Add one string field patch using `KEY=VALUE`
+  -F, --field <KEY=VALUE>      Add one typed field patch using `KEY=VALUE`
+      --input <PATH|->         Read the request body from a file path or stdin (`-`)
+      --paginate               Follow opaque source API pagination tokens
+      --slurp                  Combine paginated JSON bodies into one array before rendering
+      --max-pages <N>          Cap the number of paginated requests the client follows
+  -i, --include                Include status and allowed response headers in text output
+      --silent                 Suppress body output
+  -q, --jq <EXPR>              Apply a JSON selection expression after response assembly
+      --dry-run                Print the normalized request plan without executing it
+  -h, --help                   Print help
+  -V, --version                Print version
 
 Global Options:
       --org <ORG_SLUG>           Override the active org for this invocation

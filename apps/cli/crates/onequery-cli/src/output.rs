@@ -28,6 +28,13 @@ enum CommandData {
     Deferred(Box<dyn FnOnce() -> Result<Value, CliError>>),
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+enum JsonRenderMode {
+    #[default]
+    Envelope,
+    Raw,
+}
+
 impl CommandData {
     fn into_value(self) -> Result<Value, CliError> {
         match self {
@@ -56,6 +63,7 @@ impl fmt::Debug for CommandData {
 pub(crate) struct CommandOutput {
     pub(crate) lines: Vec<String>,
     data: CommandData,
+    json_render: JsonRenderMode,
     pub(crate) command: Option<String>,
     pub(crate) request_id: Option<String>,
     untrusted_output: Option<UntrustedOutputMetadata>,
@@ -67,6 +75,7 @@ impl fmt::Debug for CommandOutput {
             .debug_struct("CommandOutput")
             .field("lines", &self.lines)
             .field("data", &self.data)
+            .field("json_render", &self.json_render)
             .field("command", &self.command)
             .field("request_id", &self.request_id)
             .field("untrusted_output", &self.untrusted_output)
@@ -79,6 +88,18 @@ impl CommandOutput {
         Self {
             lines,
             data: CommandData::Ready(data),
+            json_render: JsonRenderMode::Envelope,
+            command: None,
+            request_id: None,
+            untrusted_output: None,
+        }
+    }
+
+    pub(crate) fn raw_json(lines: Vec<String>, data: Value) -> Self {
+        Self {
+            lines,
+            data: CommandData::Ready(data),
+            json_render: JsonRenderMode::Raw,
             command: None,
             request_id: None,
             untrusted_output: None,
@@ -90,6 +111,7 @@ impl CommandOutput {
         Self {
             lines,
             data: CommandData::Deferred(Box::new(move || Ok(data()))),
+            json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
             untrusted_output: None,
@@ -103,6 +125,7 @@ impl CommandOutput {
         Self {
             lines,
             data: CommandData::Deferred(Box::new(data)),
+            json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
             untrusted_output: None,
@@ -115,6 +138,7 @@ impl CommandOutput {
             data: CommandData::Ready(json!({
                 "display": text,
             })),
+            json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
             untrusted_output: None,
@@ -218,6 +242,7 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
             let CommandOutput {
                 lines: _,
                 data,
+                json_render,
                 command,
                 request_id,
                 untrusted_output,
@@ -226,6 +251,9 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
                 Ok(data) => data,
                 Err(error) => return render_error(&error, EffectiveOutputMode::Json),
             };
+            if matches!(json_render, JsonRenderMode::Raw) {
+                return render_raw_json_output(data, request_id);
+            }
             let warnings = extract_warnings(&data);
             let page = extract_page(&data);
             let untrusted_paths = untrusted_output
@@ -334,6 +362,19 @@ fn extract_page(data: &Value) -> Option<Value> {
         Some(Value::Object(page)) => Some(Value::Object(page.clone())),
         _ => None,
     }
+}
+
+fn render_raw_json_output(mut data: Value, request_id: Option<String>) -> String {
+    // Comment: source-api JSON mode owns its top-level schema, so bypass the generic
+    // `{ ok, data }` envelope instead of double-wrapping command-specific API objects.
+    if let Some(request_id) = request_id
+        && let Value::Object(object) = &mut data
+        && !object.contains_key("requestId")
+    {
+        object.insert("requestId".to_owned(), Value::String(request_id));
+    }
+
+    data.to_string()
 }
 
 fn extract_warnings(data: &Value) -> Vec<Value> {
@@ -529,6 +570,35 @@ mod tests {
                         "id": "user_123",
                     }
                 }
+            })
+        );
+    }
+
+    #[test]
+    fn render_output_json_can_bypass_the_generic_envelope() {
+        let rendered = render_output(
+            CommandOutput::raw_json(
+                vec!["ok".to_owned()],
+                json!({
+                    "source": {
+                        "key": "github-prod",
+                    },
+                    "status": 200,
+                }),
+            )
+            .with_command("use")
+            .with_request_id(Some("req_raw".to_owned())),
+            EffectiveOutputMode::Json,
+        );
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered).expect("expected raw JSON output"),
+            json!({
+                "source": {
+                    "key": "github-prod",
+                },
+                "status": 200,
+                "requestId": "req_raw",
             })
         );
     }

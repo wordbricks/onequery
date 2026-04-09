@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use clap::ArgAction;
 use clap::Args;
 use clap::Subcommand;
 
 use crate::transport::source_connect_provider::SourceConnectProvider;
-use crate::transport::use_source::UseSource;
 
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum AuthSubcommand {
@@ -264,12 +264,51 @@ onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct UseArgs {
-    /// Load skill content for this non-SQL source provider.
-    #[arg(long, value_name = "SOURCE", value_enum)]
-    pub source: UseSource,
-    /// Execute one provider-specific relay request from an inline JSON payload.
-    #[arg(long, value_name = "JSON")]
+    /// Describe or execute this connected source API.
+    #[arg(long, value_name = "SOURCE_KEY")]
+    pub source: String,
+    /// Override the inferred source API operation.
+    #[arg(long, value_name = "OPERATION")]
+    pub op: Option<String>,
+    /// Provide the selector or inferred operation target.
+    #[arg(value_name = "TARGET", allow_hyphen_values = true)]
+    pub target: Option<String>,
+    /// Override the HTTP method for `http_request` operations.
+    #[arg(short = 'X', long, value_name = "METHOD")]
+    pub method: Option<String>,
+    /// Add one request header using `KEY:VALUE`.
+    #[arg(short = 'H', long = "header", value_name = "KEY:VALUE", action = ArgAction::Append)]
+    pub headers: Vec<String>,
+    /// Add one string field patch using `KEY=VALUE`.
+    #[arg(short = 'f', long = "raw-field", value_name = "KEY=VALUE", action = ArgAction::Append)]
+    pub raw_fields: Vec<String>,
+    /// Add one typed field patch using `KEY=VALUE`.
+    #[arg(short = 'F', long = "field", value_name = "KEY=VALUE", action = ArgAction::Append)]
+    pub fields: Vec<String>,
+    /// Read the request body from a file path or stdin (`-`).
+    #[arg(long, value_name = "PATH|-")]
     pub input: Option<String>,
+    /// Follow opaque source API pagination tokens.
+    #[arg(long, default_value_t = false)]
+    pub paginate: bool,
+    /// Combine paginated JSON bodies into one array before rendering.
+    #[arg(long, default_value_t = false)]
+    pub slurp: bool,
+    /// Cap the number of paginated requests the client follows.
+    #[arg(long, value_name = "N")]
+    pub max_pages: Option<u32>,
+    /// Include status and allowed response headers in text output.
+    #[arg(short = 'i', long = "include", default_value_t = false)]
+    pub include: bool,
+    /// Suppress body output.
+    #[arg(long, default_value_t = false)]
+    pub silent: bool,
+    /// Apply a JSON selection expression after response assembly.
+    #[arg(short = 'q', long = "jq", value_name = "EXPR")]
+    pub jq: Option<String>,
+    /// Print the normalized request plan without executing it.
+    #[arg(long, default_value_t = false)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Clone, Subcommand)]
