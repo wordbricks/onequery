@@ -469,7 +469,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 - [x] Extend `apps/cli/crates/onequery-cli/src/output.rs` with API output mode.
 - [x] Ensure JSON mode for `onequery use` bypasses the generic `{ ok, data }` envelope.
-- [ ] Support `--include`, `--silent`, `--paginate`, `--slurp`, and `--jq` in the source-api renderer.
+- [x] Support `--include`, `--silent`, `--paginate`, `--slurp`, and `--jq` in the source-api renderer.
 - [ ] Reject binary-to-TTY output with a clear render error.
 
 ### 7) Authorization hook

@@ -6,6 +6,7 @@ use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
+use crate::transport::source_api::SourceApiPaginationPolicy;
 use crate::transport::source_api::SourceApiRequestBody;
 use crate::transport::source_api::SourceApiSelectorKind;
 use onequery_cli_core::error::CliError;
@@ -19,15 +20,24 @@ use super::source_api_examples;
 use super::source_api_parse_error;
 use super::source_api_read_input_error;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) struct SourceApiExecutionOptions {
+    pub(super) paginate: bool,
+    pub(super) max_pages: Option<u32>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct SourceApiRenderOptions {
     pub(super) include: bool,
     pub(super) silent: bool,
+    pub(super) slurp: bool,
+    pub(super) jq: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct ExecutePlan {
     pub(super) request: ExecuteSourceApiRequestPayload,
+    pub(super) execution: SourceApiExecutionOptions,
     pub(super) render: SourceApiRenderOptions,
 }
 
@@ -56,8 +66,6 @@ pub(super) async fn build_plan(
     if matches!(intent, ResolvedIntent::Describe) {
         return Ok(PlannedCommand::Describe);
     }
-
-    reject_unimplemented_flags(args, context)?;
 
     let ResolvedIntent::Execute {
         operation: operation_name,
@@ -89,6 +97,7 @@ pub(super) async fn build_plan(
         context,
         descriptor.source.key.as_str(),
     )?;
+    validate_pagination(args, operation, context, descriptor.source.key.as_str())?;
     validate_method(args, operation, context, descriptor.source.key.as_str())?;
     validate_field_flags(args, operation, context, descriptor.source.key.as_str())?;
 
@@ -142,42 +151,18 @@ pub(super) async fn build_plan(
     Ok(PlannedCommand::Execute {
         plan: ExecutePlan {
             request,
+            execution: SourceApiExecutionOptions {
+                paginate: args.paginate,
+                max_pages: args.max_pages,
+            },
             render: SourceApiRenderOptions {
                 include: args.include,
                 silent: args.silent,
+                slurp: args.slurp,
+                jq: args.jq.clone(),
             },
         },
     })
-}
-
-fn reject_unimplemented_flags(args: &UseArgs, context: &CommandContext) -> Result<(), CliError> {
-    let mut unsupported_flags = Vec::new();
-    if args.paginate {
-        unsupported_flags.push("--paginate");
-    }
-    if args.slurp {
-        unsupported_flags.push("--slurp");
-    }
-    if args.max_pages.is_some() {
-        unsupported_flags.push("--max-pages");
-    }
-    if args.jq.is_some() {
-        unsupported_flags.push("--jq");
-    }
-
-    if unsupported_flags.is_empty() {
-        return Ok(());
-    }
-
-    Err(source_api_parse_error(
-        context,
-        "source API flag is not implemented yet",
-        format!(
-            "{} not implemented in this CLI cutover step",
-            unsupported_flags.join(", ")
-        ),
-        args.source.as_str(),
-    ))
 }
 
 fn validate_selector(
@@ -204,6 +189,57 @@ fn validate_selector(
             ))
         }
     }
+}
+
+fn validate_pagination(
+    args: &UseArgs,
+    operation: &SourceApiOperation,
+    context: &CommandContext,
+    source_key: &str,
+) -> Result<(), CliError> {
+    if args.slurp && !args.paginate {
+        return Err(source_api_parse_error(
+            context,
+            "source API pagination flag requires `--paginate`",
+            "`--slurp` only applies when `--paginate` is enabled",
+            source_key,
+        ));
+    }
+
+    if args.max_pages.is_some() && !args.paginate {
+        return Err(source_api_parse_error(
+            context,
+            "source API pagination flag requires `--paginate`",
+            "`--max-pages` only applies when `--paginate` is enabled",
+            source_key,
+        ));
+    }
+
+    if let Some(max_pages) = args.max_pages
+        && max_pages == 0
+    {
+        return Err(source_api_parse_error(
+            context,
+            "source API page limit is invalid",
+            "`--max-pages` must be greater than 0",
+            source_key,
+        ));
+    }
+
+    if !args.paginate {
+        return Ok(());
+    }
+
+    if operation.pagination_policy == SourceApiPaginationPolicy::OpaqueToken {
+        return Ok(());
+    }
+
+    Err(source_api_parse_error(
+        context,
+        "source API pagination is not supported",
+        format!("operation `{}` does not support pagination", operation.name),
+        source_key,
+    ))
 }
 
 fn validate_method(
@@ -415,4 +451,160 @@ fn normalized_method_override(value: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|candidate| !candidate.is_empty())
         .map(|method| method.to_ascii_uppercase())
+}
+
+#[cfg(test)]
+mod tests {
+    use onequery_cli_core::error::ErrorStage;
+
+    use crate::cli::UseArgs;
+    use crate::commands::ResolvedOrgSource;
+    use crate::transport::source_api::SourceApiFieldPolicy;
+    use crate::transport::source_api::SourceApiHeaderPolicy;
+    use crate::transport::source_api::SourceApiMethodPolicy;
+    use crate::transport::source_api::SourceApiOperation;
+    use crate::transport::source_api::SourceApiOperationKind;
+    use crate::transport::source_api::SourceApiPaginationPolicy;
+    use crate::transport::source_api::SourceApiSelectorKind;
+
+    use super::CommandContext;
+    use super::validate_pagination;
+
+    #[test]
+    fn validate_pagination_rejects_slurp_without_paginate() {
+        let error = validate_pagination(
+            &UseArgs {
+                slurp: true,
+                ..use_args()
+            },
+            &operation(SourceApiPaginationPolicy::OpaqueToken),
+            &context(),
+            "github-prod",
+        )
+        .expect_err("expected `--slurp` without `--paginate` to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "`--slurp` only applies when `--paginate` is enabled"
+        );
+    }
+
+    #[test]
+    fn validate_pagination_rejects_max_pages_without_paginate() {
+        let error = validate_pagination(
+            &UseArgs {
+                max_pages: Some(2),
+                ..use_args()
+            },
+            &operation(SourceApiPaginationPolicy::OpaqueToken),
+            &context(),
+            "github-prod",
+        )
+        .expect_err("expected `--max-pages` without `--paginate` to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(
+            error.why,
+            "`--max-pages` only applies when `--paginate` is enabled"
+        );
+    }
+
+    #[test]
+    fn validate_pagination_rejects_zero_max_pages() {
+        let error = validate_pagination(
+            &UseArgs {
+                paginate: true,
+                max_pages: Some(0),
+                ..use_args()
+            },
+            &operation(SourceApiPaginationPolicy::OpaqueToken),
+            &context(),
+            "github-prod",
+        )
+        .expect_err("expected zero `--max-pages` to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(error.why, "`--max-pages` must be greater than 0");
+    }
+
+    #[test]
+    fn validate_pagination_rejects_operations_without_pagination_support() {
+        let error = validate_pagination(
+            &UseArgs {
+                paginate: true,
+                ..use_args()
+            },
+            &operation(SourceApiPaginationPolicy::None),
+            &context(),
+            "github-prod",
+        )
+        .expect_err("expected unsupported pagination to fail");
+
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert_eq!(error.why, "operation `fetch` does not support pagination");
+    }
+
+    #[test]
+    fn validate_pagination_accepts_supported_paginate_flags() {
+        validate_pagination(
+            &UseArgs {
+                paginate: true,
+                max_pages: Some(3),
+                ..use_args()
+            },
+            &operation(SourceApiPaginationPolicy::OpaqueToken),
+            &context(),
+            "github-prod",
+        )
+        .expect("expected opaque-token pagination to validate");
+    }
+
+    fn context() -> CommandContext {
+        CommandContext {
+            command_line: "onequery use --source github-prod".to_owned(),
+            base_url: "https://example.test".to_owned(),
+            request_id: None,
+            resolved_org: Some("demo-org".to_owned()),
+            resolved_org_source: ResolvedOrgSource::Flag,
+            verbose: false,
+        }
+    }
+
+    fn operation(pagination_policy: SourceApiPaginationPolicy) -> SourceApiOperation {
+        SourceApiOperation {
+            name: "fetch".to_owned(),
+            kind: SourceApiOperationKind::HttpRequest,
+            summary: String::new(),
+            description: String::new(),
+            selector_kind: SourceApiSelectorKind::Path,
+            selector_label: None,
+            method_policy: SourceApiMethodPolicy::default(),
+            field_policy: SourceApiFieldPolicy::default(),
+            header_policy: SourceApiHeaderPolicy::default(),
+            pagination_policy,
+            examples: Vec::new(),
+            notes: Vec::new(),
+        }
+    }
+
+    fn use_args() -> UseArgs {
+        UseArgs {
+            source: "github-prod".to_owned(),
+            op: Some("fetch".to_owned()),
+            target: Some("/pulls".to_owned()),
+            method: None,
+            headers: Vec::new(),
+            raw_fields: Vec::new(),
+            fields: Vec::new(),
+            input: None,
+            paginate: false,
+            slurp: false,
+            max_pages: None,
+            include: false,
+            silent: false,
+            jq: None,
+            dry_run: false,
+        }
+    }
 }

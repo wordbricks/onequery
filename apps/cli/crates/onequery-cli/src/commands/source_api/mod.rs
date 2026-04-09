@@ -15,6 +15,8 @@ use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
+use crate::transport::source_api::ExecuteSourceApiRequestPayload;
+use crate::transport::source_api::ExecuteSourceApiResponse;
 
 use super::CommandContext;
 use super::Runtime;
@@ -22,6 +24,7 @@ use super::auth_session::authenticated_api_client_with_timeout;
 use super::auth_session::ensure_authenticated;
 use super::require_org;
 use plan::PlannedCommand;
+use plan::SourceApiExecutionOptions;
 use render::render_descriptor_output;
 use render::render_dry_run_output;
 use render::render_execute_output;
@@ -61,34 +64,85 @@ pub(super) async fn execute<B, T>(
         PlannedCommand::DryRun { plan } => render_dry_run_output(plan)
             .map(|output| output.with_request_id(descriptor_response.request_id)),
         PlannedCommand::Execute { plan } => {
-            let response = source_api::execute_source_api(
+            let execute_response = execute_source_api_pages(
                 &client,
                 org_slug.as_str(),
                 args.source.as_str(),
                 &plan.request,
+                &plan.execution,
+                args,
+                context,
             )
-            .await
-            .map_err(|failure| {
-                present_api_failure(
-                    failure,
-                    ApiErrorPresentation {
-                        command: &context.command_line,
-                        title: "source API execution failed",
-                        transport_why_prefix: "failed to reach source API service",
-                        decode_why_prefix: "failed to decode source API response",
-                        fallback_try_next: vec![
-                            format!("onequery use --source {}", args.source),
-                            format!("retry {}", context.command_line),
-                        ],
-                        unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
-                    },
-                )
-            })?;
+            .await?;
 
-            render_execute_output(response.payload, plan.render)
-                .map(|output| output.with_request_id(response.request_id))
+            render_execute_output(execute_response.pages, plan.render)
+                .map(|output| output.with_request_id(execute_response.request_id))
         }
     }
+}
+
+struct ExecuteSourceApiPages {
+    pages: Vec<ExecuteSourceApiResponse>,
+    request_id: Option<String>,
+}
+
+async fn execute_source_api_pages(
+    client: &crate::transport::client::AuthenticatedApiClient,
+    org_slug: &str,
+    source_key: &str,
+    request: &ExecuteSourceApiRequestPayload,
+    execution: &SourceApiExecutionOptions,
+    args: &UseArgs,
+    context: &CommandContext,
+) -> Result<ExecuteSourceApiPages, CliError> {
+    let mut next_request = request.clone();
+    let max_pages = execution.max_pages.unwrap_or(u32::MAX);
+
+    let first_response =
+        source_api::execute_source_api(client, org_slug, source_key, &next_request)
+            .await
+            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+    let mut request_id = first_response.request_id.clone();
+    let mut next_page_token = first_response.payload.next_page_token.clone();
+    let mut pages = vec![first_response.payload];
+
+    while execution.paginate && (pages.len() as u32) < max_pages {
+        let Some(next_page_token_value) = next_page_token else {
+            break;
+        };
+
+        next_request.page_token = Some(next_page_token_value);
+
+        let response = source_api::execute_source_api(client, org_slug, source_key, &next_request)
+            .await
+            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+        request_id = response.request_id.clone();
+        next_page_token = response.payload.next_page_token.clone();
+        pages.push(response.payload);
+    }
+
+    Ok(ExecuteSourceApiPages { pages, request_id })
+}
+
+fn present_source_api_execute_failure(
+    failure: crate::transport::http::ApiFailure,
+    args: &UseArgs,
+    context: &CommandContext,
+) -> CliError {
+    present_api_failure(
+        failure,
+        ApiErrorPresentation {
+            command: &context.command_line,
+            title: "source API execution failed",
+            transport_why_prefix: "failed to reach source API service",
+            decode_why_prefix: "failed to decode source API response",
+            fallback_try_next: vec![
+                format!("onequery use --source {}", args.source),
+                format!("retry {}", context.command_line),
+            ],
+            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+        },
+    )
 }
 
 pub(super) fn source_api_examples(source_key: &str) -> Vec<String> {
