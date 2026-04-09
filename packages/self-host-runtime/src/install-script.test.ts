@@ -56,7 +56,7 @@ describe("install script surface", () => {
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
     );
     expect(script).toContain(
-      "Installing managed Node.js 24.x for onequery serve..."
+      "Installing managed Node.js 24.x for onequery gateway..."
     );
     expect(script).toContain(
       'if [ -z "$' +

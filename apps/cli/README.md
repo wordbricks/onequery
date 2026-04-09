@@ -44,6 +44,6 @@ Install:
 - `onequery upgrade` upgrades a published install in place when the CLI can detect the installer family from the current binary layout.
 - The published Homebrew and npm packages support macOS and Linux.
 - The published npm package also supports Windows.
-- Packaged `onequery serve` uses a bundled Rolldown-built server runtime launched with Node.js, so it does not require `bun` on `PATH`. The hosted `install.sh` bootstrap installs managed official Node.js 24.x on macOS/Linux when `node` 24+ is not already available. Direct npm/bun installs still require Node.js 22+ on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME`.
+- Packaged `onequery gateway` uses a bundled Rolldown-built server runtime launched with Node.js, so it does not require `bun` on `PATH`. `onequery gateway` runs that server in foreground, while `onequery gateway start` launches the same server in background. The hosted `install.sh` bootstrap installs managed official Node.js 24.x on macOS/Linux when `node` 24+ is not already available. Direct npm/bun installs still require Node.js 22+ on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME`.
 - Linux npm installs ship musl-linked binaries so the CLI runs on both glibc and musl-based distributions, including Alpine.
 - Packaged self-host commands now work on Windows as well as macOS and Linux.

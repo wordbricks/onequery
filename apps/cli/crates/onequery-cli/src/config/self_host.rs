@@ -868,8 +868,9 @@ mod tests {
             test_dir.join("data"),
         );
 
-        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery serve")
-            .unwrap_or_else(|error| panic!("expected bootstrap to succeed: {error}"));
+        let bootstrap =
+            bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery gateway")
+                .unwrap_or_else(|error| panic!("expected bootstrap to succeed: {error}"));
 
         assert_eq!(bootstrap.config_created, true);
         assert_eq!(bootstrap.secrets_created, true);
@@ -881,7 +882,7 @@ mod tests {
         assert_eq!(paths.run_dir.is_dir(), true);
         assert_eq!(paths.pglite_dir.is_dir(), true);
 
-        let loaded = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+        let loaded = load_self_host_config_with_paths(paths.clone(), "onequery gateway")
             .unwrap_or_else(|error| panic!("expected load to succeed after bootstrap: {error}"));
 
         assert_eq!(loaded.paths, paths);
@@ -942,9 +943,10 @@ public_origin = "https://onequery.example.com"
         fs::write(&paths.secrets_path, valid_self_host_secrets_toml())
             .unwrap_or_else(|error| panic!("expected secrets config write to succeed: {error}"));
 
-        let bootstrap = bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery serve")
-            .unwrap_or_else(|error| panic!("expected bootstrap to preserve files: {error}"));
-        let loaded = load_self_host_config_with_paths(paths, "onequery serve")
+        let bootstrap =
+            bootstrap_self_host_foundation_with_paths(paths.clone(), "onequery gateway")
+                .unwrap_or_else(|error| panic!("expected bootstrap to preserve files: {error}"));
+        let loaded = load_self_host_config_with_paths(paths, "onequery gateway")
             .unwrap_or_else(|error| panic!("expected load to succeed after preserve: {error}"));
 
         assert_eq!(bootstrap.config_created, false);
@@ -994,7 +996,7 @@ public_origin = "https://onequery.example.com"
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths, "onequery serve")
+        let error = load_self_host_config_with_paths(paths, "onequery gateway")
             .expect_err("expected removed log_level key to fail");
 
         assert_eq!(error.title, "failed to parse self-host config");
@@ -1017,7 +1019,7 @@ public_origin = "https://onequery.example.com"
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths, "onequery serve")
+        let error = load_self_host_config_with_paths(paths, "onequery gateway")
             .expect_err("expected unknown secrets key to fail");
 
         assert_eq!(error.title, "failed to parse secrets config");
@@ -1041,7 +1043,7 @@ public_origin = "https://onequery.example.com"
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths, "onequery serve")
+        let error = load_self_host_config_with_paths(paths, "onequery gateway")
             .expect_err("expected misplaced secret key to fail");
 
         assert_eq!(error.title, "failed to parse self-host config");
@@ -1065,7 +1067,7 @@ public_origin = "https://onequery.example.com"
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths, "onequery serve")
+        let error = load_self_host_config_with_paths(paths, "onequery gateway")
             .expect_err("expected misplaced config key to fail");
 
         assert_eq!(error.title, "failed to parse secrets config");
@@ -1119,7 +1121,7 @@ secure = false
             paths.clone(),
             &asset_dir,
             Path::new("/tmp/onequery/runtime/migrations"),
-            "onequery serve",
+            "onequery gateway",
         )
         .unwrap_or_else(|error| {
             panic!("expected self-host launch config write to succeed: {error}")
@@ -1196,7 +1198,7 @@ secure = false
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery gateway")
             .expect_err("expected invalid master key to fail before runtime launch");
 
         assert_eq!(error.title, "invalid self-host secrets config");
@@ -1228,7 +1230,7 @@ secure = false
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery gateway")
             .expect_err("expected empty auth secret to fail before runtime launch");
 
         assert_eq!(error.title, "invalid self-host secrets config");
@@ -1260,7 +1262,7 @@ secure = false
         )
         .unwrap_or_else(|error| panic!("expected secrets write to succeed: {error}"));
 
-        let error = load_self_host_config_with_paths(paths.clone(), "onequery serve")
+        let error = load_self_host_config_with_paths(paths.clone(), "onequery gateway")
             .expect_err("expected whitespace enrollment token to fail before runtime launch");
 
         assert_eq!(error.title, "invalid self-host secrets config");

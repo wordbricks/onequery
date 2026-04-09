@@ -44,7 +44,7 @@ pub(crate) enum Command {
     Source(SourceSubcommand),
     Query(QuerySubcommand),
     Restore(RestoreArgs),
-    Serve(ServeCommand),
+    Gateway(GatewayCommand),
     Upgrade,
     Use(UseArgs),
     Debug(DebugSubcommand),
@@ -72,11 +72,11 @@ impl Command {
             Self::Query(QuerySubcommand::Execute(_)) => "query exec",
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",
             Self::Restore(_) => "restore",
-            Self::Serve(ServeCommand::Root) => "serve",
-            Self::Serve(ServeCommand::Start) => "serve start",
-            Self::Serve(ServeCommand::Stop) => "serve stop",
-            Self::Serve(ServeCommand::Status) => "serve status",
-            Self::Serve(ServeCommand::Logs) => "serve logs",
+            Self::Gateway(GatewayCommand::Foreground) => "gateway",
+            Self::Gateway(GatewayCommand::Start) => "gateway start",
+            Self::Gateway(GatewayCommand::Stop) => "gateway stop",
+            Self::Gateway(GatewayCommand::Status) => "gateway status",
+            Self::Gateway(GatewayCommand::Logs) => "gateway logs",
             Self::Upgrade => "upgrade",
             Self::Use(_) => "use",
             Self::Debug(DebugSubcommand::Config) => "debug config",
@@ -91,8 +91,8 @@ pub(crate) enum ConfigCommand {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum ServeCommand {
-    Root,
+pub(crate) enum GatewayCommand {
+    Foreground,
     Start,
     Stop,
     Status,

@@ -222,7 +222,7 @@ install_managed_node() {
   node_extract_dir="\${node_archive_name%.tar.gz}"
   managed_node_dir="$install_dir/runtime/node"
 
-  printf 'Installing managed Node.js 24.x for onequery serve...\\n'
+  printf 'Installing managed Node.js 24.x for onequery gateway...\\n'
   rm -rf "$node_extract_root" "$managed_node_dir"
   mkdir -p "$node_extract_root" "$install_dir/runtime"
   curl -fsSL "$NODE_DIST_BASE_URL/$node_archive_name" -o "$node_archive_path"

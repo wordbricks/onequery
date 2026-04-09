@@ -17,7 +17,7 @@ step now does three things:
    the shared test database and extensions.
 
 It does not apply the application schema anymore. Schema convergence now
-happens during runtime startup in `bun dev` and `onequery serve`.
+happens during runtime startup in `bun dev` and `onequery gateway`.
 
 ## Quick Start
 
@@ -49,12 +49,12 @@ Default ports:
 
 - `bun dev` browser origin: `http://localhost:4545`
 - `bun dev` API listener: `http://127.0.0.1:4555`
-- `onequery serve` bundled runtime: `http://127.0.0.1:5656`
+- `onequery gateway` bundled runtime: `http://127.0.0.1:5656`
 
 `bun dev` keeps the browser on the workspace-dev browser origin while Vite
 proxies `/api` to a separate local Bun listener for HMR-friendly full-stack
 work. `bun run --cwd packages/self-host-runtime serve` stages the same packaged
-self-host bundle layout used in release and then invokes `onequery serve`,
+self-host bundle layout used in release and then invokes `onequery gateway`,
 which uses the self-host config roots and writes a resolved launch contract
 before the packaged server bundle starts. That runtime, not `dev:setup`, applies the application
 schema.

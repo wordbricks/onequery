@@ -1,6 +1,8 @@
 use std::ffi::OsString;
 use std::fs;
+use std::fs::OpenOptions;
 use std::path::Path;
+use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
 use std::process::Stdio;
@@ -13,20 +15,22 @@ use crate::config::self_host::write_self_host_launch_config;
 use crate::output::CommandOutput;
 
 use super::super::is_process_running;
-use super::CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP;
-use super::INSTALL_NODE_AND_RETRY_SERVE_COMMAND;
+use super::CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP;
+use super::GATEWAY_LOG_PREVIEW_LINE_COUNT;
+use super::GATEWAY_START_POLL_ATTEMPTS;
+use super::GATEWAY_START_POLL_INTERVAL_MS;
+use super::GATEWAY_STOP_POLL_ATTEMPTS;
+use super::GATEWAY_STOP_POLL_INTERVAL_MS;
 use super::PACKAGED_SERVER_JS_RUNTIME_ENV_VAR;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
-use super::RETRY_SERVE_COMMAND;
-use super::RETRY_SERVE_STOP_COMMAND;
-use super::SERVE_LOG_PREVIEW_LINE_COUNT;
-use super::SERVE_STOP_POLL_ATTEMPTS;
-use super::SERVE_STOP_POLL_INTERVAL_MS;
+use super::RETRY_GATEWAY_STOP_COMMAND;
+use super::launch::GatewayLaunchPlan;
 use super::launch::resolve_launch_plan;
 use super::render::paths_json;
+use super::render::render_gateway_start_output;
 use super::render::runtime_state_json;
-use super::state::ServeRuntimeState;
-use super::state::ServeStateAccessMode;
+use super::state::GatewayRuntimeState;
+use super::state::GatewayStateAccessMode;
 use super::state::resolve_runtime_state;
 
 const MINIMUM_NODE_MAJOR_VERSION: u32 = 22;
@@ -47,7 +51,7 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
 
     let contents = fs::read_to_string(path).map_err(|read_error| {
         CliError::new(
-            "failed to read serve log",
+            "failed to read gateway log",
             command_line,
             ErrorStage::LoadConfig,
             format!("{read_error} ({})", path.display()),
@@ -56,7 +60,9 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
     })?;
 
     let all_lines = contents.lines().map(ToOwned::to_owned).collect::<Vec<_>>();
-    let keep_from = all_lines.len().saturating_sub(SERVE_LOG_PREVIEW_LINE_COUNT);
+    let keep_from = all_lines
+        .len()
+        .saturating_sub(GATEWAY_LOG_PREVIEW_LINE_COUNT);
 
     Ok(LogPreview {
         truncated: keep_from > 0,
@@ -64,23 +70,13 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
     })
 }
 
-pub(super) fn run_serve_foreground(
-    state: &ServeRuntimeState,
+pub(super) fn run_gateway_foreground(
+    state: &GatewayRuntimeState,
     command_line: &str,
+    retry_command: &str,
 ) -> Result<CommandOutput, CliError> {
-    let mut launch_plan = resolve_launch_plan(state, command_line)?;
-    let runtime_command = resolve_runtime_command();
-    ensure_runtime_command_support(
-        &runtime_command,
-        launch_plan.runtime_entry_path.as_path(),
-        command_line,
-    )?;
-    launch_plan.launch_config_path = write_self_host_launch_config(
-        command_line,
-        &launch_plan.web_dist_dir,
-        &launch_plan.migrations_dir,
-    )?;
-    remove_if_exists(state.paths.stop_request_path.as_path());
+    let (launch_plan, runtime_command) =
+        prepare_runtime_launch(state, command_line, retry_command)?;
     let mut child = ProcessCommand::new(&runtime_command);
     child.arg(&launch_plan.runtime_entry_path);
     child.arg(&launch_plan.launch_config_path);
@@ -90,29 +86,12 @@ pub(super) fn run_serve_foreground(
         .stderr(Stdio::inherit());
 
     let mut child = child.spawn().map_err(|spawn_error| {
-        let (why, try_next) = match spawn_error.kind() {
-            std::io::ErrorKind::NotFound => (
-                format!(
-                    "JavaScript runtime executable was not found at {} while launching {}",
-                    Path::new(&runtime_command).display(),
-                    launch_plan.runtime_entry_path.display()
-                ),
-                vec![
-                    INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
-                    REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
-                ],
-            ),
-            _ => (
-                spawn_error.to_string(),
-                vec![RETRY_SERVE_COMMAND.to_owned()],
-            ),
-        };
-        CliError::new(
-            "failed to launch self-host server",
+        spawn_launch_error(
+            &spawn_error,
+            &runtime_command,
+            launch_plan.runtime_entry_path.as_path(),
             command_line,
-            ErrorStage::Internal,
-            why,
-            try_next,
+            retry_command,
         )
     })?;
     let child_pid = child.id();
@@ -123,7 +102,7 @@ pub(super) fn run_serve_foreground(
             command_line,
             ErrorStage::Internal,
             wait_error.to_string(),
-            vec![RETRY_SERVE_COMMAND.to_owned()],
+            vec![retry_command_hint(retry_command)],
         )
     })?;
     let stop_requested = stop_request_matches(state.paths.stop_request_path.as_path(), child_pid);
@@ -133,7 +112,7 @@ pub(super) fn run_serve_foreground(
         return Ok(CommandOutput::structured(
             Vec::new(),
             json!({
-                "kind": "serve",
+                "kind": "gateway",
                 "status": "stopped",
                 "exitCode": status.code(),
                 "signal": exit_signal_label(status),
@@ -148,9 +127,105 @@ pub(super) fn run_serve_foreground(
         describe_exit_status(status),
         vec![
             format!("check log file {}", state.paths.server_log_path.display()),
-            format!("{RETRY_SERVE_COMMAND} after fixing the startup issue"),
+            format!("retry {retry_command} after fixing the startup issue"),
         ],
     ))
+}
+
+pub(super) fn run_gateway_background(
+    state: &GatewayRuntimeState,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<CommandOutput, CliError> {
+    let (launch_plan, runtime_command) =
+        prepare_runtime_launch(state, command_line, retry_command)?;
+    let mut child = ProcessCommand::new(&runtime_command);
+    child.arg(&launch_plan.runtime_entry_path);
+    child.arg(&launch_plan.launch_config_path);
+    child.stdin(Stdio::null());
+    let stdout_log = background_log_stdio(
+        state.paths.server_log_path.as_path(),
+        command_line,
+        retry_command,
+    )?;
+    let stderr_log = background_log_stdio(
+        state.paths.server_log_path.as_path(),
+        command_line,
+        retry_command,
+    )?;
+    child.stdout(stdout_log);
+    child.stderr(stderr_log);
+    configure_background_process(&mut child);
+
+    let mut child = child.spawn().map_err(|spawn_error| {
+        spawn_launch_error(
+            &spawn_error,
+            &runtime_command,
+            launch_plan.runtime_entry_path.as_path(),
+            command_line,
+            retry_command,
+        )
+    })?;
+    let child_pid = child.id();
+
+    wait_for_background_runtime_start(
+        state.paths.pid_path.as_path(),
+        state.paths.server_log_path.as_path(),
+        child_pid,
+        &mut child,
+        command_line,
+        retry_command,
+    )?;
+
+    let refreshed_state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
+    Ok(render_gateway_start_output(&refreshed_state, child_pid))
+}
+
+fn prepare_runtime_launch(
+    state: &GatewayRuntimeState,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<(GatewayLaunchPlan, OsString), CliError> {
+    ensure_runtime_not_running(state, command_line)?;
+    let mut launch_plan = resolve_launch_plan(state, command_line)?;
+    let runtime_command = resolve_runtime_command();
+    ensure_runtime_command_support(
+        &runtime_command,
+        launch_plan.runtime_entry_path.as_path(),
+        command_line,
+        retry_command,
+    )?;
+    launch_plan.launch_config_path = write_self_host_launch_config(
+        command_line,
+        &launch_plan.web_dist_dir,
+        &launch_plan.migrations_dir,
+    )?;
+    remove_if_exists(state.paths.stop_request_path.as_path());
+    Ok((launch_plan, runtime_command))
+}
+
+fn ensure_runtime_not_running(
+    state: &GatewayRuntimeState,
+    command_line: &str,
+) -> Result<(), CliError> {
+    let running_pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?
+        .filter(|pid| is_process_running(*pid));
+
+    if let Some(pid) = running_pid {
+        return Err(CliError::new(
+            "self-host runtime is already running",
+            command_line,
+            ErrorStage::LoadConfig,
+            format!("pid {pid} is already active"),
+            vec![
+                "onequery gateway status".to_owned(),
+                "onequery gateway logs".to_owned(),
+                "onequery gateway stop".to_owned(),
+            ],
+        ));
+    }
+
+    Ok(())
 }
 
 fn resolve_runtime_command() -> OsString {
@@ -163,6 +238,7 @@ fn ensure_runtime_command_support(
     runtime_command: &OsString,
     runtime_entry_path: &Path,
     command_line: &str,
+    retry_command: &str,
 ) -> Result<(), CliError> {
     let version_output = ProcessCommand::new(runtime_command)
         .arg("--version")
@@ -179,7 +255,7 @@ fn ensure_runtime_command_support(
                         runtime_entry_path.display()
                     ),
                     vec![
-                        INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned(),
+                        install_node_and_retry_command(retry_command),
                         REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
                     ],
                 ),
@@ -188,7 +264,7 @@ fn ensure_runtime_command_support(
                         "failed to run {} --version: {probe_error}",
                         Path::new(runtime_command).display()
                     ),
-                    vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+                    vec![install_node_and_retry_command(retry_command)],
                 ),
             };
 
@@ -221,7 +297,7 @@ fn ensure_runtime_command_support(
                     Path::new(runtime_command).display()
                 )
             },
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![install_node_and_retry_command(retry_command)],
         ));
     }
 
@@ -229,6 +305,7 @@ fn ensure_runtime_command_support(
         &String::from_utf8_lossy(&version_output.stdout),
         runtime_command,
         command_line,
+        retry_command,
     )
 }
 
@@ -236,6 +313,7 @@ pub(super) fn validate_runtime_version_output(
     version_output: &str,
     runtime_command: &OsString,
     command_line: &str,
+    retry_command: &str,
 ) -> Result<(), CliError> {
     let Some(major_version) = parse_runtime_major_version(version_output) else {
         return Err(CliError::new(
@@ -247,7 +325,7 @@ pub(super) fn validate_runtime_version_output(
                 Path::new(runtime_command).display(),
                 version_output.trim()
             ),
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![install_node_and_retry_command(retry_command)],
         ));
     };
 
@@ -257,10 +335,10 @@ pub(super) fn validate_runtime_version_output(
             command_line,
             ErrorStage::Internal,
             format!(
-                "{} reports major version {major_version}, but packaged onequery serve requires Node.js {MINIMUM_NODE_MAJOR_VERSION}+",
+                "{} reports major version {major_version}, but packaged onequery gateway requires Node.js {MINIMUM_NODE_MAJOR_VERSION}+",
                 Path::new(runtime_command).display()
             ),
-            vec![INSTALL_NODE_AND_RETRY_SERVE_COMMAND.to_owned()],
+            vec![install_node_and_retry_command(retry_command)],
         ));
     }
 
@@ -277,6 +355,161 @@ pub(super) fn parse_runtime_major_version(version_output: &str) -> Option<u32> {
     }
 
     major.parse::<u32>().ok()
+}
+
+fn retry_command_hint(retry_command: &str) -> String {
+    format!("retry {retry_command}")
+}
+
+fn install_node_and_retry_command(retry_command: &str) -> String {
+    format!("install Node.js 22+ and retry {retry_command}")
+}
+
+fn spawn_launch_error(
+    spawn_error: &std::io::Error,
+    runtime_command: &OsString,
+    runtime_entry_path: &Path,
+    command_line: &str,
+    retry_command: &str,
+) -> CliError {
+    let (why, try_next) = match spawn_error.kind() {
+        std::io::ErrorKind::NotFound => (
+            format!(
+                "JavaScript runtime executable was not found at {} while launching {}",
+                Path::new(runtime_command).display(),
+                runtime_entry_path.display()
+            ),
+            vec![
+                install_node_and_retry_command(retry_command),
+                REINSTALL_CLI_PACKAGE_COMMAND.to_owned(),
+            ],
+        ),
+        _ => (
+            spawn_error.to_string(),
+            vec![retry_command_hint(retry_command)],
+        ),
+    };
+
+    CliError::new(
+        "failed to launch self-host server",
+        command_line,
+        ErrorStage::Internal,
+        why,
+        try_next,
+    )
+}
+
+fn background_log_stdio(
+    path: &Path,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<Stdio, CliError> {
+    let log_file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|error| {
+            CliError::new(
+                "failed to prepare self-host log capture",
+                command_line,
+                ErrorStage::Internal,
+                format!("{error} ({})", path.display()),
+                vec![
+                    format!("check log file {}", path.display()),
+                    retry_command_hint(retry_command),
+                ],
+            )
+        })?;
+
+    Ok(Stdio::from(log_file))
+}
+
+fn configure_background_process(child: &mut ProcessCommand) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt as _;
+
+        // SAFETY: `pre_exec` runs in the child after fork and before exec. This
+        // closure only calls async-signal-safe `setsid` to detach the managed
+        // background runtime from the caller's terminal session.
+        unsafe {
+            child.pre_exec(|| {
+                if libc::setsid() == -1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        use windows_sys::Win32::System::Threading::CREATE_NEW_PROCESS_GROUP;
+        use windows_sys::Win32::System::Threading::DETACHED_PROCESS;
+
+        child.creation_flags(CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS);
+    }
+}
+
+fn wait_for_background_runtime_start(
+    pid_path: &Path,
+    log_path: &Path,
+    expected_pid: u32,
+    child: &mut Child,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<(), CliError> {
+    // Comment: background start returns only after the runtime rewrites the pid
+    // file with the launched process ID, so `gateway stop` and `gateway status`
+    // can immediately reason about the same managed process the CLI spawned.
+    for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
+        if read_runtime_pid(pid_path, command_line)? == Some(expected_pid) {
+            return Ok(());
+        }
+
+        if let Some(status) = child.try_wait().map_err(|error| {
+            CliError::new(
+                "failed while monitoring self-host background start",
+                command_line,
+                ErrorStage::Internal,
+                error.to_string(),
+                vec![
+                    format!("check log file {}", log_path.display()),
+                    retry_command_hint(retry_command),
+                ],
+            )
+        })? {
+            return Err(CliError::new(
+                "self-host server exited during background start",
+                command_line,
+                ErrorStage::Internal,
+                describe_exit_status(status),
+                vec![
+                    format!("check log file {}", log_path.display()),
+                    retry_command_hint(retry_command),
+                ],
+            ));
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(
+            GATEWAY_START_POLL_INTERVAL_MS,
+        ));
+    }
+
+    Err(CliError::new(
+        "self-host server did not report startup",
+        command_line,
+        ErrorStage::Internal,
+        format!(
+            "pid file {} did not report pid {expected_pid}",
+            pid_path.display()
+        ),
+        vec![
+            format!("check log file {}", log_path.display()),
+            retry_command_hint(retry_command),
+        ],
+    ))
 }
 
 fn describe_exit_status(status: ExitStatus) -> String {
@@ -298,7 +531,7 @@ fn is_expected_termination(status: ExitStatus) -> bool {
 }
 
 pub(super) fn stop_runtime(
-    state: &ServeRuntimeState,
+    state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
     let pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?;
@@ -319,10 +552,11 @@ pub(super) fn stop_runtime(
             remove_if_exists(state.paths.stop_request_path.as_path());
             return Err(error);
         }
-        let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
+        let refreshed_state =
+            resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
         return Ok(CommandOutput::structured(
             vec![
-                "Serve stop completed.".to_owned(),
+                "Gateway stop completed.".to_owned(),
                 format!("Stopped pid: {pid}"),
                 format!(
                     "Log path: {}",
@@ -330,7 +564,7 @@ pub(super) fn stop_runtime(
                 ),
             ],
             json!({
-                "kind": "serve-stop",
+                "kind": "gateway-stop",
                 "phase": "managed",
                 "bootstrapped": refreshed_state.bootstrapped,
                 "stopIssued": true,
@@ -344,17 +578,17 @@ pub(super) fn stop_runtime(
     remove_if_exists(state.paths.pid_path.as_path());
     remove_if_exists(state.paths.lock_path.as_path());
     remove_if_exists(state.paths.stop_request_path.as_path());
-    let refreshed_state = resolve_runtime_state(command_line, ServeStateAccessMode::ReadOnly)?;
+    let refreshed_state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
     Ok(CommandOutput::structured(
         vec![
-            "Serve stop found no running process.".to_owned(),
+            "Gateway stop found no running process.".to_owned(),
             format!(
                 "Log path: {}",
                 refreshed_state.paths.server_log_path.display()
             ),
         ],
         json!({
-            "kind": "serve-stop",
+            "kind": "gateway-stop",
             "phase": "managed",
             "bootstrapped": refreshed_state.bootstrapped,
             "stopIssued": false,
@@ -370,7 +604,7 @@ fn wait_for_runtime_stop(
     pid: u32,
     command_line: &str,
 ) -> Result<(), CliError> {
-    for _ in 0..SERVE_STOP_POLL_ATTEMPTS {
+    for _ in 0..GATEWAY_STOP_POLL_ATTEMPTS {
         if !is_process_running(pid) {
             remove_if_exists(pid_path);
             remove_if_exists(lock_path);
@@ -380,7 +614,7 @@ fn wait_for_runtime_stop(
             return Ok(());
         }
         std::thread::sleep(std::time::Duration::from_millis(
-            SERVE_STOP_POLL_INTERVAL_MS,
+            GATEWAY_STOP_POLL_INTERVAL_MS,
         ));
     }
 
@@ -389,7 +623,7 @@ fn wait_for_runtime_stop(
         command_line,
         ErrorStage::Internal,
         format!("pid {pid} is still active"),
-        vec![CHECK_SERVER_LOG_AND_RETRY_SERVE_STOP.to_owned()],
+        vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
     ))
 }
 
@@ -427,7 +661,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
             command_line,
             ErrorStage::Internal,
             format!("unable to send SIGTERM to pid {pid}"),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         ))
     }
 
@@ -445,12 +679,12 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
                 command_line,
                 ErrorStage::Internal,
                 format!("unable to open pid {pid} for termination"),
-                vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+                vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
             ));
         }
 
         // Comment: Windows release builds do not yet expose a graceful
-        // cross-process shutdown channel, so `serve stop` terminates the
+        // cross-process shutdown channel, so `gateway stop` terminates the
         // helper process and then clears lifecycle markers once it exits.
         let result = unsafe { TerminateProcess(handle, 1) };
         let _ = unsafe { CloseHandle(handle) };
@@ -464,7 +698,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
             command_line,
             ErrorStage::Internal,
             format!("unable to terminate pid {pid}"),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         ))
     }
 
@@ -472,7 +706,7 @@ fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
     {
         let _ = pid;
         Err(CliError::new(
-            "serve stop is not supported on this platform",
+            "gateway stop is not supported on this platform",
             command_line,
             ErrorStage::Internal,
             "process signaling is unavailable".to_owned(),
@@ -496,7 +730,7 @@ pub(super) fn mark_stop_requested(
             command_line,
             ErrorStage::Internal,
             format!("{error} ({})", path.display()),
-            vec![RETRY_SERVE_STOP_COMMAND.to_owned()],
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         )
     })
 }

@@ -1,11 +1,11 @@
 ---
-source: crates/onequery-cli/src/commands/serve/tests.rs
+source: crates/onequery-cli/src/commands/gateway/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-Serve foundation ready.
+Gateway foundation ready.
 Config dir: /tmp/onequery/config/self-host
 Data dir: /tmp/onequery/data
 Listen: 127.0.0.1:5656
 Created self-host config.toml: yes
 Created secrets.toml: yes
-Next step: onequery serve start
+Next steps: onequery gateway (foreground) or onequery gateway start (background)

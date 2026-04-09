@@ -7,13 +7,13 @@ use crate::config::self_host::load_self_host_config;
 use crate::config::self_host::self_host_runtime_paths;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(super) enum ServeStateAccessMode {
+pub(super) enum GatewayStateAccessMode {
     BootstrapIfMissing,
     ReadOnly,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(super) struct ServeRuntimeState {
+pub(super) struct GatewayRuntimeState {
     pub(super) paths: SelfHostRuntimePaths,
     pub(super) bootstrapped: bool,
     pub(super) config_created: bool,
@@ -27,13 +27,13 @@ pub(super) struct ServeRuntimeState {
 
 pub(super) fn resolve_runtime_state(
     command_line: &str,
-    access_mode: ServeStateAccessMode,
-) -> Result<ServeRuntimeState, CliError> {
+    access_mode: GatewayStateAccessMode,
+) -> Result<GatewayRuntimeState, CliError> {
     let bootstrap_result = match access_mode {
-        ServeStateAccessMode::BootstrapIfMissing => {
+        GatewayStateAccessMode::BootstrapIfMissing => {
             Some(bootstrap_self_host_foundation(command_line)?)
         }
-        ServeStateAccessMode::ReadOnly => None,
+        GatewayStateAccessMode::ReadOnly => None,
     };
     let paths = bootstrap_result
         .as_ref()
@@ -46,7 +46,7 @@ pub(super) fn resolve_runtime_state(
         None
     };
 
-    Ok(ServeRuntimeState {
+    Ok(GatewayRuntimeState {
         bootstrapped: paths.config_path.is_file()
             && paths.secrets_path.is_file()
             && paths.config_dir.is_dir()
