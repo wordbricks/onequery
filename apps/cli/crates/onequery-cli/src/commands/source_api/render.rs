@@ -531,6 +531,7 @@ mod tests {
     use crate::output::RenderedOutput;
     use crate::output::render_output;
     use crate::output::render_output_payload;
+    use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiSource;
 
     use super::ExecuteSourceApiResponse;
@@ -742,6 +743,68 @@ mod tests {
         .expect_err("expected non-JSON `--jq` to fail");
 
         assert_eq!(error.why, "`--jq` requires a JSON source API response body");
+    }
+
+    #[test]
+    fn render_execute_output_includes_status_headers_and_body_in_text_mode() {
+        let mut response = json_response(SourceApiResponseBody::Text {
+            value: "plain text\nnext line".to_owned(),
+        });
+        response.headers = vec![
+            SourceApiHeader {
+                name: "content-type".to_owned(),
+                value: "text/plain".to_owned(),
+            },
+            SourceApiHeader {
+                name: "x-request-id".to_owned(),
+                value: "rq_upstream_123".to_owned(),
+            },
+        ];
+
+        let output = render_execute_output(
+            vec![response],
+            SourceApiRenderOptions {
+                include: true,
+                ..render_options()
+            },
+        )
+        .expect("expected included source API response to render");
+
+        assert_eq!(
+            render_output_payload(output, EffectiveOutputMode::Text, true)
+                .expect("expected included text payload"),
+            RenderedOutput::Text(
+                "HTTP 200\ncontent-type: text/plain\nx-request-id: rq_upstream_123\n\nplain text\nnext line"
+                    .to_owned(),
+            )
+        );
+    }
+
+    #[test]
+    fn render_execute_output_suppresses_body_when_silent_but_keeps_included_metadata() {
+        let mut response = json_response(SourceApiResponseBody::Json {
+            value: json!({"items": [1, 2]}),
+        });
+        response.headers = vec![SourceApiHeader {
+            name: "content-type".to_owned(),
+            value: "application/json".to_owned(),
+        }];
+
+        let output = render_execute_output(
+            vec![response],
+            SourceApiRenderOptions {
+                include: true,
+                silent: true,
+                ..render_options()
+            },
+        )
+        .expect("expected silent source API response to render");
+
+        assert_eq!(
+            render_output_payload(output, EffectiveOutputMode::Text, true)
+                .expect("expected silent text payload"),
+            RenderedOutput::Text("HTTP 200\ncontent-type: application/json".to_owned())
+        );
     }
 
     #[test]

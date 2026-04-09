@@ -494,7 +494,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 - [x] Resolve describe vs execute intent correctly.
 - [x] Resolve `TARGET` as operation vs selector correctly.
 - [x] Render JSON/text/binary responses correctly.
-- [ ] Render `--include`, `--paginate`, `--slurp`, and `--jq` correctly.
+- [x] Render `--include`, `--paginate`, `--slurp`, and `--jq` correctly.
 
 ### CLI server / proto
 
