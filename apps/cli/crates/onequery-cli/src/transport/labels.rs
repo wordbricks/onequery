@@ -89,6 +89,8 @@ generated_label!(
         types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_LIST => "source.list",
         types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_READ => "source.read",
         types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE => "query.execute",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE => "source_api.describe",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE => "source_api.execute",
     }
 );
 
@@ -158,10 +160,21 @@ mod tests {
             [
                 org_capability_to_str(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into()),
                 org_capability_to_str(
+                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                ),
+                org_capability_to_str(
+                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
+                ),
+                org_capability_to_str(
                     types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE.into(),
                 ),
             ],
-            ["org.list".to_owned(), "query.execute".to_owned()]
+            [
+                "org.list".to_owned(),
+                "source_api.describe".to_owned(),
+                "source_api.execute".to_owned(),
+                "query.execute".to_owned(),
+            ]
         );
     }
 

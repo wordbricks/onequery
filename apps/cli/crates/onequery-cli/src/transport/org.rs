@@ -262,6 +262,8 @@ mod tests {
             roles: vec!["member".to_owned(), "admin".to_owned()],
             capabilities: vec![
                 types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into(),
+                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
                 types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ.into(),
             ],
             ..Default::default()
@@ -273,7 +275,12 @@ mod tests {
                 slug: Some("acme".to_owned()),
                 name: Some("Acme".to_owned()),
                 roles: Some(vec!["member".to_owned(), "admin".to_owned()]),
-                capabilities: Some(vec!["org.list".to_owned(), "org.read".to_owned()]),
+                capabilities: Some(vec![
+                    "org.list".to_owned(),
+                    "source_api.describe".to_owned(),
+                    "source_api.execute".to_owned(),
+                    "org.read".to_owned(),
+                ]),
             }
         );
     }
