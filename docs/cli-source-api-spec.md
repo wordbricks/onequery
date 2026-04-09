@@ -439,7 +439,7 @@ The initial implementation may only enforce coarse capability checks, but it mus
 
 ### 3) Provider migration
 
-- [ ] Move GitHub relay behavior from `routes/data-sources/github-query.ts` into `source-api/adapters/github.ts`.
+- [x] Move GitHub relay behavior from `routes/data-sources/github-query.ts` into `source-api/adapters/github.ts`.
 - [ ] Move GA relay behavior from `routes/data-sources/ga-query.ts` into `source-api/adapters/ga.ts`.
 - [ ] Move MongoDB relay behavior from `routes/data-sources/mongodb-query.ts` into `source-api/adapters/mongodb.ts`.
 - [ ] Move Amplitude, Mixpanel, PostHog, and Sentry relay behavior into corresponding adapters.

@@ -1,5 +1,6 @@
 import type { ProviderType } from "@onequery/db/server";
 
+import { githubSourceApiAdapter } from "./adapters/github";
 import type { SourceApiAdapter } from "./types";
 
 export type SourceApiRegistry = {
@@ -43,4 +44,6 @@ export function getSourceApiAdapter(
   return adapter;
 }
 
-export const sourceApiRegistry = createSourceApiRegistry([]);
+export const sourceApiRegistry = createSourceApiRegistry([
+  githubSourceApiAdapter,
+]);
