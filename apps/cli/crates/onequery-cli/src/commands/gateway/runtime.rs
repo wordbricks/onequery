@@ -1,11 +1,14 @@
 use std::ffi::OsString;
 use std::fs;
 use std::fs::OpenOptions;
+use std::net::TcpStream;
+use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
 use std::process::Stdio;
+use std::time::Duration;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -137,6 +140,12 @@ pub(super) fn run_gateway_background(
     command_line: &str,
     retry_command: &str,
 ) -> Result<CommandOutput, CliError> {
+    let config = state.config.as_ref().ok_or_else(|| {
+        CliError::internal(
+            command_line.to_owned(),
+            "gateway background start requires a resolved self-host config",
+        )
+    })?;
     let (launch_plan, runtime_command) =
         prepare_runtime_launch(state, command_line, retry_command)?;
     let mut child = ProcessCommand::new(&runtime_command);
@@ -172,6 +181,8 @@ pub(super) fn run_gateway_background(
         state.paths.pid_path.as_path(),
         state.paths.server_log_path.as_path(),
         child_pid,
+        &config.server.listen_host,
+        config.server.port,
         &mut child,
         command_line,
         retry_command,
@@ -456,15 +467,20 @@ fn wait_for_background_runtime_start(
     pid_path: &Path,
     log_path: &Path,
     expected_pid: u32,
+    listen_host: &str,
+    listen_port: u16,
     child: &mut Child,
     command_line: &str,
     retry_command: &str,
 ) -> Result<(), CliError> {
     // Comment: background start returns only after the runtime rewrites the pid
-    // file with the launched process ID, so `gateway stop` and `gateway status`
-    // can immediately reason about the same managed process the CLI spawned.
+    // file with the launched process ID and starts accepting connections, so
+    // `gateway start` does not report success before the packaged runtime has
+    // actually finished its own bootstrap work.
     for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
-        if read_runtime_pid(pid_path, command_line)? == Some(expected_pid) {
+        if read_runtime_pid(pid_path, command_line)? == Some(expected_pid)
+            && runtime_accepting_connections(listen_host, listen_port)
+        {
             return Ok(());
         }
 
@@ -497,6 +513,23 @@ fn wait_for_background_runtime_start(
         ));
     }
 
+    let probe_host = runtime_probe_host(listen_host);
+
+    if read_runtime_pid(pid_path, command_line)? == Some(expected_pid) {
+        return Err(CliError::new(
+            "self-host server did not report startup",
+            command_line,
+            ErrorStage::Internal,
+            format!(
+                "{probe_host}:{listen_port} did not accept connections after pid {expected_pid} started"
+            ),
+            vec![
+                format!("check log file {}", log_path.display()),
+                retry_command_hint(retry_command),
+            ],
+        ));
+    }
+
     Err(CliError::new(
         "self-host server did not report startup",
         command_line,
@@ -510,6 +543,25 @@ fn wait_for_background_runtime_start(
             retry_command_hint(retry_command),
         ],
     ))
+}
+
+pub(super) fn runtime_accepting_connections(listen_host: &str, listen_port: u16) -> bool {
+    let timeout = Duration::from_millis(GATEWAY_START_POLL_INTERVAL_MS);
+
+    (runtime_probe_host(listen_host), listen_port)
+        .to_socket_addrs()
+        .ok()
+        .into_iter()
+        .flatten()
+        .any(|address| TcpStream::connect_timeout(&address, timeout).is_ok())
+}
+
+pub(super) fn runtime_probe_host(listen_host: &str) -> &str {
+    match listen_host {
+        "0.0.0.0" => "127.0.0.1",
+        "::" => "::1",
+        _ => listen_host,
+    }
 }
 
 fn describe_exit_status(status: ExitStatus) -> String {
