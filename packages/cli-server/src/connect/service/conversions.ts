@@ -26,6 +26,7 @@ import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
 import type {
+  CliSourceApiInvocation,
   ExecuteSourceApiRequest,
   NormalizeSourceApiRequest,
 } from "../gen/onequery/cli/v1/source_api_pb";
@@ -192,13 +193,17 @@ export function toCliQueryLogicalType(value: string) {
 export function fromCliExecuteSourceApiRequest(
   request: ExecuteSourceApiRequest
 ): SourceApiExecuteRequest {
-  return fromCliSourceApiExecutionRequest(request);
+  return fromCliSourceApiInvocation(
+    requireCliSourceApiInvocation(request.invocation)
+  );
 }
 
 export function fromCliNormalizeSourceApiRequest(
   request: NormalizeSourceApiRequest
 ): SourceApiExecuteRequest {
-  return fromCliSourceApiExecutionRequest(request);
+  return fromCliSourceApiInvocation(
+    requireCliSourceApiInvocation(request.invocation)
+  );
 }
 
 export function toCliNormalizeSourceApiResponse(
@@ -224,8 +229,21 @@ export function toCliNormalizeSourceApiResponse(
   };
 }
 
-function fromCliSourceApiExecutionRequest(
-  request: ExecuteSourceApiRequest | NormalizeSourceApiRequest
+export function requireCliSourceApiInvocation(
+  invocation: CliSourceApiInvocation | undefined
+): CliSourceApiInvocation {
+  if (invocation) {
+    return invocation;
+  }
+
+  throwCliConnectError({
+    detail: "source API request missing invocation payload",
+    key: "INVALID_REQUEST",
+  });
+}
+
+function fromCliSourceApiInvocation(
+  request: CliSourceApiInvocation
 ): SourceApiExecuteRequest {
   return {
     body: fromCliSourceApiRequestBody(request.body),
@@ -274,7 +292,7 @@ function fromCliSourceApiHeader(value: SourceApiHeader) {
 }
 
 function fromCliSourceApiRequestBody(
-  body: ExecuteSourceApiRequest["body"] | NormalizeSourceApiRequest["body"]
+  body: CliSourceApiInvocation["body"]
 ): SourceApiRequestBody {
   switch (body.case) {
     case "jsonBody":

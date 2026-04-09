@@ -130,7 +130,7 @@ message DescribeSourceApiResponse {
   repeated string notes = 6;
 }
 
-message NormalizeSourceApiRequest {
+message CliSourceApiInvocation {
   string org_slug = 1;
   string source_key = 2;
   optional string descriptor_version = 3;
@@ -145,6 +145,10 @@ message NormalizeSourceApiRequest {
     bytes binary_body = 11;
   }
   optional string page_token = 12;
+}
+
+message NormalizeSourceApiRequest {
+  CliSourceApiInvocation invocation = 1;
 }
 
 message NormalizeSourceApiResponse {
@@ -152,20 +156,7 @@ message NormalizeSourceApiResponse {
 }
 
 message ExecuteSourceApiRequest {
-  string org_slug = 1;
-  string source_key = 2;
-  optional string descriptor_version = 3;
-  string operation = 4;
-  optional string selector = 5;
-  optional string method_override = 6;
-  repeated CliSourceApiHeader headers = 7;
-  optional google.protobuf.Struct field_patch = 8;
-  oneof body {
-    google.protobuf.Value json_body = 9;
-    string text_body = 10;
-    bytes binary_body = 11;
-  }
-  optional string page_token = 12;
+  CliSourceApiInvocation invocation = 1;
 }
 
 message ExecuteSourceApiResponse {
@@ -269,7 +260,7 @@ type SourceApiAdapter = {
     source: ConnectedSource;
     actor: ActorContext;
     descriptor: SourceApiDescriptor;
-    request: ExecuteSourceApiRequest;
+    request: CliSourceApiInvocation;
   }): Promise<NormalizedExecutionPlan>;
   execute(input: {
     source: ConnectedSource;

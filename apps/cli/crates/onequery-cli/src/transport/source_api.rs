@@ -281,26 +281,11 @@ pub(crate) async fn normalize_source_api(
     let response = match client
         .cli()
         .normalize_source_api(types::NormalizeSourceApiRequest {
-            org_slug,
-            source_key,
-            descriptor_version: try_into_option(
-                payload.descriptor_version.as_deref(),
-                ErrorStage::ExecuteQuery,
-            )?,
-            operation: try_into_value(payload.operation.as_str(), ErrorStage::ExecuteQuery)?,
-            selector: try_into_option(payload.selector.as_deref(), ErrorStage::ExecuteQuery)?,
-            method_override: try_into_option(
-                payload.method_override.as_deref(),
-                ErrorStage::ExecuteQuery,
-            )?,
-            headers: payload
-                .headers
-                .iter()
-                .map(source_api_header_to_generated)
-                .collect(),
-            field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
-            body: normalize_source_api_request_body_to_generated(&payload.body)?,
-            page_token: try_into_option(payload.page_token.as_deref(), ErrorStage::ExecuteQuery)?,
+            invocation: MessageField::some(source_api_invocation_to_generated(
+                org_slug.as_str(),
+                source_key.as_str(),
+                payload,
+            )?),
             ..Default::default()
         })
         .await
@@ -333,26 +318,11 @@ pub(crate) async fn execute_source_api(
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
-            org_slug,
-            source_key,
-            descriptor_version: try_into_option(
-                payload.descriptor_version.as_deref(),
-                ErrorStage::ExecuteQuery,
-            )?,
-            operation: try_into_value(payload.operation.as_str(), ErrorStage::ExecuteQuery)?,
-            selector: try_into_option(payload.selector.as_deref(), ErrorStage::ExecuteQuery)?,
-            method_override: try_into_option(
-                payload.method_override.as_deref(),
-                ErrorStage::ExecuteQuery,
-            )?,
-            headers: payload
-                .headers
-                .iter()
-                .map(source_api_header_to_generated)
-                .collect(),
-            field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
-            body: source_api_request_body_to_generated(&payload.body)?,
-            page_token: try_into_option(payload.page_token.as_deref(), ErrorStage::ExecuteQuery)?,
+            invocation: MessageField::some(source_api_invocation_to_generated(
+                org_slug.as_str(),
+                source_key.as_str(),
+                payload,
+            )?),
             ..Default::default()
         })
         .await
@@ -572,48 +542,43 @@ fn source_api_header_to_generated(value: &SourceApiHeader) -> types::CliSourceAp
     }
 }
 
-fn source_api_request_body_to_generated(
-    value: &SourceApiRequestBody,
-) -> Result<Option<types::execute_source_api_request::Body>, ApiFailure> {
-    match value {
-        SourceApiRequestBody::None => Ok(None),
-        SourceApiRequestBody::Json { value } => Ok(Some(
-            types::execute_source_api_request::Body::JsonBody(Box::new(
-                serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone())
-                    .map_err(|error| {
-                        conversion_failure(
-                            ErrorStage::ExecuteQuery,
-                            format!("invalid JSON source API request body: {error}"),
-                        )
-                    })?,
-            )),
-        )),
-        SourceApiRequestBody::Text { value } => Ok(Some(
-            types::execute_source_api_request::Body::TextBody(value.clone()),
-        )),
-        SourceApiRequestBody::Binary { value_base64 } => {
-            let bytes =
-                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, value_base64)
-                    .map_err(|error| {
-                        conversion_failure(
-                            ErrorStage::ExecuteQuery,
-                            format!("invalid source API binary request body: {error}"),
-                        )
-                    })?;
-            Ok(Some(types::execute_source_api_request::Body::BinaryBody(
-                bytes,
-            )))
-        }
-    }
+fn source_api_invocation_to_generated(
+    org: &str,
+    source_key: &str,
+    payload: &ExecuteSourceApiRequestPayload,
+) -> Result<types::CliSourceApiInvocation, ApiFailure> {
+    Ok(types::CliSourceApiInvocation {
+        org_slug: try_into_value(org, ErrorStage::ExecuteQuery)?,
+        source_key: try_into_value(source_key, ErrorStage::ExecuteQuery)?,
+        descriptor_version: try_into_option(
+            payload.descriptor_version.as_deref(),
+            ErrorStage::ExecuteQuery,
+        )?,
+        operation: try_into_value(payload.operation.as_str(), ErrorStage::ExecuteQuery)?,
+        selector: try_into_option(payload.selector.as_deref(), ErrorStage::ExecuteQuery)?,
+        method_override: try_into_option(
+            payload.method_override.as_deref(),
+            ErrorStage::ExecuteQuery,
+        )?,
+        headers: payload
+            .headers
+            .iter()
+            .map(source_api_header_to_generated)
+            .collect(),
+        field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
+        body: source_api_request_body_to_generated(&payload.body)?,
+        page_token: try_into_option(payload.page_token.as_deref(), ErrorStage::ExecuteQuery)?,
+        ..Default::default()
+    })
 }
 
-fn normalize_source_api_request_body_to_generated(
+fn source_api_request_body_to_generated(
     value: &SourceApiRequestBody,
-) -> Result<Option<types::normalize_source_api_request::Body>, ApiFailure> {
+) -> Result<Option<types::cli_source_api_invocation::Body>, ApiFailure> {
     match value {
         SourceApiRequestBody::None => Ok(None),
         SourceApiRequestBody::Json { value } => Ok(Some(
-            types::normalize_source_api_request::Body::JsonBody(Box::new(
+            types::cli_source_api_invocation::Body::JsonBody(Box::new(
                 serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone())
                     .map_err(|error| {
                         conversion_failure(
@@ -624,7 +589,7 @@ fn normalize_source_api_request_body_to_generated(
             )),
         )),
         SourceApiRequestBody::Text { value } => Ok(Some(
-            types::normalize_source_api_request::Body::TextBody(value.clone()),
+            types::cli_source_api_invocation::Body::TextBody(value.clone()),
         )),
         SourceApiRequestBody::Binary { value_base64 } => {
             let bytes =
@@ -635,7 +600,7 @@ fn normalize_source_api_request_body_to_generated(
                             format!("invalid source API binary request body: {error}"),
                         )
                     })?;
-            Ok(Some(types::normalize_source_api_request::Body::BinaryBody(
+            Ok(Some(types::cli_source_api_invocation::Body::BinaryBody(
                 bytes,
             )))
         }

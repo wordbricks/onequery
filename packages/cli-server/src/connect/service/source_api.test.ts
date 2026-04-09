@@ -335,26 +335,28 @@ describe("source api connect service", () => {
   it("executes the source API through the Connect handler", async () => {
     const harness = createHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
-      body: {
-        case: "textBody",
-        value: "body text",
-      },
-      descriptorVersion: "github-v1",
-      fieldPatch: {
-        perPage: 50,
-      },
-      headers: [
-        {
-          name: "accept",
-          value: "application/json",
+      invocation: {
+        body: {
+          case: "textBody",
+          value: "body text",
         },
-      ],
-      methodOverride: "POST",
-      operation: "fetch",
-      orgSlug: "acme",
-      pageToken: "page_1",
-      selector: "/issues",
-      sourceKey: "github-prod",
+        descriptorVersion: "github-v1",
+        fieldPatch: {
+          perPage: 50,
+        },
+        headers: [
+          {
+            name: "accept",
+            value: "application/json",
+          },
+        ],
+        methodOverride: "POST",
+        operation: "fetch",
+        orgSlug: "acme",
+        pageToken: "page_1",
+        selector: "/issues",
+        sourceKey: "github-prod",
+      },
     });
 
     const response = await harness.handleExecuteSourceApi(request, {
@@ -442,25 +444,27 @@ describe("source api connect service", () => {
   it("normalizes the source API request through the Connect handler", async () => {
     const harness = createHarness();
     const request = create(NormalizeSourceApiRequestSchema, {
-      body: {
-        case: "textBody",
-        value: "body text",
-      },
-      descriptorVersion: "github-v1",
-      fieldPatch: {
-        perPage: 50,
-      },
-      headers: [
-        {
-          name: "accept",
-          value: "application/json",
+      invocation: {
+        body: {
+          case: "textBody",
+          value: "body text",
         },
-      ],
-      methodOverride: "POST",
-      operation: "fetch",
-      orgSlug: "acme",
-      selector: "/issues",
-      sourceKey: "github-prod",
+        descriptorVersion: "github-v1",
+        fieldPatch: {
+          perPage: 50,
+        },
+        headers: [
+          {
+            name: "accept",
+            value: "application/json",
+          },
+        ],
+        methodOverride: "POST",
+        operation: "fetch",
+        orgSlug: "acme",
+        selector: "/issues",
+        sourceKey: "github-prod",
+      },
     });
 
     const response = await harness.handleNormalizeSourceApi(request, {
@@ -538,9 +542,11 @@ describe("source api connect service", () => {
       new Error("Unsupported source API operation: mutate")
     );
     const request = create(ExecuteSourceApiRequestSchema, {
-      operation: "mutate",
-      orgSlug: "acme",
-      sourceKey: "github-prod",
+      invocation: {
+        operation: "mutate",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
     });
 
     await expect(
@@ -566,15 +572,17 @@ describe("source api connect service", () => {
       new Error("Unsupported request header: authorization")
     );
     const request = create(ExecuteSourceApiRequestSchema, {
-      headers: [
-        {
-          name: "authorization",
-          value: "Bearer bad",
-        },
-      ],
-      operation: "fetch",
-      orgSlug: "acme",
-      sourceKey: "github-prod",
+      invocation: {
+        headers: [
+          {
+            name: "authorization",
+            value: "Bearer bad",
+          },
+        ],
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
     });
 
     await expect(
@@ -600,9 +608,11 @@ describe("source api connect service", () => {
       new Error("descriptor_version mismatch: stale descriptor")
     );
     const request = create(ExecuteSourceApiRequestSchema, {
-      operation: "fetch",
-      orgSlug: "acme",
-      sourceKey: "github-prod",
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
     });
 
     await expect(

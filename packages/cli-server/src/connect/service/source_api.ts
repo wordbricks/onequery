@@ -31,6 +31,7 @@ import {
 import {
   fromCliExecuteSourceApiRequest,
   fromCliNormalizeSourceApiRequest,
+  requireCliSourceApiInvocation,
   toCliDescribeSourceApiResponse,
   toCliExecuteSourceApiResponse,
   toCliNormalizeSourceApiResponse,
@@ -222,16 +223,17 @@ export function createHandleNormalizeSourceApi(
       resolvedDependencies.requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
     const session = await requestContext.requireSession();
+    const invocation = requireCliSourceApiInvocation(request.invocation);
     const authorizedOrg = await requestContext.requireAuthorizedOrg({
       action: "source_api.execute",
-      orgSlug: request.orgSlug,
+      orgSlug: invocation.orgSlug,
       session,
     });
     const source = await requirePreparedCliSourceApiSource(
       {
         authorizedOrg,
         c,
-        sourceKey: request.sourceKey,
+        sourceKey: invocation.sourceKey,
       },
       resolvedDependencies
     );
@@ -294,16 +296,17 @@ export function createHandleExecuteSourceApi(
       resolvedDependencies.requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
     const session = await requestContext.requireSession();
+    const invocation = requireCliSourceApiInvocation(request.invocation);
     const authorizedOrg = await requestContext.requireAuthorizedOrg({
       action: "source_api.execute",
-      orgSlug: request.orgSlug,
+      orgSlug: invocation.orgSlug,
       session,
     });
     const source = await requirePreparedCliSourceApiSource(
       {
         authorizedOrg,
         c,
-        sourceKey: request.sourceKey,
+        sourceKey: invocation.sourceKey,
       },
       resolvedDependencies
     );
