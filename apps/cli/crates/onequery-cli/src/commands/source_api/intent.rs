@@ -120,6 +120,29 @@ mod tests {
     }
 
     #[test]
+    fn resolve_intent_describes_when_only_render_flags_are_provided() {
+        for args in [
+            UseArgs {
+                include: true,
+                ..use_args()
+            },
+            UseArgs {
+                silent: true,
+                ..use_args()
+            },
+            UseArgs {
+                jq: Some(".items[0]".to_owned()),
+                ..use_args()
+            },
+        ] {
+            let intent = resolve_intent(&args, &descriptor(), &context())
+                .expect("expected render-only flags to keep describe intent");
+
+            assert_eq!(intent, ResolvedIntent::Describe);
+        }
+    }
+
+    #[test]
     fn resolve_intent_rejects_execute_flags_without_operation_or_selector() {
         let error = resolve_intent(
             &UseArgs {

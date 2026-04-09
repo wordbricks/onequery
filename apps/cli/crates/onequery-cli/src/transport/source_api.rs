@@ -163,11 +163,16 @@ pub(crate) struct ExecuteSourceApiRequestPayload {
 pub(crate) enum SourceApiRequestBody {
     #[default]
     None,
-    Json { value: Value },
-    Text { value: String },
-    Binary { value_base64: String },
+    Json {
+        value: Value,
+    },
+    Text {
+        value: String,
+    },
+    Binary {
+        value_base64: String,
+    },
 }
-
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -175,11 +180,16 @@ pub(crate) enum SourceApiRequestBody {
 pub(crate) enum SourceApiResponseBody {
     #[default]
     None,
-    Json { value: Value },
-    Text { value: String },
-    Binary { value_base64: String },
+    Json {
+        value: Value,
+    },
+    Text {
+        value: String,
+    },
+    Binary {
+        value_base64: String,
+    },
 }
-
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]

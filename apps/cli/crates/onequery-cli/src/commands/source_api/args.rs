@@ -22,9 +22,6 @@ pub(super) fn has_execute_intent_flags(args: &UseArgs) -> bool {
         || args.paginate
         || args.slurp
         || args.max_pages.is_some()
-        || args.include
-        || args.silent
-        || args.jq.is_some()
         || args.dry_run
 }
 
