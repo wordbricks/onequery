@@ -79,7 +79,10 @@ message CliQueryRequest {
 }
 
 message CliQueryCanonicalRequest {
-  string sql = 1;
+  string sql = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
   repeated CliQueryParameter parameters = 2;
   optional uint32 max_rows = 3;
   optional uint32 max_bytes = 4;

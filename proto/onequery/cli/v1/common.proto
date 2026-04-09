@@ -11,7 +11,7 @@ message CliPage {
 }
 
 message CliSanitization {
-  string profile = 1;
+  string profile = 1 [(buf.validate.field).string.min_len = 1];
   repeated string sanitized_paths = 2;
   bool raw_available = 3;
 }

@@ -369,7 +369,7 @@ fn query_canonical_request_from_generated(
     request: types::CliQueryCanonicalRequest,
 ) -> QueryCanonicalRequest {
     QueryCanonicalRequest {
-        sql: non_empty(request.sql),
+        sql: Some(request.sql),
         parameters: (!request.parameters.is_empty()).then(|| {
             request
                 .parameters
