@@ -5,7 +5,6 @@ use onequery_cli_core::error::ErrorStage;
 use reqwest::StatusCode;
 
 use crate::output_metadata::SanitizationMetadata;
-use crate::output_metadata::UntrustedOutputMetadata;
 use crate::transport::generated::types;
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -204,21 +203,14 @@ where
     value.map(|value| try_into_value(value, stage)).transpose()
 }
 
-pub(crate) fn untrusted_output_metadata_from_generated<T>(
-    untrusted_paths: Vec<T>,
+pub(crate) fn sanitization_metadata_from_generated(
     sanitization: Option<types::CliSanitization>,
-) -> UntrustedOutputMetadata
-where
-    T: Into<String>,
-{
-    UntrustedOutputMetadata {
-        untrusted_paths: untrusted_paths.into_iter().map(Into::into).collect(),
-        sanitization: sanitization.map(|sanitization| SanitizationMetadata {
-            profile: sanitization.profile,
-            sanitized_paths: sanitization.sanitized_paths.into_iter().collect(),
-            raw_available: sanitization.raw_available,
-        }),
-    }
+) -> Option<SanitizationMetadata> {
+    sanitization.map(|sanitization| SanitizationMetadata {
+        profile: sanitization.profile,
+        sanitized_paths: sanitization.sanitized_paths.into_iter().collect(),
+        raw_available: sanitization.raw_available,
+    })
 }
 
 fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {

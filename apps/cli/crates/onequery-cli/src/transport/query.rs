@@ -4,7 +4,7 @@ use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::output_metadata::UntrustedOutputMetadata;
+use crate::output_metadata::SanitizationMetadata;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::http::ApiFailure;
@@ -14,9 +14,9 @@ use crate::transport::http::conversion_failure;
 use crate::transport::http::decode_failure;
 use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
+use crate::transport::http::sanitization_metadata_from_generated;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
-use crate::transport::http::untrusted_output_metadata_from_generated;
 use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
@@ -56,7 +56,7 @@ pub(crate) struct QueryResult {
     pub(crate) truncated: Option<bool>,
     pub(crate) page: PageInfo,
     #[serde(skip)]
-    pub(crate) output_metadata: UntrustedOutputMetadata,
+    pub(crate) output_metadata: Option<SanitizationMetadata>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
@@ -309,20 +309,8 @@ fn query_result_from_generated(
         )
     })?;
 
-    // Comment: the Connect query response only carries `sanitization`; reuse its
-    // sanitized paths as legacy `untrusted_paths` so existing CLI output stays stable.
-    let untrusted_paths = result
-        .sanitization
-        .clone()
-        .into_option()
-        .map(|sanitization| sanitization.sanitized_paths)
-        .unwrap_or_default();
-
     Ok(QueryResult {
-        output_metadata: untrusted_output_metadata_from_generated(
-            untrusted_paths,
-            result.sanitization.into_option(),
-        ),
+        output_metadata: sanitization_metadata_from_generated(result.sanitization.into_option()),
         source: Some(source_summary_from_generated(source)),
         row_count: usize::try_from(result.row_count).ok(),
         elapsed_ms: Some(result.elapsed_ms),
@@ -458,7 +446,7 @@ mod tests {
     use reqwest::StatusCode;
     use serde_json::json;
 
-    use crate::output_metadata::UntrustedOutputMetadata;
+    use crate::output_metadata::SanitizationMetadata;
     use crate::transport::http::ApiFailure;
     use crate::transport::http::ApiProblem;
     use crate::transport::query_parameter::QueryCanonicalParameter;
@@ -525,7 +513,7 @@ mod tests {
                     returned: 1,
                     has_more: false,
                 },
-                output_metadata: UntrustedOutputMetadata::default(),
+                output_metadata: None,
             }
         );
     }
@@ -783,14 +771,11 @@ mod tests {
                     returned: 1,
                     has_more: false,
                 },
-                output_metadata: UntrustedOutputMetadata {
-                    untrusted_paths: vec!["rows[0][0]".to_owned()],
-                    sanitization: Some(crate::output_metadata::SanitizationMetadata {
-                        profile: "strict".to_owned(),
-                        sanitized_paths: vec!["rows[0][0]".to_owned()],
-                        raw_available: false,
-                    }),
-                },
+                output_metadata: Some(SanitizationMetadata {
+                    profile: "strict".to_owned(),
+                    sanitized_paths: vec!["rows[0][0]".to_owned()],
+                    raw_available: false,
+                }),
             }
         );
     }

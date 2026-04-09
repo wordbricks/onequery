@@ -8,7 +8,7 @@ use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::output_metadata::UntrustedOutputMetadata;
+use crate::output_metadata::SanitizationMetadata;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
 #[value(rename_all = "lower")]
@@ -89,7 +89,7 @@ pub(crate) struct CommandOutput {
     json_render: JsonRenderMode,
     pub(crate) command: Option<String>,
     pub(crate) request_id: Option<String>,
-    untrusted_output: Option<UntrustedOutputMetadata>,
+    sanitization: Option<SanitizationMetadata>,
     raw_stdout: Option<RawStdout>,
 }
 
@@ -103,7 +103,7 @@ impl fmt::Debug for CommandOutput {
             .field("json_render", &self.json_render)
             .field("command", &self.command)
             .field("request_id", &self.request_id)
-            .field("untrusted_output", &self.untrusted_output)
+            .field("sanitization", &self.sanitization)
             .field("raw_stdout", &self.raw_stdout)
             .finish()
     }
@@ -118,7 +118,7 @@ impl CommandOutput {
             json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
-            untrusted_output: None,
+            sanitization: None,
             raw_stdout: None,
         }
     }
@@ -131,7 +131,7 @@ impl CommandOutput {
             json_render: JsonRenderMode::Raw,
             command: None,
             request_id: None,
-            untrusted_output: None,
+            sanitization: None,
             raw_stdout: None,
         }
     }
@@ -145,7 +145,7 @@ impl CommandOutput {
             json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
-            untrusted_output: None,
+            sanitization: None,
             raw_stdout: None,
         }
     }
@@ -161,7 +161,7 @@ impl CommandOutput {
             json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
-            untrusted_output: None,
+            sanitization: None,
             raw_stdout: None,
         }
     }
@@ -176,7 +176,7 @@ impl CommandOutput {
             json_render: JsonRenderMode::Envelope,
             command: None,
             request_id: None,
-            untrusted_output: None,
+            sanitization: None,
             raw_stdout: None,
         }
     }
@@ -206,13 +206,11 @@ impl CommandOutput {
 
     // Comment: HTTP safety metadata belongs at the top-level CLI JSON envelope, not inside
     // command `data`, so keep it adjacent to the rendered output instead of polluting schemas.
-    pub(crate) fn with_untrusted_output_metadata(
+    pub(crate) fn with_sanitization_metadata(
         mut self,
-        metadata: UntrustedOutputMetadata,
+        metadata: Option<SanitizationMetadata>,
     ) -> Self {
-        if !metadata.is_empty() {
-            self.untrusted_output = Some(metadata);
-        }
+        self.sanitization = metadata;
         self
     }
 
@@ -297,7 +295,7 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
                 json_render,
                 command,
                 request_id,
-                untrusted_output,
+                sanitization,
                 raw_stdout: _,
             } = output;
             let data = match data.into_value() {
@@ -309,24 +307,8 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
             }
             let warnings = extract_warnings(&data);
             let page = extract_page(&data);
-            let untrusted_paths = untrusted_output
+            let sanitization = sanitization
                 .as_ref()
-                .and_then(|metadata| {
-                    (!metadata.untrusted_paths.is_empty()).then(|| {
-                        Value::Array(
-                            metadata
-                                .untrusted_paths
-                                .iter()
-                                .cloned()
-                                .map(Value::String)
-                                .collect(),
-                        )
-                    })
-                })
-                .or_else(|| extract_untrusted_paths(&data));
-            let sanitization = untrusted_output
-                .as_ref()
-                .and_then(|metadata| metadata.sanitization.as_ref())
                 .and_then(|sanitization| serde_json::to_value(sanitization).ok())
                 .or_else(|| extract_sanitization(&data));
             let mut envelope = Map::new();
@@ -341,9 +323,6 @@ pub(crate) fn render_output(output: CommandOutput, mode: EffectiveOutputMode) ->
             envelope.insert("warnings".to_owned(), Value::Array(warnings));
             if let Some(page) = page {
                 envelope.insert("page".to_owned(), page);
-            }
-            if let Some(untrusted_paths) = untrusted_paths {
-                envelope.insert("untrustedPaths".to_owned(), untrusted_paths);
             }
             if let Some(sanitization) = sanitization {
                 envelope.insert("sanitization".to_owned(), sanitization);
@@ -472,13 +451,6 @@ fn extract_warnings(data: &Value) -> Vec<Value> {
             })
             .collect(),
         _ => Vec::new(),
-    }
-}
-
-fn extract_untrusted_paths(data: &Value) -> Option<Value> {
-    match data.get("untrustedPaths") {
-        Some(Value::Array(values)) => Some(Value::Array(values.clone())),
-        _ => None,
     }
 }
 
@@ -790,13 +762,12 @@ mod tests {
     }
 
     #[test]
-    fn render_output_json_promotes_untrusted_paths_and_sanitization_metadata() {
+    fn render_output_json_promotes_sanitization_metadata() {
         let rendered = render_output(
             CommandOutput::structured(
                 vec!["ok".to_owned()],
                 json!({
                     "rows": [["[sanitized]"]],
-                    "untrustedPaths": ["$.rows[*][*]"],
                     "sanitization": {
                         "profile": "default-v1",
                         "sanitizedPaths": ["$.rows[*][*]"],
@@ -818,7 +789,6 @@ mod tests {
                 "requestId": "req_sanitized",
                 "data": {
                     "rows": [["[sanitized]"]],
-                    "untrustedPaths": ["$.rows[*][*]"],
                     "sanitization": {
                         "profile": "default-v1",
                         "sanitizedPaths": ["$.rows[*][*]"],
@@ -826,7 +796,6 @@ mod tests {
                     }
                 },
                 "warnings": [],
-                "untrustedPaths": ["$.rows[*][*]"],
                 "sanitization": {
                     "profile": "default-v1",
                     "sanitizedPaths": ["$.rows[*][*]"],
@@ -837,7 +806,7 @@ mod tests {
     }
 
     #[test]
-    fn render_output_json_includes_explicit_untrusted_output_metadata() {
+    fn render_output_json_includes_explicit_sanitization_metadata() {
         let rendered = render_output(
             CommandOutput::structured(
                 vec!["ok".to_owned()],
@@ -847,16 +816,13 @@ mod tests {
             )
             .with_command("query exec")
             .with_request_id(Some("req_sanitized".to_owned()))
-            .with_untrusted_output_metadata(
-                crate::output_metadata::UntrustedOutputMetadata {
-                    untrusted_paths: vec!["$.rows[*][*]".to_owned()],
-                    sanitization: Some(crate::output_metadata::SanitizationMetadata {
-                        profile: "default-v1".to_owned(),
-                        sanitized_paths: vec!["$.rows[*][*]".to_owned()],
-                        raw_available: false,
-                    }),
+            .with_sanitization_metadata(Some(
+                crate::output_metadata::SanitizationMetadata {
+                    profile: "default-v1".to_owned(),
+                    sanitized_paths: vec!["$.rows[*][*]".to_owned()],
+                    raw_available: false,
                 },
-            ),
+            )),
             EffectiveOutputMode::Json,
         );
 
@@ -871,7 +837,6 @@ mod tests {
                     "rows": [["[sanitized]"]]
                 },
                 "warnings": [],
-                "untrustedPaths": ["$.rows[*][*]"],
                 "sanitization": {
                     "profile": "default-v1",
                     "sanitizedPaths": ["$.rows[*][*]"],
