@@ -163,23 +163,6 @@ export function isPostHogSourceCredentials(
   );
 }
 
-export function parsePostHogProviderRouteRequest(input: {
-  request: unknown;
-}): { ok: true; data: PostHogRunQueryRequest } | { ok: false; error: string } {
-  try {
-    return {
-      data: parsePostHogRunQueryRequest(input.request),
-      ok: true,
-    };
-  } catch (error) {
-    if (error instanceof PostHogInvalidRequestError) {
-      return { error: error.message, ok: false };
-    }
-
-    throw error;
-  }
-}
-
 export async function requestPostHogSourceApi(input: {
   credentials: PostHogCredentials;
   request: PostHogRunQueryRequest;

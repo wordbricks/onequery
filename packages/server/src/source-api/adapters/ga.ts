@@ -32,7 +32,7 @@ import type {
 const GOOGLE_ANALYTICS_DESCRIPTOR_VERSION = "ga.v1";
 const GOOGLE_ANALYTICS_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 
-export const googleAnalyticsSourceApiOperationSchema = z.enum([
+const googleAnalyticsSourceApiOperationSchema = z.enum([
   "run_report",
   "run_realtime_report",
 ]);
@@ -177,7 +177,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-export function isGoogleAnalyticsSourceCredentials(
+function isGoogleAnalyticsSourceCredentials(
   value: unknown
 ): value is GoogleAnalyticsCredentials {
   return (

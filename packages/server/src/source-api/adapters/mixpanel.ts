@@ -33,7 +33,6 @@ import type {
   SourceApiDescriptor,
   SourceApiExample,
   SourceApiExecutionResponse,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -103,28 +102,6 @@ const mixpanelHttpFieldPatchSchema = z
   })
   .strict();
 
-const mixpanelFetchOptionsSchema = z.object({
-  body: z.record(z.string(), z.unknown()).optional(),
-  bodyFormat: z.enum(["form", "json"]).optional(),
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-    .optional(),
-});
-
-const mixpanelFetchQueryApiRequestSchema = z.object({
-  endpoint: z.string().min(1),
-  options: mixpanelFetchOptionsSchema.optional(),
-});
-
-const mixpanelExportEventsRequestSchema = z.object({
-  options: mixpanelFetchOptionsSchema.optional(),
-});
-
 type MixpanelEngageRequest = z.infer<typeof mixpanelEngageRequestSchema>;
 type MixpanelSegmentationRequest = z.infer<
   typeof mixpanelSegmentationRequestSchema
@@ -160,12 +137,6 @@ type MixpanelExportEventsSourceApiRequest = {
   params?: Record<string, unknown>;
   timeoutMs?: number;
 };
-
-export type MixpanelSourceApiRequest =
-  | MixpanelQueryEngageSourceApiRequest
-  | MixpanelQuerySegmentationSourceApiRequest
-  | MixpanelFetchQueryApiSourceApiRequest
-  | MixpanelExportEventsSourceApiRequest;
 
 export type MixpanelTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
@@ -479,92 +450,6 @@ export function isMixpanelSourceCredentials(
     "type" in value &&
     value.type === "mixpanel"
   );
-}
-
-export function parseMixpanelProviderRouteRequest(input: {
-  operation: MixpanelSourceApiOperation;
-  request: unknown;
-}):
-  | { ok: true; data: MixpanelSourceApiRequest }
-  | { ok: false; error: string } {
-  try {
-    switch (input.operation) {
-      case "query_engage":
-        return {
-          data: {
-            operation: input.operation,
-            request: parseMixpanelEngageRequest(input.request),
-          },
-          ok: true,
-        };
-      case "query_segmentation":
-        return {
-          data: {
-            operation: input.operation,
-            request: parseMixpanelSegmentationRequest(input.request),
-          },
-          ok: true,
-        };
-      case "fetch_query_api": {
-        const parsed = mixpanelFetchQueryApiRequestSchema.parse(input.request);
-        return {
-          data: {
-            body: parsed.options?.body
-              ? {
-                  kind: "json",
-                  value: parsed.options.body as SourceApiJsonValue,
-                }
-              : { kind: "none" },
-            bodyFormat: parsed.options?.bodyFormat,
-            method: parsed.options?.method ?? "GET",
-            operation: input.operation,
-            params: parsed.options?.params,
-            selector: parsed.endpoint,
-            timeoutMs: parsed.options?.timeoutMs,
-          },
-          ok: true,
-        };
-      }
-      case "export_events": {
-        const parsed = mixpanelExportEventsRequestSchema.parse(input.request);
-        return {
-          data: {
-            body: parsed.options?.body
-              ? {
-                  kind: "json",
-                  value: parsed.options.body as SourceApiJsonValue,
-                }
-              : { kind: "none" },
-            bodyFormat: parsed.options?.bodyFormat,
-            method: parsed.options?.method ?? "GET",
-            operation: input.operation,
-            params: parsed.options?.params,
-            timeoutMs: parsed.options?.timeoutMs,
-          },
-          ok: true,
-        };
-      }
-    }
-  } catch (error) {
-    if (error instanceof MixpanelInvalidRequestError) {
-      return { error: error.message, ok: false };
-    }
-    if (error instanceof z.ZodError) {
-      return {
-        error:
-          input.operation === "query_engage"
-            ? "Invalid Mixpanel engage request payload"
-            : input.operation === "query_segmentation"
-              ? "Invalid Mixpanel segmentation request payload"
-              : input.operation === "fetch_query_api"
-                ? "Invalid Mixpanel query API request payload"
-                : "Invalid Mixpanel export events request payload",
-        ok: false,
-      };
-    }
-
-    throw error;
-  }
 }
 
 export async function requestMixpanelSourceApi(

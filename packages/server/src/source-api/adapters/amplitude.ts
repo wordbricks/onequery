@@ -22,7 +22,6 @@ import type {
   SourceApiDescriptor,
   SourceApiExample,
   SourceApiExecutionResponse,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -53,32 +52,7 @@ const amplitudeFieldPatchSchema = z
   })
   .strict();
 
-const amplitudeFetchOptionsSchema = z.object({
-  body: z.record(z.string(), z.unknown()).optional(),
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]).optional(),
-  params: z.record(z.string(), z.unknown()).optional(),
-  timeoutMs: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-    .optional(),
-});
-
-const amplitudeFetchApiRequestSchema = z.object({
-  endpoint: z.string().min(1),
-  options: amplitudeFetchOptionsSchema.optional(),
-});
-
 type AmplitudeFieldPatch = z.infer<typeof amplitudeFieldPatchSchema>;
-
-export type AmplitudeProviderRouteRequest = {
-  body: SourceApiRequestBody;
-  method?: string;
-  params?: Record<string, unknown>;
-  selector: string;
-  timeoutMs?: number;
-};
 
 export type AmplitudeTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
@@ -207,37 +181,6 @@ export function isAmplitudeSourceCredentials(
     "type" in value &&
     value.type === "amplitude"
   );
-}
-
-export function parseAmplitudeProviderRouteRequest(input: {
-  request: unknown;
-}):
-  | { ok: true; data: AmplitudeProviderRouteRequest }
-  | { ok: false; error: string } {
-  try {
-    const parsed = amplitudeFetchApiRequestSchema.parse(input.request);
-    return {
-      data: {
-        body: parsed.options?.body
-          ? { kind: "json", value: parsed.options.body as SourceApiJsonValue }
-          : { kind: "none" },
-        method: parsed.options?.method,
-        params: parsed.options?.params,
-        selector: parsed.endpoint,
-        timeoutMs: parsed.options?.timeoutMs,
-      },
-      ok: true,
-    };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return {
-        error: "Invalid Amplitude fetch_api request payload",
-        ok: false,
-      };
-    }
-
-    throw error;
-  }
 }
 
 export async function requestAmplitudeSourceApi(input: {

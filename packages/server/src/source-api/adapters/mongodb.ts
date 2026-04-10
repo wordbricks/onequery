@@ -74,7 +74,7 @@ type MongoDbFindDocumentsRequest = z.infer<
   typeof mongoDbFindDocumentsRequestSchema
 >;
 
-export type MongoDbSourceApiRequest =
+type MongoDbSourceApiRequest =
   | {
       operation: "list_databases";
       request: MongoDbListDatabasesRequest;
@@ -258,34 +258,14 @@ export function createMongoDbSourceApiAdapter(
 
 export const mongodbSourceApiAdapter = createMongoDbSourceApiAdapter();
 
-export function parseMongoDbProviderRouteRequest(input: {
-  operation: MongoDbSourceApiOperation;
-  request: unknown;
-}):
-  | { ok: true; data: MongoDbSourceApiRequest["request"] }
-  | { ok: false; error: string } {
-  try {
-    return {
-      data: parseMongoDbSourceApiRequest({
-        operation: input.operation,
-        request: input.request,
-      }).request,
-      ok: true,
-    };
-  } catch (error) {
-    if (error instanceof MongoDbInvalidRequestError) {
-      return { error: error.message, ok: false };
-    }
-
-    throw error;
-  }
-}
-
 export async function requestMongoDbSourceApi(input: {
   credentials: MongoDBCredentials;
   dependencies?: MongoDbSourceApiDependencies;
   operation: MongoDbSourceApiOperation;
-  request: MongoDbSourceApiRequest["request"];
+  request:
+    | MongoDbListDatabasesRequest
+    | MongoDbListCollectionsRequest
+    | MongoDbFindDocumentsRequest;
 }): Promise<MongoDbTransportResponse> {
   const dependencies =
     input.dependencies ?? DEFAULT_MONGODB_SOURCE_API_DEPENDENCIES;

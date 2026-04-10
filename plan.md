@@ -14,7 +14,7 @@ It is **not finished enough to call complete**. The remaining gaps are:
 
 ## 1) Remove the legacy HTTP query surface completely
 
-- [ ] Delete these files:
+- [x] Delete these files:
   - `packages/server/src/routes/data-sources/amplitude-query.ts`
   - `packages/server/src/routes/data-sources/ga-query.ts`
   - `packages/server/src/routes/data-sources/mixpanel-query.ts`
@@ -26,11 +26,11 @@ It is **not finished enough to call complete**. The remaining gaps are:
   - `packages/server/src/routes/data-sources/query-validation.ts`
   - `packages/server/src/routes/data-sources/create-provider-route.integration.test.ts`
   - `packages/server/src/routes/data-sources/query-validation.test.ts`
-- [ ] Update `packages/server/src/routes/data-sources.ts`:
+- [x] Update `packages/server/src/routes/data-sources.ts`:
   - remove the deleted imports;
   - remove the deleted `.route("/", ...)` registrations;
   - rewrite the file comment so it no longer mentions relay query routes.
-- [ ] Remove route-only exports from adapters and make them internal or delete them:
+- [x] Remove route-only exports from adapters and make them internal or delete them:
   - `packages/server/src/source-api/adapters/amplitude.ts`
     - `AmplitudeProviderRouteRequest`
     - `parseAmplitudeProviderRouteRequest`
@@ -48,10 +48,10 @@ It is **not finished enough to call complete**. The remaining gaps are:
   - `packages/server/src/source-api/adapters/sentry.ts`
     - `SentryProviderRouteRequest`
     - `parseSentryProviderRouteRequest`
-- [ ] Leave `packages/server/src/routes/data-sources/github-repositories.ts` intact. It is not part of the legacy query surface.
+- [x] Leave `packages/server/src/routes/data-sources/github-repositories.ts` intact. It is not part of the legacy query surface.
 
 **Done when**
-- [ ] `rg -n 'createProviderRoute|buildSourceApiRouteResponse|/amplitude/query|/ga/query|/mixpanel/query|/mongodb/query|/posthog/query|/sentry/query|query-validation' packages/server/src` returns no source hits.
+- [x] `rg -n 'createProviderRoute|buildSourceApiRouteResponse|/amplitude/query|/ga/query|/mixpanel/query|/mongodb/query|/posthog/query|/sentry/query|query-validation' packages/server/src` returns no source hits.
 
 ## 2) Make the descriptor/proto fully machine-readable
 
