@@ -173,8 +173,18 @@ message CliSourceApiMethodPolicy {
 message CliSourceApiFieldPolicy {
   bool supports_raw_fields = 1;
   bool supports_typed_fields = 2;
-  repeated string syntaxes = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
-  repeated string transport_rules = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+  bool supports_nested_paths = 3;
+  bool supports_array_paths = 4;
+  bool accepts_input = 5;
+  CliSourceApiInputMode input_mode = 6;
+  bool merge_patches = 7;
+}
+
+enum CliSourceApiInputMode {
+  CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED = 0;
+  CLI_SOURCE_API_INPUT_MODE_NONE = 1;
+  CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT = 2;
+  CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
 }
 
 message CliSourceApiHeaderPolicy {

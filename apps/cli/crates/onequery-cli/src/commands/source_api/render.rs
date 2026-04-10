@@ -4,7 +4,9 @@ use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
 use crate::transport::source_api::NormalizedSourceApiPlan;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
+use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiResponseBody;
@@ -458,16 +460,22 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
             operation.header_policy.allowed_names.join(", ")
         ));
     }
-    if !operation.field_policy.syntaxes.is_empty() {
-        lines.push(format!(
-            "  field syntax: {}",
-            operation.field_policy.syntaxes.join(", ")
-        ));
+    let field_examples = field_format_examples(&operation.field_policy);
+    if !field_examples.is_empty() {
+        lines.push(format!("  field syntax: {}", field_examples.join(", ")));
     }
-    if !operation.field_policy.transport_rules.is_empty() {
+    lines.push(format!(
+        "  input: {}",
+        input_mode_label(operation.field_policy.input_mode)
+    ));
+    if operation.field_policy.accepts_input {
         lines.push(format!(
-            "  transport rules: {}",
-            operation.field_policy.transport_rules.join(", ")
+            "  field patch merge: {}",
+            if operation.field_policy.merge_patches {
+                "merge over input"
+            } else {
+                "stay separate from input"
+            }
         ));
     }
 
@@ -622,6 +630,31 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
         Some(label) if !label.trim().is_empty() => format!("{kind} ({label})"),
         _ => kind.to_owned(),
     })
+}
+
+fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
+    let mut examples = Vec::new();
+    if policy.supports_raw_fields {
+        examples.push("-f KEY=VALUE");
+    }
+    if policy.supports_typed_fields {
+        examples.push("-F KEY=VALUE");
+    }
+    if policy.supports_nested_paths {
+        examples.push("key[subkey]=value");
+    }
+    if policy.supports_array_paths {
+        examples.push("key[]=value");
+    }
+    examples
+}
+
+fn input_mode_label(mode: SourceApiInputMode) -> &'static str {
+    match mode {
+        SourceApiInputMode::None => "none",
+        SourceApiInputMode::RequestObject => "request object",
+        SourceApiInputMode::RequestBody => "request body",
+    }
 }
 
 #[cfg(test)]

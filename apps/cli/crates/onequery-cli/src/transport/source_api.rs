@@ -52,6 +52,15 @@ pub(crate) enum SourceApiBodyKind {
     Binary,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum SourceApiInputMode {
+    #[default]
+    None,
+    RequestObject,
+    RequestBody,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SourceApiSource {
@@ -89,10 +98,11 @@ pub(crate) struct SourceApiMethodPolicy {
 pub(crate) struct SourceApiFieldPolicy {
     pub(crate) supports_raw_fields: bool,
     pub(crate) supports_typed_fields: bool,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) syntaxes: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) transport_rules: Vec<String>,
+    pub(crate) supports_nested_paths: bool,
+    pub(crate) supports_array_paths: bool,
+    pub(crate) accepts_input: bool,
+    pub(crate) input_mode: SourceApiInputMode,
+    pub(crate) merge_patches: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
@@ -448,8 +458,27 @@ fn source_api_field_policy_from_generated(
     SourceApiFieldPolicy {
         supports_raw_fields: value.supports_raw_fields,
         supports_typed_fields: value.supports_typed_fields,
-        syntaxes: value.syntaxes,
-        transport_rules: value.transport_rules,
+        supports_nested_paths: value.supports_nested_paths,
+        supports_array_paths: value.supports_array_paths,
+        accepts_input: value.accepts_input,
+        input_mode: source_api_input_mode_from_generated(value.input_mode),
+        merge_patches: value.merge_patches,
+    }
+}
+
+fn source_api_input_mode_from_generated(
+    value: buffa::EnumValue<types::CliSourceApiInputMode>,
+) -> SourceApiInputMode {
+    match value.as_known() {
+        Some(types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT) => {
+            SourceApiInputMode::RequestObject
+        }
+        Some(types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY) => {
+            SourceApiInputMode::RequestBody
+        }
+        Some(types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE)
+        | Some(types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED)
+        | None => SourceApiInputMode::None,
     }
 }
 
@@ -756,6 +785,8 @@ mod tests {
 
     use super::NormalizedSourceApiPlan;
     use super::SourceApiBodyKind;
+    use super::SourceApiFieldPolicy;
+    use super::SourceApiInputMode;
     use super::SourceApiOperationKind;
     use super::normalized_source_api_plan_from_generated;
     use super::source_api_descriptor_from_generated;
@@ -858,6 +889,70 @@ mod tests {
                 message: "source API operation `fetch` missing method policy".to_owned(),
                 request_id: Some("req_missing_policy".to_owned()),
             })
+        );
+    }
+
+    #[test]
+    fn source_api_descriptor_from_generated_maps_machine_readable_field_policy() {
+        let descriptor = source_api_descriptor_from_generated(
+            types::DescribeSourceApiResponse {
+                source: buffa::MessageField::some(types::CliSourceApiSource {
+                    key: "github-prod".to_owned(),
+                    provider: "github".to_owned(),
+                    ..Default::default()
+                }),
+                descriptor_version: "github.v1".to_owned(),
+                operations: vec![types::CliSourceApiOperation {
+                    name: "fetch".to_owned(),
+                    kind:
+                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                            .into(),
+                    summary: "Fetch a resource".to_owned(),
+                    description: "Fetches a GitHub resource.".to_owned(),
+                    selector_kind:
+                        types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into(),
+                    method_policy: buffa::MessageField::some(types::CliSourceApiMethodPolicy {
+                        default_method: Some("GET".to_owned()),
+                        ..Default::default()
+                    }),
+                    field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
+                        supports_raw_fields: true,
+                        supports_typed_fields: true,
+                        supports_nested_paths: true,
+                        supports_array_paths: true,
+                        accepts_input: true,
+                        input_mode:
+                            types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY
+                                .into(),
+                        merge_patches: false,
+                        ..Default::default()
+                    }),
+                    header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
+                        allowed_names: vec!["accept".to_owned()],
+                        ..Default::default()
+                    }),
+                    pagination_policy:
+                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
+                            .into(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+            Some("req_field_policy".to_owned()),
+        )
+        .expect("expected descriptor field policy to decode");
+
+        assert_eq!(
+            descriptor.operations[0].field_policy,
+            SourceApiFieldPolicy {
+                supports_raw_fields: true,
+                supports_typed_fields: true,
+                supports_nested_paths: true,
+                supports_array_paths: true,
+                accepts_input: true,
+                input_mode: SourceApiInputMode::RequestBody,
+                merge_patches: false,
+            }
         );
     }
 }

@@ -55,7 +55,7 @@ It is **not finished enough to call complete**. The remaining gaps are:
 
 ## 2) Make the descriptor/proto fully machine-readable
 
-- [ ] Replace `CliSourceApiFieldPolicy` in `proto/onequery/cli/v1/source_api.proto` with this exact wire shape:
+- [x] Replace `CliSourceApiFieldPolicy` in `proto/onequery/cli/v1/source_api.proto` with this exact wire shape:
 
 ```proto
 message CliSourceApiFieldPolicy {
@@ -76,28 +76,28 @@ enum CliSourceApiInputMode {
 }
 ```
 
-- [ ] Delete `syntaxes` and `transport_rules` from the proto.
-- [ ] Regenerate protobuf outputs:
+- [x] Delete `syntaxes` and `transport_rules` from the proto.
+- [x] Regenerate protobuf outputs:
   - `bun run proto:generate`
   - commit the regenerated files under `packages/cli-server/src/connect/gen/`
   - rebuild the Rust transport via the existing CLI build script (`apps/cli/crates/onequery-cli/build.rs` handles codegen during Cargo build)
-- [ ] Update `packages/cli-server/src/connect/service/conversions.ts`:
+- [x] Update `packages/cli-server/src/connect/service/conversions.ts`:
   - map `SourceApiFieldPolicy` to the new proto fields directly;
   - stop generating human-readable transport strings.
-- [ ] Update `apps/cli/crates/onequery-cli/src/transport/source_api.rs`:
+- [x] Update `apps/cli/crates/onequery-cli/src/transport/source_api.rs`:
   - change the Rust `SourceApiFieldPolicy` struct to the new fields;
   - remove `syntaxes` and `transport_rules` decoding.
-- [ ] Update CLI planning/parsing to use only machine fields:
+- [x] Update CLI planning/parsing to use only machine fields:
   - `apps/cli/crates/onequery-cli/src/commands/source_api/field_patch.rs`
     - take `supports_nested_paths` and `supports_array_paths` directly;
     - delete the current string-inference helper path.
   - `apps/cli/crates/onequery-cli/src/commands/source_api/plan.rs`
     - use `accepts_input`, `input_mode`, and `merge_patches` directly;
     - delete the current `transport_rules` inference path.
-- [ ] Keep user-facing formatting local. If the CLI wants to print examples like `key[subkey]=value`, derive that in render code from booleans instead of shipping those strings over RPC.
+- [x] Keep user-facing formatting local. If the CLI wants to print examples like `key[subkey]=value`, derive that in render code from booleans instead of shipping those strings over RPC.
 
 **Done when**
-- [ ] `rg -n 'transport_rules|syntaxes|supports --input|does not support --input' proto packages/cli-server/src/connect/service apps/cli/crates/onequery-cli/src/commands/source_api apps/cli/crates/onequery-cli/src/transport/source_api.rs` returns no hits.
+- [x] `rg -n 'transport_rules|syntaxes|supports --input|does not support --input' proto packages/cli-server/src/connect/service apps/cli/crates/onequery-cli/src/commands/source_api apps/cli/crates/onequery-cli/src/transport/source_api.rs` returns no hits.
 
 ## 3) Finish the normalized plan so it is policy-ready
 

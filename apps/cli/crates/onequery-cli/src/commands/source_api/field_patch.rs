@@ -30,20 +30,6 @@ enum UnsupportedFieldPathFeature {
     ArrayPaths,
 }
 
-pub(super) fn field_path_policy_from_syntaxes(syntaxes: &[String]) -> FieldPathPolicy {
-    // Comment: the descriptor transport currently exposes bracket-path support as
-    // advertised syntax strings, so the CLI infers local enforcement from those
-    // stable examples until the wire shape carries dedicated nested/array flags.
-    FieldPathPolicy {
-        supports_nested_paths: syntaxes
-            .iter()
-            .any(|syntax| syntax.trim() == NESTED_FIELD_PATH_SYNTAX),
-        supports_array_paths: syntaxes
-            .iter()
-            .any(|syntax| syntax.trim() == ARRAY_FIELD_PATH_SYNTAX),
-    }
-}
-
 pub(super) async fn parse_field_patch(
     raw_fields: &[String],
     fields: &[String],
@@ -338,7 +324,6 @@ mod tests {
     use super::FieldPathPolicy;
     use super::FieldPathSegment;
     use super::SourceApiInputReader;
-    use super::field_path_policy_from_syntaxes;
     use super::parse_field_patch;
     use super::parse_field_path;
 
@@ -439,22 +424,6 @@ mod tests {
                     }
                 }
             }))
-        );
-    }
-
-    #[test]
-    fn field_path_policy_from_syntaxes_tracks_nested_and_array_support() {
-        let policy = field_path_policy_from_syntaxes(&[
-            "-F KEY=VALUE".to_owned(),
-            "key[subkey]=value".to_owned(),
-        ]);
-
-        assert_eq!(
-            policy,
-            FieldPathPolicy {
-                supports_nested_paths: true,
-                supports_array_paths: false,
-            }
         );
     }
 

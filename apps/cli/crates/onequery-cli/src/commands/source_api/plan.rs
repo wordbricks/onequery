@@ -4,6 +4,7 @@ use crate::cli::UseArgs;
 use crate::transport::source_api::ExecuteSourceApiRequestPayload;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiHeader;
+use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiPaginationPolicy;
@@ -13,7 +14,7 @@ use onequery_cli_core::error::CliError;
 
 use super::CommandContext;
 use super::args::SourceApiInputReader;
-use super::field_patch::field_path_policy_from_syntaxes;
+use super::field_patch::FieldPathPolicy;
 use super::field_patch::parse_field_patch;
 use super::intent::ResolvedIntent;
 use super::intent::resolve_intent;
@@ -109,7 +110,10 @@ pub(super) async fn build_plan(
     let field_patch = parse_field_patch(
         &args.raw_fields,
         &args.fields,
-        field_path_policy_from_syntaxes(&operation.field_policy.syntaxes),
+        FieldPathPolicy {
+            supports_nested_paths: operation.field_policy.supports_nested_paths,
+            supports_array_paths: operation.field_policy.supports_array_paths,
+        },
         operation.name.as_str(),
         &mut reader,
         context,
@@ -317,7 +321,13 @@ fn validate_input(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
-    if args.input.is_none() || source_api_operation_supports_input(operation) {
+    if args.input.is_none() {
+        return Ok(());
+    }
+
+    if operation.field_policy.accepts_input
+        && operation.field_policy.input_mode != SourceApiInputMode::None
+    {
         return Ok(());
     }
 
@@ -327,17 +337,6 @@ fn validate_input(
         format!("operation `{}` does not accept `--input`", operation.name),
         source_key,
     ))
-}
-
-fn source_api_operation_supports_input(operation: &SourceApiOperation) -> bool {
-    // Comment: the descriptor transport currently exposes `--input` support as one
-    // human-readable transport rule, so the planner infers the local parse check from
-    // the stable rule string until the wire shape carries a dedicated input flag.
-    !operation
-        .field_policy
-        .transport_rules
-        .iter()
-        .any(|rule| rule.trim() == "does not support --input")
 }
 
 fn parse_headers(
@@ -421,8 +420,14 @@ async fn load_request_body(
         return Ok(SourceApiRequestBody::None);
     };
 
-    match operation.kind {
-        SourceApiOperationKind::StructuredRequest => {
+    match operation.field_policy.input_mode {
+        SourceApiInputMode::None => Err(source_api_parse_error(
+            context,
+            "source API request input is not supported",
+            format!("operation `{}` does not accept `--input`", operation.name),
+            source_key,
+        )),
+        SourceApiInputMode::RequestObject => {
             let raw_input = reader
                 .read_text(
                     input_path,
@@ -449,7 +454,7 @@ async fn load_request_body(
             }
             Ok(SourceApiRequestBody::Json { value: parsed_json })
         }
-        SourceApiOperationKind::HttpRequest => {
+        SourceApiInputMode::RequestBody => {
             let raw_input = reader
                 .read_bytes(
                     input_path,
@@ -496,6 +501,7 @@ mod tests {
     use crate::transport::source_api::SourceApiFieldPolicy;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiHeaderPolicy;
+    use crate::transport::source_api::SourceApiInputMode;
     use crate::transport::source_api::SourceApiMethodPolicy;
     use crate::transport::source_api::SourceApiOperation;
     use crate::transport::source_api::SourceApiOperationKind;
@@ -644,7 +650,8 @@ mod tests {
             },
             &descriptor_with_operation(SourceApiOperation {
                 field_policy: SourceApiFieldPolicy {
-                    transport_rules: vec!["does not support --input".to_owned()],
+                    accepts_input: false,
+                    input_mode: SourceApiInputMode::None,
                     ..SourceApiFieldPolicy::default()
                 },
                 ..operation(SourceApiPaginationPolicy::None)
@@ -670,7 +677,8 @@ mod tests {
                 selector_kind: SourceApiSelectorKind::None,
                 field_policy: SourceApiFieldPolicy {
                     supports_typed_fields: true,
-                    syntaxes: vec!["-F KEY=VALUE".to_owned()],
+                    supports_nested_paths: false,
+                    supports_array_paths: false,
                     ..SourceApiFieldPolicy::default()
                 },
                 ..operation(SourceApiPaginationPolicy::None)
@@ -699,7 +707,8 @@ mod tests {
                 selector_kind: SourceApiSelectorKind::None,
                 field_policy: SourceApiFieldPolicy {
                     supports_typed_fields: true,
-                    syntaxes: vec!["-F KEY=VALUE".to_owned(), "key[subkey]=value".to_owned()],
+                    supports_nested_paths: true,
+                    supports_array_paths: false,
                     ..SourceApiFieldPolicy::default()
                 },
                 ..operation(SourceApiPaginationPolicy::None)

@@ -32,6 +32,7 @@ import type {
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceApiBodyKind,
+  CliSourceApiInputMode,
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
   CliSourceApiSelectorKind,
@@ -339,40 +340,15 @@ function toSourceApiJsonValue(value: JsonValue): SourceApiJsonValue {
   return object;
 }
 
-function listCliSourceApiFieldSyntaxes(value: SourceApiFieldPolicy) {
-  const syntaxes: string[] = [];
-  if (value.allowsRawFields) {
-    syntaxes.push("-f KEY=VALUE");
+function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
+  switch (value) {
+    case "none":
+      return CliSourceApiInputMode.NONE;
+    case "request_object":
+      return CliSourceApiInputMode.REQUEST_OBJECT;
+    case "request_body":
+      return CliSourceApiInputMode.REQUEST_BODY;
   }
-  if (value.allowsTypedFields) {
-    syntaxes.push("-F KEY=VALUE");
-  }
-  if (value.supportsNestedPaths) {
-    syntaxes.push("key[subkey]=value");
-  }
-  if (value.supportsArrayPaths) {
-    syntaxes.push("key[]=value");
-  }
-
-  return syntaxes;
-}
-
-function listCliSourceApiTransportRules(value: SourceApiFieldPolicy) {
-  const rules = [
-    value.acceptsInput
-      ? `supports --input (${value.inputMode})`
-      : "does not support --input",
-  ];
-
-  if (value.acceptsInput) {
-    rules.push(
-      value.mergePatches
-        ? "field patches merge over input"
-        : "field patches do not merge over input"
-    );
-  }
-
-  return rules;
 }
 
 function toCliSourceApiExample(value: SourceApiExample) {
@@ -385,10 +361,13 @@ function toCliSourceApiExample(value: SourceApiExample) {
 
 function toCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
   return {
+    acceptsInput: value.acceptsInput,
+    inputMode: toCliSourceApiInputMode(value.inputMode),
+    mergePatches: value.mergePatches,
+    supportsArrayPaths: value.supportsArrayPaths,
+    supportsNestedPaths: value.supportsNestedPaths,
     supportsRawFields: value.allowsRawFields,
     supportsTypedFields: value.allowsTypedFields,
-    syntaxes: listCliSourceApiFieldSyntaxes(value),
-    transportRules: listCliSourceApiTransportRules(value),
   };
 }
 
