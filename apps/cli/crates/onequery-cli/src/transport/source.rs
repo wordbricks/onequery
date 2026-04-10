@@ -183,20 +183,12 @@ fn get_source_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
 
 pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
     SourceSummary {
-        name: non_empty(summary.name),
-        display_name: non_empty_option(summary.display_name),
+        name: Some(summary.name),
+        display_name: summary.display_name,
         provider: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
         status: Some(source_status_to_str(summary.status)),
     }
-}
-
-fn non_empty(value: String) -> Option<String> {
-    (!value.is_empty()).then_some(value)
-}
-
-fn non_empty_option(value: Option<String>) -> Option<String> {
-    value.filter(|value| !value.is_empty())
 }
 
 #[cfg(test)]

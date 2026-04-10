@@ -9,6 +9,7 @@ use clap::error::ErrorKind;
 
 use crate::output::CommandOutput;
 use crate::output::EffectiveOutputMode;
+use crate::output::TerminalOutput;
 use crate::output::resolve_output_mode;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -42,9 +43,9 @@ pub(crate) fn parse_invocation_from_with_stdout_tty(
                     parse_error.to_string(),
                 )
             }
-            ErrorKind::DisplayVersion => Ok(ParseOutcome::Display(
+            ErrorKind::DisplayVersion => Ok(ParseOutcome::Display(TerminalOutput::new(
                 CommandOutput::display(parse_error.to_string()).with_command("version"),
-            )),
+            ))),
             _ => Err(CliError::new(
                 "invalid command",
                 raw_command,
@@ -105,9 +106,8 @@ fn render_help_parse_outcome(
     output_mode: EffectiveOutputMode,
     help: String,
 ) -> Result<ParseOutcome, CliError> {
-    Ok(ParseOutcome::Display(render_help_text_output(
-        output_mode,
-        help,
+    Ok(ParseOutcome::Display(TerminalOutput::new(
+        render_help_text_output(output_mode, help),
     )))
 }
 

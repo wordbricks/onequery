@@ -16,6 +16,7 @@
     "./routes/data-sources": "./src/routes/data-sources.ts",
     "./routes/data-sources/schemas": "./src/routes/data-sources/schemas.ts",
     "./routes/health": "./src/routes/health.ts",
+    "./source-api": "./src/source-api/index.ts",
     "./routes/test-env": "./src/routes/test-env.ts",
     "./storage": "./src/storage.ts",
     "./middleware/require-org-access": "./src/middleware/require-org-access.ts",

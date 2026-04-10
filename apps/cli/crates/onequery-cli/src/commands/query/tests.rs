@@ -11,7 +11,6 @@ use crate::cli::QueryExecuteArgs;
 use crate::cli::QueryInputArgs;
 use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
-use crate::output_metadata::UntrustedOutputMetadata;
 use crate::transport::query::QueryCanonicalRequest;
 use crate::transport::query::QueryColumn;
 use crate::transport::query::QueryRequestPayload;
@@ -119,7 +118,7 @@ fn render_query_output_snapshot() {
                 returned: 2,
                 has_more: false,
             },
-            output_metadata: UntrustedOutputMetadata::default(),
+            output_metadata: None,
         },
         &ListReadArgs::default(),
     )
@@ -213,7 +212,7 @@ fn render_query_output_renders_no_columns() {
                 returned: 0,
                 has_more: false,
             },
-            output_metadata: UntrustedOutputMetadata::default(),
+            output_metadata: None,
         },
         &ListReadArgs::default(),
     )

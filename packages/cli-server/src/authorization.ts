@@ -13,6 +13,8 @@ export const CLI_ACTIONS = [
   "source.connect",
   "source.list",
   "source.read",
+  "source_api.describe",
+  "source_api.execute",
   "query.execute",
 ] as const;
 
@@ -27,6 +29,8 @@ const CLI_ACTION_PERMISSIONS = {
   "source.connect": organizationPermissionChecks.cliSourceConnect,
   "source.list": organizationPermissionChecks.cliSourceList,
   "source.read": organizationPermissionChecks.cliSourceRead,
+  "source_api.describe": organizationPermissionChecks.cliSourceApiDescribe,
+  "source_api.execute": organizationPermissionChecks.cliSourceApiExecute,
 } as const;
 
 type CliActorAuthorization = {

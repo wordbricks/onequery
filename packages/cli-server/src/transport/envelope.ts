@@ -5,7 +5,6 @@ type CliSuccessEnvelope<Data> = {
   data: Data;
   warnings: string[];
   page?: CliPage;
-  untrustedPaths?: string[];
   sanitization?: CliSanitization;
 };
 
@@ -20,7 +19,6 @@ type BuildCliSuccessEnvelopeInput<Data> = {
   data: Data;
   warnings?: string[];
   page?: CliPage;
-  untrustedPaths?: string[];
   sanitization?: CliSanitization;
 };
 
@@ -35,10 +33,6 @@ export function buildCliSuccessEnvelope<Data>(
 
   if (input.page) {
     envelope.page = input.page;
-  }
-
-  if (input.untrustedPaths && input.untrustedPaths.length > 0) {
-    envelope.untrustedPaths = input.untrustedPaths;
   }
 
   if (input.sanitization) {

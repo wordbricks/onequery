@@ -2,7 +2,6 @@ use buffa::EnumValue;
 
 use crate::transport::generated::types;
 use crate::transport::source_connect_provider::SourceConnectProvider;
-use crate::transport::use_source::UseSource;
 
 macro_rules! generated_label {
     (
@@ -79,16 +78,6 @@ generated_label!(
     }
 );
 
-pub(crate) fn use_source_to_str(value: EnumValue<types::CliUseSource>) -> String {
-    match value
-        .as_known()
-        .and_then(|source| UseSource::try_from(source).ok())
-    {
-        Some(source) => source.to_string(),
-        None => value.to_string(),
-    }
-}
-
 generated_label!(
     org_capability_to_str,
     types::CliOrgCapability,
@@ -100,6 +89,8 @@ generated_label!(
         types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_LIST => "source.list",
         types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_READ => "source.read",
         types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE => "query.execute",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE => "source_api.describe",
+        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE => "source_api.execute",
     }
 );
 
@@ -128,9 +119,7 @@ mod tests {
     use super::source_provider_to_str;
     use super::source_status_to_str;
     use super::types;
-    use super::use_source_to_str;
     use crate::transport::source_connect_provider::SourceConnectProvider;
-    use crate::transport::use_source::UseSource;
 
     #[test]
     fn source_provider_to_str_maps_supported_connect_providers() {
@@ -166,32 +155,26 @@ mod tests {
     }
 
     #[test]
-    fn use_source_to_str_maps_supported_use_sources() {
-        assert_eq!(
-            UseSource::supported()
-                .iter()
-                .copied()
-                .map(|source| source.to_string())
-                .collect::<Vec<_>>(),
-            UseSource::supported()
-                .iter()
-                .copied()
-                .map(types::CliUseSource::from)
-                .map(|source| use_source_to_str(source.into()))
-                .collect::<Vec<_>>()
-        );
-    }
-
-    #[test]
     fn org_capability_to_str_maps_known_values() {
         assert_eq!(
             [
                 org_capability_to_str(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into()),
                 org_capability_to_str(
+                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                ),
+                org_capability_to_str(
+                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
+                ),
+                org_capability_to_str(
                     types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE.into(),
                 ),
             ],
-            ["org.list".to_owned(), "query.execute".to_owned()]
+            [
+                "org.list".to_owned(),
+                "source_api.describe".to_owned(),
+                "source_api.execute".to_owned(),
+                "query.execute".to_owned(),
+            ]
         );
     }
 

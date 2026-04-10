@@ -10,11 +10,14 @@ import type {
 } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 
+import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
+
 /**
  * Describes the file onequery/cli/v1/common.proto.
  */
 export const file_onequery_cli_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiVwoHQ2xpUGFnZRIYCgtuZXh0X2N1cnNvchgBIAEoCUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJSCg9DbGlTYW5pdGl6YXRpb24SDwoHcHJvZmlsZRgBIAEoCRIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCpXChBDbGlDb250ZW50Rm9ybWF0EiIKHkNMSV9DT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEh8KG0NMSV9DT05URU5UX0ZPUk1BVF9NQVJLRE9XThABYgZwcm90bzM"
+  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiYAoHQ2xpUGFnZRIhCgtuZXh0X2N1cnNvchgBIAEoCUIHukgEcgIQAUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJbCg9DbGlTYW5pdGl6YXRpb24SGAoHcHJvZmlsZRgBIAEoCUIHukgEcgIQARIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCpXChBDbGlDb250ZW50Rm9ybWF0EiIKHkNMSV9DT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEh8KG0NMSV9DT05URU5UX0ZPUk1BVF9NQVJLRE9XThABYgZwcm90bzM",
+  [file_buf_validate_validate]
 );
 
 /**

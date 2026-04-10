@@ -2,6 +2,7 @@ use crate::cli::ListReadArgs;
 use crate::cli::ReadArgs;
 use crate::cli::SourceSubcommand;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::output::append_padded_cell;
 use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
@@ -45,7 +46,7 @@ enum SourceState {
 
 #[derive(Debug)]
 enum SourceTerminalState {
-    Completed { output: CommandOutput },
+    Completed { output: TerminalOutput },
     NeedsReauth { error: CliError },
     Failed { error: CliError },
 }
@@ -132,7 +133,7 @@ pub(super) async fn execute<B, T>(
     .await?;
 
     match final_state {
-        SourceTerminalState::Completed { output } => Ok(output),
+        SourceTerminalState::Completed { output } => Ok(output.into_inner()),
         SourceTerminalState::NeedsReauth { error } | SourceTerminalState::Failed { error } => {
             Err(error)
         }
@@ -236,7 +237,7 @@ fn reduce(
                 request_id,
             } => match render_source_list_output(payload, &read) {
                 Ok(output) => Transition::done(SourceTerminalState::Completed {
-                    output: output.with_request_id(request_id),
+                    output: TerminalOutput::new(output.with_request_id(request_id)),
                 }),
                 Err(error) => Transition::done(SourceTerminalState::Failed { error }),
             },
@@ -265,7 +266,7 @@ fn reduce(
                 request_id,
             } => match render_source_show_output(source, &read) {
                 Ok(output) => Transition::done(SourceTerminalState::Completed {
-                    output: output.with_request_id(request_id),
+                    output: TerminalOutput::new(output.with_request_id(request_id)),
                 }),
                 Err(error) => Transition::done(SourceTerminalState::Failed { error }),
             },

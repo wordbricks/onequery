@@ -3,6 +3,7 @@ use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::ReadArgs;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::org;
@@ -30,7 +31,7 @@ enum OrgGetState {
 
 #[derive(Debug)]
 enum OrgGetTerminalState {
-    Completed { output: CommandOutput },
+    Completed { output: TerminalOutput },
     NeedsReauth { error: CliError },
     Failed { error: CliError },
 }
@@ -89,7 +90,7 @@ pub(super) async fn run<B, T>(
     .await?;
 
     match final_state {
-        OrgGetTerminalState::Completed { output } => Ok(output),
+        OrgGetTerminalState::Completed { output } => Ok(output.into_inner()),
         OrgGetTerminalState::NeedsReauth { error } | OrgGetTerminalState::Failed { error } => {
             Err(error)
         }
@@ -146,7 +147,7 @@ fn reduce(
                 request_id,
             } => match render_org_get_output(org, &read) {
                 Ok(output) => Transition::done(OrgGetTerminalState::Completed {
-                    output: output.with_request_id(request_id),
+                    output: TerminalOutput::new(output.with_request_id(request_id)),
                 }),
                 Err(error) => Transition::done(OrgGetTerminalState::Failed { error }),
             },

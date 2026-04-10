@@ -20,6 +20,9 @@ flate2 = "1.1.5"
 getrandom = "0.3"
 http = "1"
 http-body = "1"
+jaq-core = "3.0.0"
+jaq-json = { version = "2.0.0", features = ["serde"] }
+jaq-std = "3.0.0"
 libc = "0.2.177"
 path-absolutize = { workspace = true }
 regress = "0.10"

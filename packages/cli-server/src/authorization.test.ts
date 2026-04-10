@@ -12,6 +12,8 @@ const FULL_CAPABILITIES = [
   "source.connect",
   "source.list",
   "source.read",
+  "source_api.describe",
+  "source_api.execute",
   "query.execute",
 ];
 
@@ -23,6 +25,8 @@ describe("cli authorization", () => {
       "source.connect",
       "source.list",
       "source.read",
+      "source_api.describe",
+      "source_api.execute",
       "query.execute",
     ]);
   });

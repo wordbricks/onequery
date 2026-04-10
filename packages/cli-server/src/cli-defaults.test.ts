@@ -24,7 +24,7 @@ describe("cli defaults", () => {
       "onequery use --source github"
     );
     expect(buildCliUseExecuteCommand("github")).toBe(
-      "onequery use --source github --input '<json>'"
+      "onequery use --source github /path"
     );
     expect(buildCliUseIntegrationReminder("GitHub", "github")).toBe(
       "You should connect GitHub in OneQuery before using `onequery use --source github`."

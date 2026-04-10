@@ -60,15 +60,15 @@ export function sanitizeUndefinedableCliRemoteText(
 }
 
 export function buildCliSanitization(
-  untrustedPaths: readonly string[] | undefined
+  sanitizedPaths: readonly string[] | undefined
 ): CliSanitization | undefined {
-  if (!untrustedPaths || untrustedPaths.length === 0) {
+  if (!sanitizedPaths || sanitizedPaths.length === 0) {
     return undefined;
   }
 
   return {
     profile: CLI_SANITIZATION_PROFILE,
     rawAvailable: false,
-    sanitizedPaths: [...untrustedPaths],
+    sanitizedPaths: [...sanitizedPaths],
   };
 }
