@@ -3,7 +3,7 @@ use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::Value as JsonValue;
 
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -16,6 +16,9 @@ use crate::transport::http::failure_from_connect;
 use crate::transport::http::response_request_id;
 use crate::transport::http::try_into_option;
 use crate::transport::http::try_into_value;
+
+pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
+pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -147,7 +150,7 @@ pub(crate) struct SourceApiDescriptor {
     pub(crate) notes: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExecuteSourceApiRequestPayload {
     // Comment: the CLI still carries descriptor_version until the command flow
@@ -163,21 +166,21 @@ pub(crate) struct ExecuteSourceApiRequestPayload {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) headers: Vec<SourceApiHeader>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) field_patch: Option<Value>,
+    pub(crate) field_patch: Option<ProtoJsonObject>,
     #[serde(flatten)]
     pub(crate) body: SourceApiRequestBody,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) page_token: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[derive(Default)]
 pub(crate) enum SourceApiRequestBody {
     #[default]
     None,
     Json {
-        value: Value,
+        value: ProtoJsonValue,
     },
     Text {
         value: String,
@@ -187,14 +190,14 @@ pub(crate) enum SourceApiRequestBody {
     },
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 #[derive(Default)]
 pub(crate) enum SourceApiResponseBody {
     #[default]
     None,
     Json {
-        value: Value,
+        value: ProtoJsonValue,
     },
     Text {
         value: String,
@@ -204,7 +207,7 @@ pub(crate) enum SourceApiResponseBody {
     },
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExecuteSourceApiResponse {
     pub(crate) source: SourceApiSource,
@@ -591,7 +594,7 @@ fn source_api_draft_to_generated(
             .iter()
             .map(source_api_header_to_generated)
             .collect(),
-        field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
+        field_patch: field_patch_to_generated(payload.field_patch.as_ref()),
         body: source_api_request_body_to_generated(&payload.body)?,
         ..Default::default()
     })
@@ -603,7 +606,7 @@ fn source_api_request_body_to_generated(
     match value {
         SourceApiRequestBody::None => Ok(None),
         SourceApiRequestBody::Json { value } => Ok(Some(types::source_api_draft::Body::JsonBody(
-            Box::new(request_json_value_to_generated(value)?),
+            Box::new(value.clone()),
         ))),
         SourceApiRequestBody::Text { value } => {
             Ok(Some(types::source_api_draft::Body::TextBody(value.clone())))
@@ -616,15 +619,74 @@ fn source_api_request_body_to_generated(
     }
 }
 
-fn request_json_value_to_generated(
-    value: &Value,
-) -> Result<buffa_types::google::protobuf::Value, ApiFailure> {
-    serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone()).map_err(|error| {
-        conversion_failure(
-            ErrorStage::ExecuteQuery,
-            format!("invalid JSON source API request body: {error}"),
-        )
-    })
+pub(crate) fn proto_json_value_from_json(
+    value: JsonValue,
+) -> Result<ProtoJsonValue, serde_json::Error> {
+    serde_json::from_value::<ProtoJsonValue>(value)
+}
+
+pub(crate) fn proto_json_object_from_json(
+    value: JsonValue,
+) -> Result<ProtoJsonObject, serde_json::Error> {
+    serde_json::from_value::<ProtoJsonObject>(value)
+}
+
+pub(crate) fn json_from_proto_json_value(
+    value: &ProtoJsonValue,
+) -> Result<JsonValue, serde_json::Error> {
+    serde_json::to_value(value).map(normalize_renderable_json_numbers)
+}
+
+fn normalize_renderable_json_numbers(value: JsonValue) -> JsonValue {
+    match value {
+        JsonValue::Array(values) => JsonValue::Array(
+            values
+                .into_iter()
+                .map(normalize_renderable_json_numbers)
+                .collect(),
+        ),
+        JsonValue::Object(entries) => JsonValue::Object(
+            entries
+                .into_iter()
+                .map(|(key, value)| (key, normalize_renderable_json_numbers(value)))
+                .collect(),
+        ),
+        JsonValue::Number(number) => normalize_renderable_json_number(number),
+        JsonValue::Null | JsonValue::Bool(_) | JsonValue::String(_) => value,
+    }
+}
+
+fn normalize_renderable_json_number(number: serde_json::Number) -> JsonValue {
+    if number.as_i64().is_some() || number.as_u64().is_some() {
+        return JsonValue::Number(number);
+    }
+
+    let Some(float) = number.as_f64() else {
+        return JsonValue::Number(number);
+    };
+
+    // Comment: `google.protobuf.Value` stores JSON numbers as doubles, so the
+    // generated serde path re-emits exact integers as `1.0`. Normalize those
+    // back to whole JSON numbers before the CLI renders them.
+    if float.fract() != 0.0 {
+        return JsonValue::Number(number);
+    }
+
+    if float >= i64::MIN as f64 && float <= i64::MAX as f64 {
+        let integer = float as i64;
+        if integer as f64 == float {
+            return JsonValue::Number(serde_json::Number::from(integer));
+        }
+    }
+
+    if float >= 0.0 && float <= u64::MAX as f64 {
+        let integer = float as u64;
+        if integer as f64 == float {
+            return JsonValue::Number(serde_json::Number::from(integer));
+        }
+    }
+
+    JsonValue::Number(number)
 }
 
 fn request_binary_body_to_generated(value_base64: &str) -> Result<Vec<u8>, ApiFailure> {
@@ -638,31 +700,11 @@ fn request_binary_body_to_generated(value_base64: &str) -> Result<Vec<u8>, ApiFa
     )
 }
 
-fn field_patch_to_generated(
-    value: Option<&Value>,
-) -> Result<MessageField<buffa_types::google::protobuf::Struct>, ApiFailure> {
-    let Some(value) = value else {
-        return Ok(MessageField::none());
-    };
-
-    if !value.is_object() {
-        return Err(conversion_failure(
-            ErrorStage::ExecuteQuery,
-            "source API field patch must be one JSON object",
-        ));
-    }
-
-    let struct_value = serde_json::from_value::<buffa_types::google::protobuf::Struct>(
-        value.clone(),
-    )
-    .map_err(|error| {
-        conversion_failure(
-            ErrorStage::ExecuteQuery,
-            format!("invalid source API field patch: {error}"),
-        )
-    })?;
-
-    Ok(MessageField::some(struct_value))
+fn field_patch_to_generated(value: Option<&ProtoJsonObject>) -> MessageField<ProtoJsonObject> {
+    value
+        .cloned()
+        .map(MessageField::some)
+        .unwrap_or_else(MessageField::none)
 }
 
 fn prepare_source_api_result_from_generated(
@@ -751,22 +793,9 @@ fn source_api_response_body_from_generated(
             })
         }
         Some(types::execute_prepared_source_api_response::Body::Json(value)) => {
-            let value = renderable_json_value_from_generated(value.as_ref())?;
-            Ok(SourceApiResponseBody::Json { value })
+            Ok(SourceApiResponseBody::Json { value: *value })
         }
     }
-}
-
-fn renderable_json_value_from_generated(
-    value: &buffa_types::google::protobuf::Value,
-) -> Result<Value, ApiFailure> {
-    serde_json::to_value(value).map_err(|error| {
-        decode_failure(
-            ErrorStage::ExecuteQuery,
-            format!("failed to decode source API JSON response body: {error}"),
-            None,
-        )
-    })
 }
 
 fn describe_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
@@ -797,13 +826,16 @@ fn execute_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
 mod tests {
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
 
     use super::SourceApiBodyKind;
     use super::SourceApiFieldPolicy;
     use super::SourceApiInputMode;
     use super::SourceApiOperationKind;
     use super::SourceApiPaginationPolicy;
+    use super::json_from_proto_json_value;
     use super::prepare_source_api_result_from_generated;
+    use super::proto_json_value_from_json;
     use super::source_api_descriptor_from_generated;
     use super::types;
     use crate::transport::http::ApiFailure;
@@ -970,6 +1002,21 @@ mod tests {
                 input_mode: SourceApiInputMode::RequestBody,
                 merge_patches: false,
             }
+        );
+    }
+
+    #[test]
+    fn json_from_proto_json_value_preserves_integral_json_numbers() {
+        let value = proto_json_value_from_json(json!({
+            "items": [1, 2, 3.5]
+        }))
+        .expect("expected JSON value to encode as protobuf WKT");
+
+        assert_eq!(
+            json_from_proto_json_value(&value).expect("expected protobuf WKT to decode"),
+            json!({
+                "items": [1, 2, 3.5]
+            })
         );
     }
 }

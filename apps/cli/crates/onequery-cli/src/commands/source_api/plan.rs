@@ -10,6 +10,8 @@ use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiPaginationPolicy;
 use crate::transport::source_api::SourceApiRequestBody;
 use crate::transport::source_api::SourceApiSelectorKind;
+use crate::transport::source_api::proto_json_object_from_json;
+use crate::transport::source_api::proto_json_value_from_json;
 use onequery_cli_core::error::CliError;
 
 use super::CommandContext;
@@ -37,14 +39,14 @@ pub(super) struct SourceApiRenderOptions {
     pub(super) verbose: bool,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) struct ExecutePlan {
     pub(super) request: ExecuteSourceApiRequestPayload,
     pub(super) execution: SourceApiExecutionOptions,
     pub(super) render: SourceApiRenderOptions,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(super) enum PlannedCommand {
     Describe,
     DryRun {
@@ -121,6 +123,18 @@ pub(super) async fn build_plan(
         descriptor.source.key.as_str(),
     )
     .await?;
+    let field_patch = field_patch
+        .map(|value| {
+            proto_json_object_from_json(value).map_err(|error| {
+                source_api_parse_error(
+                    context,
+                    "invalid source API field patch",
+                    format!("source API field patch must be valid JSON object data: {error}"),
+                    descriptor.source.key.as_str(),
+                )
+            })
+        })
+        .transpose()?;
     let body = load_request_body(
         args,
         operation,
@@ -454,7 +468,15 @@ async fn load_request_body(
                     source_key,
                 ));
             }
-            Ok(SourceApiRequestBody::Json { value: parsed_json })
+            let value = proto_json_value_from_json(parsed_json).map_err(|parse_error| {
+                source_api_read_input_error(
+                    context,
+                    "invalid source API request body",
+                    parse_error.to_string(),
+                    source_key,
+                )
+            })?;
+            Ok(SourceApiRequestBody::Json { value })
         }
         SourceApiInputMode::RequestBody => {
             let raw_input = reader
@@ -469,7 +491,16 @@ async fn load_request_body(
             match String::from_utf8(raw_input.clone()) {
                 Ok(text) => {
                     if let Ok(parsed_json) = serde_json::from_str::<Value>(&text) {
-                        Ok(SourceApiRequestBody::Json { value: parsed_json })
+                        let value =
+                            proto_json_value_from_json(parsed_json).map_err(|parse_error| {
+                                source_api_read_input_error(
+                                    context,
+                                    "invalid source API request body",
+                                    parse_error.to_string(),
+                                    source_key,
+                                )
+                            })?;
+                        Ok(SourceApiRequestBody::Json { value })
                     } else {
                         Ok(SourceApiRequestBody::Text { value: text })
                     }

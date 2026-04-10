@@ -173,7 +173,7 @@ Changes:
 
 - [ ] Remove transport-owned serde structs for source-api payload truth where
   generated protobuf types can be used directly.
-- [ ] Stop using `serde_json::Value` as the transport model for request and
+- [x] Stop using `serde_json::Value` as the transport model for request and
   response bodies.
 - [x] Use generated WKT message types directly at the transport boundary.
 - [x] Keep `response_request_id()` and request ID handling in header metadata.

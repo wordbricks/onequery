@@ -3,6 +3,7 @@ use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
 use crate::transport::source_api::PreparedSourceApiPreview;
+use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
@@ -11,6 +12,8 @@ use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiResponseBody;
 use crate::transport::source_api::SourceApiSelectorKind;
+use crate::transport::source_api::json_from_proto_json_value;
+use crate::transport::source_api::proto_json_value_from_json;
 use base64::Engine;
 use jaq_core::Compiler;
 use jaq_core::Ctx;
@@ -102,7 +105,7 @@ fn serialize_execute_response(
         let body = if render.silent {
             None
         } else {
-            json_body_value(&response.body)
+            json_body_value(&response.body)?
         };
 
         return Ok(match (body, response.next_page_token.as_deref()) {
@@ -188,10 +191,10 @@ fn serialize_verbose_execute_response(
         "contentType".to_owned(),
         serde_json::Value::String(response.content_type.clone()),
     );
-    if !render.silent
-        && let Some(body) = json_body_value(&response.body)
-    {
-        object.insert("body".to_owned(), body);
+    if !render.silent {
+        if let Some(body) = json_body_value(&response.body)? {
+            object.insert("body".to_owned(), body);
+        }
     }
     if let Some(request_id) = response.request_id.as_ref() {
         object.insert(
@@ -220,13 +223,13 @@ fn json_headers(headers: &[SourceApiHeader]) -> serde_json::Value {
     serde_json::Value::Object(object)
 }
 
-fn json_body_value(body: &SourceApiResponseBody) -> Option<serde_json::Value> {
+fn json_body_value(body: &SourceApiResponseBody) -> Result<Option<serde_json::Value>, CliError> {
     match body {
-        SourceApiResponseBody::None => None,
-        SourceApiResponseBody::Json { value } => Some(value.clone()),
-        SourceApiResponseBody::Text { value } => Some(serde_json::Value::String(value.clone())),
+        SourceApiResponseBody::None => Ok(None),
+        SourceApiResponseBody::Json { value } => renderable_json_value(value).map(Some),
+        SourceApiResponseBody::Text { value } => Ok(Some(serde_json::Value::String(value.clone()))),
         SourceApiResponseBody::Binary { value_base64 } => {
-            Some(serde_json::Value::String(value_base64.clone()))
+            Ok(Some(serde_json::Value::String(value_base64.clone())))
         }
     }
 }
@@ -303,12 +306,12 @@ fn assemble_paginated_body(
             let values = bodies
                 .into_iter()
                 .map(|body| match body {
-                    SourceApiResponseBody::Json { value } => Ok(value.clone()),
+                    SourceApiResponseBody::Json { value } => renderable_json_value(value),
                     _ => Err(mixed_paginated_body_error()),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(SourceApiResponseBody::Json {
-                value: assemble_paginated_json(values, slurp),
+                value: transport_json_value(assemble_paginated_json(values, slurp))?,
             })
         }
         SourceApiResponseBody::Text { .. } => {
@@ -370,7 +373,10 @@ fn apply_jq_to_response_body(
 ) -> Result<SourceApiResponseBody, CliError> {
     match body {
         SourceApiResponseBody::Json { value } => Ok(SourceApiResponseBody::Json {
-            value: apply_jq_expression(value, expression)?,
+            value: transport_json_value(apply_jq_expression(
+                renderable_json_value(&value)?,
+                expression,
+            )?)?,
         }),
         SourceApiResponseBody::None
         | SourceApiResponseBody::Text { .. }
@@ -471,6 +477,24 @@ fn mixed_paginated_body_error() -> CliError {
         "paginated source API responses changed body kind between pages",
         vec!["retry onequery api without --paginate".to_owned()],
     )
+}
+
+fn renderable_json_value(value: &ProtoJsonValue) -> Result<serde_json::Value, CliError> {
+    json_from_proto_json_value(value).map_err(|error| {
+        source_api_render_error(
+            format!("failed to decode source API JSON body: {error}"),
+            vec!["retry onequery api".to_owned()],
+        )
+    })
+}
+
+fn transport_json_value(value: serde_json::Value) -> Result<ProtoJsonValue, CliError> {
+    proto_json_value_from_json(value).map_err(|error| {
+        source_api_render_error(
+            format!("failed to encode source API JSON body: {error}"),
+            vec!["retry onequery api".to_owned()],
+        )
+    })
 }
 
 fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> CliError {
@@ -587,7 +611,7 @@ fn render_response_lines(
 
     let body_lines = match &response.body {
         SourceApiResponseBody::None => Vec::new(),
-        SourceApiResponseBody::Json { value } => pretty_json_lines(value),
+        SourceApiResponseBody::Json { value } => pretty_json_lines(&renderable_json_value(value)?),
         SourceApiResponseBody::Text { value } => value.lines().map(ToOwned::to_owned).collect(),
         SourceApiResponseBody::Binary { .. } => Vec::new(),
     };
@@ -733,10 +757,12 @@ mod tests {
     use crate::output::render_output;
     use crate::output::render_output_payload;
     use crate::transport::source_api::PreparedSourceApiPreview;
+    use crate::transport::source_api::ProtoJsonValue;
     use crate::transport::source_api::SourceApiBodyKind;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiSource;
+    use crate::transport::source_api::proto_json_value_from_json;
 
     use super::ExecuteSourceApiResponse;
     use super::SourceApiRenderOptions;
@@ -840,7 +866,7 @@ mod tests {
     fn render_execute_output_keeps_single_page_json_shape_without_slurp() {
         let output = render_execute_output(
             vec![json_response(SourceApiResponseBody::Json {
-                value: json!({"items": [1, 2]}),
+                value: proto_json(json!({"items": [1, 2]})),
             })],
             render_options(),
         )
@@ -882,7 +908,7 @@ mod tests {
     fn render_execute_output_pretty_prints_json_body_in_text_mode() {
         let output = render_execute_output(
             vec![json_response(SourceApiResponseBody::Json {
-                value: json!({"items": [1, 2]}),
+                value: proto_json(json!({"items": [1, 2]})),
             })],
             render_options(),
         )
@@ -917,10 +943,10 @@ mod tests {
         let output = render_execute_output(
             vec![
                 json_response(SourceApiResponseBody::Json {
-                    value: json!([{"id": 1}]),
+                    value: proto_json(json!([{"id": 1}])),
                 }),
                 json_response(SourceApiResponseBody::Json {
-                    value: json!([{"id": 2}]),
+                    value: proto_json(json!([{"id": 2}])),
                 }),
             ],
             render_options(),
@@ -945,10 +971,10 @@ mod tests {
         let output = render_execute_output(
             vec![
                 json_response(SourceApiResponseBody::Json {
-                    value: json!([{"id": 1}]),
+                    value: proto_json(json!([{"id": 1}])),
                 }),
                 json_response(SourceApiResponseBody::Json {
-                    value: json!([{"id": 2}]),
+                    value: proto_json(json!([{"id": 2}])),
                 }),
             ],
             SourceApiRenderOptions {
@@ -975,7 +1001,7 @@ mod tests {
     fn render_execute_output_applies_jq_to_assembled_body() {
         let output = render_execute_output(
             vec![json_response(SourceApiResponseBody::Json {
-                value: json!({"items": [{"id": 1}, {"id": 2}]}),
+                value: proto_json(json!({"items": [{"id": 1}, {"id": 2}]})),
             })],
             SourceApiRenderOptions {
                 jq: Some(".items[].id".to_owned()),
@@ -1048,7 +1074,7 @@ mod tests {
     #[test]
     fn render_execute_output_suppresses_body_when_silent_but_keeps_included_metadata() {
         let mut response = json_response(SourceApiResponseBody::Json {
-            value: json!({"items": [1, 2]}),
+            value: proto_json(json!({"items": [1, 2]})),
         });
         response.headers = vec![SourceApiHeader {
             name: "content-type".to_owned(),
@@ -1075,7 +1101,7 @@ mod tests {
     #[test]
     fn render_execute_output_omits_body_in_json_mode_when_silent() {
         let mut response = json_response(SourceApiResponseBody::Json {
-            value: json!({"items": [1, 2]}),
+            value: proto_json(json!({"items": [1, 2]})),
         });
         response.headers = vec![SourceApiHeader {
             name: "content-type".to_owned(),
@@ -1105,7 +1131,7 @@ mod tests {
     fn render_execute_output_keeps_response_metadata_only_when_verbose() {
         let output = render_execute_output(
             vec![json_response(SourceApiResponseBody::Json {
-                value: json!({"items": [1, 2]}),
+                value: proto_json(json!({"items": [1, 2]})),
             })],
             SourceApiRenderOptions {
                 verbose: true,
@@ -1191,6 +1217,10 @@ mod tests {
             request_id: Some("req_1".to_owned()),
             next_page_token: None,
         }
+    }
+
+    fn proto_json(value: serde_json::Value) -> ProtoJsonValue {
+        proto_json_value_from_json(value).expect("expected test JSON value to convert to WKT")
     }
 
     fn render_options() -> SourceApiRenderOptions {
