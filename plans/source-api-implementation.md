@@ -213,7 +213,7 @@ Changes:
 - [ ] Remove normalize-specific transport and presentation code.
 - [ ] Render preview output from `PreparedSourceApiPreview`.
 - [ ] Stop expecting `requestFingerprint` anywhere.
-- [ ] Keep request ID presentation sourced from header metadata, not payload
+- [x] Keep request ID presentation sourced from header metadata, not payload
   fields.
 - [ ] Keep default output body-first.
 - [ ] Allow verbose output to show preview and business metadata without
@@ -230,7 +230,7 @@ These names and shapes must disappear from the new source-api path:
 - [ ] `NormalizeSourceApi`
 - [ ] `CliSourceApiPlan`
 - [ ] `ExecuteSourceApiRequest`
-- [ ] `ExecuteSourceApiResponse.request_id`
+- [x] `ExecuteSourceApiResponse.request_id`
 - [ ] `SourceApiJsonValue`
 - [ ] `toSourceApiJsonValue()`
 - [ ] public `request_fingerprint`

@@ -220,8 +220,6 @@ pub(crate) struct ExecuteSourceApiResponse {
     pub(crate) content_type: String,
     pub(crate) body: SourceApiResponseBody,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) request_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) next_page_token: Option<String>,
 }
 
@@ -771,7 +769,6 @@ fn source_api_response_from_generated(
             .collect(),
         content_type: value.content_type,
         body: source_api_response_body_from_generated(value.body)?,
-        request_id,
         next_page_token: value.next_page_token,
     })
 }

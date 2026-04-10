@@ -196,12 +196,6 @@ fn serialize_verbose_execute_response(
             object.insert("body".to_owned(), body);
         }
     }
-    if let Some(request_id) = response.request_id.as_ref() {
-        object.insert(
-            "requestId".to_owned(),
-            serde_json::Value::String(request_id.clone()),
-        );
-    }
     if let Some(next_page_token) = response.next_page_token.as_ref() {
         object.insert(
             "nextPageToken".to_owned(),
@@ -264,7 +258,6 @@ fn assemble_paginated_response(
     slurp: bool,
 ) -> Result<ExecuteSourceApiResponse, CliError> {
     let last_page = remaining.last().unwrap_or(&first);
-    let request_id = last_page.request_id.clone();
     let next_page_token = last_page.next_page_token.clone();
     let body = assemble_paginated_body(
         std::iter::once(&first)
@@ -275,7 +268,6 @@ fn assemble_paginated_response(
     )?;
     let mut response = first;
     response.body = body;
-    response.request_id = request_id;
     response.next_page_token = next_page_token;
     Ok(response)
 }
@@ -1156,8 +1148,7 @@ mod tests {
                 "contentType": "application/json",
                 "body": {
                     "items": [1, 2]
-                },
-                "requestId": "req_1"
+                }
             })
         );
     }
@@ -1214,7 +1205,6 @@ mod tests {
             headers: Vec::new(),
             content_type: "application/json".to_owned(),
             body,
-            request_id: Some("req_1".to_owned()),
             next_page_token: None,
         }
     }
