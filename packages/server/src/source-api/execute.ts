@@ -8,8 +8,9 @@ import type {
   PreparedSourceApi,
   PreparedSourceConnection,
   SourceApiActorContext,
+  SourceApiContinuationState,
   SourceApiDraft,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
 } from "./types";
 
 export type SourceApiExecutionStage = "prepare" | "authorize" | "execute";
@@ -32,8 +33,9 @@ export async function executePreparedSourceApi(input: {
   source: PreparedSourceConnection;
   actor: SourceApiActorContext;
   prepared: PreparedSourceApi;
+  continuation?: SourceApiContinuationState;
   registry?: SourceApiRegistry;
-}): Promise<SourceApiExecutionResponse> {
+}): Promise<SourceApiExecutionResult> {
   const registry = input.registry ?? sourceApiRegistry;
 
   await Promise.resolve()
@@ -52,6 +54,7 @@ export async function executePreparedSourceApi(input: {
     .then(() =>
       adapter.execute({
         actor: input.actor,
+        continuation: input.continuation,
         prepared: input.prepared,
         source: input.source,
       })
@@ -66,7 +69,7 @@ export async function executeSourceApi(input: {
   actor: SourceApiActorContext;
   request: SourceApiDraft;
   registry?: SourceApiRegistry;
-}): Promise<SourceApiExecutionResponse> {
+}): Promise<SourceApiExecutionResult> {
   const registry = input.registry ?? sourceApiRegistry;
   const descriptor = await Promise.resolve()
     .then(() =>

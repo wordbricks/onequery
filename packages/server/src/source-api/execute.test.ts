@@ -131,8 +131,8 @@ describe("executeSourceApi", () => {
       sourceKey: "github-prod",
     };
 
-    await expect(
-      executeSourceApi({
+    try {
+      await executeSourceApi({
         actor: {
           capabilities: [],
           membershipRoles: ["owner"],
@@ -147,8 +147,9 @@ describe("executeSourceApi", () => {
           operation: "fetch",
         },
         source,
-      })
-    ).rejects.toSatisfy((error: unknown) => {
+      });
+      throw new Error("expected executeSourceApi to reject");
+    } catch (error: unknown) {
       expect(error).toBeInstanceOf(SourceApiExecutionStageError);
       expect((error as SourceApiExecutionStageError).stage).toBe("authorize");
       expect((error as SourceApiExecutionStageError).cause).toBeInstanceOf(
@@ -157,8 +158,7 @@ describe("executeSourceApi", () => {
       expect((error as Error).message).toContain(
         'Actor "user_1" is not allowed to execute source API operation "fetch"'
       );
-      return true;
-    });
+    }
 
     expect(calls).toEqual(["describe", "normalize"]);
   });

@@ -27,7 +27,7 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -364,7 +364,7 @@ function buildPostHogExecutionResponse(input: {
   operation: string;
   response: PostHogTransportResponse;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,

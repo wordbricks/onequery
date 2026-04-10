@@ -11,7 +11,7 @@ It does not redefine the state machine or the public contract.
 - [x] 1. Replace the proto contract and regenerate bindings
 - [x] 2. Replace the TypeScript domain model with prepared execution truth
 - [x] 3. Replace the Connect boundary and service handlers
-- [ ] 4. Replace provider adapter execution and pagination binding
+- [x] 4. Replace provider adapter execution and pagination binding
 - [ ] 5. Replace the Rust transport layer
 - [ ] 6. Replace the CLI command flow and rendering
 - [ ] 7. Delete legacy surfaces from the source-api path
@@ -148,13 +148,13 @@ Files:
 
 Changes:
 
-- [ ] Change adapter execution input from normalized plan to
+- [x] Change adapter execution input from normalized plan to
   `PreparedSourceApi`.
-- [ ] Keep provider adapters responsible only for provider semantics.
-- [ ] Move generic HTTP normalization and JSON parsing into shared helpers.
-- [ ] Parse upstream JSON bytes once at ingress.
-- [ ] Remove duplicated parsers where shared helpers can own the behavior.
-- [ ] Bind continuation tokens to prepared execution identity and continuation
+- [x] Keep provider adapters responsible only for provider semantics.
+- [x] Move generic HTTP normalization and JSON parsing into shared helpers.
+- [x] Parse upstream JSON bytes once at ingress.
+- [x] Remove duplicated parsers where shared helpers can own the behavior.
+- [x] Bind continuation tokens to prepared execution identity and continuation
   state.
 
 Deliverable:

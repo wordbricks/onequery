@@ -133,6 +133,19 @@ export type SourceApiResponseBody =
   | { kind: "text"; value: string }
   | { kind: "binary"; value: Uint8Array };
 
+export type SourceApiContinuationState = JsonValue;
+
+export type SourceApiExecutionResult = {
+  source: SourceApiSource;
+  operation: string;
+  selector?: string;
+  status: number;
+  headers: readonly SourceApiHeader[];
+  contentType: string;
+  body: SourceApiResponseBody;
+  nextContinuationState?: SourceApiContinuationState;
+};
+
 export type SourceApiExecutionResponse = {
   source: SourceApiSource;
   operation: string;
@@ -283,5 +296,6 @@ export type SourceApiAdapter = {
     source: PreparedSourceConnection;
     actor: SourceApiActorContext;
     prepared: PreparedSourceApi;
-  }): Promise<SourceApiExecutionResponse>;
+    continuation?: SourceApiContinuationState;
+  }): Promise<SourceApiExecutionResult>;
 };

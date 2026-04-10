@@ -26,7 +26,7 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiHeader,
   SourceApiOperation,
   SourceApiRequestBody,
@@ -529,7 +529,7 @@ function buildMongoDbTransportResponse(
   return {
     body: {
       kind: "json",
-      value: toSourceApiJsonValue(value),
+      value: toMongoDbJsonValue(value),
     },
     contentType: MONGODB_CONTENT_TYPE,
     headers: [
@@ -547,7 +547,7 @@ function buildMongoDbExecutionResponse(input: {
   response: MongoDbTransportResponse;
   selector?: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
@@ -567,8 +567,54 @@ function buildMongoDbExecutionResponse(input: {
   };
 }
 
-function toSourceApiJsonValue(value: unknown): JsonValue {
-  return JSON.parse(JSON.stringify(value)) as JsonValue;
+function toMongoDbJsonValue(value: unknown): JsonValue {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      entry === undefined ||
+      typeof entry === "function" ||
+      typeof entry === "symbol"
+        ? null
+        : toMongoDbJsonValue(entry)
+    );
+  }
+
+  if (typeof value === "object") {
+    const toJSON = (value as { toJSON?: unknown }).toJSON;
+    if (typeof toJSON === "function") {
+      return toMongoDbJsonValue(toJSON.call(value));
+    }
+
+    if (isRecord(value)) {
+      const jsonObject: JsonObject = {};
+      for (const [key, entry] of Object.entries(value)) {
+        if (
+          entry === undefined ||
+          typeof entry === "function" ||
+          typeof entry === "symbol"
+        ) {
+          continue;
+        }
+        jsonObject[key] = toMongoDbJsonValue(entry);
+      }
+      return jsonObject;
+    }
+  }
+
+  throw new MongoDbInvalidRequestError(
+    "MongoDB source API response must be JSON-serializable"
+  );
 }
 
 function normalizeSelector(value: string | undefined): string | undefined {

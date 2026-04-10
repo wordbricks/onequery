@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -15,7 +15,7 @@ import {
 import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
-  normalizeSourceApiContentType,
+  readSourceApiHttpTransportResponse,
 } from "../helpers/http-rest";
 import {
   createStructuredRequestOperation,
@@ -26,7 +26,7 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiHeader,
   SourceApiOperation,
   SourceApiRequestBody,
@@ -227,24 +227,14 @@ export async function requestGoogleAnalyticsSourceApi(input: {
     propertyPath: resolvedPropertyPath,
     requestBody,
   });
-  const contentType = normalizeSourceApiContentType(
-    response.headers.get("content-type")
-  );
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const transportResponse = await readSourceApiHttpTransportResponse(response);
 
   return {
-    body: parseGoogleAnalyticsResponseBody({
-      bytes,
-      contentType,
-      status: response.status,
-    }),
-    contentType,
-    headers: Array.from(response.headers.entries()).map(([name, value]) => ({
-      name,
-      value,
-    })),
+    body: transportResponse.body,
+    contentType: transportResponse.contentType,
+    headers: transportResponse.headers,
     resolvedPropertyPath,
-    status: response.status,
+    status: transportResponse.status,
   };
 }
 
@@ -343,7 +333,7 @@ function buildGoogleAnalyticsExecutionResponse(input: {
   response: GoogleAnalyticsTransportResponse;
   source: PreparedSourceConnection;
   operation: string;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
@@ -359,52 +349,6 @@ function buildGoogleAnalyticsExecutionResponse(input: {
       provider: input.source.provider,
     },
     status: input.response.status,
-  };
-}
-
-function parseGoogleAnalyticsResponseBody(input: {
-  bytes: Uint8Array;
-  contentType: string;
-  status: number;
-}): SourceApiResponseBody {
-  if (input.status === 204 || input.bytes.length === 0) {
-    return { kind: "none" };
-  }
-
-  if (
-    input.contentType.includes("application/json") ||
-    input.contentType.includes("+json")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "json",
-      value: JSON.parse(text) as JsonValue,
-    };
-  }
-
-  if (
-    input.contentType.startsWith("text/") ||
-    input.contentType.includes("application/xml") ||
-    input.contentType.includes("application/x-www-form-urlencoded")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "text",
-      value: text,
-    };
-  }
-
-  return {
-    kind: "binary",
-    value: input.bytes,
   };
 }
 

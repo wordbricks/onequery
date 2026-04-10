@@ -24,12 +24,12 @@ import {
   resolveHttpMethodOverride,
 } from "../helpers/http-rest";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -295,7 +295,7 @@ function requireSentryCredentials(
   throw new Error("Sentry source credentials are invalid");
 }
 
-function normalizeSentryPlanSelector(plan: NormalizedHttpRequestPlan): string {
+function normalizeSentryPlanSelector(plan: PreparedHttpSourceApi): string {
   const selector = plan.selector?.trim();
   if (selector) {
     return selector;
@@ -524,7 +524,7 @@ function buildSentryExecutionResponse(input: {
   response: SentryTransportResponse;
   selector: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,

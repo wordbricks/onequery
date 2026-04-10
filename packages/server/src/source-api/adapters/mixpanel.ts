@@ -32,12 +32,12 @@ import {
   mergeStructuredFieldPatch,
 } from "../helpers/structured";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -107,7 +107,27 @@ const mixpanelHttpFieldPatchSchema = z
   })
   .strict();
 
+const mixpanelEngageContinuationStateSchema = z
+  .object({
+    page: z.number().int().min(1),
+    sessionId: z.string().min(1),
+  })
+  .strict();
+
+const mixpanelEngageResponseSchema = z
+  .object({
+    page: z.number().int().min(0).optional(),
+    page_size: z.number().int().min(1).optional(),
+    results: z.array(z.unknown()).optional(),
+    session_id: z.string().min(1).optional(),
+    total: z.number().int().min(0).optional(),
+  })
+  .passthrough();
+
 type MixpanelEngageRequest = z.infer<typeof mixpanelEngageRequestSchema>;
+type MixpanelEngageContinuationState = z.infer<
+  typeof mixpanelEngageContinuationStateSchema
+>;
 type MixpanelSegmentationRequest = z.infer<
   typeof mixpanelSegmentationRequestSchema
 >;
@@ -115,6 +135,7 @@ type MixpanelHttpFieldPatch = z.infer<typeof mixpanelHttpFieldPatchSchema>;
 type MixpanelBodyFormat = NonNullable<MixpanelHttpFieldPatch["bodyFormat"]>;
 
 type MixpanelQueryEngageSourceApiRequest = {
+  continuation?: MixpanelEngageContinuationState;
   operation: "query_engage";
   request: MixpanelEngageRequest;
 };
@@ -177,6 +198,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
           notes: [
             "Use `where`, `page`, `pageSize`, and `outputProperties` to shape the Engage request.",
           ],
+          paginationPolicy: "opaque_token",
           summary: "Query Mixpanel Engage profiles.",
         }),
         createStructuredRequestOperation({
@@ -380,20 +402,36 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       }),
     };
   },
-  async execute({ prepared, source }) {
+  async execute({ continuation, prepared, source }) {
     const credentials = requireMixpanelCredentials(source);
 
     if (prepared.kind === "structured_request") {
       let response: MixpanelTransportResponse;
+      let nextContinuationState: MixpanelEngageContinuationState | undefined;
       switch (prepared.operation) {
-        case "query_engage":
+        case "query_engage": {
+          const request = parseMixpanelEngageRequest(prepared.request);
+          const engageContinuation =
+            parseMixpanelEngageContinuationState(continuation);
           response = await requestMixpanelSourceApi({
+            continuation: engageContinuation,
             credentials,
             operation: "query_engage",
-            request: parseMixpanelEngageRequest(prepared.request),
+            request,
+          });
+          nextContinuationState = readMixpanelEngageNextContinuationState({
+            continuation: engageContinuation,
+            request,
+            response,
           });
           break;
+        }
         case "query_segmentation":
+          if (continuation !== undefined) {
+            throw new MixpanelInvalidRequestError(
+              'Mixpanel operation "query_segmentation" does not accept page_token continuation'
+            );
+          }
           response = await requestMixpanelSourceApi({
             credentials,
             operation: "query_segmentation",
@@ -407,10 +445,17 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       }
 
       return buildMixpanelExecutionResponse({
+        nextContinuationState,
         operation: prepared.operation,
         response,
         source,
       });
+    }
+
+    if (continuation !== undefined) {
+      throw new MixpanelInvalidRequestError(
+        `Mixpanel operation "${prepared.operation}" does not accept page_token continuation`
+      );
     }
 
     const operation = parseMixpanelSourceApiOperation(prepared.operation);
@@ -483,8 +528,10 @@ export async function requestMixpanelSourceApi(
             input.request.outputProperties.length > 0
               ? input.request.outputProperties
               : undefined,
-          page: normalizeEngagePage(input.request.page),
+          page:
+            input.continuation?.page ?? normalizeEngagePage(input.request.page),
           page_size: normalizeEngagePageSize(input.request.pageSize),
+          session_id: input.continuation?.sessionId,
           where: normalizeOptionalString(input.request.where) ?? undefined,
         },
         bodyFormat: "form",
@@ -686,6 +733,23 @@ function parseMixpanelEngageRequest(value: unknown): MixpanelEngageRequest {
   );
 }
 
+function parseMixpanelEngageContinuationState(
+  value: unknown
+): MixpanelEngageContinuationState | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = mixpanelEngageContinuationStateSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new MixpanelInvalidRequestError(
+    "Invalid Mixpanel query_engage page_token continuation state"
+  );
+}
+
 function parseMixpanelSegmentationRequest(
   value: unknown
 ): MixpanelSegmentationRequest {
@@ -766,7 +830,7 @@ function buildMixpanelHttpRequestBody(
 }
 
 function readMixpanelBodyFormat(
-  plan: NormalizedHttpRequestPlan
+  plan: PreparedHttpSourceApi
 ): MixpanelBodyFormat | undefined {
   const bodyFormat = plan.metadata?.bodyFormat;
   return bodyFormat === "form" || bodyFormat === "json"
@@ -774,9 +838,7 @@ function readMixpanelBodyFormat(
     : undefined;
 }
 
-function normalizeMixpanelPlanSelector(
-  plan: NormalizedHttpRequestPlan
-): string {
+function normalizeMixpanelPlanSelector(plan: PreparedHttpSourceApi): string {
   const selector = plan.selector?.trim();
   if (selector) {
     return selector;
@@ -1044,12 +1106,68 @@ async function requestMixpanelExportEventsTransport(input: {
   return readSourceApiHttpTransportResponse(response);
 }
 
+function readMixpanelEngageNextContinuationState(input: {
+  continuation?: MixpanelEngageContinuationState;
+  request: MixpanelEngageRequest;
+  response: MixpanelTransportResponse;
+}): MixpanelEngageContinuationState | undefined {
+  if (
+    input.response.body.kind !== "json" ||
+    !isRecord(input.response.body.value)
+  ) {
+    return undefined;
+  }
+
+  const parsed = mixpanelEngageResponseSchema.safeParse(
+    input.response.body.value
+  );
+  if (!parsed.success) {
+    return undefined;
+  }
+
+  const sessionId = normalizeOptionalString(parsed.data.session_id);
+  if (!sessionId) {
+    return undefined;
+  }
+
+  const pageSize =
+    parsed.data.page_size ?? normalizeEngagePageSize(input.request.pageSize);
+  const currentPage =
+    parsed.data.page ??
+    input.continuation?.page ??
+    normalizeEngagePage(input.request.page);
+  const resultCount = parsed.data.results?.length ?? 0;
+
+  if (resultCount === 0) {
+    return undefined;
+  }
+
+  if (
+    parsed.data.total !== undefined &&
+    (currentPage + 1) * pageSize >= parsed.data.total
+  ) {
+    return undefined;
+  }
+  if (parsed.data.total === undefined && resultCount < pageSize) {
+    return undefined;
+  }
+
+  // Comment: Mixpanel's published Engage docs describe paging with `session_id`
+  // and `page`, but the available docs do not expose a terminal continuation
+  // flag, so end-of-stream falls back to the returned page shape.
+  return {
+    page: currentPage + 1,
+    sessionId,
+  };
+}
+
 function buildMixpanelExecutionResponse(input: {
+  nextContinuationState?: MixpanelEngageContinuationState;
   operation: string;
   response: MixpanelTransportResponse;
   selector?: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
@@ -1058,6 +1176,7 @@ function buildMixpanelExecutionResponse(input: {
       contentType: input.response.contentType,
       headers: input.response.headers,
     }),
+    nextContinuationState: input.nextContinuationState,
     operation: input.operation,
     selector: input.selector,
     source: {

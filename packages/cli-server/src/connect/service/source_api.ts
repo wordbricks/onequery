@@ -3,7 +3,9 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
   createPreparedSourceApiPreview,
+  decodeOpaquePageToken,
   decodePreparedSourceApiToken,
+  encodeOpaquePageToken,
   describeSourceApi,
   encodePreparedSourceApiToken,
   executePreparedSourceApi,
@@ -20,6 +22,8 @@ import type {
   PreparedSourceConnection,
   SourceApiActorContext,
   SourceApiDescriptor,
+  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
 } from "@onequery/server/source-api";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
@@ -57,11 +61,15 @@ type ExecutePreparedSourceApiResponseInit = MessageInitShape<
   typeof ExecutePreparedSourceApiResponseSchema
 >;
 
+const DEFAULT_SOURCE_API_PAGE_TOKEN_TTL_MS = 5 * 60_000;
+
 type SourceApiServiceDependencies = {
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
   createPreparedSourceApiPreview: typeof createPreparedSourceApiPreview;
+  decodeOpaquePageToken: typeof decodeOpaquePageToken;
   decodePreparedSourceApiToken: typeof decodePreparedSourceApiToken;
   describeSourceApi: typeof describeSourceApi;
+  encodeOpaquePageToken: typeof encodeOpaquePageToken;
   encodePreparedSourceApiToken: typeof encodePreparedSourceApiToken;
   executePreparedSourceApi: typeof executePreparedSourceApi;
   getCliLogLevelForStatus: typeof getCliLogLevelForStatus;
@@ -76,8 +84,10 @@ type SourceApiServiceDependencies = {
 const sourceApiServiceDependencies: SourceApiServiceDependencies = {
   buildCliRequestLogDetails,
   createPreparedSourceApiPreview,
+  decodeOpaquePageToken,
   decodePreparedSourceApiToken,
   describeSourceApi,
+  encodeOpaquePageToken,
   encodePreparedSourceApiToken,
   executePreparedSourceApi,
   getCliLogLevelForStatus,
@@ -102,6 +112,83 @@ function buildSourceApiActor(input: {
     requestId: input.requestId,
     userId: input.session.user.id,
   };
+}
+
+function readSourceApiContinuationState(
+  input: {
+    pageToken?: string;
+    prepared: PreparedSourceApi;
+    secret: string | Uint8Array;
+    now?: Date;
+  },
+  dependencies: Pick<SourceApiServiceDependencies, "decodeOpaquePageToken">
+): SourceApiExecutionResult["nextContinuationState"] {
+  if (input.pageToken === undefined) {
+    return undefined;
+  }
+
+  return dependencies.decodeOpaquePageToken({
+    expected: {
+      descriptorVersion: input.prepared.descriptorVersion,
+      operation: input.prepared.operation,
+      preparedBinding: input.prepared.preparedBinding,
+      sourceKey: input.prepared.sourceKey,
+    },
+    now: input.now,
+    secret: input.secret,
+    token: input.pageToken,
+  }).state;
+}
+
+function buildSourceApiExecutionResponse(input: {
+  result: SourceApiExecutionResult;
+  nextPageToken?: string;
+}): SourceApiExecutionResponse {
+  return {
+    body: input.result.body,
+    contentType: input.result.contentType,
+    headers: input.result.headers,
+    nextPageToken: input.nextPageToken,
+    operation: input.result.operation,
+    selector: input.result.selector,
+    source: input.result.source,
+    status: input.result.status,
+  };
+}
+
+function encodeSourceApiNextPageToken(
+  input: {
+    now?: Date;
+    prepared: PreparedSourceApi;
+    preparedExpiresAt: string;
+    result: SourceApiExecutionResult;
+    secret: string | Uint8Array;
+  },
+  dependencies: Pick<SourceApiServiceDependencies, "encodeOpaquePageToken">
+): string | undefined {
+  if (input.result.nextContinuationState === undefined) {
+    return undefined;
+  }
+
+  const now = input.now ?? new Date();
+  const preparedExpiresAt = new Date(input.preparedExpiresAt);
+  const expiresAtMs = Math.min(
+    preparedExpiresAt.getTime(),
+    now.getTime() + DEFAULT_SOURCE_API_PAGE_TOKEN_TTL_MS
+  );
+
+  return dependencies.encodeOpaquePageToken({
+    payload: {
+      descriptorVersion: input.prepared.descriptorVersion,
+      expiresAt: new Date(expiresAtMs).toISOString(),
+      issuedAt: now.toISOString(),
+      operation: input.prepared.operation,
+      preparedBinding: input.prepared.preparedBinding,
+      sourceKey: input.prepared.sourceKey,
+      state: input.result.nextContinuationState,
+    },
+    secret: input.secret,
+  });
 }
 
 async function resolveSourceApiDescriptor(
@@ -411,19 +498,44 @@ export function createHandleExecutePreparedSourceApi(
         resolvedDependencies
       );
 
-      if (request.pageToken !== undefined) {
-        // Comment: task 4 owns binding continuation state to prepared execution,
-        // so reject page tokens here instead of silently dropping lifecycle input.
+      if (
+        request.pageToken !== undefined &&
+        preparedToken.prepared.paginationPolicy !== "opaque_token"
+      ) {
         throw new ConnectError(
-          "Source API page_token continuation is not implemented yet",
-          Code.Unimplemented
+          `Source API operation "${preparedToken.prepared.operation}" does not support page_token continuation`,
+          Code.InvalidArgument
         );
       }
 
-      const response = await resolvedDependencies.executePreparedSourceApi({
+      const continuation = readSourceApiContinuationState(
+        {
+          now: new Date(),
+          pageToken: request.pageToken,
+          prepared: preparedToken.prepared,
+          secret: c.var.runtime.crypto.masterEncryptionKey,
+        },
+        resolvedDependencies
+      );
+
+      const result = await resolvedDependencies.executePreparedSourceApi({
         actor,
+        continuation,
         prepared: preparedToken.prepared,
         source,
+      });
+      const response = buildSourceApiExecutionResponse({
+        nextPageToken: encodeSourceApiNextPageToken(
+          {
+            now: new Date(),
+            prepared: preparedToken.prepared,
+            preparedExpiresAt: preparedToken.expiresAt,
+            result,
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+          },
+          resolvedDependencies
+        ),
+        result,
       });
 
       resolvedDependencies.logCliEvent({

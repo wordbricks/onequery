@@ -21,12 +21,12 @@ import {
   resolveHttpMethodOverride,
 } from "../helpers/http-rest";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -282,9 +282,7 @@ function requireAmplitudeCredentials(
   throw new Error("Amplitude source credentials are invalid");
 }
 
-function normalizeAmplitudePlanSelector(
-  plan: NormalizedHttpRequestPlan
-): string {
+function normalizeAmplitudePlanSelector(plan: PreparedHttpSourceApi): string {
   const selector = plan.selector?.trim();
   if (selector) {
     return selector;
@@ -402,7 +400,7 @@ function buildAmplitudeExecutionResponse(input: {
   response: AmplitudeTransportResponse;
   selector: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,

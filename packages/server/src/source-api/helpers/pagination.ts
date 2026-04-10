@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { SourceApiInvalidRequestError } from "../errors";
+import { SourceApiExpiredError, SourceApiInvalidRequestError } from "../errors";
 import type { SourceApiPaginationTokenPayload } from "../types";
 
 type DecodeOpaquePageTokenInput = {
@@ -79,7 +79,7 @@ export function decodeOpaquePageToken(
   const now = input.now ?? new Date();
   const expiresAt = new Date(payload.expiresAt);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt <= now) {
-    throw new SourceApiInvalidRequestError("Pagination token expired");
+    throw new SourceApiExpiredError("Pagination token expired");
   }
 
   return payload;

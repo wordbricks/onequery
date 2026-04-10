@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
+import type { JsonObject } from "@bufbuild/protobuf";
 import { base64ToBytes } from "@onequery/codecs/base64";
 import type { GitHubCredentials } from "@onequery/db/server";
 import { isGitHubCredentials } from "@onequery/db/server";
@@ -21,12 +21,12 @@ import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
-  normalizeSourceApiContentType,
+  readSourceApiHttpTransportResponse,
   resolveHttpMethodOverride,
   toHeaderRecord,
 } from "../helpers/http-rest";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiExample,
@@ -398,24 +398,15 @@ export async function requestGitHubApi(input: {
     method: input.method,
     timeoutMs: input.timeoutMs,
   });
-  const contentType = normalizeSourceApiContentType(
-    response.headers.get("content-type")
-  );
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const transportResponse = await readSourceApiHttpTransportResponse(response, {
+    mapText: (text) => sanitizeGitHubText(text, input.credentials),
+  });
 
   return {
-    body: parseGitHubResponseBody({
-      bytes,
-      contentType,
-      credentials: input.credentials,
-      status: response.status,
-    }),
-    contentType,
-    headers: Array.from(response.headers.entries()).map(([name, value]) => ({
-      name,
-      value,
-    })),
-    status: response.status,
+    body: transportResponse.body,
+    contentType: transportResponse.contentType,
+    headers: transportResponse.headers,
+    status: transportResponse.status,
   };
 }
 
@@ -500,9 +491,7 @@ function requireGitHubCredentials(
   throw new Error("GitHub source credentials are invalid");
 }
 
-function readGitHubTimeoutMs(
-  plan: NormalizedHttpRequestPlan
-): number | undefined {
+function readGitHubTimeoutMs(plan: PreparedHttpSourceApi): number | undefined {
   const timeoutMs = plan.metadata?.timeoutMs;
   return typeof timeoutMs === "number" ? timeoutMs : undefined;
 }
@@ -756,54 +745,4 @@ function ensureDefaultContentType(
   if (!hasContentTypeHeader) {
     headers["Content-Type"] = contentType;
   }
-}
-
-function parseGitHubResponseBody(input: {
-  bytes: Uint8Array;
-  contentType: string;
-  credentials: GitHubCredentials;
-  status: number;
-}): SourceApiResponseBody {
-  if (input.status === 204 || input.bytes.length === 0) {
-    return { kind: "none" };
-  }
-
-  if (
-    input.contentType.includes("application/json") ||
-    input.contentType.includes("+json")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "json",
-      value: JSON.parse(text) as JsonValue,
-    };
-  }
-
-  if (
-    input.contentType.startsWith("text/") ||
-    input.contentType.includes("application/xml") ||
-    input.contentType.includes("application/x-www-form-urlencoded")
-  ) {
-    const text = sanitizeGitHubText(
-      new TextDecoder().decode(input.bytes),
-      input.credentials
-    );
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "text",
-      value: text,
-    };
-  }
-
-  return {
-    kind: "binary",
-    value: input.bytes,
-  };
 }

@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { SourceApiInvalidRequestError } from "../errors";
+import { SourceApiExpiredError, SourceApiInvalidRequestError } from "../errors";
 import { decodeOpaquePageToken, encodeOpaquePageToken } from "./pagination";
 
 describe("opaque source-api pagination tokens", () => {
@@ -92,5 +92,32 @@ describe("opaque source-api pagination tokens", () => {
         token: `${payload}.${signature}`,
       })
     ).toThrow(SourceApiInvalidRequestError);
+  });
+
+  it("maps expired tokens to the source-api expired error", () => {
+    const token = encodeOpaquePageToken({
+      payload: {
+        expiresAt: "2026-04-09T12:05:00.000Z",
+        issuedAt: "2026-04-09T12:00:00.000Z",
+        operation: "fetch",
+        preparedBinding: "prepared_123",
+        sourceKey: "github-prod",
+        state: {},
+      },
+      secret: "top-secret",
+    });
+
+    expect(() =>
+      decodeOpaquePageToken({
+        expected: {
+          operation: "fetch",
+          preparedBinding: "prepared_123",
+          sourceKey: "github-prod",
+        },
+        now: new Date("2026-04-09T12:06:00.000Z"),
+        secret: "top-secret",
+        token,
+      })
+    ).toThrow(SourceApiExpiredError);
   });
 });

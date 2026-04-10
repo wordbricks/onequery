@@ -182,7 +182,6 @@ const executionResponse = {
       value: "text/plain",
     },
   ],
-  nextPageToken: "page_2",
   operation: "fetch",
   selector: "/issues",
   source: {
@@ -210,8 +209,19 @@ function createHarness() {
       })
     ),
     createPreparedSourceApiPreview: vi.fn().mockReturnValue(preparedPreview),
+    decodeOpaquePageToken: vi.fn().mockReturnValue({
+      expiresAt: "2026-04-10T00:04:00.000Z",
+      issuedAt: "2026-04-10T00:01:00.000Z",
+      operation: "fetch",
+      preparedBinding: "prepared_binding_123",
+      sourceKey: "github-prod",
+      state: {
+        cursor: "page_2",
+      },
+    }),
     decodePreparedSourceApiToken: vi.fn().mockReturnValue(decodedPreparedToken),
     describeSourceApi: vi.fn().mockResolvedValue(descriptor),
+    encodeOpaquePageToken: vi.fn().mockReturnValue("page_2"),
     encodePreparedSourceApiToken: vi.fn().mockReturnValue("prepared_token_1"),
     executePreparedSourceApi: vi.fn().mockResolvedValue(executionResponse),
     getCliLogLevelForStatus: vi.fn((): "info" => "info"),
@@ -477,21 +487,23 @@ describe("source api connect service", () => {
         requestId: "req_cli_123",
         userId: "user-1",
       },
+      continuation: undefined,
       prepared,
       source: preparedSource,
     });
     expect(response).toMatchObject({
       contentType: "text/plain",
-      nextPageToken: "page_2",
       operation: "fetch",
       selector: "/issues",
       status: 200,
     });
     expect((response as Record<string, unknown>).requestId).toBeUndefined();
+    expect(response.nextPageToken).toBeUndefined();
     expect(response.body).toEqual({
       case: "text",
       value: "ok",
     });
+    expect(harness.dependencies.encodeOpaquePageToken).not.toHaveBeenCalled();
   });
 
   it("preserves JSON source API response bodies through the Connect handler", async () => {
@@ -531,7 +543,77 @@ describe("source api connect service", () => {
     });
   });
 
-  it("rejects page_token continuation until task 4 wires provider pagination", async () => {
+  it("binds opaque page tokens to prepared execution state during execute", async () => {
+    const harness = createHarness();
+    harness.dependencies.decodePreparedSourceApiToken.mockReturnValueOnce({
+      ...decodedPreparedToken,
+      prepared: {
+        ...prepared,
+        paginationPolicy: "opaque_token",
+      },
+    });
+    harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
+      ...executionResponse,
+      nextContinuationState: {
+        cursor: "page_3",
+      },
+    });
+    const request = create(ExecutePreparedSourceApiRequestSchema, {
+      pageToken: "page_1",
+      preparedToken: "prepared_token_1",
+    });
+
+    const response = await harness.handleExecutePreparedSourceApi(request, {
+      values: new Map(),
+    } as never);
+
+    expect(harness.dependencies.decodeOpaquePageToken).toHaveBeenCalledWith({
+      expected: {
+        descriptorVersion: "github-v1",
+        operation: "fetch",
+        preparedBinding: "prepared_binding_123",
+        sourceKey: "github-prod",
+      },
+      now: expect.any(Date),
+      secret: "master-key",
+      token: "page_1",
+    });
+    expect(harness.dependencies.executePreparedSourceApi).toHaveBeenCalledWith({
+      actor: {
+        capabilities: authorizedOrg.capabilities,
+        membershipRoles: authorizedOrg.membershipRoles,
+        organizationId: "org-1",
+        organizationSlug: "acme",
+        requestId: "req_cli_123",
+        userId: "user-1",
+      },
+      continuation: {
+        cursor: "page_2",
+      },
+      prepared: {
+        ...prepared,
+        paginationPolicy: "opaque_token",
+      },
+      source: preparedSource,
+    });
+    expect(harness.dependencies.encodeOpaquePageToken).toHaveBeenCalledWith({
+      payload: {
+        descriptorVersion: "github-v1",
+        expiresAt: expect.any(String),
+        issuedAt: expect.any(String),
+        operation: "fetch",
+        preparedBinding: "prepared_binding_123",
+        sourceKey: "github-prod",
+        state: {
+          cursor: "page_3",
+        },
+      },
+      secret: "master-key",
+    });
+    expect(response.nextPageToken).toBe("page_2");
+  });
+
+  it("rejects page_token continuation for operations without pagination support", async () => {
     const harness = createHarness();
     const request = create(ExecutePreparedSourceApiRequestSchema, {
       pageToken: "page_1",
@@ -543,8 +625,8 @@ describe("source api connect service", () => {
         values: new Map(),
       } as never),
       {
-        code: Code.Unimplemented,
-        message: "page_token continuation is not implemented yet",
+        code: Code.InvalidArgument,
+        message: 'operation "fetch" does not support page_token continuation',
       }
     );
 
