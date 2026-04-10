@@ -126,19 +126,19 @@ enum CliSourceApiInputMode {
 
 ## 4) Make the Connect handler a thin wrapper over the canonical domain
 
-- [ ] Update `packages/cli-server/src/connect/service/source_api.ts` so `handleExecuteSourceApi` no longer calls `getSourceApiAdapter(...).execute(...)` directly.
-- [ ] Use the canonical server domain as the only execution orchestrator:
+- [x] Update `packages/cli-server/src/connect/service/source_api.ts` so `handleExecuteSourceApi` no longer calls `getSourceApiAdapter(...).execute(...)` directly.
+- [x] Use the canonical server domain as the only execution orchestrator:
   - either call existing `packages/server/src/source-api/execute.ts::executeSourceApi()`;
   - or add one domain entrypoint that returns both `{ plan, response }` if you need plan data for logging.
-- [ ] Keep source loading / credential preparation in the Connect layer, but move describe → normalize → authorize → execute sequencing behind one server-domain function.
-- [ ] Add explicit execute-error mapping in the Connect layer:
+- [x] Keep source loading / credential preparation in the Connect layer, but move describe → normalize → authorize → execute sequencing behind one server-domain function.
+- [x] Add explicit execute-error mapping in the Connect layer:
   - normalization errors -> `InvalidArgument` / `FailedPrecondition`;
   - authorization errors -> `PermissionDenied`;
   - provider execution failures -> explicit `ConnectError` mapping instead of uncaught generic throws.
-- [ ] Add one test in `packages/cli-server/src/connect/service/source_api.test.ts` where adapter execution throws and the handler returns the expected `ConnectError`.
+- [x] Add one test in `packages/cli-server/src/connect/service/source_api.test.ts` where adapter execution throws and the handler returns the expected `ConnectError`.
 
 **Done when**
-- [ ] `rg -n 'getSourceApiAdapter\(|\.execute\({' packages/cli-server/src/connect/service/source_api.ts` does not show direct adapter execution from the Connect service.
+- [x] `rg -n 'getSourceApiAdapter\(|\.execute\({' packages/cli-server/src/connect/service/source_api.ts` does not show direct adapter execution from the Connect service.
 
 ## 5) Fix CLI discovery/default strings to match the new command shape
 

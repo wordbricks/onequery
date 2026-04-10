@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { SourceApiExecutionStageError } from "@onequery/server/source-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -169,9 +170,8 @@ function createHarness() {
     requireAuthorizedOrg: vi.fn().mockResolvedValue(authorizedOrg),
     requireSession: vi.fn().mockResolvedValue(session),
   };
-  const adapterExecute = vi.fn().mockResolvedValue(executionResponse);
+  const executeSourceApi = vi.fn().mockResolvedValue(executionResponse);
   const dependencies = {
-    authorizeSourceApi: vi.fn().mockResolvedValue(undefined),
     buildCliRequestLogDetails: vi.fn(
       (_: unknown, details?: Record<string, unknown>) => ({
         method: "POST",
@@ -181,10 +181,8 @@ function createHarness() {
       })
     ),
     describeSourceApi: vi.fn().mockResolvedValue(descriptor),
+    executeSourceApi,
     getCliLogLevelForStatus: vi.fn((): "info" => "info"),
-    getSourceApiAdapter: vi.fn().mockReturnValue({
-      execute: adapterExecute,
-    }),
     logCliEvent: vi.fn(),
     normalizeSourceApiRequest: vi.fn().mockResolvedValue(plan),
     prepareDataSourceCredentials: vi.fn().mockResolvedValue({
@@ -195,18 +193,14 @@ function createHarness() {
     }),
     requireCliConnectRequestContext: vi.fn().mockReturnValue(requestContext),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),
-    sourceApiRegistry: {
-      adapters: new Map(),
-      get: vi.fn(() => null),
-    },
     toCliErrorMessage: vi.fn((error: unknown) =>
       error instanceof Error ? error.message : String(error)
     ),
   };
 
   return {
-    adapterExecute,
     dependencies,
+    executeSourceApi,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
     handleNormalizeSourceApi: createHandleNormalizeSourceApi(dependencies),
@@ -368,43 +362,8 @@ describe("source api connect service", () => {
       orgSlug: "acme",
       session,
     });
-    expect(harness.dependencies.normalizeSourceApiRequest).toHaveBeenCalledWith(
-      {
-        actor: {
-          capabilities: authorizedOrg.capabilities,
-          membershipRoles: authorizedOrg.membershipRoles,
-          organizationId: "org-1",
-          organizationSlug: "acme",
-          requestId: "req_cli_123",
-          userId: "user-1",
-        },
-        descriptor: {
-          ...descriptor,
-        },
-        request: {
-          body: {
-            kind: "text",
-            value: "body text",
-          },
-          descriptorVersion: "github-v1",
-          fieldPatch: {
-            perPage: 50,
-          },
-          headers: [
-            {
-              name: "accept",
-              value: "application/json",
-            },
-          ],
-          methodOverride: "POST",
-          operation: "fetch",
-          pageToken: "page_1",
-          selector: "/issues",
-        },
-        source: preparedSource,
-      }
-    );
-    expect(harness.dependencies.authorizeSourceApi).toHaveBeenCalledWith({
+    expect(harness.dependencies.describeSourceApi).not.toHaveBeenCalled();
+    expect(harness.executeSourceApi).toHaveBeenCalledWith({
       actor: {
         capabilities: authorizedOrg.capabilities,
         membershipRoles: authorizedOrg.membershipRoles,
@@ -413,18 +372,26 @@ describe("source api connect service", () => {
         requestId: "req_cli_123",
         userId: "user-1",
       },
-      plan,
-    });
-    expect(harness.adapterExecute).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
+      request: {
+        body: {
+          kind: "text",
+          value: "body text",
+        },
+        descriptorVersion: "github-v1",
+        fieldPatch: {
+          perPage: 50,
+        },
+        headers: [
+          {
+            name: "accept",
+            value: "application/json",
+          },
+        ],
+        methodOverride: "POST",
+        operation: "fetch",
+        pageToken: "page_1",
+        selector: "/issues",
       },
-      plan,
       source: preparedSource,
     });
     expect(response).toMatchObject({
@@ -512,8 +479,7 @@ describe("source api connect service", () => {
         source: preparedSource,
       }
     );
-    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
-    expect(harness.adapterExecute).not.toHaveBeenCalled();
+    expect(harness.executeSourceApi).not.toHaveBeenCalled();
     expect(response).toMatchObject({
       plan: {
         bodyKind: CliSourceApiBodyKind.TEXT,
@@ -538,8 +504,11 @@ describe("source api connect service", () => {
 
   it("rejects unsupported operations as invalid arguments", async () => {
     const harness = createHarness();
-    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
-      new Error("Unsupported source API operation: mutate")
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "normalize",
+        new Error("Unsupported source API operation: mutate")
+      )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
       invocation: {
@@ -562,14 +531,16 @@ describe("source api connect service", () => {
       return true;
     });
 
-    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
-    expect(harness.adapterExecute).not.toHaveBeenCalled();
+    expect(harness.executeSourceApi).toHaveBeenCalledTimes(1);
   });
 
   it("rejects invalid request headers as invalid arguments", async () => {
     const harness = createHarness();
-    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
-      new Error("Unsupported request header: authorization")
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "normalize",
+        new Error("Unsupported request header: authorization")
+      )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
       invocation: {
@@ -598,14 +569,16 @@ describe("source api connect service", () => {
       return true;
     });
 
-    expect(harness.dependencies.authorizeSourceApi).not.toHaveBeenCalled();
-    expect(harness.adapterExecute).not.toHaveBeenCalled();
+    expect(harness.executeSourceApi).toHaveBeenCalledTimes(1);
   });
 
   it("maps descriptor version mismatches to failed precondition", async () => {
     const harness = createHarness();
-    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
-      new Error("descriptor_version mismatch: stale descriptor")
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "normalize",
+        new Error("descriptor_version mismatch: stale descriptor")
+      )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
       invocation: {
@@ -624,6 +597,68 @@ describe("source api connect service", () => {
       expect((error as ConnectError).code).toBe(Code.FailedPrecondition);
       expect((error as ConnectError).message).toContain(
         "descriptor_version mismatch: stale descriptor"
+      );
+      return true;
+    });
+  });
+
+  it("maps source api authorization failures to permission denied", async () => {
+    const harness = createHarness();
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "authorize",
+        new Error(
+          'Actor "user-1" is not allowed to execute source API operation "fetch"'
+        )
+      )
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.PermissionDenied);
+      expect((error as ConnectError).message).toContain(
+        'Actor "user-1" is not allowed to execute source API operation "fetch"'
+      );
+      return true;
+    });
+  });
+
+  it("maps adapter execution failures to connect errors", async () => {
+    const harness = createHarness();
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "execute",
+        new Error("GitHub upstream request failed")
+      )
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.Unknown);
+      expect((error as ConnectError).message).toContain(
+        "GitHub upstream request failed"
       );
       return true;
     });

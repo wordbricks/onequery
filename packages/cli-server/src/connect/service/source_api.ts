@@ -2,11 +2,10 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
-  authorizeSourceApi,
   describeSourceApi,
-  getSourceApiAdapter,
+  executeSourceApi,
   normalizeSourceApiRequest,
-  sourceApiRegistry,
+  SourceApiExecutionStageError,
 } from "@onequery/server/source-api";
 import type {
   PreparedSourceConnection,
@@ -50,32 +49,28 @@ type NormalizeSourceApiResponseInit = MessageInitShape<
 >;
 
 type SourceApiServiceDependencies = {
-  authorizeSourceApi: typeof authorizeSourceApi;
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
   describeSourceApi: typeof describeSourceApi;
+  executeSourceApi: typeof executeSourceApi;
   getCliLogLevelForStatus: typeof getCliLogLevelForStatus;
-  getSourceApiAdapter: typeof getSourceApiAdapter;
   logCliEvent: typeof logCliEvent;
   normalizeSourceApiRequest: typeof normalizeSourceApiRequest;
   prepareDataSourceCredentials: typeof prepareDataSourceCredentials;
   requireCliConnectRequestContext: typeof requireCliConnectRequestContext;
   runCliLoadSourceEffect: typeof runCliLoadSourceEffect;
-  sourceApiRegistry: typeof sourceApiRegistry;
   toCliErrorMessage: typeof toCliErrorMessage;
 };
 
 const sourceApiServiceDependencies: SourceApiServiceDependencies = {
-  authorizeSourceApi,
   buildCliRequestLogDetails,
   describeSourceApi,
+  executeSourceApi,
   getCliLogLevelForStatus,
-  getSourceApiAdapter,
   logCliEvent,
   normalizeSourceApiRequest,
   prepareDataSourceCredentials,
   requireCliConnectRequestContext,
   runCliLoadSourceEffect,
-  sourceApiRegistry,
   toCliErrorMessage,
 };
 
@@ -315,50 +310,20 @@ export function createHandleExecuteSourceApi(
       requestId: requestContext.requestId,
       session,
     });
-    const descriptor = await resolvedDependencies.describeSourceApi({
-      actor,
-      source,
-    });
     const normalizedRequest = fromCliExecuteSourceApiRequest(request);
-    const plan = await Promise.resolve()
+    const response = await Promise.resolve()
       .then(() =>
-        resolvedDependencies.normalizeSourceApiRequest({
+        resolvedDependencies.executeSourceApi({
           actor,
-          descriptor,
-          request: normalizedRequest,
           source,
+          request: normalizedRequest,
         })
       )
       .catch((error: unknown) => {
-        throw toSourceApiRequestConnectError(
+        throw toSourceApiExecuteConnectError(
           error,
           resolvedDependencies.toCliErrorMessage
         );
-      });
-
-    await Promise.resolve()
-      .then(() =>
-        resolvedDependencies.authorizeSourceApi({
-          actor,
-          plan,
-        })
-      )
-      .catch((error: unknown) => {
-        throw new ConnectError(
-          resolvedDependencies.toCliErrorMessage(error),
-          Code.PermissionDenied
-        );
-      });
-
-    const response = await resolvedDependencies
-      .getSourceApiAdapter(
-        resolvedDependencies.sourceApiRegistry,
-        source.provider
-      )
-      .execute({
-        actor,
-        plan,
-        source,
       });
 
     resolvedDependencies.logCliEvent({
@@ -386,10 +351,39 @@ function toSourceApiRequestConnectError(
   error: unknown,
   renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
 ) {
+  if (error instanceof ConnectError) {
+    return error;
+  }
+
   const detail = renderError(error);
   if (detail.startsWith("descriptor_version mismatch:")) {
     return new ConnectError(detail, Code.FailedPrecondition);
   }
 
   return new ConnectError(detail, Code.InvalidArgument);
+}
+
+function toSourceApiExecuteConnectError(
+  error: unknown,
+  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
+) {
+  if (error instanceof ConnectError) {
+    return error;
+  }
+
+  if (error instanceof SourceApiExecutionStageError) {
+    switch (error.stage) {
+      case "normalize":
+        return toSourceApiRequestConnectError(error.cause, renderError);
+      case "authorize":
+        return new ConnectError(
+          renderError(error.cause),
+          Code.PermissionDenied
+        );
+      case "execute":
+        return new ConnectError(renderError(error.cause), Code.Unknown);
+    }
+  }
+
+  return new ConnectError(renderError(error), Code.Unknown);
 }
