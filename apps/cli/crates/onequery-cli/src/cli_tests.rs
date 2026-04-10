@@ -23,7 +23,7 @@ use super::QueryInputArgs;
 use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
-use super::UseSource;
+use super::UseArgs;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
     args.iter().map(OsString::from).collect()
@@ -44,7 +44,7 @@ fn parse_display(args: &[&str]) -> crate::output::CommandOutput {
     let ParseOutcome::Display(display) = parse_outcome(args) else {
         panic!("expected display output");
     };
-    display
+    display.into_inner()
 }
 
 fn rendered_display(args: &[&str]) -> String {
@@ -170,6 +170,7 @@ fn version_output_matches_current_package_version() {
             // Version output is derived from release metadata, so snapshotting it creates
             // avoidable churn whenever the tag changes.
             ParseOutcome::Display(display) => {
+                let display = display.into_inner();
                 assert_eq!(
                     display.lines.join("\n").trim(),
                     format!("{binary_name} {}", env!("CARGO_PKG_VERSION"))
@@ -347,36 +348,93 @@ fn normalize_command_line_redacts_raw_config_override_values() {
 }
 
 #[test]
-fn parse_invocation_accepts_use_source_flag() {
-    let invocation = parse_invocation(&["onequery", "use", "--source", "sentry"]);
+fn parse_invocation_accepts_use_describe_surface() {
+    let invocation = parse_invocation(&["onequery", "use", "--source", "sentry-prod"]);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Use(super::UseArgs {
-            source: UseSource::Sentry,
+    assert_eq!(
+        match invocation.command {
+            Command::Use(args) => args,
+            other => panic!("expected use command, got {other:?}"),
+        },
+        UseArgs {
+            source: "sentry-prod".to_owned(),
+            op: None,
+            target: None,
+            method: None,
+            headers: Vec::new(),
+            raw_fields: Vec::new(),
+            fields: Vec::new(),
             input: None,
-        })
-    ));
+            paginate: false,
+            slurp: false,
+            max_pages: None,
+            include: false,
+            silent: false,
+            jq: None,
+            dry_run: false,
+        }
+    );
 }
 
 #[test]
-fn parse_invocation_accepts_use_input_json() {
+fn parse_invocation_accepts_use_execute_flags() {
     let invocation = parse_invocation(&[
         "onequery",
         "use",
         "--source",
-        "github",
+        "github-prod",
+        "--op",
+        "fetch-api",
+        "-X",
+        "patch",
+        "-H",
+        "authorization:Bearer token",
+        "-H",
+        "x-trace-id:abc123",
+        "-f",
+        "query=state:open",
+        "-F",
+        "params[limit]=10",
         "--input",
-        "{\"method\":\"fetch_api\",\"request\":{\"endpoint\":\"/user\"}}",
+        "payload.json",
+        "--paginate",
+        "--slurp",
+        "--max-pages",
+        "4",
+        "--include",
+        "--silent",
+        "--jq",
+        ".items[0]",
+        "--dry-run",
+        "/repos/acme/widgets/pulls/1",
     ]);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Use(super::UseArgs {
-            source: UseSource::Github,
-            input: Some(input),
-        }) if input == "{\"method\":\"fetch_api\",\"request\":{\"endpoint\":\"/user\"}}"
-    ));
+    assert_eq!(
+        match invocation.command {
+            Command::Use(args) => args,
+            other => panic!("expected use command, got {other:?}"),
+        },
+        UseArgs {
+            source: "github-prod".to_owned(),
+            op: Some("fetch-api".to_owned()),
+            target: Some("/repos/acme/widgets/pulls/1".to_owned()),
+            method: Some("patch".to_owned()),
+            headers: vec![
+                "authorization:Bearer token".to_owned(),
+                "x-trace-id:abc123".to_owned(),
+            ],
+            raw_fields: vec!["query=state:open".to_owned()],
+            fields: vec!["params[limit]=10".to_owned()],
+            input: Some("payload.json".to_owned()),
+            paginate: true,
+            slurp: true,
+            max_pages: Some(4),
+            include: true,
+            silent: true,
+            jq: Some(".items[0]".to_owned()),
+            dry_run: true,
+        }
+    );
 }
 
 #[test]

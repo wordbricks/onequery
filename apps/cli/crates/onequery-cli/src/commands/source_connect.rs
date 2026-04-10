@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use crate::cli::SourceConnectArgs;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
@@ -47,7 +48,7 @@ enum SourceConnectState {
 
 #[derive(Debug)]
 enum SourceConnectTerminalState {
-    Completed { output: CommandOutput },
+    Completed { output: TerminalOutput },
     NeedsReauth { error: CliError },
     Failed { error: CliError },
 }
@@ -129,7 +130,7 @@ pub(super) async fn execute<B, T>(
     .await?;
 
     match final_state {
-        SourceConnectTerminalState::Completed { output } => Ok(output),
+        SourceConnectTerminalState::Completed { output } => Ok(output.into_inner()),
         SourceConnectTerminalState::NeedsReauth { error }
         | SourceConnectTerminalState::Failed { error } => Err(error),
     }
@@ -204,7 +205,7 @@ fn reduce(
             SourceConnectEvent::GuideLoaded { guide, request_id } => {
                 match render_source_connect_guide_output(*guide) {
                     Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
-                        output: output.with_request_id(request_id),
+                        output: TerminalOutput::new(output.with_request_id(request_id)),
                     }),
                     Err(error) => Transition::done(SourceConnectTerminalState::Failed { error }),
                 }
@@ -235,7 +236,7 @@ fn reduce(
             SourceConnectEvent::SourceConnected { result, request_id } => {
                 match render_source_connect_result_output(result) {
                     Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
-                        output: output.with_request_id(request_id),
+                        output: TerminalOutput::new(output.with_request_id(request_id)),
                     }),
                     Err(error) => Transition::done(SourceConnectTerminalState::Failed { error }),
                 }

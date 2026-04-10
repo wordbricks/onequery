@@ -1,19 +1,46 @@
-import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { toJson } from "@bufbuild/protobuf";
+import type { JsonValue } from "@bufbuild/protobuf";
+import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
+import type {
+  NormalizedExecutionPlan,
+  SourceApiDescriptor,
+  SourceApiBodyKind,
+  SourceApiExample,
+  SourceApiExecuteRequest,
+  SourceApiExecutionResponse,
+  SourceApiFieldPolicy,
+  SourceApiHeader,
+  SourceApiJsonValue,
+  SourceApiOperation,
+  SourceApiRequestBody,
+  SourceApiResponseBody,
+  SourceApiSource,
+} from "@onequery/server/source-api";
 
 import type { CliAction } from "../../authorization";
 import type { CliSessionIdentity } from "../../domain/workflows";
-import type { CliUseSource as CliUseSkillSource } from "../../use/skills";
 import { throwCliConnectError } from "../error";
 import { CliAuthMode } from "../gen/onequery/cli/v1/auth_pb";
 import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
+import type {
+  CliSourceApiInvocation,
+  ExecuteSourceApiRequest,
+  NormalizeSourceApiRequest,
+} from "../gen/onequery/cli/v1/source_api_pb";
+import {
+  CliSourceApiBodyKind,
+  CliSourceApiInputMode,
+  CliSourceApiOperationKind,
+  CliSourceApiPaginationPolicy,
+  CliSourceApiSelectorKind,
+} from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceProvider,
   CliSourceStatus,
 } from "../gen/onequery/cli/v1/source_pb";
-import { CliUseSource } from "../gen/onequery/cli/v1/use_pb";
 
 export function timestampFromIsoString(value: string) {
   const parsed = new Date(value);
@@ -30,49 +57,6 @@ export function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
       return CliAuthMode.BROWSER_SESSION;
     case "bearer_token":
       return CliAuthMode.BEARER_TOKEN;
-  }
-}
-
-export function toCliUseSourceEnum(value: CliUseSkillSource) {
-  switch (value) {
-    case "amplitude":
-      return CliUseSource.AMPLITUDE;
-    case "ga":
-      return CliUseSource.GA;
-    case "github":
-      return CliUseSource.GITHUB;
-    case "mixpanel":
-      return CliUseSource.MIXPANEL;
-    case "mongodb":
-      return CliUseSource.MONGODB;
-    case "posthog":
-      return CliUseSource.POSTHOG;
-    case "sentry":
-      return CliUseSource.SENTRY;
-  }
-}
-
-export function fromCliUseSource(value: CliUseSource): CliUseSkillSource {
-  switch (value) {
-    case CliUseSource.AMPLITUDE:
-      return "amplitude";
-    case CliUseSource.GA:
-      return "ga";
-    case CliUseSource.GITHUB:
-      return "github";
-    case CliUseSource.MIXPANEL:
-      return "mixpanel";
-    case CliUseSource.MONGODB:
-      return "mongodb";
-    case CliUseSource.POSTHOG:
-      return "posthog";
-    case CliUseSource.SENTRY:
-      return "sentry";
-    default:
-      throwCliConnectError({
-        detail: "unsupported use source",
-        key: "INVALID_REQUEST",
-      });
   }
 }
 
@@ -95,6 +79,10 @@ export function toCliOrgCapability(value: CliAction) {
       return CliOrgCapability.SOURCE_LIST;
     case "source.read":
       return CliOrgCapability.SOURCE_READ;
+    case "source_api.describe":
+      return CliOrgCapability.SOURCE_API_DESCRIBE;
+    case "source_api.execute":
+      return CliOrgCapability.SOURCE_API_EXECUTE;
     case "query.execute":
       return CliOrgCapability.QUERY_EXECUTE;
   }
@@ -201,4 +189,296 @@ export function toCliQueryLogicalType(value: string) {
     default:
       return undefined;
   }
+}
+
+export function fromCliExecuteSourceApiRequest(
+  request: ExecuteSourceApiRequest
+): SourceApiExecuteRequest {
+  return fromCliSourceApiInvocation(
+    requireCliSourceApiInvocation(request.invocation)
+  );
+}
+
+export function fromCliNormalizeSourceApiRequest(
+  request: NormalizeSourceApiRequest
+): SourceApiExecuteRequest {
+  return fromCliSourceApiInvocation(
+    requireCliSourceApiInvocation(request.invocation)
+  );
+}
+
+export function toCliNormalizeSourceApiResponse(
+  value: NormalizedExecutionPlan
+) {
+  return {
+    plan: {
+      bodyKind: toCliSourceApiBodyKind(value.bodyKind),
+      bodyPaths: [...(value.bodyPaths ?? [])],
+      descriptorVersion: value.descriptorVersion,
+      headerNames: [...value.headerNames],
+      host: value.host,
+      kind: toCliSourceApiOperationKind(value.kind),
+      method: value.method,
+      operation: value.operation,
+      provider: value.provider,
+      requestFingerprint: value.requestFingerprint,
+      selector: value.selector,
+      selectorTemplate: value.selectorTemplate,
+      sourceId: value.sourceId,
+      sourceKey: value.sourceKey,
+    },
+  };
+}
+
+export function requireCliSourceApiInvocation(
+  invocation: CliSourceApiInvocation | undefined
+): CliSourceApiInvocation {
+  if (invocation) {
+    return invocation;
+  }
+
+  throwCliConnectError({
+    detail: "source API request missing invocation payload",
+    key: "INVALID_REQUEST",
+  });
+}
+
+function fromCliSourceApiInvocation(
+  request: CliSourceApiInvocation
+): SourceApiExecuteRequest {
+  return {
+    body: fromCliSourceApiRequestBody(request.body),
+    descriptorVersion: request.descriptorVersion,
+    fieldPatch: request.fieldPatch,
+    headers: request.headers.map(fromCliSourceApiHeader),
+    methodOverride: request.methodOverride,
+    operation: request.operation,
+    pageToken: request.pageToken,
+    selector: request.selector,
+  };
+}
+
+export function toCliDescribeSourceApiResponse(value: SourceApiDescriptor) {
+  return {
+    defaultPathOperation: value.defaultPathOperation,
+    descriptorVersion: value.descriptorVersion,
+    examples: value.examples.map(toCliSourceApiExample),
+    notes: [...value.notes],
+    operations: value.operations.map(toCliSourceApiOperation),
+    source: toCliSourceApiSource(value.source),
+  };
+}
+
+export function toCliExecuteSourceApiResponse(
+  value: SourceApiExecutionResponse
+) {
+  return {
+    body: toCliSourceApiResponseBody(value.body),
+    contentType: value.contentType,
+    headers: value.headers.map(toCliSourceApiHeader),
+    nextPageToken: value.nextPageToken,
+    operation: value.operation,
+    requestId: value.requestId,
+    selector: value.selector,
+    source: toCliSourceApiSource(value.source),
+    status: value.status,
+  };
+}
+
+function fromCliSourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function fromCliSourceApiRequestBody(
+  body: CliSourceApiInvocation["body"]
+): SourceApiRequestBody {
+  switch (body.case) {
+    case "jsonBody":
+      return {
+        kind: "json",
+        value: toSourceApiJsonValue(toJson(ValueSchema, body.value)),
+      };
+    case "textBody":
+      return {
+        kind: "text",
+        value: body.value,
+      };
+    case "binaryBody":
+      return {
+        kind: "binary",
+        value: body.value,
+      };
+    case undefined:
+      return {
+        kind: "none",
+      };
+  }
+}
+
+function toSourceApiJsonValue(value: JsonValue): SourceApiJsonValue {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toSourceApiJsonValue);
+  }
+
+  const object: Record<string, SourceApiJsonValue> = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    object[key] = toSourceApiJsonValue(nestedValue);
+  }
+
+  return object;
+}
+
+function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
+  switch (value) {
+    case "none":
+      return CliSourceApiInputMode.NONE;
+    case "request_object":
+      return CliSourceApiInputMode.REQUEST_OBJECT;
+    case "request_body":
+      return CliSourceApiInputMode.REQUEST_BODY;
+  }
+}
+
+function toCliSourceApiExample(value: SourceApiExample) {
+  return {
+    command: value.command,
+    description: value.description,
+    label: value.label,
+  };
+}
+
+function toCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
+  return {
+    acceptsInput: value.acceptsInput,
+    inputMode: toCliSourceApiInputMode(value.inputMode),
+    mergePatches: value.mergePatches,
+    supportsArrayPaths: value.supportsArrayPaths,
+    supportsNestedPaths: value.supportsNestedPaths,
+    supportsRawFields: value.allowsRawFields,
+    supportsTypedFields: value.allowsTypedFields,
+  };
+}
+
+function toCliSourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function toCliSourceApiOperation(value: SourceApiOperation) {
+  return {
+    description: value.description,
+    examples: value.examples.map(toCliSourceApiExample),
+    fieldPolicy: toCliSourceApiFieldPolicy(value.fieldPolicy),
+    headerPolicy: {
+      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+    },
+    kind: toCliSourceApiOperationKind(value.kind),
+    methodPolicy: {
+      allowedMethods: [...value.methodPolicy.allowedMethods],
+      defaultMethod: value.methodPolicy.defaultMethod,
+    },
+    name: value.name,
+    notes: [...value.notes],
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    selectorKind: toCliSourceApiSelectorKind(value.selectorKind),
+    selectorLabel: value.selectorLabel,
+    summary: value.summary,
+  };
+}
+
+function toCliSourceApiOperationKind(
+  value: SourceApiOperation["kind"]
+): CliSourceApiOperationKind {
+  switch (value) {
+    case "http_request":
+      return CliSourceApiOperationKind.HTTP_REQUEST;
+    case "structured_request":
+      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+  }
+}
+
+function toCliSourceApiBodyKind(
+  value: SourceApiBodyKind
+): CliSourceApiBodyKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiBodyKind.NONE;
+    case "json":
+      return CliSourceApiBodyKind.JSON;
+    case "text":
+      return CliSourceApiBodyKind.TEXT;
+    case "binary":
+      return CliSourceApiBodyKind.BINARY;
+  }
+}
+
+function toCliSourceApiPaginationPolicy(
+  value: SourceApiOperation["paginationPolicy"]
+): CliSourceApiPaginationPolicy {
+  switch (value) {
+    case "none":
+      return CliSourceApiPaginationPolicy.NONE;
+    case "opaque_token":
+      return CliSourceApiPaginationPolicy.OPAQUE_TOKEN;
+  }
+}
+
+function toCliSourceApiResponseBody(value: SourceApiResponseBody) {
+  switch (value.kind) {
+    case "json":
+      return {
+        case: "json" as const,
+        value: value.value as never,
+      };
+    case "text":
+      return {
+        case: "text" as const,
+        value: value.value,
+      };
+    case "binary":
+      return {
+        case: "binary" as const,
+        value: value.value,
+      };
+    case "none":
+      return {
+        case: undefined,
+        value: undefined,
+      };
+  }
+}
+
+function toCliSourceApiSelectorKind(
+  value: SourceApiOperation["selectorKind"]
+): CliSourceApiSelectorKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiSelectorKind.NONE;
+    case "path":
+      return CliSourceApiSelectorKind.PATH;
+    case "identifier":
+      return CliSourceApiSelectorKind.IDENTIFIER;
+  }
+}
+
+function toCliSourceApiSource(value: SourceApiSource) {
+  return {
+    displayName: value.displayName ?? undefined,
+    key: value.key,
+    provider: value.provider,
+  };
 }

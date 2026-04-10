@@ -122,7 +122,11 @@ pub(super) enum RawCommand {
     },
     /// Upgrade this published CLI installation in place.
     Upgrade,
-    /// Load provider-specific skill content for non-SQL sources.
+    /// Describe or execute a connected source API.
+    #[command(override_usage = "\
+onequery use [OPTIONS] --source <SOURCE_KEY>
+       onequery use [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
+       onequery use [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
     Use(UseArgs),
     /// Inspect local CLI state and diagnostics.
     #[command(hide = true, arg_required_else_help(true))]

@@ -369,14 +369,14 @@ export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
     source: windowedResponse.source,
     truncated: windowedResponse.truncated,
   });
-  const untrustedPaths = resolveQueryExecuteUntrustedPaths(
+  const sanitizedPaths = resolveQueryExecuteSanitizedPaths(
     page.items.length > 0
   );
 
   return {
     ...sanitizeQueryExecuteResponse(data),
     page: buildCliPage(page.page),
-    sanitization: buildCliSanitization(untrustedPaths),
+    sanitization: buildCliSanitization(sanitizedPaths),
   } satisfies ExecuteQueryResponseInit;
 };
 
@@ -804,7 +804,7 @@ function sanitizeQueryExecuteResponse(
   };
 }
 
-function resolveQueryExecuteUntrustedPaths(hasRows: boolean) {
+function resolveQueryExecuteSanitizedPaths(hasRows: boolean) {
   return hasRows
     ? ["$.columns[*].name", "$.rows[*].values[*]"]
     : ["$.columns[*].name"];

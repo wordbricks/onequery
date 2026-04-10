@@ -17,6 +17,7 @@ export const organizationPermissionStatements = {
   cliOrg: ["list", "read"],
   cliQuery: ["execute"],
   cliSource: ["connect", "list", "read"],
+  cliSourceApi: ["describe", "execute"],
 } as const;
 
 export const organizationAccessControl = createAccessControl(
@@ -28,18 +29,21 @@ export const organizationRoles = {
     ...adminAc.statements,
     cliOrg: [...organizationPermissionStatements.cliOrg],
     cliSource: [...organizationPermissionStatements.cliSource],
+    cliSourceApi: [...organizationPermissionStatements.cliSourceApi],
     cliQuery: [...organizationPermissionStatements.cliQuery],
   }),
   member: organizationAccessControl.newRole({
     ...memberAc.statements,
     cliOrg: [...organizationPermissionStatements.cliOrg],
     cliSource: [...organizationPermissionStatements.cliSource],
+    cliSourceApi: [...organizationPermissionStatements.cliSourceApi],
     cliQuery: [...organizationPermissionStatements.cliQuery],
   }),
   owner: organizationAccessControl.newRole({
     ...ownerAc.statements,
     cliOrg: [...organizationPermissionStatements.cliOrg],
     cliSource: [...organizationPermissionStatements.cliSource],
+    cliSourceApi: [...organizationPermissionStatements.cliSourceApi],
     cliQuery: [...organizationPermissionStatements.cliQuery],
   }),
 } as const;
@@ -88,6 +92,12 @@ export const organizationPermissionChecks = {
   cliSourceRead: {
     cliSource: ["read"],
   },
+  cliSourceApiDescribe: {
+    cliSourceApi: ["describe"],
+  },
+  cliSourceApiExecute: {
+    cliSourceApi: ["execute"],
+  },
   invitationCreate: {
     invitation: ["create"],
   },
@@ -108,7 +118,9 @@ export const organizationPermissionChecks = {
   | "cliQueryExecute"
   | "cliSourceList"
   | "cliSourceConnect"
-  | "cliSourceRead",
+  | "cliSourceRead"
+  | "cliSourceApiDescribe"
+  | "cliSourceApiExecute",
   OrganizationPermissionCheck
 >;
 

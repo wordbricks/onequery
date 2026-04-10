@@ -4,6 +4,7 @@ use crate::commands::CommandContext;
 use crate::commands::Runtime;
 use crate::commands::{self};
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
 use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
@@ -20,7 +21,7 @@ enum AppState {
 
 #[derive(Debug)]
 enum AppTerminalState {
-    Completed { output: CommandOutput },
+    Completed { output: TerminalOutput },
     Failed { error: CliError },
 }
 
@@ -92,7 +93,7 @@ where
     .await?;
 
     match final_state {
-        AppTerminalState::Completed { output } => Ok(output),
+        AppTerminalState::Completed { output } => Ok(output.into_inner()),
         AppTerminalState::Failed { error } => Err(error),
     }
 }
@@ -137,7 +138,9 @@ fn reduce(
         },
         AppState::Executing => match event {
             AppEvent::CommandCompleted { output } => {
-                Transition::done(AppTerminalState::Completed { output })
+                Transition::done(AppTerminalState::Completed {
+                    output: TerminalOutput::new(output),
+                })
             }
             AppEvent::CommandFailed { error } => {
                 Transition::done(AppTerminalState::Failed { error })

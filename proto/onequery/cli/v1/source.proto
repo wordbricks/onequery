@@ -19,7 +19,7 @@ message ListSourcesRequest {
 
 message ListSourcesResponse {
   repeated GetSourceResponse sources = 1;
-  optional CliPage page = 2;
+  CliPage page = 2 [(buf.validate.field).required = true];
 }
 
 message GetSourceRequest {
@@ -34,11 +34,20 @@ message GetSourceRequest {
 }
 
 message GetSourceResponse {
-  string name = 1;
-  optional string display_name = 2;
-  CliSourceProvider provider = 3;
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  optional string display_name = 2 [(buf.validate.field).string.min_len = 1];
+  CliSourceProvider provider = 3 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   bool queryable = 4;
-  CliSourceStatus status = 5;
+  CliSourceStatus status = 5 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
 message GetSourceConnectGuideRequest {
@@ -53,11 +62,14 @@ message GetSourceConnectGuideRequest {
 }
 
 message GetSourceConnectGuideResponse {
-  string title = 1;
-  string description = 2;
-  CliContentFormat format = 3;
-  string content = 4;
-  string command = 5;
+  string title = 1 [(buf.validate.field).string.min_len = 1];
+  string description = 2 [(buf.validate.field).string.min_len = 1];
+  CliContentFormat format = 3 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string content = 4 [(buf.validate.field).string.min_len = 1];
+  string command = 5 [(buf.validate.field).string.min_len = 1];
 }
 
 message ConnectSourceRequest {
@@ -361,8 +373,8 @@ message ConnectSourceLinearOAuthCredentials {
 }
 
 message ConnectSourceResponse {
-  GetSourceResponse source = 1;
-  string next_command = 2;
+  GetSourceResponse source = 1 [(buf.validate.field).required = true];
+  string next_command = 2 [(buf.validate.field).string.min_len = 1];
 }
 
 enum CliSourceProvider {

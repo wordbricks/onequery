@@ -2,14 +2,16 @@ syntax = "proto3";
 
 package onequery.cli.v1;
 
+import "buf/validate/validate.proto";
+
 message CliPage {
-  optional string next_cursor = 1;
+  optional string next_cursor = 1 [(buf.validate.field).string.min_len = 1];
   uint64 returned = 2;
   bool has_more = 3;
 }
 
 message CliSanitization {
-  string profile = 1;
+  string profile = 1 [(buf.validate.field).string.min_len = 1];
   repeated string sanitized_paths = 2;
   bool raw_available = 3;
 }

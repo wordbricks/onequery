@@ -18,11 +18,14 @@ import {
   handleGetSourceConnectGuide,
   handleListSources,
 } from "./service/source";
-import { handleUse } from "./service/use";
+import {
+  handleDescribeSourceApi,
+  handleExecuteSourceApi,
+  handleNormalizeSourceApi,
+} from "./service/source_api";
 
 export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
   return {
-    use: handleUse,
     getSession: handleGetSession,
     refreshSession: handleRefreshSession,
     startDeviceAuthorization: handleStartDeviceAuthorization,
@@ -33,6 +36,9 @@ export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
     getSource: handleGetSource,
     getSourceConnectGuide: handleGetSourceConnectGuide,
     connectSource: handleConnectSource,
+    describeSourceApi: handleDescribeSourceApi,
+    normalizeSourceApi: handleNormalizeSourceApi,
+    executeSourceApi: handleExecuteSourceApi,
     validateQuery: handleValidateQuery,
     executeQuery: handleExecuteQuery,
   };

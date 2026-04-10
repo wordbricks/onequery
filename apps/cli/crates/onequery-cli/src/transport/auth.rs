@@ -278,7 +278,7 @@ fn whoami_from_generated(
     Ok(WhoAmI {
         auth_mode: auth_mode_from_generated(response.auth_mode),
         user: auth_user_from_response(user, "session response missing user", request_id)?,
-        active_org: non_empty_option(response.active_org_slug),
+        active_org: response.active_org_slug,
         issued_at: format_timestamp(response.issued_at.into_option()),
         expires_at: format_timestamp(response.expires_at.into_option()),
     })
@@ -312,7 +312,7 @@ fn refreshed_auth_session_from_generated(
             issued_at: format_timestamp(response.issued_at.into_option()),
             expires_at: format_timestamp(response.expires_at.into_option()),
         },
-        active_org: non_empty_option(response.active_org_slug),
+        active_org: response.active_org_slug,
     })
 }
 
@@ -401,10 +401,6 @@ fn auth_mode_from_generated(mode: buffa::EnumValue<types::CliAuthMode>) -> Optio
         Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
         Some(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED) | None => None,
     }
-}
-
-fn non_empty_option(value: Option<String>) -> Option<String> {
-    value.filter(|value| !value.is_empty())
 }
 
 fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>) -> Option<String> {

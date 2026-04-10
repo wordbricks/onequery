@@ -178,15 +178,15 @@ pub(crate) struct OrgListPayload {
 
 fn org_summary_from_generated(summary: types::CliOrganizationSummary) -> OrgSummary {
     OrgSummary {
-        slug: non_empty(summary.slug),
-        name: non_empty(summary.name),
+        slug: Some(summary.slug),
+        name: Some(summary.name),
     }
 }
 
 fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDetails {
     OrgDetails {
-        slug: non_empty(details.slug),
-        name: non_empty(details.name),
+        slug: Some(details.slug),
+        name: Some(details.name),
         roles: Some(details.roles),
         capabilities: Some(
             details
@@ -196,10 +196,6 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
                 .collect(),
         ),
     }
-}
-
-fn non_empty(value: String) -> Option<String> {
-    (!value.is_empty()).then_some(value)
 }
 
 #[cfg(test)]
@@ -262,6 +258,8 @@ mod tests {
             roles: vec!["member".to_owned(), "admin".to_owned()],
             capabilities: vec![
                 types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into(),
+                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
                 types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ.into(),
             ],
             ..Default::default()
@@ -273,7 +271,12 @@ mod tests {
                 slug: Some("acme".to_owned()),
                 name: Some("Acme".to_owned()),
                 roles: Some(vec!["member".to_owned(), "admin".to_owned()]),
-                capabilities: Some(vec!["org.list".to_owned(), "org.read".to_owned()]),
+                capabilities: Some(vec![
+                    "org.list".to_owned(),
+                    "source_api.describe".to_owned(),
+                    "source_api.execute".to_owned(),
+                    "org.read".to_owned(),
+                ]),
             }
         );
     }

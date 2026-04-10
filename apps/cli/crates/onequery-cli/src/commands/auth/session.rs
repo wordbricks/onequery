@@ -5,6 +5,7 @@ use crate::commands::Runtime;
 use crate::commands::auth_session::authenticated_api_client;
 use crate::credentials::AuthSessionSource;
 use crate::output::CommandOutput;
+use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::auth;
@@ -69,13 +70,8 @@ enum SessionRefreshEffect {
 
 #[derive(Debug)]
 enum SessionRefreshTerminalState {
-    Completed {
-        output: CommandOutput,
-        request_id: Option<String>,
-    },
-    Failed {
-        error: CliError,
-    },
+    Completed { output: TerminalOutput },
+    Failed { error: CliError },
 }
 
 async fn execute_refresh<B, T>(
@@ -103,9 +99,7 @@ where
     .await?;
 
     match final_state {
-        SessionRefreshTerminalState::Completed { output, request_id } => {
-            Ok(output.with_request_id(request_id))
-        }
+        SessionRefreshTerminalState::Completed { output } => Ok(output.into_inner()),
         SessionRefreshTerminalState::Failed { error } => Err(error),
     }
 }
@@ -158,7 +152,9 @@ fn reduce(
         },
         SessionRefreshState::PersistingSession => match event {
             SessionRefreshEvent::SessionPersisted { output, request_id } => {
-                Transition::done(SessionRefreshTerminalState::Completed { output, request_id })
+                Transition::done(SessionRefreshTerminalState::Completed {
+                    output: TerminalOutput::new(output.with_request_id(request_id)),
+                })
             }
             SessionRefreshEvent::SessionPersistFailed { error } => {
                 Transition::done(SessionRefreshTerminalState::Failed { error })

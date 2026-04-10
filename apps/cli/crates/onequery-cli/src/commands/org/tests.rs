@@ -235,6 +235,7 @@ fn org_use_dry_run_completes_after_validation_without_persisting() {
         TransitionProgress::Done {
             terminal_state: OrgTerminalState::Completed { output },
         } => {
+            let output = output.into_inner();
             let request_id = output.request_id.clone();
             let data = output.into_data();
 

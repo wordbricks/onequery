@@ -43,6 +43,7 @@ use super::presentation::render_query_output;
 use super::read_controls_from_list_args;
 use super::require_org;
 use super::validate_query_source_key;
+use crate::output::TerminalOutput;
 
 pub(super) async fn run_query_workflow<B, T>(
     args: QueryExecuteArgs,
@@ -193,8 +194,7 @@ pub(super) fn reduce_executing_query(
             request_id,
         } => match render_query_output(*query_result, &state.request.read) {
             Ok(output) => Transition::done(QueryTerminalState::Completed(CompletedState {
-                output,
-                request_id,
+                output: TerminalOutput::new(output.with_request_id(request_id)),
             })),
             Err(error) => Transition::done(failed_state(error)),
         },

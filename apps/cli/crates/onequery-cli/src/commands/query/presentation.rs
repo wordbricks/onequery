@@ -20,7 +20,7 @@ pub(super) fn render_query_output(
     if read.has_field_selection() {
         let data = serialize_command_data(&result, "onequery query")?;
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data)
-            .with_untrusted_output_metadata(output_metadata));
+            .with_sanitization_metadata(output_metadata));
     }
 
     let source = result
@@ -63,7 +63,7 @@ pub(super) fn render_query_output(
     Ok(CommandOutput::try_deferred(lines, move || {
         serialize_command_data(&result, "onequery query")
     })
-    .with_untrusted_output_metadata(output_metadata))
+    .with_sanitization_metadata(output_metadata))
 }
 
 pub(super) fn render_query_validation_output(

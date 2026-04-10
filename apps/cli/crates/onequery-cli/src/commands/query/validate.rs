@@ -36,6 +36,7 @@ use super::presentation::render_query_validation_output;
 use super::read_controls_from_read_args;
 use super::require_org;
 use super::validate_query_source_key;
+use crate::output::TerminalOutput;
 
 pub(super) async fn run_query_validate_workflow<B, T>(
     args: QueryValidateArgs,
@@ -185,8 +186,7 @@ pub(super) fn reduce_validating_query(
             request_id,
         } => match render_query_validation_output(*validation, &state.request.read) {
             Ok(output) => Transition::done(QueryValidateTerminalState::Completed(CompletedState {
-                output,
-                request_id,
+                output: TerminalOutput::new(output.with_request_id(request_id)),
             })),
             Err(error) => Transition::done(validate_failed_state(error)),
         },
