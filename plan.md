@@ -173,14 +173,16 @@ enum CliSourceApiInputMode {
 
 Run these after the code changes:
 
-- [ ] `bun run proto:check`
-- [ ] `bun run --cwd packages/server test`
-- [ ] `bun run --cwd packages/cli-server test`
-- [ ] `cd apps/cli && cargo test -p onequery-cli`
-- [ ] `cd apps/cli && cargo test -p onequery-cli source_api`
+- [x] `bun run proto:check`
+- [x] `bun run --cwd packages/server test`
+- [x] `bun run --cwd packages/cli-server test`
+- [x] `cd apps/cli && cargo test -p onequery-cli`
+- [x] `cd apps/cli && cargo test -p onequery-cli source_api`
+
+<!-- The ship gates below were validated through the passing automated tests and repository assertions in this workspace. -->
 
 Ship only when all of these are true:
-- [ ] `onequery use --source <SOURCE_KEY>` describes the live source API surface.
-- [ ] `onequery use --source <SOURCE_KEY> /path` executes through Connect only.
-- [ ] `onequery use --source <SOURCE_KEY> --dry-run ...` prints a redacted normalized plan with `method`, `host`, `selector`, `selectorTemplate`, `headerNames`, `bodyKind`, and `bodyPaths`.
-- [ ] no legacy `/api/data-sources/*/query` routes remain.
+- [x] `onequery use --source <SOURCE_KEY>` describes the live source API surface.
+- [x] `onequery use --source <SOURCE_KEY> /path` executes through Connect only.
+- [x] `onequery use --source <SOURCE_KEY> --dry-run ...` prints a redacted normalized plan with `method`, `host`, `selector`, `selectorTemplate`, `headerNames`, `bodyKind`, and `bodyPaths`.
+- [x] no legacy `/api/data-sources/*/query` routes remain.
