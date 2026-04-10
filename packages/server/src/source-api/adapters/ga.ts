@@ -8,6 +8,10 @@ import {
   runGoogleAnalyticsDataRequest,
 } from "../../services/google-analytics/relay";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
   normalizeSourceApiContentType,
@@ -41,7 +45,7 @@ export type GoogleAnalyticsSourceApiOperation = z.infer<
   typeof googleAnalyticsSourceApiOperationSchema
 >;
 
-export class GoogleAnalyticsInvalidRequestError extends Error {}
+export class GoogleAnalyticsInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export class GoogleAnalyticsAccessTokenError extends Error {}
 
@@ -103,17 +107,17 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
     });
 
     if (request.pageToken) {
-      throw new Error(
+      throw new GoogleAnalyticsInvalidRequestError(
         `Google Analytics operation "${operation.name}" does not support page tokens`
       );
     }
     if (request.selector?.trim()) {
-      throw new Error(
+      throw new GoogleAnalyticsInvalidRequestError(
         `Google Analytics operation "${operation.name}" does not accept a selector`
       );
     }
     if (request.methodOverride?.trim()) {
-      throw new Error(
+      throw new GoogleAnalyticsInvalidRequestError(
         `Google Analytics operation "${operation.name}" does not support method overrides`
       );
     }
@@ -132,7 +136,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       request: normalizedRequest,
     });
     if (!resolvedPropertyPath) {
-      throw new Error(
+      throw new GoogleAnalyticsInvalidRequestError(
         "Google Analytics property is required in the request or connected source"
       );
     }
@@ -288,7 +292,7 @@ function requireGoogleAnalyticsSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseGoogleAnalyticsSourceApiOperation(
@@ -326,14 +330,14 @@ function parseGoogleAnalyticsRequestBody(
       return {};
     case "json":
       if (!isRecord(body.value)) {
-        throw new Error(
+        throw new GoogleAnalyticsInvalidRequestError(
           "Google Analytics structured requests require a JSON object body"
         );
       }
       return body.value;
     case "text":
     case "binary":
-      throw new Error(
+      throw new GoogleAnalyticsInvalidRequestError(
         "Google Analytics structured requests do not accept text or binary bodies"
       );
   }

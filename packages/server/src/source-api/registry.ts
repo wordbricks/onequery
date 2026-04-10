@@ -7,6 +7,10 @@ import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
+import {
+  SourceApiAdapterNotRegisteredError,
+  SourceApiRegistryConfigurationError,
+} from "./errors";
 import type { SourceApiAdapter } from "./types";
 
 export type SourceApiRegistry = {
@@ -21,9 +25,7 @@ export function createSourceApiRegistry(
 
   for (const adapter of adapters) {
     if (registry.has(adapter.provider)) {
-      throw new Error(
-        `Duplicate source API adapter registration for provider "${adapter.provider}"`
-      );
+      throw new SourceApiRegistryConfigurationError(adapter.provider);
     }
     registry.set(adapter.provider, adapter);
   }
@@ -42,9 +44,7 @@ export function getSourceApiAdapter(
 ): SourceApiAdapter {
   const adapter = registry.get(provider);
   if (!adapter) {
-    throw new Error(
-      `No source API adapter is registered for provider "${provider}"`
-    );
+    throw new SourceApiAdapterNotRegisteredError(provider);
   }
 
   return adapter;

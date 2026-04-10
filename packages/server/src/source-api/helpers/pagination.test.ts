@@ -1,5 +1,8 @@
+import { createHmac } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
+import { SourceApiInvalidRequestError } from "../errors";
 import { decodeOpaquePageToken, encodeOpaquePageToken } from "./pagination";
 
 describe("opaque source-api pagination tokens", () => {
@@ -69,5 +72,25 @@ describe("opaque source-api pagination tokens", () => {
         token,
       })
     ).toThrow("Pagination token request fingerprint mismatch");
+  });
+
+  it("rejects malformed payloads with a typed request error", () => {
+    const payload = Buffer.from("{", "utf8").toString("base64url");
+    const signature = createHmac("sha256", "top-secret")
+      .update(payload)
+      .digest("base64url");
+
+    expect(() =>
+      decodeOpaquePageToken({
+        expected: {
+          operation: "fetch",
+          requestFingerprint: "fingerprint_123",
+          sourceKey: "github-prod",
+        },
+        now: new Date("2026-04-09T12:01:00.000Z"),
+        secret: "top-secret",
+        token: `${payload}.${signature}`,
+      })
+    ).toThrow(SourceApiInvalidRequestError);
   });
 });

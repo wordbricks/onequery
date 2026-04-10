@@ -12,6 +12,10 @@ import {
   serializeQueryParam,
 } from "../../services/provider-utils";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
@@ -63,7 +67,7 @@ export type SentryTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class SentryInvalidRequestError extends Error {}
+export class SentryInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const sentrySourceApiAdapter: SourceApiAdapter = {
   provider: "sentry",
@@ -109,7 +113,7 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
     });
 
     if (request.pageToken) {
-      throw new Error(
+      throw new SentryInvalidRequestError(
         `Sentry operation "${operation.name}" does not support page tokens`
       );
     }
@@ -121,7 +125,9 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
       policy: operation.methodPolicy,
     });
     if (request.body.kind !== "none" && method === "GET") {
-      throw new Error("GET requests cannot include a request body");
+      throw new SentryInvalidRequestError(
+        "GET requests cannot include a request body"
+      );
     }
 
     validateSentryRequestBody(request.body);
@@ -265,7 +271,7 @@ function requireSentrySourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseSentryFieldPatch(
@@ -275,7 +281,12 @@ function parseSentryFieldPatch(
     return {};
   }
 
-  return sentryFieldPatchSchema.parse(value);
+  const parsed = sentryFieldPatchSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new SentryInvalidRequestError("Invalid Sentry field patch");
 }
 
 function requireSentryCredentials(

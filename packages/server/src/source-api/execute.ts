@@ -1,5 +1,6 @@
 import { authorizeSourceApi } from "./authorize";
 import { describeSourceApi } from "./describe";
+import { readSourceApiErrorMessage } from "./errors";
 import { normalizeSourceApiRequest } from "./normalize";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
@@ -17,7 +18,7 @@ export class SourceApiExecutionStageError extends Error {
   readonly stage: SourceApiExecutionStage;
 
   constructor(stage: SourceApiExecutionStage, cause: unknown) {
-    super(readSourceApiExecutionErrorMessage(cause), {
+    super(readSourceApiErrorMessage(cause), {
       cause: cause instanceof Error ? cause : undefined,
     });
     this.name = "SourceApiExecutionStageError";
@@ -92,12 +93,4 @@ function toSourceApiExecutionStageError(
   }
 
   return new SourceApiExecutionStageError(stage, error);
-}
-
-function readSourceApiExecutionErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return String(error);
 }

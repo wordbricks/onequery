@@ -16,6 +16,10 @@ import {
   serializeQueryParam,
 } from "../../services/provider-utils";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
@@ -142,7 +146,7 @@ export type MixpanelTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class MixpanelInvalidRequestError extends Error {}
+export class MixpanelInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const mixpanelSourceApiAdapter: SourceApiAdapter = {
   provider: "mixpanel",
@@ -233,7 +237,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
     });
 
     if (request.pageToken) {
-      throw new Error(
+      throw new MixpanelInvalidRequestError(
         `Mixpanel operation "${operation.name}" does not support page tokens`
       );
     }
@@ -245,12 +249,12 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
 
     if (operation.name === "query_engage") {
       if (request.selector?.trim()) {
-        throw new Error(
+        throw new MixpanelInvalidRequestError(
           'Mixpanel operation "query_engage" does not accept a selector'
         );
       }
       if (request.methodOverride?.trim()) {
-        throw new Error(
+        throw new MixpanelInvalidRequestError(
           'Mixpanel operation "query_engage" does not support method overrides'
         );
       }
@@ -277,12 +281,12 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
 
     if (operation.name === "query_segmentation") {
       if (request.selector?.trim()) {
-        throw new Error(
+        throw new MixpanelInvalidRequestError(
           'Mixpanel operation "query_segmentation" does not accept a selector'
         );
       }
       if (request.methodOverride?.trim()) {
-        throw new Error(
+        throw new MixpanelInvalidRequestError(
           'Mixpanel operation "query_segmentation" does not support method overrides'
         );
       }
@@ -313,7 +317,9 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       policy: operation.methodPolicy,
     });
     if (request.body.kind !== "none" && method === "GET") {
-      throw new Error("GET requests cannot include a request body");
+      throw new MixpanelInvalidRequestError(
+        "GET requests cannot include a request body"
+      );
     }
 
     validateMixpanelHttpRequestBody(request.body);
@@ -347,7 +353,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
     }
 
     if (request.selector?.trim()) {
-      throw new Error(
+      throw new MixpanelInvalidRequestError(
         'Mixpanel operation "export_events" does not accept a selector'
       );
     }
@@ -651,7 +657,7 @@ function requireMixpanelSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseMixpanelSourceApiOperation(
@@ -701,7 +707,12 @@ function parseMixpanelHttpFieldPatch(
     return {};
   }
 
-  return mixpanelHttpFieldPatchSchema.parse(value);
+  const parsed = mixpanelHttpFieldPatchSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new MixpanelInvalidRequestError("Invalid Mixpanel HTTP field patch");
 }
 
 function parseMixpanelStructuredRequestBody(

@@ -1,5 +1,6 @@
 export * from "./authorize";
 export * from "./describe";
+export * from "./errors";
 export * from "./execute";
 export * from "./normalize";
 export * from "./registry";

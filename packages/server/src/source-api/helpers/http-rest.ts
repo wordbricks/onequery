@@ -1,3 +1,4 @@
+import { SourceApiInvalidRequestError } from "../errors";
 import type {
   SourceApiExample,
   SourceApiFieldPolicy,
@@ -79,7 +80,9 @@ export function resolveHttpMethodOverride(input: {
   const method = (input.methodOverride ?? fallback).trim().toUpperCase();
 
   if (!input.policy.allowedMethods.includes(method)) {
-    throw new Error(`Unsupported HTTP method override: ${method}`);
+    throw new SourceApiInvalidRequestError(
+      `Unsupported HTTP method override: ${method}`
+    );
   }
 
   return method;
@@ -98,13 +101,19 @@ export function normalizeAllowedHeaders(input: {
     const name = header.name.trim();
     const lowerName = name.toLowerCase();
     if (name.length === 0) {
-      throw new Error("Request headers must include a name");
+      throw new SourceApiInvalidRequestError(
+        "Request headers must include a name"
+      );
     }
     if (!allowlist.has(lowerName)) {
-      throw new Error(`Unsupported request header: ${name}`);
+      throw new SourceApiInvalidRequestError(
+        `Unsupported request header: ${name}`
+      );
     }
     if (seen.has(lowerName)) {
-      throw new Error(`Duplicate request header: ${name}`);
+      throw new SourceApiInvalidRequestError(
+        `Duplicate request header: ${name}`
+      );
     }
     seen.add(lowerName);
 

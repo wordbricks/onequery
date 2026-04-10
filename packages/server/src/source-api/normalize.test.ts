@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { SourceApiDescriptorVersionMismatchError } from "./errors";
 import {
   createSourceApiRequestFingerprint,
   finalizeNormalizedExecutionPlan,
@@ -145,20 +146,23 @@ describe("normalizeSourceApiRequest", () => {
 
     const registry = createSourceApiRegistry([adapter]);
 
-    await expect(
-      normalizeSourceApiRequest({
-        actor,
-        descriptor,
-        registry,
-        request: {
-          body: { kind: "none" },
-          descriptorVersion: "github.v2",
-          headers: [],
-          operation: "fetch",
-        },
-        source,
-      })
-    ).rejects.toThrow(
+    const normalization = normalizeSourceApiRequest({
+      actor,
+      descriptor,
+      registry,
+      request: {
+        body: { kind: "none" },
+        descriptorVersion: "github.v2",
+        headers: [],
+        operation: "fetch",
+      },
+      source,
+    });
+
+    await expect(normalization).rejects.toBeInstanceOf(
+      SourceApiDescriptorVersionMismatchError
+    );
+    await expect(normalization).rejects.toThrow(
       'descriptor_version mismatch: expected "github.v1", received "github.v2"'
     );
   });

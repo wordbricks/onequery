@@ -13,6 +13,10 @@ import {
   serializeQueryParam,
 } from "../../services/provider-utils";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
@@ -221,12 +225,16 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
     if (request.pageToken) {
-      throw new Error('GitHub operation "fetch" does not support page tokens');
+      throw new SourceApiInvalidRequestError(
+        'GitHub operation "fetch" does not support page tokens'
+      );
     }
 
     const selector = request.selector?.trim();
     if (!selector) {
-      throw new Error('GitHub operation "fetch" requires a selector');
+      throw new SourceApiInvalidRequestError(
+        'GitHub operation "fetch" requires a selector'
+      );
     }
 
     const fieldPatch = parseGitHubFieldPatch(request.fieldPatch);
@@ -238,7 +246,9 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       request.body.kind !== "none" &&
       (method === "GET" || method === "HEAD")
     ) {
-      throw new Error("GET and HEAD requests cannot include a request body");
+      throw new SourceApiInvalidRequestError(
+        "GET and HEAD requests cannot include a request body"
+      );
     }
 
     const headers = normalizeAllowedHeaders({
@@ -304,7 +314,7 @@ export function buildGitHubUrl(input: {
       (selectedRepositories.length === 1 ? selectedRepositories[0] : undefined);
 
     if (!resolvedRepository) {
-      throw new Error(
+      throw new SourceApiInvalidRequestError(
         selectedRepositories.length > 1
           ? "multiple repositories are connected; pass repository as <owner>/<repo>"
           : "repo-scoped selectors require repository or an explicit /repos/<owner>/<repo> path"
@@ -328,7 +338,7 @@ export function buildGitHubUrl(input: {
       requestedRepository &&
       urlRepository.toLowerCase() !== requestedRepository.toLowerCase()
     ) {
-      throw new Error(
+      throw new SourceApiInvalidRequestError(
         `repository (${requestedRepository}) does not match selector repository (${urlRepository})`
       );
     }
@@ -336,7 +346,9 @@ export function buildGitHubUrl(input: {
 
   for (const [key, value] of Object.entries(input.params ?? {})) {
     if (BLOCKED_QUERY_PARAM_NAMES.has(key.toLowerCase())) {
-      throw new Error(`GitHub request param "${key}" is not allowed`);
+      throw new SourceApiInvalidRequestError(
+        `GitHub request param "${key}" is not allowed`
+      );
     }
 
     const serialized = serializeQueryParam(value);
@@ -458,7 +470,7 @@ function requireGitHubSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseGitHubFieldPatch(
@@ -468,7 +480,12 @@ function parseGitHubFieldPatch(
     return {};
   }
 
-  return GitHubFieldPatchSchema.parse(value);
+  const parsed = GitHubFieldPatchSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new SourceApiInvalidRequestError("Invalid GitHub field patch");
 }
 
 function requireGitHubCredentials(
@@ -543,7 +560,9 @@ function normalizeRepositoryFullName(repository: string): string {
   const trimmed = repository.trim().replace(/^\/+|\/+$/g, "");
   const parts = trimmed.split("/").filter((part) => part.length > 0);
   if (parts.length !== 2) {
-    throw new Error("repository must be in the format <owner>/<repo>");
+    throw new SourceApiInvalidRequestError(
+      "repository must be in the format <owner>/<repo>"
+    );
   }
   return `${parts[0]}/${parts[1]}`;
 }
@@ -594,7 +613,7 @@ function assertRepositoryAllowed(input: {
       (allowed) => allowed.toLowerCase() === input.repository.toLowerCase()
     )
   ) {
-    throw new Error(
+    throw new SourceApiInvalidRequestError(
       `repository "${input.repository}" is not connected to this GitHub data source`
     );
   }
@@ -603,37 +622,46 @@ function assertRepositoryAllowed(input: {
 function normalizeGitHubApiUrl(endpoint: string): URL {
   const normalizedEndpoint = endpoint.trim();
   if (normalizedEndpoint.length === 0) {
-    throw new Error("endpoint is required");
+    throw new SourceApiInvalidRequestError("endpoint is required");
   }
 
-  const url = normalizedEndpoint.startsWith("https://")
-    ? new URL(normalizedEndpoint)
-    : new URL(
-        normalizedEndpoint.startsWith("/")
-          ? normalizedEndpoint
-          : `/${normalizedEndpoint}`,
-        `${GITHUB_API_BASE_URL}/`
-      );
+  let url: URL;
+  try {
+    url = normalizedEndpoint.startsWith("https://")
+      ? new URL(normalizedEndpoint)
+      : new URL(
+          normalizedEndpoint.startsWith("/")
+            ? normalizedEndpoint
+            : `/${normalizedEndpoint}`,
+          `${GITHUB_API_BASE_URL}/`
+        );
+  } catch {
+    throw new SourceApiInvalidRequestError("Invalid GitHub endpoint");
+  }
 
   if (url.protocol !== "https:") {
-    throw new Error("GitHub endpoint must use https");
+    throw new SourceApiInvalidRequestError("GitHub endpoint must use https");
   }
 
   if (
     url.origin !== GITHUB_API_BASE_URL &&
     url.origin !== GITHUB_UPLOADS_API_BASE_URL
   ) {
-    throw new Error(
+    throw new SourceApiInvalidRequestError(
       "GitHub endpoint must target api.github.com or uploads.github.com"
     );
   }
 
   if (url.username.length > 0 || url.password.length > 0) {
-    throw new Error("GitHub endpoint must not include URL credentials");
+    throw new SourceApiInvalidRequestError(
+      "GitHub endpoint must not include URL credentials"
+    );
   }
 
   if (url.hash.length > 0) {
-    throw new Error("GitHub endpoint must not include a fragment");
+    throw new SourceApiInvalidRequestError(
+      "GitHub endpoint must not include a fragment"
+    );
   }
 
   return url;
@@ -642,7 +670,7 @@ function normalizeGitHubApiUrl(endpoint: string): URL {
 function assertGitHubQueryParamsAllowed(url: URL): void {
   for (const key of url.searchParams.keys()) {
     if (BLOCKED_QUERY_PARAM_NAMES.has(key.toLowerCase())) {
-      throw new Error(
+      throw new SourceApiInvalidRequestError(
         `GitHub endpoint query parameter "${key}" is not allowed`
       );
     }
@@ -661,7 +689,9 @@ function normalizeGitHubHeaders(
     }
 
     if (hasControlCharacters(normalizedKey) || hasControlCharacters(value)) {
-      throw new Error(`Invalid GitHub header: ${normalizedKey}`);
+      throw new SourceApiInvalidRequestError(
+        `Invalid GitHub header: ${normalizedKey}`
+      );
     }
 
     const lowerKey = normalizedKey.toLowerCase();

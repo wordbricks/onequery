@@ -1,6 +1,13 @@
 import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
-import { SourceApiExecutionStageError } from "@onequery/server/source-api";
+import {
+  SourceApiAdapterNotRegisteredError,
+  SourceApiDescriptorVersionMismatchError,
+  SourceApiExecutionStageError,
+  SourceApiInvalidRequestError,
+  SourceApiPermissionDeniedError,
+  SourceApiUnsupportedOperationError,
+} from "@onequery/server/source-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -51,6 +58,16 @@ const loadedSource = {
     id: "source-1",
     provider: "github",
     sourceKey: "github-prod",
+  },
+} as const;
+
+const postgresLoadedSource = {
+  ...loadedSource,
+  source: {
+    ...loadedSource.source,
+    displayName: "Postgres Prod",
+    provider: "postgres",
+    sourceKey: "postgres-prod",
   },
 } as const;
 
@@ -326,6 +343,75 @@ describe("source api connect service", () => {
     expect(harness.dependencies.describeSourceApi).not.toHaveBeenCalled();
   });
 
+  it("maps unsupported describe providers to invalid arguments", async () => {
+    const harness = createHarness();
+    harness.dependencies.runCliLoadSourceEffect.mockResolvedValue(
+      postgresLoadedSource
+    );
+    harness.dependencies.describeSourceApi.mockRejectedValue(
+      new SourceApiAdapterNotRegisteredError("postgres")
+    );
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "postgres-prod",
+    });
+
+    await expect(
+      harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.InvalidArgument);
+      expect((error as ConnectError).message).toContain(
+        'No source API adapter is registered for provider "postgres"'
+      );
+      return true;
+    });
+
+    expect(harness.dependencies.describeSourceApi).toHaveBeenCalledWith({
+      actor: {
+        capabilities: authorizedOrg.capabilities,
+        membershipRoles: authorizedOrg.membershipRoles,
+        organizationId: "org-1",
+        organizationSlug: "acme",
+        requestId: "req_cli_123",
+        userId: "user-1",
+      },
+      source: {
+        credentials: preparedSource.credentials,
+        displayName: "Postgres Prod",
+        id: "source-1",
+        provider: "postgres",
+        sourceKey: "postgres-prod",
+      },
+    });
+  });
+
+  it("maps unexpected describe failures to unknown", async () => {
+    const harness = createHarness();
+    harness.dependencies.describeSourceApi.mockRejectedValue(
+      new Error("unexpected describe failure")
+    );
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expect(
+      harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.Unknown);
+      expect((error as ConnectError).message).toContain(
+        "unexpected describe failure"
+      );
+      return true;
+    });
+  });
+
   it("executes the source API through the Connect handler", async () => {
     const harness = createHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -502,12 +588,73 @@ describe("source api connect service", () => {
     expect((response.plan as Record<string, unknown>).url).toBeUndefined();
   });
 
+  it("maps unsupported normalize providers to invalid arguments", async () => {
+    const harness = createHarness();
+    harness.dependencies.runCliLoadSourceEffect.mockResolvedValue(
+      postgresLoadedSource
+    );
+    harness.dependencies.describeSourceApi.mockRejectedValue(
+      new SourceApiAdapterNotRegisteredError("postgres")
+    );
+    const request = create(NormalizeSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "postgres-prod",
+      },
+    });
+
+    await expect(
+      harness.handleNormalizeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.InvalidArgument);
+      expect((error as ConnectError).message).toContain(
+        'No source API adapter is registered for provider "postgres"'
+      );
+      return true;
+    });
+
+    expect(
+      harness.dependencies.normalizeSourceApiRequest
+    ).not.toHaveBeenCalled();
+  });
+
+  it("maps unexpected normalize request failures to unknown", async () => {
+    const harness = createHarness();
+    harness.dependencies.normalizeSourceApiRequest.mockRejectedValue(
+      new Error("unexpected normalize failure")
+    );
+    const request = create(NormalizeSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+    });
+
+    await expect(
+      harness.handleNormalizeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.Unknown);
+      expect((error as ConnectError).message).toContain(
+        "unexpected normalize failure"
+      );
+      return true;
+    });
+  });
+
   it("rejects unsupported operations as invalid arguments", async () => {
     const harness = createHarness();
     harness.executeSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "normalize",
-        new Error("Unsupported source API operation: mutate")
+        new SourceApiUnsupportedOperationError("mutate")
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -539,7 +686,9 @@ describe("source api connect service", () => {
     harness.executeSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "normalize",
-        new Error("Unsupported request header: authorization")
+        new SourceApiInvalidRequestError(
+          "Unsupported request header: authorization"
+        )
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -572,12 +721,45 @@ describe("source api connect service", () => {
     expect(harness.executeSourceApi).toHaveBeenCalledTimes(1);
   });
 
+  it("maps unexpected normalize execution failures to unknown", async () => {
+    const harness = createHarness();
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "normalize",
+        new Error("unexpected normalize bug")
+      )
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.Unknown);
+      expect((error as ConnectError).message).toContain(
+        "unexpected normalize bug"
+      );
+      return true;
+    });
+  });
+
   it("maps descriptor version mismatches to failed precondition", async () => {
     const harness = createHarness();
     harness.executeSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "normalize",
-        new Error("descriptor_version mismatch: stale descriptor")
+        new SourceApiDescriptorVersionMismatchError({
+          expectedDescriptorVersion: "github-v1",
+          receivedDescriptorVersion: "github-v0",
+        })
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -596,7 +778,7 @@ describe("source api connect service", () => {
       expect(error).toBeInstanceOf(ConnectError);
       expect((error as ConnectError).code).toBe(Code.FailedPrecondition);
       expect((error as ConnectError).message).toContain(
-        "descriptor_version mismatch: stale descriptor"
+        'descriptor_version mismatch: expected "github-v1", received "github-v0"'
       );
       return true;
     });
@@ -607,9 +789,10 @@ describe("source api connect service", () => {
     harness.executeSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "authorize",
-        new Error(
-          'Actor "user-1" is not allowed to execute source API operation "fetch"'
-        )
+        new SourceApiPermissionDeniedError({
+          operation: "fetch",
+          userId: "user-1",
+        })
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
@@ -630,6 +813,31 @@ describe("source api connect service", () => {
       expect((error as ConnectError).message).toContain(
         'Actor "user-1" is not allowed to execute source API operation "fetch"'
       );
+      return true;
+    });
+  });
+
+  it("maps unexpected source api authorization failures to unknown", async () => {
+    const harness = createHarness();
+    harness.executeSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError("authorize", new Error("authorize bug"))
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+    });
+
+    await expect(
+      harness.handleExecuteSourceApi(request, {
+        values: new Map(),
+      } as never)
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(ConnectError);
+      expect((error as ConnectError).code).toBe(Code.Unknown);
+      expect((error as ConnectError).message).toContain("authorize bug");
       return true;
     });
   });

@@ -5,11 +5,15 @@ import {
   describeSourceApi,
   executeSourceApi,
   normalizeSourceApiRequest,
+  SourceApiDescriptorVersionMismatchError,
   SourceApiExecutionStageError,
+  SourceApiPermissionDeniedError,
+  SourceApiRequestError,
 } from "@onequery/server/source-api";
 import type {
   PreparedSourceConnection,
   SourceApiActorContext,
+  SourceApiDescriptor,
 } from "@onequery/server/source-api";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
@@ -87,6 +91,26 @@ function buildSourceApiActor(input: {
     requestId: input.requestId,
     userId: input.session.user.id,
   };
+}
+
+async function resolveSourceApiDescriptor(
+  input: {
+    actor: SourceApiActorContext;
+    source: PreparedSourceConnection;
+  },
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "describeSourceApi" | "toCliErrorMessage"
+  >
+): Promise<SourceApiDescriptor> {
+  return Promise.resolve()
+    .then(() => dependencies.describeSourceApi(input))
+    .catch((error: unknown) => {
+      throw toSourceApiRequestConnectError(
+        error,
+        dependencies.toCliErrorMessage
+      );
+    });
 }
 
 async function requirePreparedCliSourceApiSource(input: {
@@ -180,10 +204,13 @@ export function createHandleDescribeSourceApi(
       requestId: requestContext.requestId,
       session,
     });
-    const descriptor = await resolvedDependencies.describeSourceApi({
-      actor,
-      source,
-    });
+    const descriptor = await resolveSourceApiDescriptor(
+      {
+        actor,
+        source,
+      },
+      resolvedDependencies
+    );
 
     resolvedDependencies.logCliEvent({
       details: resolvedDependencies.buildCliRequestLogDetails(c, {
@@ -237,10 +264,13 @@ export function createHandleNormalizeSourceApi(
       requestId: requestContext.requestId,
       session,
     });
-    const descriptor = await resolvedDependencies.describeSourceApi({
-      actor,
-      source,
-    });
+    const descriptor = await resolveSourceApiDescriptor(
+      {
+        actor,
+        source,
+      },
+      resolvedDependencies
+    );
     const normalizedRequest = fromCliNormalizeSourceApiRequest(request);
     const plan = await Promise.resolve()
       .then(() =>
@@ -356,11 +386,30 @@ function toSourceApiRequestConnectError(
   }
 
   const detail = renderError(error);
-  if (detail.startsWith("descriptor_version mismatch:")) {
+  if (error instanceof SourceApiDescriptorVersionMismatchError) {
     return new ConnectError(detail, Code.FailedPrecondition);
   }
 
-  return new ConnectError(detail, Code.InvalidArgument);
+  if (error instanceof SourceApiRequestError) {
+    return new ConnectError(detail, Code.InvalidArgument);
+  }
+
+  return new ConnectError(detail, Code.Unknown);
+}
+
+function toSourceApiAuthorizeConnectError(
+  error: unknown,
+  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
+) {
+  if (error instanceof ConnectError) {
+    return error;
+  }
+
+  if (error instanceof SourceApiPermissionDeniedError) {
+    return new ConnectError(renderError(error), Code.PermissionDenied);
+  }
+
+  return new ConnectError(renderError(error), Code.Unknown);
 }
 
 function toSourceApiExecuteConnectError(
@@ -376,10 +425,7 @@ function toSourceApiExecuteConnectError(
       case "normalize":
         return toSourceApiRequestConnectError(error.cause, renderError);
       case "authorize":
-        return new ConnectError(
-          renderError(error.cause),
-          Code.PermissionDenied
-        );
+        return toSourceApiAuthorizeConnectError(error.cause, renderError);
       case "execute":
         return new ConnectError(renderError(error.cause), Code.Unknown);
     }

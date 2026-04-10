@@ -1,3 +1,4 @@
+import { SourceApiPermissionDeniedError } from "./errors";
 import type { NormalizedExecutionPlan, SourceApiActorContext } from "./types";
 
 export const SOURCE_API_ACTIONS = {
@@ -22,8 +23,9 @@ export async function authorizeSourceApi(input: {
       actor: input.actor,
     })
   ) {
-    throw new Error(
-      `Actor "${input.actor.userId}" is not allowed to execute source API operation "${input.plan.operation}"`
-    );
+    throw new SourceApiPermissionDeniedError({
+      operation: input.plan.operation,
+      userId: input.actor.userId,
+    });
   }
 }

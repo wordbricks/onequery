@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { SourceApiInvalidRequestError } from "../errors";
 import type { SourceApiPaginationTokenPayload } from "../types";
 
 type DecodeOpaquePageTokenInput = {
@@ -34,7 +35,7 @@ export function decodeOpaquePageToken(
 ): SourceApiPaginationTokenPayload {
   const [encodedPayload, signature] = input.token.split(".", 2);
   if (!encodedPayload || !signature) {
-    throw new Error("Invalid pagination token");
+    throw new SourceApiInvalidRequestError("Invalid pagination token");
   }
 
   const expectedSignature = signTokenPayload(encodedPayload, input.secret);
@@ -44,36 +45,56 @@ export function decodeOpaquePageToken(
       Buffer.from(expectedSignature, "utf8")
     )
   ) {
-    throw new Error("Invalid pagination token signature");
+    throw new SourceApiInvalidRequestError(
+      "Invalid pagination token signature"
+    );
   }
 
-  const payload = JSON.parse(
-    Buffer.from(fromBase64Url(encodedPayload), "base64url").toString("utf8")
-  ) as SourceApiPaginationTokenPayload;
+  const payload = readPaginationTokenPayload(encodedPayload);
 
   if (payload.sourceKey !== input.expected.sourceKey) {
-    throw new Error("Pagination token source key mismatch");
+    throw new SourceApiInvalidRequestError(
+      "Pagination token source key mismatch"
+    );
   }
   if (payload.operation !== input.expected.operation) {
-    throw new Error("Pagination token operation mismatch");
+    throw new SourceApiInvalidRequestError(
+      "Pagination token operation mismatch"
+    );
   }
   if (payload.requestFingerprint !== input.expected.requestFingerprint) {
-    throw new Error("Pagination token request fingerprint mismatch");
+    throw new SourceApiInvalidRequestError(
+      "Pagination token request fingerprint mismatch"
+    );
   }
   if (
     payload.descriptorVersion !== undefined &&
     payload.descriptorVersion !== input.expected.descriptorVersion
   ) {
-    throw new Error("Pagination token descriptor version mismatch");
+    throw new SourceApiInvalidRequestError(
+      "Pagination token descriptor version mismatch"
+    );
   }
 
   const now = input.now ?? new Date();
   const expiresAt = new Date(payload.expiresAt);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt <= now) {
-    throw new Error("Pagination token expired");
+    throw new SourceApiInvalidRequestError("Pagination token expired");
   }
 
   return payload;
+}
+
+function readPaginationTokenPayload(
+  encodedPayload: string
+): SourceApiPaginationTokenPayload {
+  try {
+    return JSON.parse(
+      Buffer.from(fromBase64Url(encodedPayload), "base64url").toString("utf8")
+    ) as SourceApiPaginationTokenPayload;
+  } catch {
+    throw new SourceApiInvalidRequestError("Invalid pagination token");
+  }
 }
 
 function signTokenPayload(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { executeSourceApi } from "./execute";
+import { SourceApiPermissionDeniedError } from "./errors";
+import { executeSourceApi, SourceApiExecutionStageError } from "./execute";
 import { createSourceApiRegistry } from "./registry";
 import type { PreparedSourceConnection, SourceApiAdapter } from "./types";
 
@@ -145,9 +146,17 @@ describe("executeSourceApi", () => {
         },
         source,
       })
-    ).rejects.toThrow(
-      'Actor "user_1" is not allowed to execute source API operation "fetch"'
-    );
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(error).toBeInstanceOf(SourceApiExecutionStageError);
+      expect((error as SourceApiExecutionStageError).stage).toBe("authorize");
+      expect((error as SourceApiExecutionStageError).cause).toBeInstanceOf(
+        SourceApiPermissionDeniedError
+      );
+      expect((error as Error).message).toContain(
+        'Actor "user_1" is not allowed to execute source API operation "fetch"'
+      );
+      return true;
+    });
 
     expect(calls).toEqual(["describe", "normalize"]);
   });

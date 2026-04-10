@@ -9,6 +9,10 @@ import {
   listMongoDatabases,
 } from "../../services/mongodb/relay";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
 } from "../helpers/http-rest";
@@ -110,7 +114,7 @@ const DEFAULT_MONGODB_SOURCE_API_DEPENDENCIES: MongoDbSourceApiDependencies = {
   listDatabases: listMongoDatabases,
 };
 
-export class MongoDbInvalidRequestError extends Error {}
+export class MongoDbInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export function createMongoDbSourceApiAdapter(
   dependencies: MongoDbSourceApiDependencies = DEFAULT_MONGODB_SOURCE_API_DEPENDENCIES
@@ -198,12 +202,12 @@ export function createMongoDbSourceApiAdapter(
       });
 
       if (request.pageToken) {
-        throw new Error(
+        throw new MongoDbInvalidRequestError(
           `MongoDB operation "${operation.name}" does not support page tokens`
         );
       }
       if (request.methodOverride?.trim()) {
-        throw new Error(
+        throw new MongoDbInvalidRequestError(
           `MongoDB operation "${operation.name}" does not support method overrides`
         );
       }
@@ -352,7 +356,7 @@ function requireMongoDbSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseMongoDbSourceApiOperation(

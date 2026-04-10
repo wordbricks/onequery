@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 
+import {
+  SourceApiDescriptorVersionMismatchError,
+  SourceApiUnsupportedOperationError,
+} from "./errors";
 import { finalizeSourceApiPolicyPlan } from "./policy";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
@@ -33,7 +37,7 @@ export function requireSourceApiOperation(input: {
     input.operationName
   );
   if (!operation) {
-    throw new Error(`Unsupported source API operation: ${input.operationName}`);
+    throw new SourceApiUnsupportedOperationError(input.operationName);
   }
 
   return operation;
@@ -66,9 +70,10 @@ export async function normalizeSourceApiRequest(input: {
     input.request.descriptorVersion &&
     input.request.descriptorVersion !== input.descriptor.descriptorVersion
   ) {
-    throw new Error(
-      `descriptor_version mismatch: expected "${input.descriptor.descriptorVersion}", received "${input.request.descriptorVersion}"`
-    );
+    throw new SourceApiDescriptorVersionMismatchError({
+      expectedDescriptorVersion: input.descriptor.descriptorVersion,
+      receivedDescriptorVersion: input.request.descriptorVersion,
+    });
   }
 
   const registry = input.registry ?? sourceApiRegistry;

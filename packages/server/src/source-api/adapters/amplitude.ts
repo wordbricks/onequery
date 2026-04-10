@@ -9,6 +9,10 @@ import {
   serializeQueryParam,
 } from "../../services/provider-utils";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
@@ -58,7 +62,7 @@ export type AmplitudeTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class AmplitudeInvalidRequestError extends Error {}
+export class AmplitudeInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const amplitudeSourceApiAdapter: SourceApiAdapter = {
   provider: "amplitude",
@@ -104,7 +108,7 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
     });
 
     if (request.pageToken) {
-      throw new Error(
+      throw new AmplitudeInvalidRequestError(
         `Amplitude operation "${operation.name}" does not support page tokens`
       );
     }
@@ -116,7 +120,9 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
       policy: operation.methodPolicy,
     });
     if (request.body.kind !== "none" && method === "GET") {
-      throw new Error("GET requests cannot include a request body");
+      throw new AmplitudeInvalidRequestError(
+        "GET requests cannot include a request body"
+      );
     }
 
     validateAmplitudeRequestBody(request.body);
@@ -252,7 +258,7 @@ function requireAmplitudeSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function parseAmplitudeFieldPatch(
@@ -262,7 +268,12 @@ function parseAmplitudeFieldPatch(
     return {};
   }
 
-  return amplitudeFieldPatchSchema.parse(value);
+  const parsed = amplitudeFieldPatchSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new AmplitudeInvalidRequestError("Invalid Amplitude field patch");
 }
 
 function requireAmplitudeCredentials(

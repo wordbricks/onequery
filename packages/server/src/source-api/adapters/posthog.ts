@@ -9,6 +9,10 @@ import {
 import { ProviderHttpClient } from "../../services/provider-http-client";
 import { hasControlCharacters } from "../../services/provider-utils";
 import {
+  SourceApiInvalidRequestError,
+  SourceApiUnsupportedOperationError,
+} from "../errors";
+import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
   readSourceApiHttpTransportResponse,
@@ -57,7 +61,7 @@ export type PostHogTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class PostHogInvalidRequestError extends Error {}
+export class PostHogInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const postHogSourceApiAdapter: SourceApiAdapter = {
   provider: "posthog",
@@ -94,17 +98,17 @@ export const postHogSourceApiAdapter: SourceApiAdapter = {
     });
 
     if (request.pageToken) {
-      throw new Error(
+      throw new PostHogInvalidRequestError(
         `PostHog operation "${operation.name}" does not support page tokens`
       );
     }
     if (request.selector?.trim()) {
-      throw new Error(
+      throw new PostHogInvalidRequestError(
         `PostHog operation "${operation.name}" does not accept a selector`
       );
     }
     if (request.methodOverride?.trim()) {
-      throw new Error(
+      throw new PostHogInvalidRequestError(
         `PostHog operation "${operation.name}" does not support method overrides`
       );
     }
@@ -203,7 +207,7 @@ function requirePostHogSourceApiOperation(input: {
     return operation;
   }
 
-  throw new Error(`Unsupported source API operation: ${input.operationName}`);
+  throw new SourceApiUnsupportedOperationError(input.operationName);
 }
 
 function requirePostHogCredentials(
