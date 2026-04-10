@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { mixpanelSourceApiAdapter } from "./mixpanel";
 
@@ -83,14 +84,18 @@ describe("mixpanel source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "http_request",
       method: "GET",
       operation: "fetch_query_api",
       selector: "/query/events/top",
+      selectorTemplate: "/{path}",
       url: "https://mixpanel.com/api/query/events/top?from_date=2026-03-01&to_date=2026-03-07&type=general&project_id=123&workspace_id=456",
     });
+    expect(finalizedPlan.host).toBe("mixpanel.com");
+    expect(finalizedPlan.bodyPaths).toEqual([]);
   });
 
   it("executes structured segmentation requests through the shared transport", async () => {

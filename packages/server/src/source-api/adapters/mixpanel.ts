@@ -260,6 +260,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         descriptorVersion: descriptor.descriptorVersion,
         headers,
         kind: "structured_request",
+        method: "POST",
         operation: operation.name,
         provider: source.provider,
         request: parseMixpanelEngageRequest(
@@ -268,6 +269,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
             patch: request.fieldPatch,
           })
         ),
+        selectorTemplate: "/query/engage",
         sourceId: source.id,
         sourceKey: source.sourceKey,
       };
@@ -290,6 +292,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         descriptorVersion: descriptor.descriptorVersion,
         headers,
         kind: "structured_request",
+        method: "POST",
         operation: operation.name,
         provider: source.provider,
         request: parseMixpanelSegmentationRequest(
@@ -298,6 +301,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
             patch: request.fieldPatch,
           })
         ),
+        selectorTemplate: "/query/segmentation",
         sourceId: source.id,
         sourceKey: source.sourceKey,
       };
@@ -330,6 +334,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         provider: source.provider,
         query: fieldPatch.params,
         selector,
+        selectorTemplate: "/{path}",
         sourceId: source.id,
         sourceKey: source.sourceKey,
         timeoutMs: fieldPatch.timeoutMs,
@@ -360,6 +365,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       operation: operation.name,
       provider: source.provider,
       query: fieldPatch.params,
+      selectorTemplate: "/api/2.0/export",
       sourceId: source.id,
       sourceKey: source.sourceKey,
       timeoutMs: fieldPatch.timeoutMs,

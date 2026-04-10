@@ -41,9 +41,11 @@ describe("executeSourceApi", () => {
           body: { kind: "none" },
           headers: [],
           kind: "structured_request",
+          method: "POST",
           operation: "fetch",
           provider: "github",
           request: {},
+          selectorTemplate: "/noop",
           sourceId: "source-id",
           sourceKey: "github-prod",
         };
@@ -106,9 +108,11 @@ describe("executeSourceApi", () => {
           body: { kind: "none" },
           headers: [],
           kind: "structured_request",
+          method: "POST",
           operation: "fetch",
           provider: "github",
           request: {},
+          selectorTemplate: "/noop",
           sourceId: "source-id",
           sourceKey: "github-prod",
         };

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { githubSourceApiAdapter } from "./github";
 
@@ -80,14 +81,18 @@ describe("github source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "http_request",
       method: "GET",
       operation: "fetch",
       selector: "/issues",
+      selectorTemplate: "/repos/{owner}/{repo}/{path}",
       url: "https://api.github.com/repos/openai/example/issues?state=open",
     });
+    expect(finalizedPlan.host).toBe("api.github.com");
+    expect(finalizedPlan.bodyPaths).toEqual([]);
   });
 
   it("executes GitHub requests with upstream status and headers", async () => {

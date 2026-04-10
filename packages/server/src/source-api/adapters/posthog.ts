@@ -125,9 +125,11 @@ export const postHogSourceApiAdapter: SourceApiAdapter = {
       descriptorVersion: descriptor.descriptorVersion,
       headers,
       kind: "structured_request",
+      method: "POST",
       operation: operation.name,
       provider: source.provider,
       request: normalizedRequest,
+      selectorTemplate: "/api/projects/{projectId}/query/",
       sourceId: source.id,
       sourceKey: source.sourceKey,
     };

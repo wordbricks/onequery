@@ -136,6 +136,7 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
       provider: source.provider,
       query: fieldPatch.params,
       selector,
+      selectorTemplate: "/{path}",
       sourceId: source.id,
       sourceKey: source.sourceKey,
       timeoutMs: fieldPatch.timeoutMs,

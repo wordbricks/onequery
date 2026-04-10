@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { amplitudeSourceApiAdapter } from "./amplitude";
 
@@ -81,14 +82,18 @@ describe("amplitude source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "http_request",
       method: "GET",
       operation: "fetch_api",
       selector: "/2/events/segmentation",
+      selectorTemplate: "/{path}",
       url: "https://amplitude.com/2/events/segmentation?end=2026-03-07&start=2026-03-01",
     });
+    expect(finalizedPlan.host).toBe("amplitude.com");
+    expect(finalizedPlan.bodyPaths).toEqual([]);
   });
 
   it("executes Amplitude requests with upstream status and headers", async () => {

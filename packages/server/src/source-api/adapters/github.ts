@@ -265,6 +265,10 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       operation: operation.name,
       provider: source.provider,
       selector,
+      selectorTemplate: buildGitHubSelectorTemplate({
+        selector,
+        url,
+      }),
       sourceId: source.id,
       sourceKey: source.sourceKey,
       url,
@@ -482,6 +486,25 @@ function readGitHubTimeoutMs(
 ): number | undefined {
   const timeoutMs = plan.metadata?.timeoutMs;
   return typeof timeoutMs === "number" ? timeoutMs : undefined;
+}
+
+function buildGitHubSelectorTemplate(input: {
+  selector: string;
+  url: string;
+}): string {
+  if (isRepoScopedRelativeEndpoint(input.selector)) {
+    return "/repos/{owner}/{repo}/{path}";
+  }
+
+  const pathname = new URL(input.url).pathname;
+  const parts = pathname.split("/").filter((part) => part.length > 0);
+  if (parts[0] !== "repos" || parts.length < 3) {
+    return "/{path}";
+  }
+
+  return parts.length === 3
+    ? "/repos/{owner}/{repo}"
+    : "/repos/{owner}/{repo}/{path}";
 }
 
 function parseGitHubErrorDetail(errorText: string): string {

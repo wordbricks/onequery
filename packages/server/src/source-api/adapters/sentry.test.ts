@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { sentrySourceApiAdapter } from "./sentry";
 
@@ -80,14 +81,18 @@ describe("sentry source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "http_request",
       method: "GET",
       operation: "fetch_api",
       selector: "/organizations/{organizationSlug}/issues/",
+      selectorTemplate: "/{path}",
       url: "https://sentry.io/api/0/organizations/acme/issues/?query=is%3Aunresolved",
     });
+    expect(finalizedPlan.host).toBe("sentry.io");
+    expect(finalizedPlan.bodyPaths).toEqual([]);
   });
 
   it("executes Sentry requests with upstream status and headers", async () => {

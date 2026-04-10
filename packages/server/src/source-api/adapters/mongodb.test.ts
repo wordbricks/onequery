@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import {
   createMongoDbSourceApiAdapter,
@@ -94,12 +95,15 @@ describe("mongodb source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "structured_request",
+      method: "POST",
       operation: "find_documents",
       provider: "mongodb",
       selector: "events",
+      selectorTemplate: "collections/{collection}",
       sourceId: "source_1",
       sourceKey: "mongodb-prod",
     });
@@ -114,6 +118,12 @@ describe("mongodb source api adapter", () => {
       },
       limit: 25,
     });
+    expect(finalizedPlan.bodyPaths).toEqual([
+      "collection",
+      "filter",
+      "filter[status]",
+      "limit",
+    ]);
   });
 
   it("executes MongoDB collection requests through the shared relay", async () => {

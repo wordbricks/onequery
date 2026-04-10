@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { postHogSourceApiAdapter } from "./posthog";
 
@@ -84,11 +85,14 @@ describe("posthog source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "structured_request",
+      method: "POST",
       operation: "run_query",
       provider: "posthog",
+      selectorTemplate: "/api/projects/{projectId}/query/",
       sourceId: "source_1",
       sourceKey: "posthog-prod",
     });
@@ -102,6 +106,11 @@ describe("posthog source api adapter", () => {
       },
       refresh: "force_async",
     });
+    expect(finalizedPlan.bodyPaths).toEqual([
+      "query",
+      "query[kind]",
+      "refresh",
+    ]);
   });
 
   it("executes PostHog requests with upstream status and headers", async () => {

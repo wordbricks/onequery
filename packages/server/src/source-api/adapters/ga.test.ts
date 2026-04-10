@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { finalizeNormalizedExecutionPlan } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { googleAnalyticsSourceApiAdapter } from "./ga";
 
@@ -91,12 +92,15 @@ describe("google analytics source api adapter", () => {
       },
       source,
     });
+    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
 
     expect(plan).toMatchObject({
       kind: "structured_request",
+      method: "POST",
       operation: "run_report",
       provider: "ga",
       selector: "properties/123456789",
+      selectorTemplate: "properties/{propertyId}",
       sourceId: "source_1",
       sourceKey: "ga-prod",
     });
@@ -111,6 +115,16 @@ describe("google analytics source api adapter", () => {
       metrics: [{ name: "activeUsers" }],
       property: "properties/123456789",
     });
+    expect(finalizedPlan.bodyPaths).toEqual([
+      "dateRanges",
+      "dateRanges[]",
+      "dimensions",
+      "dimensions[]",
+      "limit",
+      "metrics",
+      "metrics[]",
+      "property",
+    ]);
   });
 
   it("executes Google Analytics requests with upstream status and headers", async () => {

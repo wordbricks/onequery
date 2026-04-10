@@ -38,10 +38,12 @@ function createAdapter(
         descriptorVersion: "v1",
         headers: [],
         kind: "structured_request",
+        method: "POST",
         metadata: {},
         operation: "noop",
         provider,
         request: {},
+        selectorTemplate: "/noop",
         sourceId: "source-id",
         sourceKey: "source",
       };

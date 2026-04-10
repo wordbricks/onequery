@@ -224,10 +224,12 @@ export function createMongoDbSourceApiAdapter(
         descriptorVersion: descriptor.descriptorVersion,
         headers,
         kind: "structured_request",
+        method: "POST",
         operation: operation.name,
         provider: source.provider,
         request: normalizedRequest.request,
         selector: normalizedRequest.selector,
+        selectorTemplate: readMongoDbSelectorTemplate(normalizedRequest),
         sourceId: source.id,
         sourceKey: source.sourceKey,
       };
@@ -465,6 +467,19 @@ function parseMongoDbSourceApiRequest(input: {
         selector: request.collection,
       };
     }
+  }
+}
+
+function readMongoDbSelectorTemplate(
+  request: MongoDbSourceApiRequest
+): string | undefined {
+  switch (request.operation) {
+    case "list_databases":
+      return "databases";
+    case "list_collections":
+      return "databases/{database}";
+    case "find_documents":
+      return "collections/{collection}";
   }
 }
 

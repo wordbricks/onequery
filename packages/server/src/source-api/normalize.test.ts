@@ -68,8 +68,11 @@ describe("finalizeNormalizedExecutionPlan", () => {
 
     expect(plan.requestFingerprint.length).toBeGreaterThan(0);
     expect(plan.bodyKind).toBe("none");
+    expect(plan.bodyPaths).toEqual([]);
     expect(plan.headerNames).toEqual([]);
+    expect(plan.host).toBe("api.github.com");
     expect(plan.method).toBe("GET");
+    expect(plan.selectorTemplate).toBe("/{path}");
     expect(plan.requestFingerprint).toBe(
       finalizeNormalizedExecutionPlan({
         body: { kind: "none" },
@@ -81,9 +84,47 @@ describe("finalizeNormalizedExecutionPlan", () => {
         provider: "github",
         sourceId: "source_id",
         sourceKey: "github-prod",
+        selectorTemplate: "/{path}",
         url: "https://api.github.com/pulls",
       }).requestFingerprint
     );
+  });
+
+  it("derives structured request body paths from the normalized request object", () => {
+    const plan = finalizeNormalizedExecutionPlan({
+      body: {
+        kind: "json",
+        value: {
+          ignored: true,
+        },
+      },
+      descriptorVersion: "posthog.v1",
+      headers: [],
+      kind: "structured_request",
+      method: "post",
+      operation: "run_query",
+      provider: "posthog",
+      request: {
+        query: {
+          kind: "TrendsQuery",
+          series: [{ event: "Signup" }],
+        },
+        refresh: "force_async",
+      },
+      selectorTemplate: "/api/projects/{projectId}/query/",
+      sourceId: "source_id",
+      sourceKey: "posthog-prod",
+    });
+
+    expect(plan.method).toBe("POST");
+    expect(plan.bodyPaths).toEqual([
+      "query",
+      "query[kind]",
+      "query[series]",
+      "query[series][]",
+      "refresh",
+    ]);
+    expect(plan.selectorTemplate).toBe("/api/projects/{projectId}/query/");
   });
 });
 
@@ -168,10 +209,13 @@ describe("normalizeSourceApiRequest", () => {
 
     expect(plan).toMatchObject({
       bodyKind: "json",
+      bodyPaths: ["ok"],
       headerNames: ["x-test", "x-trace-id"],
+      host: "api.github.com",
       kind: "http_request",
       method: "POST",
       selector: "/repos/acme/widgets",
+      selectorTemplate: "/{path}",
     });
     expect(plan.requestFingerprint.length).toBeGreaterThan(0);
   });

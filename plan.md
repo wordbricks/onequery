@@ -101,28 +101,28 @@ enum CliSourceApiInputMode {
 
 ## 3) Finish the normalized plan so it is policy-ready
 
-- [ ] Add missing policy types to `packages/server/src/source-api/types.ts`:
+- [x] Add missing policy types to `packages/server/src/source-api/types.ts`:
   - `SourceApiPolicyRule`
   - `SourceApiPolicyDecision`
   - keep them minimal and server-only for now.
-- [ ] Ensure **every** normalized plan has an explicit method:
+- [x] Ensure **every** normalized plan has an explicit method:
   - all `structured_request` adapters must return `method: "POST"`.
-- [ ] Populate `host` for every `http_request` plan from the finalized request URL host.
-- [ ] Populate `selectorTemplate` for every operation:
+- [x] Populate `host` for every `http_request` plan from the finalized request URL host.
+- [x] Populate `selectorTemplate` for every operation:
   - raw HTTP endpoint operations: use `"/{path}"`;
   - repo-scoped/raw-provider variants: use the most stable template the adapter can guarantee;
   - identifier selectors: use explicit templates such as `"properties/{propertyId}"` when applicable.
-- [ ] Populate `bodyPaths` from the **normalized** request payload, not from raw CLI flags:
+- [x] Populate `bodyPaths` from the **normalized** request payload, not from raw CLI flags:
   - for `structured_request`, derive paths from `plan.request`;
   - for `http_request` with JSON body, derive paths from `plan.body` when `body.kind === "json"`;
   - for text/binary/none bodies, use `[]`.
-- [ ] Add one shared helper in `packages/server/src/source-api/` for JSON path extraction so adapters do not reimplement it.
-- [ ] Update adapter normalize tests to assert these fields for each provider.
-- [ ] Update `packages/server/src/source-api/normalize.test.ts` so the redacted plan contract checks `method`, `host`, `selector`, `selectorTemplate`, `headerNames`, `bodyKind`, and `bodyPaths`.
+- [x] Add one shared helper in `packages/server/src/source-api/` for JSON path extraction so adapters do not reimplement it.
+- [x] Update adapter normalize tests to assert these fields for each provider.
+- [x] Update `packages/server/src/source-api/normalize.test.ts` so the redacted plan contract checks `method`, `host`, `selector`, `selectorTemplate`, `headerNames`, `bodyKind`, and `bodyPaths`.
 
 **Done when**
-- [ ] `rg -n 'selectorTemplate|bodyPaths|host:' packages/server/src/source-api` shows real production code, not only types/tests.
-- [ ] `rg -n 'kind: "structured_request"' packages/server/src/source-api/adapters -A12 | rg 'method:'` shows explicit `method: "POST"` assignments.
+- [x] `rg -n 'selectorTemplate|bodyPaths|host:' packages/server/src/source-api` shows real production code, not only types/tests.
+- [x] `rg -n 'kind: "structured_request"' packages/server/src/source-api/adapters -A12 | rg 'method:'` shows explicit `method: "POST"` assignments.
 
 ## 4) Make the Connect handler a thin wrapper over the canonical domain
 

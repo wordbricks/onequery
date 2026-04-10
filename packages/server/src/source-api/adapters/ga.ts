@@ -142,6 +142,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       descriptorVersion: descriptor.descriptorVersion,
       headers,
       kind: "structured_request",
+      method: "POST",
       metadata: {
         propertyPath: resolvedPropertyPath,
       },
@@ -152,6 +153,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
         property: resolvedPropertyPath,
       },
       selector: resolvedPropertyPath,
+      selectorTemplate: "properties/{propertyId}",
       sourceId: source.id,
       sourceKey: source.sourceKey,
     };

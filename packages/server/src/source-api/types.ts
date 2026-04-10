@@ -77,6 +77,23 @@ export type SourceApiHeaderPolicy = {
   allowedResponseHeaders: readonly string[];
 };
 
+export type SourceApiPolicyRule = {
+  effect: "allow" | "deny";
+  provider?: ProviderType;
+  operation?: string;
+  method?: string;
+  host?: string;
+  selectorTemplate?: string;
+  headerNames?: readonly string[];
+  bodyPaths?: readonly string[];
+};
+
+export type SourceApiPolicyDecision = {
+  allowed: boolean;
+  reason?: string;
+  rule?: SourceApiPolicyRule;
+};
+
 export type SourceApiOperation = {
   name: string;
   kind: SourceApiOperationKind;
