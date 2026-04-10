@@ -1,13 +1,34 @@
 # OneQuery
 
-OneQuery is an open-source, self-hostable platform for unified data querying. Run the server on your own infrastructure, connect your databases, analytics tools, and APIs from a single place, and use the CLI or web UI with centralized credential management, query safety controls, and team collaboration built in.
+OneQuery is an open-source, self-hostable platform for unified data querying.
+Run the server on your own infrastructure, connect databases, analytics tools,
+and APIs from one place, and use the CLI or web UI with centralized credential
+management, query safety controls, and team collaboration built in.
 
-## Install Options
+If you want to run the full product locally or on your own infrastructure, use
+`onequery gateway start`.
 
-Install the published CLI with whichever flow fits your environment:
+If you already have access to a OneQuery server, install the CLI, point it at
+that server, and log in.
+
+<p align="center"><code>npm install -g @onequery/cli</code><br />or <code>brew install wordbricks/tap/onequery</code></p>
+<p align="center"><strong>OneQuery</strong> is an open-source, self-hostable platform for unified data querying.</p>
+<p align="center">
+  If you want to run the full product on your own infrastructure, start with <code>onequery gateway start</code>.
+  <br />
+  If you already have access to a OneQuery server, install the CLI, set the server URL, and sign in.
+  <br />
+  For self-host install, backup, restore, SMTP, and reverse proxy setup, see <a href="./docs/self-host.md">docs/self-host.md</a>.
+</p>
+
+## Quickstart
+
+### Install the CLI
+
+Install globally with your preferred package manager:
 
 ```bash
-# Install script (macOS/Linux, self-host friendly)
+# Install script (macOS/Linux)
 curl -fsSL https://onequery.dev/install.sh | sh
 
 # Homebrew
@@ -20,31 +41,32 @@ npm install -g @onequery/cli
 bun add -g @onequery/cli
 ```
 
-After a published install, run `onequery upgrade` to update in place with the
-same installer family when the CLI can detect it.
-
-One-off execution also works without a global install:
+You can also run the CLI without a global install:
 
 ```bash
 npx @onequery/cli --help
 bunx @onequery/cli --help
 ```
 
+After a published install, run `onequery upgrade` to update in place when the
+CLI can detect the installer family.
+
 On macOS and Linux, the hosted install script downloads a managed official
 Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
-not already available. Direct `npm`/`bun` installs still require Node.js 22+
-on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery gateway start`.
+not already available. Direct `npm` and `bun` installs still require Node.js
+22+ on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery gateway start`.
 
-## Quick Start
+### Run a self-hosted instance
 
-The default OSS path is to self-host OneQuery locally or on your own infrastructure.
+The default OSS path is to self-host OneQuery locally or on your own
+infrastructure.
 
 ```bash
-# Start OneQuery
 onequery gateway start
 ```
 
-Then open `http://127.0.0.1:5656`, complete the first-user bootstrap, and log in from the CLI. Local self-host defaults to that server URL already:
+Then open `http://127.0.0.1:5656`, complete first-user bootstrap, and log in
+from the CLI:
 
 ```bash
 onequery auth login
@@ -52,7 +74,7 @@ onequery org list
 onequery org use <org-slug>
 ```
 
-Once the instance is running, add a source and execute a test query:
+Add a source and execute a test query:
 
 ```bash
 onequery source connect --source postgres --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
@@ -60,9 +82,10 @@ onequery source show warehouse
 onequery query execute --source warehouse --sql "select 1"
 ```
 
-For self-host operations, config, backup, restore, SMTP, and reverse proxy setup, see [docs/self-host.md](./docs/self-host.md).
+For self-host operations, config, backup, restore, SMTP, and reverse proxy
+setup, see [docs/self-host.md](./docs/self-host.md).
 
-Already have access to an existing OneQuery server instead?
+### Connect to an existing OneQuery server
 
 ```bash
 onequery config set server https://onequery.example.com
@@ -76,18 +99,21 @@ onequery source show <source-key>
 onequery query execute --source <source-key> --sql "select 1"
 ```
 
-## What it does
+## What OneQuery includes
 
-- **Self-host the full product** — run the API and web UI on your own infrastructure with `onequery gateway start`
-- **Query multiple data sources** — PostgreSQL, Supabase, MySQL, MongoDB, BigQuery, AWS Athena, Google Analytics, Amplitude, Mixpanel, PostHog, Sentry, GitHub, Linear, and more
-- **Manage credentials centrally** — encrypted credential storage with organization-level access control
-- **Enforce query safety** — read-only validation, rate limiting, and single-statement enforcement
-- **Track costs** — budget monitoring for expensive queries (BigQuery, Athena)
-- **Run on your infrastructure** — a connector agent runs on your EC2 instance to query protected sources without exposing credentials
+- Self-host the full product with `onequery gateway start`
+- Query multiple data sources from one interface
+- Manage credentials centrally with organization-level access control
+- Enforce query safety with read-only validation, rate limiting, and
+  single-statement enforcement
+- Track budgets for expensive query providers such as BigQuery and Athena
+- Run a connector agent on customer infrastructure so protected credentials stay
+  inside that network
 
 ## Supported source providers
 
-Use `onequery source connect --help` to see the accepted `--source` values in the CLI.
+Use `onequery source connect --help` to see the accepted `--source` values in
+the CLI.
 
 Current provider identifiers:
 
@@ -97,7 +123,8 @@ Current provider identifiers:
 - `mongodb` for MongoDB
 - `bigquery` for BigQuery
 - `laminar` for Laminar
-- `aws_athena_connector` for an AWS Athena connector already registered in OneQuery
+- `aws_athena_connector` for an AWS Athena connector already registered in
+  OneQuery
 - `ga` for Google Analytics
 - `amplitude` for Amplitude
 - `mixpanel` for Mixpanel
@@ -106,13 +133,24 @@ Current provider identifiers:
 - `github` for GitHub
 - `linear` for Linear
 
-For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.
+For provider-specific setup steps and example JSON, run
+`onequery source connect --source <provider>` without `--input`.
+
+## Docs
+
+- [docs/README.md](./docs/README.md): docs index
+- [docs/self-host.md](./docs/self-host.md): self-host install, proxy, SMTP,
+  storage, backup, restore, and upgrade guidance
+- [CONTRIBUTING.md](./CONTRIBUTING.md): contributor workflow and current PR
+  policy
+- [apps/cli/README.md](./apps/cli/README.md): CLI workspace notes and runtime
+  behavior
 
 ## How it works
 
-OneQuery is a Bun/Turbo monorepo designed to run as a self-hosted product, with three main layers:
+OneQuery is a Bun and Turbo monorepo with four main runtime surfaces:
 
-```
+```text
 ┌─────────────────┐   ┌────────────────────┐
 │   CLI (Rust)    │   │   Web UI (React)   │
 └────────┬────────┘   └────────┬───────────┘
@@ -131,61 +169,67 @@ OneQuery is a Bun/Turbo monorepo designed to run as a self-hosted product, with 
 └────────────────┘  └────────────────────┘
 ```
 
-**CLI** — a Rust binary (`onequery`) that authenticates via OAuth2 device flow and sends queries to the API. It uses a reducer/state-machine pattern for workflows like login, polling, and retries.
-
-**Server** — a [Hono](https://hono.dev) HTTP API with Zod-validated routes, [Better Auth](https://better-auth.com) sessions, and [Drizzle ORM](https://orm.drizzle.team) for Postgres or PGlite. Workspace-dev runs it through the Bun-backed `packages/self-host-runtime` package, while packaged self-host ships a Rolldown-built Node server bundle that serves both the API and the React SPA.
-
-**Web UI** — a React 19 SPA with TanStack Router, TanStack Query, and XState for complex state. Provides data source management, team admin, budget dashboards, and audit logs.
-
-**Connector** — a lightweight Bun agent deployed on customer infrastructure. It registers with OneQuery via an enrollment token, polls for query jobs, executes them locally (e.g. against AWS Athena via IAM), and returns results — so credentials never leave the customer's network.
+- CLI: a Rust binary (`onequery`) that authenticates via OAuth2 device flow and
+  sends queries to the API. CLI workflows are modeled as reducer-driven state
+  machines.
+- Server: a [Hono](https://hono.dev) HTTP API with Zod-validated routes,
+  [Better Auth](https://better-auth.com) sessions, and
+  [Drizzle ORM](https://orm.drizzle.team) for Postgres or PGlite.
+- Web UI: a React 19 SPA with TanStack Router, TanStack Query, and XState for
+  complex state.
+- Connector: a lightweight Bun agent deployed on customer infrastructure. It
+  registers with OneQuery, polls for query jobs, executes them locally, and
+  returns results without moving credentials into the hosted control plane.
 
 ## Monorepo structure
 
-```
+```text
 apps/
-  cli/            # Rust CLI workspace (`onequery` binary and support crates)
-  connector/      # Customer-side connector agent
-  landing/        # Marketing site
-  web/            # React SPA
+  cli/              # Rust CLI workspace
+  connector/        # Customer-side connector agent
+  landing/          # Marketing site
+  web/              # React SPA
 
 packages/
-  base/            # Dependency-free shared types and org permission helpers
-  self-host-runtime/ # Self-host runtime that serves API + SPA
-  cli-server/      # CLI-facing endpoints and generated transport bindings
-  codecs/          # Shared encoding and decoding utilities
-  config/          # Workspace-dev resolver and config projections
-  config-loader/   # TOML decoding helper
-  contracts/       # Shared Zod-validated API types
-  datetime/        # Shared date/time formatting utilities
-  db/              # Drizzle schema, migrations, and DB helpers
-  github-rulesets/ # GitHub ruleset planning and apply tooling
-  server/          # Shared Hono API routes, services, and middleware
-  ui/              # React component library
+  base/             # Shared types and org permission helpers
+  cli-server/       # CLI-facing endpoints and generated transport bindings
+  codecs/           # Shared encoding and decoding utilities
+  config/           # Workspace-dev resolver and config projections
+  config-loader/    # TOML decoding helper
+  contracts/        # Shared Zod-validated API types
+  datetime/         # Shared date and time formatting utilities
+  db/               # Drizzle schema, migrations, and DB helpers
+  github-rulesets/  # GitHub ruleset planning and apply tooling
+  self-host-runtime # Self-host runtime that serves API and SPA
+  server/           # Shared Hono API routes, services, and middleware
+  ui/               # React component library
 
 proto/
-  onequery/cli/v1/ # Buf protobuf/Connect contract for the CLI transport
+  onequery/cli/v1/  # Buf protobuf and Connect contract for the CLI transport
 
-docs/            # Design notes, self-host docs, and migration specs
-scripts/         # Repo automation and local development helpers
+docs/               # Design notes, self-host docs, and migration specs
+scripts/            # Repo automation and local development helpers
 ```
 
-## Getting started
+## Development
 
-**Prerequisites:** Bun `1.3.10`, Docker (for local Postgres), Rust (only if changing the CLI)
+Prerequisites:
+
+- Bun `1.3.10`
+- Docker, for local Postgres
+- Rust, only if you are changing the CLI
+
+Bootstrap and start workspace development:
 
 ```bash
-# Install dependencies and bootstrap local config
 bun install
 bun run dev:setup
-
-# Start the workspace-dev stack
 bun dev
 ```
 
-Workspace dev now reads the tracked [`onequery.dev.toml`](./onequery.dev.toml)
-file plus a local `onequery.dev.secrets.toml` file that `bun run dev:setup`
-seeds automatically if it is missing. Edit `onequery.dev.toml` for browser/API
-ports and local Postgres settings.
+Workspace dev reads the tracked [`onequery.dev.toml`](./onequery.dev.toml) file
+plus a local `onequery.dev.secrets.toml` file that `bun run dev:setup` seeds if
+missing.
 
 Default local ports:
 
@@ -193,27 +237,28 @@ Default local ports:
 - Bun API listener: `http://127.0.0.1:4555`
 - self-host bundled runtime: `http://127.0.0.1:5656`
 
-Use `bun dev` for workspace development only. Use `onequery gateway start` for the
-bundled self-host runtime.
+Use `bun dev` for workspace development only. Use `onequery gateway start` for
+the bundled self-host runtime.
 
-**Database commands:**
-
-```bash
-bun run db:migrate      # Run pending migrations
-bun run db:seed:dev     # Seed development data
-bun run db:studio       # Open Drizzle Studio
-bun run db:reset        # Wipe volumes, re-bootstrap, migrate, and seed dev DB
-```
-
-**Validation:**
+Validation commands:
 
 ```bash
-bun run typecheck
-bun run lint
-bun run test
+bun lint --format json
+bunx turbo check --json
+bunx turbo typecheck --json
+bunx turbo test --json
 ```
 
-**Proto contract:**
+Database commands:
+
+```bash
+bun run db:migrate
+bun run db:seed:dev
+bun run db:studio
+bun run db:reset
+```
+
+Proto contract commands:
 
 ```bash
 bun run proto:lint
@@ -221,7 +266,8 @@ bun run proto:generate
 bun run proto:check
 ```
 
-CLI config is stored at `~/.config/onequery/` on macOS/Linux or `%APPDATA%\onequery\` on Windows.
+CLI config is stored at `~/.config/onequery/` on macOS and Linux or
+`%APPDATA%\\onequery\\` on Windows.
 
 The self-host runtime writes operator-managed files under the standard config
 and data roots, including `self-host/config.toml`, `self-host/secrets.toml`,
@@ -229,8 +275,8 @@ and the resolved startup contract at `run/launch.json`.
 
 ## Claude Code plugin
 
-The shared `onequery` Claude Code plugin now ships from the Wordbricks
-marketplace repository instead of this monorepo:
+The shared `onequery` Claude Code plugin ships from the Wordbricks marketplace
+repository instead of this monorepo:
 
 ```bash
 /plugin marketplace add wordbricks/skills
@@ -242,4 +288,4 @@ checkout at `plugins/onequery`.
 
 ## License
 
-Apache 2.0 — see [LICENSE](./LICENSE).
+Apache 2.0. See [LICENSE](./LICENSE).
