@@ -189,7 +189,7 @@ export async function requestPostHogSourceApi(input: {
 function buildPostHogExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery use --source ${sourceKey} --op run_query --input '{"query":{"kind":"TrendsQuery","series":[{"event":"Signup"}],"dateRange":{"date_from":"-7d"}}}'`,
+      command: `onequery api --source ${sourceKey} --op run_query --input '{"query":{"kind":"TrendsQuery","series":[{"event":"Signup"}],"dateRange":{"date_from":"-7d"}}}'`,
       description: "Run a PostHog trends query against the connected project.",
       label: "Run trends query",
     },

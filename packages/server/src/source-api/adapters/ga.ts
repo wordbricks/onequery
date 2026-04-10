@@ -259,7 +259,7 @@ function buildGoogleAnalyticsExamples(sourceKey: string): {
 } {
   const reportExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op run_report --input '{"dateRanges":[{"startDate":"7daysAgo","endDate":"today"}],"dimensions":[{"name":"date"}],"metrics":[{"name":"activeUsers"}],"limit":100}'`,
+      command: `onequery api --source ${sourceKey} --op run_report --input '{"dateRanges":[{"startDate":"7daysAgo","endDate":"today"}],"dimensions":[{"name":"date"}],"metrics":[{"name":"activeUsers"}],"limit":100}'`,
       description:
         "Run a standard report with the property saved on the connected source.",
       label: "Run a report",
@@ -267,7 +267,7 @@ function buildGoogleAnalyticsExamples(sourceKey: string): {
   ] satisfies SourceApiExample[];
   const realtimeExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op run_realtime_report -F 'property="properties/123456789"' -F 'dimensions[]={"name":"country"}' -F 'metrics[]={"name":"activeUsers"}'`,
+      command: `onequery api --source ${sourceKey} --op run_realtime_report -F 'property="properties/123456789"' -F 'dimensions[]={"name":"country"}' -F 'metrics[]={"name":"activeUsers"}'`,
       description:
         "Override the property and run a realtime report with typed field patches.",
       label: "Run a realtime report",

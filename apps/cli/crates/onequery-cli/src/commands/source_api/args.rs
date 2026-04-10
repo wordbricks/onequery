@@ -6,12 +6,12 @@ use onequery_cli_core::error::ErrorStage;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
-use crate::cli::UseArgs;
+use crate::cli::ApiArgs;
 use crate::path_utils::resolve_user_path_for_cli;
 
 use super::CommandContext;
 
-pub(super) fn has_execute_intent_flags(args: &UseArgs) -> bool {
+pub(super) fn has_execute_intent_flags(args: &ApiArgs) -> bool {
     args.op.is_some()
         || args.target.is_some()
         || args.method.is_some()

@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::cli::UseArgs;
+use crate::cli::ApiArgs;
 use crate::transport::source_api::ExecuteSourceApiRequestPayload;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiHeader;
@@ -55,7 +55,7 @@ pub(super) enum PlannedCommand {
 }
 
 pub(super) async fn build_plan(
-    args: &UseArgs,
+    args: &ApiArgs,
     descriptor: &SourceApiDescriptor,
     context: &CommandContext,
 ) -> Result<PlannedCommand, CliError> {
@@ -188,7 +188,7 @@ fn validate_selector(
 }
 
 fn validate_pagination(
-    args: &UseArgs,
+    args: &ApiArgs,
     operation: &SourceApiOperation,
     context: &CommandContext,
     source_key: &str,
@@ -239,7 +239,7 @@ fn validate_pagination(
 }
 
 fn validate_method(
-    args: &UseArgs,
+    args: &ApiArgs,
     operation: &SourceApiOperation,
     context: &CommandContext,
     source_key: &str,
@@ -283,7 +283,7 @@ fn validate_method(
 }
 
 fn validate_field_flags(
-    args: &UseArgs,
+    args: &ApiArgs,
     operation: &SourceApiOperation,
     context: &CommandContext,
     source_key: &str,
@@ -316,7 +316,7 @@ fn validate_field_flags(
 }
 
 fn validate_input(
-    args: &UseArgs,
+    args: &ApiArgs,
     operation: &SourceApiOperation,
     context: &CommandContext,
     source_key: &str,
@@ -410,7 +410,7 @@ fn parse_headers(
 }
 
 async fn load_request_body(
-    args: &UseArgs,
+    args: &ApiArgs,
     operation: &SourceApiOperation,
     reader: &mut SourceApiInputReader,
     context: &CommandContext,
@@ -494,7 +494,7 @@ fn normalized_method_override(value: Option<&str>) -> Option<String> {
 mod tests {
     use onequery_cli_core::error::ErrorStage;
 
-    use crate::cli::UseArgs;
+    use crate::cli::ApiArgs;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
     use crate::transport::source_api::SourceApiDescriptor;
@@ -516,9 +516,9 @@ mod tests {
     #[test]
     fn validate_pagination_rejects_slurp_without_paginate() {
         let error = validate_pagination(
-            &UseArgs {
+            &ApiArgs {
                 slurp: true,
-                ..use_args()
+                ..api_args()
             },
             &operation(SourceApiPaginationPolicy::OpaqueToken),
             &context(),
@@ -536,9 +536,9 @@ mod tests {
     #[test]
     fn validate_pagination_rejects_max_pages_without_paginate() {
         let error = validate_pagination(
-            &UseArgs {
+            &ApiArgs {
                 max_pages: Some(2),
-                ..use_args()
+                ..api_args()
             },
             &operation(SourceApiPaginationPolicy::OpaqueToken),
             &context(),
@@ -556,10 +556,10 @@ mod tests {
     #[test]
     fn validate_pagination_rejects_zero_max_pages() {
         let error = validate_pagination(
-            &UseArgs {
+            &ApiArgs {
                 paginate: true,
                 max_pages: Some(0),
-                ..use_args()
+                ..api_args()
             },
             &operation(SourceApiPaginationPolicy::OpaqueToken),
             &context(),
@@ -574,9 +574,9 @@ mod tests {
     #[test]
     fn validate_pagination_rejects_operations_without_pagination_support() {
         let error = validate_pagination(
-            &UseArgs {
+            &ApiArgs {
                 paginate: true,
-                ..use_args()
+                ..api_args()
             },
             &operation(SourceApiPaginationPolicy::None),
             &context(),
@@ -591,10 +591,10 @@ mod tests {
     #[test]
     fn validate_pagination_accepts_supported_paginate_flags() {
         validate_pagination(
-            &UseArgs {
+            &ApiArgs {
                 paginate: true,
                 max_pages: Some(3),
-                ..use_args()
+                ..api_args()
             },
             &operation(SourceApiPaginationPolicy::OpaqueToken),
             &context(),
@@ -644,9 +644,9 @@ mod tests {
     #[tokio::test]
     async fn build_plan_rejects_input_when_operation_disallows_it() {
         let error = build_plan(
-            &UseArgs {
+            &ApiArgs {
                 input: Some("request.json".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
                 field_policy: SourceApiFieldPolicy {
@@ -668,10 +668,10 @@ mod tests {
     #[tokio::test]
     async fn build_plan_rejects_nested_field_paths_when_operation_disallows_them() {
         let error = build_plan(
-            &UseArgs {
+            &ApiArgs {
                 fields: vec!["request[database]=analytics".to_owned()],
                 target: None,
-                ..use_args()
+                ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: SourceApiSelectorKind::None,
@@ -698,10 +698,10 @@ mod tests {
     #[tokio::test]
     async fn build_plan_rejects_array_field_paths_when_operation_disallows_them() {
         let error = build_plan(
-            &UseArgs {
+            &ApiArgs {
                 fields: vec!["database[]=analytics".to_owned()],
                 target: None,
-                ..use_args()
+                ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: SourceApiSelectorKind::None,
@@ -727,7 +727,7 @@ mod tests {
 
     fn context() -> CommandContext {
         CommandContext {
-            command_line: "onequery use --source github-prod".to_owned(),
+            command_line: "onequery api --source github-prod".to_owned(),
             base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("demo-org".to_owned()),
@@ -753,8 +753,8 @@ mod tests {
         }
     }
 
-    fn use_args() -> UseArgs {
-        UseArgs {
+    fn api_args() -> ApiArgs {
+        ApiArgs {
             source: "github-prod".to_owned(),
             op: Some("fetch".to_owned()),
             target: Some("/pulls".to_owned()),

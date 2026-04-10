@@ -10,7 +10,7 @@ use std::time::Duration;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
-use crate::cli::UseArgs;
+use crate::cli::ApiArgs;
 use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
@@ -30,7 +30,7 @@ use render::render_dry_run_output;
 use render::render_execute_output;
 
 pub(super) async fn execute<B, T>(
-    args: &UseArgs,
+    args: &ApiArgs,
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
@@ -51,7 +51,7 @@ pub(super) async fn execute<B, T>(
                         title: "source API describe failed",
                         transport_why_prefix: "failed to reach source API service",
                         decode_why_prefix: "failed to decode source API descriptor",
-                        fallback_try_next: vec![format!("onequery use --source {}", args.source)],
+                        fallback_try_next: vec![format!("onequery api --source {}", args.source)],
                         unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
                     },
                 )
@@ -103,7 +103,7 @@ async fn execute_source_api_pages(
     source_key: &str,
     request: &ExecuteSourceApiRequestPayload,
     execution: &SourceApiExecutionOptions,
-    args: &UseArgs,
+    args: &ApiArgs,
     context: &CommandContext,
 ) -> Result<ExecuteSourceApiPages, CliError> {
     let mut next_request = request.clone();
@@ -137,7 +137,7 @@ async fn execute_source_api_pages(
 
 fn present_source_api_normalize_failure(
     failure: crate::transport::http::ApiFailure,
-    args: &UseArgs,
+    args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
     present_api_failure(
@@ -148,7 +148,7 @@ fn present_source_api_normalize_failure(
             transport_why_prefix: "failed to reach source API service",
             decode_why_prefix: "failed to decode source API normalized plan",
             fallback_try_next: vec![
-                format!("onequery use --source {}", args.source),
+                format!("onequery api --source {}", args.source),
                 format!("retry {}", context.command_line),
             ],
             unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
@@ -158,7 +158,7 @@ fn present_source_api_normalize_failure(
 
 fn present_source_api_execute_failure(
     failure: crate::transport::http::ApiFailure,
-    args: &UseArgs,
+    args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
     present_api_failure(
@@ -169,7 +169,7 @@ fn present_source_api_execute_failure(
             transport_why_prefix: "failed to reach source API service",
             decode_why_prefix: "failed to decode source API response",
             fallback_try_next: vec![
-                format!("onequery use --source {}", args.source),
+                format!("onequery api --source {}", args.source),
                 format!("retry {}", context.command_line),
             ],
             unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
@@ -179,9 +179,9 @@ fn present_source_api_execute_failure(
 
 pub(super) fn source_api_examples(source_key: &str) -> Vec<String> {
     vec![
-        format!("onequery use --source {source_key}"),
-        format!("onequery use --source {source_key} /path"),
-        format!("onequery use --source {source_key} --op <operation> <selector>"),
+        format!("onequery api --source {source_key}"),
+        format!("onequery api --source {source_key} /path"),
+        format!("onequery api --source {source_key} --op <operation> <selector>"),
     ]
 }
 

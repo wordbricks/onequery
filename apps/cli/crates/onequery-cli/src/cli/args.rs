@@ -263,7 +263,7 @@ onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
-pub(crate) struct UseArgs {
+pub(crate) struct ApiArgs {
     /// Describe or execute this connected source API.
     #[arg(long, value_name = "SOURCE_KEY")]
     pub source: String,

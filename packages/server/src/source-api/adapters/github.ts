@@ -445,13 +445,13 @@ export function toLegacyGitHubRelayBody(
 function buildGitHubExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery use --source ${sourceKey} /issues -f 'params[state]=open'`,
+      command: `onequery api --source ${sourceKey} /issues -f 'params[state]=open'`,
       description:
         "Fetch repo-scoped issues for the connected repository selection.",
       label: "List open issues",
     },
     {
-      command: `onequery use --source ${sourceKey} --op fetch /repos/openai/example/pulls -f 'params[per_page]=20'`,
+      command: `onequery api --source ${sourceKey} --op fetch /repos/openai/example/pulls -f 'params[per_page]=20'`,
       description:
         "Call an explicit repository path when multiple repositories are connected.",
       label: "List pull requests",

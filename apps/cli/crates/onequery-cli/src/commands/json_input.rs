@@ -75,15 +75,15 @@ mod tests {
     fn parse_org_scoped_json_input_rejects_non_object_payloads() {
         let error = parse_org_scoped_json_input(
             r#"["not","an","object"]"#,
-            &test_context("onequery use --source github --input <excerpt>"),
-            "invalid use input",
-            "use input",
-            || vec!["onequery use --source github".to_owned()],
+            &test_context("onequery api --source github --input <excerpt>"),
+            "invalid api input",
+            "api input",
+            || vec!["onequery api --source github".to_owned()],
         )
         .expect_err("expected non-object input to be rejected");
 
-        assert_eq!(error.title, "invalid use input");
-        assert_eq!(error.why, "use input must be one JSON object");
+        assert_eq!(error.title, "invalid api input");
+        assert_eq!(error.why, "api input must be one JSON object");
     }
 
     #[test]

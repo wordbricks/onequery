@@ -19,19 +19,19 @@ export function buildCliSourceShowCommand(sourceKey: string) {
   return `onequery source show ${sourceKey}`;
 }
 
-export function buildCliUseInspectCommand(sourceKey: string) {
-  return `onequery use --source ${sourceKey}`;
+export function buildCliApiInspectCommand(sourceKey: string) {
+  return `onequery api --source ${sourceKey}`;
 }
 
-export function buildCliUseExecuteCommand(sourceKey: string) {
-  return `onequery use --source ${sourceKey} /path`;
+export function buildCliApiExecuteCommand(sourceKey: string) {
+  return `onequery api --source ${sourceKey} /path`;
 }
 
-export function buildCliUseIntegrationReminder(
+export function buildCliApiIntegrationReminder(
   providerLabel: string,
   sourceKey: string
 ) {
-  return `You should connect ${providerLabel} in OneQuery before using \`${buildCliUseInspectCommand(
+  return `You should connect ${providerLabel} in OneQuery before using \`${buildCliApiInspectCommand(
     sourceKey
   )}\`.`;
 }

@@ -9,6 +9,7 @@ mod raw;
 #[path = "../cli_tests.rs"]
 mod tests;
 
+pub(crate) use args::ApiArgs;
 pub(crate) use args::AuthImportArgs;
 pub(crate) use args::AuthSessionSubcommand;
 pub(crate) use args::AuthSubcommand;
@@ -27,7 +28,6 @@ pub(crate) use args::ReadArgs;
 pub(crate) use args::RestoreArgs;
 pub(crate) use args::SourceConnectArgs;
 pub(crate) use args::SourceSubcommand;
-pub(crate) use args::UseArgs;
 pub(crate) use model::Command;
 pub(crate) use model::ConfigCommand;
 pub(crate) use model::GatewayCommand;

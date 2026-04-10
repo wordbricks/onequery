@@ -604,21 +604,21 @@ function buildMixpanelExamples(sourceKey: string): {
 } {
   const engageExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op query_engage --input '{"where":"properties[\\"plan\\"] == \\"pro\\"","pageSize":100}'`,
+      command: `onequery api --source ${sourceKey} --op query_engage --input '{"where":"properties[\\"plan\\"] == \\"pro\\"","pageSize":100}'`,
       description: "Query Engage profiles with a narrow page size.",
       label: "Query engage",
     },
   ] satisfies SourceApiExample[];
   const segmentationExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op query_segmentation --input '{"event":"Signup","fromDate":"2026-03-01","toDate":"2026-03-07","unit":"day"}'`,
+      command: `onequery api --source ${sourceKey} --op query_segmentation --input '{"event":"Signup","fromDate":"2026-03-01","toDate":"2026-03-07","unit":"day"}'`,
       description: "Query Mixpanel event segmentation for one event.",
       label: "Query segmentation",
     },
   ] satisfies SourceApiExample[];
   const fetchExamples = [
     {
-      command: `onequery use --source ${sourceKey} /query/events/top -f 'params[type]=general' -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'`,
+      command: `onequery api --source ${sourceKey} /query/events/top -f 'params[type]=general' -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'`,
       description:
         "Call a raw Mixpanel Query API endpoint when the higher-level helpers do not fit.",
       label: "Fetch query API",
@@ -626,7 +626,7 @@ function buildMixpanelExamples(sourceKey: string): {
   ] satisfies SourceApiExample[];
   const exportExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op export_events -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'`,
+      command: `onequery api --source ${sourceKey} --op export_events -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'`,
       description: "Export Mixpanel events for a bounded date range.",
       label: "Export events",
     },

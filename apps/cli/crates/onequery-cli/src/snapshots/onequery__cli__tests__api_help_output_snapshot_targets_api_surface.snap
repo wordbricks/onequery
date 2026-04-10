@@ -1,12 +1,12 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
-expression: "rendered_display(&[\"onequery\", \"use\", \"--help\"])"
+expression: "rendered_display(&[\"onequery\", \"api\", \"--help\"])"
 ---
 Describe or execute a connected source API
 
-Usage: onequery use [OPTIONS] --source <SOURCE_KEY>
-       onequery use [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
-       onequery use [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]
+Usage: onequery api [OPTIONS] --source <SOURCE_KEY>
+       onequery api [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
+       onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]
 
 Arguments:
   [TARGET]  Provide the selector or inferred operation target
