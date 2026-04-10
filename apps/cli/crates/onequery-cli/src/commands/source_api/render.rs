@@ -2,7 +2,7 @@ use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
-use crate::transport::source_api::NormalizedSourceApiPlan;
+use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
@@ -67,7 +67,7 @@ pub(super) fn render_descriptor_output(
 }
 
 pub(super) fn render_dry_run_output(
-    plan: NormalizedSourceApiPlan,
+    plan: PreparedSourceApiPreview,
     verbose: bool,
 ) -> Result<CommandOutput, CliError> {
     let data = serialize_dry_run_plan(&plan, verbose)?;
@@ -122,15 +122,11 @@ fn serialize_execute_response(
 }
 
 fn serialize_dry_run_plan(
-    plan: &NormalizedSourceApiPlan,
+    plan: &PreparedSourceApiPreview,
     verbose: bool,
 ) -> Result<serde_json::Value, CliError> {
     if verbose {
-        let mut data = serialize_command_data(plan, "onequery api")?;
-        if let serde_json::Value::Object(object) = &mut data {
-            object.remove("requestFingerprint");
-        }
-        return Ok(data);
+        return serialize_command_data(plan, "onequery api");
     }
 
     let mut object = serde_json::Map::new();
@@ -736,7 +732,7 @@ mod tests {
     use crate::output::RenderedOutput;
     use crate::output::render_output;
     use crate::output::render_output_payload;
-    use crate::transport::source_api::NormalizedSourceApiPlan;
+    use crate::transport::source_api::PreparedSourceApiPreview;
     use crate::transport::source_api::SourceApiBodyKind;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiOperationKind;
@@ -749,27 +745,25 @@ mod tests {
     use super::render_execute_output;
 
     #[test]
-    fn render_dry_run_output_serializes_normalized_plan_shape() {
+    fn render_dry_run_output_serializes_prepared_preview_shape() {
         let output = render_dry_run_output(
-            NormalizedSourceApiPlan {
-                source_id: "source-1".to_owned(),
+            PreparedSourceApiPreview {
                 source_key: "github-prod".to_owned(),
                 provider: "github".to_owned(),
                 operation: "fetch".to_owned(),
                 kind: SourceApiOperationKind::HttpRequest,
                 method: Some("GET".to_owned()),
                 selector: Some("/pulls".to_owned()),
-                selector_template: Some("/{path}".to_owned()),
+                url: Some("https://api.github.com/pulls".to_owned()),
                 host: Some("api.github.com".to_owned()),
                 header_names: vec!["accept".to_owned()],
                 body_kind: SourceApiBodyKind::Json,
                 body_paths: vec!["params".to_owned()],
-                request_fingerprint: "fp_123".to_owned(),
-                descriptor_version: Some("github.v1".to_owned()),
+                pagination_policy: crate::transport::source_api::SourceApiPaginationPolicy::None,
             },
             false,
         )
-        .expect("expected normalized dry-run plan to render");
+        .expect("expected prepared dry-run preview to render");
 
         let rendered = render_output(output, EffectiveOutputMode::Text);
         assert_snapshot!(
@@ -798,27 +792,26 @@ mod tests {
     }
 
     #[test]
-    fn render_dry_run_output_omits_request_fingerprint_when_verbose() {
+    fn render_dry_run_output_serializes_verbose_prepared_preview_shape() {
         let output = render_dry_run_output(
-            NormalizedSourceApiPlan {
-                source_id: "source-1".to_owned(),
+            PreparedSourceApiPreview {
                 source_key: "github-prod".to_owned(),
                 provider: "github".to_owned(),
                 operation: "fetch".to_owned(),
                 kind: SourceApiOperationKind::HttpRequest,
                 method: Some("GET".to_owned()),
                 selector: Some("/pulls".to_owned()),
-                selector_template: Some("/{path}".to_owned()),
+                url: Some("https://api.github.com/pulls".to_owned()),
                 host: Some("api.github.com".to_owned()),
                 header_names: vec!["accept".to_owned()],
                 body_kind: SourceApiBodyKind::Json,
                 body_paths: vec!["params".to_owned()],
-                request_fingerprint: "fp_123".to_owned(),
-                descriptor_version: Some("github.v1".to_owned()),
+                pagination_policy:
+                    crate::transport::source_api::SourceApiPaginationPolicy::OpaqueToken,
             },
             true,
         )
-        .expect("expected verbose normalized dry-run plan to render");
+        .expect("expected verbose prepared dry-run preview to render");
 
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&render_output(
@@ -827,19 +820,18 @@ mod tests {
             ))
             .expect("expected raw JSON output"),
             json!({
-                "sourceId": "source-1",
                 "sourceKey": "github-prod",
                 "provider": "github",
                 "operation": "fetch",
                 "kind": "http_request",
                 "method": "GET",
                 "selector": "/pulls",
-                "selectorTemplate": "/{path}",
+                "url": "https://api.github.com/pulls",
                 "host": "api.github.com",
                 "headerNames": ["accept"],
                 "bodyKind": "json",
                 "bodyPaths": ["params"],
-                "descriptorVersion": "github.v1"
+                "paginationPolicy": "opaque_token"
             })
         );
     }

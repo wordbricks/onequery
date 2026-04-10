@@ -15,7 +15,6 @@ use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
-use crate::transport::source_api::ExecuteSourceApiRequestPayload;
 use crate::transport::source_api::ExecuteSourceApiResponse;
 
 use super::CommandContext;
@@ -69,29 +68,35 @@ pub(super) async fn execute<B, T>(
             })
         }
         PlannedCommand::DryRun { request } => {
-            let normalize_response = source_api::normalize_source_api(
+            let prepare_response = source_api::prepare_source_api(
                 &client,
                 org_slug.as_str(),
                 args.source.as_str(),
                 &request,
             )
             .await
-            .map_err(|failure| present_source_api_normalize_failure(failure, args, context))?;
+            .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
 
-            render_dry_run_output(normalize_response.payload, context.verbose).map(|output| {
+            render_dry_run_output(prepare_response.payload.preview, context.verbose).map(|output| {
                 output.with_request_id(if context.verbose {
-                    normalize_response.request_id.clone()
+                    prepare_response.request_id.clone()
                 } else {
                     None
                 })
             })
         }
         PlannedCommand::Execute { plan } => {
-            let execute_response = execute_source_api_pages(
+            let prepare_response = source_api::prepare_source_api(
                 &client,
                 org_slug.as_str(),
                 args.source.as_str(),
                 &plan.request,
+            )
+            .await
+            .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
+            let execute_response = execute_source_api_pages(
+                &client,
+                prepare_response.payload.prepared_token.as_str(),
                 &plan.execution,
                 args,
                 context,
@@ -116,20 +121,16 @@ struct ExecuteSourceApiPages {
 
 async fn execute_source_api_pages(
     client: &crate::transport::client::AuthenticatedApiClient,
-    org_slug: &str,
-    source_key: &str,
-    request: &ExecuteSourceApiRequestPayload,
+    prepared_token: &str,
     execution: &SourceApiExecutionOptions,
     args: &ApiArgs,
     context: &CommandContext,
 ) -> Result<ExecuteSourceApiPages, CliError> {
-    let mut next_request = request.clone();
     let max_pages = execution.max_pages.unwrap_or(u32::MAX);
 
-    let first_response =
-        source_api::execute_source_api(client, org_slug, source_key, &next_request)
-            .await
-            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+    let first_response = source_api::execute_prepared_source_api(client, prepared_token, None)
+        .await
+        .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
     let mut request_id = first_response.request_id.clone();
     let mut next_page_token = first_response.payload.next_page_token.clone();
     let mut pages = vec![first_response.payload];
@@ -139,11 +140,13 @@ async fn execute_source_api_pages(
             break;
         };
 
-        next_request.page_token = Some(next_page_token_value);
-
-        let response = source_api::execute_source_api(client, org_slug, source_key, &next_request)
-            .await
-            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+        let response = source_api::execute_prepared_source_api(
+            client,
+            prepared_token,
+            Some(next_page_token_value.as_str()),
+        )
+        .await
+        .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
         next_page_token = response.payload.next_page_token.clone();
         pages.push(response.payload);
@@ -152,7 +155,7 @@ async fn execute_source_api_pages(
     Ok(ExecuteSourceApiPages { pages, request_id })
 }
 
-fn present_source_api_normalize_failure(
+fn present_source_api_prepare_failure(
     failure: crate::transport::http::ApiFailure,
     args: &ApiArgs,
     context: &CommandContext,
@@ -161,9 +164,9 @@ fn present_source_api_normalize_failure(
         failure,
         ApiErrorPresentation {
             command: &context.command_line,
-            title: "source API dry run failed",
+            title: "source API prepare failed",
             transport_why_prefix: "failed to reach source API service",
-            decode_why_prefix: "failed to decode source API normalized plan",
+            decode_why_prefix: "failed to decode source API prepared preview",
             fallback_try_next: vec![
                 format!("onequery api --source {}", args.source),
                 format!("retry {}", context.command_line),

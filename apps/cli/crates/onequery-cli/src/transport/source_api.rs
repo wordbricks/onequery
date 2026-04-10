@@ -150,6 +150,9 @@ pub(crate) struct SourceApiDescriptor {
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ExecuteSourceApiRequestPayload {
+    // Comment: the CLI still carries descriptor_version until the command flow
+    // finishes deleting the legacy request-planning shape. The prepared wire
+    // contract ignores it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) descriptor_version: Option<String>,
     pub(crate) operation: String,
@@ -221,8 +224,7 @@ pub(crate) struct ExecuteSourceApiResponse {
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct NormalizedSourceApiPlan {
-    pub(crate) source_id: String,
+pub(crate) struct PreparedSourceApiPreview {
     pub(crate) source_key: String,
     pub(crate) provider: String,
     pub(crate) operation: String,
@@ -232,7 +234,7 @@ pub(crate) struct NormalizedSourceApiPlan {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) selector: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) selector_template: Option<String>,
+    pub(crate) url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) host: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -240,9 +242,14 @@ pub(crate) struct NormalizedSourceApiPlan {
     pub(crate) body_kind: SourceApiBodyKind,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) body_paths: Vec<String>,
-    pub(crate) request_fingerprint: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) descriptor_version: Option<String>,
+    pub(crate) pagination_policy: SourceApiPaginationPolicy,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PrepareSourceApiResult {
+    pub(crate) prepared_token: String,
+    pub(crate) preview: PreparedSourceApiPreview,
 }
 
 pub(crate) async fn describe_source_api(
@@ -280,18 +287,18 @@ pub(crate) async fn describe_source_api(
     })
 }
 
-pub(crate) async fn normalize_source_api(
+pub(crate) async fn prepare_source_api(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
     payload: &ExecuteSourceApiRequestPayload,
-) -> Result<ApiSuccess<NormalizedSourceApiPlan>, ApiFailure> {
+) -> Result<ApiSuccess<PrepareSourceApiResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let response = match client
         .cli()
-        .normalize_source_api(types::NormalizeSourceApiRequest {
-            invocation: MessageField::some(source_api_invocation_to_generated(
+        .prepare_source_api(types::PrepareSourceApiRequest {
+            draft: MessageField::some(source_api_draft_to_generated(
                 org_slug.as_str(),
                 source_key.as_str(),
                 payload,
@@ -312,27 +319,21 @@ pub(crate) async fn normalize_source_api(
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
-        payload: normalized_source_api_plan_from_generated(payload, request_id.clone())?,
+        payload: prepare_source_api_result_from_generated(payload, request_id.clone())?,
         request_id,
     })
 }
 
-pub(crate) async fn execute_source_api(
+pub(crate) async fn execute_prepared_source_api(
     client: &AuthenticatedApiClient,
-    org: &str,
-    source_key: &str,
-    payload: &ExecuteSourceApiRequestPayload,
+    prepared_token: &str,
+    page_token: Option<&str>,
 ) -> Result<ApiSuccess<ExecuteSourceApiResponse>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let response = match client
         .cli()
-        .execute_source_api(types::ExecuteSourceApiRequest {
-            invocation: MessageField::some(source_api_invocation_to_generated(
-                org_slug.as_str(),
-                source_key.as_str(),
-                payload,
-            )?),
+        .execute_prepared_source_api(types::ExecutePreparedSourceApiRequest {
+            prepared_token: try_into_value(prepared_token, ErrorStage::ExecuteQuery)?,
+            page_token: try_into_option(page_token, ErrorStage::ExecuteQuery)?,
             ..Default::default()
         })
         .await
@@ -571,18 +572,14 @@ fn source_api_header_to_generated(value: &SourceApiHeader) -> types::CliSourceAp
     }
 }
 
-fn source_api_invocation_to_generated(
+fn source_api_draft_to_generated(
     org: &str,
     source_key: &str,
     payload: &ExecuteSourceApiRequestPayload,
-) -> Result<types::CliSourceApiInvocation, ApiFailure> {
-    Ok(types::CliSourceApiInvocation {
+) -> Result<types::SourceApiDraft, ApiFailure> {
+    Ok(types::SourceApiDraft {
         org_slug: try_into_value(org, ErrorStage::ExecuteQuery)?,
         source_key: try_into_value(source_key, ErrorStage::ExecuteQuery)?,
-        descriptor_version: try_into_option(
-            payload.descriptor_version.as_deref(),
-            ErrorStage::ExecuteQuery,
-        )?,
         operation: try_into_value(payload.operation.as_str(), ErrorStage::ExecuteQuery)?,
         selector: try_into_option(payload.selector.as_deref(), ErrorStage::ExecuteQuery)?,
         method_override: try_into_option(
@@ -596,44 +593,49 @@ fn source_api_invocation_to_generated(
             .collect(),
         field_patch: field_patch_to_generated(payload.field_patch.as_ref())?,
         body: source_api_request_body_to_generated(&payload.body)?,
-        page_token: try_into_option(payload.page_token.as_deref(), ErrorStage::ExecuteQuery)?,
         ..Default::default()
     })
 }
 
 fn source_api_request_body_to_generated(
     value: &SourceApiRequestBody,
-) -> Result<Option<types::cli_source_api_invocation::Body>, ApiFailure> {
+) -> Result<Option<types::source_api_draft::Body>, ApiFailure> {
     match value {
         SourceApiRequestBody::None => Ok(None),
-        SourceApiRequestBody::Json { value } => Ok(Some(
-            types::cli_source_api_invocation::Body::JsonBody(Box::new(
-                serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone())
-                    .map_err(|error| {
-                        conversion_failure(
-                            ErrorStage::ExecuteQuery,
-                            format!("invalid JSON source API request body: {error}"),
-                        )
-                    })?,
-            )),
-        )),
-        SourceApiRequestBody::Text { value } => Ok(Some(
-            types::cli_source_api_invocation::Body::TextBody(value.clone()),
-        )),
+        SourceApiRequestBody::Json { value } => Ok(Some(types::source_api_draft::Body::JsonBody(
+            Box::new(request_json_value_to_generated(value)?),
+        ))),
+        SourceApiRequestBody::Text { value } => {
+            Ok(Some(types::source_api_draft::Body::TextBody(value.clone())))
+        }
         SourceApiRequestBody::Binary { value_base64 } => {
-            let bytes =
-                base64::Engine::decode(&base64::engine::general_purpose::STANDARD, value_base64)
-                    .map_err(|error| {
-                        conversion_failure(
-                            ErrorStage::ExecuteQuery,
-                            format!("invalid source API binary request body: {error}"),
-                        )
-                    })?;
-            Ok(Some(types::cli_source_api_invocation::Body::BinaryBody(
-                bytes,
+            Ok(Some(types::source_api_draft::Body::BinaryBody(
+                request_binary_body_to_generated(value_base64)?,
             )))
         }
     }
+}
+
+fn request_json_value_to_generated(
+    value: &Value,
+) -> Result<buffa_types::google::protobuf::Value, ApiFailure> {
+    serde_json::from_value::<buffa_types::google::protobuf::Value>(value.clone()).map_err(|error| {
+        conversion_failure(
+            ErrorStage::ExecuteQuery,
+            format!("invalid JSON source API request body: {error}"),
+        )
+    })
+}
+
+fn request_binary_body_to_generated(value_base64: &str) -> Result<Vec<u8>, ApiFailure> {
+    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, value_base64).map_err(
+        |error| {
+            conversion_failure(
+                ErrorStage::ExecuteQuery,
+                format!("invalid source API binary request body: {error}"),
+            )
+        },
+    )
 }
 
 fn field_patch_to_generated(
@@ -663,45 +665,52 @@ fn field_patch_to_generated(
     Ok(MessageField::some(struct_value))
 }
 
-fn normalized_source_api_plan_from_generated(
-    value: types::NormalizeSourceApiResponse,
+fn prepare_source_api_result_from_generated(
+    value: types::PrepareSourceApiResponse,
     request_id: Option<String>,
-) -> Result<NormalizedSourceApiPlan, ApiFailure> {
-    let plan = value.plan.into_option().ok_or_else(|| {
+) -> Result<PrepareSourceApiResult, ApiFailure> {
+    let preview = value.preview.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::ExecuteQuery,
-            "source API normalize response missing plan",
+            "source API prepare response missing preview",
             request_id.clone(),
         )
     })?;
 
-    Ok(NormalizedSourceApiPlan {
-        source_id: plan.source_id,
-        source_key: plan.source_key,
-        provider: plan.provider,
-        operation: plan.operation,
-        kind: source_api_operation_kind_from_generated(plan.kind),
-        method: plan.method,
-        selector: plan.selector,
-        selector_template: plan.selector_template,
-        host: plan.host,
-        header_names: plan.header_names,
-        body_kind: source_api_body_kind_from_generated(plan.body_kind),
-        body_paths: plan.body_paths,
-        request_fingerprint: plan.request_fingerprint,
-        descriptor_version: plan.descriptor_version,
+    Ok(PrepareSourceApiResult {
+        prepared_token: value.prepared_token,
+        preview: prepared_source_api_preview_from_generated(preview),
     })
 }
 
+fn prepared_source_api_preview_from_generated(
+    value: types::PreparedSourceApiPreview,
+) -> PreparedSourceApiPreview {
+    PreparedSourceApiPreview {
+        source_key: value.source_key,
+        provider: value.provider,
+        operation: value.operation,
+        kind: source_api_operation_kind_from_generated(value.kind),
+        method: value.method,
+        selector: value.selector,
+        url: value.url,
+        host: value.host,
+        header_names: value.header_names,
+        body_kind: source_api_body_kind_from_generated(value.body_kind),
+        body_paths: value.body_paths,
+        pagination_policy: source_api_pagination_policy_from_generated(value.pagination_policy),
+    }
+}
+
 fn source_api_response_from_generated(
-    value: types::ExecuteSourceApiResponse,
+    value: types::ExecutePreparedSourceApiResponse,
     request_id: Option<String>,
 ) -> Result<ExecuteSourceApiResponse, ApiFailure> {
     let source = value.source.into_option().ok_or_else(|| {
         decode_failure(
             ErrorStage::ExecuteQuery,
             "source API execution response missing source metadata",
-            request_id,
+            request_id.clone(),
         )
     })?;
 
@@ -720,20 +729,20 @@ fn source_api_response_from_generated(
             .collect(),
         content_type: value.content_type,
         body: source_api_response_body_from_generated(value.body)?,
-        request_id: value.request_id,
+        request_id,
         next_page_token: value.next_page_token,
     })
 }
 
 fn source_api_response_body_from_generated(
-    value: Option<types::execute_source_api_response::Body>,
+    value: Option<types::execute_prepared_source_api_response::Body>,
 ) -> Result<SourceApiResponseBody, ApiFailure> {
     match value {
         None => Ok(SourceApiResponseBody::None),
-        Some(types::execute_source_api_response::Body::Text(value)) => {
+        Some(types::execute_prepared_source_api_response::Body::Text(value)) => {
             Ok(SourceApiResponseBody::Text { value })
         }
-        Some(types::execute_source_api_response::Body::Binary(value)) => {
+        Some(types::execute_prepared_source_api_response::Body::Binary(value)) => {
             Ok(SourceApiResponseBody::Binary {
                 value_base64: base64::Engine::encode(
                     &base64::engine::general_purpose::STANDARD,
@@ -741,17 +750,23 @@ fn source_api_response_body_from_generated(
                 ),
             })
         }
-        Some(types::execute_source_api_response::Body::Json(value)) => {
-            let value = serde_json::to_value(value.as_ref()).map_err(|error| {
-                decode_failure(
-                    ErrorStage::ExecuteQuery,
-                    format!("failed to decode source API JSON response body: {error}"),
-                    None,
-                )
-            })?;
+        Some(types::execute_prepared_source_api_response::Body::Json(value)) => {
+            let value = renderable_json_value_from_generated(value.as_ref())?;
             Ok(SourceApiResponseBody::Json { value })
         }
     }
+}
+
+fn renderable_json_value_from_generated(
+    value: &buffa_types::google::protobuf::Value,
+) -> Result<Value, ApiFailure> {
+    serde_json::to_value(value).map_err(|error| {
+        decode_failure(
+            ErrorStage::ExecuteQuery,
+            format!("failed to decode source API JSON response body: {error}"),
+            None,
+        )
+    })
 }
 
 fn describe_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
@@ -783,22 +798,22 @@ mod tests {
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use super::NormalizedSourceApiPlan;
     use super::SourceApiBodyKind;
     use super::SourceApiFieldPolicy;
     use super::SourceApiInputMode;
     use super::SourceApiOperationKind;
-    use super::normalized_source_api_plan_from_generated;
+    use super::SourceApiPaginationPolicy;
+    use super::prepare_source_api_result_from_generated;
     use super::source_api_descriptor_from_generated;
     use super::types;
     use crate::transport::http::ApiFailure;
 
     #[test]
-    fn normalized_source_api_plan_from_generated_maps_typed_plan_payload() {
-        let plan = normalized_source_api_plan_from_generated(
-            types::NormalizeSourceApiResponse {
-                plan: buffa::MessageField::some(types::CliSourceApiPlan {
-                    source_id: "source-1".to_owned(),
+    fn prepare_source_api_result_from_generated_maps_preview_payload() {
+        let prepared = prepare_source_api_result_from_generated(
+            types::PrepareSourceApiResponse {
+                prepared_token: "prepared_123".to_owned(),
+                preview: buffa::MessageField::some(types::PreparedSourceApiPreview {
                     source_key: "github-prod".to_owned(),
                     provider: "github".to_owned(),
                     operation: "fetch".to_owned(),
@@ -807,38 +822,40 @@ mod tests {
                             .into(),
                     method: Some("POST".to_owned()),
                     selector: Some("/issues".to_owned()),
-                    selector_template: Some("/{path}".to_owned()),
+                    url: Some("https://api.github.com/issues".to_owned()),
                     host: Some("api.github.com".to_owned()),
                     header_names: vec!["accept".to_owned()],
                     body_kind: types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT.into(),
                     body_paths: vec!["payload".to_owned()],
-                    request_fingerprint: "fp_123".to_owned(),
-                    descriptor_version: Some("github.v1".to_owned()),
+                    pagination_policy:
+                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN
+                            .into(),
                     ..Default::default()
                 }),
                 ..Default::default()
             },
             Some("req_cli_123".to_owned()),
         )
-        .expect("expected typed normalize payload to decode");
+        .expect("expected typed prepare payload to decode");
 
         assert_eq!(
-            plan,
-            NormalizedSourceApiPlan {
-                source_id: "source-1".to_owned(),
-                source_key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
-                operation: "fetch".to_owned(),
-                kind: SourceApiOperationKind::HttpRequest,
-                method: Some("POST".to_owned()),
-                selector: Some("/issues".to_owned()),
-                selector_template: Some("/{path}".to_owned()),
-                host: Some("api.github.com".to_owned()),
-                header_names: vec!["accept".to_owned()],
-                body_kind: SourceApiBodyKind::Text,
-                body_paths: vec!["payload".to_owned()],
-                request_fingerprint: "fp_123".to_owned(),
-                descriptor_version: Some("github.v1".to_owned()),
+            prepared,
+            super::PrepareSourceApiResult {
+                prepared_token: "prepared_123".to_owned(),
+                preview: super::PreparedSourceApiPreview {
+                    source_key: "github-prod".to_owned(),
+                    provider: "github".to_owned(),
+                    operation: "fetch".to_owned(),
+                    kind: SourceApiOperationKind::HttpRequest,
+                    method: Some("POST".to_owned()),
+                    selector: Some("/issues".to_owned()),
+                    url: Some("https://api.github.com/issues".to_owned()),
+                    host: Some("api.github.com".to_owned()),
+                    header_names: vec!["accept".to_owned()],
+                    body_kind: SourceApiBodyKind::Text,
+                    body_paths: vec!["payload".to_owned()],
+                    pagination_policy: SourceApiPaginationPolicy::OpaqueToken,
+                },
             }
         );
     }

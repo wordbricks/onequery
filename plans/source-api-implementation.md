@@ -175,10 +175,10 @@ Changes:
   generated protobuf types can be used directly.
 - [ ] Stop using `serde_json::Value` as the transport model for request and
   response bodies.
-- [ ] Use generated WKT message types directly at the transport boundary.
-- [ ] Keep `response_request_id()` and request ID handling in header metadata.
-- [ ] Add narrow conversion helpers for CLI input into generated WKT values.
-- [ ] Add narrow conversion helpers for generated WKT values into renderable
+- [x] Use generated WKT message types directly at the transport boundary.
+- [x] Keep `response_request_id()` and request ID handling in header metadata.
+- [x] Add narrow conversion helpers for CLI input into generated WKT values.
+- [x] Add narrow conversion helpers for generated WKT values into renderable
   `serde_json::Value`.
 
 Deliverable:
