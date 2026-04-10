@@ -245,7 +245,25 @@ set -eu
 TARGET_TRIPLE="$launcher_target_triple"
 EOF
     cat <<'EOF'
-INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+# Comment: the public entrypoint is symlinked from ~/.local/bin, so the
+# launcher has to resolve $0 first instead of assuming it already points at the
+# versioned install root.
+resolve_launcher_path() {
+  launcher_path="$1"
+
+  while launcher_link="$(readlink "$launcher_path" 2>/dev/null)"; do
+    launcher_dir=$(CDPATH= cd -- "$(dirname -- "$launcher_path")" && pwd)
+    case "$launcher_link" in
+      /*) launcher_path="$launcher_link" ;;
+      *) launcher_path="$launcher_dir/$launcher_link" ;;
+    esac
+  done
+
+  printf '%s\n' "$launcher_path"
+}
+
+SCRIPT_PATH="$(resolve_launcher_path "$0")"
+INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd)
 export ${ONEQUERY_RUNTIME_ROOT_ENV_VAR}="\${${ONEQUERY_RUNTIME_ROOT_ENV_VAR}:-$INSTALL_DIR/vendor/$TARGET_TRIPLE}"
 managed_node_path="$INSTALL_DIR/${MANAGED_NODE_BIN_RELATIVE_PATH}"
 if [ -z "\${${PACKAGED_SERVER_JS_RUNTIME_ENV_VAR}:-}" ] && [ -x "$managed_node_path" ]; then
