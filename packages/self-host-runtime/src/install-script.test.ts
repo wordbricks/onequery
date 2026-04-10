@@ -8,7 +8,7 @@ import {
 
 describe("install script surface", () => {
   it("keeps the SPA root for browser navigation", () => {
-    const request = new Request("https://onequery.wordbricks.ai/", {
+    const request = new Request("https://onequery.dev/", {
       headers: {
         accept: "text/html",
         "user-agent":
@@ -20,14 +20,14 @@ describe("install script surface", () => {
   });
 
   it("exposes an explicit install.sh endpoint", () => {
-    const request = new Request("https://onequery.wordbricks.ai/install.sh");
+    const request = new Request("https://onequery.dev/install.sh");
 
     expect(shouldServeInstallScript(request)).toBe(true);
   });
 
   it("returns a shell script response with the stable release assets", async () => {
     const response = createInstallScriptResponse(
-      new Request("https://onequery.wordbricks.ai/install.sh")
+      new Request("https://onequery.dev/install.sh")
     );
     const script = await response.text();
 

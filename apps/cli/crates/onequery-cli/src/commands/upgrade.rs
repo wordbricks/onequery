@@ -15,8 +15,7 @@ use crate::platform::Terminal;
 use super::CommandContext;
 use super::Runtime;
 
-const INSTALL_SCRIPT_UPGRADE_COMMAND: &str =
-    "curl -fsSL https://onequery.wordbricks.ai/install.sh | sh";
+const INSTALL_SCRIPT_UPGRADE_COMMAND: &str = "curl -fsSL https://onequery.dev/install.sh | sh";
 const HOMEBREW_UPGRADE_COMMAND: &str = "brew upgrade wordbricks/tap/onequery";
 const BUN_UPGRADE_COMMAND: &str = "bun install -g @onequery/cli@latest";
 const NPM_UPGRADE_COMMAND: &str = "npm install -g @onequery/cli@latest";
@@ -180,10 +179,7 @@ fn detect_upgrade_plan(current_exe: &Path) -> Option<UpgradePlan> {
             UpgradeInstaller::InstallScript,
             INSTALL_SCRIPT_UPGRADE_COMMAND,
             "sh",
-            [
-                "-c",
-                "curl -fsSL https://onequery.wordbricks.ai/install.sh | sh",
-            ],
+            ["-c", "curl -fsSL https://onequery.dev/install.sh | sh"],
         ));
     }
 

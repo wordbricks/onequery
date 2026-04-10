@@ -44,6 +44,8 @@
     "dev": "bun run dev:setup && turbo dev --filter='!@onequery/connector'",
     "dev:with-connector": "bun run dev:setup && turbo dev",
     "dev:setup": "bun run scripts/dev-setup.ts",
+    "landing:build": "bun run --cwd apps/landing build",
+    "landing:deploy:cloudflare": "bun run landing:build && bunx wrangler pages deploy apps/landing/dist/client",
     "github:rulesets:check": "bun run --cwd packages/github-rulesets rulesets:check",
     "github:rulesets:plan": "bun run --cwd packages/github-rulesets rulesets:plan",
     "github:rulesets:apply": "bun run --cwd packages/github-rulesets rulesets:apply",
