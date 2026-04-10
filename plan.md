@@ -142,16 +142,16 @@ enum CliSourceApiInputMode {
 
 ## 5) Fix CLI discovery/default strings to match the new command shape
 
-- [ ] Update `packages/cli-server/src/cli-defaults.ts`:
+- [x] Update `packages/cli-server/src/cli-defaults.ts`:
   - keep inspect example: `onequery use --source <source-key>`
   - replace the old execute example with one of these:
     - raw HTTP example: `onequery use --source <source-key> /path`
     - structured example: `onequery use --source <source-key> --op <operation> --input '<json>'`
-- [ ] Update `packages/cli-server/src/cli-defaults.test.ts` to match the new canonical examples.
-- [ ] Search for provider-as-source wording in source-api-related tests/comments and rewrite it to source-key wording where the command is `onequery use`.
+- [x] Update `packages/cli-server/src/cli-defaults.test.ts` to match the new canonical examples.
+- [x] Search for provider-as-source wording in source-api-related tests/comments and rewrite it to source-key wording where the command is `onequery use`.
 
 **Done when**
-- [ ] `packages/cli-server/src/cli-defaults.ts` no longer treats `onequery use --source <source> --input '<json>'` as the generic execute example.
+- [x] `packages/cli-server/src/cli-defaults.ts` no longer treats `onequery use --source <source> --input '<json>'` as the generic execute example.
 
 ## 6) Final repository cleanup
 
@@ -163,7 +163,6 @@ enum CliSourceApiInputMode {
   - `apps/cli/crates/onequery-cli/src/transport/target`
   - `apps/cli/crates/onequery-cli/src/commands/auth/target`
   - `proto/node_modules`
-- [ ] Update ignore rules if needed so these paths do not come back.
 
 **Done when**
 - [ ] `find apps/cli proto -type d \( -name target -o -name node_modules \)` does not report committed source-tree artifacts.
