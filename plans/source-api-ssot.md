@@ -1,21 +1,29 @@
-# Source API Prepared Execution SSoT
+# Source API State Machine SSoT
+
+This document is the top normative source of truth for the `source_api`
+rewrite.
+
+It defines:
+
+- the truth model
+- the state algebra
+- transition ownership
+- reducer and effect boundaries
+- token semantics
+- invalidation and failure rules
+- global invariants
+
+It does not define the public wire contract in detail. That projection lives in
+[source-api-contract.md](./source-api-contract.md).
 
 ## Mission
 
-Rewrite `source_api` as a Connect and protobuf-native prepared execution system.
+Rewrite `source_api` as a prepared execution system whose truth is an explicit
+state machine, not a pile of transport shapes and convenience helpers.
 
 The rewrite removes the current split where the wire already carries
 `google.protobuf.Value` and `google.protobuf.Struct`, but the application then
 collapses them into a second custom JSON AST.
-
-This document is the normative source of truth for:
-
-- public contract shape
-- domain state algebra
-- legal transitions
-- token semantics
-- invalidation and failure rules
-- runtime JSON representation boundaries
 
 ## Hard Constraints
 
@@ -194,171 +202,81 @@ It contains:
 - one response body variant
 - optional next continuation state
 
-## Contract Shape
+## Transition Ownership
 
-The public RPC surface keeps `DescribeSourceApi` and replaces the rest with:
+Each transition owns one slice of truth production.
 
-1. `PrepareSourceApi`
-2. `ExecutePreparedSourceApi`
+### Prepare Owns
 
-### `DescribeSourceApi`
+- draft validation
+- descriptor and source resolution for normalization
+- normalization and defaulting
+- derivation of policy-relevant metadata
+- derivation of preview data
+- issuance of `prepared_token`
 
-`DescribeSourceApi` remains the capability-discovery RPC.
+Prepare must finish with either:
 
-Its job is to describe:
+- a canonical `PreparedSourceApi`
+- a projection derived from it
+- or a terminal rejection
 
-- supported operations
-- selector requirements
-- field policies
-- request and response conventions
+### Execute Owns
 
-It does not prepare or execute anything.
+- decoding and validating `prepared_token`
+- checking token version and expiry
+- checking current descriptor, source, and authz validity against prepared
+  basis
+- executing the provider request from `PreparedSourceApi`
+- issuing `next_page_token` when continuation exists
 
-### `PrepareSourceApi`
+Execute must not:
 
-`PrepareSourceApi` accepts a `SourceApiDraft` and returns:
+- rebuild provider request shape from raw user draft
+- silently re-prepare
+- infer missing prepared fields from transport payload convenience fields
 
-- `prepared_token`
-- `PreparedSourceApiPreview`
+### Continue Owns
 
-The preview is a projection of prepared state for dry-run output only.
+- decoding and validating `page_token`
+- checking that the page token is bound to the same prepared execution identity
+- executing the next provider continuation step
+- issuing the next continuation token or exhausting the stream
 
-It is allowed to include execution-relevant fields such as:
+Continue must not:
 
-- operation
-- kind
-- method
-- selector
-- host
-- URL
-- header names
-- body kind
-- body paths
-- pagination policy
+- accept a page token from another prepared request
+- downgrade invalidation into implicit re-prepare
 
-It is not allowed to include:
+## Reducer and Effect Boundary
 
-- request fingerprints
-- transport request IDs
-- token payload internals
+This rewrite is correct only if truth-changing logic remains pure and effects
+stay explicit.
 
-### `ExecutePreparedSourceApi`
+### Pure Domain Steps
 
-`ExecutePreparedSourceApi` accepts:
+- `prepare` reduces `SourceApiDraft` plus resolved server context into either
+  `PreparedSourceApi` or a terminal rejection
+- `execute` reduces `PreparedSourceApi` plus continuation input and current
+  validity checks into either an execution-ready input or a terminal failure
+- preview derivation is a pure projection from `PreparedSourceApi`
+- token payload construction is a pure projection from canonical state
 
-- `prepared_token`
-- optional `page_token`
+### Deferred Effects
 
-It returns:
+- loading source and descriptor inputs
+- loading current authz inputs
+- signing and verifying tokens
+- provider I/O
+- parsing upstream response bytes
+- writing request metadata to headers or trailers
 
-- source metadata that is part of the business payload
-- operation and optional selector
-- status
-- business response headers
-- content type
-- response body
-- optional `next_page_token`
+Effects may supply inputs to the pure steps above, but they may not redefine
+prepared truth once it exists.
 
-## Proto Direction
-
-The target public message shape is approximately:
-
-```proto
-message SourceApiDraft {
-  string org_slug = 1;
-  string source_key = 2;
-  string operation = 3;
-  optional string selector = 4;
-  optional string method_override = 5;
-  repeated CliSourceApiHeader headers = 6;
-  optional google.protobuf.Struct field_patch = 7;
-  oneof body {
-    google.protobuf.Value json_body = 8;
-    string text_body = 9;
-    bytes binary_body = 10;
-  }
-}
-
-message PrepareSourceApiRequest {
-  SourceApiDraft draft = 1;
-}
-
-message PreparedSourceApiPreview {
-  string source_key = 1;
-  string provider = 2;
-  string operation = 3;
-  optional string selector = 4;
-  CliSourceApiOperationKind kind = 5;
-  optional string method = 6;
-  optional string host = 7;
-  optional string url = 8;
-  repeated string header_names = 9;
-  CliSourceApiBodyKind body_kind = 10;
-  repeated string body_paths = 11;
-  CliSourceApiPaginationPolicy pagination_policy = 12;
-}
-
-message PrepareSourceApiResponse {
-  string prepared_token = 1;
-  PreparedSourceApiPreview preview = 2;
-}
-
-message ExecutePreparedSourceApiRequest {
-  string prepared_token = 1;
-  optional string page_token = 2;
-}
-
-message ExecutePreparedSourceApiResponse {
-  CliSourceApiSource source = 1;
-  string operation = 2;
-  optional string selector = 3;
-  uint32 status = 4;
-  repeated CliSourceApiHeader headers = 5;
-  string content_type = 6;
-  oneof body {
-    google.protobuf.Value json = 7;
-    string text = 8;
-    bytes binary = 9;
-  }
-  optional string next_page_token = 10;
-}
-```
-
-### Proto Rules
-
-- Keep enum fields as enums, not ad hoc strings.
-- Keep object-only payloads as `google.protobuf.Struct`.
-- Keep arbitrary JSON payloads as `google.protobuf.Value`.
-- Carry validation with `buf.validate`.
-- Reserve removed field numbers and names when deleting old fields.
-
-## Preview and Execution Semantics
-
-### Preview
-
-`PreparedSourceApiPreview` is an informational projection.
-
-It must be derived from prepared state. It must never be the input to execute.
-
-### Execute
-
-`ExecutePreparedSourceApi` must decode the prepared token and execute the
-embedded canonical prepared state. It must not rebuild provider input by
-normalizing the raw draft again.
-
-Allowed execute-time checks:
-
-- token integrity
-- token expiry
-- current source existence
-- descriptor or source invalidation checks
-- current authorization against the prepared authorization view
-
-Disallowed execute-time behavior:
-
-- recomputing provider request shape from user draft
-- exposing internal request digests
-- returning transport metadata inside business payloads
+Comment: if execution code still performs `describe -> normalize -> authorize`
+inside execute, then the reducer and effect boundary is still wrong even if the
+RPC names have been changed.
 
 ## Token Semantics
 
@@ -444,27 +362,6 @@ Failure is part of the state machine, not an exceptional side channel.
 Connect status codes should reflect the failure family, but the domain meaning
 is the lifecycle state above.
 
-## Canonical JSON Boundary Rules
-
-### TypeScript
-
-- Convert protobuf WKT values into protobuf-es `JsonValue` or `JsonObject`
-  exactly once at the Connect boundary.
-- All service, normalization, authorization, pagination, and adapter logic uses
-  those canonical types directly.
-
-### Rust
-
-- The transport layer uses generated WKT types directly.
-- Convert to `serde_json::Value` only at stdin parsing, renderer output, and
-  `jq` or `jaq` plumbing.
-
-### Upstream HTTP
-
-- Parse JSON response bytes once when they enter the shared HTTP helper.
-- Do not stringify and parse to clone JSON.
-- Do not maintain separate provider-specific JSON trees unless semantics differ.
-
 ## Global Invariants
 
 The rewrite is correct only if all of the following remain true:
@@ -480,5 +377,11 @@ The rewrite is correct only if all of the following remain true:
 - page tokens are bound to prepared execution identity
 - preview is a projection, not a source of truth
 
-For repository workstreams and deletion targets, see
+For the public wire projection, see
+[source-api-contract.md](./source-api-contract.md).
+
+For repository workstreams, see
 [source-api-implementation.md](./source-api-implementation.md).
+
+For proof obligations and completion criteria, see
+[source-api-quality-bar.md](./source-api-quality-bar.md).

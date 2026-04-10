@@ -1,9 +1,10 @@
 # Source API Rewrite Implementation Plan
 
 This document executes the normative design in
-[source-api-ssot.md](./source-api-ssot.md).
+[source-api-ssot.md](./source-api-ssot.md) and
+[source-api-contract.md](./source-api-contract.md).
 
-It does not redefine the contract or the state algebra.
+It does not redefine the state machine or the public contract.
 
 ## Progress Board
 
@@ -14,7 +15,7 @@ It does not redefine the contract or the state algebra.
 - [ ] 5. Replace the Rust transport layer
 - [ ] 6. Replace the CLI command flow and rendering
 - [ ] 7. Delete legacy surfaces from the source-api path
-- [ ] 8. Pass verification and completion checks
+- [ ] 8. Pass the quality bar and completion checks
 
 ## Current Shape To Remove
 
@@ -48,7 +49,8 @@ Implement in this order:
 4. provider adapters and pagination helpers
 5. Rust transport layer
 6. CLI command flow and rendering
-7. legacy cleanup and verification
+7. legacy cleanup
+8. quality bar verification
 
 ## 1. Replace the Proto Contract
 
@@ -236,48 +238,10 @@ These names and shapes must disappear from the new source-api path:
 - [ ] source-api compatibility branches for normalized plan responses
 - [ ] source-api code that clones JSON through `JSON.parse(JSON.stringify(...))`
 
-## 8. Verification Bar
+## 8. Quality Bar Verification
 
-### TypeScript
+Completion checks, verification requirements, and the "Jane Street level"
+quality bar live in
+[source-api-quality-bar.md](./source-api-quality-bar.md).
 
-- [ ] Unit tests for WKT request and response round-trips using real
-  `google.protobuf.Value` and `Struct`.
-- [ ] Unit tests for prepared token encoding, decoding, expiry, and tamper
-  rejection.
-- [ ] Unit tests for page token binding to prepared execution identity.
-
-### Rust
-
-- [ ] Unit tests for CLI input edge conversion into WKT.
-- [ ] Unit tests for WKT rendering back into `serde_json::Value`.
-- [ ] Transport tests confirming request IDs are read from headers, not
-  payloads.
-
-### End-To-End
-
-- [ ] Prepare-only dry run.
-- [ ] Execute prepared request with JSON response body.
-- [ ] Execute prepared request with text response body.
-- [ ] Execute prepared request with binary response body.
-- [ ] Paginated execution with a stable `prepared_token`.
-- [ ] Rejection for modified prepared token.
-- [ ] Rejection for page token bound to a different prepared request.
-- [ ] Rejection for invalid `Struct` in object-only fields.
-- [ ] Invalidation when prepared basis is no longer acceptable.
-
-## Definition of Done
-
-The rewrite is done when all of the following are true:
-
-- the repository matches the contract and invariants in
-  [source-api-ssot.md](./source-api-ssot.md)
-- there is exactly one public `prepare -> execute` flow
-- dry-run uses prepare only
-- execute accepts prepared state and continuation state only
-- no source-api payload carries `request_id`
-- no source-api payload carries request fingerprints
-- no custom application JSON AST remains in the source-api path
-- TypeScript uses protobuf-es JSON types directly in the service path
-- Rust transport mirrors the protobuf contract directly
-- all source-api tests pass
-- legacy source-api surfaces listed above are removed
+Do not mark the final progress item done until that document is fully checked.
