@@ -3,15 +3,14 @@ import type { JsonValue } from "@bufbuild/protobuf";
 import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 import type {
-  NormalizedExecutionPlan,
+  PreparedSourceApiPreview,
   SourceApiDescriptor,
   SourceApiBodyKind,
+  SourceApiDraft as DomainSourceApiDraft,
   SourceApiExample,
-  SourceApiExecuteRequest,
   SourceApiExecutionResponse,
   SourceApiFieldPolicy,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -26,9 +25,8 @@ import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
 import type {
-  CliSourceApiInvocation,
-  ExecuteSourceApiRequest,
-  NormalizeSourceApiRequest,
+  PrepareSourceApiRequest,
+  SourceApiDraft as CliSourceApiDraft,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceApiBodyKind,
@@ -191,69 +189,28 @@ export function toCliQueryLogicalType(value: string) {
   }
 }
 
-export function fromCliExecuteSourceApiRequest(
-  request: ExecuteSourceApiRequest
-): SourceApiExecuteRequest {
-  return fromCliSourceApiInvocation(
-    requireCliSourceApiInvocation(request.invocation)
-  );
-}
-
-export function fromCliNormalizeSourceApiRequest(
-  request: NormalizeSourceApiRequest
-): SourceApiExecuteRequest {
-  return fromCliSourceApiInvocation(
-    requireCliSourceApiInvocation(request.invocation)
-  );
-}
-
-export function toCliNormalizeSourceApiResponse(
-  value: NormalizedExecutionPlan
-) {
-  return {
-    plan: {
-      bodyKind: toCliSourceApiBodyKind(value.bodyKind),
-      bodyPaths: [...(value.bodyPaths ?? [])],
-      descriptorVersion: value.descriptorVersion,
-      headerNames: [...value.headerNames],
-      host: value.host,
-      kind: toCliSourceApiOperationKind(value.kind),
-      method: value.method,
-      operation: value.operation,
-      provider: value.provider,
-      requestFingerprint: value.requestFingerprint,
-      selector: value.selector,
-      selectorTemplate: value.selectorTemplate,
-      sourceId: value.sourceId,
-      sourceKey: value.sourceKey,
-    },
-  };
-}
-
-export function requireCliSourceApiInvocation(
-  invocation: CliSourceApiInvocation | undefined
-): CliSourceApiInvocation {
-  if (invocation) {
-    return invocation;
+export function requireCliSourceApiDraft(
+  draft: PrepareSourceApiRequest["draft"]
+): CliSourceApiDraft {
+  if (draft) {
+    return draft;
   }
 
   throwCliConnectError({
-    detail: "source API request missing invocation payload",
+    detail: "source API request missing draft payload",
     key: "INVALID_REQUEST",
   });
 }
 
-function fromCliSourceApiInvocation(
-  request: CliSourceApiInvocation
-): SourceApiExecuteRequest {
+export function fromCliSourceApiDraft(
+  request: CliSourceApiDraft
+): DomainSourceApiDraft {
   return {
     body: fromCliSourceApiRequestBody(request.body),
-    descriptorVersion: request.descriptorVersion,
     fieldPatch: request.fieldPatch,
     headers: request.headers.map(fromCliSourceApiHeader),
     methodOverride: request.methodOverride,
     operation: request.operation,
-    pageToken: request.pageToken,
     selector: request.selector,
   };
 }
@@ -269,7 +226,17 @@ export function toCliDescribeSourceApiResponse(value: SourceApiDescriptor) {
   };
 }
 
-export function toCliExecuteSourceApiResponse(
+export function toCliPrepareSourceApiResponse(input: {
+  preparedToken: string;
+  preview: PreparedSourceApiPreview;
+}) {
+  return {
+    preparedToken: input.preparedToken,
+    preview: toCliPreparedSourceApiPreview(input.preview),
+  };
+}
+
+export function toCliExecutePreparedSourceApiResponse(
   value: SourceApiExecutionResponse
 ) {
   return {
@@ -278,7 +245,6 @@ export function toCliExecuteSourceApiResponse(
     headers: value.headers.map(toCliSourceApiHeader),
     nextPageToken: value.nextPageToken,
     operation: value.operation,
-    requestId: value.requestId,
     selector: value.selector,
     source: toCliSourceApiSource(value.source),
     status: value.status,
@@ -293,13 +259,13 @@ function fromCliSourceApiHeader(value: SourceApiHeader) {
 }
 
 function fromCliSourceApiRequestBody(
-  body: CliSourceApiInvocation["body"]
+  body: CliSourceApiDraft["body"]
 ): SourceApiRequestBody {
   switch (body.case) {
     case "jsonBody":
       return {
         kind: "json",
-        value: toSourceApiJsonValue(toJson(ValueSchema, body.value)),
+        value: toJson(ValueSchema, body.value),
       };
     case "textBody":
       return {
@@ -316,28 +282,6 @@ function fromCliSourceApiRequestBody(
         kind: "none",
       };
   }
-}
-
-function toSourceApiJsonValue(value: JsonValue): SourceApiJsonValue {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "number" ||
-    typeof value === "string"
-  ) {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(toSourceApiJsonValue);
-  }
-
-  const object: Record<string, SourceApiJsonValue> = {};
-  for (const [key, nestedValue] of Object.entries(value)) {
-    object[key] = toSourceApiJsonValue(nestedValue);
-  }
-
-  return object;
 }
 
 function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
@@ -409,6 +353,23 @@ function toCliSourceApiOperationKind(
     case "structured_request":
       return CliSourceApiOperationKind.STRUCTURED_REQUEST;
   }
+}
+
+function toCliPreparedSourceApiPreview(value: PreparedSourceApiPreview) {
+  return {
+    bodyKind: toCliSourceApiBodyKind(value.bodyKind),
+    bodyPaths: [...value.bodyPaths],
+    headerNames: [...value.headerNames],
+    host: value.host,
+    kind: toCliSourceApiOperationKind(value.kind),
+    method: value.method,
+    operation: value.operation,
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    provider: value.provider,
+    selector: value.selector,
+    sourceKey: value.sourceKey,
+    url: value.url,
+  };
 }
 
 function toCliSourceApiBodyKind(

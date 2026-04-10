@@ -20,8 +20,8 @@ import {
 } from "./service/source";
 import {
   handleDescribeSourceApi,
-  handleExecuteSourceApi,
-  handleNormalizeSourceApi,
+  handleExecutePreparedSourceApi,
+  handlePrepareSourceApi,
 } from "./service/source_api";
 
 export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
@@ -37,8 +37,8 @@ export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
     getSourceConnectGuide: handleGetSourceConnectGuide,
     connectSource: handleConnectSource,
     describeSourceApi: handleDescribeSourceApi,
-    normalizeSourceApi: handleNormalizeSourceApi,
-    executeSourceApi: handleExecuteSourceApi,
+    prepareSourceApi: handlePrepareSourceApi,
+    executePreparedSourceApi: handleExecutePreparedSourceApi,
     validateQuery: handleValidateQuery,
     executeQuery: handleExecuteQuery,
   };

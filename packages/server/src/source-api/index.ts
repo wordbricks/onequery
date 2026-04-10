@@ -7,5 +7,6 @@ export * from "./registry";
 export * from "./types";
 export * from "./helpers/http-rest";
 export * from "./helpers/pagination";
+export * from "./helpers/prepared-token";
 export * from "./helpers/structured";
 export * from "./policy";

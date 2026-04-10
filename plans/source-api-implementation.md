@@ -10,7 +10,7 @@ It does not redefine the state machine or the public contract.
 
 - [x] 1. Replace the proto contract and regenerate bindings
 - [x] 2. Replace the TypeScript domain model with prepared execution truth
-- [ ] 3. Replace the Connect boundary and service handlers
+- [x] 3. Replace the Connect boundary and service handlers
 - [ ] 4. Replace provider adapter execution and pagination binding
 - [ ] 5. Replace the Rust transport layer
 - [ ] 6. Replace the CLI command flow and rendering
@@ -120,16 +120,16 @@ Files:
 
 Changes:
 
-- [ ] Remove `handleNormalizeSourceApi`.
-- [ ] Add `handlePrepareSourceApi`.
-- [ ] Add `handleExecutePreparedSourceApi`.
-- [ ] Remove `fromCliNormalizeSourceApiRequest()` and
+- [x] Remove `handleNormalizeSourceApi`.
+- [x] Add `handlePrepareSourceApi`.
+- [x] Add `handleExecutePreparedSourceApi`.
+- [x] Remove `fromCliNormalizeSourceApiRequest()` and
   `toCliNormalizeSourceApiResponse()`.
-- [ ] Delete `toSourceApiJsonValue()`.
-- [ ] Convert WKT values into protobuf-es `JsonValue` or `JsonObject` exactly
+- [x] Delete `toSourceApiJsonValue()`.
+- [x] Convert WKT values into protobuf-es `JsonValue` or `JsonObject` exactly
   once at the Connect boundary.
-- [ ] Keep `x-request-id` in headers and trailers only.
-- [ ] Make execute decode the prepared token and route the canonical prepared
+- [x] Keep `x-request-id` in headers and trailers only.
+- [x] Make execute decode the prepared token and route the canonical prepared
   state to the domain, rather than rebuilding it from a raw invocation.
 
 Deliverable:

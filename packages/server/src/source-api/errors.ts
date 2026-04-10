@@ -53,6 +53,10 @@ export class SourceApiPermissionDeniedError extends SourceApiError {
   }
 }
 
+export class SourceApiExpiredError extends SourceApiError {}
+
+export class SourceApiInvalidatedError extends SourceApiError {}
+
 export class SourceApiRegistryConfigurationError extends SourceApiError {
   readonly provider: ProviderType;
 
