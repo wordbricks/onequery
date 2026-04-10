@@ -13,7 +13,7 @@ import type {
 export type SourceApiExecutionStage = "normalize" | "authorize" | "execute";
 
 export class SourceApiExecutionStageError extends Error {
-  readonly cause: unknown;
+  override readonly cause: unknown;
   readonly stage: SourceApiExecutionStage;
 
   constructor(stage: SourceApiExecutionStage, cause: unknown) {
