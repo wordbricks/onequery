@@ -14,6 +14,18 @@ describe("source connect guide", () => {
     );
   });
 
+  it("uses the PR62 PostHog host guidance in the guide output", () => {
+    const guide = buildCliSourceConnectGuide("posthog");
+
+    expect(guide.content).toContain("https://us.posthog.com");
+    expect(guide.content).toContain(
+      "Do not use the SDK `api_host` value such as `https://us.i.posthog.com`."
+    );
+    expect(guide.content).not.toContain(
+      '"hostUrl": "https://us.i.posthog.com"'
+    );
+  });
+
   it("reuses the canonical show command in connect results", () => {
     const result = buildCliSourceConnectResult({
       displayName: null,

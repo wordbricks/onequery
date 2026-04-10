@@ -213,15 +213,18 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
   {
     provider: "posthog",
     summary:
-      "Connect PostHog with a host URL, personal API key, and project ID.",
+      "Connect PostHog with the PostHog app host URL, a personal API key, and project ID.",
     steps: [
-      "Retrieve the PostHog instance URL, the target project ID, and a personal API key with read access.",
-      "Use the canonical host URL without a trailing slash; the server normalizes extra trailing slashes.",
+      "Open the PostHog project you want to connect, then go to `Settings -> Project -> General` and copy the `Project ID` from the `Project token & ID` section.",
+      "Use the PostHog app origin as `credentials.hostUrl`: `https://us.posthog.com` for US Cloud, `https://eu.posthog.com` for EU Cloud, or your self-hosted base URL. Do not use the SDK `api_host` value such as `https://us.i.posthog.com`.",
+      "Go to `Settings -> Account -> Personal API keys`, create a personal API key, and make sure `Organization & project access` includes the project you plan to connect.",
+      "Grant at least `Read` access to `Project` and `Query`, then copy the secret immediately into `credentials.personalApiKey`. PostHog may only show the full key once.",
+      "Use the canonical host URL without a trailing slash when possible; the server still normalizes extra trailing slashes.",
     ],
     exampleInput: {
       name: "posthog_main",
       credentials: {
-        hostUrl: "https://us.i.posthog.com",
+        hostUrl: "https://us.posthog.com",
         personalApiKey: "phx_personal_key",
         projectId: "12345",
       },
