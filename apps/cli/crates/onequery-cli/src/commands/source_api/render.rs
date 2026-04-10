@@ -68,8 +68,9 @@ pub(super) fn render_descriptor_output(
 
 pub(super) fn render_dry_run_output(
     plan: NormalizedSourceApiPlan,
+    verbose: bool,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&plan, "onequery api")?;
+    let data = serialize_dry_run_plan(&plan, verbose)?;
     Ok(CommandOutput::raw_json(pretty_json_lines(&data), data))
 }
 
@@ -94,6 +95,74 @@ pub(super) fn render_execute_output(
 }
 
 fn serialize_execute_response(
+    response: &ExecuteSourceApiResponse,
+    render: &SourceApiRenderOptions,
+) -> Result<serde_json::Value, CliError> {
+    if !render.verbose {
+        let body = if render.silent {
+            None
+        } else {
+            json_body_value(&response.body)
+        };
+
+        return Ok(match (body, response.next_page_token.as_deref()) {
+            (Some(body), None) => body,
+            (Some(body), Some(next_page_token)) => serde_json::json!({
+                "body": body,
+                "nextPageToken": next_page_token,
+            }),
+            (None, Some(next_page_token)) => serde_json::json!({
+                "nextPageToken": next_page_token,
+            }),
+            (None, None) => serde_json::Value::Null,
+        });
+    }
+
+    serialize_verbose_execute_response(response, render)
+}
+
+fn serialize_dry_run_plan(
+    plan: &NormalizedSourceApiPlan,
+    verbose: bool,
+) -> Result<serde_json::Value, CliError> {
+    if verbose {
+        let mut data = serialize_command_data(plan, "onequery api")?;
+        if let serde_json::Value::Object(object) = &mut data {
+            object.remove("requestFingerprint");
+        }
+        return Ok(data);
+    }
+
+    let mut object = serde_json::Map::new();
+    object.insert(
+        "operation".to_owned(),
+        serde_json::Value::String(plan.operation.clone()),
+    );
+    object.insert(
+        "kind".to_owned(),
+        serialize_command_data(&plan.kind, "onequery api")?,
+    );
+    if let Some(method) = plan.method.as_ref() {
+        object.insert(
+            "method".to_owned(),
+            serde_json::Value::String(method.clone()),
+        );
+    }
+    if let Some(selector) = plan.selector.as_ref() {
+        object.insert(
+            "selector".to_owned(),
+            serde_json::Value::String(selector.clone()),
+        );
+    }
+    object.insert(
+        "bodyKind".to_owned(),
+        serialize_command_data(&plan.body_kind, "onequery api")?,
+    );
+
+    Ok(serde_json::Value::Object(object))
+}
+
+fn serialize_verbose_execute_response(
     response: &ExecuteSourceApiResponse,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
@@ -681,22 +750,25 @@ mod tests {
 
     #[test]
     fn render_dry_run_output_serializes_normalized_plan_shape() {
-        let output = render_dry_run_output(NormalizedSourceApiPlan {
-            source_id: "source-1".to_owned(),
-            source_key: "github-prod".to_owned(),
-            provider: "github".to_owned(),
-            operation: "fetch".to_owned(),
-            kind: SourceApiOperationKind::HttpRequest,
-            method: Some("GET".to_owned()),
-            selector: Some("/pulls".to_owned()),
-            selector_template: Some("/{path}".to_owned()),
-            host: Some("api.github.com".to_owned()),
-            header_names: vec!["accept".to_owned()],
-            body_kind: SourceApiBodyKind::Json,
-            body_paths: vec!["params".to_owned()],
-            request_fingerprint: "fp_123".to_owned(),
-            descriptor_version: Some("github.v1".to_owned()),
-        })
+        let output = render_dry_run_output(
+            NormalizedSourceApiPlan {
+                source_id: "source-1".to_owned(),
+                source_key: "github-prod".to_owned(),
+                provider: "github".to_owned(),
+                operation: "fetch".to_owned(),
+                kind: SourceApiOperationKind::HttpRequest,
+                method: Some("GET".to_owned()),
+                selector: Some("/pulls".to_owned()),
+                selector_template: Some("/{path}".to_owned()),
+                host: Some("api.github.com".to_owned()),
+                header_names: vec!["accept".to_owned()],
+                body_kind: SourceApiBodyKind::Json,
+                body_paths: vec!["params".to_owned()],
+                request_fingerprint: "fp_123".to_owned(),
+                descriptor_version: Some("github.v1".to_owned()),
+            },
+            false,
+        )
         .expect("expected normalized dry-run plan to render");
 
         let rendered = render_output(output, EffectiveOutputMode::Text);
@@ -705,29 +777,55 @@ mod tests {
             @r#"
             {
               "bodyKind": "json",
-              "bodyPaths": [
-                "params"
-              ],
-              "descriptorVersion": "github.v1",
-              "headerNames": [
-                "accept"
-              ],
-              "host": "api.github.com",
               "kind": "http_request",
               "method": "GET",
               "operation": "fetch",
-              "provider": "github",
-              "requestFingerprint": "fp_123",
-              "selector": "/pulls",
-              "selectorTemplate": "/{path}",
-              "sourceId": "source-1",
-              "sourceKey": "github-prod"
+              "selector": "/pulls"
             }
             "#
         );
 
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&rendered).expect("expected raw JSON output"),
+            json!({
+                "operation": "fetch",
+                "kind": "http_request",
+                "method": "GET",
+                "selector": "/pulls",
+                "bodyKind": "json",
+            })
+        );
+    }
+
+    #[test]
+    fn render_dry_run_output_omits_request_fingerprint_when_verbose() {
+        let output = render_dry_run_output(
+            NormalizedSourceApiPlan {
+                source_id: "source-1".to_owned(),
+                source_key: "github-prod".to_owned(),
+                provider: "github".to_owned(),
+                operation: "fetch".to_owned(),
+                kind: SourceApiOperationKind::HttpRequest,
+                method: Some("GET".to_owned()),
+                selector: Some("/pulls".to_owned()),
+                selector_template: Some("/{path}".to_owned()),
+                host: Some("api.github.com".to_owned()),
+                header_names: vec!["accept".to_owned()],
+                body_kind: SourceApiBodyKind::Json,
+                body_paths: vec!["params".to_owned()],
+                request_fingerprint: "fp_123".to_owned(),
+                descriptor_version: Some("github.v1".to_owned()),
+            },
+            true,
+        )
+        .expect("expected verbose normalized dry-run plan to render");
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&render_output(
+                output,
+                EffectiveOutputMode::Json
+            ))
+            .expect("expected raw JSON output"),
             json!({
                 "sourceId": "source-1",
                 "sourceKey": "github-prod",
@@ -741,7 +839,6 @@ mod tests {
                 "headerNames": ["accept"],
                 "bodyKind": "json",
                 "bodyPaths": ["params"],
-                "requestFingerprint": "fp_123",
                 "descriptorVersion": "github.v1"
             })
         );
@@ -764,17 +861,7 @@ mod tests {
             ))
             .expect("expected raw JSON output"),
             json!({
-                "source": {
-                    "key": "github-prod",
-                    "provider": "github",
-                },
-                "operation": "fetch",
-                "status": 200,
-                "contentType": "application/json",
-                "body": {
-                    "items": [1, 2]
-                },
-                "requestId": "req_1"
+                "items": [1, 2]
             })
         );
     }
@@ -795,17 +882,7 @@ mod tests {
                 EffectiveOutputMode::Json
             ))
             .expect("expected raw JSON output"),
-            json!({
-                "source": {
-                    "key": "github-prod",
-                    "provider": "github",
-                },
-                "operation": "fetch",
-                "status": 200,
-                "contentType": "application/json",
-                "body": "plain text\nnext line",
-                "requestId": "req_1"
-            })
+            json!("plain text\nnext line")
         );
     }
 
@@ -864,20 +941,10 @@ mod tests {
                 EffectiveOutputMode::Json
             ))
             .expect("expected raw JSON output"),
-            json!({
-                "source": {
-                    "key": "github-prod",
-                    "provider": "github",
-                },
-                "operation": "fetch",
-                "status": 200,
-                "contentType": "application/json",
-                "body": [
-                    [{"id": 1}],
-                    [{"id": 2}]
-                ],
-                "requestId": "req_1"
-            })
+            json!([
+                [{"id": 1}],
+                [{"id": 2}]
+            ])
         );
     }
 
@@ -905,20 +972,10 @@ mod tests {
                 EffectiveOutputMode::Json
             ))
             .expect("expected raw JSON output"),
-            json!({
-                "source": {
-                    "key": "github-prod",
-                    "provider": "github",
-                },
-                "operation": "fetch",
-                "status": 200,
-                "contentType": "application/json",
-                "body": [
-                    {"id": 1},
-                    {"id": 2}
-                ],
-                "requestId": "req_1"
-            })
+            json!([
+                {"id": 1},
+                {"id": 2}
+            ])
         );
     }
 
@@ -941,17 +998,7 @@ mod tests {
                 EffectiveOutputMode::Json
             ))
             .expect("expected raw JSON output"),
-            json!({
-                "source": {
-                    "key": "github-prod",
-                    "provider": "github",
-                },
-                "operation": "fetch",
-                "status": 200,
-                "contentType": "application/json",
-                "body": [1, 2],
-                "requestId": "req_1"
-            })
+            json!([1, 2])
         );
     }
 
@@ -1058,6 +1105,29 @@ mod tests {
                 EffectiveOutputMode::Json
             ))
             .expect("expected raw JSON output"),
+            serde_json::Value::Null
+        );
+    }
+
+    #[test]
+    fn render_execute_output_keeps_response_metadata_only_when_verbose() {
+        let output = render_execute_output(
+            vec![json_response(SourceApiResponseBody::Json {
+                value: json!({"items": [1, 2]}),
+            })],
+            SourceApiRenderOptions {
+                verbose: true,
+                ..render_options()
+            },
+        )
+        .expect("expected verbose source API response to render");
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&render_output(
+                output,
+                EffectiveOutputMode::Json
+            ))
+            .expect("expected raw JSON output"),
             json!({
                 "source": {
                     "key": "github-prod",
@@ -1065,10 +1135,10 @@ mod tests {
                 },
                 "operation": "fetch",
                 "status": 200,
-                "headers": {
-                    "content-type": "application/json"
-                },
                 "contentType": "application/json",
+                "body": {
+                    "items": [1, 2]
+                },
                 "requestId": "req_1"
             })
         );
@@ -1137,6 +1207,7 @@ mod tests {
             silent: false,
             slurp: false,
             jq: None,
+            verbose: false,
         }
     }
 }

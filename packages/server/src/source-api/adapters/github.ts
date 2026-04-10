@@ -156,6 +156,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       descriptorVersion: GITHUB_DESCRIPTOR_VERSION,
       examples,
       notes: [
+        "CLI repository shorthand like `owner/repo` expands to `/repos/<owner>/<repo>`.",
         "Repo-scoped selectors like `/issues` require exactly one connected repository unless `repository` is passed in the field patch.",
         "Explicit `/repos/<owner>/<repo>/...` selectors must target a repository already connected to this source.",
       ],
@@ -445,15 +446,20 @@ export function toLegacyGitHubRelayBody(
 function buildGitHubExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
+      command: `onequery api --source ${sourceKey} openai/example`,
+      description: "Fetch repository details using owner/repo shorthand.",
+      label: "Show repository details",
+    },
+    {
       command: `onequery api --source ${sourceKey} /issues -f 'params[state]=open'`,
       description:
         "Fetch repo-scoped issues for the connected repository selection.",
       label: "List open issues",
     },
     {
-      command: `onequery api --source ${sourceKey} --op fetch /repos/openai/example/pulls -f 'params[per_page]=20'`,
+      command: `onequery api --source ${sourceKey} openai/example/pulls -f 'params[per_page]=20'`,
       description:
-        "Call an explicit repository path when multiple repositories are connected.",
+        "Call an explicit repository path using owner/repo shorthand.",
       label: "List pull requests",
     },
   ];

@@ -1,4 +1,4 @@
-import { toJson } from "@bufbuild/protobuf";
+import { fromJson, toJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { timestampFromDate, ValueSchema } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
@@ -442,7 +442,8 @@ function toCliSourceApiResponseBody(value: SourceApiResponseBody) {
     case "json":
       return {
         case: "json" as const,
-        value: value.value as never,
+        // Connect expects an actual google.protobuf.Value message here.
+        value: fromJson(ValueSchema, value.value as JsonValue),
       };
     case "text":
       return {

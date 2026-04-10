@@ -51,7 +51,7 @@ pub(super) fn resolve_intent(
         ));
     };
 
-    if is_selector_target(target) {
+    if let Some(selector) = infer_selector_target(target, descriptor) {
         let Some(operation) = descriptor.default_path_operation.as_deref() else {
             return Err(source_api_parse_error(
                 context,
@@ -62,7 +62,7 @@ pub(super) fn resolve_intent(
         };
         return Ok(ResolvedIntent::Execute {
             operation: operation.to_owned(),
-            selector: Some(target.to_owned()),
+            selector: Some(selector),
         });
     }
 
@@ -74,6 +74,43 @@ pub(super) fn resolve_intent(
 
 fn is_selector_target(target: &str) -> bool {
     target.starts_with('/') || target.starts_with("http://") || target.starts_with("https://")
+}
+
+fn infer_selector_target(target: &str, descriptor: &SourceApiDescriptor) -> Option<String> {
+    if is_selector_target(target) {
+        return Some(target.to_owned());
+    }
+
+    if descriptor
+        .operations
+        .iter()
+        .any(|candidate| candidate.name == target)
+    {
+        return None;
+    }
+
+    if descriptor.source.provider == "github" {
+        return infer_github_repository_selector(target);
+    }
+
+    None
+}
+
+fn infer_github_repository_selector(target: &str) -> Option<String> {
+    let mut parts = target.split('/').filter(|part| !part.is_empty());
+    let owner = parts.next()?;
+    let repo = parts.next()?;
+    if owner.chars().any(char::is_whitespace) || repo.chars().any(char::is_whitespace) {
+        return None;
+    }
+
+    let remainder = parts.collect::<Vec<_>>();
+    let mut selector = format!("/repos/{owner}/{repo}");
+    if !remainder.is_empty() {
+        selector.push('/');
+        selector.push_str(&remainder.join("/"));
+    }
+    Some(selector)
 }
 
 #[cfg(test)]
@@ -204,6 +241,69 @@ mod tests {
     }
 
     #[test]
+    fn resolve_intent_treats_github_repository_target_as_selector() {
+        let intent = resolve_intent(
+            &ApiArgs {
+                target: Some("acme/widgets".to_owned()),
+                ..api_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected GitHub repository shorthand to resolve as a selector");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "fetch".to_owned(),
+                selector: Some("/repos/acme/widgets".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_treats_github_repository_subpath_target_as_selector() {
+        let intent = resolve_intent(
+            &ApiArgs {
+                target: Some("acme/widgets/pulls".to_owned()),
+                ..api_args()
+            },
+            &descriptor(),
+            &context(),
+        )
+        .expect("expected GitHub repository shorthand subpath to resolve as a selector");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "fetch".to_owned(),
+                selector: Some("/repos/acme/widgets/pulls".to_owned()),
+            }
+        );
+    }
+
+    #[test]
+    fn resolve_intent_prefers_declared_operation_over_github_shorthand() {
+        let intent = resolve_intent(
+            &ApiArgs {
+                target: Some("acme/widgets".to_owned()),
+                ..api_args()
+            },
+            &descriptor_with_operation("acme/widgets"),
+            &context(),
+        )
+        .expect("expected declared operations to keep priority");
+
+        assert_eq!(
+            intent,
+            ResolvedIntent::Execute {
+                operation: "acme/widgets".to_owned(),
+                selector: None,
+            }
+        );
+    }
+
+    #[test]
     fn resolve_intent_treats_url_target_as_selector() {
         let intent = resolve_intent(
             &ApiArgs {
@@ -244,6 +344,10 @@ mod tests {
     }
 
     fn descriptor() -> SourceApiDescriptor {
+        descriptor_with_operation("")
+    }
+
+    fn descriptor_with_operation(operation_name: &str) -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: SourceApiSource {
                 key: "github-prod".to_owned(),
@@ -252,7 +356,14 @@ mod tests {
             },
             descriptor_version: "2026-04-09".to_owned(),
             default_path_operation: Some("fetch".to_owned()),
-            operations: Vec::new(),
+            operations: if operation_name.is_empty() {
+                Vec::new()
+            } else {
+                vec![crate::transport::source_api::SourceApiOperation {
+                    name: operation_name.to_owned(),
+                    ..Default::default()
+                }]
+            },
             examples: Vec::new(),
             notes: Vec::new(),
         }

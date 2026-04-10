@@ -34,6 +34,7 @@ pub(super) struct SourceApiRenderOptions {
     pub(super) silent: bool,
     pub(super) slurp: bool,
     pub(super) jq: Option<String>,
+    pub(super) verbose: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -156,6 +157,7 @@ pub(super) async fn build_plan(
                 silent: args.silent,
                 slurp: args.slurp,
                 jq: args.jq.clone(),
+                verbose: context.verbose,
             },
         },
     })

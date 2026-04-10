@@ -59,8 +59,15 @@ pub(super) async fn execute<B, T>(
 
     let plan = plan::build_plan(args, &descriptor_response.payload, context).await?;
     match plan {
-        PlannedCommand::Describe => render_descriptor_output(descriptor_response.payload)
-            .map(|output| output.with_request_id(descriptor_response.request_id)),
+        PlannedCommand::Describe => {
+            render_descriptor_output(descriptor_response.payload).map(|output| {
+                output.with_request_id(if context.verbose {
+                    descriptor_response.request_id.clone()
+                } else {
+                    None
+                })
+            })
+        }
         PlannedCommand::DryRun { request } => {
             let normalize_response = source_api::normalize_source_api(
                 &client,
@@ -71,8 +78,13 @@ pub(super) async fn execute<B, T>(
             .await
             .map_err(|failure| present_source_api_normalize_failure(failure, args, context))?;
 
-            render_dry_run_output(normalize_response.payload)
-                .map(|output| output.with_request_id(normalize_response.request_id))
+            render_dry_run_output(normalize_response.payload, context.verbose).map(|output| {
+                output.with_request_id(if context.verbose {
+                    normalize_response.request_id.clone()
+                } else {
+                    None
+                })
+            })
         }
         PlannedCommand::Execute { plan } => {
             let execute_response = execute_source_api_pages(
@@ -86,8 +98,13 @@ pub(super) async fn execute<B, T>(
             )
             .await?;
 
-            render_execute_output(execute_response.pages, plan.render)
-                .map(|output| output.with_request_id(execute_response.request_id))
+            render_execute_output(execute_response.pages, plan.render).map(|output| {
+                output.with_request_id(if context.verbose {
+                    execute_response.request_id.clone()
+                } else {
+                    None
+                })
+            })
         }
     }
 }

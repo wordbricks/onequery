@@ -1,4 +1,5 @@
-import { create } from "@bufbuild/protobuf";
+import { create, toJson } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import {
   SourceApiAdapterNotRegisteredError,
@@ -491,6 +492,45 @@ describe("source api connect service", () => {
     expect(response.body).toEqual({
       case: "text",
       value: "ok",
+    });
+  });
+
+  it("preserves JSON source API response bodies through the Connect handler", async () => {
+    const harness = createHarness();
+    harness.executeSourceApi.mockResolvedValueOnce({
+      ...executionResponse,
+      body: {
+        kind: "json",
+        value: {
+          id: 1,
+          name: "onequery",
+          private: false,
+        },
+      },
+      contentType: "application/json",
+    });
+
+    const request = create(ExecuteSourceApiRequestSchema, {
+      invocation: {
+        operation: "fetch",
+        orgSlug: "acme",
+        selector: "/repos/wordbricks/onequery",
+        sourceKey: "github-prod",
+      },
+    });
+
+    const response = await harness.handleExecuteSourceApi(request, {
+      values: new Map(),
+    } as never);
+
+    expect(response.body.case).toBe("json");
+    if (response.body.case !== "json") {
+      throw new Error("expected JSON response body");
+    }
+    expect(toJson(ValueSchema, response.body.value)).toEqual({
+      id: 1,
+      name: "onequery",
+      private: false,
     });
   });
 
