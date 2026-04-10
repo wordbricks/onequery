@@ -8,7 +8,7 @@ It does not redefine the state machine or the public contract.
 
 ## Progress Board
 
-- [ ] 1. Replace the proto contract and regenerate bindings
+- [x] 1. Replace the proto contract and regenerate bindings
 - [ ] 2. Replace the TypeScript domain model with prepared execution truth
 - [ ] 3. Replace the Connect boundary and service handlers
 - [ ] 4. Replace provider adapter execution and pagination binding
@@ -61,20 +61,20 @@ Files:
 
 Changes:
 
-- [ ] Remove `NormalizeSourceApiRequest`, `NormalizeSourceApiResponse`, and
+- [x] Remove `NormalizeSourceApiRequest`, `NormalizeSourceApiResponse`, and
   `CliSourceApiPlan`.
-- [ ] Replace `ExecuteSourceApiRequest` with
+- [x] Replace `ExecuteSourceApiRequest` with
   `ExecutePreparedSourceApiRequest`.
-- [ ] Replace `ExecuteSourceApiResponse` with
+- [x] Replace `ExecuteSourceApiResponse` with
   `ExecutePreparedSourceApiResponse`.
-- [ ] Add `SourceApiDraft`, `PrepareSourceApiRequest`,
+- [x] Add `SourceApiDraft`, `PrepareSourceApiRequest`,
   `PrepareSourceApiResponse`, and `PreparedSourceApiPreview`.
-- [ ] Remove `request_id` from protobuf payloads.
-- [ ] Reserve deleted field numbers and names where required by schema hygiene.
+- [x] Remove `request_id` from protobuf payloads.
+- [x] Reserve deleted field numbers and names where required by schema hygiene.
 
 Generation:
 
-- [ ] Regenerate TypeScript and Rust bindings after the schema rewrite.
+- [x] Regenerate TypeScript and Rust bindings after the schema rewrite.
 
 Deliverable:
 
