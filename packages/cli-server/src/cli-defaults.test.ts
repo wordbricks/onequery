@@ -5,9 +5,9 @@ import {
   CLI_DEFAULT_RELAY_TIMEOUT_MS,
   buildCliSourceConnectCommand,
   buildCliSourceShowCommand,
-  buildCliUseExecuteCommand,
-  buildCliUseIntegrationReminder,
-  buildCliUseInspectCommand,
+  buildCliApiExecuteCommand,
+  buildCliApiIntegrationReminder,
+  buildCliApiInspectCommand,
   deviceAuthorizationPollAfterMs,
   slowedDeviceAuthorizationPollAfterMs,
 } from "./cli-defaults";
@@ -20,14 +20,14 @@ describe("cli defaults", () => {
     expect(buildCliSourceShowCommand("warehouse")).toBe(
       "onequery source show warehouse"
     );
-    expect(buildCliUseInspectCommand("github")).toBe(
-      "onequery use --source github"
+    expect(buildCliApiInspectCommand("github")).toBe(
+      "onequery api --source github"
     );
-    expect(buildCliUseExecuteCommand("github")).toBe(
-      "onequery use --source github /path"
+    expect(buildCliApiExecuteCommand("github")).toBe(
+      "onequery api --source github /path"
     );
-    expect(buildCliUseIntegrationReminder("GitHub", "github")).toBe(
-      "You should connect GitHub in OneQuery before using `onequery use --source github`."
+    expect(buildCliApiIntegrationReminder("GitHub", "github")).toBe(
+      "You should connect GitHub in OneQuery before using `onequery api --source github`."
     );
   });
 

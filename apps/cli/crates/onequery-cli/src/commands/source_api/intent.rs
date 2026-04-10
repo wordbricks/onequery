@@ -1,6 +1,6 @@
 use onequery_cli_core::error::CliError;
 
-use crate::cli::UseArgs;
+use crate::cli::ApiArgs;
 use crate::transport::source_api::SourceApiDescriptor;
 
 use super::CommandContext;
@@ -17,7 +17,7 @@ pub(super) enum ResolvedIntent {
 }
 
 pub(super) fn resolve_intent(
-    args: &UseArgs,
+    args: &ApiArgs,
     descriptor: &SourceApiDescriptor,
     context: &CommandContext,
 ) -> Result<ResolvedIntent, CliError> {
@@ -80,7 +80,7 @@ fn is_selector_target(target: &str) -> bool {
 mod tests {
     use onequery_cli_core::error::ErrorStage;
 
-    use crate::cli::UseArgs;
+    use crate::cli::ApiArgs;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
     use crate::transport::source_api::SourceApiDescriptor;
@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn resolve_intent_describes_when_only_source_is_provided() {
-        let intent = resolve_intent(&use_args(), &descriptor(), &context())
+        let intent = resolve_intent(&api_args(), &descriptor(), &context())
             .expect("expected bare source usage to describe");
 
         assert_eq!(intent, ResolvedIntent::Describe);
@@ -101,9 +101,9 @@ mod tests {
     #[test]
     fn resolve_intent_executes_when_explicit_operation_is_provided() {
         let intent = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 op: Some(" fetch ".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor(),
             &context(),
@@ -122,17 +122,17 @@ mod tests {
     #[test]
     fn resolve_intent_describes_when_only_render_flags_are_provided() {
         for args in [
-            UseArgs {
+            ApiArgs {
                 include: true,
-                ..use_args()
+                ..api_args()
             },
-            UseArgs {
+            ApiArgs {
                 silent: true,
-                ..use_args()
+                ..api_args()
             },
-            UseArgs {
+            ApiArgs {
                 jq: Some(".items[0]".to_owned()),
-                ..use_args()
+                ..api_args()
             },
         ] {
             let intent = resolve_intent(&args, &descriptor(), &context())
@@ -145,9 +145,9 @@ mod tests {
     #[test]
     fn resolve_intent_rejects_execute_flags_without_operation_or_selector() {
         let error = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 method: Some("POST".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor(),
             &context(),
@@ -164,9 +164,9 @@ mod tests {
     #[test]
     fn resolve_intent_treats_bare_target_as_operation() {
         let intent = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 target: Some("search".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor(),
             &context(),
@@ -185,9 +185,9 @@ mod tests {
     #[test]
     fn resolve_intent_treats_path_target_as_selector() {
         let intent = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 target: Some("/pulls".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor(),
             &context(),
@@ -206,9 +206,9 @@ mod tests {
     #[test]
     fn resolve_intent_treats_url_target_as_selector() {
         let intent = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 target: Some("https://api.github.com/repos/acme/widgets/pulls".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor(),
             &context(),
@@ -227,9 +227,9 @@ mod tests {
     #[test]
     fn resolve_intent_rejects_selector_target_without_default_path_operation() {
         let error = resolve_intent(
-            &UseArgs {
+            &ApiArgs {
                 target: Some("/pulls".to_owned()),
-                ..use_args()
+                ..api_args()
             },
             &descriptor_without_default_path_operation(),
             &context(),
@@ -267,7 +267,7 @@ mod tests {
 
     fn context() -> CommandContext {
         CommandContext {
-            command_line: "onequery use --source github-prod".to_owned(),
+            command_line: "onequery api --source github-prod".to_owned(),
             base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -276,8 +276,8 @@ mod tests {
         }
     }
 
-    fn use_args() -> UseArgs {
-        UseArgs {
+    fn api_args() -> ApiArgs {
+        ApiArgs {
             source: "github-prod".to_owned(),
             op: None,
             target: None,

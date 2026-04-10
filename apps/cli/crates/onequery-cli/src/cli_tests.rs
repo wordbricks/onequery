@@ -11,6 +11,7 @@ use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
+use super::ApiArgs;
 use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
 use super::Command;
@@ -23,7 +24,6 @@ use super::QueryInputArgs;
 use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
-use super::UseArgs;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
     args.iter().map(OsString::from).collect()
@@ -71,8 +71,8 @@ fn query_help_output_snapshot_targets_query_surface() {
 }
 
 #[test]
-fn use_help_output_snapshot_targets_use_surface() {
-    assert_snapshot!(rendered_display(&["onequery", "use", "--help"]));
+fn api_help_output_snapshot_targets_api_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "api", "--help"]));
 }
 
 #[test]
@@ -348,15 +348,15 @@ fn normalize_command_line_redacts_raw_config_override_values() {
 }
 
 #[test]
-fn parse_invocation_accepts_use_describe_surface() {
-    let invocation = parse_invocation(&["onequery", "use", "--source", "sentry-prod"]);
+fn parse_invocation_accepts_api_describe_surface() {
+    let invocation = parse_invocation(&["onequery", "api", "--source", "sentry-prod"]);
 
     assert_eq!(
         match invocation.command {
-            Command::Use(args) => args,
-            other => panic!("expected use command, got {other:?}"),
+            Command::Api(args) => args,
+            other => panic!("expected api command, got {other:?}"),
         },
-        UseArgs {
+        ApiArgs {
             source: "sentry-prod".to_owned(),
             op: None,
             target: None,
@@ -377,10 +377,10 @@ fn parse_invocation_accepts_use_describe_surface() {
 }
 
 #[test]
-fn parse_invocation_accepts_use_execute_flags() {
+fn parse_invocation_accepts_api_execute_flags() {
     let invocation = parse_invocation(&[
         "onequery",
-        "use",
+        "api",
         "--source",
         "github-prod",
         "--op",
@@ -411,10 +411,10 @@ fn parse_invocation_accepts_use_execute_flags() {
 
     assert_eq!(
         match invocation.command {
-            Command::Use(args) => args,
-            other => panic!("expected use command, got {other:?}"),
+            Command::Api(args) => args,
+            other => panic!("expected api command, got {other:?}"),
         },
-        UseArgs {
+        ApiArgs {
             source: "github-prod".to_owned(),
             op: Some("fetch-api".to_owned()),
             target: Some("/repos/acme/widgets/pulls/1".to_owned()),

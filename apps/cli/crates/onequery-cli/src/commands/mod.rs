@@ -238,7 +238,7 @@ where
             gateway::execute(gateway_command, context, runtime).await
         }
         Command::Upgrade => upgrade::execute(context, runtime).await,
-        Command::Use(use_args) => source_api::execute(&use_args, context, runtime).await,
+        Command::Api(api_args) => source_api::execute(&api_args, context, runtime).await,
         Command::Debug(debug_command) => debug::execute(&debug_command, context, runtime).await,
     }
 }

@@ -252,7 +252,7 @@ export function buildSentryUrl(input: {
 function buildSentryExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery use --source ${sourceKey} /organizations/{organizationSlug}/issues/ -f 'params[query]=is:unresolved'`,
+      command: `onequery api --source ${sourceKey} /organizations/{organizationSlug}/issues/ -f 'params[query]=is:unresolved'`,
       description:
         "List unresolved Sentry issues for the connected organization.",
       label: "List issues",

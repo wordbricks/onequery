@@ -31,7 +31,7 @@ use super::plan::SourceApiRenderOptions;
 pub(super) fn render_descriptor_output(
     descriptor: SourceApiDescriptor,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&descriptor, "onequery use")?;
+    let data = serialize_command_data(&descriptor, "onequery api")?;
 
     let mut lines = vec![format!(
         "Source: {} ({})",
@@ -69,7 +69,7 @@ pub(super) fn render_descriptor_output(
 pub(super) fn render_dry_run_output(
     plan: NormalizedSourceApiPlan,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&plan, "onequery use")?;
+    let data = serialize_command_data(&plan, "onequery api")?;
     Ok(CommandOutput::raw_json(pretty_json_lines(&data), data))
 }
 
@@ -100,7 +100,7 @@ fn serialize_execute_response(
     let mut object = serde_json::Map::new();
     object.insert(
         "source".to_owned(),
-        serialize_command_data(&response.source, "onequery use")?,
+        serialize_command_data(&response.source, "onequery api")?,
     );
     object.insert(
         "operation".to_owned(),
@@ -174,7 +174,7 @@ fn assemble_execute_response(
     let mut response = responses.next().ok_or_else(|| {
         source_api_render_error(
             "source API execution returned no response",
-            vec!["retry onequery use".to_owned()],
+            vec!["retry onequery api".to_owned()],
         )
     })?;
 
@@ -219,7 +219,7 @@ fn assemble_paginated_body(
     let Some(first_body) = bodies.first() else {
         return Err(source_api_render_error(
             "source API execution returned no response body",
-            vec!["retry onequery use".to_owned()],
+            vec!["retry onequery api".to_owned()],
         ));
     };
 
@@ -269,7 +269,7 @@ fn assemble_paginated_body(
                     .map_err(|decode_error| {
                         source_api_render_error(
                             format!("failed to assemble paginated binary response: {decode_error}"),
-                            vec!["retry onequery use --output json ...".to_owned()],
+                            vec!["retry onequery api --output json ...".to_owned()],
                         )
                     })?;
                 bytes.extend(decoded);
@@ -311,7 +311,7 @@ fn apply_jq_to_response_body(
         | SourceApiResponseBody::Text { .. }
         | SourceApiResponseBody::Binary { .. } => Err(source_api_render_error(
             "`--jq` requires a JSON source API response body",
-            vec!["retry onequery use without --jq".to_owned()],
+            vec!["retry onequery api without --jq".to_owned()],
         )),
     }
 }
@@ -323,7 +323,7 @@ fn apply_jq_expression(
     let input = serde_json::from_value::<JaqValue>(input).map_err(|deserialize_error| {
         source_api_render_error(
             format!("failed to prepare response body for `--jq`: {deserialize_error}"),
-            vec!["retry onequery use without --jq".to_owned()],
+            vec!["retry onequery api without --jq".to_owned()],
         )
     })?;
 
@@ -343,7 +343,7 @@ fn apply_jq_expression(
         .map_err(|errors| {
             source_api_render_error(
                 format!("invalid `--jq` expression: {errors:?}"),
-                vec!["retry onequery use --jq '<expr>'".to_owned()],
+                vec!["retry onequery api --jq '<expr>'".to_owned()],
             )
         })?;
     let funs = jaq_core::funs()
@@ -355,7 +355,7 @@ fn apply_jq_expression(
         .map_err(|errors| {
             source_api_render_error(
                 format!("invalid `--jq` expression: {errors:?}"),
-                vec!["retry onequery use --jq '<expr>'".to_owned()],
+                vec!["retry onequery api --jq '<expr>'".to_owned()],
             )
         })?;
 
@@ -368,7 +368,7 @@ fn apply_jq_expression(
             value.map_err(|execute_error| {
                 source_api_render_error(
                     format!("failed to execute `--jq` expression: {execute_error:?}"),
-                    vec!["retry onequery use --jq '<expr>'".to_owned()],
+                    vec!["retry onequery api --jq '<expr>'".to_owned()],
                 )
             })
         })
@@ -388,7 +388,7 @@ fn jaq_value_to_json(value: JaqValue) -> Result<serde_json::Value, CliError> {
         |write_error| {
             source_api_render_error(
                 format!("failed to serialize `--jq` output: {write_error}"),
-                vec!["retry onequery use --jq '<expr>'".to_owned()],
+                vec!["retry onequery api --jq '<expr>'".to_owned()],
             )
         },
     )?;
@@ -396,7 +396,7 @@ fn jaq_value_to_json(value: JaqValue) -> Result<serde_json::Value, CliError> {
     serde_json::from_slice(&bytes).map_err(|parse_error| {
         source_api_render_error(
             format!("`--jq` output was not valid JSON: {parse_error}"),
-            vec!["retry onequery use --jq '<expr>'".to_owned()],
+            vec!["retry onequery api --jq '<expr>'".to_owned()],
         )
     })
 }
@@ -404,14 +404,14 @@ fn jaq_value_to_json(value: JaqValue) -> Result<serde_json::Value, CliError> {
 fn mixed_paginated_body_error() -> CliError {
     source_api_render_error(
         "paginated source API responses changed body kind between pages",
-        vec!["retry onequery use without --paginate".to_owned()],
+        vec!["retry onequery api without --paginate".to_owned()],
     )
 }
 
 fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> CliError {
     CliError::new(
         "failed to render source API response",
-        "onequery use",
+        "onequery api",
         ErrorStage::Render,
         why,
         try_next,
@@ -581,7 +581,7 @@ fn render_response_stdout_bytes(
         .map_err(|decode_error| {
             source_api_render_error(
                 format!("failed to decode binary source API response: {decode_error}"),
-                vec!["retry onequery use --output json ...".to_owned()],
+                vec!["retry onequery api --output json ...".to_owned()],
             )
         })?;
 
@@ -606,7 +606,7 @@ fn binary_tty_render_error() -> CliError {
     source_api_render_error(
         "binary source API responses require non-TTY stdout; pipe the output or use `--output json`",
         vec![
-            "retry onequery use --output json ...".to_owned(),
+            "retry onequery api --output json ...".to_owned(),
             "pipe stdout to a file or another command".to_owned(),
         ],
     )

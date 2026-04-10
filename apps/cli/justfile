@@ -9,10 +9,10 @@ alias o := onequery
 onequery *args:
     cargo run --bin onequery -- "$@"
 
-# Run `onequery use --source <SOURCE>`
-alias u := use
-use source:
-    cargo run --bin onequery -- use --source {{source}}
+# Run `onequery api --source <SOURCE>`
+alias a := api
+api source:
+    cargo run --bin onequery -- api --source {{source}}
 
 # format code
 fmt:

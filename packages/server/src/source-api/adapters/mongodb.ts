@@ -312,21 +312,21 @@ function buildMongoDbExamples(sourceKey: string): {
 } {
   const listDatabasesExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op list_databases`,
+      command: `onequery api --source ${sourceKey} --op list_databases`,
       description: "List databases visible to the connected MongoDB source.",
       label: "List databases",
     },
   ] satisfies SourceApiExample[];
   const listCollectionsExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op list_collections analytics`,
+      command: `onequery api --source ${sourceKey} --op list_collections analytics`,
       description: "List collections in the `analytics` database.",
       label: "List collections",
     },
   ] satisfies SourceApiExample[];
   const findExamples = [
     {
-      command: `onequery use --source ${sourceKey} --op find_documents events -F 'filter={"status":"active"}' -F limit=25`,
+      command: `onequery api --source ${sourceKey} --op find_documents events -F 'filter={"status":"active"}' -F limit=25`,
       description:
         "Fetch active documents from the `events` collection with a typed filter patch.",
       label: "Find documents",

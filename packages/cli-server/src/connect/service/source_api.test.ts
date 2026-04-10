@@ -86,7 +86,7 @@ const descriptor = {
   descriptorVersion: "github-v1",
   examples: [
     {
-      command: "onequery use --source github-prod /issues",
+      command: "onequery api --source github-prod /issues",
       description: "Fetch issues",
       label: "issues",
     },

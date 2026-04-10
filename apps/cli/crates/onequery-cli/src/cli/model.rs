@@ -2,6 +2,7 @@ use crate::config::RawCliConfigOverrides;
 use crate::output::EffectiveOutputMode;
 use crate::output::TerminalOutput;
 
+use super::args::ApiArgs;
 use super::args::AuthSessionSubcommand;
 use super::args::AuthSubcommand;
 use super::args::BackupArgs;
@@ -10,7 +11,6 @@ use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
 use super::args::SourceSubcommand;
-use super::args::UseArgs;
 
 #[derive(Debug)]
 pub(crate) enum ParseOutcome {
@@ -46,7 +46,7 @@ pub(crate) enum Command {
     Restore(RestoreArgs),
     Gateway(GatewayCommand),
     Upgrade,
-    Use(UseArgs),
+    Api(ApiArgs),
     Debug(DebugSubcommand),
 }
 
@@ -78,7 +78,7 @@ impl Command {
             Self::Gateway(GatewayCommand::Status) => "gateway status",
             Self::Gateway(GatewayCommand::Logs) => "gateway logs",
             Self::Upgrade => "upgrade",
-            Self::Use(_) => "use",
+            Self::Api(_) => "api",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
         }

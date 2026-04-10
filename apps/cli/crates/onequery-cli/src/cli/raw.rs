@@ -4,6 +4,7 @@ use clap::Subcommand;
 
 use crate::output::RequestedOutputMode;
 
+use super::args::ApiArgs;
 use super::args::AuthSubcommand;
 use super::args::BackupArgs;
 use super::args::DebugSubcommand;
@@ -11,7 +12,6 @@ use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
 use super::args::SourceSubcommand;
-use super::args::UseArgs;
 use super::model::Command;
 use super::model::ConfigCommand;
 use super::model::GatewayCommand;
@@ -124,10 +124,10 @@ pub(super) enum RawCommand {
     Upgrade,
     /// Describe or execute a connected source API.
     #[command(override_usage = "\
-onequery use [OPTIONS] --source <SOURCE_KEY>
-       onequery use [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
-       onequery use [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
-    Use(UseArgs),
+onequery api [OPTIONS] --source <SOURCE_KEY>
+       onequery api [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
+       onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
+    Api(ApiArgs),
     /// Inspect local CLI state and diagnostics.
     #[command(hide = true, arg_required_else_help(true))]
     Debug {
@@ -180,7 +180,7 @@ impl From<RawCommand> for Command {
             RawCommand::Restore(args) => Self::Restore(args),
             RawCommand::Gateway { action } => Self::Gateway(action.into()),
             RawCommand::Upgrade => Self::Upgrade,
-            RawCommand::Use(args) => Self::Use(args),
+            RawCommand::Api(args) => Self::Api(args),
             RawCommand::Debug { action } => Self::Debug(action),
         }
     }
