@@ -61,20 +61,21 @@ describe("finalizeNormalizedExecutionPlan", () => {
       kind: "http_request",
       method: " get ",
       operation: "fetch",
+      paginationPolicy: "none",
       provider: "github",
       sourceId: "source_id",
       sourceKey: "github-prod",
       url: "https://api.github.com/pulls",
     });
 
-    expect(plan.requestFingerprint.length).toBeGreaterThan(0);
+    expect(plan.preparedBinding.length).toBeGreaterThan(0);
     expect(plan.bodyKind).toBe("none");
     expect(plan.bodyPaths).toEqual([]);
     expect(plan.headerNames).toEqual([]);
     expect(plan.host).toBe("api.github.com");
     expect(plan.method).toBe("GET");
     expect(plan.selectorTemplate).toBe("/{path}");
-    expect(plan.requestFingerprint).toBe(
+    expect(plan.preparedBinding).toBe(
       finalizeNormalizedExecutionPlan({
         body: { kind: "none" },
         descriptorVersion: "github.v1",
@@ -82,12 +83,13 @@ describe("finalizeNormalizedExecutionPlan", () => {
         kind: "http_request",
         method: "GET",
         operation: "fetch",
+        paginationPolicy: "none",
         provider: "github",
         sourceId: "source_id",
         sourceKey: "github-prod",
         selectorTemplate: "/{path}",
         url: "https://api.github.com/pulls",
-      }).requestFingerprint
+      }).preparedBinding
     );
   });
 
@@ -104,6 +106,7 @@ describe("finalizeNormalizedExecutionPlan", () => {
       kind: "structured_request",
       method: "post",
       operation: "run_query",
+      paginationPolicy: "none",
       provider: "posthog",
       request: {
         query: {
@@ -178,16 +181,15 @@ describe("normalizeSourceApiRequest", () => {
       async normalize() {
         return {
           body: { kind: "json", value: { ok: true } },
-          bodyKind: "text",
           headers: [
             { name: " X-Test ", value: "one" },
             { name: "x-test", value: "two" },
             { name: "X-Trace-Id", value: "abc" },
           ],
-          headerNames: ["wrong"],
           kind: "http_request",
           method: " post ",
           operation: "fetch",
+          paginationPolicy: "none",
           provider: "github",
           selector: " /repos/acme/widgets ",
           sourceId: "source_id",
@@ -221,6 +223,6 @@ describe("normalizeSourceApiRequest", () => {
       selector: "/repos/acme/widgets",
       selectorTemplate: "/{path}",
     });
-    expect(plan.requestFingerprint.length).toBeGreaterThan(0);
+    expect(plan.preparedBinding.length).toBeGreaterThan(0);
   });
 });

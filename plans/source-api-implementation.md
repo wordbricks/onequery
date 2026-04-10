@@ -9,7 +9,7 @@ It does not redefine the state machine or the public contract.
 ## Progress Board
 
 - [x] 1. Replace the proto contract and regenerate bindings
-- [ ] 2. Replace the TypeScript domain model with prepared execution truth
+- [x] 2. Replace the TypeScript domain model with prepared execution truth
 - [ ] 3. Replace the Connect boundary and service handlers
 - [ ] 4. Replace provider adapter execution and pagination binding
 - [ ] 5. Replace the Rust transport layer
@@ -93,17 +93,17 @@ Files:
 
 Changes:
 
-- [ ] Delete `SourceApiJsonValue`.
-- [ ] Replace `SourceApiExecuteRequest` with a `SourceApiDraft`-shaped domain
+- [x] Delete `SourceApiJsonValue`.
+- [x] Replace `SourceApiExecuteRequest` with a `SourceApiDraft`-shaped domain
   input.
-- [ ] Add an explicit `PreparedSourceApi` domain type.
-- [ ] Add a `PreparedSourceApiPreview` projection type if the service layer
+- [x] Add an explicit `PreparedSourceApi` domain type.
+- [x] Add a `PreparedSourceApiPreview` projection type if the service layer
   needs a concrete return value before transport projection.
-- [ ] Make provider execution operate on `PreparedSourceApi`, not on a
+- [x] Make provider execution operate on `PreparedSourceApi`, not on a
   normalized plan derived inside execute.
-- [ ] Replace request and response JSON fields with protobuf-es `JsonValue`.
-- [ ] Replace object-only patches with `JsonObject`.
-- [ ] Replace pagination token payloads so they bind to prepared execution
+- [x] Replace request and response JSON fields with protobuf-es `JsonValue`.
+- [x] Replace object-only patches with `JsonObject`.
+- [x] Replace pagination token payloads so they bind to prepared execution
   identity, not public request fingerprints.
 
 Deliverable:

@@ -1,5 +1,5 @@
 import { SourceApiPermissionDeniedError } from "./errors";
-import type { NormalizedExecutionPlan, SourceApiActorContext } from "./types";
+import type { PreparedSourceApi, SourceApiActorContext } from "./types";
 
 export const SOURCE_API_ACTIONS = {
   describe: "source_api.describe",
@@ -14,7 +14,7 @@ export function canActorAccessSourceApi(input: {
 }
 
 export async function authorizeSourceApi(input: {
-  plan: NormalizedExecutionPlan;
+  prepared: PreparedSourceApi;
   actor: SourceApiActorContext;
 }): Promise<void> {
   if (
@@ -24,7 +24,7 @@ export async function authorizeSourceApi(input: {
     })
   ) {
     throw new SourceApiPermissionDeniedError({
-      operation: input.plan.operation,
+      operation: input.prepared.operation,
       userId: input.actor.userId,
     });
   }

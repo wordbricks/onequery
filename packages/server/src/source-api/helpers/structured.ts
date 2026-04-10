@@ -1,3 +1,5 @@
+import type { JsonObject } from "@bufbuild/protobuf";
+
 import type {
   SourceApiExample,
   SourceApiFieldPolicy,
@@ -62,17 +64,14 @@ export function createStructuredRequestOperation(
 }
 
 export function mergeStructuredFieldPatch(input: {
-  base?: Record<string, unknown>;
-  patch?: Record<string, unknown>;
-}): Record<string, unknown> {
+  base?: JsonObject;
+  patch?: JsonObject;
+}): JsonObject {
   return mergeObjects(input.base ?? {}, input.patch ?? {});
 }
 
-function mergeObjects(
-  base: Record<string, unknown>,
-  patch: Record<string, unknown>
-): Record<string, unknown> {
-  const merged: Record<string, unknown> = { ...base };
+function mergeObjects(base: JsonObject, patch: JsonObject): JsonObject {
+  const merged: JsonObject = { ...base };
 
   for (const [key, patchValue] of Object.entries(patch)) {
     const baseValue = merged[key];
@@ -87,6 +86,6 @@ function mergeObjects(
   return merged;
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
+function isPlainRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

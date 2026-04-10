@@ -133,7 +133,7 @@ describe("posthog source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -143,18 +143,21 @@ describe("posthog source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "posthog.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_query",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "posthog",
         request: {
           query: {
             kind: "TrendsQuery",
           },
         },
-        requestFingerprint: "fingerprint",
         sourceId: "source_1",
         sourceKey: "posthog-prod",
       },

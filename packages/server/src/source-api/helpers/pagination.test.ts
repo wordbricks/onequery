@@ -6,14 +6,14 @@ import { SourceApiInvalidRequestError } from "../errors";
 import { decodeOpaquePageToken, encodeOpaquePageToken } from "./pagination";
 
 describe("opaque source-api pagination tokens", () => {
-  it("round-trips when the normalized request matches", () => {
+  it("round-trips when the prepared binding matches", () => {
     const token = encodeOpaquePageToken({
       payload: {
         descriptorVersion: "github.v1",
         expiresAt: "2026-04-09T12:05:00.000Z",
         issuedAt: "2026-04-09T12:00:00.000Z",
         operation: "fetch",
-        requestFingerprint: "fingerprint_123",
+        preparedBinding: "prepared_123",
         sourceKey: "github-prod",
         state: {
           cursor: "page_2",
@@ -27,7 +27,7 @@ describe("opaque source-api pagination tokens", () => {
         expected: {
           descriptorVersion: "github.v1",
           operation: "fetch",
-          requestFingerprint: "fingerprint_123",
+          preparedBinding: "prepared_123",
           sourceKey: "github-prod",
         },
         now: new Date("2026-04-09T12:01:00.000Z"),
@@ -39,7 +39,7 @@ describe("opaque source-api pagination tokens", () => {
       expiresAt: "2026-04-09T12:05:00.000Z",
       issuedAt: "2026-04-09T12:00:00.000Z",
       operation: "fetch",
-      requestFingerprint: "fingerprint_123",
+      preparedBinding: "prepared_123",
       sourceKey: "github-prod",
       state: {
         cursor: "page_2",
@@ -47,13 +47,13 @@ describe("opaque source-api pagination tokens", () => {
     });
   });
 
-  it("rejects mismatched request fingerprints", () => {
+  it("rejects mismatched prepared bindings", () => {
     const token = encodeOpaquePageToken({
       payload: {
         expiresAt: "2026-04-09T12:05:00.000Z",
         issuedAt: "2026-04-09T12:00:00.000Z",
         operation: "fetch",
-        requestFingerprint: "fingerprint_123",
+        preparedBinding: "prepared_123",
         sourceKey: "github-prod",
         state: {},
       },
@@ -64,14 +64,14 @@ describe("opaque source-api pagination tokens", () => {
       decodeOpaquePageToken({
         expected: {
           operation: "fetch",
-          requestFingerprint: "different_fingerprint",
+          preparedBinding: "different_binding",
           sourceKey: "github-prod",
         },
         now: new Date("2026-04-09T12:01:00.000Z"),
         secret: "top-secret",
         token,
       })
-    ).toThrow("Pagination token request fingerprint mismatch");
+    ).toThrow("Pagination token prepared binding mismatch");
   });
 
   it("rejects malformed payloads with a typed request error", () => {
@@ -84,7 +84,7 @@ describe("opaque source-api pagination tokens", () => {
       decodeOpaquePageToken({
         expected: {
           operation: "fetch",
-          requestFingerprint: "fingerprint_123",
+          preparedBinding: "prepared_123",
           sourceKey: "github-prod",
         },
         now: new Date("2026-04-09T12:01:00.000Z"),

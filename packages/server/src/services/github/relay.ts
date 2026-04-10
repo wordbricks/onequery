@@ -1,3 +1,4 @@
+import type { JsonValue } from "@bufbuild/protobuf";
 import { base64ToBytes } from "@onequery/codecs/base64";
 import type { GitHubCredentials } from "@onequery/db/server";
 
@@ -7,10 +8,7 @@ import {
   requestGitHubApi,
   toLegacyGitHubRelayBody,
 } from "../../source-api/adapters/github";
-import type {
-  SourceApiJsonValue,
-  SourceApiRequestBody,
-} from "../../source-api/types";
+import type { SourceApiRequestBody } from "../../source-api/types";
 
 interface GitHubFetchOptions {
   body?: unknown;
@@ -96,6 +94,6 @@ function toSourceApiRequestBody(
       }
     : {
         kind: "json",
-        value: options.body as SourceApiJsonValue,
+        value: options.body as JsonValue,
       };
 }

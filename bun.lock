@@ -222,6 +222,7 @@
       "name": "@onequery/server",
       "version": "0.0.0",
       "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
         "@casual-simulation/sql-parser": "0.1.0",
         "@hono/zod-validator": "catalog:",
         "@noble/ciphers": "2.1.1",

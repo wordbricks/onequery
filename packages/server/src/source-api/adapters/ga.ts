@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -27,7 +28,6 @@ import type {
   SourceApiExample,
   SourceApiExecutionResponse,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -106,11 +106,6 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new GoogleAnalyticsInvalidRequestError(
-        `Google Analytics operation "${operation.name}" does not support page tokens`
-      );
-    }
     if (request.selector?.trim()) {
       throw new GoogleAnalyticsInvalidRequestError(
         `Google Analytics operation "${operation.name}" does not accept a selector`
@@ -151,6 +146,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
         propertyPath: resolvedPropertyPath,
       },
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
       request: {
         ...normalizedRequest,
@@ -162,23 +158,23 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       sourceKey: source.sourceKey,
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "structured_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "structured_request") {
       throw new Error(
-        `Google Analytics source API operation "${plan.operation}" requires a structured plan`
+        `Google Analytics source API operation "${prepared.operation}" requires a structured plan`
       );
     }
 
     const response = await requestGoogleAnalyticsSourceApi({
       credentials: requireGoogleAnalyticsCredentials(source),
-      operation: parseGoogleAnalyticsSourceApiOperation(plan.operation),
-      request: plan.request,
+      operation: parseGoogleAnalyticsSourceApiOperation(prepared.operation),
+      request: prepared.request,
     });
 
     return buildGoogleAnalyticsExecutionResponse({
       response,
       source,
-      operation: plan.operation,
+      operation: prepared.operation,
     });
   },
 };
@@ -197,7 +193,7 @@ function isGoogleAnalyticsSourceCredentials(
 export async function requestGoogleAnalyticsSourceApi(input: {
   credentials: GoogleAnalyticsCredentials;
   operation: GoogleAnalyticsSourceApiOperation;
-  request: Record<string, unknown>;
+  request: JsonObject;
 }): Promise<GoogleAnalyticsTransportResponse> {
   const resolvedPropertyPath = resolveGoogleAnalyticsPropertyPath({
     credentials: input.credentials,
@@ -313,8 +309,8 @@ function requireGoogleAnalyticsCredentials(
 
 function normalizeGoogleAnalyticsStructuredRequest(input: {
   body: SourceApiRequestBody;
-  fieldPatch?: Record<string, unknown>;
-}): Record<string, unknown> {
+  fieldPatch?: JsonObject;
+}): JsonObject {
   const baseRequest = parseGoogleAnalyticsRequestBody(input.body);
   return mergeStructuredFieldPatch({
     base: baseRequest,
@@ -324,7 +320,7 @@ function normalizeGoogleAnalyticsStructuredRequest(input: {
 
 function parseGoogleAnalyticsRequestBody(
   body: SourceApiRequestBody
-): Record<string, unknown> {
+): JsonObject {
   switch (body.kind) {
     case "none":
       return {};
@@ -386,7 +382,7 @@ function parseGoogleAnalyticsResponseBody(input: {
 
     return {
       kind: "json",
-      value: JSON.parse(text) as SourceApiJsonValue,
+      value: JSON.parse(text) as JsonValue,
     };
   }
 

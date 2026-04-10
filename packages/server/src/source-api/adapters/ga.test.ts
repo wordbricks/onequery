@@ -146,7 +146,7 @@ describe("google analytics source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -155,17 +155,20 @@ describe("google analytics source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "ga.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_report",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "ga",
         request: {
           limit: 25,
           property: "properties/123456789",
         },
-        requestFingerprint: "fingerprint",
         selector: "properties/123456789",
         sourceId: "source_1",
         sourceKey: "ga-prod",
@@ -215,7 +218,7 @@ describe("google analytics source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -224,17 +227,20 @@ describe("google analytics source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "ga.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_report",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "ga",
         request: {
           limit: 25,
           property: "properties/123456789",
         },
-        requestFingerprint: "fingerprint",
         selector: "properties/123456789",
         sourceId: "source_1",
         sourceKey: "ga-prod",

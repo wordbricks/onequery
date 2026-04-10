@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { base64ToBytes } from "@onequery/codecs/base64";
 import type { GitHubCredentials } from "@onequery/db/server";
 import { isGitHubCredentials } from "@onequery/db/server";
@@ -30,7 +31,6 @@ import type {
   SourceApiAdapter,
   SourceApiExample,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -186,20 +186,20 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       },
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "http_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "http_request") {
       throw new Error(
-        `GitHub source API operation "${plan.operation}" requires an HTTP plan`
+        `GitHub source API operation "${prepared.operation}" requires an HTTP plan`
       );
     }
 
     const response = await requestGitHubApi({
-      body: plan.body,
+      body: prepared.body,
       credentials: requireGitHubCredentials(source),
-      headers: toHeaderRecord(plan.headers),
-      method: plan.method,
-      timeoutMs: readGitHubTimeoutMs(plan),
-      url: plan.url,
+      headers: toHeaderRecord(prepared.headers),
+      method: prepared.method,
+      timeoutMs: readGitHubTimeoutMs(prepared),
+      url: prepared.url,
     });
 
     return {
@@ -210,8 +210,8 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
         contentType: response.contentType,
         headers: response.headers,
       }),
-      operation: plan.operation,
-      selector: plan.selector,
+      operation: prepared.operation,
+      selector: prepared.selector,
       source: {
         displayName: source.displayName,
         key: source.sourceKey,
@@ -225,11 +225,6 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       descriptor,
       operationName: request.operation,
     });
-    if (request.pageToken) {
-      throw new SourceApiInvalidRequestError(
-        'GitHub operation "fetch" does not support page tokens'
-      );
-    }
 
     const selector = request.selector?.trim();
     if (!selector) {
@@ -274,6 +269,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
           : { timeoutMs: fieldPatch.timeoutMs },
       method,
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
       selector,
       selectorTemplate: buildGitHubSelectorTemplate({
@@ -480,7 +476,7 @@ function requireGitHubSourceApiOperation(input: {
 }
 
 function parseGitHubFieldPatch(
-  value: Record<string, unknown> | undefined
+  value: JsonObject | undefined
 ): GitHubFieldPatch {
   if (!value) {
     return {};
@@ -783,7 +779,7 @@ function parseGitHubResponseBody(input: {
 
     return {
       kind: "json",
-      value: JSON.parse(text) as SourceApiJsonValue,
+      value: JSON.parse(text) as JsonValue,
     };
   }
 

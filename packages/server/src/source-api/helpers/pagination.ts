@@ -9,7 +9,7 @@ type DecodeOpaquePageTokenInput = {
   expected: {
     sourceKey: string;
     operation: string;
-    requestFingerprint: string;
+    preparedBinding: string;
     descriptorVersion?: string;
   };
   now?: Date;
@@ -62,9 +62,9 @@ export function decodeOpaquePageToken(
       "Pagination token operation mismatch"
     );
   }
-  if (payload.requestFingerprint !== input.expected.requestFingerprint) {
+  if (payload.preparedBinding !== input.expected.preparedBinding) {
     throw new SourceApiInvalidRequestError(
-      "Pagination token request fingerprint mismatch"
+      "Pagination token prepared binding mismatch"
     );
   }
   if (

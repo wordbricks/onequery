@@ -1,17 +1,18 @@
 import { authorizeSourceApi } from "./authorize";
 import { describeSourceApi } from "./describe";
 import { readSourceApiErrorMessage } from "./errors";
-import { normalizeSourceApiRequest } from "./normalize";
+import { prepareSourceApiDraft } from "./normalize";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
+  PreparedSourceApi,
   PreparedSourceConnection,
   SourceApiActorContext,
-  SourceApiExecuteRequest,
+  SourceApiDraft,
   SourceApiExecutionResponse,
 } from "./types";
 
-export type SourceApiExecutionStage = "normalize" | "authorize" | "execute";
+export type SourceApiExecutionStage = "prepare" | "authorize" | "execute";
 
 export class SourceApiExecutionStageError extends Error {
   override readonly cause: unknown;
@@ -27,10 +28,43 @@ export class SourceApiExecutionStageError extends Error {
   }
 }
 
+export async function executePreparedSourceApi(input: {
+  source: PreparedSourceConnection;
+  actor: SourceApiActorContext;
+  prepared: PreparedSourceApi;
+  registry?: SourceApiRegistry;
+}): Promise<SourceApiExecutionResponse> {
+  const registry = input.registry ?? sourceApiRegistry;
+
+  await Promise.resolve()
+    .then(() =>
+      authorizeSourceApi({
+        actor: input.actor,
+        prepared: input.prepared,
+      })
+    )
+    .catch((error: unknown) => {
+      throw toSourceApiExecutionStageError("authorize", error);
+    });
+
+  const adapter = getSourceApiAdapter(registry, input.source.provider);
+  return Promise.resolve()
+    .then(() =>
+      adapter.execute({
+        actor: input.actor,
+        prepared: input.prepared,
+        source: input.source,
+      })
+    )
+    .catch((error: unknown) => {
+      throw toSourceApiExecutionStageError("execute", error);
+    });
+}
+
 export async function executeSourceApi(input: {
   source: PreparedSourceConnection;
   actor: SourceApiActorContext;
-  request: SourceApiExecuteRequest;
+  request: SourceApiDraft;
   registry?: SourceApiRegistry;
 }): Promise<SourceApiExecutionResponse> {
   const registry = input.registry ?? sourceApiRegistry;
@@ -43,45 +77,28 @@ export async function executeSourceApi(input: {
       })
     )
     .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("normalize", error);
+      throw toSourceApiExecutionStageError("prepare", error);
     });
-  const plan = await Promise.resolve()
+  const prepared = await Promise.resolve()
     .then(() =>
-      normalizeSourceApiRequest({
+      prepareSourceApiDraft({
         actor: input.actor,
         descriptor,
+        draft: input.request,
         registry,
-        request: input.request,
         source: input.source,
       })
     )
     .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("normalize", error);
+      throw toSourceApiExecutionStageError("prepare", error);
     });
 
-  await Promise.resolve()
-    .then(() =>
-      authorizeSourceApi({
-        actor: input.actor,
-        plan,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("authorize", error);
-    });
-
-  const adapter = getSourceApiAdapter(registry, input.source.provider);
-  return Promise.resolve()
-    .then(() =>
-      adapter.execute({
-        actor: input.actor,
-        plan,
-        source: input.source,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("execute", error);
-    });
+  return executePreparedSourceApi({
+    actor: input.actor,
+    prepared,
+    registry,
+    source: input.source,
+  });
 }
 
 function toSourceApiExecutionStageError(

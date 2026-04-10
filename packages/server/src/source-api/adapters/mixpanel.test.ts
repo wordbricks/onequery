@@ -117,7 +117,7 @@ describe("mixpanel source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -127,18 +127,21 @@ describe("mixpanel source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "mixpanel.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "query_segmentation",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "mixpanel",
         request: {
           event: "Signup",
           fromDate: "2026-03-01",
           toDate: "2026-03-07",
         },
-        requestFingerprint: "fingerprint",
         sourceId: "source_1",
         sourceKey: "mixpanel-prod",
       },

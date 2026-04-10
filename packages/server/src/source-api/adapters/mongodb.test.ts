@@ -150,21 +150,24 @@ describe("mongodb source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "none",
         },
         bodyKind: "none",
+        bodyPaths: [],
         descriptorVersion: "mongodb.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "list_collections",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "mongodb",
         request: {
           database: "analytics",
         },
-        requestFingerprint: "fingerprint",
         selector: "analytics",
         sourceId: "source_1",
         sourceKey: "mongodb-prod",

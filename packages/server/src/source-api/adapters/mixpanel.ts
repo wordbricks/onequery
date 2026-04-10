@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { MixpanelCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -236,12 +237,6 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new MixpanelInvalidRequestError(
-        `Mixpanel operation "${operation.name}" does not support page tokens`
-      );
-    }
-
     const headers = normalizeAllowedHeaders({
       allowedNames: operation.headerPolicy.allowedRequestHeaders,
       headers: request.headers,
@@ -266,13 +261,14 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         kind: "structured_request",
         method: "POST",
         operation: operation.name,
+        paginationPolicy: operation.paginationPolicy,
         provider: source.provider,
         request: parseMixpanelEngageRequest(
           mergeStructuredFieldPatch({
             base: parseMixpanelStructuredRequestBody(request.body),
             patch: request.fieldPatch,
           })
-        ),
+        ) as JsonObject,
         selectorTemplate: "/query/engage",
         sourceId: source.id,
         sourceKey: source.sourceKey,
@@ -298,13 +294,14 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         kind: "structured_request",
         method: "POST",
         operation: operation.name,
+        paginationPolicy: operation.paginationPolicy,
         provider: source.provider,
         request: parseMixpanelSegmentationRequest(
           mergeStructuredFieldPatch({
             base: parseMixpanelStructuredRequestBody(request.body),
             patch: request.fieldPatch,
           })
-        ),
+        ) as JsonObject,
         selectorTemplate: "/query/segmentation",
         sourceId: source.id,
         sourceKey: source.sourceKey,
@@ -337,8 +334,9 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
             : { bodyFormat: fieldPatch.bodyFormat },
         method,
         operation: operation.name,
+        paginationPolicy: operation.paginationPolicy,
         provider: source.provider,
-        query: fieldPatch.params,
+        query: fieldPatch.params as JsonObject | undefined,
         selector,
         selectorTemplate: "/{path}",
         sourceId: source.id,
@@ -369,8 +367,9 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
           : { bodyFormat: fieldPatch.bodyFormat },
       method,
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
-      query: fieldPatch.params,
+      query: fieldPatch.params as JsonObject | undefined,
       selectorTemplate: "/api/2.0/export",
       sourceId: source.id,
       sourceKey: source.sourceKey,
@@ -381,73 +380,73 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
       }),
     };
   },
-  async execute({ plan, source }) {
+  async execute({ prepared, source }) {
     const credentials = requireMixpanelCredentials(source);
 
-    if (plan.kind === "structured_request") {
+    if (prepared.kind === "structured_request") {
       let response: MixpanelTransportResponse;
-      switch (plan.operation) {
+      switch (prepared.operation) {
         case "query_engage":
           response = await requestMixpanelSourceApi({
             credentials,
             operation: "query_engage",
-            request: parseMixpanelEngageRequest(plan.request),
+            request: parseMixpanelEngageRequest(prepared.request),
           });
           break;
         case "query_segmentation":
           response = await requestMixpanelSourceApi({
             credentials,
             operation: "query_segmentation",
-            request: parseMixpanelSegmentationRequest(plan.request),
+            request: parseMixpanelSegmentationRequest(prepared.request),
           });
           break;
         default:
           throw new Error(
-            `Mixpanel source API operation "${plan.operation}" requires an HTTP plan`
+            `Mixpanel source API operation "${prepared.operation}" requires an HTTP plan`
           );
       }
 
       return buildMixpanelExecutionResponse({
-        operation: plan.operation,
+        operation: prepared.operation,
         response,
         source,
       });
     }
 
-    const operation = parseMixpanelSourceApiOperation(plan.operation);
+    const operation = parseMixpanelSourceApiOperation(prepared.operation);
     if (operation === "query_engage" || operation === "query_segmentation") {
       throw new Error(
-        `Mixpanel source API operation "${plan.operation}" requires a structured plan`
+        `Mixpanel source API operation "${prepared.operation}" requires a structured plan`
       );
     }
 
-    const bodyFormat = readMixpanelBodyFormat(plan);
+    const bodyFormat = readMixpanelBodyFormat(prepared);
     const response =
       operation === "fetch_query_api"
         ? await requestMixpanelSourceApi({
-            body: plan.body,
+            body: prepared.body,
             bodyFormat,
             credentials,
-            method: plan.method,
+            method: prepared.method,
             operation,
-            params: plan.query,
-            selector: normalizeMixpanelPlanSelector(plan),
-            timeoutMs: plan.timeoutMs,
+            params: prepared.query,
+            selector: normalizeMixpanelPlanSelector(prepared),
+            timeoutMs: prepared.timeoutMs,
           })
         : await requestMixpanelSourceApi({
-            body: plan.body,
+            body: prepared.body,
             bodyFormat,
             credentials,
-            method: plan.method,
+            method: prepared.method,
             operation,
-            params: plan.query,
-            timeoutMs: plan.timeoutMs,
+            params: prepared.query,
+            timeoutMs: prepared.timeoutMs,
           });
 
     return buildMixpanelExecutionResponse({
-      operation: plan.operation,
+      operation: prepared.operation,
       response,
-      selector: plan.selector,
+      selector: prepared.selector,
       source,
     });
   },
@@ -701,7 +700,7 @@ function parseMixpanelSegmentationRequest(
 }
 
 function parseMixpanelHttpFieldPatch(
-  value: Record<string, unknown> | undefined
+  value: JsonObject | undefined
 ): MixpanelHttpFieldPatch {
   if (!value) {
     return {};
@@ -717,7 +716,7 @@ function parseMixpanelHttpFieldPatch(
 
 function parseMixpanelStructuredRequestBody(
   body: SourceApiRequestBody
-): Record<string, unknown> {
+): JsonObject {
   switch (body.kind) {
     case "none":
       return {};

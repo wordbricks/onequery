@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { SentryCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -112,12 +113,6 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new SentryInvalidRequestError(
-        `Sentry operation "${operation.name}" does not support page tokens`
-      );
-    }
-
     const selector = normalizeSentrySelector(request.selector);
     const fieldPatch = parseSentryFieldPatch(request.fieldPatch);
     const method = resolveHttpMethodOverride({
@@ -144,8 +139,9 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
       kind: "http_request",
       method,
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
-      query: fieldPatch.params,
+      query: fieldPatch.params as JsonObject | undefined,
       selector,
       selectorTemplate: "/{path}",
       sourceId: source.id,
@@ -158,25 +154,25 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
       }),
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "http_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "http_request") {
       throw new Error(
-        `Sentry source API operation "${plan.operation}" requires an HTTP plan`
+        `Sentry source API operation "${prepared.operation}" requires an HTTP plan`
       );
     }
 
-    const selector = normalizeSentryPlanSelector(plan);
+    const selector = normalizeSentryPlanSelector(prepared);
     const response = await requestSentrySourceApi({
-      body: plan.body,
+      body: prepared.body,
       credentials: requireSentryCredentials(source),
-      method: plan.method,
-      params: plan.query,
+      method: prepared.method,
+      params: prepared.query,
       selector,
-      timeoutMs: plan.timeoutMs,
+      timeoutMs: prepared.timeoutMs,
     });
 
     return buildSentryExecutionResponse({
-      operation: plan.operation,
+      operation: prepared.operation,
       response,
       selector,
       source,

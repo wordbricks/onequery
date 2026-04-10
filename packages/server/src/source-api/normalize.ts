@@ -8,13 +8,16 @@ import { finalizeSourceApiPolicyPlan } from "./policy";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
-  NormalizedExecutionPlan,
+  PreparedHttpSourceApi,
+  PreparedSourceApi,
+  PreparedSourceApiPreview,
   PreparedSourceConnection,
+  PreparedStructuredSourceApi,
   SourceApiActorContext,
   SourceApiDescriptor,
-  SourceApiExecuteRequest,
   SourceApiOperation,
-  UnfingerprintedNormalizedExecutionPlan,
+  SourceApiDraft,
+  UnboundPreparedSourceApi,
 } from "./types";
 
 export function getSourceApiOperation(
@@ -43,51 +46,95 @@ export function requireSourceApiOperation(input: {
   return operation;
 }
 
-export function finalizeNormalizedExecutionPlan(
-  plan: UnfingerprintedNormalizedExecutionPlan
-): NormalizedExecutionPlan {
-  const policyPlan = finalizeSourceApiPolicyPlan(plan);
+export function finalizePreparedSourceApi(
+  plan: UnboundPreparedSourceApi
+): PreparedSourceApi {
+  const prepared = finalizeSourceApiPolicyPlan(plan);
+  if (prepared.kind === "http_request") {
+    return {
+      ...prepared,
+      preparedBinding: createPreparedSourceApiBinding(prepared),
+    } satisfies PreparedHttpSourceApi;
+  }
+
   return {
-    ...policyPlan,
-    requestFingerprint: createSourceApiRequestFingerprint(policyPlan),
-  };
+    ...prepared,
+    preparedBinding: createPreparedSourceApiBinding(prepared),
+  } satisfies PreparedStructuredSourceApi;
 }
 
-export function createSourceApiRequestFingerprint(value: unknown): string {
+export function createPreparedSourceApiBinding(value: unknown): string {
   return createHash("sha256")
     .update(stableStringify(value))
     .digest("base64url");
+}
+
+export function createPreparedSourceApiPreview(
+  prepared: PreparedSourceApi
+): PreparedSourceApiPreview {
+  return {
+    bodyKind: prepared.bodyKind,
+    bodyPaths: [...prepared.bodyPaths],
+    headerNames: [...prepared.headerNames],
+    host: prepared.host,
+    kind: prepared.kind,
+    method: prepared.method,
+    operation: prepared.operation,
+    paginationPolicy: prepared.paginationPolicy,
+    provider: prepared.provider,
+    selector: prepared.selector,
+    sourceKey: prepared.sourceKey,
+    url: prepared.kind === "http_request" ? prepared.url : undefined,
+  };
+}
+
+export async function prepareSourceApiDraft(input: {
+  source: PreparedSourceConnection;
+  actor: SourceApiActorContext;
+  descriptor: SourceApiDescriptor;
+  draft: SourceApiDraft;
+  registry?: SourceApiRegistry;
+}): Promise<PreparedSourceApi> {
+  if (
+    input.draft.descriptorVersion &&
+    input.draft.descriptorVersion !== input.descriptor.descriptorVersion
+  ) {
+    throw new SourceApiDescriptorVersionMismatchError({
+      expectedDescriptorVersion: input.descriptor.descriptorVersion,
+      receivedDescriptorVersion: input.draft.descriptorVersion,
+    });
+  }
+
+  const registry = input.registry ?? sourceApiRegistry;
+  const adapter = getSourceApiAdapter(registry, input.source.provider);
+  const prepared = await adapter.normalize({
+    actor: input.actor,
+    descriptor: input.descriptor,
+    request: input.draft,
+    source: input.source,
+  });
+
+  return finalizePreparedSourceApi(prepared);
 }
 
 export async function normalizeSourceApiRequest(input: {
   source: PreparedSourceConnection;
   actor: SourceApiActorContext;
   descriptor: SourceApiDescriptor;
-  request: SourceApiExecuteRequest;
+  request: SourceApiDraft;
   registry?: SourceApiRegistry;
-}): Promise<NormalizedExecutionPlan> {
-  if (
-    input.request.descriptorVersion &&
-    input.request.descriptorVersion !== input.descriptor.descriptorVersion
-  ) {
-    throw new SourceApiDescriptorVersionMismatchError({
-      expectedDescriptorVersion: input.descriptor.descriptorVersion,
-      receivedDescriptorVersion: input.request.descriptorVersion,
-    });
-  }
-
-  const registry = input.registry ?? sourceApiRegistry;
-  const adapter = getSourceApiAdapter(registry, input.source.provider);
-
-  return finalizeNormalizedExecutionPlan(
-    await adapter.normalize({
-      actor: input.actor,
-      descriptor: input.descriptor,
-      request: input.request,
-      source: input.source,
-    })
-  );
+}): Promise<PreparedSourceApi> {
+  return prepareSourceApiDraft({
+    actor: input.actor,
+    descriptor: input.descriptor,
+    draft: input.request,
+    registry: input.registry,
+    source: input.source,
+  });
 }
+
+export const finalizeNormalizedExecutionPlan = finalizePreparedSourceApi;
+export const createSourceApiRequestFingerprint = createPreparedSourceApiBinding;
 
 function stableStringify(value: unknown): string {
   if (
