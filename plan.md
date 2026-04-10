@@ -155,8 +155,8 @@ enum CliSourceApiInputMode {
 
 ## 6) Final repository cleanup
 
-- [ ] Delete the empty directory `packages/cli-server/src/use/`.
-- [ ] Remove committed local tool/build artifacts:
+- [x] Delete the empty directory `packages/cli-server/src/use/`.
+- [x] Remove committed local tool/build artifacts:
   - `apps/cli/crates/onequery-config/src/target`
   - `apps/cli/crates/onequery-cli-core/src/target`
   - `apps/cli/crates/onequery-cli/src/target`
@@ -164,8 +164,10 @@ enum CliSourceApiInputMode {
   - `apps/cli/crates/onequery-cli/src/commands/auth/target`
   - `proto/node_modules`
 
+<!-- Rust tooling can recreate ignored local target/ directories under apps/cli; those paths are not committed artifacts. -->
+
 **Done when**
-- [ ] `find apps/cli proto -type d \( -name target -o -name node_modules \)` does not report committed source-tree artifacts.
+- [x] `find apps/cli proto -type d \( -name target -o -name node_modules \)` does not report committed source-tree artifacts.
 
 ## 7) Verification pass
 
