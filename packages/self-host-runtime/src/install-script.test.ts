@@ -61,7 +61,28 @@ describe("install script surface", () => {
   });
 
   it("builds an installer that links the packaged runtime and provisions managed Node.js 24 when needed", () => {
-    expect(createInstallScript()).toMatchSnapshot();
+    const script = createInstallScript();
+
+    expect(script).toContain(
+      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
+    );
+    expect(script).toContain(
+      'platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"'
+    );
+    expect(script).toContain(
+      'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
+    );
+    expect(script).toContain(
+      "Installing managed Node.js 24.x for onequery gateway..."
+    );
+    expect(script).toContain(
+      'if [ -z "$' +
+        '{ONEQUERY_SERVER_JS_RUNTIME:-}" ] && [ -x "$managed_node_path" ]; then'
+    );
+    expect(script).toContain(
+      'export ONEQUERY_SERVER_JS_RUNTIME="$managed_node_path"'
+    );
+    expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
   });
 
   it("escapes launcher runtime references while baking the resolved target triple", () => {
@@ -72,8 +93,9 @@ describe("install script surface", () => {
 
     expect(script).toContain("cat <<'EOF'");
     expect(script).toContain('TARGET_TRIPLE="$launcher_target_triple"');
+    expect(script).toContain('SCRIPT_PATH="$(resolve_launcher_path "$0")"');
     expect(script).toContain(
-      'INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)'
+      'INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")/.." && pwd)'
     );
     expect(script).toContain(
       `export ONEQUERY_RUNTIME_ROOT="${runtimeRootDefault}"`
@@ -208,7 +230,8 @@ EOF
     mkdir -p "$extract_dir/package/vendor/aarch64-apple-darwin/onequery"
     cat > "$extract_dir/package/vendor/aarch64-apple-darwin/onequery/onequery" <<'EOF'
 #!/bin/sh
-exit 0
+printf '%s\\n' "$ONEQUERY_RUNTIME_ROOT"
+printf '%s\\n' "$ONEQUERY_SERVER_JS_RUNTIME"
 EOF
     chmod 755 "$extract_dir/package/vendor/aarch64-apple-darwin/onequery/onequery"
     ;;
@@ -275,6 +298,34 @@ esac
       });
       expect(launcherRun.status).toBe(0);
       expect(launcherRun.stderr).toBe("");
+
+      const symlinkRun = spawnSync(join(binDir, "onequery"), [], {
+        cwd: tempDir,
+        encoding: "utf8",
+        env: shellEnv,
+      });
+      expect(symlinkRun.status).toBe(0);
+      expect(symlinkRun.stderr).toBe("");
+      expect(symlinkRun.stdout).toContain(
+        join(
+          installRoot,
+          "versions",
+          "0.1.22",
+          "vendor",
+          "aarch64-apple-darwin"
+        )
+      );
+      expect(symlinkRun.stdout).toContain(
+        join(
+          installRoot,
+          "versions",
+          "0.1.22",
+          "runtime",
+          "node",
+          "bin",
+          "node"
+        )
+      );
 
       const managedNodePath = join(
         installRoot,
