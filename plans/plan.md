@@ -8,6 +8,7 @@ Read in this order:
 2. [source-api-contract.md](./source-api-contract.md)
 3. [source-api-implementation.md](./source-api-implementation.md)
 4. [source-api-quality-bar.md](./source-api-quality-bar.md)
+5. [source-api-connect-cleanup.md](./source-api-connect-cleanup.md)
 
 ## Document Roles
 
@@ -27,6 +28,10 @@ Read in this order:
   document.
   It defines the Jane Street bar, verification obligations, and the final
   definition of done.
+- [source-api-connect-cleanup.md](./source-api-connect-cleanup.md) is the
+  follow-up cleanup document.
+  It tracks post-rewrite Connect transport cleanup, duplicate error mapping
+  removal, and deletion of stale parallel client transport scaffolding.
 
 If the documents disagree:
 
