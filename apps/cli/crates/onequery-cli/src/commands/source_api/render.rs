@@ -1521,7 +1521,6 @@ mod tests {
             content_type: "application/json".to_owned(),
             body: Some(body),
             continuation_token: None,
-            ..Default::default()
         }
     }
 
