@@ -1,39 +1,25 @@
-#[cfg(not(debug_assertions))]
 use std::path::Path;
-#[cfg(any(test, not(debug_assertions)))]
 use std::path::PathBuf;
+use std::time::Duration as StdDuration;
 
-#[cfg(any(test, not(debug_assertions)))]
 use chrono::DateTime;
-#[cfg(not(debug_assertions))]
 use chrono::Duration;
-#[cfg(any(test, not(debug_assertions)))]
 use chrono::Utc;
-#[cfg(any(test, not(debug_assertions)))]
 use serde::Deserialize;
-#[cfg(any(test, not(debug_assertions)))]
 use serde::Serialize;
-#[cfg(any(test, not(debug_assertions)))]
 use thiserror::Error;
 
-#[cfg(not(debug_assertions))]
-use crate::config::config_dir;
-
-#[cfg(not(debug_assertions))]
 const CLI_VERSION_CACHE_FILENAME: &str = "version.json";
-#[cfg(not(debug_assertions))]
 const CLI_LATEST_RELEASE_URL: &str =
     "https://api.github.com/repos/wordbricks/onequery/releases/latest";
-#[cfg(not(debug_assertions))]
 const CLI_VERSION_REFRESH_INTERVAL_HOURS: i64 = 20;
+const CLI_VERSION_REFRESH_REQUEST_TIMEOUT: StdDuration = StdDuration::from_millis(250);
 
-#[cfg(any(test, not(debug_assertions)))]
-type VersionResult<T> = Result<T, VersionError>;
+pub(crate) type VersionResult<T> = Result<T, VersionError>;
 
-#[cfg(any(test, not(debug_assertions)))]
-#[cfg_attr(test, allow(dead_code))]
+#[cfg_attr(any(test, debug_assertions), allow(dead_code))]
 #[derive(Debug, Error)]
-enum VersionError {
+pub(crate) enum VersionError {
     #[error("failed to read version cache at {path}: {source}")]
     ReadCache {
         path: PathBuf,
@@ -77,7 +63,6 @@ enum VersionError {
     },
 }
 
-#[cfg(any(test, not(debug_assertions)))]
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 struct VersionInfo {
     latest_version: String,
@@ -86,61 +71,40 @@ struct VersionInfo {
     dismissed_version: Option<String>,
 }
 
-#[cfg(any(test, not(debug_assertions)))]
 #[derive(Deserialize, Debug, Clone)]
 struct ReleaseInfo {
     tag_name: String,
 }
 
-pub(crate) fn refresh_cache_on_startup(command_line: &str) {
-    #[cfg(debug_assertions)]
-    {
-        let _ = command_line;
-    }
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct VersionCacheRefreshPlan {
+    version_file: PathBuf,
+}
 
-    #[cfg(not(debug_assertions))]
-    {
-        let version_file = match version_path(command_line) {
-            Ok(version_file) => version_file,
-            Err(error) => {
-                tracing::debug!(command = command_line, error = %error, "failed to resolve version cache path");
-                return;
-            }
-        };
-
-        let info = read_version_info_if_present(&version_file);
-        let should_refresh = match &info {
-            None => true,
-            Some(info) => {
-                info.last_checked_at
-                    < Utc::now() - Duration::hours(CLI_VERSION_REFRESH_INTERVAL_HOURS)
-            }
-        };
-
-        if !should_refresh {
-            return;
-        }
-
-        tokio::spawn(async move {
-            if let Err(error) = check_for_update(&version_file).await {
-                tracing::warn!(
-                    version_path = %version_file.display(),
-                    error = %error,
-                    "failed to refresh CLI version cache"
-                );
-            }
-        });
+impl VersionCacheRefreshPlan {
+    fn new(version_file: PathBuf) -> Self {
+        Self { version_file }
     }
 }
 
-#[cfg(not(debug_assertions))]
-fn version_path(command_line: &str) -> Result<PathBuf, onequery_cli_core::error::CliError> {
-    let mut path = config_dir(command_line)?;
-    path.push(CLI_VERSION_CACHE_FILENAME);
-    Ok(path)
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum VersionCacheRefreshPlanning {
+    FreshCache,
+    Refresh(VersionCacheRefreshPlan),
 }
 
-#[cfg(not(debug_assertions))]
+pub(crate) fn plan_cache_refresh(config_path: &Path) -> VersionCacheRefreshPlanning {
+    plan_cache_refresh_for_config_at(config_path, Utc::now())
+}
+
+pub(crate) async fn run_cache_refresh(plan: VersionCacheRefreshPlan) -> VersionResult<()> {
+    refresh_cache(&plan).await
+}
+
+fn version_path_for_config(config_path: &Path) -> PathBuf {
+    config_path.with_file_name(CLI_VERSION_CACHE_FILENAME)
+}
+
 fn read_version_info(version_file: &Path) -> VersionResult<VersionInfo> {
     let contents =
         std::fs::read_to_string(version_file).map_err(|source| VersionError::ReadCache {
@@ -153,28 +117,11 @@ fn read_version_info(version_file: &Path) -> VersionResult<VersionInfo> {
     })
 }
 
-#[cfg(not(debug_assertions))]
 fn read_version_info_if_present(version_file: &Path) -> Option<VersionInfo> {
-    match read_version_info(version_file) {
-        Ok(info) => Some(info),
-        Err(VersionError::ReadCache { source, .. })
-            if source.kind() == std::io::ErrorKind::NotFound =>
-        {
-            None
-        }
-        Err(error) => {
-            tracing::debug!(
-                version_path = %version_file.display(),
-                error = %error,
-                "ignoring unreadable CLI version cache"
-            );
-            None
-        }
-    }
+    read_version_info(version_file).ok()
 }
 
-#[cfg(not(debug_assertions))]
-async fn check_for_update(version_file: &Path) -> VersionResult<()> {
+async fn refresh_cache(plan: &VersionCacheRefreshPlan) -> VersionResult<()> {
     let latest_tag_name = tokio::task::spawn_blocking(fetch_latest_release_tag)
         .await
         .map_err(|source| VersionError::FetchLatestTask { source })??;
@@ -184,7 +131,7 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
     let info = VersionInfo {
         latest_version,
         last_checked_at: Utc::now(),
-        dismissed_version: read_version_info_if_present(version_file)
+        dismissed_version: read_version_info_if_present(plan.version_file.as_path())
             .and_then(|info| info.dismissed_version),
     };
 
@@ -192,7 +139,7 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
         "{}\n",
         serde_json::to_string(&info).map_err(|source| VersionError::SerializeCache { source })?
     );
-    if let Some(parent) = version_file.parent() {
+    if let Some(parent) = plan.version_file.parent() {
         tokio::fs::create_dir_all(parent)
             .await
             .map_err(|source| VersionError::CreateCacheDir {
@@ -200,19 +147,23 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
                 source,
             })?;
     }
-    tokio::fs::write(version_file, json_line)
+    tokio::fs::write(plan.version_file.as_path(), json_line)
         .await
         .map_err(|source| VersionError::WriteCache {
-            path: version_file.to_path_buf(),
+            path: plan.version_file.clone(),
             source,
         })?;
     Ok(())
 }
 
-#[cfg(not(debug_assertions))]
 fn fetch_latest_release_tag() -> VersionResult<String> {
     let user_agent = format!("onequery/{}", env!("CARGO_PKG_VERSION"));
-    let mut response = ureq::get(CLI_LATEST_RELEASE_URL)
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(CLI_VERSION_REFRESH_REQUEST_TIMEOUT))
+        .build()
+        .into();
+    let mut response = agent
+        .get(CLI_LATEST_RELEASE_URL)
         .header("user-agent", &user_agent)
         .call()
         .map_err(|source| VersionError::FetchLatest { source })?;
@@ -224,7 +175,6 @@ fn fetch_latest_release_tag() -> VersionResult<String> {
         .map_err(|source| VersionError::FetchLatest { source })
 }
 
-#[cfg(any(test, not(debug_assertions)))]
 fn extract_version_from_latest_tag(latest_tag_name: &str) -> VersionResult<String> {
     latest_tag_name
         .strip_prefix("cli-v")
@@ -234,11 +184,45 @@ fn extract_version_from_latest_tag(latest_tag_name: &str) -> VersionResult<Strin
         })
 }
 
+fn plan_cache_refresh_for_config_at(
+    config_path: &Path,
+    now: DateTime<Utc>,
+) -> VersionCacheRefreshPlanning {
+    plan_cache_refresh_for_file_at(version_path_for_config(config_path).as_path(), now)
+}
+
+fn plan_cache_refresh_for_file_at(
+    version_file: &Path,
+    now: DateTime<Utc>,
+) -> VersionCacheRefreshPlanning {
+    match read_version_info(version_file) {
+        Ok(info) if !version_cache_is_stale(&info, now) => VersionCacheRefreshPlanning::FreshCache,
+        Ok(_) | Err(_) => {
+            // Comment: Version refresh is advisory, so unreadable cache state is treated as stale
+            // and repaired on the next successful refresh instead of surfacing startup noise.
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(
+                version_file.to_path_buf(),
+            ))
+        }
+    }
+}
+
+fn version_cache_is_stale(info: &VersionInfo, now: DateTime<Utc>) -> bool {
+    now - info.last_checked_at >= Duration::hours(CLI_VERSION_REFRESH_INTERVAL_HOURS)
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
+
+    use chrono::Duration;
     use pretty_assertions::assert_eq;
 
     use super::ReleaseInfo;
+    use super::VersionCacheRefreshPlan;
+    use super::VersionCacheRefreshPlanning;
     use super::VersionInfo;
     use chrono::DateTime;
     use chrono::Utc;
@@ -267,6 +251,86 @@ mod tests {
     #[test]
     fn release_tag_without_cli_prefix_is_invalid() {
         assert!(super::extract_version_from_latest_tag("v1.5.0").is_err());
+    }
+
+    #[test]
+    fn plan_cache_refresh_requests_refresh_when_cache_is_missing() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let version_file = temp_dir.path().join("version.json");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_file_at(version_file.as_path(), Utc::now()),
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
+        );
+    }
+
+    #[test]
+    fn plan_cache_refresh_skips_recent_cache() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let version_file = temp_dir.path().join("version.json");
+        let now = Utc::now();
+        let info = VersionInfo {
+            latest_version: "0.1.2".to_owned(),
+            last_checked_at: now - Duration::hours(1),
+            dismissed_version: Some("0.1.2".to_owned()),
+        };
+        fs::write(
+            &version_file,
+            serde_json::to_string(&info).expect("failed to serialize version info"),
+        )
+        .expect("failed to write version info");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_file_at(version_file.as_path(), now),
+            VersionCacheRefreshPlanning::FreshCache
+        );
+    }
+
+    #[test]
+    fn plan_cache_refresh_requests_refresh_when_cache_is_stale() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let version_file = temp_dir.path().join("version.json");
+        let now = Utc::now();
+        let info = VersionInfo {
+            latest_version: "0.1.2".to_owned(),
+            last_checked_at: now - Duration::hours(super::CLI_VERSION_REFRESH_INTERVAL_HOURS + 1),
+            dismissed_version: None,
+        };
+        fs::write(
+            &version_file,
+            serde_json::to_string(&info).expect("failed to serialize version info"),
+        )
+        .expect("failed to write version info");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_file_at(version_file.as_path(), now),
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
+        );
+    }
+
+    #[test]
+    fn plan_cache_refresh_requests_refresh_when_cache_is_invalid() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let version_file = temp_dir.path().join("version.json");
+        fs::write(&version_file, "{not-json").expect("failed to write invalid cache");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_file_at(version_file.as_path(), Utc::now()),
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
+        );
+    }
+
+    #[test]
+    fn plan_cache_refresh_derives_the_cache_file_from_the_resolved_config_path() {
+        let now = Utc::now();
+        let config_path = Path::new("/tmp/onequery/config.toml");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_config_at(config_path, now),
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(PathBuf::from(
+                "/tmp/onequery/version.json"
+            )))
+        );
     }
 
     #[test]

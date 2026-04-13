@@ -8,6 +8,7 @@ mod output_metadata;
 mod path_utils;
 mod platform;
 mod presentation;
+mod startup;
 #[cfg(test)]
 mod test_support;
 mod transport;
@@ -81,14 +82,16 @@ async fn main() {
             std::process::exit(error.exit_code());
         }
     };
+    let startup_effects = startup::start(startup::plan(runtime.config.path()));
 
-    match workflows::app::run(invocation, &mut runtime).await {
+    let exit_code = match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
             match output::render_output_payload(command_output, output_mode, stdout_is_tty) {
                 Ok(rendered) => {
                     if let Err(error) = emit_success(rendered) {
                         exit_for_output_error(error);
                     }
+                    0
                 }
                 Err(error) => {
                     if let Err(write_error) =
@@ -96,10 +99,9 @@ async fn main() {
                     {
                         exit_for_output_error(write_error);
                     }
-                    std::process::exit(error.exit_code());
+                    error.exit_code()
                 }
             }
-            std::process::exit(0);
         }
         Err(error) => {
             if let Err(write_error) =
@@ -107,9 +109,11 @@ async fn main() {
             {
                 exit_for_output_error(write_error);
             }
-            std::process::exit(error.exit_code());
+            error.exit_code()
         }
-    }
+    };
+    startup_effects.finish().await.report();
+    std::process::exit(exit_code);
 }
 
 fn emit_success(rendered: output::RenderedOutput) -> std::io::Result<()> {
@@ -172,12 +176,88 @@ fn exit_for_output_error(error: std::io::Error) -> ! {
 }
 
 fn init_tracing(verbose: bool) {
+    // Comment: stdout belongs to command results, so shared tracing must stay on stderr.
+    let subscriber = build_tracing_subscriber(verbose, std::io::stderr);
+    let _ = tracing::subscriber::set_global_default(subscriber);
+}
+
+fn build_tracing_subscriber<W>(verbose: bool, writer: W) -> impl tracing::Subscriber + Send + Sync
+where
+    W: for<'writer> tracing_subscriber::fmt::MakeWriter<'writer> + Send + Sync + 'static,
+{
     let default_level = if verbose { "info" } else { "warn" };
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
 
-    let _ = tracing_subscriber::fmt()
+    tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
-        .try_init();
+        .with_writer(writer)
+        .finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    use tracing_subscriber::fmt::MakeWriter;
+
+    #[derive(Clone, Default)]
+    struct SharedLogWriter {
+        buffer: Arc<Mutex<Vec<u8>>>,
+    }
+
+    struct SharedLogHandle {
+        buffer: Arc<Mutex<Vec<u8>>>,
+    }
+
+    impl SharedLogWriter {
+        fn contents(&self) -> String {
+            String::from_utf8(self.buffer.lock().expect("lock log buffer").clone())
+                .expect("log output should be valid UTF-8")
+        }
+    }
+
+    impl<'a> MakeWriter<'a> for SharedLogWriter {
+        type Writer = SharedLogHandle;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            SharedLogHandle {
+                buffer: Arc::clone(&self.buffer),
+            }
+        }
+    }
+
+    impl io::Write for SharedLogHandle {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.buffer
+                .lock()
+                .expect("lock log buffer")
+                .extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn tracing_subscriber_writes_logs_to_the_configured_writer() {
+        let _subscriber_lock = crate::test_support::lock_tracing_subscriber();
+        let log_writer = SharedLogWriter::default();
+        let subscriber = super::build_tracing_subscriber(false, log_writer.clone());
+        let _guard = tracing::subscriber::set_default(subscriber);
+        tracing::callsite::rebuild_interest_cache();
+
+        tracing::warn!("failed to refresh CLI version cache");
+
+        assert!(
+            log_writer
+                .contents()
+                .contains("failed to refresh CLI version cache")
+        );
+    }
 }
