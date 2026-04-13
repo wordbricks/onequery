@@ -464,6 +464,7 @@ mod tests {
     use serde_json::json;
 
     use super::json_from_proto_json_value;
+    use super::proto_json_object_from_json;
     use super::proto_json_value_from_json;
     use super::source_api_body_kind_label;
     use super::source_api_input_mode_label;
@@ -615,6 +616,65 @@ mod tests {
                 "items": [1, 2, 3.5]
             })
         );
+    }
+
+    #[test]
+    fn proto_json_object_from_json_preserves_nested_object_shape() {
+        let value = proto_json_object_from_json(json!({
+            "params": {
+                "limit": 25,
+                "labels": ["bug", "feature"]
+            }
+        }))
+        .expect("expected JSON object to encode as protobuf Struct");
+
+        assert_eq!(
+            serde_json::to_value(value).expect("expected Struct to serialize"),
+            json!({
+                "params": {
+                    "limit": 25.0,
+                    "labels": ["bug", "feature"]
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn generated_source_api_transport_types_keep_wkt_payloads_as_truth() {
+        let draft = types::SourceApiDraft {
+            field_patch: buffa::MessageField::some(
+                proto_json_object_from_json(json!({
+                    "params": {
+                        "state": "open"
+                    }
+                }))
+                .expect("expected JSON object to encode as protobuf Struct"),
+            ),
+            body: Some(types::source_api_draft::Body::JsonBody(Box::new(
+                proto_json_value_from_json(json!({
+                    "limit": 25
+                }))
+                .expect("expected JSON value to encode as protobuf Value"),
+            ))),
+            ..Default::default()
+        };
+
+        let draft_json = serde_json::to_value(draft).expect("expected draft to serialize");
+        assert_eq!(
+            draft_json.get("fieldPatch"),
+            Some(&json!({
+                "params": {
+                    "state": "open"
+                }
+            }))
+        );
+        assert_eq!(
+            draft_json.get("jsonBody"),
+            Some(&json!({
+                "limit": 25.0
+            }))
+        );
+        assert!(draft_json.get("requestId").is_none());
     }
 
     fn source_api_descriptor(

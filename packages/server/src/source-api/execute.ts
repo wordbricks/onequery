@@ -1,7 +1,5 @@
 import { authorizeSourceApi } from "./authorize";
-import { describeSourceApi } from "./describe";
 import { readSourceApiErrorMessage } from "./errors";
-import { prepareSourceApiDraft } from "./normalize";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
@@ -9,11 +7,10 @@ import type {
   PreparedSourceConnection,
   SourceApiActorContext,
   SourceApiContinuationState,
-  SourceApiDraft,
   SourceApiExecutionResult,
 } from "./types";
 
-export type SourceApiExecutionStage = "prepare" | "authorize" | "execute";
+export type SourceApiExecutionStage = "authorize" | "execute";
 
 export class SourceApiExecutionStageError extends Error {
   override readonly cause: unknown;
@@ -62,46 +59,6 @@ export async function executePreparedSourceApi(input: {
     .catch((error: unknown) => {
       throw toSourceApiExecutionStageError("execute", error);
     });
-}
-
-export async function executeSourceApi(input: {
-  source: PreparedSourceConnection;
-  actor: SourceApiActorContext;
-  request: SourceApiDraft;
-  registry?: SourceApiRegistry;
-}): Promise<SourceApiExecutionResult> {
-  const registry = input.registry ?? sourceApiRegistry;
-  const descriptor = await Promise.resolve()
-    .then(() =>
-      describeSourceApi({
-        actor: input.actor,
-        registry,
-        source: input.source,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("prepare", error);
-    });
-  const prepared = await Promise.resolve()
-    .then(() =>
-      prepareSourceApiDraft({
-        actor: input.actor,
-        descriptor,
-        draft: input.request,
-        registry,
-        source: input.source,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("prepare", error);
-    });
-
-  return executePreparedSourceApi({
-    actor: input.actor,
-    prepared,
-    registry,
-    source: input.source,
-  });
 }
 
 function toSourceApiExecutionStageError(

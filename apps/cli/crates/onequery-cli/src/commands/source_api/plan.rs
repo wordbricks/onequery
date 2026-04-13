@@ -545,6 +545,9 @@ fn normalized_method_override(value: Option<&str>) -> Option<String> {
 mod tests {
     use buffa::MessageField;
     use onequery_cli_core::error::ErrorStage;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+    use tempfile::tempdir;
 
     use crate::cli::ApiArgs;
     use crate::commands::ResolvedOrgSource;
@@ -558,9 +561,12 @@ mod tests {
     use crate::transport::source_api::SourceApiOperation;
     use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiPaginationPolicy;
+    use crate::transport::source_api::SourceApiRequestBody;
     use crate::transport::source_api::SourceApiSelectorKind;
+    use crate::transport::source_api::json_from_proto_json_value;
 
     use super::CommandContext;
+    use super::PlannedCommand;
     use super::build_plan;
     use super::parse_headers;
     use super::validate_pagination;
@@ -779,6 +785,99 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn build_plan_converts_json_object_input_into_generated_wkt_value() {
+        let temp_dir = tempdir().expect("expected temp dir");
+        let input_path = temp_dir.path().join("request.json");
+        std::fs::write(&input_path, "{\"viewer\":true,\"ids\":[1,2],\"limit\":25}")
+            .expect("expected request input file");
+
+        let draft = extract_draft(
+            build_plan(
+                &ApiArgs {
+                    dry_run: true,
+                    input: Some(input_path.display().to_string()),
+                    target: None,
+                    ..api_args()
+                },
+                &descriptor_with_operation(SourceApiOperation {
+                    selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    field_policy: MessageField::some(SourceApiFieldPolicy {
+                        accepts_input: true,
+                        input_mode: SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT
+                            .into(),
+                        ..SourceApiFieldPolicy::default()
+                    }),
+                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                }),
+                &context(),
+            )
+            .await
+            .expect("expected request object input to build a draft"),
+        );
+
+        match draft.body {
+            Some(SourceApiRequestBody::JsonBody(value)) => {
+                assert_eq!(
+                    json_from_proto_json_value(value.as_ref())
+                        .expect("expected generated protobuf WKT JSON"),
+                    json!({
+                        "viewer": true,
+                        "ids": [1, 2],
+                        "limit": 25,
+                    })
+                );
+            }
+            other => panic!("expected JSON body, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn build_plan_converts_field_patches_into_generated_wkt_structs() {
+        let draft = extract_draft(
+            build_plan(
+                &ApiArgs {
+                    fields: vec![
+                        "params[limit]=25".to_owned(),
+                        "params[labels][]=bug".to_owned(),
+                        "params[labels][]=feature".to_owned(),
+                    ],
+                    target: None,
+                    ..api_args()
+                },
+                &descriptor_with_operation(SourceApiOperation {
+                    selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    field_policy: MessageField::some(SourceApiFieldPolicy {
+                        supports_typed_fields: true,
+                        supports_nested_paths: true,
+                        supports_array_paths: true,
+                        ..SourceApiFieldPolicy::default()
+                    }),
+                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                }),
+                &context(),
+            )
+            .await
+            .expect("expected typed field patch to build a draft"),
+        );
+
+        assert_eq!(
+            serde_json::to_value(
+                draft
+                    .field_patch
+                    .as_option()
+                    .expect("expected field patch to be present")
+            )
+            .expect("expected generated protobuf Struct to serialize"),
+            json!({
+                "params": {
+                    "limit": 25.0,
+                    "labels": ["bug", "feature"],
+                }
+            })
+        );
+    }
+
     fn context() -> CommandContext {
         CommandContext {
             command_line: "onequery api --source github-prod".to_owned(),
@@ -842,6 +941,14 @@ mod tests {
             examples: Vec::new(),
             notes: Vec::new(),
             ..Default::default()
+        }
+    }
+
+    fn extract_draft(plan: PlannedCommand) -> crate::transport::source_api::SourceApiDraft {
+        match plan {
+            PlannedCommand::DryRun { draft } => draft,
+            PlannedCommand::Execute { plan } => plan.draft,
+            PlannedCommand::Describe => panic!("expected a source API draft"),
         }
     }
 }

@@ -623,8 +623,6 @@ function toSourceApiExecuteConnectError(
 
   if (error instanceof SourceApiExecutionStageError) {
     switch (error.stage) {
-      case "prepare":
-        return toSourceApiRequestConnectError(error.cause, renderError);
       case "authorize":
         return toSourceApiAuthorizeConnectError(error.cause, renderError);
       case "execute":

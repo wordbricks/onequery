@@ -15,7 +15,7 @@ It does not redefine the state machine or the public contract.
 - [x] 5. Replace the Rust transport layer
 - [x] 6. Replace the CLI command flow and rendering
 - [x] 7. Delete legacy surfaces from the source-api path
-- [ ] 8. Pass the quality bar and completion checks
+- [x] 8. Pass the quality bar and completion checks
 
 ## Current Shape To Remove
 
