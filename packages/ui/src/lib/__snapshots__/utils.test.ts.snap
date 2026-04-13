@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cn > matches merged class name snapshots 1`] = `
+{
+  "arrays": "foo bar",
+  "conditional": "foo baz",
+  "empty": "",
+  "merge": "foo bar",
+  "objects": "baz foo",
+  "tailwind": "py-1 px-4",
+}
+`;

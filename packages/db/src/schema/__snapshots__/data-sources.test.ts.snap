@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`data-sources schema > matches provider type snapshots 1`] = `
+{
+  "providers": [
+    "postgres",
+    "supabase",
+    "mysql",
+    "mongodb",
+    "bigquery",
+    "laminar",
+    "aws_athena_connector",
+    "ga",
+    "amplitude",
+    "mixpanel",
+    "posthog",
+    "sentry",
+    "github",
+    "linear",
+  ],
+  "queryableProviders": [
+    "postgres",
+    "supabase",
+    "mysql",
+    "mongodb",
+    "bigquery",
+    "laminar",
+    "aws_athena_connector",
+    "ga",
+    "amplitude",
+    "mixpanel",
+    "posthog",
+    "sentry",
+    "github",
+    "linear",
+  ],
+}
+`;

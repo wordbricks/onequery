@@ -1,0 +1,50 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hexToBuffer > matches buffer codec snapshots 1`] = `
+{
+  "decode": {
+    "empty string": [],
+    "multi-byte hex string": [
+      222,
+      173,
+      190,
+      239,
+    ],
+    "single byte": [
+      66,
+    ],
+  },
+  "encode": {
+    "empty ArrayBuffer": "",
+    "multi-byte ArrayBuffer": "deadbeef",
+    "single-byte buffer": "42",
+    "zero-filled buffer": "000000",
+  },
+}
+`;
+
+exports[`hexToBytes > matches byte codec snapshots 1`] = `
+{
+  "decode": {
+    "empty string": [],
+    "leading zeros": [
+      0,
+      255,
+    ],
+    "mixed-case hex": [
+      171,
+      205,
+      239,
+    ],
+    "single byte": [
+      255,
+    ],
+  },
+  "encode": {
+    "all zeros": "000000",
+    "empty Uint8Array": "",
+    "leading zeros": "00ff",
+    "multi-byte array": "deadbeef",
+  },
+}
+`;

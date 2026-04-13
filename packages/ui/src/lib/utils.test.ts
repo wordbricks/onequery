@@ -3,27 +3,14 @@ import { describe, expect, it } from "vitest";
 import { cn } from "./utils";
 
 describe("cn", () => {
-  it("should merge class names", () => {
-    expect(cn("foo", "bar")).toBe("foo bar");
-  });
-
-  it("should handle conditional classes", () => {
-    expect(cn("foo", false, "baz")).toBe("foo baz");
-  });
-
-  it("should merge tailwind classes correctly", () => {
-    expect(cn("px-2 py-1", "px-4")).toBe("py-1 px-4");
-  });
-
-  it("should handle arrays", () => {
-    expect(cn(["foo", "bar"])).toBe("foo bar");
-  });
-
-  it("should handle objects", () => {
-    expect(cn({ bar: false, baz: true, foo: true })).toBe("baz foo");
-  });
-
-  it("should handle empty inputs", () => {
-    expect(cn()).toBe("");
+  it("matches merged class name snapshots", () => {
+    expect({
+      arrays: cn(["foo", "bar"]),
+      conditional: cn("foo", false, "baz"),
+      empty: cn(),
+      merge: cn("foo", "bar"),
+      objects: cn({ bar: false, baz: true, foo: true }),
+      tailwind: cn("px-2 py-1", "px-4"),
+    }).toMatchSnapshot();
   });
 });

@@ -1420,25 +1420,8 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.linear).toBe(LinearCredentialsSchema);
     });
 
-    it("should have all supported provider types", () => {
-      const expectedProviders = [
-        "postgres",
-        "mysql",
-        "mongodb",
-        "ga",
-        "bigquery",
-        "laminar",
-        "aws_athena_connector",
-        "amplitude",
-        "mixpanel",
-        "posthog",
-        "sentry",
-        "github",
-        "linear",
-      ];
-      expect(Object.keys(credentialSchemaMap).toSorted()).toEqual(
-        expectedProviders.toSorted()
-      );
+    it("matches supported provider keys", () => {
+      expect(Object.keys(credentialSchemaMap).toSorted()).toMatchSnapshot();
     });
   });
 
@@ -1571,74 +1554,26 @@ describe("credentials schemas", () => {
   });
 
   describe("normalizeEnvVarName", () => {
-    it("should convert to uppercase", () => {
-      expect(normalizeEnvVarName("prod-db")).toBe("PROD_DB");
-    });
-
-    it("should replace hyphens with underscores", () => {
-      expect(normalizeEnvVarName("my-database")).toBe("MY_DATABASE");
-    });
-
-    it("should replace spaces with underscores", () => {
-      expect(normalizeEnvVarName("My GA Property")).toBe("MY_GA_PROPERTY");
-    });
-
-    it("should replace parentheses with underscores", () => {
-      expect(normalizeEnvVarName("analytics (main)")).toBe("ANALYTICS_MAIN");
-    });
-
-    it("should collapse multiple underscores into one", () => {
-      expect(normalizeEnvVarName("prod---db")).toBe("PROD_DB");
-    });
-
-    it("should trim leading underscores", () => {
-      expect(normalizeEnvVarName("---prod")).toBe("PROD");
-    });
-
-    it("should trim trailing underscores", () => {
-      expect(normalizeEnvVarName("prod---")).toBe("PROD");
-    });
-
-    it("should handle mixed special characters", () => {
-      expect(normalizeEnvVarName("My DB! @#$ Server")).toBe("MY_DB_SERVER");
-    });
-
-    it("should preserve numbers", () => {
-      expect(normalizeEnvVarName("db-server-01")).toBe("DB_SERVER_01");
-    });
-
-    it("should handle single word", () => {
-      expect(normalizeEnvVarName("database")).toBe("DATABASE");
-    });
-
-    it("should handle empty string", () => {
-      expect(normalizeEnvVarName("")).toBe("");
-    });
-
-    it("should handle only special characters", () => {
-      expect(normalizeEnvVarName("!@#$%")).toBe("");
-    });
-
-    it("should handle unicode characters", () => {
-      expect(normalizeEnvVarName("データベース")).toBe("");
-    });
-
-    it("should handle mixed alphanumeric and special", () => {
-      expect(normalizeEnvVarName("prod_db_v2.0")).toBe("PROD_DB_V2_0");
-    });
-
-    it("should handle dots", () => {
-      expect(normalizeEnvVarName("api.production.db")).toBe(
-        "API_PRODUCTION_DB"
-      );
-    });
-
-    it("should handle slashes", () => {
-      expect(normalizeEnvVarName("path/to/db")).toBe("PATH_TO_DB");
-    });
-
-    it("should handle camelCase names", () => {
-      expect(normalizeEnvVarName("myDatabaseServer")).toBe("MYDATABASESERVER");
+    it("matches normalized env var snapshots", () => {
+      expect({
+        "!@#$%": normalizeEnvVarName("!@#$%"),
+        "": normalizeEnvVarName(""),
+        "---prod": normalizeEnvVarName("---prod"),
+        "My DB! @#$ Server": normalizeEnvVarName("My DB! @#$ Server"),
+        "My GA Property": normalizeEnvVarName("My GA Property"),
+        "analytics (main)": normalizeEnvVarName("analytics (main)"),
+        "api.production.db": normalizeEnvVarName("api.production.db"),
+        database: normalizeEnvVarName("database"),
+        "db-server-01": normalizeEnvVarName("db-server-01"),
+        myDatabaseServer: normalizeEnvVarName("myDatabaseServer"),
+        "my-database": normalizeEnvVarName("my-database"),
+        "path/to/db": normalizeEnvVarName("path/to/db"),
+        "prod---": normalizeEnvVarName("prod---"),
+        "prod---db": normalizeEnvVarName("prod---db"),
+        "prod-db": normalizeEnvVarName("prod-db"),
+        "prod_db_v2.0": normalizeEnvVarName("prod_db_v2.0"),
+        データベース: normalizeEnvVarName("データベース"),
+      }).toMatchSnapshot();
     });
   });
 

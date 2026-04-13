@@ -2,55 +2,32 @@ import { describe, expect, it } from "vitest";
 
 import { hexToBuffer, hexToBytes } from "./hex";
 
-describe("hexToBytes", () => {
-  it.each([
-    {
-      name: "decodes an empty string",
-      input: "",
-      expected: new Uint8Array([]),
-    },
-    {
-      name: "decodes a single byte",
-      input: "ff",
-      expected: new Uint8Array([255]),
-    },
-    {
-      name: "decodes mixed-case hex",
-      input: "AbCdEf",
-      expected: new Uint8Array([0xab, 0xcd, 0xef]),
-    },
-    {
-      name: "preserves leading zeros",
-      input: "00ff",
-      expected: new Uint8Array([0, 255]),
-    },
-  ])("$name", ({ input, expected }) => {
-    expect(hexToBytes.decode(input)).toEqual(expected);
-  });
+function serializeBytes(bytes: Uint8Array): number[] {
+  return [...bytes];
+}
 
-  it.each([
-    {
-      name: "encodes an empty Uint8Array",
-      value: new Uint8Array([]),
-      expected: "",
-    },
-    {
-      name: "encodes a multi-byte array",
-      value: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
-      expected: "deadbeef",
-    },
-    {
-      name: "encodes leading zeros",
-      value: new Uint8Array([0, 255]),
-      expected: "00ff",
-    },
-    {
-      name: "encodes all zeros",
-      value: new Uint8Array([0, 0, 0]),
-      expected: "000000",
-    },
-  ])("$name", ({ value, expected }) => {
-    expect(hexToBytes.encode(value)).toBe(expected);
+function serializeBuffer(buffer: ArrayBuffer): number[] {
+  return [...new Uint8Array(buffer)];
+}
+
+describe("hexToBytes", () => {
+  it("matches byte codec snapshots", () => {
+    expect({
+      decode: {
+        "empty string": serializeBytes(hexToBytes.decode("")),
+        "leading zeros": serializeBytes(hexToBytes.decode("00ff")),
+        "mixed-case hex": serializeBytes(hexToBytes.decode("AbCdEf")),
+        "single byte": serializeBytes(hexToBytes.decode("ff")),
+      },
+      encode: {
+        "all zeros": hexToBytes.encode(new Uint8Array([0, 0, 0])),
+        "empty Uint8Array": hexToBytes.encode(new Uint8Array([])),
+        "leading zeros": hexToBytes.encode(new Uint8Array([0, 255])),
+        "multi-byte array": hexToBytes.encode(
+          new Uint8Array([0xde, 0xad, 0xbe, 0xef])
+        ),
+      },
+    }).toMatchSnapshot();
   });
 
   describe("validation (decode)", () => {
@@ -80,59 +57,28 @@ describe("hexToBytes", () => {
 });
 
 describe("hexToBuffer", () => {
-  it.each([
-    {
-      name: "decodes an empty string",
-      input: "",
-      expected: new Uint8Array([]),
-    },
-    {
-      name: "decodes a multi-byte hex string",
-      input: "deadbeef",
-      expected: new Uint8Array([0xde, 0xad, 0xbe, 0xef]),
-    },
-    {
-      name: "decodes a single byte",
-      input: "42",
-      expected: new Uint8Array([0x42]),
-    },
-  ])("$name", ({ input, expected }) => {
-    const result = hexToBuffer.decode(input);
-    expect(result).toBeInstanceOf(ArrayBuffer);
-    expect(new Uint8Array(result)).toEqual(expected);
-  });
+  it("matches buffer codec snapshots", () => {
+    const multiByteBuffer = new ArrayBuffer(4);
+    new Uint8Array(multiByteBuffer).set([0xde, 0xad, 0xbe, 0xef]);
 
-  it.each([
-    {
-      name: "encodes an empty ArrayBuffer",
-      value: new ArrayBuffer(0),
-      expected: "",
-    },
-    {
-      name: "encodes a multi-byte ArrayBuffer",
-      value: (() => {
-        const buffer = new ArrayBuffer(4);
-        new Uint8Array(buffer).set([0xde, 0xad, 0xbe, 0xef]);
-        return buffer;
-      })(),
-      expected: "deadbeef",
-    },
-    {
-      name: "encodes a single-byte buffer",
-      value: (() => {
-        const buffer = new ArrayBuffer(1);
-        new Uint8Array(buffer)[0] = 0x42;
-        return buffer;
-      })(),
-      expected: "42",
-    },
-    {
-      name: "encodes zero-filled buffer",
-      value: new ArrayBuffer(3),
-      expected: "000000",
-    },
-  ])("$name", ({ value, expected }) => {
-    expect(hexToBuffer.encode(value)).toBe(expected);
+    const singleByteBuffer = new ArrayBuffer(1);
+    new Uint8Array(singleByteBuffer)[0] = 0x42;
+
+    expect({
+      decode: {
+        "empty string": serializeBuffer(hexToBuffer.decode("")),
+        "multi-byte hex string": serializeBuffer(
+          hexToBuffer.decode("deadbeef")
+        ),
+        "single byte": serializeBuffer(hexToBuffer.decode("42")),
+      },
+      encode: {
+        "empty ArrayBuffer": hexToBuffer.encode(new ArrayBuffer(0)),
+        "multi-byte ArrayBuffer": hexToBuffer.encode(multiByteBuffer),
+        "single-byte buffer": hexToBuffer.encode(singleByteBuffer),
+        "zero-filled buffer": hexToBuffer.encode(new ArrayBuffer(3)),
+      },
+    }).toMatchSnapshot();
   });
 
   describe("validation (decode)", () => {

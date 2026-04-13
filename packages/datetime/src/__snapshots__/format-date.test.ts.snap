@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`formatDate > matches stable date format snapshots 1`] = `
+{
+  "default style": "Jun 15, 2024",
+  "long style": "June 15, 2024",
+  "short style": "6/15/24",
+  "string input": "Jun 15, 2024",
+}
+`;
+
+exports[`formatUtcDateTimeLabel > matches UTC label snapshots 1`] = `
+{
+  "default": "Jun 15, 2024, 2:30 PM UTC",
+  "timeZoneName stripped": "Jun 15, 2024, 2:30 PM UTC",
+}
+`;

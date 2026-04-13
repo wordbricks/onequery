@@ -5,60 +5,55 @@ import { formatRelativeTime } from "./format-relative";
 describe("formatRelativeTime", () => {
   const NOW = new Date("2024-06-15T12:00:00Z");
 
-  it.each([
-    {
-      expected: "30 seconds ago",
-      input: new Date("2024-06-15T11:59:30Z"),
-      label: "formats seconds ago",
-    },
-    {
-      expected: "5 minutes ago",
-      input: new Date("2024-06-15T11:55:00Z"),
-      label: "formats minutes ago",
-    },
-    {
-      expected: "3 hours ago",
-      input: new Date("2024-06-15T09:00:00Z"),
-      label: "formats hours ago",
-    },
-    {
-      expected: "2 days ago",
-      input: new Date("2024-06-13T12:00:00Z"),
-      label: "formats days ago",
-    },
-    {
-      expected: "2 weeks ago",
-      input: new Date("2024-06-01T12:00:00Z"),
-      label: "formats weeks ago",
-    },
-    {
-      expected: "2 months ago",
-      input: new Date("2024-04-15T12:00:00Z"),
-      label: "formats months ago",
-    },
-    {
-      expected: "2 years ago",
-      input: new Date("2022-06-15T12:00:00Z"),
-      label: "formats years ago",
-    },
-    {
-      expected: "in 3 hours",
-      input: new Date("2024-06-15T15:00:00Z"),
-      label: "formats future dates",
-    },
-    {
-      expected: "yesterday",
-      input: new Date("2024-06-14T12:00:00Z"),
-      label: "uses numeric auto for day-relative labels",
-    },
-    {
-      expected: "Invalid date",
-      input: "not-a-date",
-      label: "returns a fallback for invalid dates",
-    },
-  ])("$label", ({ expected, input }) => {
-    const result = formatRelativeTime(input, "en-US", NOW);
-    expect(result).toBe(expected);
+  it("matches relative-time snapshots for fixed inputs", () => {
+    expect({
+      "days ago": formatRelativeTime(
+        new Date("2024-06-13T12:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "future dates": formatRelativeTime(
+        new Date("2024-06-15T15:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "hours ago": formatRelativeTime(
+        new Date("2024-06-15T09:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "invalid dates": formatRelativeTime("not-a-date", "en-US", NOW),
+      "minutes ago": formatRelativeTime(
+        new Date("2024-06-15T11:55:00Z"),
+        "en-US",
+        NOW
+      ),
+      "months ago": formatRelativeTime(
+        new Date("2024-04-15T12:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "numeric auto day labels": formatRelativeTime(
+        new Date("2024-06-14T12:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "seconds ago": formatRelativeTime(
+        new Date("2024-06-15T11:59:30Z"),
+        "en-US",
+        NOW
+      ),
+      "weeks ago": formatRelativeTime(
+        new Date("2024-06-01T12:00:00Z"),
+        "en-US",
+        NOW
+      ),
+      "years ago": formatRelativeTime(
+        new Date("2022-06-15T12:00:00Z"),
+        "en-US",
+        NOW
+      ),
+    }).toMatchSnapshot();
   });
 
   it("uses current time when now is not provided", () => {

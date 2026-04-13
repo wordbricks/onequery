@@ -2,109 +2,44 @@ import { describe, expect, it } from "vitest";
 
 import { stringToHttpURL, stringToURL, uriComponent } from "./url";
 
-type URLExpectation = {
-  href?: string;
-  protocol?: string;
-  hostname?: string;
-  pathname?: string;
-  hash?: string;
-  port?: string;
-  username?: string;
-  password?: string;
-  searchParams?: Record<string, string>;
-};
-
-function expectURL(url: URL, expected: URLExpectation): void {
-  if (expected.href !== undefined) {
-    expect(url.href).toBe(expected.href);
-  }
-
-  if (expected.protocol !== undefined) {
-    expect(url.protocol).toBe(expected.protocol);
-  }
-
-  if (expected.hostname !== undefined) {
-    expect(url.hostname).toBe(expected.hostname);
-  }
-
-  if (expected.pathname !== undefined) {
-    expect(url.pathname).toBe(expected.pathname);
-  }
-
-  if (expected.hash !== undefined) {
-    expect(url.hash).toBe(expected.hash);
-  }
-
-  if (expected.port !== undefined) {
-    expect(url.port).toBe(expected.port);
-  }
-
-  if (expected.username !== undefined) {
-    expect(url.username).toBe(expected.username);
-  }
-
-  if (expected.password !== undefined) {
-    expect(url.password).toBe(expected.password);
-  }
-
-  if (expected.searchParams !== undefined) {
-    for (const [key, value] of Object.entries(expected.searchParams)) {
-      expect(url.searchParams.get(key)).toBe(value);
-    }
-  }
+function serializeURL(url: URL) {
+  return {
+    hash: url.hash,
+    hostname: url.hostname,
+    href: url.href,
+    password: url.password,
+    pathname: url.pathname,
+    port: url.port,
+    protocol: url.protocol,
+    searchParams: Object.fromEntries(
+      [...url.searchParams.entries()].sort(([left], [right]) =>
+        left.localeCompare(right)
+      )
+    ),
+    username: url.username,
+  };
 }
 
 describe("stringToURL", () => {
-  it.each([
-    {
-      name: "decodes a URL with auth, port, path, query, and hash",
-      input:
-        "https://user:pass@example.com:8080/path/to/resource?foo=bar&baz=qux#section",
-      expected: {
-        protocol: "https:",
-        hostname: "example.com",
-        pathname: "/path/to/resource",
-        port: "8080",
-        username: "user",
-        password: "pass",
-        hash: "#section",
-        searchParams: {
-          baz: "qux",
-          foo: "bar",
-        },
-      },
-    },
-    {
-      name: "decodes a file URL",
-      input: "file:///path/to/file.txt",
-      expected: {
-        protocol: "file:",
-        pathname: "/path/to/file.txt",
-      },
-    },
-  ])("$name", ({ input, expected }) => {
-    const result = stringToURL.decode(input);
-    expect(result).toBeInstanceOf(URL);
-    expectURL(result, expected);
+  it("matches decoded URL snapshots", () => {
+    expect({
+      "file URL": serializeURL(stringToURL.decode("file:///path/to/file.txt")),
+      "full URL": serializeURL(
+        stringToURL.decode(
+          "https://user:pass@example.com:8080/path/to/resource?foo=bar&baz=qux#section"
+        )
+      ),
+    }).toMatchSnapshot();
   });
 
-  it.each([
-    {
-      name: "encodes spaces in query values",
-      url: (() => {
-        const value = new URL("https://example.com");
-        value.searchParams.set("q", "hello world");
-        return value;
-      })(),
-      expected: "https://example.com/?q=hello+world",
-    },
-    {
-      name: "encodes a URL with a path",
-      url: new URL("https://example.com/path"),
-      expected: "https://example.com/path",
-    },
-  ])("$name", ({ url, expected }) => {
-    expect(stringToURL.encode(url)).toBe(expected);
+  it("matches encoded URL snapshots", () => {
+    const urlWithSpaces = new URL("https://example.com");
+    urlWithSpaces.searchParams.set("q", "hello world");
+
+    expect({
+      "query values with spaces": stringToURL.encode(urlWithSpaces),
+      "URL with path": stringToURL.encode(new URL("https://example.com/path")),
+    }).toMatchSnapshot();
   });
 
   it.each([
@@ -130,32 +65,18 @@ describe("stringToURL", () => {
 });
 
 describe("stringToHttpURL", () => {
-  it.each([
-    {
-      name: "decodes a URL with path and query",
-      input: "https://api.example.com/v1/users?limit=10",
-      expected: {
-        hostname: "api.example.com",
-        pathname: "/v1/users",
-        searchParams: {
-          limit: "10",
-        },
-      },
-    },
-  ])("$name", ({ input, expected }) => {
-    const result = stringToHttpURL.decode(input);
-    expect(result).toBeInstanceOf(URL);
-    expectURL(result, expected);
+  it("matches decoded HTTP URL snapshots", () => {
+    expect({
+      "path and query": serializeURL(
+        stringToHttpURL.decode("https://api.example.com/v1/users?limit=10")
+      ),
+    }).toMatchSnapshot();
   });
 
-  it.each([
-    {
-      name: "encodes an https URL",
-      url: new URL("https://secure.example.com"),
-      expected: "https://secure.example.com/",
-    },
-  ])("$name", ({ url, expected }) => {
-    expect(stringToHttpURL.encode(url)).toBe(expected);
+  it("matches encoded HTTP URL snapshots", () => {
+    expect({
+      https: stringToHttpURL.encode(new URL("https://secure.example.com")),
+    }).toMatchSnapshot();
   });
 
   it.each([
@@ -180,94 +101,32 @@ describe("stringToHttpURL", () => {
 });
 
 describe("uriComponent", () => {
-  it.each([
-    {
-      name: "decodes plain text unchanged",
-      input: "hello",
-      expected: "hello",
-    },
-    {
-      name: "decodes spaces",
-      input: "hello%20world",
-      expected: "hello world",
-    },
-    {
-      name: "decodes special characters",
-      input: "%21%40%23%24%25",
-      expected: "!@#$%",
-    },
-    {
-      name: "decodes unicode characters",
-      input: "%E4%BD%A0%E5%A5%BD",
-      expected: "\u4F60\u597D",
-    },
-    {
-      name: "decodes emoji",
-      input: "%F0%9F%98%80",
-      expected: "\uD83D\uDE00",
-    },
-    {
-      name: "decodes mixed encoded and plain text",
-      input: "key%3Dvalue%26other%3D123",
-      expected: "key=value&other=123",
-    },
-    {
-      name: "preserves plus signs literally",
-      input: "a+b",
-      expected: "a+b",
-    },
-    {
-      name: "decodes empty string",
-      input: "",
-      expected: "",
-    },
-  ])("$name", ({ input, expected }) => {
-    expect(uriComponent.decode(input)).toBe(expected);
+  it("matches decoded URI component snapshots", () => {
+    expect({
+      "empty string": uriComponent.decode(""),
+      emoji: uriComponent.decode("%F0%9F%98%80"),
+      "mixed encoded and plain text": uriComponent.decode(
+        "key%3Dvalue%26other%3D123"
+      ),
+      "plain text unchanged": uriComponent.decode("hello"),
+      "plus signs remain literal": uriComponent.decode("a+b"),
+      spaces: uriComponent.decode("hello%20world"),
+      "special characters": uriComponent.decode("%21%40%23%24%25"),
+      "unicode characters": uriComponent.decode("%E4%BD%A0%E5%A5%BD"),
+    }).toMatchSnapshot();
   });
 
-  it.each([
-    {
-      name: "encodes plain text unchanged",
-      input: "hello",
-      expected: "hello",
-    },
-    {
-      name: "encodes spaces",
-      input: "hello world",
-      expected: "hello%20world",
-    },
-    {
-      name: "encodes special characters",
-      input: "!@#$%",
-      expected: "!%40%23%24%25",
-    },
-    {
-      name: "encodes unicode characters",
-      input: "\u4F60\u597D",
-      expected: "%E4%BD%A0%E5%A5%BD",
-    },
-    {
-      name: "encodes emoji",
-      input: "\uD83D\uDE00",
-      expected: "%F0%9F%98%80",
-    },
-    {
-      name: "encodes query string characters",
-      input: "key=value&other=123",
-      expected: "key%3Dvalue%26other%3D123",
-    },
-    {
-      name: "encodes empty string",
-      input: "",
-      expected: "",
-    },
-    {
-      name: "does not encode unreserved characters",
-      input: "-_.~",
-      expected: "-_.~",
-    },
-  ])("$name", ({ input, expected }) => {
-    expect(uriComponent.encode(input)).toBe(expected);
+  it("matches encoded URI component snapshots", () => {
+    expect({
+      "empty string": uriComponent.encode(""),
+      emoji: uriComponent.encode("\uD83D\uDE00"),
+      "plain text unchanged": uriComponent.encode("hello"),
+      "query string characters": uriComponent.encode("key=value&other=123"),
+      spaces: uriComponent.encode("hello world"),
+      "special characters": uriComponent.encode("!@#$%"),
+      "unicode characters": uriComponent.encode("\u4F60\u597D"),
+      "unreserved characters": uriComponent.encode("-_.~"),
+    }).toMatchSnapshot();
   });
 
   it.each([
