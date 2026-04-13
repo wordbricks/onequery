@@ -9,8 +9,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error;
 
-use crate::config::config_dir;
-
 const CLI_VERSION_CACHE_FILENAME: &str = "version.json";
 const CLI_LATEST_RELEASE_URL: &str =
     "https://api.github.com/repos/wordbricks/onequery/releases/latest";
@@ -89,19 +87,22 @@ impl VersionCacheRefreshPlan {
     }
 }
 
-pub(crate) fn plan_cache_refresh(command_line: &str) -> Option<VersionCacheRefreshPlan> {
-    let version_file = version_path(command_line).ok()?;
-    plan_cache_refresh_for_file_at(version_file.as_path(), Utc::now())
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum VersionCacheRefreshPlanning {
+    FreshCache,
+    Refresh(VersionCacheRefreshPlan),
+}
+
+pub(crate) fn plan_cache_refresh(config_path: &Path) -> VersionCacheRefreshPlanning {
+    plan_cache_refresh_for_config_at(config_path, Utc::now())
 }
 
 pub(crate) async fn run_cache_refresh(plan: VersionCacheRefreshPlan) -> VersionResult<()> {
     refresh_cache(&plan).await
 }
 
-fn version_path(command_line: &str) -> Result<PathBuf, onequery_cli_core::error::CliError> {
-    let mut path = config_dir(command_line)?;
-    path.push(CLI_VERSION_CACHE_FILENAME);
-    Ok(path)
+fn version_path_for_config(config_path: &Path) -> PathBuf {
+    config_path.with_file_name(CLI_VERSION_CACHE_FILENAME)
 }
 
 fn read_version_info(version_file: &Path) -> VersionResult<VersionInfo> {
@@ -183,16 +184,25 @@ fn extract_version_from_latest_tag(latest_tag_name: &str) -> VersionResult<Strin
         })
 }
 
+fn plan_cache_refresh_for_config_at(
+    config_path: &Path,
+    now: DateTime<Utc>,
+) -> VersionCacheRefreshPlanning {
+    plan_cache_refresh_for_file_at(version_path_for_config(config_path).as_path(), now)
+}
+
 fn plan_cache_refresh_for_file_at(
     version_file: &Path,
     now: DateTime<Utc>,
-) -> Option<VersionCacheRefreshPlan> {
+) -> VersionCacheRefreshPlanning {
     match read_version_info(version_file) {
-        Ok(info) if !version_cache_is_stale(&info, now) => None,
+        Ok(info) if !version_cache_is_stale(&info, now) => VersionCacheRefreshPlanning::FreshCache,
         Ok(_) | Err(_) => {
             // Comment: Version refresh is advisory, so unreadable cache state is treated as stale
             // and repaired on the next successful refresh instead of surfacing startup noise.
-            Some(VersionCacheRefreshPlan::new(version_file.to_path_buf()))
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(
+                version_file.to_path_buf(),
+            ))
         }
     }
 }
@@ -204,12 +214,15 @@ fn version_cache_is_stale(info: &VersionInfo, now: DateTime<Utc>) -> bool {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
+    use std::path::PathBuf;
 
     use chrono::Duration;
     use pretty_assertions::assert_eq;
 
     use super::ReleaseInfo;
     use super::VersionCacheRefreshPlan;
+    use super::VersionCacheRefreshPlanning;
     use super::VersionInfo;
     use chrono::DateTime;
     use chrono::Utc;
@@ -247,7 +260,7 @@ mod tests {
 
         assert_eq!(
             super::plan_cache_refresh_for_file_at(version_file.as_path(), Utc::now()),
-            Some(VersionCacheRefreshPlan::new(version_file))
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
         );
     }
 
@@ -269,7 +282,7 @@ mod tests {
 
         assert_eq!(
             super::plan_cache_refresh_for_file_at(version_file.as_path(), now),
-            None
+            VersionCacheRefreshPlanning::FreshCache
         );
     }
 
@@ -291,7 +304,7 @@ mod tests {
 
         assert_eq!(
             super::plan_cache_refresh_for_file_at(version_file.as_path(), now),
-            Some(VersionCacheRefreshPlan::new(version_file))
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
         );
     }
 
@@ -303,7 +316,20 @@ mod tests {
 
         assert_eq!(
             super::plan_cache_refresh_for_file_at(version_file.as_path(), Utc::now()),
-            Some(VersionCacheRefreshPlan::new(version_file))
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(version_file))
+        );
+    }
+
+    #[test]
+    fn plan_cache_refresh_derives_the_cache_file_from_the_resolved_config_path() {
+        let now = Utc::now();
+        let config_path = Path::new("/tmp/onequery/config.toml");
+
+        assert_eq!(
+            super::plan_cache_refresh_for_config_at(config_path, now),
+            VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(PathBuf::from(
+                "/tmp/onequery/version.json"
+            )))
         );
     }
 

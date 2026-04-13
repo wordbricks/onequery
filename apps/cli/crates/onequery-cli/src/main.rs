@@ -82,7 +82,7 @@ async fn main() {
             std::process::exit(error.exit_code());
         }
     };
-    let startup_effects = startup::start(startup::plan(commands::STARTUP_COMMAND));
+    let startup_effects = startup::start(startup::plan(runtime.config.path()));
 
     let exit_code = match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
