@@ -9,7 +9,6 @@ use serde_json::Value;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
@@ -195,13 +194,7 @@ pub(crate) async fn load_source_connect_guide(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or_not_found(
-                    ErrorStage::ResolveSource,
-                    ErrorStage::ResolveOrg,
-                ),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
         }
     };
 
@@ -254,13 +247,7 @@ pub(crate) async fn connect_source(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or_not_found(
-                    ErrorStage::ResolveSource,
-                    ErrorStage::ResolveOrg,
-                ),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
         }
     };
 
@@ -922,7 +909,7 @@ mod tests {
         let ApiFailure::Problem(problem) = error else {
             panic!("expected problem failure");
         };
-        let detail = problem.detail.expect("problem detail should be present");
+        let detail = problem.detail;
 
         assert!(detail.contains("unknown field `unexpected`"));
     }

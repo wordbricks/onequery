@@ -1,0 +1,114 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`finalizePreparedSourceApi > adds a deterministic prepared binding 1`] = `
+{
+  "body": {
+    "kind": "none",
+  },
+  "bodyKind": "none",
+  "bodyPaths": [],
+  "descriptorVersion": "github.v1",
+  "headerNames": [],
+  "headers": [],
+  "host": "api.github.com",
+  "kind": "http_request",
+  "method": "GET",
+  "operation": "fetch",
+  "paginationPolicy": "none",
+  "preparedBinding": "LglfOP0CiSCxBddQB3ZlOjuOXiDh-GnJPDJuR4Fp844",
+  "provider": "github",
+  "selector": undefined,
+  "selectorTemplate": "/{path}",
+  "sourceId": "source_id",
+  "sourceKey": "github-prod",
+  "url": "https://api.github.com/pulls",
+}
+`;
+
+exports[`finalizePreparedSourceApi > derives structured request body paths from the prepared request object 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "ignored": true,
+    },
+  },
+  "bodyKind": "json",
+  "bodyPaths": [
+    "query",
+    "query[kind]",
+    "query[series]",
+    "query[series][]",
+    "refresh",
+  ],
+  "descriptorVersion": "posthog.v1",
+  "headerNames": [],
+  "headers": [],
+  "kind": "structured_request",
+  "method": "POST",
+  "operation": "run_query",
+  "paginationPolicy": "none",
+  "preparedBinding": "u0XF5TtNPOiuPwBqCeans4nuMktp56_LooweDqgLlVE",
+  "provider": "posthog",
+  "request": {
+    "query": {
+      "kind": "TrendsQuery",
+      "series": [
+        {
+          "event": "Signup",
+        },
+      ],
+    },
+    "refresh": "force_async",
+  },
+  "selector": undefined,
+  "selectorTemplate": "/api/projects/{projectId}/query/",
+  "sourceId": "source_id",
+  "sourceKey": "posthog-prod",
+}
+`;
+
+exports[`prepareSourceApiDraft > finalizes policy metadata before returning the prepared request 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "ok": true,
+    },
+  },
+  "bodyKind": "json",
+  "bodyPaths": [
+    "ok",
+  ],
+  "headerNames": [
+    "x-test",
+    "x-trace-id",
+  ],
+  "headers": [
+    {
+      "name": " X-Test ",
+      "value": "one",
+    },
+    {
+      "name": "x-test",
+      "value": "two",
+    },
+    {
+      "name": "X-Trace-Id",
+      "value": "abc",
+    },
+  ],
+  "host": "api.github.com",
+  "kind": "http_request",
+  "method": "POST",
+  "operation": "fetch",
+  "paginationPolicy": "none",
+  "preparedBinding": "QjzP2CIoFS90lCVXmT5CnvTBQLEU-Ne-ym9oxD6nOUs",
+  "provider": "github",
+  "selector": "/repos/acme/widgets",
+  "selectorTemplate": "/{path}",
+  "sourceId": "source_id",
+  "sourceKey": "github-prod",
+  "url": "https://api.github.com/repos/acme/widgets",
+}
+`;

@@ -1,0 +1,194 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`github source api adapter > describes the canonical fetch operation 1`] = `
+{
+  "defaultPathOperation": "fetch",
+  "descriptorVersion": "github.v1",
+  "examples": [
+    {
+      "command": "onequery api --source github-prod openai/example",
+      "description": "Fetch repository details using owner/repo shorthand.",
+      "label": "Show repository details",
+    },
+    {
+      "command": "onequery api --source github-prod /issues -f 'params[state]=open'",
+      "description": "Fetch repo-scoped issues for the connected repository selection.",
+      "label": "List open issues",
+    },
+    {
+      "command": "onequery api --source github-prod openai/example/pulls -f 'params[per_page]=20'",
+      "description": "Call an explicit repository path using owner/repo shorthand.",
+      "label": "List pull requests",
+    },
+  ],
+  "notes": [
+    "CLI repository shorthand like \`owner/repo\` expands to \`/repos/<owner>/<repo>\`.",
+    "Repo-scoped selectors like \`/issues\` require exactly one connected repository unless \`repository\` is passed in the field patch.",
+    "Explicit \`/repos/<owner>/<repo>/...\` selectors must target a repository already connected to this source.",
+  ],
+  "operations": [
+    {
+      "description": "Call the GitHub REST API for the connected source, using source-scoped repository constraints and safe request normalization.",
+      "examples": [
+        {
+          "command": "onequery api --source github-prod openai/example",
+          "description": "Fetch repository details using owner/repo shorthand.",
+          "label": "Show repository details",
+        },
+        {
+          "command": "onequery api --source github-prod /issues -f 'params[state]=open'",
+          "description": "Fetch repo-scoped issues for the connected repository selection.",
+          "label": "List open issues",
+        },
+        {
+          "command": "onequery api --source github-prod openai/example/pulls -f 'params[per_page]=20'",
+          "description": "Call an explicit repository path using owner/repo shorthand.",
+          "label": "List pull requests",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_body",
+        "mergePatches": false,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [
+          "Accept",
+          "Content-Type",
+          "If-Match",
+          "If-Modified-Since",
+          "If-None-Match",
+          "If-Unmodified-Since",
+          "X-GitHub-Api-Version",
+        ],
+        "allowedResponseHeaders": [
+          "content-type",
+          "etag",
+          "link",
+          "x-ratelimit-limit",
+          "x-ratelimit-remaining",
+          "x-ratelimit-reset",
+        ],
+      },
+      "kind": "http_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "DELETE",
+          "GET",
+          "HEAD",
+          "PATCH",
+          "POST",
+          "PUT",
+        ],
+        "defaultMethod": "GET",
+      },
+      "name": "fetch",
+      "notes": [
+        "Use \`params\` in the field patch for query string values.",
+        "Use the request body for JSON, text, or binary payloads.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "path",
+      "selectorLabel": "PATH_OR_URL",
+      "summary": "Execute one GitHub REST request.",
+    },
+  ],
+  "source": {
+    "displayName": "GitHub Prod",
+    "key": "github-prod",
+    "provider": "github",
+  },
+}
+`;
+
+exports[`github source api adapter > executes GitHub requests with upstream status and headers 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "ok": true,
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+    {
+      "name": "etag",
+      "value": ""abc123"",
+    },
+  ],
+  "operation": "fetch",
+  "selector": "/issues",
+  "source": {
+    "displayName": "GitHub Prod",
+    "key": "github-prod",
+    "provider": "github",
+  },
+  "status": 201,
+}
+`;
+
+exports[`github source api adapter > normalizes missing GitHub response content types to octet-stream 1`] = `
+{
+  "body": {
+    "kind": "binary",
+    "value": Uint8Array [
+      1,
+      2,
+      3,
+    ],
+  },
+  "contentType": "application/octet-stream",
+  "headers": [
+    {
+      "name": "etag",
+      "value": ""abc123"",
+    },
+    {
+      "name": "content-type",
+      "value": "application/octet-stream",
+    },
+  ],
+  "operation": "fetch",
+  "selector": "/issues",
+  "source": {
+    "displayName": "GitHub Prod",
+    "key": "github-prod",
+    "provider": "github",
+  },
+  "status": 200,
+}
+`;
+
+exports[`github source api adapter > normalizes repo-scoped selectors into canonical GitHub URLs 1`] = `
+{
+  "body": {
+    "kind": "none",
+  },
+  "bodyKind": "none",
+  "bodyPaths": [],
+  "descriptorVersion": "github.v1",
+  "headerNames": [],
+  "headers": [],
+  "host": "api.github.com",
+  "kind": "http_request",
+  "metadata": undefined,
+  "method": "GET",
+  "operation": "fetch",
+  "paginationPolicy": "none",
+  "preparedBinding": "AumKbJ8VOVPLpi39tpwWjbzw0uew4tbg5Sf4pMSaMqQ",
+  "provider": "github",
+  "selector": "/issues",
+  "selectorTemplate": "/repos/{owner}/{repo}/{path}",
+  "sourceId": "source_1",
+  "sourceKey": "github-prod",
+  "url": "https://api.github.com/repos/openai/example/issues?state=open",
+}
+`;

@@ -1,0 +1,227 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`mongodb source api adapter > describes database and collection operations 1`] = `
+{
+  "descriptorVersion": "mongodb.v1",
+  "examples": [
+    {
+      "command": "onequery api --source mongodb-prod --op list_databases",
+      "description": "List databases visible to the connected MongoDB source.",
+      "label": "List databases",
+    },
+    {
+      "command": "onequery api --source mongodb-prod --op list_collections analytics",
+      "description": "List collections in the \`analytics\` database.",
+      "label": "List collections",
+    },
+    {
+      "command": "onequery api --source mongodb-prod --op find_documents events -F 'filter={"status":"active"}' -F limit=25",
+      "description": "Fetch active documents from the \`events\` collection with a typed filter patch.",
+      "label": "Find documents",
+    },
+  ],
+  "notes": [
+    "If the connected source restricts databases, MongoDB results stay inside that allowlist.",
+  ],
+  "operations": [
+    {
+      "description": "List MongoDB databases visible to the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mongodb-prod --op list_databases",
+          "description": "List databases visible to the connected MongoDB source.",
+          "label": "List databases",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": false,
+        "allowsRawFields": false,
+        "allowsTypedFields": false,
+        "inputMode": "none",
+        "mergePatches": false,
+        "supportsArrayPaths": false,
+        "supportsNestedPaths": false,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "list_databases",
+      "notes": [
+        "When the source configuration restricts databases, only those databases are returned.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "List available MongoDB databases.",
+    },
+    {
+      "description": "List collections in one MongoDB database for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mongodb-prod --op list_collections analytics",
+          "description": "List collections in the \`analytics\` database.",
+          "label": "List collections",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": false,
+        "supportsNestedPaths": false,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "list_collections",
+      "notes": [
+        "Pass the database as the selector or in \`request.database\`.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "identifier",
+      "selectorLabel": "DATABASE",
+      "summary": "List collections for one database.",
+    },
+    {
+      "description": "Find documents in one MongoDB collection using the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mongodb-prod --op find_documents events -F 'filter={"status":"active"}' -F limit=25",
+          "description": "Fetch active documents from the \`events\` collection with a typed filter patch.",
+          "label": "Find documents",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "find_documents",
+      "notes": [
+        "Pass the collection as the selector or in \`request.collection\`.",
+        "Use \`filter\`, \`projection\`, \`sort\`, \`limit\`, \`skip\`, and \`maxTimeMs\` to shape the query.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "identifier",
+      "selectorLabel": "COLLECTION",
+      "summary": "Find documents in one collection.",
+    },
+  ],
+  "source": {
+    "displayName": "MongoDB Prod",
+    "key": "mongodb-prod",
+    "provider": "mongodb",
+  },
+}
+`;
+
+exports[`mongodb source api adapter > executes MongoDB collection requests through the shared relay 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "collections": [
+        {
+          "name": "events",
+          "type": "collection",
+        },
+      ],
+      "database": "analytics",
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "operation": "list_collections",
+  "selector": "analytics",
+  "source": {
+    "displayName": "MongoDB Prod",
+    "key": "mongodb-prod",
+    "provider": "mongodb",
+  },
+  "status": 200,
+}
+`;
+
+exports[`mongodb source api adapter > normalizes selector-driven find requests into a canonical structured plan 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "filter": {
+        "status": "active",
+      },
+    },
+  },
+  "bodyKind": "json",
+  "bodyPaths": [
+    "collection",
+    "filter",
+    "filter[status]",
+    "limit",
+  ],
+  "descriptorVersion": "mongodb.v1",
+  "headerNames": [],
+  "headers": [],
+  "kind": "structured_request",
+  "method": "POST",
+  "operation": "find_documents",
+  "paginationPolicy": "none",
+  "preparedBinding": "WmxiOA3IFQqo2m5_j_-UcUERsw0RaCncu8uKRbOh87Q",
+  "provider": "mongodb",
+  "request": {
+    "collection": "events",
+    "filter": {
+      "status": "active",
+    },
+    "limit": 25,
+  },
+  "selector": "events",
+  "selectorTemplate": "collections/{collection}",
+  "sourceId": "source_1",
+  "sourceKey": "mongodb-prod",
+}
+`;

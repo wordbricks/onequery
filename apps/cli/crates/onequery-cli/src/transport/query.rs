@@ -6,7 +6,6 @@ use serde::Serialize;
 use crate::output_metadata::SanitizationMetadata;
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
@@ -195,10 +194,7 @@ async fn fetch_query_page(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or(ErrorStage::ExecuteQuery),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -232,10 +228,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or(ErrorStage::ReadQueryInput),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ReadQueryInput));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -417,7 +410,6 @@ fn non_empty(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
@@ -425,6 +417,7 @@ mod tests {
     use crate::output_metadata::SanitizationMetadata;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
+    use crate::transport::generated::types;
     use crate::transport::query_parameter::QueryCanonicalParameter;
     use crate::transport::query_parameter::QueryCanonicalParameterType;
     use crate::transport::query_parameter::QueryRequestParameter;
@@ -569,10 +562,9 @@ mod tests {
         assert_eq!(
             [
                 ApiFailure::Problem(ApiProblem {
-                    connect_code: ErrorCode::Unavailable,
-                    title: None,
-                    detail: None,
-                    code: None,
+                    title: "Query Execution Unavailable".to_owned(),
+                    detail: "query execution is temporarily unavailable".to_owned(),
+                    code: types::CliProblemCode::CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE,
                     retryable: true,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
@@ -582,10 +574,9 @@ mod tests {
                 })
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
-                    connect_code: ErrorCode::InvalidArgument,
-                    title: None,
-                    detail: None,
-                    code: None,
+                    title: "Invalid Request".to_owned(),
+                    detail: "query request is invalid".to_owned(),
+                    code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
                     retryable: false,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,

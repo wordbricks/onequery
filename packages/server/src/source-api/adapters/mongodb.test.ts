@@ -37,23 +37,7 @@ describe("mongodb source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBeUndefined();
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "structured_request",
-        name: "list_databases",
-        selectorKind: "none",
-      },
-      {
-        kind: "structured_request",
-        name: "list_collections",
-        selectorKind: "identifier",
-      },
-      {
-        kind: "structured_request",
-        name: "find_documents",
-        selectorKind: "identifier",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes selector-driven find requests into a canonical structured plan", async () => {
@@ -97,33 +81,11 @@ describe("mongodb source api adapter", () => {
     });
     const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "structured_request",
-      method: "POST",
-      operation: "find_documents",
-      provider: "mongodb",
-      selector: "events",
-      selectorTemplate: "collections/{collection}",
-      sourceId: "source_1",
-      sourceKey: "mongodb-prod",
-    });
     expect(plan.kind).toBe("structured_request");
     if (plan.kind !== "structured_request") {
       throw new Error("expected structured request plan");
     }
-    expect(plan.request).toEqual({
-      collection: "events",
-      filter: {
-        status: "active",
-      },
-      limit: 25,
-    });
-    expect(finalizedPlan.bodyPaths).toEqual([
-      "collection",
-      "filter",
-      "filter[status]",
-      "limit",
-    ]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes MongoDB collection requests through the shared relay", async () => {
@@ -181,23 +143,6 @@ describe("mongodb source api adapter", () => {
         database: "analytics",
       },
     });
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "list_collections",
-      selector: "analytics",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: {
-        collections: [
-          {
-            name: "events",
-            type: "collection",
-          },
-        ],
-        database: "analytics",
-      },
-    });
+    expect(response).toMatchSnapshot();
   });
 });

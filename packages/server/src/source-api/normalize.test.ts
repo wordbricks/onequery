@@ -69,12 +69,7 @@ describe("finalizePreparedSourceApi", () => {
     });
 
     expect(plan.preparedBinding.length).toBeGreaterThan(0);
-    expect(plan.bodyKind).toBe("none");
-    expect(plan.bodyPaths).toEqual([]);
-    expect(plan.headerNames).toEqual([]);
-    expect(plan.host).toBe("api.github.com");
-    expect(plan.method).toBe("GET");
-    expect(plan.selectorTemplate).toBe("/{path}");
+    expect(plan).toMatchSnapshot();
     expect(plan.preparedBinding).toBe(
       finalizePreparedSourceApi({
         body: { kind: "none" },
@@ -120,15 +115,7 @@ describe("finalizePreparedSourceApi", () => {
       sourceKey: "posthog-prod",
     });
 
-    expect(plan.method).toBe("POST");
-    expect(plan.bodyPaths).toEqual([
-      "query",
-      "query[kind]",
-      "query[series]",
-      "query[series][]",
-      "refresh",
-    ]);
-    expect(plan.selectorTemplate).toBe("/api/projects/{projectId}/query/");
+    expect(plan).toMatchSnapshot();
   });
 });
 
@@ -213,16 +200,7 @@ describe("prepareSourceApiDraft", () => {
       source,
     });
 
-    expect(plan).toMatchObject({
-      bodyKind: "json",
-      bodyPaths: ["ok"],
-      headerNames: ["x-test", "x-trace-id"],
-      host: "api.github.com",
-      kind: "http_request",
-      method: "POST",
-      selector: "/repos/acme/widgets",
-      selectorTemplate: "/{path}",
-    });
+    expect(plan).toMatchSnapshot();
     expect(plan.preparedBinding.length).toBeGreaterThan(0);
   });
 });

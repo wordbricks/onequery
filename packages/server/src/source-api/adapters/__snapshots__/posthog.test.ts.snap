@@ -1,0 +1,127 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`posthog source api adapter > describes the run_query operation 1`] = `
+{
+  "descriptorVersion": "posthog.v1",
+  "examples": [
+    {
+      "command": "onequery api --source posthog-prod --op run_query --input '{"query":{"kind":"TrendsQuery","series":[{"event":"Signup"}],"dateRange":{"date_from":"-7d"}}}'",
+      "description": "Run a PostHog trends query against the connected project.",
+      "label": "Run trends query",
+    },
+  ],
+  "notes": [
+    "PostHog query requests run against the project saved on the connected source.",
+  ],
+  "operations": [
+    {
+      "description": "Run a PostHog query for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source posthog-prod --op run_query --input '{"query":{"kind":"TrendsQuery","series":[{"event":"Signup"}],"dateRange":{"date_from":"-7d"}}}'",
+          "description": "Run a PostHog trends query against the connected project.",
+          "label": "Run trends query",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "run_query",
+      "notes": [
+        "Request fields match the PostHog \`/query/\` payload.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Execute one PostHog query.",
+    },
+  ],
+  "source": {
+    "displayName": "PostHog Prod",
+    "key": "posthog-prod",
+    "provider": "posthog",
+  },
+}
+`;
+
+exports[`posthog source api adapter > executes PostHog requests with upstream status and headers 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "results": [],
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "operation": "run_query",
+  "source": {
+    "displayName": "PostHog Prod",
+    "key": "posthog-prod",
+    "provider": "posthog",
+  },
+  "status": 200,
+}
+`;
+
+exports[`posthog source api adapter > normalizes structured run_query requests 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "query": {
+        "kind": "TrendsQuery",
+      },
+    },
+  },
+  "bodyKind": "json",
+  "bodyPaths": [
+    "query",
+    "query[kind]",
+    "refresh",
+  ],
+  "descriptorVersion": "posthog.v1",
+  "headerNames": [],
+  "headers": [],
+  "kind": "structured_request",
+  "method": "POST",
+  "operation": "run_query",
+  "paginationPolicy": "none",
+  "preparedBinding": "c7HF7CNuSAK1io7cEy-yzRfSan1AElQzrlXgZxwvnT4",
+  "provider": "posthog",
+  "request": {
+    "query": {
+      "kind": "TrendsQuery",
+    },
+    "refresh": "force_async",
+  },
+  "selector": undefined,
+  "selectorTemplate": "/api/projects/{projectId}/query/",
+  "sourceId": "source_1",
+  "sourceKey": "posthog-prod",
+}
+`;

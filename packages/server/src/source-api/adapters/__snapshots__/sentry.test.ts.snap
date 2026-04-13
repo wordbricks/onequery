@@ -1,0 +1,126 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sentry source api adapter > describes the canonical fetch operation 1`] = `
+{
+  "defaultPathOperation": "fetch_api",
+  "descriptorVersion": "sentry.v1",
+  "examples": [
+    {
+      "command": "onequery api --source sentry-prod /organizations/{organizationSlug}/issues/ -f 'params[query]=is:unresolved'",
+      "description": "List unresolved Sentry issues for the connected organization.",
+      "label": "List issues",
+    },
+  ],
+  "notes": [
+    "Use \`{organizationSlug}\` or \`{projectSlug}\` placeholders in the selector to target the connected Sentry source.",
+  ],
+  "operations": [
+    {
+      "description": "Call a Sentry REST API endpoint for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source sentry-prod /organizations/{organizationSlug}/issues/ -f 'params[query]=is:unresolved'",
+          "description": "List unresolved Sentry issues for the connected organization.",
+          "label": "List issues",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_body",
+        "mergePatches": false,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "http_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "DELETE",
+          "GET",
+          "POST",
+          "PUT",
+        ],
+        "defaultMethod": "GET",
+      },
+      "name": "fetch_api",
+      "notes": [
+        "Selectors must stay relative to the configured Sentry API base URL.",
+        "Sentry request bodies must be JSON objects.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "path",
+      "selectorLabel": "PATH",
+      "summary": "Execute one Sentry API request.",
+    },
+  ],
+  "source": {
+    "displayName": "Sentry Prod",
+    "key": "sentry-prod",
+    "provider": "sentry",
+  },
+}
+`;
+
+exports[`sentry source api adapter > executes Sentry requests with upstream status and headers 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": [
+      {
+        "id": "1",
+      },
+    ],
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "operation": "fetch_api",
+  "selector": "/organizations/{organizationSlug}/issues/",
+  "source": {
+    "displayName": "Sentry Prod",
+    "key": "sentry-prod",
+    "provider": "sentry",
+  },
+  "status": 200,
+}
+`;
+
+exports[`sentry source api adapter > normalizes selectors into canonical Sentry URLs 1`] = `
+{
+  "body": {
+    "kind": "none",
+  },
+  "bodyKind": "none",
+  "bodyPaths": [],
+  "descriptorVersion": "sentry.v1",
+  "headerNames": [],
+  "headers": [],
+  "host": "sentry.io",
+  "kind": "http_request",
+  "method": "GET",
+  "operation": "fetch_api",
+  "paginationPolicy": "none",
+  "preparedBinding": "jTmbCxm0PRqrLJcSdHch6q72vTR2Od8dIutlnO8fjeI",
+  "provider": "sentry",
+  "query": {
+    "query": "is:unresolved",
+  },
+  "selector": "/organizations/{organizationSlug}/issues/",
+  "selectorTemplate": "/{path}",
+  "sourceId": "source_1",
+  "sourceKey": "sentry-prod",
+  "timeoutMs": undefined,
+  "url": "https://sentry.io/api/0/organizations/acme/issues/?query=is%3Aunresolved",
+}
+`;

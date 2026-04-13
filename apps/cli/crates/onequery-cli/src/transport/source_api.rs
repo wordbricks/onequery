@@ -5,7 +5,6 @@ use serde_json::Value as JsonValue;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
@@ -55,10 +54,7 @@ pub(crate) async fn describe_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or(ErrorStage::ResolveSource),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -87,13 +83,7 @@ pub(crate) async fn prepare_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or_not_found(
-                    ErrorStage::ExecuteQuery,
-                    ErrorStage::ResolveSource,
-                ),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -122,13 +112,7 @@ pub(crate) async fn execute_prepared_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or_not_found(
-                    ErrorStage::ExecuteQuery,
-                    ErrorStage::ResolveSource,
-                ),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
     let request_id = response_request_id(response.headers());

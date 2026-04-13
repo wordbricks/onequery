@@ -40,10 +40,9 @@ impl ApiFailure {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ApiProblem {
-    pub(crate) connect_code: ErrorCode,
-    pub(crate) title: Option<String>,
-    pub(crate) detail: Option<String>,
-    pub(crate) code: Option<String>,
+    pub(crate) title: String,
+    pub(crate) detail: String,
+    pub(crate) code: types::CliProblemCode,
     pub(crate) retryable: bool,
     pub(crate) retry_after_ms: Option<u64>,
     pub(crate) stage: ErrorStage,
@@ -54,10 +53,7 @@ pub(crate) struct ApiProblem {
 
 impl ApiProblem {
     pub(crate) fn is_auth_error(&self) -> bool {
-        matches!(
-            self.connect_code,
-            ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-        )
+        self.code == types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN
     }
 }
 
@@ -88,79 +84,19 @@ pub(crate) struct DecodeFailure {
     pub(crate) request_id: Option<String>,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct ProblemStageFallback {
-    default_stage: ErrorStage,
-    auth_stage: Option<ErrorStage>,
-    not_found_stage: Option<ErrorStage>,
-}
-
-impl ProblemStageFallback {
-    pub(crate) const fn fixed(default_stage: ErrorStage) -> Self {
-        Self {
-            default_stage,
-            auth_stage: None,
-            not_found_stage: None,
-        }
-    }
-
-    pub(crate) const fn auth_or(default_stage: ErrorStage) -> Self {
-        Self {
-            default_stage,
-            auth_stage: Some(ErrorStage::Auth),
-            not_found_stage: None,
-        }
-    }
-
-    pub(crate) const fn auth_or_not_found(
-        default_stage: ErrorStage,
-        not_found_stage: ErrorStage,
-    ) -> Self {
-        Self {
-            default_stage,
-            auth_stage: Some(ErrorStage::Auth),
-            not_found_stage: Some(not_found_stage),
-        }
-    }
-
-    fn resolve(self, code: ErrorCode) -> ErrorStage {
-        if let Some(auth_stage) = self.auth_stage
-            && matches!(
-                code,
-                ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-            )
-        {
-            return auth_stage;
-        }
-
-        if let Some(not_found_stage) = self.not_found_stage
-            && matches!(code, ErrorCode::NotFound)
-        {
-            return not_found_stage;
-        }
-
-        self.default_stage
-    }
-}
-
 #[derive(Debug, Default)]
 struct ParsedCliProblemDetails {
-    title: Option<String>,
-    code: Option<String>,
-    stage: Option<ErrorStage>,
-    hint: Option<String>,
-    retryable: Option<bool>,
+    cli_error: Option<types::CliErrorDetail>,
     retry_after_ms: Option<u64>,
-    request_id: Option<String>,
     validation_issues: Vec<ApiValidationIssue>,
+    saw_cli_detail_extension: bool,
 }
 
 pub(crate) fn conversion_failure(stage: ErrorStage, message: impl Into<String>) -> ApiFailure {
     ApiFailure::Problem(ApiProblem {
-        connect_code: ErrorCode::InvalidArgument,
-        title: None,
-        detail: Some(message.into()),
-        code: Some("invalid_request".to_owned()),
+        title: "Invalid Request".to_owned(),
+        detail: message.into(),
+        code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
         retryable: false,
         retry_after_ms: None,
         stage,
@@ -182,32 +118,22 @@ pub(crate) fn decode_failure(
     })
 }
 
-pub(crate) fn failure_from_connect(
-    error: ConnectError,
-    fallback_stage: ProblemStageFallback,
-) -> ApiFailure {
-    let resolved_stage = fallback_stage.resolve(error.code);
-    let parsed_details = parse_connect_problem_details(&error, resolved_stage);
+pub(crate) fn failure_from_connect(error: ConnectError, stage: ErrorStage) -> ApiFailure {
+    let request_id = connect_request_id(&error);
 
-    ApiFailure::Problem(ApiProblem {
-        connect_code: error.code,
-        title: parsed_details.title,
-        detail: non_empty(error.message),
-        code: parsed_details
-            .code
-            .or_else(|| Some(error.code.as_str().to_owned())),
-        retryable: parsed_details
-            .retryable
-            .unwrap_or_else(|| connect_retryable(error.code)),
-        retry_after_ms: parsed_details.retry_after_ms,
-        stage: parsed_details.stage.unwrap_or(resolved_stage),
-        hint: parsed_details.hint,
-        request_id: parsed_details.request_id.or_else(|| {
-            response_request_id(&error.response_headers)
-                .or_else(|| response_request_id(&error.trailers))
-        }),
-        validation_issues: parsed_details.validation_issues,
-    })
+    match parse_connect_problem_details(&error, request_id.clone()) {
+        Ok(Some(problem)) => ApiFailure::Problem(problem),
+        Ok(None) if connect_transport_retryable(error.code) => {
+            ApiFailure::Transport(TransportFailure {
+                kind: TransportFailureKind::SendRequest,
+                stage,
+                message: connect_error_message(&error),
+                retryable: true,
+            })
+        }
+        Ok(None) => decode_failure(stage, untyped_connect_error_message(&error), request_id),
+        Err(message) => decode_failure(stage, message, request_id),
+    }
 }
 
 pub(crate) fn response_request_id(headers: &HeaderMap) -> Option<String> {
@@ -245,59 +171,38 @@ pub(crate) fn sanitization_metadata_from_generated(
 
 fn parse_connect_problem_details(
     error: &ConnectError,
-    fallback_stage: ErrorStage,
-) -> ParsedCliProblemDetails {
+    request_id: Option<String>,
+) -> Result<Option<ApiProblem>, String> {
     let mut parsed = ParsedCliProblemDetails::default();
 
     for detail in &error.details {
-        match detail.type_url.as_str() {
+        match connect_detail_type_name(detail.type_url.as_str()) {
             CLI_ERROR_DETAIL_TYPE => {
-                let Some(cli_error) = decode_connect_detail::<types::CliErrorDetail>(detail) else {
-                    continue;
-                };
-
-                if parsed.code.is_none() {
-                    parsed.code = cli_problem_code_to_string(cli_error.code);
-                }
-                if parsed.title.is_none() {
-                    parsed.title = non_empty(Some(cli_error.title));
-                }
-                if parsed.stage.is_none() {
-                    parsed.stage = Some(cli_problem_stage_to_error_stage(
-                        cli_error.stage,
-                        fallback_stage,
-                    ));
-                }
-                if parsed.hint.is_none() {
-                    parsed.hint = non_empty(cli_error.hint);
-                }
-                if parsed.retryable.is_none() {
-                    parsed.retryable = Some(cli_error.retryable);
-                }
-                if parsed.request_id.is_none() {
-                    parsed.request_id = non_empty(cli_error.request_id);
+                parsed.saw_cli_detail_extension = true;
+                let cli_error = decode_connect_detail::<types::CliErrorDetail>(detail)
+                    .ok_or_else(|| "failed to decode CliErrorDetail".to_owned())?;
+                if parsed.cli_error.replace(cli_error).is_some() {
+                    return Err("server returned duplicate CliErrorDetail entries".to_owned());
                 }
             }
             RETRY_INFO_DETAIL_TYPE => {
-                let Some(retry_info) =
-                    decode_connect_detail::<generated::google::rpc::RetryInfo>(detail)
-                else {
-                    continue;
-                };
-
-                if parsed.retry_after_ms.is_none() {
-                    parsed.retry_after_ms = retry_info
-                        .retry_delay
-                        .into_option()
-                        .and_then(duration_to_ms);
+                parsed.saw_cli_detail_extension = true;
+                let retry_info = decode_connect_detail::<generated::google::rpc::RetryInfo>(detail)
+                    .ok_or_else(|| "failed to decode RetryInfo".to_owned())?;
+                let retry_after_ms = retry_info
+                    .retry_delay
+                    .into_option()
+                    .and_then(duration_to_ms)
+                    .ok_or_else(|| "server returned invalid RetryInfo.retry_delay".to_owned())?;
+                if parsed.retry_after_ms.replace(retry_after_ms).is_some() {
+                    return Err("server returned duplicate RetryInfo entries".to_owned());
                 }
             }
             BAD_REQUEST_DETAIL_TYPE => {
-                let Some(bad_request) =
+                parsed.saw_cli_detail_extension = true;
+                let bad_request =
                     decode_connect_detail::<generated::google::rpc::BadRequest>(detail)
-                else {
-                    continue;
-                };
+                        .ok_or_else(|| "failed to decode BadRequest".to_owned())?;
 
                 parsed.validation_issues.extend(
                     bad_request
@@ -311,7 +216,36 @@ fn parse_connect_problem_details(
         }
     }
 
-    parsed
+    let Some(cli_error) = parsed.cli_error else {
+        if parsed.saw_cli_detail_extension {
+            return Err(
+                "server returned CLI Connect error details without CliErrorDetail".to_owned(),
+            );
+        }
+
+        return Ok(None);
+    };
+
+    let title = non_empty(Some(cli_error.title))
+        .ok_or_else(|| "server returned CliErrorDetail without title".to_owned())?;
+    let detail = non_empty(error.message.clone())
+        .ok_or_else(|| "server returned CliErrorDetail without an error message".to_owned())?;
+    let code = known_cli_problem_code(cli_error.code)
+        .ok_or_else(|| "server returned invalid CliProblemCode".to_owned())?;
+    let stage = cli_problem_stage_to_error_stage(cli_error.stage)
+        .ok_or_else(|| "server returned invalid CliProblemStage".to_owned())?;
+
+    Ok(Some(ApiProblem {
+        title,
+        detail,
+        code,
+        retryable: cli_error.retryable,
+        retry_after_ms: parsed.retry_after_ms,
+        stage,
+        hint: non_empty(cli_error.hint),
+        request_id: non_empty(cli_error.request_id).or(request_id),
+        validation_issues: parsed.validation_issues,
+    }))
 }
 
 fn validation_issue_from_generated(
@@ -336,26 +270,38 @@ fn duration_to_ms(duration: buffa_types::google::protobuf::Duration) -> Option<u
     millis_from_seconds.checked_add(millis_from_nanos)
 }
 
-fn cli_problem_code_to_string(code: buffa::EnumValue<types::CliProblemCode>) -> Option<String> {
-    code.as_known()?
-        .proto_name()
+pub(crate) fn cli_problem_code_string(code: types::CliProblemCode) -> String {
+    code.proto_name()
         .strip_prefix("CLI_PROBLEM_CODE_")
         .map(str::to_ascii_lowercase)
+        .unwrap_or_else(|| panic!("expected known CLI problem code: {code:?}"))
+}
+
+fn known_cli_problem_code(
+    code: buffa::EnumValue<types::CliProblemCode>,
+) -> Option<types::CliProblemCode> {
+    match code.as_known() {
+        Some(types::CliProblemCode::CLI_PROBLEM_CODE_UNSPECIFIED) | None => None,
+        Some(code) => Some(code),
+    }
 }
 
 fn cli_problem_stage_to_error_stage(
     stage: buffa::EnumValue<types::CliProblemStage>,
-    fallback_stage: ErrorStage,
-) -> ErrorStage {
+) -> Option<ErrorStage> {
     match stage.as_known() {
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH) => ErrorStage::Auth,
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_EXECUTE_QUERY) => ErrorStage::ExecuteQuery,
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_READ_QUERY_INPUT) => {
-            ErrorStage::ReadQueryInput
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH) => Some(ErrorStage::Auth),
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_EXECUTE_QUERY) => {
+            Some(ErrorStage::ExecuteQuery)
         }
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_ORG) => ErrorStage::ResolveOrg,
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_SOURCE) => ErrorStage::ResolveSource,
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_UNSPECIFIED) | None => fallback_stage,
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_READ_QUERY_INPUT) => {
+            Some(ErrorStage::ReadQueryInput)
+        }
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_ORG) => Some(ErrorStage::ResolveOrg),
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_SOURCE) => {
+            Some(ErrorStage::ResolveSource)
+        }
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_UNSPECIFIED) | None => None,
     }
 }
 
@@ -382,6 +328,14 @@ where
     MessageType::decode_from_slice(bytes.as_slice()).ok()
 }
 
+fn connect_detail_type_name(type_url: &str) -> &str {
+    type_url
+        .rsplit('/')
+        .next()
+        .filter(|name| !name.is_empty())
+        .unwrap_or(type_url)
+}
+
 fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
         .get(name)
@@ -395,27 +349,27 @@ fn non_empty(value: Option<String>) -> Option<String> {
     value.filter(|candidate| !candidate.trim().is_empty())
 }
 
-fn connect_retryable(code: ErrorCode) -> bool {
+fn connect_transport_retryable(code: ErrorCode) -> bool {
     matches!(
         code,
         ErrorCode::Unavailable | ErrorCode::DeadlineExceeded | ErrorCode::ResourceExhausted
     )
 }
 
-pub(crate) fn connect_title(code: ErrorCode) -> String {
-    match code {
-        ErrorCode::InvalidArgument => "Invalid request".to_owned(),
-        ErrorCode::Unauthenticated => "Not authenticated".to_owned(),
-        ErrorCode::PermissionDenied => "Forbidden".to_owned(),
-        ErrorCode::NotFound => "Not found".to_owned(),
-        ErrorCode::AlreadyExists => "Already exists".to_owned(),
-        ErrorCode::FailedPrecondition => "Failed precondition".to_owned(),
-        ErrorCode::ResourceExhausted => "Rate limited".to_owned(),
-        ErrorCode::DeadlineExceeded => "Deadline exceeded".to_owned(),
-        ErrorCode::Unavailable => "Service unavailable".to_owned(),
-        ErrorCode::Internal => "Internal error".to_owned(),
-        _ => code.as_str().replace('_', " "),
-    }
+fn connect_request_id(error: &ConnectError) -> Option<String> {
+    response_request_id(&error.response_headers).or_else(|| response_request_id(&error.trailers))
+}
+
+fn connect_error_message(error: &ConnectError) -> String {
+    non_empty(error.message.clone()).unwrap_or_else(|| error.code.as_str().replace('_', " "))
+}
+
+fn untyped_connect_error_message(error: &ConnectError) -> String {
+    format!(
+        "server returned untyped Connect error {}: {}",
+        error.code.as_str(),
+        connect_error_message(error)
+    )
 }
 
 #[cfg(test)]
@@ -431,7 +385,10 @@ mod tests {
 
     use super::ApiFailure;
     use super::ApiProblem;
-    use super::ProblemStageFallback;
+    use super::TransportFailure;
+    use super::TransportFailureKind;
+    use super::cli_problem_code_string;
+    use super::connect_detail_type_name;
     use super::failure_from_connect;
     use super::response_request_id;
 
@@ -450,49 +407,14 @@ mod tests {
     }
 
     #[test]
-    fn problem_stage_fallback_auth_or_routes_auth_failures() {
-        let fallback = ProblemStageFallback::auth_or(ErrorStage::ExecuteQuery);
-
-        assert_eq!(
-            [
-                fallback.resolve(ErrorCode::Unauthenticated),
-                fallback.resolve(ErrorCode::PermissionDenied),
-                fallback.resolve(ErrorCode::InvalidArgument),
-            ],
-            [ErrorStage::Auth, ErrorStage::Auth, ErrorStage::ExecuteQuery,]
-        );
-    }
-
-    #[test]
-    fn problem_stage_fallback_auth_or_not_found_routes_not_found() {
-        let fallback = ProblemStageFallback::auth_or_not_found(
-            ErrorStage::ResolveSource,
-            ErrorStage::ResolveOrg,
-        );
-
-        assert_eq!(
-            [
-                fallback.resolve(ErrorCode::Unauthenticated),
-                fallback.resolve(ErrorCode::NotFound),
-                fallback.resolve(ErrorCode::InvalidArgument),
-            ],
-            [
-                ErrorStage::Auth,
-                ErrorStage::ResolveOrg,
-                ErrorStage::ResolveSource,
-            ]
-        );
-    }
-
-    #[test]
-    fn failure_from_connect_prefers_cli_error_details() {
+    fn failure_from_connect_parses_typed_cli_problem_details() {
         let mut error = ConnectError::new(ErrorCode::ResourceExhausted, "polling is rate limited");
         error.response_headers.insert(
             "x-request-id",
             http::HeaderValue::from_static("req_header_fallback"),
         );
         error.details.push(error_detail(
-            "onequery.cli.v1.CliErrorDetail",
+            "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
             &generated::types::CliErrorDetail {
                 code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
                 stage: generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into(),
@@ -527,12 +449,11 @@ mod tests {
         ));
 
         assert_eq!(
-            failure_from_connect(error, ProblemStageFallback::fixed(ErrorStage::Internal)),
+            failure_from_connect(error, ErrorStage::Internal),
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::ResourceExhausted,
-                title: Some("Login Rate Limited".to_owned()),
-                detail: Some("polling is rate limited".to_owned()),
-                code: Some("login_rate_limited".to_owned()),
+                title: "Login Rate Limited".to_owned(),
+                detail: "polling is rate limited".to_owned(),
+                code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
                 retryable: true,
                 retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,
@@ -548,7 +469,7 @@ mod tests {
     }
 
     #[test]
-    fn failure_from_connect_falls_back_to_connect_metadata_without_typed_details() {
+    fn failure_from_connect_treats_untyped_transient_errors_as_transport_failures() {
         let mut error = ConnectError::new(ErrorCode::Unavailable, "server temporarily unavailable");
         error.response_headers.insert(
             "x-request-id",
@@ -556,19 +477,83 @@ mod tests {
         );
 
         assert_eq!(
-            failure_from_connect(error, ProblemStageFallback::fixed(ErrorStage::Http)),
-            ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::Unavailable,
-                title: None,
-                detail: Some("server temporarily unavailable".to_owned()),
-                code: Some("unavailable".to_owned()),
-                retryable: true,
-                retry_after_ms: None,
+            failure_from_connect(error, ErrorStage::Http),
+            ApiFailure::Transport(TransportFailure {
+                kind: TransportFailureKind::SendRequest,
                 stage: ErrorStage::Http,
-                hint: None,
-                request_id: Some("req_unavailable".to_owned()),
-                validation_issues: Vec::new(),
+                message: "server temporarily unavailable".to_owned(),
+                retryable: true,
             })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_rejects_untyped_non_transient_errors() {
+        let mut error = ConnectError::new(ErrorCode::PermissionDenied, "forbidden");
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_forbidden"),
+        );
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::ResolveOrg),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::ResolveOrg,
+                message: "server returned untyped Connect error permission_denied: forbidden"
+                    .to_owned(),
+                request_id: Some("req_forbidden".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_rejects_partial_cli_detail_sets() {
+        let mut error = ConnectError::new(ErrorCode::InvalidArgument, "request invalid");
+        error.details.push(error_detail(
+            "google.rpc.BadRequest",
+            &generated::google::rpc::BadRequest {
+                field_violations: vec![generated::google::rpc::bad_request::FieldViolation {
+                    field: "sql".to_owned(),
+                    description: "query must be read-only".to_owned(),
+                    reason: "CUSTOM".to_owned(),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            },
+        ));
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::ReadQueryInput),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::ReadQueryInput,
+                message: "server returned CLI Connect error details without CliErrorDetail"
+                    .to_owned(),
+                request_id: None,
+            })
+        );
+    }
+
+    #[test]
+    fn connect_detail_type_name_accepts_any_type_urls() {
+        assert_eq!(
+            [
+                connect_detail_type_name("onequery.cli.v1.CliErrorDetail"),
+                connect_detail_type_name("type.googleapis.com/onequery.cli.v1.CliErrorDetail"),
+            ],
+            [
+                "onequery.cli.v1.CliErrorDetail",
+                "onequery.cli.v1.CliErrorDetail"
+            ]
+        );
+    }
+
+    #[test]
+    fn cli_problem_code_string_projects_known_codes() {
+        assert_eq!(
+            cli_problem_code_string(
+                generated::types::CliProblemCode::CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE
+            ),
+            "query_execution_unavailable"
         );
     }
 

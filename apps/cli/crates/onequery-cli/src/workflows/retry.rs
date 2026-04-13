@@ -53,7 +53,6 @@ pub(crate) fn plan_retry_transition(
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
@@ -61,6 +60,7 @@ mod tests {
     use crate::transport::api_failure::ApiProblem;
     use crate::transport::api_failure::TransportFailure;
     use crate::transport::api_failure::TransportFailureKind;
+    use crate::transport::generated::types;
 
     use super::RetryDirective;
     use super::RetryTransition;
@@ -70,10 +70,9 @@ mod tests {
     #[test]
     fn unauthorized_failures_require_reauth_even_if_they_are_not_retryable() {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
-            connect_code: ErrorCode::Unauthenticated,
-            title: None,
-            detail: None,
-            code: None,
+            title: "Not Logged In".to_owned(),
+            detail: "stored credentials are no longer authorized".to_owned(),
+            code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,

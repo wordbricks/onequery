@@ -37,14 +37,7 @@ describe("github source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch");
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "http_request",
-        name: "fetch",
-        selectorKind: "path",
-        summary: "Execute one GitHub REST request.",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes repo-scoped selectors into canonical GitHub URLs", async () => {
@@ -83,16 +76,8 @@ describe("github source api adapter", () => {
     });
     const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "http_request",
-      method: "GET",
-      operation: "fetch",
-      selector: "/issues",
-      selectorTemplate: "/repos/{owner}/{repo}/{path}",
-      url: "https://api.github.com/repos/openai/example/issues?state=open",
-    });
     expect(finalizedPlan.host).toBe("api.github.com");
-    expect(finalizedPlan.bodyPaths).toEqual([]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes GitHub requests with upstream status and headers", async () => {
@@ -136,24 +121,7 @@ describe("github source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "fetch",
-      selector: "/issues",
-      status: 201,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { ok: true },
-    });
-    expect(response.headers).toContainEqual({
-      name: "content-type",
-      value: "application/json",
-    });
-    expect(response.headers).toContainEqual({
-      name: "etag",
-      value: '"abc123"',
-    });
+    expect(response).toMatchSnapshot();
     expect(response.headers).not.toContainEqual({
       name: "server",
       value: "github.com",
@@ -199,15 +167,6 @@ describe("github source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/octet-stream",
-      operation: "fetch",
-      selector: "/issues",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "binary",
-      value: new Uint8Array([1, 2, 3]),
-    });
+    expect(response).toMatchSnapshot();
   });
 });

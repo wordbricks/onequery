@@ -40,16 +40,7 @@ describe("mixpanel source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_query_api");
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "structured_request",
-        name: "query_engage",
-        paginationPolicy: "opaque_token",
-      },
-      { kind: "structured_request", name: "query_segmentation" },
-      { kind: "http_request", name: "fetch_query_api", selectorKind: "path" },
-      { kind: "http_request", name: "export_events", selectorKind: "none" },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes raw query API requests into canonical Mixpanel URLs", async () => {
@@ -90,16 +81,8 @@ describe("mixpanel source api adapter", () => {
     });
     const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "http_request",
-      method: "GET",
-      operation: "fetch_query_api",
-      selector: "/query/events/top",
-      selectorTemplate: "/{path}",
-      url: "https://mixpanel.com/api/query/events/top?from_date=2026-03-01&to_date=2026-03-07&type=general&project_id=123&workspace_id=456",
-    });
     expect(finalizedPlan.host).toBe("mixpanel.com");
-    expect(finalizedPlan.bodyPaths).toEqual([]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes structured segmentation requests through the shared transport", async () => {
@@ -152,15 +135,7 @@ describe("mixpanel source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "query_segmentation",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { results: [] },
-    });
+    expect(response).toMatchSnapshot();
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(
@@ -229,19 +204,7 @@ describe("mixpanel source api adapter", () => {
       source,
     });
 
-    expect(response.body).toEqual({
-      kind: "json",
-      value: {
-        page: 1,
-        page_size: 1,
-        results: [{ distinct_id: "user-2" }],
-        session_id: "session_1",
-      },
-    });
-    expect(response.nextContinuationState).toEqual({
-      page: 2,
-      sessionId: "session_1",
-    });
+    expect(response).toMatchSnapshot();
 
     const [, calledInit] = fetchMock.mock.calls[0] ?? [];
     const requestBody = calledInit?.body;

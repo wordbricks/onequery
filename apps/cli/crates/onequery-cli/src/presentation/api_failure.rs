@@ -3,7 +3,7 @@ use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
 
 use crate::transport::api_failure::ApiFailure;
-use crate::transport::api_failure::connect_title;
+use crate::transport::api_failure::cli_problem_code_string;
 use crate::transport::client::ApiClientBuildFailure;
 
 pub(crate) struct ApiErrorPresentation<'a> {
@@ -30,17 +30,10 @@ pub(crate) fn present_api_failure(
 
     match failure {
         ApiFailure::Problem(problem) => {
-            let title = problem
-                .title
-                .clone()
-                .or_else(|| Some(connect_title(problem.connect_code)))
-                .or_else(|| problem.code.as_deref().map(humanize_error_code))
-                .unwrap_or_else(|| title.to_owned());
-            let why = problem
-                .detail
-                .clone()
-                .unwrap_or_else(|| fallback_problem_why(&problem, title.as_str()));
+            let title = problem.title.clone();
+            let why = problem.detail.clone();
             let hint = problem.hint.clone();
+            let code = cli_problem_code_string(problem.code);
             let try_next = if problem.is_auth_error() {
                 unauthorized_try_next.unwrap_or_else(|| {
                     hint.clone()
@@ -53,7 +46,7 @@ pub(crate) fn present_api_failure(
 
             CliError::new(title, command, problem.stage, why, try_next)
                 .with_hint(hint)
-                .with_code(problem.code)
+                .with_code(Some(code))
                 .with_retryable(problem.retryable)
                 .with_retry_after_ms(problem.retry_after_ms)
                 .with_validation_issues(
@@ -125,17 +118,7 @@ pub(crate) fn present_api_client_build_failure(
     }
 }
 
-fn fallback_problem_why(
-    problem: &crate::transport::api_failure::ApiProblem,
-    default_title: &str,
-) -> String {
-    if let Some(code) = problem.code.as_deref() {
-        return format!("server returned {}", humanize_error_code(code));
-    }
-
-    default_title.to_owned()
-}
-
+#[cfg(test)]
 fn humanize_error_code(raw: &str) -> String {
     if raw.contains(' ') {
         return raw.to_owned();
@@ -149,7 +132,6 @@ fn humanize_error_code(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
     use insta::assert_snapshot;
     use onequery_cli_core::error::CliError;
     use onequery_cli_core::error::ErrorStage;
@@ -166,6 +148,7 @@ mod tests {
     use crate::transport::api_failure::TransportFailure;
     use crate::transport::api_failure::TransportFailureKind;
     use crate::transport::client::ApiClientBuildFailure;
+    use crate::transport::generated::types;
 
     use super::ApiErrorPresentation;
     use super::humanize_error_code;
@@ -299,10 +282,9 @@ mod tests {
     fn present_api_failure_prefers_api_problem_fields() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::NotFound,
-                title: Some("Source Not Found".to_owned()),
-                detail: Some("no source named \"warehouse\" exists".to_owned()),
-                code: Some("source_not_found".to_owned()),
+                title: "Source Not Found".to_owned(),
+                detail: "no source named \"warehouse\" exists".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_SOURCE_NOT_FOUND,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
@@ -340,13 +322,12 @@ mod tests {
     }
 
     #[test]
-    fn present_api_failure_uses_connect_code_when_status_is_absent() {
+    fn present_api_failure_uses_typed_problem_fields_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::Unauthenticated,
-                title: None,
-                detail: Some("stored credentials are no longer authorized".to_owned()),
-                code: Some("unauthenticated".to_owned()),
+                title: "Not Logged In".to_owned(),
+                detail: "stored credentials are no longer authorized".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -367,14 +348,14 @@ mod tests {
         assert_eq!(
             error_summary(&error),
             json!({
-                "title": "Not authenticated",
+                "title": "Not Logged In",
                 "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_connect_auth",
                 "hint": "login via the OneQuery web app and retry",
-                "code": "unauthenticated",
+                "code": "not_logged_in",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -384,13 +365,12 @@ mod tests {
     }
 
     #[test]
-    fn present_api_failure_uses_connect_codes_for_reauth_guidance_without_status() {
+    fn present_api_failure_uses_typed_problem_codes_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: connectrpc::ErrorCode::Unauthenticated,
-                title: None,
-                detail: Some("stored credentials are no longer authorized".to_owned()),
-                code: Some("unauthenticated".to_owned()),
+                title: "Not Logged In".to_owned(),
+                detail: "stored credentials are no longer authorized".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -413,14 +393,14 @@ mod tests {
         assert_eq!(
             error_summary(&error),
             json!({
-                "title": "Not authenticated",
+                "title": "Not Logged In",
                 "command": "onequery query exec --source warehouse --sql \"select 1\"",
                 "stage": "auth",
                 "why": "stored credentials are no longer authorized",
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_connect_reauth",
                 "hint": "login via the OneQuery web app and retry",
-                "code": "unauthenticated",
+                "code": "not_logged_in",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -472,10 +452,9 @@ mod tests {
     fn rendered_problem_error_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::NotFound,
-                title: Some("Source Not Found".to_owned()),
-                detail: Some("no source named \"warehouse\" exists".to_owned()),
-                code: Some("source_not_found".to_owned()),
+                title: "Source Not Found".to_owned(),
+                detail: "no source named \"warehouse\" exists".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_SOURCE_NOT_FOUND,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
@@ -545,10 +524,9 @@ mod tests {
     fn present_api_failure_overrides_unauthorized_try_next_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::Unauthenticated,
-                title: Some("Not Logged In".to_owned()),
-                detail: Some("stored credentials are no longer authorized".to_owned()),
-                code: Some("not_logged_in".to_owned()),
+                title: "Not Logged In".to_owned(),
+                detail: "stored credentials are no longer authorized".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -591,10 +569,9 @@ mod tests {
     fn rendered_unauthorized_problem_guides_query_reauth_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::Unauthenticated,
-                title: Some("Not Logged In".to_owned()),
-                detail: Some("stored credentials are no longer authorized".to_owned()),
-                code: Some("not_logged_in".to_owned()),
+                title: "Not Logged In".to_owned(),
+                detail: "stored credentials are no longer authorized".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -618,16 +595,15 @@ mod tests {
     }
 
     #[test]
-    fn rendered_unauthorized_problem_guides_org_reauth_snapshot() {
+    fn rendered_forbidden_problem_uses_problem_hint_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::PermissionDenied,
-                title: Some("Forbidden".to_owned()),
-                detail: Some("this account can no longer access the org list".to_owned()),
-                code: Some("forbidden".to_owned()),
+                title: "Forbidden".to_owned(),
+                detail: "this account can no longer access the org list".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_FORBIDDEN,
                 retryable: false,
                 retry_after_ms: None,
-                stage: ErrorStage::Auth,
+                stage: ErrorStage::ResolveOrg,
                 hint: Some("refresh your session and retry".to_owned()),
                 request_id: Some("req_org_auth".to_owned()),
                 validation_issues: Vec::new(),
@@ -652,10 +628,9 @@ mod tests {
     fn rendered_unauthorized_problem_guides_source_reauth_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::Unauthenticated,
-                title: Some("Not Logged In".to_owned()),
-                detail: Some("stored credentials are no longer authorized".to_owned()),
-                code: Some("not_logged_in".to_owned()),
+                title: "Not Logged In".to_owned(),
+                detail: "stored credentials are no longer authorized".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -683,10 +658,9 @@ mod tests {
     fn rendered_validation_problem_includes_structured_issues_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: ErrorCode::InvalidArgument,
-                title: Some("Invalid Request".to_owned()),
-                detail: Some("request body contains invalid fields".to_owned()),
-                code: Some("invalid_request".to_owned()),
+                title: "Invalid Request".to_owned(),
+                detail: "request body contains invalid fields".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ExecuteQuery,

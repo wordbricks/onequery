@@ -1,0 +1,303 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`mixpanel source api adapter > binds query_engage continuation state to Mixpanel session paging 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "page": 1,
+      "page_size": 1,
+      "results": [
+        {
+          "distinct_id": "user-2",
+        },
+      ],
+      "session_id": "session_1",
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "nextContinuationState": {
+    "page": 2,
+    "sessionId": "session_1",
+  },
+  "operation": "query_engage",
+  "selector": undefined,
+  "source": {
+    "displayName": "Mixpanel Prod",
+    "key": "mixpanel-prod",
+    "provider": "mixpanel",
+  },
+  "status": 200,
+}
+`;
+
+exports[`mixpanel source api adapter > describes structured and HTTP operations 1`] = `
+{
+  "defaultPathOperation": "fetch_query_api",
+  "descriptorVersion": "mixpanel.v1",
+  "examples": [
+    {
+      "command": "onequery api --source mixpanel-prod --op query_engage --input '{"where":"properties[\\"plan\\"] == \\"pro\\"","pageSize":100}'",
+      "description": "Query Engage profiles with a narrow page size.",
+      "label": "Query engage",
+    },
+    {
+      "command": "onequery api --source mixpanel-prod --op query_segmentation --input '{"event":"Signup","fromDate":"2026-03-01","toDate":"2026-03-07","unit":"day"}'",
+      "description": "Query Mixpanel event segmentation for one event.",
+      "label": "Query segmentation",
+    },
+    {
+      "command": "onequery api --source mixpanel-prod /query/events/top -f 'params[type]=general' -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'",
+      "description": "Call a raw Mixpanel Query API endpoint when the higher-level helpers do not fit.",
+      "label": "Fetch query API",
+    },
+    {
+      "command": "onequery api --source mixpanel-prod --op export_events -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'",
+      "description": "Export Mixpanel events for a bounded date range.",
+      "label": "Export events",
+    },
+  ],
+  "notes": [
+    "Use higher-level Mixpanel operations first and fall back to \`fetch_query_api\` only when needed.",
+  ],
+  "operations": [
+    {
+      "description": "Run a Mixpanel Engage query against the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mixpanel-prod --op query_engage --input '{"where":"properties[\\"plan\\"] == \\"pro\\"","pageSize":100}'",
+          "description": "Query Engage profiles with a narrow page size.",
+          "label": "Query engage",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "query_engage",
+      "notes": [
+        "Use \`where\`, \`page\`, \`pageSize\`, and \`outputProperties\` to shape the Engage request.",
+      ],
+      "paginationPolicy": "opaque_token",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Query Mixpanel Engage profiles.",
+    },
+    {
+      "description": "Run a Mixpanel segmentation query against the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mixpanel-prod --op query_segmentation --input '{"event":"Signup","fromDate":"2026-03-01","toDate":"2026-03-07","unit":"day"}'",
+          "description": "Query Mixpanel event segmentation for one event.",
+          "label": "Query segmentation",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "query_segmentation",
+      "notes": [
+        "Use \`event\`, \`fromDate\`, \`toDate\`, \`type\`, \`unit\`, and \`where\` to shape the segmentation request.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Query Mixpanel event segmentation.",
+    },
+    {
+      "description": "Call a Mixpanel Query API endpoint for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mixpanel-prod /query/events/top -f 'params[type]=general' -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'",
+          "description": "Call a raw Mixpanel Query API endpoint when the higher-level helpers do not fit.",
+          "label": "Fetch query API",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_body",
+        "mergePatches": false,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "http_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "DELETE",
+          "GET",
+          "POST",
+          "PUT",
+        ],
+        "defaultMethod": "GET",
+      },
+      "name": "fetch_query_api",
+      "notes": [
+        "Selectors must be relative Mixpanel Query API paths.",
+        "Pass \`bodyFormat=json\` when the endpoint expects a JSON request body.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "path",
+      "selectorLabel": "PATH",
+      "summary": "Execute one Mixpanel Query API request.",
+    },
+    {
+      "description": "Call the Mixpanel export endpoint for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source mixpanel-prod --op export_events -f 'params[from_date]=2026-03-01' -f 'params[to_date]=2026-03-07'",
+          "description": "Export Mixpanel events for a bounded date range.",
+          "label": "Export events",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_body",
+        "mergePatches": false,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "http_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "DELETE",
+          "GET",
+          "POST",
+          "PUT",
+        ],
+        "defaultMethod": "GET",
+      },
+      "name": "export_events",
+      "notes": [
+        "The export endpoint is fixed; use field patches for params, body format, and timeout only.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Export Mixpanel events.",
+    },
+  ],
+  "source": {
+    "displayName": "Mixpanel Prod",
+    "key": "mixpanel-prod",
+    "provider": "mixpanel",
+  },
+}
+`;
+
+exports[`mixpanel source api adapter > executes structured segmentation requests through the shared transport 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "results": [],
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "nextContinuationState": undefined,
+  "operation": "query_segmentation",
+  "selector": undefined,
+  "source": {
+    "displayName": "Mixpanel Prod",
+    "key": "mixpanel-prod",
+    "provider": "mixpanel",
+  },
+  "status": 200,
+}
+`;
+
+exports[`mixpanel source api adapter > normalizes raw query API requests into canonical Mixpanel URLs 1`] = `
+{
+  "body": {
+    "kind": "none",
+  },
+  "bodyKind": "none",
+  "bodyPaths": [],
+  "descriptorVersion": "mixpanel.v1",
+  "headerNames": [],
+  "headers": [],
+  "host": "mixpanel.com",
+  "kind": "http_request",
+  "metadata": undefined,
+  "method": "GET",
+  "operation": "fetch_query_api",
+  "paginationPolicy": "none",
+  "preparedBinding": "ygqmWprJjO8JsxZU863g54iwEpQawroycss2QRTZHYM",
+  "provider": "mixpanel",
+  "query": {
+    "from_date": "2026-03-01",
+    "to_date": "2026-03-07",
+    "type": "general",
+  },
+  "selector": "/query/events/top",
+  "selectorTemplate": "/{path}",
+  "sourceId": "source_1",
+  "sourceKey": "mixpanel-prod",
+  "timeoutMs": undefined,
+  "url": "https://mixpanel.com/api/query/events/top?from_date=2026-03-01&to_date=2026-03-07&type=general&project_id=123&workspace_id=456",
+}
+`;

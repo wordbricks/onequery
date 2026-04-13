@@ -4,7 +4,6 @@ use serde::Serialize;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
@@ -94,10 +93,7 @@ async fn fetch_source_page(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or(ErrorStage::Http),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -142,10 +138,7 @@ pub(crate) async fn get_source_by_key_with_controls(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ProblemStageFallback::auth_or(ErrorStage::ResolveSource),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
         }
     };
 
