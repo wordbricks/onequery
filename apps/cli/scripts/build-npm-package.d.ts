@@ -2,6 +2,11 @@ export function stagePackagedRuntime(options: {
   runtimeRoot: string;
 }): Promise<void>;
 
+export function tarballNameForPackage(
+  packageName: string,
+  version: string
+): string;
+
 export const __internal: {
   indexWorkspacePackageManifestPaths(
     workspacePackageManifests: Array<{
