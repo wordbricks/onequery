@@ -5,22 +5,20 @@ use std::time::Duration;
 use connectrpc::client::ClientConfig;
 use connectrpc::client::HttpClient as ConnectHttpClient;
 use connectrpc::rustls;
-use reqwest::header::AUTHORIZATION;
-use reqwest::header::HeaderMap;
-use reqwest::header::HeaderName;
-use reqwest::header::HeaderValue;
+use http::header::AUTHORIZATION;
+use http::header::HeaderValue;
 use url::Url;
 
 use crate::transport::generated::Client as GeneratedCliClient;
 
 const CLI_BASE_PATH: &str = "/api/cli";
+const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ApiClientBuildFailure {
     InvalidBaseUrl { base_url: String, message: String },
     InvalidAuthToken { message: String },
     InvalidRequestId { message: String },
-    HttpClient { message: String },
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -35,7 +33,6 @@ pub(crate) struct ApiClient<State> {
     cli: GeneratedCliClient,
     request_timeout: Duration,
     request_id: Option<String>,
-    http: reqwest::Client,
     _state: PhantomData<State>,
 }
 
@@ -61,24 +58,6 @@ enum AuthHeader<'a> {
 impl<State> ApiClient<State> {
     pub(crate) fn cli(&self) -> &GeneratedCliClient {
         &self.cli
-    }
-
-    pub(crate) fn http(&self) -> &reqwest::Client {
-        &self.http
-    }
-
-    pub(crate) fn app_url(&self, path: &str) -> String {
-        let normalized_path = if path.starts_with('/') {
-            path.to_owned()
-        } else {
-            format!("/{path}")
-        };
-
-        format!(
-            "{}{}",
-            self.base_url.as_str().trim_end_matches('/'),
-            normalized_path
-        )
     }
 }
 
@@ -117,20 +96,6 @@ impl UnauthenticatedApiClient {
 }
 
 impl AuthenticatedApiClient {
-    #[cfg(test)]
-    pub(crate) fn new(
-        base_url: &str,
-        request_timeout_sec: u64,
-        token: &str,
-    ) -> Result<Self, ApiClientBuildFailure> {
-        Self::new_with_timeout_and_request_id(
-            base_url,
-            Duration::from_secs(request_timeout_sec),
-            token,
-            None,
-        )
-    }
-
     pub(crate) fn new_with_timeout_and_request_id(
         base_url: &str,
         request_timeout: Duration,
@@ -160,7 +125,6 @@ fn build_client<State>(
     base_url.set_query(None);
     base_url.set_fragment(None);
 
-    let mut headers = HeaderMap::new();
     let mut auth_token = None;
     if let AuthHeader::Bearer(raw_token) = auth_header {
         let trimmed_token = raw_token.trim();
@@ -170,13 +134,14 @@ fn build_client<State>(
             });
         }
 
+        // Comment: connect-rust silently drops invalid default headers, so
+        // validate shared auth/request metadata before building the client.
         let bearer = format!("Bearer {trimmed_token}");
-        let value = HeaderValue::from_str(&bearer).map_err(|header_error| {
+        HeaderValue::from_str(&bearer).map_err(|header_error| {
             ApiClientBuildFailure::InvalidAuthToken {
                 message: header_error.to_string(),
             }
         })?;
-        headers.insert(AUTHORIZATION, value);
         auth_token = Some(trimmed_token.to_owned());
     }
 
@@ -185,21 +150,13 @@ fn build_client<State>(
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned);
     if let Some(request_id) = request_id.as_deref() {
-        let value = HeaderValue::from_str(request_id).map_err(|header_error| {
+        HeaderValue::from_str(request_id).map_err(|header_error| {
             ApiClientBuildFailure::InvalidRequestId {
                 message: header_error.to_string(),
             }
         })?;
-        headers.insert(HeaderName::from_static("x-request-id"), value);
     }
 
-    let http = reqwest::Client::builder()
-        .timeout(request_timeout)
-        .default_headers(headers)
-        .build()
-        .map_err(|client_error| ApiClientBuildFailure::HttpClient {
-            message: client_error.to_string(),
-        })?;
     let cli_base_url = cli_base_url(&base_url);
     let cli = GeneratedCliClient::new(
         connect_transport_for_base_url(&base_url)?,
@@ -216,7 +173,6 @@ fn build_client<State>(
         cli,
         request_timeout,
         request_id,
-        http,
         _state: PhantomData,
     })
 }
@@ -240,7 +196,7 @@ fn connect_config(
     }
 
     if let Some(request_id) = request_id {
-        config = config.default_header("x-request-id", request_id);
+        config = config.default_header(REQUEST_ID_HEADER, request_id);
     }
 
     Ok(config)
@@ -276,39 +232,45 @@ fn cli_base_url(base_url: &Url) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read;
-    use std::io::Write;
-    use std::net::TcpListener;
-    use std::sync::mpsc;
     use std::time::Duration;
 
+    use http::header::AUTHORIZATION;
     use pretty_assertions::assert_eq;
-    use reqwest::header::AUTHORIZATION;
-    use reqwest::header::HeaderName;
 
-    use super::ApiClient;
     use super::ApiClientBuildFailure;
-    use super::AuthenticatedApiClient;
     use super::UnauthenticatedApiClient;
     use super::cli_base_url;
+    use super::connect_config;
 
-    #[tokio::test]
-    async fn unauthenticated_client_does_not_attach_authorization_header() {
-        let client = UnauthenticatedApiClient::new("http://example.test", 5)
-            .expect("expected unauthenticated client");
+    #[test]
+    fn unauthenticated_connect_config_does_not_attach_authorization_header() {
+        let config = connect_config(
+            "http://example.test/api/cli",
+            Duration::from_secs(5),
+            None,
+            None,
+        )
+        .expect("expected connect config");
 
-        assert_eq!(capture_request_header(&client, AUTHORIZATION).await, None);
+        assert_eq!(config.default_timeout, Some(Duration::from_secs(5)));
+        assert_eq!(config.default_headers.get(AUTHORIZATION), None);
     }
 
-    #[tokio::test]
-    async fn authenticated_client_attaches_authorization_header() {
-        let client = AuthenticatedApiClient::new("http://example.test", 5, "pat_123")
-            .expect("expected authenticated client");
+    #[test]
+    fn authenticated_connect_config_attaches_authorization_header() {
+        let config = connect_config(
+            "http://example.test/api/cli",
+            Duration::from_secs(5),
+            Some("pat_123"),
+            None,
+        )
+        .expect("expected connect config");
 
         assert_eq!(
-            capture_request_header(&client, AUTHORIZATION)
-                .await
-                .as_deref(),
+            config
+                .default_headers
+                .get(AUTHORIZATION)
+                .and_then(|value| value.to_str().ok()),
             Some("Bearer pat_123")
         );
     }
@@ -328,25 +290,27 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn unauthenticated_client_attaches_request_id_when_configured() {
-        let client = UnauthenticatedApiClient::new_with_timeout_and_request_id(
-            "http://example.test",
+    #[test]
+    fn connect_config_attaches_request_id_when_configured() {
+        let config = connect_config(
+            "http://example.test/api/cli",
             Duration::from_secs(5),
+            None,
             Some("req_cli_123"),
         )
-        .expect("expected unauthenticated client with request ID");
+        .expect("expected connect config");
 
         assert_eq!(
-            capture_request_header(&client, HeaderName::from_static("x-request-id"))
-                .await
-                .as_deref(),
+            config
+                .default_headers
+                .get("x-request-id")
+                .and_then(|value| value.to_str().ok()),
             Some("req_cli_123")
         );
     }
 
-    #[tokio::test]
-    async fn authenticate_preserves_request_id_header() {
+    #[test]
+    fn authenticate_preserves_request_id_and_timeout() {
         let client = UnauthenticatedApiClient::new_with_timeout_and_request_id(
             "http://example.test",
             Duration::from_secs(5),
@@ -357,12 +321,9 @@ mod tests {
             .authenticate("pat_123")
             .expect("expected authenticated client");
 
-        assert_eq!(
-            capture_request_header(&authenticated, HeaderName::from_static("x-request-id"))
-                .await
-                .as_deref(),
-            Some("req_cli_123")
-        );
+        assert_eq!(authenticated.base_url, client.base_url);
+        assert_eq!(authenticated.request_timeout, client.request_timeout);
+        assert_eq!(authenticated.request_id, Some("req_cli_123".to_owned()));
     }
 
     #[test]
@@ -390,73 +351,5 @@ mod tests {
             cli_base_url(&client.base_url),
             "http://example.test/api/cli"
         );
-        assert_eq!(
-            client.app_url("/api/data-sources/source/query"),
-            "http://example.test/api/data-sources/source/query"
-        );
-    }
-
-    async fn capture_request_header<State>(
-        client: &ApiClient<State>,
-        header_name: HeaderName,
-    ) -> Option<String> {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_tx, request_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from client");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            request_tx
-                .send(String::from_utf8_lossy(&request_bytes).into_owned())
-                .expect("expected request receiver");
-
-            let response = "HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok";
-            stream
-                .write_all(response.as_bytes())
-                .expect("expected test response write");
-        });
-
-        let request_url = format!("http://{address}");
-        client
-            .http()
-            .get(request_url)
-            .send()
-            .await
-            .expect("expected request send");
-
-        request_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured request")
-            .lines()
-            .find_map(|line| {
-                let (name, value) = line.split_once(':')?;
-                if name.eq_ignore_ascii_case(header_name.as_str()) {
-                    Some(value.trim().to_owned())
-                } else {
-                    None
-                }
-            })
     }
 }

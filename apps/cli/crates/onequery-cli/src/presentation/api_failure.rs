@@ -125,13 +125,6 @@ pub(crate) fn present_api_client_build_failure(
                 "retry command without --request-id".to_owned(),
             ],
         ),
-        ApiClientBuildFailure::HttpClient { message } => CliError::new(
-            "failed to create HTTP client",
-            command.to_owned(),
-            ErrorStage::Http,
-            message,
-            vec!["retry command".to_owned()],
-        ),
     }
 }
 
@@ -307,34 +300,6 @@ mod tests {
                     "pass --request-id with visible ASCII characters only",
                     "retry command without --request-id"
                 ],
-                "requestId": null,
-                "hint": null,
-                "code": null,
-                "status": null,
-                "retryable": false,
-                "retryAfterMs": null,
-                "validationIssues": [],
-            })
-        );
-    }
-
-    #[test]
-    fn present_api_client_build_failure_reports_http_client_creation_failures() {
-        let error = present_api_client_build_failure(
-            ApiClientBuildFailure::HttpClient {
-                message: "tls backend initialization failed".to_owned(),
-            },
-            "onequery query exec --source warehouse --sql \"select 1\"",
-        );
-
-        assert_eq!(
-            error_summary(&error),
-            json!({
-                "title": "failed to create HTTP client",
-                "command": "onequery query exec --source warehouse --sql \"select 1\"",
-                "stage": "http",
-                "why": "tls backend initialization failed",
-                "tryNext": ["retry command"],
                 "requestId": null,
                 "hint": null,
                 "code": null,
