@@ -4,7 +4,7 @@ import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
-  createPreparedSourceApiPreview as createSourceApiPreview,
+  createSourceApiPreview,
   decodeSourceApiContinuationToken,
   describeSourceApi,
   encodeSourceApiContinuationToken,
@@ -19,8 +19,8 @@ import {
 } from "@onequery/server/source-api";
 import type {
   PreparedSourceApi,
-  PreparedSourceApiPreview as DomainSourceApiPreview,
   PreparedSourceConnection,
+  SourceApiPreview,
   SourceApiActorContext,
   SourceApiBodyKind,
   SourceApiDescriptor,
@@ -31,7 +31,7 @@ import type {
   SourceApiRequestBody,
   SourceApiResponseBody,
   SourceApiSource,
-  SourceApiDraft as DomainSourceApiDraft,
+  SourceApiDraft,
 } from "@onequery/server/source-api";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
@@ -132,27 +132,25 @@ function isCliSourceApiPreviewOnlyMode(
   return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
 }
 
-function buildDomainSourceApiDraft(
-  request: CliSourceApiDraft
-): DomainSourceApiDraft {
+function buildSourceApiDraft(request: CliSourceApiDraft): SourceApiDraft {
   return {
-    body: buildDomainSourceApiRequestBody(request.body),
+    body: buildSourceApiRequestBody(request.body),
     fieldPatch: request.fieldPatch,
-    headers: request.headers.map(buildDomainSourceApiHeader),
+    headers: request.headers.map(copySourceApiHeader),
     methodOverride: request.methodOverride,
     operation: request.operation,
     selector: request.selector,
   };
 }
 
-function buildDomainSourceApiHeader(value: SourceApiHeader) {
+function copySourceApiHeader(value: SourceApiHeader) {
   return {
     name: value.name,
     value: value.value,
   };
 }
 
-function buildDomainSourceApiRequestBody(
+function buildSourceApiRequestBody(
   body: CliSourceApiDraft["body"]
 ): SourceApiRequestBody {
   switch (body.case) {
@@ -193,7 +191,7 @@ function buildCliDescribeSourceApiResponse(
 
 function buildCliExecuteSourceApiResponse(input: {
   continuationToken?: string;
-  preview: DomainSourceApiPreview;
+  preview: SourceApiPreview;
   result?: SourceApiExecutionResult;
 }): ExecuteSourceApiResponseInit {
   return {
@@ -206,7 +204,7 @@ function buildCliExecuteSourceApiResponse(input: {
 }
 
 function buildCliSourceApiPreview(
-  value: DomainSourceApiPreview
+  value: SourceApiPreview
 ): CliSourceApiPreviewInit {
   return {
     bodyKind: toCliSourceApiBodyKind(value.bodyKind),
@@ -230,7 +228,7 @@ function buildCliSourceApiExecutionResult(
   return {
     body: buildCliSourceApiResponseBody(value.body),
     contentType: value.contentType,
-    headers: value.headers.map(buildDomainSourceApiHeader),
+    headers: value.headers.map(copySourceApiHeader),
     operation: value.operation,
     selector: value.selector,
     source: buildCliSourceApiSource(value.source),
@@ -647,7 +645,7 @@ export function createHandleExecuteSourceApi(
         const prepared = await resolvedDependencies.prepareSourceApiDraft({
           actor,
           descriptor,
-          draft: buildDomainSourceApiDraft(draft),
+          draft: buildSourceApiDraft(draft),
           source,
         });
         const preview = resolvedDependencies.createSourceApiPreview(prepared);

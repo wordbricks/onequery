@@ -10,9 +10,9 @@ import type { SourceApiRegistry } from "./registry";
 import type {
   PreparedHttpSourceApi,
   PreparedSourceApi,
-  PreparedSourceApiPreview,
   PreparedSourceConnection,
   PreparedStructuredSourceApi,
+  SourceApiPreview,
   SourceApiActorContext,
   SourceApiDescriptor,
   SourceApiOperation,
@@ -69,9 +69,9 @@ export function createPreparedSourceApiBinding(value: unknown): string {
     .digest("base64url");
 }
 
-export function createPreparedSourceApiPreview(
+export function createSourceApiPreview(
   prepared: PreparedSourceApi
-): PreparedSourceApiPreview {
+): SourceApiPreview {
   return {
     bodyKind: prepared.bodyKind,
     bodyPaths: [...prepared.bodyPaths],
