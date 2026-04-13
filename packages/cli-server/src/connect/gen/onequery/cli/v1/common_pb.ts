@@ -11,13 +11,19 @@ import type {
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
+import type {
+  BadRequest,
+  ErrorInfo,
+  RetryInfo,
+} from "../../../google/rpc/error_details_pb.js";
+import { file_google_rpc_error_details } from "../../../google/rpc/error_details_pb.js";
 
 /**
  * Describes the file onequery/cli/v1/common.proto.
  */
 export const file_onequery_cli_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiYAoHQ2xpUGFnZRIhCgtuZXh0X2N1cnNvchgBIAEoCUIHukgEcgIQAUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJbCg9DbGlTYW5pdGl6YXRpb24SGAoHcHJvZmlsZRgBIAEoCUIHukgEcgIQARIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCpXChBDbGlDb250ZW50Rm9ybWF0EiIKHkNMSV9DT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEh8KG0NMSV9DT05URU5UX0ZPUk1BVF9NQVJLRE9XThABYgZwcm90bzM",
-  [file_buf_validate_validate]
+  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiYAoHQ2xpUGFnZRIhCgtuZXh0X2N1cnNvchgBIAEoCUIHukgEcgIQAUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJbCg9DbGlTYW5pdGl6YXRpb24SGAoHcHJvZmlsZRgBIAEoCUIHukgEcgIQARIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCK6AQoeQ2xpQ29ubmVjdEVycm9yRGV0YWlsUmVmZXJlbmNlEisKCmVycm9yX2luZm8YASABKAsyFS5nb29nbGUucnBjLkVycm9ySW5mb0gAEi0KC2JhZF9yZXF1ZXN0GAIgASgLMhYuZ29vZ2xlLnJwYy5CYWRSZXF1ZXN0SAASKwoKcmV0cnlfaW5mbxgDIAEoCzIVLmdvb2dsZS5ycGMuUmV0cnlJbmZvSABCDwoGZGV0YWlsEgW6SAIIASpXChBDbGlDb250ZW50Rm9ybWF0EiIKHkNMSV9DT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEh8KG0NMSV9DT05URU5UX0ZPUk1BVF9NQVJLRE9XThABYgZwcm90bzM",
+  [file_buf_validate_validate, file_google_rpc_error_details]
 );
 
 /**
@@ -75,6 +81,49 @@ export type CliSanitization = Message<"onequery.cli.v1.CliSanitization"> & {
  */
 export const CliSanitizationSchema: GenMessage<CliSanitization> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_common, 1);
+
+/**
+ * Comment: this message exists to keep the generated google.rpc error-detail
+ * schemas available to both the CLI server and the Rust CLI Connect client.
+ *
+ * @generated from message onequery.cli.v1.CliConnectErrorDetailReference
+ */
+export type CliConnectErrorDetailReference =
+  Message<"onequery.cli.v1.CliConnectErrorDetailReference"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.CliConnectErrorDetailReference.detail
+     */
+    detail:
+      | {
+          /**
+           * @generated from field: google.rpc.ErrorInfo error_info = 1;
+           */
+          value: ErrorInfo;
+          case: "errorInfo";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.BadRequest bad_request = 2;
+           */
+          value: BadRequest;
+          case: "badRequest";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.RetryInfo retry_info = 3;
+           */
+          value: RetryInfo;
+          case: "retryInfo";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.CliConnectErrorDetailReference.
+ * Use `create(CliConnectErrorDetailReferenceSchema)` to create a new message.
+ */
+export const CliConnectErrorDetailReferenceSchema: GenMessage<CliConnectErrorDetailReference> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_common, 2);
 
 /**
  * @generated from enum onequery.cli.v1.CliContentFormat

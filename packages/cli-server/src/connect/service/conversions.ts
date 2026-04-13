@@ -153,6 +153,7 @@ export function fromCliSourceProvider(value: CliSourceProvider): ProviderType {
       throwCliConnectError({
         detail: "unsupported source provider",
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
   }
 }
@@ -199,6 +200,7 @@ export function requireCliSourceApiDraft(
   throwCliConnectError({
     detail: "source API request missing draft payload",
     key: "INVALID_REQUEST",
+    stage: "execute_query",
   });
 }
 

@@ -70,8 +70,7 @@ mod tests {
     #[test]
     fn unauthorized_failures_require_reauth_even_if_they_are_not_retryable() {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
-            connect_code: Some(ErrorCode::Unauthenticated),
-            status: None,
+            connect_code: ErrorCode::Unauthenticated,
             title: None,
             detail: None,
             code: None,
@@ -81,7 +80,6 @@ mod tests {
             hint: None,
             request_id: None,
             validation_issues: Vec::new(),
-            raw_body: String::new(),
         }));
 
         assert_eq!(directive, RetryDirective::NeedsReauth);

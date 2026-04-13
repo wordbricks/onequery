@@ -33,11 +33,23 @@ export const CLI_ERROR_STAGES = [
 ] as const;
 
 type CliApiErrorCode = (typeof CLI_ERROR_CODES)[number];
+export type CliConnectCode =
+  | "already_exists"
+  | "deadline_exceeded"
+  | "failed_precondition"
+  | "internal"
+  | "invalid_argument"
+  | "not_found"
+  | "permission_denied"
+  | "resource_exhausted"
+  | "unauthenticated"
+  | "unavailable";
 export type CliApiErrorStage = (typeof CLI_ERROR_STAGES)[number];
 
 export type CliProblemCatalogEntry = {
   type: `${typeof CLI_PROBLEM_TYPE_PREFIX}/${string}`;
   status: number;
+  connectCode: CliConnectCode;
   title: string;
   code: CliApiErrorCode;
   stage?: CliApiErrorStage;
@@ -49,6 +61,7 @@ export const CLI_PROBLEM_CATALOG = {
   FORBIDDEN: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/forbidden`,
     status: 403,
+    connectCode: "permission_denied",
     title: "Forbidden",
     code: "forbidden",
     stage: "resolve_org",
@@ -58,6 +71,7 @@ export const CLI_PROBLEM_CATALOG = {
   INVALID_REQUEST: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/invalid-request`,
     status: 422,
+    connectCode: "invalid_argument",
     title: "Invalid Request",
     code: "invalid_request",
     retryable: false,
@@ -65,6 +79,7 @@ export const CLI_PROBLEM_CATALOG = {
   LOGIN_DENIED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-denied`,
     status: 403,
+    connectCode: "permission_denied",
     title: "Login Denied",
     code: "login_denied",
     stage: "auth",
@@ -74,6 +89,7 @@ export const CLI_PROBLEM_CATALOG = {
   LOGIN_RATE_LIMITED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-rate-limited`,
     status: 429,
+    connectCode: "resource_exhausted",
     title: "Login Rate Limited",
     code: "login_rate_limited",
     stage: "auth",
@@ -83,6 +99,7 @@ export const CLI_PROBLEM_CATALOG = {
   LOGIN_SESSION_EXPIRED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-session-expired`,
     status: 410,
+    connectCode: "failed_precondition",
     title: "Login Session Expired",
     code: "login_session_expired",
     stage: "auth",
@@ -92,6 +109,7 @@ export const CLI_PROBLEM_CATALOG = {
   MALFORMED_JSON: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/malformed-json`,
     status: 400,
+    connectCode: "invalid_argument",
     title: "Malformed JSON",
     code: "invalid_request",
     stage: "read_query_input",
@@ -101,6 +119,7 @@ export const CLI_PROBLEM_CATALOG = {
   NOT_LOGGED_IN: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/not-logged-in`,
     status: 401,
+    connectCode: "unauthenticated",
     title: "Not Logged In",
     code: "not_logged_in",
     stage: "auth",
@@ -110,6 +129,7 @@ export const CLI_PROBLEM_CATALOG = {
   ORG_NOT_FOUND: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/org-not-found`,
     status: 404,
+    connectCode: "not_found",
     title: "Organization Not Found",
     code: "org_not_found",
     stage: "resolve_org",
@@ -119,6 +139,7 @@ export const CLI_PROBLEM_CATALOG = {
   QUERY_EXECUTION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-failed`,
     status: 500,
+    connectCode: "internal",
     title: "Query Execution Failed",
     code: "query_execution_failed",
     stage: "execute_query",
@@ -128,6 +149,7 @@ export const CLI_PROBLEM_CATALOG = {
   QUERY_EXECUTION_TIMED_OUT: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-timed-out`,
     status: 504,
+    connectCode: "deadline_exceeded",
     title: "Query Execution Timed Out",
     code: "query_execution_timed_out",
     stage: "execute_query",
@@ -137,6 +159,7 @@ export const CLI_PROBLEM_CATALOG = {
   QUERY_EXECUTION_UNAVAILABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-unavailable`,
     status: 503,
+    connectCode: "unavailable",
     title: "Query Execution Unavailable",
     code: "query_execution_unavailable",
     stage: "execute_query",
@@ -146,6 +169,7 @@ export const CLI_PROBLEM_CATALOG = {
   QUERY_PREPARATION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-preparation-failed`,
     status: 500,
+    connectCode: "internal",
     title: "Query Preparation Failed",
     code: "query_preparation_failed",
     stage: "execute_query",
@@ -155,6 +179,7 @@ export const CLI_PROBLEM_CATALOG = {
   QUERY_REJECTED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-rejected`,
     status: 400,
+    connectCode: "invalid_argument",
     title: "Query Rejected",
     code: "query_rejected",
     stage: "execute_query",
@@ -164,6 +189,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_DESCRIBE_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-describe-failed`,
     status: 500,
+    connectCode: "internal",
     title: "Source API Describe Failed",
     code: "source_api_describe_failed",
     stage: "resolve_source",
@@ -173,6 +199,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_EXECUTION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-execution-failed`,
     status: 500,
+    connectCode: "internal",
     title: "Source API Execution Failed",
     code: "source_api_execution_failed",
     stage: "execute_query",
@@ -182,6 +209,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_FORBIDDEN: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-forbidden`,
     status: 403,
+    connectCode: "permission_denied",
     title: "Source API Forbidden",
     code: "source_api_forbidden",
     stage: "execute_query",
@@ -191,6 +219,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_PREPARATION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-preparation-failed`,
     status: 500,
+    connectCode: "internal",
     title: "Source API Preparation Failed",
     code: "source_api_preparation_failed",
     stage: "execute_query",
@@ -200,6 +229,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_PREPARED_REQUEST_INVALID: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-prepared-request-invalid`,
     status: 410,
+    connectCode: "failed_precondition",
     title: "Prepared Source API Request Invalid",
     code: "source_api_prepared_request_invalid",
     stage: "execute_query",
@@ -209,6 +239,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_API_SOURCE_UNAVAILABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-source-unavailable`,
     status: 410,
+    connectCode: "failed_precondition",
     title: "Source API Source Unavailable",
     code: "source_api_source_unavailable",
     stage: "resolve_source",
@@ -218,6 +249,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_NOT_FOUND: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-not-found`,
     status: 404,
+    connectCode: "not_found",
     title: "Source Not Found",
     code: "source_not_found",
     stage: "resolve_source",
@@ -227,6 +259,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_NAME_CONFLICT: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-name-conflict`,
     status: 409,
+    connectCode: "already_exists",
     title: "Source Name Conflict",
     code: "source_name_conflict",
     stage: "resolve_source",
@@ -236,6 +269,7 @@ export const CLI_PROBLEM_CATALOG = {
   SOURCE_NOT_QUERYABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-not-queryable`,
     status: 400,
+    connectCode: "invalid_argument",
     title: "Source Not Queryable",
     code: "source_not_queryable",
     stage: "resolve_source",

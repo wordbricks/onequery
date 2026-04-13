@@ -36,5 +36,6 @@ function throwCliReadControlsProblem(detail: string): never {
   throwCliConnectError({
     detail,
     key: "INVALID_REQUEST",
+    stage: "execute_query",
   });
 }

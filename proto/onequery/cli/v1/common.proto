@@ -3,6 +3,7 @@ syntax = "proto3";
 package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
+import "google/rpc/error_details.proto";
 
 message CliPage {
   optional string next_cursor = 1 [(buf.validate.field).string.min_len = 1];
@@ -19,4 +20,16 @@ message CliSanitization {
 enum CliContentFormat {
   CLI_CONTENT_FORMAT_UNSPECIFIED = 0;
   CLI_CONTENT_FORMAT_MARKDOWN = 1;
+}
+
+// Comment: this message exists to keep the generated google.rpc error-detail
+// schemas available to both the CLI server and the Rust CLI Connect client.
+message CliConnectErrorDetailReference {
+  oneof detail {
+    option (buf.validate.oneof).required = true;
+
+    google.rpc.ErrorInfo error_info = 1;
+    google.rpc.BadRequest bad_request = 2;
+    google.rpc.RetryInfo retry_info = 3;
+  }
 }

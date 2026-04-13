@@ -6,7 +6,7 @@ use serde_json::Value as JsonValue;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
@@ -58,9 +58,7 @@ pub(crate) async fn describe_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(
-                    describe_source_api_problem_stage_for_code,
-                ),
+                ProblemStageFallback::from_connect_code(describe_source_api_problem_stage_for_code),
             ));
         }
     };
@@ -92,7 +90,7 @@ pub(crate) async fn prepare_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(
+                ProblemStageFallback::from_connect_code(
                     execute_prepared_source_api_problem_stage_for_code,
                 ),
             ));
@@ -126,7 +124,7 @@ pub(crate) async fn execute_prepared_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(
+                ProblemStageFallback::from_connect_code(
                     execute_prepared_source_api_problem_stage_for_code,
                 ),
             ));

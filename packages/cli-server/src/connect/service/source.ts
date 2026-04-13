@@ -211,6 +211,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
       throwCliConnectError({
         detail: organizationCheck.error,
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
     }
   }
@@ -275,6 +276,7 @@ export function buildGetSourceResponse(source: {
 }
 function throwCliConnectSourceValidationError(input: {
   issues: readonly {
+    code: string;
     path: ReadonlyArray<PropertyKey>;
     message: string;
   }[];
@@ -283,7 +285,13 @@ function throwCliConnectSourceValidationError(input: {
 
   throwCliConnectError({
     detail: issue?.message ?? "invalid source connect request",
+    errors: input.issues.map((validationIssue) => ({
+      code: validationIssue.code,
+      field: validationIssue.path.map((segment) => String(segment)).join("."),
+      message: validationIssue.message,
+    })),
     key: "INVALID_REQUEST",
+    stage: "resolve_source",
   });
 }
 
@@ -438,6 +446,7 @@ function parseConnectSourceCredentials(
       throwCliConnectError({
         detail: "source connect request must include typed credentials",
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
   }
 }
@@ -533,6 +542,7 @@ function bigQueryCredentialsFromMessage(input: {
       throwCliConnectError({
         detail: "bigquery credentials must choose one auth mode",
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
   }
 }
@@ -585,6 +595,7 @@ function googleAnalyticsCredentialsFromMessage(input: {
       throwCliConnectError({
         detail: "google analytics credentials must choose one auth mode",
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
   }
 }
@@ -639,6 +650,7 @@ function linearCredentialsFromMessage(input: {
       throwCliConnectError({
         detail: "linear credentials must choose one auth mode",
         key: "INVALID_REQUEST",
+        stage: "resolve_source",
       });
   }
 }
@@ -662,6 +674,7 @@ function requirePresent<T>(value: T | undefined, detail: string): T {
   throwCliConnectError({
     detail,
     key: "INVALID_REQUEST",
+    stage: "resolve_source",
   });
 }
 
@@ -670,6 +683,7 @@ function numberFromUInt64(value: bigint, field: string) {
     throwCliConnectError({
       detail: `${field} exceeds the supported numeric range`,
       key: "INVALID_REQUEST",
+      stage: "resolve_source",
     });
   }
 

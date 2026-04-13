@@ -21,6 +21,7 @@ describe("cli domain model", () => {
   it("keeps CLI problem metadata in the canonical catalog", () => {
     expect(CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND).toMatchObject({
       code: "source_not_found",
+      connectCode: "not_found",
       hint: "run `onequery source list`",
       stage: "resolve_source",
       status: 404,
@@ -31,6 +32,7 @@ describe("cli domain model", () => {
       CLI_PROBLEM_CATALOG.SOURCE_API_PREPARED_REQUEST_INVALID
     ).toMatchObject({
       code: "source_api_prepared_request_invalid",
+      connectCode: "failed_precondition",
       hint: "rerun the `onequery api` command to refresh prepared source API state",
       stage: "execute_query",
       status: 410,

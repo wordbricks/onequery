@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiProblem;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
@@ -70,7 +70,7 @@ pub(crate) async fn start_login_session(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
+                ProblemStageFallback::fixed(ErrorStage::Auth),
             ));
         }
     };
@@ -96,7 +96,7 @@ pub(crate) async fn poll_login_session(
         Ok(response) => Ok(response),
         Err(error) => Err(failure_from_connect(
             error,
-            ResponseFailureStages::fixed(ErrorStage::Auth),
+            ProblemStageFallback::fixed(ErrorStage::Auth),
         )),
     };
 
@@ -131,7 +131,7 @@ pub(crate) async fn whoami(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
+                ProblemStageFallback::fixed(ErrorStage::Auth),
             ));
         }
     };
@@ -161,7 +161,7 @@ pub(crate) async fn refresh_session(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
+                ProblemStageFallback::fixed(ErrorStage::Auth),
             ));
         }
     };
@@ -177,14 +177,9 @@ fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
     let payload = match problem.connect_code {
-        Some(connectrpc::ErrorCode::PermissionDenied) => LoginPollOutcome::Denied,
-        Some(connectrpc::ErrorCode::FailedPrecondition) => LoginPollOutcome::Expired,
-        Some(_) => return Err(ApiFailure::Problem(problem)),
-        None => match problem.code.as_deref() {
-            Some("permission_denied") => LoginPollOutcome::Denied,
-            Some("failed_precondition") => LoginPollOutcome::Expired,
-            _ => return Err(ApiFailure::Problem(problem)),
-        },
+        connectrpc::ErrorCode::PermissionDenied => LoginPollOutcome::Denied,
+        connectrpc::ErrorCode::FailedPrecondition => LoginPollOutcome::Expired,
+        _ => return Err(ApiFailure::Problem(problem)),
     };
 
     Ok(ApiSuccess {
@@ -542,8 +537,7 @@ mod tests {
     #[test]
     fn interpret_login_poll_problem_maps_connect_codes_to_terminal_outcomes() {
         let denied = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::PermissionDenied),
-            status: None,
+            connect_code: connectrpc::ErrorCode::PermissionDenied,
             title: Some("Forbidden".to_owned()),
             detail: Some("device authorization was denied".to_owned()),
             code: Some("permission_denied".to_owned()),
@@ -553,12 +547,10 @@ mod tests {
             hint: None,
             request_id: Some("req_denied".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "device authorization was denied".to_owned(),
         })
         .expect("expected denied outcome");
         let expired = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::FailedPrecondition),
-            status: None,
+            connect_code: connectrpc::ErrorCode::FailedPrecondition,
             title: Some("Failed precondition".to_owned()),
             detail: Some("device authorization session expired".to_owned()),
             code: Some("failed_precondition".to_owned()),
@@ -568,7 +560,6 @@ mod tests {
             hint: None,
             request_id: Some("req_expired".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "device authorization session expired".to_owned(),
         })
         .expect("expected expired outcome");
 
@@ -660,8 +651,7 @@ mod tests {
     #[test]
     fn interpret_login_poll_problem_preserves_retryable_connect_failures() {
         let failure = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
-            status: None,
+            connect_code: connectrpc::ErrorCode::ResourceExhausted,
             title: Some("Rate limited".to_owned()),
             detail: Some("polling is temporarily rate limited".to_owned()),
             code: Some("resource_exhausted".to_owned()),
@@ -671,15 +661,13 @@ mod tests {
             hint: None,
             request_id: Some("req_rate_limited".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "polling is temporarily rate limited".to_owned(),
         })
         .expect_err("expected rate limited failure to remain a problem");
 
         assert_eq!(
             failure,
             ApiFailure::Problem(ApiProblem {
-                connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
-                status: None,
+                connect_code: connectrpc::ErrorCode::ResourceExhausted,
                 title: Some("Rate limited".to_owned()),
                 detail: Some("polling is temporarily rate limited".to_owned()),
                 code: Some("resource_exhausted".to_owned()),
@@ -689,7 +677,6 @@ mod tests {
                 hint: None,
                 request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: "polling is temporarily rate limited".to_owned(),
             })
         );
     }

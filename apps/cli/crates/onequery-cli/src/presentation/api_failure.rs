@@ -1,4 +1,3 @@
-use http::StatusCode;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
@@ -34,9 +33,8 @@ pub(crate) fn present_api_failure(
             let title = problem
                 .title
                 .clone()
-                .or_else(|| problem.connect_code.map(connect_title))
+                .or_else(|| Some(connect_title(problem.connect_code)))
                 .or_else(|| problem.code.as_deref().map(humanize_error_code))
-                .or_else(|| problem.status.map(|status| format!("{title} ({status})")))
                 .unwrap_or_else(|| title.to_owned());
             let why = problem
                 .detail
@@ -56,7 +54,6 @@ pub(crate) fn present_api_failure(
             CliError::new(title, command, problem.stage, why, try_next)
                 .with_hint(hint)
                 .with_code(problem.code)
-                .with_status(problem.status.map(|status| status.as_u16()))
                 .with_retryable(problem.retryable)
                 .with_retry_after_ms(problem.retry_after_ms)
                 .with_validation_issues(
@@ -128,22 +125,10 @@ pub(crate) fn present_api_client_build_failure(
     }
 }
 
-fn fallback_http_why(status: StatusCode, body: &str) -> String {
-    if body.trim().is_empty() {
-        format!("server returned {status}")
-    } else {
-        format!("server returned {status}: {}", body.trim())
-    }
-}
-
 fn fallback_problem_why(
     problem: &crate::transport::api_failure::ApiProblem,
     default_title: &str,
 ) -> String {
-    if let Some(status) = problem.status {
-        return fallback_http_why(status, problem.raw_body.as_str());
-    }
-
     if let Some(code) = problem.code.as_deref() {
         return format!("server returned {}", humanize_error_code(code));
     }
@@ -165,7 +150,6 @@ fn humanize_error_code(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use connectrpc::ErrorCode;
-    use http::StatusCode;
     use insta::assert_snapshot;
     use onequery_cli_core::error::CliError;
     use onequery_cli_core::error::ErrorStage;
@@ -315,8 +299,7 @@ mod tests {
     fn present_api_failure_prefers_api_problem_fields() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::NOT_FOUND),
+                connect_code: ErrorCode::NotFound,
                 title: Some("Source Not Found".to_owned()),
                 detail: Some("no source named \"warehouse\" exists".to_owned()),
                 code: Some("source_not_found".to_owned()),
@@ -326,7 +309,6 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -349,7 +331,7 @@ mod tests {
                 "requestId": "req_123",
                 "hint": "run `onequery source list`",
                 "code": "source_not_found",
-                "status": 404,
+                "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
                 "validationIssues": [],
@@ -361,8 +343,7 @@ mod tests {
     fn present_api_failure_uses_connect_code_when_status_is_absent() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: Some(ErrorCode::Unauthenticated),
-                status: None,
+                connect_code: ErrorCode::Unauthenticated,
                 title: None,
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("unauthenticated".to_owned()),
@@ -372,7 +353,6 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_connect_auth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -407,8 +387,7 @@ mod tests {
     fn present_api_failure_uses_connect_codes_for_reauth_guidance_without_status() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: Some(connectrpc::ErrorCode::Unauthenticated),
-                status: None,
+                connect_code: connectrpc::ErrorCode::Unauthenticated,
                 title: None,
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("unauthenticated".to_owned()),
@@ -418,7 +397,6 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_connect_reauth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -494,8 +472,7 @@ mod tests {
     fn rendered_problem_error_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::NOT_FOUND),
+                connect_code: ErrorCode::NotFound,
                 title: Some("Source Not Found".to_owned()),
                 detail: Some("no source named \"warehouse\" exists".to_owned()),
                 code: Some("source_not_found".to_owned()),
@@ -505,7 +482,6 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_problem".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -569,8 +545,7 @@ mod tests {
     fn present_api_failure_overrides_unauthorized_try_next_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::UNAUTHORIZED),
+                connect_code: ErrorCode::Unauthenticated,
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -580,7 +555,6 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_reauth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -605,7 +579,7 @@ mod tests {
                 "requestId": "req_reauth",
                 "hint": "login via the OneQuery web app and retry",
                 "code": "not_logged_in",
-                "status": 401,
+                "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
                 "validationIssues": [],
@@ -617,8 +591,7 @@ mod tests {
     fn rendered_unauthorized_problem_guides_query_reauth_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::UNAUTHORIZED),
+                connect_code: ErrorCode::Unauthenticated,
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -628,7 +601,6 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_query_auth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -649,8 +621,7 @@ mod tests {
     fn rendered_unauthorized_problem_guides_org_reauth_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::FORBIDDEN),
+                connect_code: ErrorCode::PermissionDenied,
                 title: Some("Forbidden".to_owned()),
                 detail: Some("this account can no longer access the org list".to_owned()),
                 code: Some("forbidden".to_owned()),
@@ -660,7 +631,6 @@ mod tests {
                 hint: Some("refresh your session and retry".to_owned()),
                 request_id: Some("req_org_auth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery org list",
@@ -682,8 +652,7 @@ mod tests {
     fn rendered_unauthorized_problem_guides_source_reauth_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::UNAUTHORIZED),
+                connect_code: ErrorCode::Unauthenticated,
                 title: Some("Not Logged In".to_owned()),
                 detail: Some("stored credentials are no longer authorized".to_owned()),
                 code: Some("not_logged_in".to_owned()),
@@ -693,7 +662,6 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_source_auth".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -715,8 +683,7 @@ mod tests {
     fn rendered_validation_problem_includes_structured_issues_snapshot() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
-                connect_code: None,
-                status: Some(StatusCode::BAD_REQUEST),
+                connect_code: ErrorCode::InvalidArgument,
                 title: Some("Invalid Request".to_owned()),
                 detail: Some("request body contains invalid fields".to_owned()),
                 code: Some("invalid_request".to_owned()),
@@ -737,7 +704,6 @@ mod tests {
                         code: "custom".to_owned(),
                     },
                 ],
-                raw_body: String::new(),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source '' --sql \"delete from events\"",

@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
@@ -198,7 +198,7 @@ pub(crate) async fn load_source_connect_guide(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(problem_stage_for_code),
+                ProblemStageFallback::from_connect_code(problem_stage_for_code),
             ));
         }
     };
@@ -254,7 +254,7 @@ pub(crate) async fn connect_source(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(problem_stage_for_code),
+                ProblemStageFallback::from_connect_code(problem_stage_for_code),
             ));
         }
     };

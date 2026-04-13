@@ -108,6 +108,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
       key: "INVALID_REQUEST",
+      stage: "auth",
     });
   }
 
@@ -204,6 +205,7 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
       key: "INVALID_REQUEST",
+      stage: "auth",
     });
   }
 

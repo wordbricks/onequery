@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
-use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::ProblemStageFallback;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
@@ -97,7 +97,7 @@ async fn fetch_source_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(list_sources_problem_stage_for_code),
+                ProblemStageFallback::from_connect_code(list_sources_problem_stage_for_code),
             ));
         }
     };
@@ -145,7 +145,7 @@ pub(crate) async fn get_source_by_key_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(get_source_problem_stage_for_code),
+                ProblemStageFallback::from_connect_code(get_source_problem_stage_for_code),
             ));
         }
     };
