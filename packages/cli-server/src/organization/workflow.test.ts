@@ -4,8 +4,8 @@ import { finishCliOrgAccessWorkflow } from "./workflow";
 
 describe("cli org access workflow", () => {
   it("reduces access effect results into terminal decisions", () => {
-    expect(
-      finishCliOrgAccessWorkflow({
+    expect({
+      allowed: finishCliOrgAccessWorkflow({
         access: {
           kind: "found",
           org: {
@@ -16,37 +16,19 @@ describe("cli org access workflow", () => {
           rawMembershipRole: "admin",
         },
         orgSlug: "acme",
-      })
-    ).toEqual({
-      kind: "allowed",
-      org: {
-        id: "org-1",
-        name: "Acme",
-        slug: "acme",
-      },
-      rawMembershipRole: "admin",
-    });
-    expect(
-      finishCliOrgAccessWorkflow({
-        access: {
-          kind: "not_found",
-        },
-        orgSlug: "acme",
-      })
-    ).toEqual({
-      kind: "org_not_found",
-      orgSlug: "acme",
-    });
-    expect(
-      finishCliOrgAccessWorkflow({
+      }),
+      forbidden: finishCliOrgAccessWorkflow({
         access: {
           kind: "forbidden",
         },
         orgSlug: "acme",
-      })
-    ).toEqual({
-      kind: "forbidden",
-      orgSlug: "acme",
-    });
+      }),
+      notFound: finishCliOrgAccessWorkflow({
+        access: {
+          kind: "not_found",
+        },
+        orgSlug: "acme",
+      }),
+    }).toMatchSnapshot();
   });
 });

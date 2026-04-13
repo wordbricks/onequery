@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cli org access workflow > reduces access effect results into terminal decisions 1`] = `
+{
+  "allowed": {
+    "kind": "allowed",
+    "org": {
+      "id": "org-1",
+      "name": "Acme",
+      "slug": "acme",
+    },
+    "rawMembershipRole": "admin",
+  },
+  "forbidden": {
+    "kind": "forbidden",
+    "orgSlug": "acme",
+  },
+  "notFound": {
+    "kind": "org_not_found",
+    "orgSlug": "acme",
+  },
+}
+`;

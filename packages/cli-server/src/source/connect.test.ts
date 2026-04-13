@@ -6,24 +6,11 @@ import {
 } from "./connect";
 
 describe("source connect guide", () => {
-  it("reuses the canonical connect command in guide output", () => {
-    const guide = buildCliSourceConnectGuide("postgres");
-
-    expect(guide.content).toContain(
-      "Run: `onequery source connect --source postgres --input '<json>'`"
-    );
-  });
-
-  it("uses the PR62 PostHog host guidance in the guide output", () => {
-    const guide = buildCliSourceConnectGuide("posthog");
-
-    expect(guide.content).toContain("https://us.posthog.com");
-    expect(guide.content).toContain(
-      "Do not use the SDK `api_host` value such as `https://us.i.posthog.com`."
-    );
-    expect(guide.content).not.toContain(
-      '"hostUrl": "https://us.i.posthog.com"'
-    );
+  it("renders canonical source connect guides", () => {
+    expect({
+      postgres: buildCliSourceConnectGuide("postgres"),
+      posthog: buildCliSourceConnectGuide("posthog"),
+    }).toMatchSnapshot();
   });
 
   it("reuses the canonical show command in connect results", () => {
@@ -35,6 +22,6 @@ describe("source connect guide", () => {
       status: "active",
     });
 
-    expect(result.nextCommand).toBe("onequery source show warehouse");
+    expect(result).toMatchSnapshot();
   });
 });

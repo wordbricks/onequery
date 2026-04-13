@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cli defaults > builds canonical CLI command strings for discovery surfaces 1`] = `
+{
+  "apiExecute": "onequery api --source github /path",
+  "apiInspect": "onequery api --source github",
+  "integrationReminder": "You should connect GitHub in OneQuery before using \`onequery api --source github\`.",
+  "sourceConnect": "onequery source connect --source postgres --input '<json>'",
+  "sourceShow": "onequery source show warehouse",
+}
+`;

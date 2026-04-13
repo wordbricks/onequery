@@ -52,31 +52,7 @@ describe("source api WKT conversions", () => {
       selector: "/issues",
     });
 
-    expect(fromCliSourceApiDraft(draft)).toEqual({
-      body: {
-        kind: "json",
-        value: {
-          filter: {
-            state: "open",
-          },
-          limit: 25,
-        },
-      },
-      fieldPatch: {
-        params: {
-          perPage: 50,
-        },
-      },
-      headers: [
-        {
-          name: "accept",
-          value: "application/json",
-        },
-      ],
-      methodOverride: "POST",
-      operation: "fetch",
-      selector: "/issues",
-    });
+    expect(fromCliSourceApiDraft(draft)).toMatchSnapshot();
   });
 
   it("round-trips response JSON bodies through generated protobuf Value messages", () => {
@@ -105,18 +81,22 @@ describe("source api WKT conversions", () => {
       })
     );
 
-    expect(response.body.case).toBe("json");
-    if (response.body.case !== "json") {
+    const responseBody = response.body;
+    expect(responseBody.case).toBe("json");
+    if (responseBody.case !== "json") {
       throw new Error("expected JSON response body");
     }
 
-    expect(
-      toJson(ValueSchema, create(ValueSchema, response.body.value))
-    ).toEqual({
-      id: 1,
-      labels: ["bug", "feature"],
-      private: false,
-    });
-    expect((response as Record<string, unknown>).requestId).toBeUndefined();
+    expect({
+      bodyCase: responseBody.case,
+      contentType: response.contentType,
+      jsonBody: toJson(ValueSchema, create(ValueSchema, responseBody.value)),
+      nextPageToken: response.nextPageToken,
+      operation: response.operation,
+      requestId: (response as Record<string, unknown>).requestId,
+      selector: response.selector,
+      source: response.source,
+      status: response.status,
+    }).toMatchSnapshot();
   });
 });

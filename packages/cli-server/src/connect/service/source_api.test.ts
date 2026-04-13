@@ -12,9 +12,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CliSourceApiBodyKind,
   CliSourceApiOperationKind,
+  CliSourceApiPaginationPolicy,
   DescribeSourceApiRequestSchema,
   ExecutePreparedSourceApiRequestSchema,
   PrepareSourceApiRequestSchema,
+} from "../gen/onequery/cli/v1/source_api_pb";
+import type {
+  DescribeSourceApiResponse,
+  ExecutePreparedSourceApiResponse,
+  PrepareSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   createHandleDescribeSourceApi,
@@ -267,6 +273,81 @@ async function expectConnectError(
   }
 }
 
+function summarizeDescribeSourceApiResponse(
+  response: DescribeSourceApiResponse
+) {
+  return {
+    defaultPathOperation: response.defaultPathOperation ?? null,
+    descriptorVersion: response.descriptorVersion,
+    examples: response.examples,
+    notes: response.notes,
+    operations: response.operations.map((operation) => ({
+      ...operation,
+      kind: CliSourceApiOperationKind[operation.kind],
+      paginationPolicy:
+        CliSourceApiPaginationPolicy[operation.paginationPolicy],
+    })),
+    source: response.source ?? null,
+  };
+}
+
+function summarizePrepareSourceApiResponse(response: PrepareSourceApiResponse) {
+  const preview = response.preview;
+  return {
+    preparedToken: response.preparedToken,
+    preview: preview
+      ? {
+          bodyKind: CliSourceApiBodyKind[preview.bodyKind],
+          bodyPaths: preview.bodyPaths,
+          headerNames: preview.headerNames,
+          host: preview.host ?? null,
+          kind: CliSourceApiOperationKind[preview.kind],
+          method: preview.method ?? null,
+          operation: preview.operation,
+          paginationPolicy:
+            CliSourceApiPaginationPolicy[preview.paginationPolicy],
+          provider: preview.provider,
+          selector: preview.selector ?? null,
+          sourceKey: preview.sourceKey,
+          url: preview.url ?? null,
+        }
+      : null,
+  };
+}
+
+function summarizeExecutePreparedSourceApiResponse(
+  response: ExecutePreparedSourceApiResponse
+) {
+  const body =
+    response.body.case === "json"
+      ? {
+          case: "json",
+          value: toJson(ValueSchema, create(ValueSchema, response.body.value)),
+        }
+      : response.body.case === "text"
+        ? {
+            case: "text",
+            value: response.body.value,
+          }
+        : response.body.case === "binary"
+          ? {
+              case: "binary",
+              value: Array.from(response.body.value),
+            }
+          : null;
+
+  return {
+    body,
+    contentType: response.contentType,
+    headers: response.headers,
+    nextPageToken: response.nextPageToken ?? null,
+    operation: response.operation,
+    selector: response.selector ?? null,
+    source: response.source ?? null,
+    status: response.status,
+  };
+}
+
 describe("source api connect service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -284,35 +365,13 @@ describe("source api connect service", () => {
     } as never);
 
     expect(harness.requestContext.requireSession).toHaveBeenCalledTimes(1);
-    expect(harness.requestContext.requireAuthorizedOrg).toHaveBeenCalledWith({
-      action: "source_api.describe",
-      orgSlug: "acme",
-      session,
-    });
-    expect(harness.dependencies.describeSourceApi).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
-      },
-      source: preparedSource,
-    });
-    expect(response).toMatchObject({
-      defaultPathOperation: "fetch",
-      descriptorVersion: "github-v1",
-      notes: ["Uses the GitHub REST API."],
-      source: {
-        displayName: "GitHub Prod",
-        key: "github-prod",
-        provider: "github",
-      },
-    });
-    expect(response.operations?.map((operation) => operation.name)).toEqual([
-      "fetch",
-    ]);
+    expect({
+      describeSourceApiCall:
+        harness.dependencies.describeSourceApi.mock.calls[0]?.[0] ?? null,
+      requireAuthorizedOrgCall:
+        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      response: summarizeDescribeSourceApiResponse(response),
+    }).toMatchSnapshot();
   });
 
   it("prepares the source API request through the Connect handler", async () => {
@@ -344,61 +403,19 @@ describe("source api connect service", () => {
       values: new Map(),
     } as never);
 
-    expect(harness.requestContext.requireAuthorizedOrg).toHaveBeenCalledWith({
-      action: "source_api.execute",
-      orgSlug: "acme",
-      session,
-    });
-    expect(harness.dependencies.prepareSourceApiDraft).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
-      },
-      descriptor,
-      draft: {
-        body: {
-          kind: "text",
-          value: "body text",
-        },
-        fieldPatch: {
-          perPage: 50,
-        },
-        headers: [
-          {
-            name: "accept",
-            value: "application/json",
-          },
-        ],
-        methodOverride: "POST",
-        operation: "fetch",
-        selector: "/issues",
-      },
-      source: preparedSource,
-    });
-    expect(
-      harness.dependencies.createPreparedSourceApiPreview
-    ).toHaveBeenCalledWith(prepared);
-    expect(
-      harness.dependencies.encodePreparedSourceApiToken
-    ).toHaveBeenCalledWith({
-      organizationSlug: "acme",
-      prepared,
-      secret: "master-key",
-    });
-    expect(response).toMatchObject({
-      preparedToken: "prepared_token_1",
-      preview: {
-        bodyKind: CliSourceApiBodyKind.TEXT,
-        kind: CliSourceApiOperationKind.HTTP_REQUEST,
-        operation: "fetch",
-        provider: "github",
-        sourceKey: "github-prod",
-      },
-    });
+    expect({
+      createPreparedSourceApiPreviewCall:
+        harness.dependencies.createPreparedSourceApiPreview.mock
+          .calls[0]?.[0] ?? null,
+      encodePreparedSourceApiTokenCall:
+        harness.dependencies.encodePreparedSourceApiToken.mock.calls[0]?.[0] ??
+        null,
+      prepareSourceApiDraftCall:
+        harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null,
+      requireAuthorizedOrgCall:
+        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      response: summarizePrepareSourceApiResponse(response),
+    }).toMatchSnapshot();
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
@@ -424,34 +441,9 @@ describe("source api connect service", () => {
       values: new Map(),
     } as never);
 
-    expect(harness.dependencies.prepareSourceApiDraft).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
-      },
-      descriptor,
-      draft: {
-        body: {
-          kind: "json",
-          value: {
-            filter: {
-              state: "open",
-            },
-            limit: 25,
-          },
-        },
-        fieldPatch: undefined,
-        headers: [],
-        methodOverride: undefined,
-        operation: "fetch",
-        selector: undefined,
-      },
-      source: preparedSource,
-    });
+    expect(
+      harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null
+    ).toMatchSnapshot();
   });
 
   it("executes prepared source API requests through the Connect handler", async () => {
@@ -464,43 +456,20 @@ describe("source api connect service", () => {
       values: new Map(),
     } as never);
 
-    expect(
-      harness.dependencies.decodePreparedSourceApiToken
-    ).toHaveBeenCalledWith({
-      secret: "master-key",
-      token: "prepared_token_1",
-    });
-    expect(harness.requestContext.requireAuthorizedOrg).toHaveBeenCalledWith({
-      action: "source_api.execute",
-      orgSlug: "acme",
-      session,
-    });
-    expect(harness.dependencies.executePreparedSourceApi).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
-      },
-      continuation: undefined,
-      prepared,
-      source: preparedSource,
-    });
-    expect(response).toMatchObject({
-      contentType: "text/plain",
-      operation: "fetch",
-      selector: "/issues",
-      status: 200,
-    });
-    expect((response as Record<string, unknown>).requestId).toBeUndefined();
-    expect(response.nextPageToken).toBeUndefined();
-    expect(response.body).toEqual({
-      case: "text",
-      value: "ok",
-    });
-    expect(harness.dependencies.encodeOpaquePageToken).not.toHaveBeenCalled();
+    expect({
+      decodePreparedSourceApiTokenCall:
+        harness.dependencies.decodePreparedSourceApiToken.mock.calls[0]?.[0] ??
+        null,
+      encodeOpaquePageTokenCalls:
+        harness.dependencies.encodeOpaquePageToken.mock.calls.length,
+      executePreparedSourceApiCall:
+        harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
+        null,
+      requireAuthorizedOrgCall:
+        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      requestId: (response as Record<string, unknown>).requestId,
+      response: summarizeExecutePreparedSourceApiResponse(response),
+    }).toMatchSnapshot();
   });
 
   it("preserves JSON source API response bodies through the Connect handler", async () => {
@@ -527,17 +496,13 @@ describe("source api connect service", () => {
     } as never);
 
     const responseBody = response.body;
-    expect(responseBody?.case).toBe("json");
-    if (responseBody?.case !== "json") {
+    expect(responseBody.case).toBe("json");
+    if (responseBody.case !== "json") {
       throw new Error("expected JSON response body");
     }
     expect(
-      toJson(ValueSchema, create(ValueSchema, responseBody.value))
-    ).toEqual({
-      id: 1,
-      name: "onequery",
-      private: false,
-    });
+      summarizeExecutePreparedSourceApiResponse(response)
+    ).toMatchSnapshot();
   });
 
   it("binds opaque page tokens to prepared execution state during execute", async () => {
@@ -564,50 +529,33 @@ describe("source api connect service", () => {
       values: new Map(),
     } as never);
 
-    expect(harness.dependencies.decodeOpaquePageToken).toHaveBeenCalledWith({
-      expected: {
-        descriptorVersion: "github-v1",
-        operation: "fetch",
-        preparedBinding: "prepared_binding_123",
-        sourceKey: "github-prod",
-      },
-      now: expect.any(Date),
-      secret: "master-key",
-      token: "page_1",
-    });
-    expect(harness.dependencies.executePreparedSourceApi).toHaveBeenCalledWith({
-      actor: {
-        capabilities: authorizedOrg.capabilities,
-        membershipRoles: authorizedOrg.membershipRoles,
-        organizationId: "org-1",
-        organizationSlug: "acme",
-        requestId: "req_cli_123",
-        userId: "user-1",
-      },
-      continuation: {
-        cursor: "page_2",
-      },
-      prepared: {
-        ...prepared,
-        paginationPolicy: "opaque_token",
-      },
-      source: preparedSource,
-    });
-    expect(harness.dependencies.encodeOpaquePageToken).toHaveBeenCalledWith({
-      payload: {
-        descriptorVersion: "github-v1",
-        expiresAt: expect.any(String),
-        issuedAt: expect.any(String),
-        operation: "fetch",
-        preparedBinding: "prepared_binding_123",
-        sourceKey: "github-prod",
-        state: {
-          cursor: "page_3",
-        },
-      },
-      secret: "master-key",
-    });
-    expect(response.nextPageToken).toBe("page_2");
+    const decodeOpaquePageTokenCall =
+      harness.dependencies.decodeOpaquePageToken.mock.calls[0]?.[0] ?? null;
+    const encodeOpaquePageTokenCall =
+      harness.dependencies.encodeOpaquePageToken.mock.calls[0]?.[0] ?? null;
+
+    expect({
+      decodeOpaquePageTokenCall: decodeOpaquePageTokenCall
+        ? {
+            ...decodeOpaquePageTokenCall,
+            now: "<date>",
+          }
+        : null,
+      encodeOpaquePageTokenCall: encodeOpaquePageTokenCall
+        ? {
+            ...encodeOpaquePageTokenCall,
+            payload: {
+              ...encodeOpaquePageTokenCall.payload,
+              expiresAt: "<expiresAt>",
+              issuedAt: "<issuedAt>",
+            },
+          }
+        : null,
+      executePreparedSourceApiCall:
+        harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
+        null,
+      response: summarizeExecutePreparedSourceApiResponse(response),
+    }).toMatchSnapshot();
   });
 
   it("rejects page_token continuation for operations without pagination support", async () => {

@@ -14,21 +14,13 @@ import {
 
 describe("cli defaults", () => {
   it("builds canonical CLI command strings for discovery surfaces", () => {
-    expect(buildCliSourceConnectCommand("postgres")).toBe(
-      "onequery source connect --source postgres --input '<json>'"
-    );
-    expect(buildCliSourceShowCommand("warehouse")).toBe(
-      "onequery source show warehouse"
-    );
-    expect(buildCliApiInspectCommand("github")).toBe(
-      "onequery api --source github"
-    );
-    expect(buildCliApiExecuteCommand("github")).toBe(
-      "onequery api --source github /path"
-    );
-    expect(buildCliApiIntegrationReminder("GitHub", "github")).toBe(
-      "You should connect GitHub in OneQuery before using `onequery api --source github`."
-    );
+    expect({
+      apiExecute: buildCliApiExecuteCommand("github"),
+      apiInspect: buildCliApiInspectCommand("github"),
+      integrationReminder: buildCliApiIntegrationReminder("GitHub", "github"),
+      sourceConnect: buildCliSourceConnectCommand("postgres"),
+      sourceShow: buildCliSourceShowCommand("warehouse"),
+    }).toMatchSnapshot();
   });
 
   it("keeps device authorization polling defaults in milliseconds", () => {

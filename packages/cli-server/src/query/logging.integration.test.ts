@@ -204,130 +204,70 @@ describe("cli query action trail", () => {
       .from(cliQueryActionEvents)
       .where(eq(cliQueryActionEvents.queryActionId, actionId));
     const eventsById = new Map(events.map((event) => [event.id, event]));
-
-    expect(action).toMatchObject({
-      actionType: "execute",
-      actorAuthMode: "browser_session",
-      actorEmail: "jane@example.com",
-      actorMembershipRoles: ["owner"],
-      actorUserId: "user_1",
-      elapsedMs: 18,
-      errorDetail: "write unavailable",
-      id: actionId,
-      lastEventId: usagePersistFailedEventId,
-      normalizedSql: "SELECT answer FROM stats LIMIT 1000",
-      normalizedSqlChanged: true,
-      provider: "postgres",
-      requestId: "req-1",
-      rowCount: 1,
-      sourceId: "source_1",
-      sourceKey: "warehouse",
-      sourceStatus: "active",
-      stage: "completed",
-      status: "succeeded",
-      usagePersistenceStatus: "failed",
-      version: 6,
-    });
-    expect(
-      [
-        receivedEventId,
-        sourceLoadedEventId,
-        validatedEventId,
-        credentialsLoadedEventId,
-        executedEventId,
-        usagePersistFailedEventId,
-      ].map((id) => eventsById.get(id)?.sql ?? null)
-    ).toEqual(["select answer from stats", null, null, null, null, null]);
-    expect(
-      [
-        receivedEventId,
-        sourceLoadedEventId,
-        validatedEventId,
-        credentialsLoadedEventId,
-        executedEventId,
-        usagePersistFailedEventId,
-      ].map((id) =>
-        eventsById.get(id)
-          ? {
-              actorAuthMode: eventsById.get(id)?.actorAuthMode,
-              actorEmail: eventsById.get(id)?.actorEmail,
-              actorMembershipRoles: eventsById.get(id)?.actorMembershipRoles,
-              actorUserId: eventsById.get(id)?.actorUserId,
-            }
-          : null
-      )
-    ).toEqual([
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-      {
-        actorAuthMode: "browser_session",
-        actorEmail: "jane@example.com",
-        actorMembershipRoles: ["owner"],
-        actorUserId: "user_1",
-      },
-    ]);
-    expect(
-      [
-        receivedEventId,
-        sourceLoadedEventId,
-        validatedEventId,
-        credentialsLoadedEventId,
-        executedEventId,
-        usagePersistFailedEventId,
-      ].map((id) => eventsById.get(id)?.eventType)
-    ).toEqual([
-      "action_received",
-      "source_loaded",
-      "query_validated",
-      "credentials_loaded",
-      "query_executed",
-      "usage_persist_failed",
-    ]);
-    expect(
-      [
-        receivedEventId,
-        sourceLoadedEventId,
-        validatedEventId,
-        credentialsLoadedEventId,
-        executedEventId,
-        usagePersistFailedEventId,
-      ].map((id) => eventsById.get(id)?.causationEventId ?? null)
-    ).toEqual([
-      null,
+    const orderedEventIds = [
       receivedEventId,
       sourceLoadedEventId,
       validatedEventId,
       credentialsLoadedEventId,
       executedEventId,
+      usagePersistFailedEventId,
+    ];
+    const eventLabelById = new Map([
+      [receivedEventId, "receivedEventId"],
+      [sourceLoadedEventId, "sourceLoadedEventId"],
+      [validatedEventId, "validatedEventId"],
+      [credentialsLoadedEventId, "credentialsLoadedEventId"],
+      [executedEventId, "executedEventId"],
+      [usagePersistFailedEventId, "usagePersistFailedEventId"],
     ]);
+
+    expect({
+      action: action
+        ? {
+            actionType: action.actionType,
+            actorAuthMode: action.actorAuthMode,
+            actorEmail: action.actorEmail,
+            actorMembershipRoles: action.actorMembershipRoles,
+            actorUserId: action.actorUserId,
+            elapsedMs: action.elapsedMs,
+            errorDetail: action.errorDetail,
+            id: action.id === actionId ? "<actionId>" : action.id,
+            lastEventId: action.lastEventId
+              ? `<${eventLabelById.get(action.lastEventId)}>`
+              : null,
+            normalizedSql: action.normalizedSql,
+            normalizedSqlChanged: action.normalizedSqlChanged,
+            provider: action.provider,
+            requestId: action.requestId,
+            rowCount: action.rowCount,
+            sourceId: action.sourceId,
+            sourceKey: action.sourceKey,
+            sourceStatus: action.sourceStatus,
+            stage: action.stage,
+            status: action.status,
+            usagePersistenceStatus: action.usagePersistenceStatus,
+            version: action.version,
+          }
+        : null,
+      events: orderedEventIds.map((id) => {
+        const event = eventsById.get(id);
+        return event
+          ? {
+              actor: {
+                actorAuthMode: event.actorAuthMode,
+                actorEmail: event.actorEmail,
+                actorMembershipRoles: event.actorMembershipRoles,
+                actorUserId: event.actorUserId,
+              },
+              causationEventId: event.causationEventId
+                ? `<${eventLabelById.get(event.causationEventId)}>`
+                : null,
+              eventType: event.eventType,
+              sql: event.sql ?? null,
+            }
+          : null;
+      }),
+    }).toMatchSnapshot();
   });
 
   it("treats duplicate workflow event delivery as idempotent", async () => {
@@ -386,13 +326,29 @@ describe("cli query action trail", () => {
 
     expect(second).toEqual(first);
     expect(events).toHaveLength(2);
-    expect(action).toMatchObject({
-      id: actionId,
-      lastEventId: first.eventId,
-      stage: "validate_query",
-      status: "pending",
-      version: 2,
-    });
+    expect({
+      action: action
+        ? {
+            id: action.id === actionId ? "<actionId>" : action.id,
+            lastEventId:
+              action.lastEventId === first.eventId
+                ? "<sourceLoadedEventId>"
+                : action.lastEventId,
+            stage: action.stage,
+            status: action.status,
+            version: action.version,
+          }
+        : null,
+      first: {
+        eventId: "<sourceLoadedEventId>",
+      },
+      second: {
+        eventId:
+          second.eventId === first.eventId
+            ? "<sourceLoadedEventId>"
+            : second.eventId,
+      },
+    }).toMatchSnapshot();
   });
 
   it("completes validate actions and persists failure hints", async () => {
@@ -444,15 +400,6 @@ describe("cli query action trail", () => {
 
     const validateAction = await db.query.cliQueryActions.findFirst({
       where: eq(cliQueryActions.id, validateLog.actionId),
-    });
-    expect(validateAction).toMatchObject({
-      id: validateLog.actionId,
-      lastEventId: validated.eventId,
-      normalizedSql: "SELECT answer FROM stats LIMIT 1000",
-      normalizedSqlChanged: true,
-      stage: "completed",
-      status: "succeeded",
-      version: 3,
     });
 
     const executeLog = await createCliQueryActionTrail({
@@ -513,18 +460,47 @@ describe("cli query action trail", () => {
       where: eq(cliQueryActionEvents.id, failed.eventId),
     });
 
-    expect(failedAction).toMatchObject({
-      errorDetail: "failed to decrypt credentials",
-      errorHint: "verify the source configuration and retry",
-      id: executeLog.actionId,
-      stage: "completed",
-      status: "query_preparation_failed",
-    });
-    expect(failedEvent).toMatchObject({
-      errorDetail: "failed to decrypt credentials",
-      errorHint: "verify the source configuration and retry",
-      id: failed.eventId,
-    });
+    expect({
+      failedAction: failedAction
+        ? {
+            errorDetail: failedAction.errorDetail,
+            errorHint: failedAction.errorHint,
+            id:
+              failedAction.id === executeLog.actionId
+                ? "<executeActionId>"
+                : failedAction.id,
+            stage: failedAction.stage,
+            status: failedAction.status,
+          }
+        : null,
+      failedEvent: failedEvent
+        ? {
+            errorDetail: failedEvent.errorDetail,
+            errorHint: failedEvent.errorHint,
+            id:
+              failedEvent.id === failed.eventId
+                ? "<failedEventId>"
+                : failedEvent.id,
+          }
+        : null,
+      validateAction: validateAction
+        ? {
+            id:
+              validateAction.id === validateLog.actionId
+                ? "<validateActionId>"
+                : validateAction.id,
+            lastEventId:
+              validateAction.lastEventId === validated.eventId
+                ? "<validatedEventId>"
+                : validateAction.lastEventId,
+            normalizedSql: validateAction.normalizedSql,
+            normalizedSqlChanged: validateAction.normalizedSqlChanged,
+            stage: validateAction.stage,
+            status: validateAction.status,
+            version: validateAction.version,
+          }
+        : null,
+    }).toMatchSnapshot();
   });
 
   it("rejects impossible workflow transitions", async () => {

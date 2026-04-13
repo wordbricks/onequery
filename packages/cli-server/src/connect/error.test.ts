@@ -1,7 +1,11 @@
-import { Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 
-import { CLI_PROBLEM_CATALOG } from "../domain/problems";
+import {
+  CLI_PROBLEM_CATALOG,
+  cliProblemCodeToString,
+  cliProblemStageToString,
+} from "../domain/problems";
 import type { CliProblemCatalogEntry, CliProblemKey } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../error";
 import { createCliConnectError, withCliRequestId } from "./error";
@@ -11,39 +15,53 @@ import {
 } from "./gen/google/rpc/error_details_pb";
 import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
 
+function summarizeConnectError(error: ConnectError) {
+  return {
+    badRequest: error.findDetails(BadRequestSchema).map((detail) => ({
+      fieldViolations: detail.fieldViolations.map((violation) => ({
+        description: violation.description,
+        field: violation.field,
+        reason: violation.reason,
+      })),
+    })),
+    cliDetails: error.findDetails(CliErrorDetailSchema).map((detail) => ({
+      code: cliProblemCodeToString(detail.code),
+      ...(detail.hint ? { hint: detail.hint } : {}),
+      ...(detail.requestId ? { requestId: detail.requestId } : {}),
+      retryable: detail.retryable,
+      stage: cliProblemStageToString(detail.stage),
+      title: detail.title,
+    })),
+    code: Code[error.code],
+    metadata: Object.fromEntries(error.metadata.entries()),
+    rawMessage: error.rawMessage,
+    retryInfo: error.findDetails(RetryInfoSchema).map((detail) => ({
+      retryDelay: detail.retryDelay
+        ? {
+            nanos: detail.retryDelay.nanos,
+            seconds: detail.retryDelay.seconds.toString(),
+          }
+        : null,
+    })),
+  };
+}
+
 describe("connect error helpers", () => {
   it("projects every canonical CLI problem into a Connect code and typed CLI error details", () => {
-    const codeByConnectCode = new Map([
-      ["already_exists", Code.AlreadyExists],
-      ["deadline_exceeded", Code.DeadlineExceeded],
-      ["failed_precondition", Code.FailedPrecondition],
-      ["internal", Code.Internal],
-      ["invalid_argument", Code.InvalidArgument],
-      ["not_found", Code.NotFound],
-      ["permission_denied", Code.PermissionDenied],
-      ["resource_exhausted", Code.ResourceExhausted],
-      ["unauthenticated", Code.Unauthenticated],
-      ["unavailable", Code.Unavailable],
-    ] as const);
+    const projectedErrors = Object.fromEntries(
+      Object.entries(CLI_PROBLEM_CATALOG).map(([key, problem]) => {
+        const typedProblem = problem as CliProblemCatalogEntry;
+        const error = createCliConnectError({
+          key: key as CliProblemKey,
+        });
 
-    for (const [key, problem] of Object.entries(CLI_PROBLEM_CATALOG)) {
-      const typedProblem = problem as CliProblemCatalogEntry;
-      const error = createCliConnectError({
-        key: key as CliProblemKey,
-      });
+        expect(error.rawMessage).toBe(typedProblem.title);
 
-      expect(error.code).toBe(codeByConnectCode.get(typedProblem.connectCode));
-      expect(error.rawMessage).toBe(typedProblem.title);
-      expect(error.findDetails(CliErrorDetailSchema)).toMatchObject([
-        {
-          code: typedProblem.code,
-          stage: typedProblem.stage,
-          title: typedProblem.title,
-          ...(typedProblem.hint ? { hint: typedProblem.hint } : {}),
-          retryable: typedProblem.retryable,
-        },
-      ]);
-    }
+        return [key, summarizeConnectError(error)];
+      })
+    );
+
+    expect(projectedErrors).toMatchSnapshot();
   });
 
   it("keeps request IDs in transport metadata and attaches retry info as a Connect detail", () => {
@@ -54,22 +72,8 @@ describe("connect error helpers", () => {
 
     withCliRequestId(error, "req_cli_123");
 
-    expect(error.code).toBe(Code.ResourceExhausted);
     expect(error.metadata.get(CLI_REQUEST_ID_HEADER)).toBe("req_cli_123");
-    expect([...error.metadata.keys()]).toEqual([CLI_REQUEST_ID_HEADER]);
-    expect(error.findDetails(CliErrorDetailSchema)).toMatchObject([
-      {
-        requestId: "req_cli_123",
-      },
-    ]);
-    expect(error.findDetails(RetryInfoSchema)).toMatchObject([
-      {
-        retryDelay: {
-          nanos: 500_000_000,
-          seconds: 1n,
-        },
-      },
-    ]);
+    expect(summarizeConnectError(error)).toMatchSnapshot();
   });
 
   it("serializes structured validation issues as google.rpc.BadRequest details", () => {
@@ -90,21 +94,6 @@ describe("connect error helpers", () => {
       key: "SOURCE_REQUEST_INVALID",
     });
 
-    expect(error.findDetails(BadRequestSchema)).toMatchObject([
-      {
-        fieldViolations: [
-          {
-            description: "must be a hostname",
-            field: "credentials.host",
-            reason: "INVALID_STRING",
-          },
-          {
-            description: "must be at least 1",
-            field: "credentials.port",
-            reason: "TOO_SMALL",
-          },
-        ],
-      },
-    ]);
+    expect(summarizeConnectError(error)).toMatchSnapshot();
   });
 });

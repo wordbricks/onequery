@@ -1,0 +1,155 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cli query action trail > completes validate actions and persists failure hints 1`] = `
+{
+  "failedAction": {
+    "errorDetail": "failed to decrypt credentials",
+    "errorHint": "verify the source configuration and retry",
+    "id": "<executeActionId>",
+    "stage": "completed",
+    "status": "query_preparation_failed",
+  },
+  "failedEvent": {
+    "errorDetail": "failed to decrypt credentials",
+    "errorHint": "verify the source configuration and retry",
+    "id": "<failedEventId>",
+  },
+  "validateAction": {
+    "id": "<validateActionId>",
+    "lastEventId": "<validatedEventId>",
+    "normalizedSql": "SELECT answer FROM stats LIMIT 1000",
+    "normalizedSqlChanged": true,
+    "stage": "completed",
+    "status": "succeeded",
+    "version": 3,
+  },
+}
+`;
+
+exports[`cli query action trail > folds the latest query action state while appending immutable events 1`] = `
+{
+  "action": {
+    "actionType": "execute",
+    "actorAuthMode": "browser_session",
+    "actorEmail": "jane@example.com",
+    "actorMembershipRoles": [
+      "owner",
+    ],
+    "actorUserId": "user_1",
+    "elapsedMs": 18,
+    "errorDetail": "write unavailable",
+    "id": "<actionId>",
+    "lastEventId": "<usagePersistFailedEventId>",
+    "normalizedSql": "SELECT answer FROM stats LIMIT 1000",
+    "normalizedSqlChanged": true,
+    "provider": "postgres",
+    "requestId": "req-1",
+    "rowCount": 1,
+    "sourceId": "source_1",
+    "sourceKey": "warehouse",
+    "sourceStatus": "active",
+    "stage": "completed",
+    "status": "succeeded",
+    "usagePersistenceStatus": "failed",
+    "version": 6,
+  },
+  "events": [
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": null,
+      "eventType": "action_received",
+      "sql": "select answer from stats",
+    },
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": "<receivedEventId>",
+      "eventType": "source_loaded",
+      "sql": null,
+    },
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": "<sourceLoadedEventId>",
+      "eventType": "query_validated",
+      "sql": null,
+    },
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": "<validatedEventId>",
+      "eventType": "credentials_loaded",
+      "sql": null,
+    },
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": "<credentialsLoadedEventId>",
+      "eventType": "query_executed",
+      "sql": null,
+    },
+    {
+      "actor": {
+        "actorAuthMode": "browser_session",
+        "actorEmail": "jane@example.com",
+        "actorMembershipRoles": [
+          "owner",
+        ],
+        "actorUserId": "user_1",
+      },
+      "causationEventId": "<executedEventId>",
+      "eventType": "usage_persist_failed",
+      "sql": null,
+    },
+  ],
+}
+`;
+
+exports[`cli query action trail > treats duplicate workflow event delivery as idempotent 1`] = `
+{
+  "action": {
+    "id": "<actionId>",
+    "lastEventId": "<sourceLoadedEventId>",
+    "stage": "validate_query",
+    "status": "pending",
+    "version": 2,
+  },
+  "first": {
+    "eventId": "<sourceLoadedEventId>",
+  },
+  "second": {
+    "eventId": "<sourceLoadedEventId>",
+  },
+}
+`;

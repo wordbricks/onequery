@@ -38,15 +38,7 @@ describe("cli query execution workflow", () => {
         sql: "select 1",
         timeoutMs: undefined,
       })
-    ).toEqual({
-      kind: "load_source",
-      orgSlug: "acme",
-      organizationId: "org-1",
-      requestId: "req-1",
-      sourceName: "warehouse",
-      sql: "select 1",
-      timeoutMs: null,
-    });
+    ).toMatchSnapshot();
   });
 
   it("rejects non-queryable sources during planning", () => {
@@ -74,13 +66,7 @@ describe("cli query execution workflow", () => {
         },
         state,
       })
-    ).toEqual({
-      kind: "source_not_queryable",
-      provider: "github",
-      requestId: "req-2",
-      sourceName: "github-main",
-      status: "active",
-    });
+    ).toMatchSnapshot();
   });
 
   it("moves valid plans toward credential loading", () => {
@@ -103,34 +89,17 @@ describe("cli query execution workflow", () => {
       throw new Error(`unexpected state: ${next.kind}`);
     }
 
-    expect(next).toEqual({
-      databaseType: "postgres",
-      kind: "validate_query",
-      requestId: "req-3",
-      source: postgresSource,
-      sourceName: "warehouse",
-      sql: "select * from stats",
-      timeoutMs: 15_000,
-    });
-
-    expect(
-      finishCliQueryValidation({
+    expect({
+      loadCredentials: finishCliQueryValidation({
         state: next,
         validation: {
           kind: "query_ready",
           normalizedSql: "SELECT * FROM stats LIMIT 1000",
           truncated: true,
         },
-      })
-    ).toEqual({
-      kind: "load_credentials",
-      normalizedSql: "SELECT * FROM stats LIMIT 1000",
-      requestId: "req-3",
-      source: postgresSource,
-      sourceName: "warehouse",
-      timeoutMs: 15_000,
-      truncated: true,
-    });
+      }),
+      validateQuery: next,
+    }).toMatchSnapshot();
   });
 
   it("treats credential preparation failures as terminal workflow data", () => {
@@ -151,12 +120,7 @@ describe("cli query execution workflow", () => {
           truncated: false,
         },
       })
-    ).toEqual({
-      detail: "failed to decrypt credentials",
-      hint: "verify the source configuration and retry",
-      kind: "query_preparation_failed",
-      requestId: "req-4",
-    });
+    ).toMatchSnapshot();
   });
 
   it("carries retryability as explicit execution result data", () => {
@@ -186,12 +150,7 @@ describe("cli query execution workflow", () => {
           truncated: false,
         },
       })
-    ).toEqual({
-      detail: "database temporarily unavailable",
-      kind: "query_unavailable",
-      requestId: "req-5",
-      retryable: true,
-    });
+    ).toMatchSnapshot();
   });
 
   it("keeps usage persistence best-effort in the driver", async () => {
@@ -243,28 +202,7 @@ describe("cli query execution workflow", () => {
         sql: "select answer from stats",
         timeoutMs: undefined,
       })
-    ).toEqual({
-      kind: "response_ready",
-      response: {
-        columns: [{ name: "answer", logicalType: "number" }],
-        elapsedMs: 18,
-        rowCount: 1,
-        rows: [["42"]],
-        source: {
-          displayName: null,
-          id: "source-1",
-          provider: "postgres",
-          sourceKey: "warehouse",
-          status: "active",
-        },
-        truncated: true,
-      },
-      usagePersistence: {
-        detail: "write unavailable",
-        kind: "usage_persist_failed",
-        sourceId: "source-1",
-      },
-    });
+    ).toMatchSnapshot();
   });
 
   it("emits execution workflow transition events in order", async () => {
@@ -313,48 +251,7 @@ describe("cli query execution workflow", () => {
       timeoutMs: undefined,
     });
 
-    expect(observeEvent.mock.calls.map(([event]) => event)).toEqual([
-      {
-        actionType: "execute",
-        requestId: "req-9",
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "source_loaded",
-      },
-      {
-        actionType: "execute",
-        normalizedSql: "SELECT answer FROM stats LIMIT 1000",
-        normalizedSqlChanged: true,
-        requestId: "req-9",
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "query_validated",
-      },
-      {
-        actionType: "execute",
-        requestId: "req-9",
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "credentials_loaded",
-      },
-      {
-        actionType: "execute",
-        elapsedMs: 12,
-        requestId: "req-9",
-        rowCount: 1,
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "query_executed",
-      },
-      {
-        actionType: "execute",
-        detail: "write unavailable",
-        requestId: "req-9",
-        sourceId: "source-1",
-        sourceKey: "warehouse",
-        type: "usage_persist_failed",
-      },
-    ]);
+    expect(observeEvent.mock.calls.map(([event]) => event)).toMatchSnapshot();
   });
 
   it("fails closed when execution trail writes fail", async () => {
@@ -436,15 +333,7 @@ describe("cli query execution workflow", () => {
         sql: "select answer from stats",
         timeoutMs: 20_000,
       })
-    ).toEqual({
-      kind: "ready",
-      normalizedSql: "SELECT answer FROM stats LIMIT 1000",
-      requestId: "req-7",
-      source: postgresSource,
-      sourceName: "warehouse",
-      timeoutMs: 20_000,
-      truncated: true,
-    });
+    ).toMatchSnapshot();
   });
 
   it("returns validation rejections before credential loading", async () => {
@@ -469,11 +358,7 @@ describe("cli query execution workflow", () => {
         sql: "delete from stats",
         timeoutMs: undefined,
       })
-    ).toEqual({
-      detail: "Only SELECT queries are allowed. Got: delete",
-      kind: "query_rejected",
-      requestId: "req-8",
-    });
+    ).toMatchSnapshot();
   });
 
   it("emits validation workflow transition events in order", async () => {
@@ -499,24 +384,7 @@ describe("cli query execution workflow", () => {
       timeoutMs: undefined,
     });
 
-    expect(observeEvent.mock.calls.map(([event]) => event)).toEqual([
-      {
-        actionType: "validate",
-        requestId: "req-10",
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "source_loaded",
-      },
-      {
-        actionType: "validate",
-        normalizedSql: "SELECT answer FROM stats LIMIT 1000",
-        normalizedSqlChanged: true,
-        requestId: "req-10",
-        source: postgresSource,
-        sourceKey: "warehouse",
-        type: "query_validated",
-      },
-    ]);
+    expect(observeEvent.mock.calls.map(([event]) => event)).toMatchSnapshot();
   });
 
   it("fails closed when validation trail writes fail", async () => {
