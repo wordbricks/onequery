@@ -8,7 +8,6 @@ use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
-use crate::transport::api_failure::try_into_option;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -31,10 +30,21 @@ pub(crate) type SourceApiOperation = types::CliSourceApiOperation;
 pub(crate) type SourceApiDescriptor = types::DescribeSourceApiResponse;
 pub(crate) type SourceApiDraft = types::SourceApiDraft;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
-pub(crate) type PrepareSourceApiResult = types::PrepareSourceApiResponse;
 pub(crate) type PreparedSourceApiPreview = types::PreparedSourceApiPreview;
-pub(crate) type ExecutePreparedSourceApiResult = types::ExecutePreparedSourceApiResponse;
-pub(crate) type SourceApiResponseBody = types::execute_prepared_source_api_response::Body;
+pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
+pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body;
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct SourceApiExecutionPage {
+    pub(crate) source: MessageField<SourceApiSource>,
+    pub(crate) operation: String,
+    pub(crate) selector: Option<String>,
+    pub(crate) status: u32,
+    pub(crate) headers: Vec<SourceApiHeader>,
+    pub(crate) content_type: String,
+    pub(crate) body: Option<SourceApiResponseBody>,
+    pub(crate) continuation_token: Option<String>,
+}
 
 pub(crate) async fn describe_source_api(
     client: &AuthenticatedApiClient,
@@ -67,16 +77,28 @@ pub(crate) async fn describe_source_api(
     })
 }
 
-pub(crate) async fn prepare_source_api(
+pub(crate) async fn execute_source_api(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
     draft: &SourceApiDraft,
-) -> Result<ApiSuccess<PrepareSourceApiResult>, ApiFailure> {
+    preview_only: bool,
+) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
     let response = match client
         .cli()
-        .prepare_source_api(types::PrepareSourceApiRequest {
-            draft: MessageField::some(source_api_draft_with_context(org, source_key, draft)?),
+        .execute_source_api(types::ExecuteSourceApiRequest {
+            input: Some(types::execute_source_api_request::Input::Start(Box::new(
+                types::StartSourceApiExecution {
+                    draft: MessageField::some(source_api_draft_with_context(org, source_key, draft)?),
+                    mode: if preview_only {
+                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
+                    } else {
+                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_EXECUTE
+                    }
+                    .into(),
+                    ..Default::default()
+                },
+            ))),
             ..Default::default()
         })
         .await
@@ -88,7 +110,7 @@ pub(crate) async fn prepare_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    validate_prepare_source_api_result(&payload, request_id.clone())?;
+    validate_execute_source_api_result(&payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -96,16 +118,22 @@ pub(crate) async fn prepare_source_api(
     })
 }
 
-pub(crate) async fn execute_prepared_source_api(
+pub(crate) async fn resume_source_api(
     client: &AuthenticatedApiClient,
-    prepared_token: &str,
-    page_token: Option<&str>,
-) -> Result<ApiSuccess<ExecutePreparedSourceApiResult>, ApiFailure> {
+    continuation_token: &str,
+) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
     let response = match client
         .cli()
-        .execute_prepared_source_api(types::ExecutePreparedSourceApiRequest {
-            prepared_token: try_into_value(prepared_token, ErrorStage::ExecuteQuery)?,
-            page_token: try_into_option(page_token, ErrorStage::ExecuteQuery)?,
+        .execute_source_api(types::ExecuteSourceApiRequest {
+            input: Some(types::execute_source_api_request::Input::Resume(Box::new(
+                types::ResumeSourceApiExecution {
+                    continuation_token: try_into_value(
+                        continuation_token,
+                        ErrorStage::ExecuteQuery,
+                    )?,
+                    ..Default::default()
+                },
+            ))),
             ..Default::default()
         })
         .await
@@ -117,7 +145,7 @@ pub(crate) async fn execute_prepared_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    validate_execute_prepared_source_api_result(&payload, request_id.clone())?;
+    validate_execute_source_api_result(&payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -158,8 +186,8 @@ pub(crate) fn source_api_pagination_policy_or_none(
     value: EnumValue<SourceApiPaginationPolicy>,
 ) -> SourceApiPaginationPolicy {
     match value.as_known() {
-        Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN) => {
-            SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN
+        Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN) => {
+            SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
         }
         Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
         | Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED)
@@ -229,7 +257,9 @@ pub(crate) fn source_api_pagination_policy_label(
 ) -> &'static str {
     match source_api_pagination_policy_or_none(value) {
         SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE => "none",
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN => "opaque_token",
+        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN => {
+            "continuation_token"
+        }
         SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED => unreachable!(),
     }
 }
@@ -386,34 +416,31 @@ fn validate_required_operation_message(
     ))
 }
 
-fn validate_prepare_source_api_result(
-    value: &PrepareSourceApiResult,
+fn validate_execute_source_api_result(
+    value: &ExecuteSourceApiResult,
     request_id: Option<String>,
 ) -> Result<(), ApiFailure> {
-    if value.preview.is_set() {
-        return Ok(());
+    if !value.preview.is_set() {
+        return Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API execution response missing preview",
+            request_id,
+        ));
     }
 
-    Err(decode_failure(
-        ErrorStage::ExecuteQuery,
-        "source API prepare response missing preview",
-        request_id,
-    ))
-}
+    if value.result.is_set() {
+        if value.result.source.is_set() {
+            return Ok(());
+        }
 
-fn validate_execute_prepared_source_api_result(
-    value: &ExecutePreparedSourceApiResult,
-    request_id: Option<String>,
-) -> Result<(), ApiFailure> {
-    if value.source.is_set() {
-        return Ok(());
+        return Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API execution response missing source metadata",
+            request_id,
+        ));
     }
 
-    Err(decode_failure(
-        ErrorStage::ExecuteQuery,
-        "source API execution response missing source metadata",
-        request_id,
-    ))
+    Ok(())
 }
 
 #[cfg(test)]
@@ -431,14 +458,13 @@ mod tests {
     use super::source_api_pagination_policy_label;
     use super::source_api_selector_kind_or_none;
     use super::types;
-    use super::validate_prepare_source_api_result;
+    use super::validate_execute_source_api_result;
     use crate::transport::api_failure::ApiFailure;
 
     #[test]
-    fn validate_prepare_source_api_result_requires_preview() {
-        let error = validate_prepare_source_api_result(
-            &types::PrepareSourceApiResponse {
-                prepared_token: "prepared_123".to_owned(),
+    fn validate_execute_source_api_result_requires_preview() {
+        let error = validate_execute_source_api_result(
+            &types::ExecuteSourceApiResponse {
                 ..Default::default()
             },
             Some("req_cli_123".to_owned()),
@@ -449,7 +475,7 @@ mod tests {
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
-                message: "source API prepare response missing preview".to_owned(),
+                message: "source API execution response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
             })
         );
@@ -505,12 +531,28 @@ mod tests {
     }
 
     #[test]
-    fn validate_execute_prepared_source_api_result_requires_source() {
-        let error = execute_prepared_source_api_result(
-            &types::ExecutePreparedSourceApiResponse {
-                operation: "fetch".to_owned(),
-                status: 200,
-                content_type: "application/json".to_owned(),
+    fn validate_execute_source_api_result_requires_source() {
+        let error = execute_source_api_result(
+            &types::ExecuteSourceApiResponse {
+                preview: buffa::MessageField::some(types::PreparedSourceApiPreview {
+                    source_key: "github-prod".to_owned(),
+                    provider: "github".to_owned(),
+                    operation: "fetch".to_owned(),
+                    kind:
+                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                            .into(),
+                    body_kind: types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE.into(),
+                    pagination_policy:
+                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
+                            .into(),
+                    ..Default::default()
+                }),
+                result: buffa::MessageField::some(types::SourceApiExecutionResult {
+                    operation: "fetch".to_owned(),
+                    status: 200,
+                    content_type: "application/json".to_owned(),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             Some("req_missing_source".to_owned()),
@@ -543,10 +585,10 @@ mod tests {
         );
         assert_eq!(
             source_api_pagination_policy_label(
-                types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN
+                types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
                     .into(),
             ),
-            "opaque_token"
+            "continuation_token"
         );
         assert_eq!(
             source_api_input_mode_label(
@@ -643,10 +685,10 @@ mod tests {
         super::validate_source_api_descriptor(value, request_id)
     }
 
-    fn execute_prepared_source_api_result(
-        value: &types::ExecutePreparedSourceApiResponse,
+    fn execute_source_api_result(
+        value: &types::ExecuteSourceApiResponse,
         request_id: Option<String>,
     ) -> Result<(), ApiFailure> {
-        super::validate_execute_prepared_source_api_result(value, request_id)
+        super::validate_execute_source_api_result(value, request_id)
     }
 }

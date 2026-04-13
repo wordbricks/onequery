@@ -10,8 +10,7 @@ import "onequery/cli/v1/source_api.proto";
 
 service CliService {
   rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse);
-  rpc PrepareSourceApi(PrepareSourceApiRequest) returns (PrepareSourceApiResponse);
-  rpc ExecutePreparedSourceApi(ExecutePreparedSourceApiRequest) returns (ExecutePreparedSourceApiResponse);
+  rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);
   rpc GetSession(GetSessionRequest) returns (GetSessionResponse);
   rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
   rpc StartDeviceAuthorization(StartDeviceAuthorizationRequest) returns (StartDeviceAuthorizationResponse);

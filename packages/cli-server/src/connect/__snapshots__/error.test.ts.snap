@@ -303,6 +303,22 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "rawMessage": "Source API Execution Failed",
     "retryInfo": [],
   },
+  "SOURCE_API_EXECUTION_STATE_INVALID": {
+    "badRequest": [],
+    "cliDetails": [
+      {
+        "code": "source_api_execution_state_invalid",
+        "hint": "rerun the \`onequery api\` command to refresh source API execution state",
+        "retryable": false,
+        "stage": "execute_query",
+        "title": "Source API Execution State Invalid",
+      },
+    ],
+    "code": "FailedPrecondition",
+    "metadata": {},
+    "rawMessage": "Source API Execution State Invalid",
+    "retryInfo": [],
+  },
   "SOURCE_API_FORBIDDEN": {
     "badRequest": [],
     "cliDetails": [
@@ -333,22 +349,6 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "code": "Internal",
     "metadata": {},
     "rawMessage": "Source API Preparation Failed",
-    "retryInfo": [],
-  },
-  "SOURCE_API_PREPARED_REQUEST_INVALID": {
-    "badRequest": [],
-    "cliDetails": [
-      {
-        "code": "source_api_prepared_request_invalid",
-        "hint": "rerun the \`onequery api\` command to refresh prepared source API state",
-        "retryable": false,
-        "stage": "execute_query",
-        "title": "Prepared Source API Request Invalid",
-      },
-    ],
-    "code": "FailedPrecondition",
-    "metadata": {},
-    "rawMessage": "Prepared Source API Request Invalid",
     "retryInfo": [],
   },
   "SOURCE_API_SOURCE_UNAVAILABLE": {

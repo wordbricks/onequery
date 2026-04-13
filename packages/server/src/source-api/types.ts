@@ -7,7 +7,7 @@ export type SourceApiOperationKind = "http_request" | "structured_request";
 
 export type SourceApiSelectorKind = "none" | "path" | "identifier";
 
-export type SourceApiPaginationPolicy = "none" | "opaque_token";
+export type SourceApiPaginationPolicy = "none" | "continuation_token";
 
 export type SourceApiBodyKind = "none" | "json" | "text" | "binary";
 
@@ -154,7 +154,7 @@ export type SourceApiExecutionResponse = {
   headers: readonly SourceApiHeader[];
   contentType: string;
   body: SourceApiResponseBody;
-  nextPageToken?: string;
+  continuationToken?: string;
 };
 
 type SourceApiPreparedBase = {
@@ -246,13 +246,12 @@ export type PreparedSourceApiPreview = {
   paginationPolicy: SourceApiPaginationPolicy;
 };
 
-export type SourceApiPaginationTokenPayload = {
-  sourceKey: string;
-  operation: string;
-  preparedBinding: string;
-  descriptorVersion?: string;
+export type SourceApiContinuationTokenPayload = {
+  version: 1;
+  organizationSlug: string;
   issuedAt: string;
   expiresAt: string;
+  prepared: PreparedSourceApi;
   state: JsonValue;
 };
 

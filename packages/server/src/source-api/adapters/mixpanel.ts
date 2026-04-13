@@ -196,7 +196,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
           notes: [
             "Use `where`, `page`, `pageSize`, and `outputProperties` to shape the Engage request.",
           ],
-          paginationPolicy: "opaque_token",
+          paginationPolicy: "continuation_token",
           summary: "Query Mixpanel Engage profiles.",
         }),
         createStructuredRequestOperation({
@@ -427,7 +427,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
         case "query_segmentation":
           if (continuation !== undefined) {
             throw new MixpanelInvalidRequestError(
-              'Mixpanel operation "query_segmentation" does not accept page_token continuation'
+              'Mixpanel operation "query_segmentation" does not accept continuation token resume'
             );
           }
           response = await requestMixpanelSourceApi({
@@ -452,7 +452,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
 
     if (continuation !== undefined) {
       throw new MixpanelInvalidRequestError(
-        `Mixpanel operation "${prepared.operation}" does not accept page_token continuation`
+        `Mixpanel operation "${prepared.operation}" does not accept continuation token resume`
       );
     }
 
@@ -744,7 +744,7 @@ function parseMixpanelEngageContinuationState(
   }
 
   throw new MixpanelInvalidRequestError(
-    "Invalid Mixpanel query_engage page_token continuation state"
+    "Invalid Mixpanel query_engage continuation token state"
   );
 }
 

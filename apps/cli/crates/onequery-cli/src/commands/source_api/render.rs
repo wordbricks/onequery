@@ -1,6 +1,6 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
-use crate::transport::source_api::ExecutePreparedSourceApiResult;
+use crate::transport::source_api::SourceApiExecutionPage;
 use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
@@ -82,7 +82,7 @@ pub(super) fn render_dry_run_output(
 }
 
 pub(super) fn render_execute_output(
-    responses: Vec<ExecutePreparedSourceApiResult>,
+    responses: Vec<SourceApiExecutionPage>,
     preview: &PreparedSourceApiPreview,
     render: SourceApiRenderOptions,
 ) -> Result<CommandOutput, CliError> {
@@ -111,7 +111,7 @@ pub(super) fn render_execute_output(
 }
 
 fn serialize_execute_response(
-    response: &ExecutePreparedSourceApiResult,
+    response: &SourceApiExecutionPage,
     preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
@@ -122,14 +122,14 @@ fn serialize_execute_response(
             json_body_value(response.body.as_ref())?
         };
 
-        return Ok(match (body, response.next_page_token.as_deref()) {
+        return Ok(match (body, response.continuation_token.as_deref()) {
             (Some(body), None) => body,
-            (Some(body), Some(next_page_token)) => serde_json::json!({
+            (Some(body), Some(continuation_token)) => serde_json::json!({
                 "body": body,
-                "nextPageToken": next_page_token,
+                "continuationToken": continuation_token,
             }),
-            (None, Some(next_page_token)) => serde_json::json!({
-                "nextPageToken": next_page_token,
+            (None, Some(continuation_token)) => serde_json::json!({
+                "continuationToken": continuation_token,
             }),
             (None, None) => serde_json::Value::Null,
         });
@@ -176,7 +176,7 @@ fn serialize_dry_run_plan(
 }
 
 fn serialize_verbose_execute_response(
-    response: &ExecutePreparedSourceApiResult,
+    response: &SourceApiExecutionPage,
     preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
@@ -209,10 +209,10 @@ fn serialize_verbose_execute_response(
     {
         object.insert("body".to_owned(), body);
     }
-    if let Some(next_page_token) = response.next_page_token.as_ref() {
+    if let Some(continuation_token) = response.continuation_token.as_ref() {
         object.insert(
-            "nextPageToken".to_owned(),
-            serde_json::Value::String(next_page_token.clone()),
+            "continuationToken".to_owned(),
+            serde_json::Value::String(continuation_token.clone()),
         );
     }
 
@@ -246,9 +246,9 @@ fn json_body_value(
 }
 
 fn assemble_execute_response(
-    responses: Vec<ExecutePreparedSourceApiResult>,
+    responses: Vec<SourceApiExecutionPage>,
     render: &SourceApiRenderOptions,
-) -> Result<ExecutePreparedSourceApiResult, CliError> {
+) -> Result<SourceApiExecutionPage, CliError> {
     let mut responses = responses.into_iter();
     let mut response = responses.next().ok_or_else(|| {
         source_api_render_error(
@@ -270,12 +270,12 @@ fn assemble_execute_response(
 }
 
 fn assemble_paginated_response(
-    first: ExecutePreparedSourceApiResult,
-    remaining: Vec<ExecutePreparedSourceApiResult>,
+    first: SourceApiExecutionPage,
+    remaining: Vec<SourceApiExecutionPage>,
     slurp: bool,
-) -> Result<ExecutePreparedSourceApiResult, CliError> {
+) -> Result<SourceApiExecutionPage, CliError> {
     let last_page = remaining.last().unwrap_or(&first);
-    let next_page_token = last_page.next_page_token.clone();
+    let continuation_token = last_page.continuation_token.clone();
     let body = assemble_paginated_body(
         std::iter::once(&first)
             .chain(remaining.iter())
@@ -285,7 +285,7 @@ fn assemble_paginated_response(
     )?;
     let mut response = first;
     response.body = body;
-    response.next_page_token = next_page_token;
+    response.continuation_token = continuation_token;
     Ok(response)
 }
 
@@ -893,7 +893,7 @@ fn render_example_lines(example: &crate::transport::source_api::SourceApiExample
 }
 
 fn render_response_lines(
-    response: &ExecutePreparedSourceApiResult,
+    response: &SourceApiExecutionPage,
     render: &SourceApiRenderOptions,
 ) -> Result<Vec<String>, CliError> {
     let mut lines = Vec::new();
@@ -925,7 +925,7 @@ fn render_response_lines(
 }
 
 fn render_response_text_stdout(
-    response: &ExecutePreparedSourceApiResult,
+    response: &SourceApiExecutionPage,
     render: &SourceApiRenderOptions,
 ) -> Option<String> {
     if render.silent {
@@ -955,7 +955,7 @@ fn render_response_text_stdout(
 }
 
 fn render_response_stdout_bytes(
-    response: &ExecutePreparedSourceApiResult,
+    response: &SourceApiExecutionPage,
     render: &SourceApiRenderOptions,
 ) -> Result<Option<Vec<u8>>, CliError> {
     if render.silent {
@@ -1051,7 +1051,7 @@ mod tests {
     use crate::transport::source_api::SourceApiSource;
     use crate::transport::source_api::proto_json_value_from_json;
 
-    use super::ExecutePreparedSourceApiResult;
+    use super::SourceApiExecutionPage;
     use super::SourceApiRenderOptions;
     use super::SourceApiResponseBody;
     use super::render_dry_run_output;
@@ -1095,7 +1095,7 @@ mod tests {
     fn render_dry_run_output_serializes_verbose_prepared_preview_shape() {
         let output = render_dry_run_output(
             &prepared_preview(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN,
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             true,
         )
@@ -1119,7 +1119,7 @@ mod tests {
                 "headerNames": ["accept"],
                 "bodyKind": "json",
                 "bodyPaths": ["params"],
-                "paginationPolicy": "opaque_token"
+                "paginationPolicy": "continuation_token"
             })
         );
     }
@@ -1516,8 +1516,8 @@ mod tests {
         );
     }
 
-    fn json_response(body: SourceApiResponseBody) -> ExecutePreparedSourceApiResult {
-        ExecutePreparedSourceApiResult {
+    fn json_response(body: SourceApiResponseBody) -> SourceApiExecutionPage {
+        SourceApiExecutionPage {
             source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
                 provider: "github".to_owned(),
@@ -1530,7 +1530,7 @@ mod tests {
             headers: Vec::new(),
             content_type: "application/json".to_owned(),
             body: Some(body),
-            next_page_token: None,
+            continuation_token: None,
             ..Default::default()
         }
     }

@@ -25,11 +25,12 @@ import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import { CliOrgCapability } from "../gen/onequery/cli/v1/org_pb";
 import { CliQueryLogicalType } from "../gen/onequery/cli/v1/query_pb";
 import type {
-  PrepareSourceApiRequest,
+  ExecuteSourceApiRequest,
   SourceApiDraft as CliSourceApiDraft,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   CliSourceApiBodyKind,
+  CliSourceApiExecuteMode,
   CliSourceApiInputMode,
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
@@ -189,17 +190,26 @@ export function toCliQueryLogicalType(value: string) {
   }
 }
 
-export function requireCliSourceApiDraft(
-  draft: PrepareSourceApiRequest["draft"]
-): CliSourceApiDraft {
-  if (draft) {
-    return draft;
+export function requireCliSourceApiExecutionStart(
+  input: ExecuteSourceApiRequest["input"]
+) {
+  if (input.case === "start" && input.value.draft) {
+    return {
+      draft: input.value.draft,
+      mode: input.value.mode,
+    };
   }
 
   throwCliConnectError({
     detail: "source API request missing draft payload",
     key: "READ_QUERY_INPUT_INVALID",
   });
+}
+
+export function isCliSourceApiPreviewOnlyMode(
+  value: CliSourceApiExecuteMode
+): boolean {
+  return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
 }
 
 export function fromCliSourceApiDraft(
@@ -226,28 +236,31 @@ export function toCliDescribeSourceApiResponse(value: SourceApiDescriptor) {
   };
 }
 
-export function toCliPrepareSourceApiResponse(input: {
-  preparedToken: string;
-  preview: PreparedSourceApiPreview;
-}) {
-  return {
-    preparedToken: input.preparedToken,
-    preview: toCliPreparedSourceApiPreview(input.preview),
-  };
-}
-
-export function toCliExecutePreparedSourceApiResponse(
+export function toCliSourceApiExecutionResult(
   value: SourceApiExecutionResponse
 ) {
   return {
     body: toCliSourceApiResponseBody(value.body),
     contentType: value.contentType,
     headers: value.headers.map(toCliSourceApiHeader),
-    nextPageToken: value.nextPageToken,
     operation: value.operation,
     selector: value.selector,
     source: toCliSourceApiSource(value.source),
     status: value.status,
+  };
+}
+
+export function toCliExecuteSourceApiResponse(input: {
+  continuationToken?: string;
+  preview: PreparedSourceApiPreview;
+  result?: SourceApiExecutionResponse;
+}) {
+  return {
+    continuationToken: input.continuationToken,
+    preview: toCliPreparedSourceApiPreview(input.preview),
+    result: input.result
+      ? toCliSourceApiExecutionResult(input.result)
+      : undefined,
   };
 }
 
@@ -393,8 +406,8 @@ function toCliSourceApiPaginationPolicy(
   switch (value) {
     case "none":
       return CliSourceApiPaginationPolicy.NONE;
-    case "opaque_token":
-      return CliSourceApiPaginationPolicy.OPAQUE_TOKEN;
+    case "continuation_token":
+      return CliSourceApiPaginationPolicy.CONTINUATION_TOKEN;
   }
 }
 

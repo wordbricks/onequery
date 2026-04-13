@@ -32,6 +32,7 @@ exports[`source api WKT conversions > round-trips response JSON bodies through g
 {
   "bodyCase": "json",
   "contentType": "application/json",
+  "continuationToken": "continuation_2",
   "jsonBody": {
     "id": 1,
     "labels": [
@@ -40,8 +41,24 @@ exports[`source api WKT conversions > round-trips response JSON bodies through g
     ],
     "private": false,
   },
-  "nextPageToken": "page_2",
   "operation": "fetch",
+  "preview": {
+    "$typeName": "onequery.cli.v1.PreparedSourceApiPreview",
+    "bodyKind": 2,
+    "bodyPaths": [],
+    "headerNames": [
+      "accept",
+    ],
+    "host": "api.github.com",
+    "kind": 1,
+    "method": "GET",
+    "operation": "fetch",
+    "paginationPolicy": 2,
+    "provider": "github",
+    "selector": "/issues",
+    "sourceKey": "github-prod",
+    "url": "https://api.github.com/issues",
+  },
   "requestId": undefined,
   "selector": "/issues",
   "source": {

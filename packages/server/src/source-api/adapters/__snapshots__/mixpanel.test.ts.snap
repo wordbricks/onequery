@@ -102,7 +102,7 @@ exports[`mixpanel source api adapter > describes structured and HTTP operations 
       "notes": [
         "Use \`where\`, \`page\`, \`pageSize\`, and \`outputProperties\` to shape the Engage request.",
       ],
-      "paginationPolicy": "opaque_token",
+      "paginationPolicy": "continuation_token",
       "selectorKind": "none",
       "selectorLabel": undefined,
       "summary": "Query Mixpanel Engage profiles.",

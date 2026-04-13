@@ -20,13 +20,13 @@ describe("cli domain model", () => {
 
   it("keeps CLI problem metadata in the canonical catalog", () => {
     expect({
-      sourceApiPreparedRequestInvalid: {
-        ...CLI_PROBLEM_CATALOG.SOURCE_API_PREPARED_REQUEST_INVALID,
+      sourceApiExecutionStateInvalid: {
+        ...CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID,
         code: cliProblemCodeToString(
-          CLI_PROBLEM_CATALOG.SOURCE_API_PREPARED_REQUEST_INVALID.code
+          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.code
         ),
         stage: cliProblemStageToString(
-          CLI_PROBLEM_CATALOG.SOURCE_API_PREPARED_REQUEST_INVALID.stage
+          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.stage
         ),
       },
       sourceNotFound: {

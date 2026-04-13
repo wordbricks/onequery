@@ -255,15 +255,15 @@ export const CLI_PROBLEM_CATALOG = {
     retryable: false,
     hint: "retry `onequery api --source <source>`",
   },
-  SOURCE_API_PREPARED_REQUEST_INVALID: {
-    type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-prepared-request-invalid`,
+  SOURCE_API_EXECUTION_STATE_INVALID: {
+    type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-execution-state-invalid`,
     status: 410,
     connectCode: "failed_precondition",
-    title: "Prepared Source API Request Invalid",
-    code: CliProblemCode.SOURCE_API_PREPARED_REQUEST_INVALID,
+    title: "Source API Execution State Invalid",
+    code: CliProblemCode.SOURCE_API_EXECUTION_STATE_INVALID,
     stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
-    hint: "rerun the `onequery api` command to refresh prepared source API state",
+    hint: "rerun the `onequery api` command to refresh source API execution state",
   },
   SOURCE_API_SOURCE_UNAVAILABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/source-api-source-unavailable`,

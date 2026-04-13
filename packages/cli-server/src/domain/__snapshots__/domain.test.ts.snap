@@ -2,15 +2,15 @@
 
 exports[`cli domain model > keeps CLI problem metadata in the canonical catalog 1`] = `
 {
-  "sourceApiPreparedRequestInvalid": {
-    "code": "source_api_prepared_request_invalid",
+  "sourceApiExecutionStateInvalid": {
+    "code": "source_api_execution_state_invalid",
     "connectCode": "failed_precondition",
-    "hint": "rerun the \`onequery api\` command to refresh prepared source API state",
+    "hint": "rerun the \`onequery api\` command to refresh source API execution state",
     "retryable": false,
     "stage": "execute_query",
     "status": 410,
-    "title": "Prepared Source API Request Invalid",
-    "type": "https://onequery.invalid/problems/cli/source-api-prepared-request-invalid",
+    "title": "Source API Execution State Invalid",
+    "type": "https://onequery.invalid/problems/cli/source-api-execution-state-invalid",
   },
   "sourceNotFound": {
     "code": "source_not_found",

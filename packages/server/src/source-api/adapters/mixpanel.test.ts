@@ -192,7 +192,7 @@ describe("mixpanel source api adapter", () => {
         kind: "structured_request",
         method: "POST",
         operation: "query_engage",
-        paginationPolicy: "opaque_token",
+        paginationPolicy: "continuation_token",
         preparedBinding: "binding",
         provider: "mixpanel",
         request: {

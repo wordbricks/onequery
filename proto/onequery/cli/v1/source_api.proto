@@ -52,10 +52,6 @@ message SourceApiDraft {
   }
 }
 
-message PrepareSourceApiRequest {
-  SourceApiDraft draft = 1 [(buf.validate.field).required = true];
-}
-
 message PreparedSourceApiPreview {
   string source_key = 1 [
     (buf.validate.field).string.min_len = 1,
@@ -92,17 +88,28 @@ message PreparedSourceApiPreview {
   ];
 }
 
-message PrepareSourceApiResponse {
-  string prepared_token = 1 [(buf.validate.field).string.min_len = 1];
-  PreparedSourceApiPreview preview = 2 [(buf.validate.field).required = true];
+message StartSourceApiExecution {
+  SourceApiDraft draft = 1 [(buf.validate.field).required = true];
+  CliSourceApiExecuteMode mode = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
-message ExecutePreparedSourceApiRequest {
-  string prepared_token = 1 [(buf.validate.field).string.min_len = 1];
-  optional string page_token = 2 [(buf.validate.field).string.min_len = 1];
+message ResumeSourceApiExecution {
+  string continuation_token = 1 [(buf.validate.field).string.min_len = 1];
 }
 
-message ExecutePreparedSourceApiResponse {
+message ExecuteSourceApiRequest {
+  oneof input {
+    option (buf.validate.oneof).required = true;
+
+    StartSourceApiExecution start = 1;
+    ResumeSourceApiExecution resume = 2;
+  }
+}
+
+message SourceApiExecutionResult {
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
   string operation = 2 [
     (buf.validate.field).string.min_len = 1,
@@ -119,7 +126,12 @@ message ExecutePreparedSourceApiResponse {
   }
   reserved 10;
   reserved "request_id";
-  optional string next_page_token = 11 [(buf.validate.field).string.min_len = 1];
+}
+
+message ExecuteSourceApiResponse {
+  PreparedSourceApiPreview preview = 1 [(buf.validate.field).required = true];
+  SourceApiExecutionResult result = 2;
+  optional string continuation_token = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiSource {
@@ -220,7 +232,13 @@ enum CliSourceApiSelectorKind {
 enum CliSourceApiPaginationPolicy {
   CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
   CLI_SOURCE_API_PAGINATION_POLICY_NONE = 1;
-  CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN = 2;
+  CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
+}
+
+enum CliSourceApiExecuteMode {
+  CLI_SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
+  CLI_SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
+  CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
 }
 
 enum CliSourceApiBodyKind {

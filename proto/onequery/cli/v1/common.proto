@@ -41,7 +41,7 @@ enum CliProblemCode {
   CLI_PROBLEM_CODE_SOURCE_API_EXECUTION_FAILED = 15;
   CLI_PROBLEM_CODE_SOURCE_API_FORBIDDEN = 16;
   CLI_PROBLEM_CODE_SOURCE_API_PREPARATION_FAILED = 17;
-  CLI_PROBLEM_CODE_SOURCE_API_PREPARED_REQUEST_INVALID = 18;
+  CLI_PROBLEM_CODE_SOURCE_API_EXECUTION_STATE_INVALID = 18;
   CLI_PROBLEM_CODE_SOURCE_API_SOURCE_UNAVAILABLE = 19;
   CLI_PROBLEM_CODE_SOURCE_NOT_FOUND = 20;
   CLI_PROBLEM_CODE_SOURCE_NAME_CONFLICT = 21;
@@ -58,18 +58,14 @@ enum CliProblemStage {
 }
 
 message CliErrorDetail {
-  CliProblemCode code = 1 [
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    }
-  ];
-  CliProblemStage stage = 2 [
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    }
-  ];
+  CliProblemCode code = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  CliProblemStage stage = 2 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
   string title = 3 [(buf.validate.field).string.min_len = 1];
   optional string hint = 4 [(buf.validate.field).string.min_len = 1];
   bool retryable = 5;

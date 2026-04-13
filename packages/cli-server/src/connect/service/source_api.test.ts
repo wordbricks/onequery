@@ -11,24 +11,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   CliSourceApiBodyKind,
+  CliSourceApiExecuteMode,
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
   DescribeSourceApiRequestSchema,
   DescribeSourceApiResponseSchema,
-  ExecutePreparedSourceApiRequestSchema,
-  ExecutePreparedSourceApiResponseSchema,
-  PrepareSourceApiRequestSchema,
-  PrepareSourceApiResponseSchema,
+  ExecuteSourceApiRequestSchema,
+  ExecuteSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import type {
   DescribeSourceApiResponse,
-  ExecutePreparedSourceApiResponse,
-  PrepareSourceApiResponse,
+  ExecuteSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import {
   createHandleDescribeSourceApi,
-  createHandleExecutePreparedSourceApi,
-  createHandlePrepareSourceApi,
+  createHandleExecuteSourceApi,
 } from "./source_api";
 
 expect.addSnapshotSerializer({
@@ -179,11 +176,17 @@ const preparedPreview = {
   url: "https://api.github.com/issues",
 } as const;
 
-const decodedPreparedToken = {
+const decodedContinuationToken = {
   expiresAt: "2026-04-10T00:05:00.000Z",
   issuedAt: "2026-04-10T00:00:00.000Z",
   organizationSlug: "acme",
-  prepared,
+  prepared: {
+    ...prepared,
+    paginationPolicy: "continuation_token",
+  },
+  state: {
+    cursor: "page_2",
+  },
   version: 1 as const,
 };
 
@@ -220,26 +223,17 @@ function createHarness() {
     buildCliRequestLogDetails: vi.fn(
       (_: unknown, details?: Record<string, unknown>) => ({
         method: "POST",
-        path: "/connectrpc/onequery.cli.v1.CliService/PrepareSourceApi",
+        path: "/connectrpc/onequery.cli.v1.CliService/ExecuteSourceApi",
         requestId: "req_cli_123",
         ...(details ?? {}),
       })
     ),
     createPreparedSourceApiPreview: vi.fn().mockReturnValue(preparedPreview),
-    decodeOpaquePageToken: vi.fn().mockReturnValue({
-      expiresAt: "2026-04-10T00:04:00.000Z",
-      issuedAt: "2026-04-10T00:01:00.000Z",
-      operation: "fetch",
-      preparedBinding: "prepared_binding_123",
-      sourceKey: "github-prod",
-      state: {
-        cursor: "page_2",
-      },
-    }),
-    decodePreparedSourceApiToken: vi.fn().mockReturnValue(decodedPreparedToken),
+    decodeSourceApiContinuationToken: vi
+      .fn()
+      .mockReturnValue(decodedContinuationToken),
     describeSourceApi: vi.fn().mockResolvedValue(descriptor),
-    encodeOpaquePageToken: vi.fn().mockReturnValue("page_2"),
-    encodePreparedSourceApiToken: vi.fn().mockReturnValue("prepared_token_1"),
+    encodeSourceApiContinuationToken: vi.fn().mockReturnValue("continuation_2"),
     executePreparedSourceApi: vi.fn().mockResolvedValue(executionResponse),
     getCliLogLevelForStatus: vi.fn((): "info" => "info"),
     logCliEvent: vi.fn(),
@@ -260,9 +254,7 @@ function createHarness() {
   return {
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
-    handleExecutePreparedSourceApi:
-      createHandleExecutePreparedSourceApi(dependencies),
-    handlePrepareSourceApi: createHandlePrepareSourceApi(dependencies),
+    handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
     requestContext,
   };
 }
@@ -302,10 +294,29 @@ function summarizeDescribeSourceApiResponse(
   };
 }
 
-function summarizePrepareSourceApiResponse(response: PrepareSourceApiResponse) {
+function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
   const preview = response.preview;
+  const result = response.result;
+  const body =
+    result?.body.case === "json"
+      ? {
+          case: "json",
+          value: toJson(ValueSchema, create(ValueSchema, result.body.value)),
+        }
+      : result?.body.case === "text"
+        ? {
+            case: "text",
+            value: result.body.value,
+          }
+        : result?.body.case === "binary"
+          ? {
+              case: "binary",
+              value: Array.from(result.body.value),
+            }
+          : null;
+
   return {
-    preparedToken: response.preparedToken,
+    continuationToken: response.continuationToken ?? null,
     preview: preview
       ? {
           bodyKind: CliSourceApiBodyKind[preview.bodyKind],
@@ -323,39 +334,17 @@ function summarizePrepareSourceApiResponse(response: PrepareSourceApiResponse) {
           url: preview.url ?? null,
         }
       : null,
-  };
-}
-
-function summarizeExecutePreparedSourceApiResponse(
-  response: ExecutePreparedSourceApiResponse
-) {
-  const body =
-    response.body.case === "json"
+    result: result
       ? {
-          case: "json",
-          value: toJson(ValueSchema, create(ValueSchema, response.body.value)),
+          body,
+          contentType: result.contentType,
+          headers: result.headers,
+          operation: result.operation,
+          selector: result.selector ?? null,
+          source: result.source ?? null,
+          status: result.status,
         }
-      : response.body.case === "text"
-        ? {
-            case: "text",
-            value: response.body.value,
-          }
-        : response.body.case === "binary"
-          ? {
-              case: "binary",
-              value: Array.from(response.body.value),
-            }
-          : null;
-
-  return {
-    body,
-    contentType: response.contentType,
-    headers: response.headers,
-    nextPageToken: response.nextPageToken ?? null,
-    operation: response.operation,
-    selector: response.selector ?? null,
-    source: response.source ?? null,
-    status: response.status,
+      : null,
   };
 }
 
@@ -388,73 +377,82 @@ describe("source api connect service", () => {
     }).toMatchSnapshot();
   });
 
-  it("prepares the source API request through the Connect handler", async () => {
+  it("previews source API execution through the Connect handler", async () => {
     const harness = createHarness();
-    const request = create(PrepareSourceApiRequestSchema, {
-      draft: {
-        body: {
-          case: "textBody",
-          value: "body text",
-        },
-        fieldPatch: {
-          perPage: 50,
-        },
-        headers: [
-          {
-            name: "accept",
-            value: "application/json",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            body: {
+              case: "textBody",
+              value: "body text",
+            },
+            fieldPatch: {
+              perPage: 50,
+            },
+            headers: [
+              {
+                name: "accept",
+                value: "application/json",
+              },
+            ],
+            methodOverride: "POST",
+            operation: "fetch",
+            orgSlug: "acme",
+            selector: "/issues",
+            sourceKey: "github-prod",
           },
-        ],
-        methodOverride: "POST",
-        operation: "fetch",
-        orgSlug: "acme",
-        selector: "/issues",
-        sourceKey: "github-prod",
+          mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
+        },
       },
     });
 
     const response = create(
-      PrepareSourceApiResponseSchema,
-      await harness.handlePrepareSourceApi(request, {
+      ExecuteSourceApiResponseSchema,
+      await harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never)
     );
 
+    expect(
+      harness.dependencies.executePreparedSourceApi
+    ).not.toHaveBeenCalled();
     expect({
-      createPreparedSourceApiPreviewCall:
-        harness.dependencies.createPreparedSourceApiPreview.mock
-          .calls[0]?.[0] ?? null,
-      encodePreparedSourceApiTokenCall:
-        harness.dependencies.encodePreparedSourceApiToken.mock.calls[0]?.[0] ??
-        null,
       prepareSourceApiDraftCall:
         harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null,
       requireAuthorizedOrgCall:
         harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
-      response: summarizePrepareSourceApiResponse(response),
+      response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
     const harness = createHarness();
-    const request = create(PrepareSourceApiRequestSchema, {
-      draft: {
-        body: {
-          case: "jsonBody",
-          value: fromJson(ValueSchema, {
-            filter: {
-              state: "open",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            body: {
+              case: "jsonBody",
+              value: fromJson(ValueSchema, {
+                filter: {
+                  state: "open",
+                },
+                limit: 25,
+              }),
             },
-            limit: 25,
-          }),
+            operation: "fetch",
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
+          mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
         },
-        operation: "fetch",
-        orgSlug: "acme",
-        sourceKey: "github-prod",
       },
     });
 
-    await harness.handlePrepareSourceApi(request, {
+    await harness.handleExecuteSourceApi(request, {
       values: new Map(),
     } as never);
 
@@ -463,32 +461,39 @@ describe("source api connect service", () => {
     ).toMatchSnapshot();
   });
 
-  it("executes prepared source API requests through the Connect handler", async () => {
+  it("executes source API requests through the Connect handler", async () => {
     const harness = createHarness();
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            operation: "fetch",
+            orgSlug: "acme",
+            selector: "/issues",
+            sourceKey: "github-prod",
+          },
+          mode: CliSourceApiExecuteMode.EXECUTE,
+        },
+      },
     });
 
     const response = create(
-      ExecutePreparedSourceApiResponseSchema,
-      await harness.handleExecutePreparedSourceApi(request, {
+      ExecuteSourceApiResponseSchema,
+      await harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never)
     );
 
     expect({
-      decodePreparedSourceApiTokenCall:
-        harness.dependencies.decodePreparedSourceApiToken.mock.calls[0]?.[0] ??
-        null,
-      encodeOpaquePageTokenCalls:
-        harness.dependencies.encodeOpaquePageToken.mock.calls.length,
+      encodeSourceApiContinuationTokenCalls:
+        harness.dependencies.encodeSourceApiContinuationToken.mock.calls.length,
       executePreparedSourceApiCall:
         harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
         null,
       requireAuthorizedOrgCall:
         harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
-      requestId: (response as Record<string, unknown>).requestId,
-      response: summarizeExecutePreparedSourceApiResponse(response),
+      response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });
 
@@ -507,97 +512,105 @@ describe("source api connect service", () => {
       contentType: "application/json",
     });
 
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            operation: "fetch",
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
+          mode: CliSourceApiExecuteMode.EXECUTE,
+        },
+      },
     });
 
     const response = create(
-      ExecutePreparedSourceApiResponseSchema,
-      await harness.handleExecutePreparedSourceApi(request, {
+      ExecuteSourceApiResponseSchema,
+      await harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never)
     );
 
-    const responseBody = response.body;
-    expect(responseBody.case).toBe("json");
-    if (responseBody.case !== "json") {
-      throw new Error("expected JSON response body");
-    }
-    expect(
-      summarizeExecutePreparedSourceApiResponse(response)
-    ).toMatchSnapshot();
+    expect(summarizeExecuteSourceApiResponse(response)).toMatchSnapshot();
   });
 
-  it("binds opaque page tokens to prepared execution state during execute", async () => {
+  it("binds continuation tokens to execution state during resume", async () => {
     const harness = createHarness();
-    harness.dependencies.decodePreparedSourceApiToken.mockReturnValueOnce({
-      ...decodedPreparedToken,
-      prepared: {
-        ...prepared,
-        paginationPolicy: "opaque_token",
-      },
-    });
     harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
       ...executionResponse,
       nextContinuationState: {
         cursor: "page_3",
       },
     });
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      pageToken: "page_1",
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "resume",
+        value: {
+          continuationToken: "continuation_1",
+        },
+      },
     });
 
     const response = create(
-      ExecutePreparedSourceApiResponseSchema,
-      await harness.handleExecutePreparedSourceApi(request, {
+      ExecuteSourceApiResponseSchema,
+      await harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never)
     );
 
-    const decodeOpaquePageTokenCall =
-      harness.dependencies.decodeOpaquePageToken.mock.calls[0]?.[0] ?? null;
-    const encodeOpaquePageTokenCall =
-      harness.dependencies.encodeOpaquePageToken.mock.calls[0]?.[0] ?? null;
+    const encodeContinuationTokenCall =
+      harness.dependencies.encodeSourceApiContinuationToken.mock
+        .calls[0]?.[0] ?? null;
 
     expect({
-      decodeOpaquePageTokenCall: decodeOpaquePageTokenCall
+      decodeSourceApiContinuationTokenCall: harness.dependencies
+        .decodeSourceApiContinuationToken.mock.calls[0]?.[0]
         ? {
-            ...decodeOpaquePageTokenCall,
+            ...harness.dependencies.decodeSourceApiContinuationToken.mock
+              .calls[0][0],
             now: "<date>",
           }
         : null,
-      encodeOpaquePageTokenCall: encodeOpaquePageTokenCall
+      encodeSourceApiContinuationTokenCall: encodeContinuationTokenCall
         ? {
-            ...encodeOpaquePageTokenCall,
-            payload: {
-              ...encodeOpaquePageTokenCall.payload,
-              expiresAt: "<expiresAt>",
-              issuedAt: "<issuedAt>",
-            },
+            ...encodeContinuationTokenCall,
+            now: encodeContinuationTokenCall.now ?? null,
           }
         : null,
       executePreparedSourceApiCall:
         harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
         null,
-      response: summarizeExecutePreparedSourceApiResponse(response),
+      response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });
 
-  it("rejects page_token continuation for operations without pagination support", async () => {
+  it("rejects continuation token resume for operations without continuation support", async () => {
     const harness = createHarness();
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      pageToken: "page_1",
-      preparedToken: "prepared_token_1",
+    harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
+      ...decodedContinuationToken,
+      prepared: {
+        ...decodedContinuationToken.prepared,
+        paginationPolicy: "none",
+      },
+    });
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "resume",
+        value: {
+          continuationToken: "continuation_1",
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {
         code: Code.InvalidArgument,
-        message: 'operation "fetch" does not support page_token continuation',
+        message: 'operation "fetch" does not support continuation_token resume',
       }
     );
 
@@ -606,80 +619,81 @@ describe("source api connect service", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("maps malformed prepared tokens to invalid arguments", async () => {
+  it("maps malformed continuation tokens to invalid arguments", async () => {
     const harness = createHarness();
-    harness.dependencies.decodePreparedSourceApiToken.mockImplementation(() => {
-      throw new SourceApiInvalidRequestError("Invalid prepared token");
-    });
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
+      () => {
+        throw new SourceApiInvalidRequestError(
+          "Invalid source API continuation token"
+        );
+      }
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "resume",
+        value: {
+          continuationToken: "continuation_1",
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {
         code: Code.InvalidArgument,
-        message: "Invalid prepared token",
+        message: "Invalid source API continuation token",
       }
     );
   });
 
-  it("maps expired prepared tokens to failed precondition", async () => {
+  it("maps expired continuation tokens to failed precondition", async () => {
     const harness = createHarness();
-    harness.dependencies.decodePreparedSourceApiToken.mockImplementation(() => {
-      throw new SourceApiExpiredError("Prepared source API token expired");
-    });
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
+      () => {
+        throw new SourceApiExpiredError(
+          "Source API continuation token expired"
+        );
+      }
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "resume",
+        value: {
+          continuationToken: "continuation_1",
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {
         code: Code.FailedPrecondition,
-        message: "Prepared source API token expired",
+        message: "Source API continuation token expired",
       }
     );
   });
 
-  it("maps unavailable source credentials to failed precondition", async () => {
-    const harness = createHarness();
-    harness.dependencies.prepareDataSourceCredentials.mockResolvedValueOnce({
-      error: "source credentials are no longer available",
-      ok: false,
-    });
-    const request = create(DescribeSourceApiRequestSchema, {
-      orgSlug: "acme",
-      sourceKey: "github-prod",
-    });
-
-    await expectConnectError(
-      harness.handleDescribeSourceApi(request, {
-        values: new Map(),
-      } as never),
-      {
-        code: Code.FailedPrecondition,
-        message: "source credentials are no longer available",
-      }
-    );
-  });
-
-  it("maps descriptor drift to failed precondition", async () => {
+  it("maps descriptor drift to failed precondition during resume", async () => {
     const harness = createHarness();
     harness.dependencies.describeSourceApi.mockResolvedValueOnce({
       ...descriptor,
       descriptorVersion: "github-v2",
     });
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "resume",
+        value: {
+          continuationToken: "continuation_1",
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {
@@ -700,12 +714,22 @@ describe("source api connect service", () => {
         })
       )
     );
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            operation: "fetch",
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
+          mode: CliSourceApiExecuteMode.EXECUTE,
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {
@@ -724,12 +748,22 @@ describe("source api connect service", () => {
         new Error("GitHub upstream request failed")
       )
     );
-    const request = create(ExecutePreparedSourceApiRequestSchema, {
-      preparedToken: "prepared_token_1",
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          draft: {
+            operation: "fetch",
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
+          mode: CliSourceApiExecuteMode.EXECUTE,
+        },
+      },
     });
 
     await expectConnectError(
-      harness.handleExecutePreparedSourceApi(request, {
+      harness.handleExecuteSourceApi(request, {
         values: new Map(),
       } as never),
       {

@@ -259,7 +259,7 @@ fn validate_pagination(
     }
 
     if source_api_pagination_policy_or_none(operation.pagination_policy)
-        == SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN
+        == SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
     {
         return Ok(());
     }
@@ -578,7 +578,7 @@ mod tests {
                 slurp: true,
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN),
+            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -598,7 +598,7 @@ mod tests {
                 max_pages: Some(2),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN),
+            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -619,7 +619,7 @@ mod tests {
                 max_pages: Some(0),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN),
+            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -654,7 +654,7 @@ mod tests {
                 max_pages: Some(3),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN),
+            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
