@@ -1,8 +1,8 @@
 use onequery_cli_core::error::ErrorStage;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::conversion_failure;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::conversion_failure;
 use crate::transport::read_controls::PageInfo;
 
 pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
@@ -33,7 +33,7 @@ mod tests {
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use crate::transport::http::conversion_failure;
+    use crate::transport::api_failure::conversion_failure;
 
     use super::optional_page_size;
     use super::page_info_from_generated;

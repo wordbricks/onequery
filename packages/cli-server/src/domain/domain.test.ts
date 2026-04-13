@@ -27,6 +27,16 @@ describe("cli domain model", () => {
       title: "Source Not Found",
       type: "https://onequery.invalid/problems/cli/source-not-found",
     });
+    expect(
+      CLI_PROBLEM_CATALOG.SOURCE_API_PREPARED_REQUEST_INVALID
+    ).toMatchObject({
+      code: "source_api_prepared_request_invalid",
+      hint: "rerun the `onequery api` command to refresh prepared source API state",
+      stage: "execute_query",
+      status: 410,
+      title: "Prepared Source API Request Invalid",
+      type: "https://onequery.invalid/problems/cli/source-api-prepared-request-invalid",
+    });
     expect("stage" in CLI_PROBLEM_CATALOG.INVALID_REQUEST).toBe(false);
     expect("hint" in CLI_PROBLEM_CATALOG.INVALID_REQUEST).toBe(false);
   });

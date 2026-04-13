@@ -1,5 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
   createPreparedSourceApiPreview,
@@ -36,6 +36,7 @@ import {
 } from "../../observability";
 import { runCliLoadSourceEffect } from "../../source/effects";
 import { requireCliConnectRequestContext } from "../context";
+import { createCliConnectError } from "../error";
 import {
   DescribeSourceApiResponseSchema,
   ExecutePreparedSourceApiResponseSchema,
@@ -62,6 +63,12 @@ type ExecutePreparedSourceApiResponseInit = MessageInitShape<
 >;
 
 const DEFAULT_SOURCE_API_PAGE_TOKEN_TTL_MS = 5 * 60_000;
+
+type SourceApiConnectFailurePhase =
+  | "authorize"
+  | "describe"
+  | "execute"
+  | "prepare";
 
 type SourceApiServiceDependencies = {
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
@@ -204,10 +211,11 @@ async function resolveSourceApiDescriptor(
   return Promise.resolve()
     .then(() => dependencies.describeSourceApi(input))
     .catch((error: unknown) => {
-      throw toSourceApiRequestConnectError(
+      throw createSourceApiConnectError({
         error,
-        dependencies.toCliErrorMessage
-      );
+        phase: "describe",
+        renderError: dependencies.toCliErrorMessage,
+      });
     });
 }
 
@@ -259,7 +267,10 @@ async function requirePreparedCliSourceApiSource(
     masterEncryptionKey: input.c.var.runtime.crypto.masterEncryptionKey,
   });
   if (!credentials.ok) {
-    throw new ConnectError(credentials.error, Code.FailedPrecondition);
+    throw createCliConnectError({
+      detail: credentials.error,
+      key: "SOURCE_API_SOURCE_UNAVAILABLE",
+    });
   }
 
   return {
@@ -441,10 +452,11 @@ export function createHandlePrepareSourceApi(
         preview,
       }) satisfies PrepareSourceApiResponseInit;
     } catch (error: unknown) {
-      throw toSourceApiRequestConnectError(
+      throw createSourceApiConnectError({
         error,
-        resolvedDependencies.toCliErrorMessage
-      );
+        phase: "prepare",
+        renderError: resolvedDependencies.toCliErrorMessage,
+      });
     }
   };
 }
@@ -502,10 +514,10 @@ export function createHandleExecutePreparedSourceApi(
         request.pageToken !== undefined &&
         preparedToken.prepared.paginationPolicy !== "opaque_token"
       ) {
-        throw new ConnectError(
-          `Source API operation "${preparedToken.prepared.operation}" does not support page_token continuation`,
-          Code.InvalidArgument
-        );
+        throw createCliConnectError({
+          detail: `Source API operation "${preparedToken.prepared.operation}" does not support page_token continuation`,
+          key: "INVALID_REQUEST",
+        });
       }
 
       const continuation = readSourceApiContinuationState(
@@ -555,10 +567,11 @@ export function createHandleExecutePreparedSourceApi(
         response
       ) satisfies ExecutePreparedSourceApiResponseInit;
     } catch (error: unknown) {
-      throw toSourceApiExecuteConnectError(
+      throw createSourceApiConnectError({
         error,
-        resolvedDependencies.toCliErrorMessage
-      );
+        phase: "execute",
+        renderError: resolvedDependencies.toCliErrorMessage,
+      });
     }
   };
 }
@@ -566,69 +579,63 @@ export function createHandleExecutePreparedSourceApi(
 export const handleExecutePreparedSourceApi =
   createHandleExecutePreparedSourceApi();
 
-function toSourceApiRequestConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
+function createSourceApiConnectError(input: {
+  error: unknown;
+  phase: SourceApiConnectFailurePhase;
+  renderError?: SourceApiServiceDependencies["toCliErrorMessage"];
+}) {
+  const renderError = input.renderError ?? toCliErrorMessage;
+  const { error, phase } = input;
+
   if (error instanceof ConnectError) {
     return error;
-  }
-
-  const detail = renderError(error);
-  if (error instanceof SourceApiDescriptorVersionMismatchError) {
-    return new ConnectError(detail, Code.FailedPrecondition);
-  }
-  if (
-    error instanceof SourceApiExpiredError ||
-    error instanceof SourceApiInvalidatedError
-  ) {
-    return new ConnectError(detail, Code.FailedPrecondition);
-  }
-  if (error instanceof SourceApiRequestError) {
-    return new ConnectError(detail, Code.InvalidArgument);
-  }
-
-  return new ConnectError(detail, Code.Unknown);
-}
-
-function toSourceApiAuthorizeConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
-  if (error instanceof ConnectError) {
-    return error;
-  }
-
-  if (error instanceof SourceApiPermissionDeniedError) {
-    return new ConnectError(renderError(error), Code.PermissionDenied);
-  }
-
-  return new ConnectError(renderError(error), Code.Unknown);
-}
-
-function toSourceApiExecuteConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
-  if (error instanceof ConnectError) {
-    return error;
-  }
-  if (
-    error instanceof SourceApiRequestError ||
-    error instanceof SourceApiExpiredError ||
-    error instanceof SourceApiInvalidatedError
-  ) {
-    return toSourceApiRequestConnectError(error, renderError);
   }
 
   if (error instanceof SourceApiExecutionStageError) {
-    switch (error.stage) {
-      case "authorize":
-        return toSourceApiAuthorizeConnectError(error.cause, renderError);
-      case "execute":
-        return new ConnectError(renderError(error.cause), Code.Unknown);
-    }
+    return createSourceApiConnectError({
+      error: error.cause,
+      phase: error.stage,
+      renderError,
+    });
   }
 
-  return new ConnectError(renderError(error), Code.Unknown);
+  const detail = renderError(error);
+  if (error instanceof SourceApiPermissionDeniedError) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key: "SOURCE_API_FORBIDDEN",
+    });
+  }
+
+  if (
+    error instanceof SourceApiDescriptorVersionMismatchError ||
+    error instanceof SourceApiExpiredError ||
+    error instanceof SourceApiInvalidatedError
+  ) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key: "SOURCE_API_PREPARED_REQUEST_INVALID",
+    });
+  }
+
+  if (error instanceof SourceApiRequestError) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key: "INVALID_REQUEST",
+    });
+  }
+
+  return createCliConnectError({
+    cause: error,
+    detail,
+    key:
+      phase === "describe"
+        ? "SOURCE_API_DESCRIBE_FAILED"
+        : phase === "prepare"
+          ? "SOURCE_API_PREPARATION_FAILED"
+          : "SOURCE_API_EXECUTION_FAILED",
+  });
 }

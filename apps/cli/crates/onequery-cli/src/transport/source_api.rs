@@ -4,16 +4,16 @@ use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::Value as JsonValue;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::try_into_option;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::try_into_option;
-use crate::transport::http::try_into_value;
 
 pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
 pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
@@ -473,7 +473,7 @@ mod tests {
     use super::source_api_selector_kind_or_none;
     use super::types;
     use super::validate_prepare_source_api_result;
-    use crate::transport::http::ApiFailure;
+    use crate::transport::api_failure::ApiFailure;
 
     #[test]
     fn validate_prepare_source_api_result_requires_preview() {
@@ -488,7 +488,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "source API prepare response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
@@ -537,7 +537,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ResolveSource,
                 message: "source API operation `fetch` missing method policy".to_owned(),
                 request_id: Some("req_missing_policy".to_owned()),
@@ -560,7 +560,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "source API execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_source".to_owned()),

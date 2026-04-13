@@ -219,7 +219,7 @@ async fn execute_effect<B, T>(
                 Err(failure) => {
                     let outcome = if matches!(
                         failure,
-                        crate::transport::http::ApiFailure::Problem(ref problem)
+                        crate::transport::api_failure::ApiFailure::Problem(ref problem)
                             if problem.stage == ErrorStage::Auth
                     ) {
                         OrgGetFailureOutcome::NeedsReauth

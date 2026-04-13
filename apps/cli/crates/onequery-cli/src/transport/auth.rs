@@ -1,16 +1,16 @@
 use serde::Deserialize;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiProblem;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiProblem;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::try_into_value;
 use onequery_cli_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
@@ -412,9 +412,9 @@ fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>)
 
 #[cfg(test)]
 mod tests {
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
-    use crate::transport::http::ApiSuccess;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::ApiSuccess;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 

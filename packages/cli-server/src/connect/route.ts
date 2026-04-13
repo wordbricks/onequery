@@ -5,8 +5,10 @@ import { honoConnectMiddleware } from "@onequery/hono-connect";
 
 import { createCliApp } from "../app";
 import type { CreateCliAppOptions } from "../app";
-import { getCliRequestId } from "../error";
-import { cliHonoContextKey, createCliConnectContextValues } from "./context";
+import {
+  cliConnectRequestContextKey,
+  createCliConnectContextValues,
+} from "./context";
 import { withCliRequestId } from "./error";
 import { registerCliConnectRoutes } from "./routes";
 
@@ -14,8 +16,10 @@ const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
   try {
     return await next(request);
   } catch (reason) {
-    const honoContext = request.contextValues.get(cliHonoContextKey);
-    const requestId = honoContext ? getCliRequestId(honoContext) : "unknown";
+    const requestContext = request.contextValues.get(
+      cliConnectRequestContextKey
+    );
+    const requestId = requestContext?.requestId ?? "unknown";
     throw withCliRequestId(ConnectError.from(reason), requestId);
   }
 };

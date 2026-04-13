@@ -8,15 +8,15 @@ use serde::de::DeserializeOwned;
 use serde_json::Map;
 use serde_json::Value;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::conversion_failure;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::conversion_failure;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
 use crate::transport::labels::content_format_to_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
@@ -183,7 +183,7 @@ pub(crate) async fn load_source_connect_guide(
     source: SourceConnectProvider,
 ) -> Result<ApiSuccess<SourceConnectGuide>, ApiFailure> {
     let org_slug: String =
-        crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
+        crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
 
     let response = match client
         .cli()
@@ -219,7 +219,7 @@ pub(crate) async fn connect_source(
     mut input: Map<String, Value>,
 ) -> Result<ApiSuccess<SourceConnectResult>, ApiFailure> {
     let org_slug: String =
-        crate::transport::http::try_into_value(org_slug, ErrorStage::ResolveSource)?;
+        crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
     let name = input
         .remove("name")
         .and_then(|value| match value {
@@ -851,7 +851,7 @@ mod tests {
     use super::SourceConnectResult;
     use super::connect_source_credentials_from_json;
     use super::types;
-    use crate::transport::http::ApiFailure;
+    use crate::transport::api_failure::ApiFailure;
     use crate::transport::source::SourceSummary;
     use crate::transport::source_connect_provider::SourceConnectProvider;
 

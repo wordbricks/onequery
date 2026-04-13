@@ -5,18 +5,18 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::output_metadata::SanitizationMetadata;
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::ResponseFailureStages;
+use crate::transport::api_failure::conversion_failure;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::sanitization_metadata_from_generated;
+use crate::transport::api_failure::try_into_option;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::conversion_failure;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::sanitization_metadata_from_generated;
-use crate::transport::http::try_into_option;
-use crate::transport::http::try_into_value;
 use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
@@ -441,14 +441,14 @@ fn non_empty(value: String) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use connectrpc::ErrorCode;
+    use http::StatusCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
     use serde_json::json;
 
     use crate::output_metadata::SanitizationMetadata;
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
     use crate::transport::query_parameter::QueryCanonicalParameter;
     use crate::transport::query_parameter::QueryCanonicalParameterType;
     use crate::transport::query_parameter::QueryRequestParameter;
@@ -895,7 +895,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ReadQueryInput,
                 message: "query validation response missing source metadata".to_owned(),
                 request_id: Some("req_missing_validation_source".to_owned()),
@@ -923,7 +923,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing page metadata".to_owned(),
                 request_id: Some("req_missing_page".to_owned()),
@@ -949,7 +949,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_query_source".to_owned()),

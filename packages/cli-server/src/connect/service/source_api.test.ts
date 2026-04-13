@@ -672,6 +672,28 @@ describe("source api connect service", () => {
     );
   });
 
+  it("maps unavailable source credentials to failed precondition", async () => {
+    const harness = createHarness();
+    harness.dependencies.prepareDataSourceCredentials.mockResolvedValueOnce({
+      error: "source credentials are no longer available",
+      ok: false,
+    });
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expectConnectError(
+      harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never),
+      {
+        code: Code.FailedPrecondition,
+        message: "source credentials are no longer available",
+      }
+    );
+  });
+
   it("maps descriptor drift to failed precondition", async () => {
     const harness = createHarness();
     harness.dependencies.describeSourceApi.mockResolvedValueOnce({
@@ -737,7 +759,7 @@ describe("source api connect service", () => {
         values: new Map(),
       } as never),
       {
-        code: Code.Unknown,
+        code: Code.Internal,
         message: "GitHub upstream request failed",
       }
     );

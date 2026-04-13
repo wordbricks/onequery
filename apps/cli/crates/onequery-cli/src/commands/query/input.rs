@@ -298,7 +298,7 @@ fn default_query_timeout_ms(request_timeout_sec: u64) -> u64 {
 }
 
 pub(super) fn query_validate_failure_outcome(
-    failure: &crate::transport::http::ApiFailure,
+    failure: &crate::transport::api_failure::ApiFailure,
 ) -> QueryValidateFailureOutcome {
     if classify_retry_directive(failure) == RetryDirective::NeedsReauth {
         QueryValidateFailureOutcome::NeedsReauth

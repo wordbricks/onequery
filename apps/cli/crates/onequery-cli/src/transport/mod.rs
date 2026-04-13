@@ -1,7 +1,7 @@
+pub(crate) mod api_failure;
 pub(crate) mod auth;
 pub(crate) mod client;
 pub(crate) mod generated;
-pub(crate) mod http;
 pub(crate) mod labels;
 pub(crate) mod org;
 mod pagination;

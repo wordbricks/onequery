@@ -26,10 +26,7 @@ import {
 } from "../../cli-defaults";
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
-import {
-  requireCliConnectHonoContext,
-  requireCliConnectRequestContext,
-} from "../context";
+import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
   CliAuthorizedDeviceAuthorizationSchema,
@@ -69,8 +66,8 @@ export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
   _request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
   const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
   await requestContext.requireSession();
   const session = requireCliSessionIdentity(
     await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
@@ -82,7 +79,7 @@ export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
 export const handleStartDeviceAuthorization: CliServiceMethod<
   "startDeviceAuthorization"
 > = async (_request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const c = requireCliConnectRequestContext(context).honoContext;
   const response = await c.var.storage.auth.handler(
     createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_CODE_PATH, {
       client_id: CLI_DEVICE_AUTH_CLIENT_ID,
@@ -130,7 +127,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
 export const handlePollDeviceAuthorization: CliServiceMethod<
   "pollDeviceAuthorization"
 > = async (request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const c = requireCliConnectRequestContext(context).honoContext;
   const response = await c.var.storage.auth.handler(
     createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
       client_id: CLI_DEVICE_AUTH_CLIENT_ID,

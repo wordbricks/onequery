@@ -1,11 +1,11 @@
+use http::StatusCode;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
-use reqwest::StatusCode;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::connect_title;
 use crate::transport::client::ApiClientBuildFailure;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::connect_title;
 
 pub(crate) struct ApiErrorPresentation<'a> {
     pub(crate) command: &'a str,
@@ -137,7 +137,7 @@ fn fallback_http_why(status: StatusCode, body: &str) -> String {
 }
 
 fn fallback_problem_why(
-    problem: &crate::transport::http::ApiProblem,
+    problem: &crate::transport::api_failure::ApiProblem,
     default_title: &str,
 ) -> String {
     if let Some(status) = problem.status {
@@ -165,23 +165,23 @@ fn humanize_error_code(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use connectrpc::ErrorCode;
+    use http::StatusCode;
     use insta::assert_snapshot;
     use onequery_cli_core::error::CliError;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
     use serde_json::Value;
     use serde_json::json;
 
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::ApiValidationIssue;
+    use crate::transport::api_failure::DecodeFailure;
+    use crate::transport::api_failure::TransportFailure;
+    use crate::transport::api_failure::TransportFailureKind;
     use crate::transport::client::ApiClientBuildFailure;
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
-    use crate::transport::http::ApiValidationIssue;
-    use crate::transport::http::DecodeFailure;
-    use crate::transport::http::TransportFailure;
-    use crate::transport::http::TransportFailureKind;
 
     use super::ApiErrorPresentation;
     use super::humanize_error_code;

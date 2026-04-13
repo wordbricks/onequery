@@ -1,4 +1,4 @@
-use crate::transport::http::ApiFailure;
+use crate::transport::api_failure::ApiFailure;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum RetryDirective {
@@ -57,10 +57,10 @@ mod tests {
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
-    use crate::transport::http::TransportFailure;
-    use crate::transport::http::TransportFailureKind;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::TransportFailure;
+    use crate::transport::api_failure::TransportFailureKind;
 
     use super::RetryDirective;
     use super::RetryTransition;

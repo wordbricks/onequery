@@ -190,7 +190,7 @@ async fn execute_prepared_source_api_pages(
 }
 
 fn present_source_api_prepare_failure(
-    failure: crate::transport::http::ApiFailure,
+    failure: crate::transport::api_failure::ApiFailure,
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
@@ -211,7 +211,7 @@ fn present_source_api_prepare_failure(
 }
 
 fn present_source_api_execute_failure(
-    failure: crate::transport::http::ApiFailure,
+    failure: crate::transport::api_failure::ApiFailure,
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {

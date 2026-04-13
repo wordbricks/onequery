@@ -1,8 +1,8 @@
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
 use http::HeaderMap;
+use http::StatusCode;
 use onequery_cli_core::error::ErrorStage;
-use reqwest::StatusCode;
 
 use crate::output_metadata::SanitizationMetadata;
 use crate::transport::generated::types;

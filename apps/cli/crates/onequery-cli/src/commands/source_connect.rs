@@ -370,7 +370,7 @@ async fn execute_effect<B, T>(
 }
 
 fn source_connect_failure_outcome(
-    failure: &crate::transport::http::ApiFailure,
+    failure: &crate::transport::api_failure::ApiFailure,
 ) -> SourceConnectFailureOutcome {
     if classify_retry_directive(failure) == RetryDirective::NeedsReauth {
         SourceConnectFailureOutcome::NeedsReauth
