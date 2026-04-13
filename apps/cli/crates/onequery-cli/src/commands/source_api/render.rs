@@ -3,7 +3,6 @@ use crate::output::pretty_json_lines;
 use crate::transport::labels::source_provider_to_str;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
-use crate::transport::source_api::SourceApiExecutionPage;
 use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiOperation;
@@ -31,6 +30,7 @@ use jaq_json::Val as JaqValue;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
+use super::SourceApiExecutionPage;
 use super::format::push_section;
 use super::format::status_line;
 use super::plan::SourceApiRenderOptions;

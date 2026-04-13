@@ -7,6 +7,7 @@ mod render;
 
 use std::time::Duration;
 
+use buffa::MessageField;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
@@ -16,8 +17,10 @@ use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
 use crate::transport::source_api::SourceApiDraft;
-use crate::transport::source_api::SourceApiExecutionPage;
+use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiPreview;
+use crate::transport::source_api::SourceApiResponseBody;
+use crate::transport::source_api::SourceApiSource;
 
 use super::CommandContext;
 use super::Runtime;
@@ -119,6 +122,18 @@ pub(super) async fn execute<B, T>(
 struct PreviewedSourceApiExecution {
     preview: SourceApiPreview,
     request_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct SourceApiExecutionPage {
+    source: MessageField<SourceApiSource>,
+    operation: String,
+    selector: Option<String>,
+    status: u32,
+    headers: Vec<SourceApiHeader>,
+    content_type: String,
+    body: Option<SourceApiResponseBody>,
+    continuation_token: Option<String>,
 }
 
 struct ExecutedSourceApiPages {

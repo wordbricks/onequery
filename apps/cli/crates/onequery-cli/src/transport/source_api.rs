@@ -35,18 +35,6 @@ pub(crate) type SourceApiPreview = types::SourceApiPreview;
 pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
 pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body;
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct SourceApiExecutionPage {
-    pub(crate) source: MessageField<SourceApiSource>,
-    pub(crate) operation: String,
-    pub(crate) selector: Option<String>,
-    pub(crate) status: u32,
-    pub(crate) headers: Vec<SourceApiHeader>,
-    pub(crate) content_type: String,
-    pub(crate) body: Option<SourceApiResponseBody>,
-    pub(crate) continuation_token: Option<String>,
-}
-
 macro_rules! source_api_enum_surface {
     (
         $normalize:ident,
