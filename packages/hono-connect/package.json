@@ -8,7 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@connectrpc/connect": "2.1.1",
@@ -16,5 +18,8 @@
     "@hono/node-server": "catalog:",
     "hono": "catalog:"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@bufbuild/protobuf": "catalog:",
+    "vitest": "catalog:"
+  }
 }

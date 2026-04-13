@@ -215,6 +215,10 @@
         "@hono/node-server": "catalog:",
         "hono": "catalog:",
       },
+      "devDependencies": {
+        "@bufbuild/protobuf": "catalog:",
+        "vitest": "catalog:",
+      },
     },
     "packages/self-host-runtime": {
       "name": "@onequery/self-host-runtime",

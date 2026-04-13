@@ -2,20 +2,25 @@ import { once } from "node:events";
 import { gzipSync } from "node:zlib";
 
 import { create } from "@bufbuild/protobuf";
+import type { DescFile, DescMethod, DescService } from "@bufbuild/protobuf";
+import {
+  Edition,
+  EmptySchema,
+  FileDescriptorProtoSchema,
+  MethodDescriptorProtoSchema,
+  MethodOptions_IdempotencyLevel,
+  ServiceDescriptorProtoSchema,
+  StringValueSchema,
+} from "@bufbuild/protobuf/wkt";
 import { createContextKey, createContextValues } from "@connectrpc/connect";
 import type { ContextValues } from "@connectrpc/connect";
 import { createAdaptorServer } from "@hono/node-server";
-import { honoConnectMiddleware } from "@onequery/hono-connect";
-import type { HonoNodeBindings } from "@onequery/hono-connect";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  CliAuthMode,
-  GetSessionResponseSchema,
-} from "./gen/onequery/cli/v1/auth_pb";
-import { CliService } from "./gen/onequery/cli/v1/cli_pb";
+import { honoConnectMiddleware } from "./index";
+import type { HonoNodeBindings } from "./index";
 
 const CONNECT_JSON_HEADERS = {
   "Connect-Protocol-Version": "1",
@@ -25,6 +30,32 @@ const CONNECT_JSON_HEADERS = {
 type TestEnv = {
   Bindings: HonoNodeBindings;
 };
+
+type TestServiceMethods = Record<
+  string,
+  Pick<DescMethod, "input" | "methodKind" | "output"> &
+    Partial<Pick<DescMethod, "idempotency">>
+>;
+
+type TestGenService<TMethods extends TestServiceMethods> = Omit<
+  DescService,
+  "method"
+> & {
+  method: {
+    [K in keyof TMethods]: TMethods[K] & DescMethod;
+  };
+};
+
+const TestService = createTestServiceDesc({
+  method: {
+    getValue: {
+      input: EmptySchema,
+      methodKind: "unary",
+      output: StringValueSchema,
+    },
+  },
+  typeName: "onequery.hono.v1.TestService",
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -70,12 +101,13 @@ async function withNodeServer(
 function createTestApp(
   input: {
     contextValues?: (context: Context<TestEnv>) => ContextValues;
-    onGetSession?: () => void;
+    onCall?: () => void;
     onOuterError?: () => Response;
     requestPathPrefix?: string;
   } = {}
 ) {
   const app = new Hono<TestEnv>();
+
   if (input.onOuterError) {
     app.onError(
       () => input.onOuterError?.() ?? new Response(null, { status: 500 })
@@ -91,12 +123,10 @@ function createTestApp(
       grpcWeb: false,
       requestPathPrefix: input.requestPathPrefix,
       routes(router) {
-        router.service(CliService, {
-          async getSession() {
-            input.onGetSession?.();
-            return create(GetSessionResponseSchema, {
-              authMode: CliAuthMode.BROWSER_SESSION,
-            });
+        router.service(TestService, {
+          async getValue() {
+            input.onCall?.();
+            return create(StringValueSchema, { value: "ok" });
           },
         });
       },
@@ -108,15 +138,15 @@ function createTestApp(
 
 describe("hono connect middleware", () => {
   it("matches only the configured request path prefix", async () => {
-    const onGetSession = vi.fn();
+    const onCall = vi.fn();
     const app = createTestApp({
-      onGetSession,
+      onCall,
       requestPathPrefix: "/api/cli",
     });
 
     await withNodeServer(app, async (baseUrl) => {
       const matchedResponse = await fetch(
-        `${baseUrl}/api/cli/onequery.cli.v1.CliService/GetSession`,
+        `${baseUrl}/api/cli/onequery.hono.v1.TestService/GetValue`,
         {
           body: "{}",
           headers: CONNECT_JSON_HEADERS,
@@ -125,10 +155,10 @@ describe("hono connect middleware", () => {
       );
 
       expect(matchedResponse.status).toBe(200);
-      expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(onCall).toHaveBeenCalledTimes(1);
 
       const unmatchedResponse = await fetch(
-        `${baseUrl}/api/cli/x/onequery.cli.v1.CliService/GetSession`,
+        `${baseUrl}/api/cli/x/onequery.hono.v1.TestService/GetValue`,
         {
           body: "{}",
           headers: CONNECT_JSON_HEADERS,
@@ -137,19 +167,19 @@ describe("hono connect middleware", () => {
       );
 
       expect(unmatchedResponse.status).toBe(404);
-      expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(onCall).toHaveBeenCalledTimes(1);
     });
   });
 
   it("accepts gzip-compressed connect requests by default", async () => {
-    const onGetSession = vi.fn();
+    const onCall = vi.fn();
     const app = createTestApp({
-      onGetSession,
+      onCall,
     });
 
     await withNodeServer(app, async (baseUrl) => {
       const response = await fetch(
-        `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+        `${baseUrl}/onequery.hono.v1.TestService/GetValue`,
         {
           body: gzipSync(Buffer.from("{}")),
           headers: {
@@ -161,7 +191,7 @@ describe("hono connect middleware", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(onCall).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -182,7 +212,7 @@ describe("hono connect middleware", () => {
     try {
       await withNodeServer(app, async (baseUrl) => {
         const response = await fetch(
-          `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+          `${baseUrl}/onequery.hono.v1.TestService/GetValue`,
           {
             body: "{}",
             headers: CONNECT_JSON_HEADERS,
@@ -220,12 +250,10 @@ describe("hono connect middleware", () => {
         grpc: false,
         grpcWeb: false,
         routes(router) {
-          router.service(CliService, {
-            async getSession(_request, context) {
+          router.service(TestService, {
+            async getValue(_request, context) {
               seenRequestId(context.values.get(requestContextKey));
-              return create(GetSessionResponseSchema, {
-                authMode: CliAuthMode.BROWSER_SESSION,
-              });
+              return create(StringValueSchema, { value: "ok" });
             },
           });
         },
@@ -234,7 +262,7 @@ describe("hono connect middleware", () => {
 
     await withNodeServer(app, async (baseUrl) => {
       const response = await fetch(
-        `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+        `${baseUrl}/onequery.hono.v1.TestService/GetValue`,
         {
           body: "{}",
           headers: {
@@ -250,3 +278,60 @@ describe("hono connect middleware", () => {
     });
   });
 });
+
+function createTestServiceDesc<TMethods extends TestServiceMethods>(service: {
+  typeName: string;
+  method: TMethods;
+}): TestGenService<TMethods> {
+  const file = {
+    dependencies: [],
+    deprecated: false,
+    edition: Edition.EDITION_2023,
+    enums: [],
+    extensions: [],
+    kind: "file",
+    messages: [],
+    name: "hono-connect.test.proto",
+    proto: create(FileDescriptorProtoSchema),
+    services: [] as DescService[],
+  } satisfies DescFile;
+  const typeNameSeparator = service.typeName.lastIndexOf(".");
+  const methods: DescMethod[] = [];
+  const serviceDesc = {} as DescService;
+
+  for (const [localName, method] of Object.entries(service.method)) {
+    methods.push({
+      deprecated: false,
+      idempotency:
+        method.idempotency ??
+        MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN,
+      input: method.input,
+      kind: "rpc",
+      localName,
+      methodKind: method.methodKind,
+      name: localName.charAt(0).toUpperCase() + localName.slice(1),
+      output: method.output,
+      parent: serviceDesc,
+      proto: create(MethodDescriptorProtoSchema),
+    });
+  }
+
+  Object.assign(serviceDesc, {
+    deprecated: false,
+    file,
+    kind: "service",
+    method: Object.fromEntries(
+      methods.map((method) => [method.localName, method])
+    ),
+    methods,
+    name:
+      typeNameSeparator < 0
+        ? service.typeName
+        : service.typeName.slice(typeNameSeparator + 1),
+    proto: create(ServiceDescriptorProtoSchema),
+    typeName: service.typeName,
+  });
+
+  file.services.push(serviceDesc);
+  return serviceDesc as TestGenService<TMethods>;
+}

@@ -20,11 +20,11 @@ const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
   }
 };
 
-export interface CreateCliConnectRouteOptions extends CreateCliAppOptions {
+export interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;
 }
 
-export function createCliConnectRoute(input: CreateCliConnectRouteOptions) {
+export function createCliRoute(input: CreateCliRouteOptions) {
   const app = createCliApp(input);
 
   app.use(

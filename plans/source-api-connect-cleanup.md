@@ -19,9 +19,9 @@ that the rewrite is complete.
 Files:
 
 - `packages/hono-connect/src/index.ts`
+- `packages/hono-connect/src/index.test.ts`
 - `packages/hono-connect/package.json`
-- `packages/cli-server/src/connect/hono-connect.ts`
-- `packages/cli-server/src/connect/middleware.test.ts`
+- `packages/cli-server/src/connect/route.ts`
 
 Changes:
 
@@ -82,8 +82,8 @@ Deliverable:
 
 ## 4. Verification
 
-- [x] `bun test packages/cli-server/src/connect`
-- [x] `bun test packages/cli-server/src/connect packages/cli-server/src/route.test.ts packages/self-host-runtime/src`
+- [x] `bunx turbo test --filter=@onequery/hono-connect --filter=@onequery/cli-server --json`
+- [x] `bunx turbo test --filter=@onequery/self-host-runtime --json`
 - [x] `bun test packages/cli-server/src/connect/error.test.ts packages/cli-server/src/domain/domain.test.ts`
 - [x] `bunx turbo typecheck --filter=@onequery/cli-server --json`
 - [x] `bunx turbo typecheck --filter=@onequery/hono-connect --filter=@onequery/cli-server --filter=@onequery/self-host-runtime --json`
