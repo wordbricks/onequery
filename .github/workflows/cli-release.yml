@@ -235,22 +235,18 @@ jobs:
 
   build-windows:
     needs: [tag-check, build-windows-binaries]
-    name: Build - ${{ matrix.runner }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.runs_on }}
+    name: Stage Windows vendor - ${{ matrix.target }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: windows-2025
-            target: x86_64-pc-windows-msvc
-            runs_on: windows-2025
-          - runner: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            runs_on: windows-11-arm
+          - target: x86_64-pc-windows-msvc
+          - target: aarch64-pc-windows-msvc
     defaults:
       run:
         working-directory: apps/cli
-        shell: pwsh
+        shell: bash
     steps:
       - uses: actions/checkout@v6
 
@@ -268,15 +264,19 @@ jobs:
 
       - name: Verify Windows binaries
         run: |
-          Get-Item "target/${{ matrix.target }}/release/onequery.exe" | Out-Null
-          Get-Item "target/${{ matrix.target }}/release/onequery-server.mjs" | Out-Null
+          test -f "target/${{ matrix.target }}/release/onequery.exe"
+          test -f "target/${{ matrix.target }}/release/onequery-server.mjs"
 
       - name: Stage vendor payload
         run: |
-          New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/onequery" | Out-Null
-          New-Item -ItemType Directory -Force -Path "dist/vendor/${{ matrix.target }}/server" | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/onequery.exe" "dist/vendor/${{ matrix.target }}/onequery/onequery.exe"
-          Copy-Item "target/${{ matrix.target }}/release/onequery-server.mjs" "dist/vendor/${{ matrix.target }}/server/onequery-server.mjs"
+          set -euo pipefail
+          # COMMENT: The follow-up packaging step only repacks files that were
+          # already built and verified on Windows. Keep that re-upload on Linux
+          # so the release flow does not depend on Windows ARM artifact uploads.
+          mkdir -p "dist/vendor/${{ matrix.target }}/onequery"
+          mkdir -p "dist/vendor/${{ matrix.target }}/server"
+          cp "target/${{ matrix.target }}/release/onequery.exe" "dist/vendor/${{ matrix.target }}/onequery/onequery.exe"
+          cp "target/${{ matrix.target }}/release/onequery-server.mjs" "dist/vendor/${{ matrix.target }}/server/onequery-server.mjs"
 
       - uses: actions/upload-artifact@v6
         with:
