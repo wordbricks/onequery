@@ -114,15 +114,13 @@ const mixpanelEngageContinuationStateSchema = z
   })
   .strict();
 
-const mixpanelEngageResponseSchema = z
-  .object({
-    page: z.number().int().min(0).optional(),
-    page_size: z.number().int().min(1).optional(),
-    results: z.array(z.unknown()).optional(),
-    session_id: z.string().min(1).optional(),
-    total: z.number().int().min(0).optional(),
-  })
-  .passthrough();
+const mixpanelEngageResponseSchema = z.looseObject({
+  page: z.number().int().min(0).optional(),
+  page_size: z.number().int().min(1).optional(),
+  results: z.array(z.unknown()).optional(),
+  session_id: z.string().min(1).optional(),
+  total: z.number().int().min(0).optional(),
+});
 
 type MixpanelEngageRequest = z.infer<typeof mixpanelEngageRequestSchema>;
 type MixpanelEngageContinuationState = z.infer<

@@ -1,4 +1,4 @@
-import { create, fromJson, toJson } from "@bufbuild/protobuf";
+import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError } from "@connectrpc/connect";
 import {
@@ -14,8 +14,11 @@ import {
   CliSourceApiOperationKind,
   CliSourceApiPaginationPolicy,
   DescribeSourceApiRequestSchema,
+  DescribeSourceApiResponseSchema,
   ExecutePreparedSourceApiRequestSchema,
+  ExecutePreparedSourceApiResponseSchema,
   PrepareSourceApiRequestSchema,
+  PrepareSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import type {
   DescribeSourceApiResponse,
@@ -27,6 +30,14 @@ import {
   createHandleExecutePreparedSourceApi,
   createHandlePrepareSourceApi,
 } from "./source_api";
+
+expect.addSnapshotSerializer({
+  serialize(value, config, indentation, depth, refs, printer) {
+    const { $typeName: _ignored, ...rest } = value;
+    return printer(rest, config, indentation, depth, refs);
+  },
+  test: isMessage,
+});
 
 const session = {
   user: {
@@ -360,9 +371,12 @@ describe("source api connect service", () => {
       sourceKey: "github-prod",
     });
 
-    const response = await harness.handleDescribeSourceApi(request, {
-      values: new Map(),
-    } as never);
+    const response = create(
+      DescribeSourceApiResponseSchema,
+      await harness.handleDescribeSourceApi(request, {
+        values: new Map(),
+      } as never)
+    );
 
     expect(harness.requestContext.requireSession).toHaveBeenCalledTimes(1);
     expect({
@@ -399,9 +413,12 @@ describe("source api connect service", () => {
       },
     });
 
-    const response = await harness.handlePrepareSourceApi(request, {
-      values: new Map(),
-    } as never);
+    const response = create(
+      PrepareSourceApiResponseSchema,
+      await harness.handlePrepareSourceApi(request, {
+        values: new Map(),
+      } as never)
+    );
 
     expect({
       createPreparedSourceApiPreviewCall:
@@ -452,9 +469,12 @@ describe("source api connect service", () => {
       preparedToken: "prepared_token_1",
     });
 
-    const response = await harness.handleExecutePreparedSourceApi(request, {
-      values: new Map(),
-    } as never);
+    const response = create(
+      ExecutePreparedSourceApiResponseSchema,
+      await harness.handleExecutePreparedSourceApi(request, {
+        values: new Map(),
+      } as never)
+    );
 
     expect({
       decodePreparedSourceApiTokenCall:
@@ -491,9 +511,12 @@ describe("source api connect service", () => {
       preparedToken: "prepared_token_1",
     });
 
-    const response = await harness.handleExecutePreparedSourceApi(request, {
-      values: new Map(),
-    } as never);
+    const response = create(
+      ExecutePreparedSourceApiResponseSchema,
+      await harness.handleExecutePreparedSourceApi(request, {
+        values: new Map(),
+      } as never)
+    );
 
     const responseBody = response.body;
     expect(responseBody.case).toBe("json");
@@ -525,9 +548,12 @@ describe("source api connect service", () => {
       preparedToken: "prepared_token_1",
     });
 
-    const response = await harness.handleExecutePreparedSourceApi(request, {
-      values: new Map(),
-    } as never);
+    const response = create(
+      ExecutePreparedSourceApiResponseSchema,
+      await harness.handleExecutePreparedSourceApi(request, {
+        values: new Map(),
+      } as never)
+    );
 
     const decodeOpaquePageTokenCall =
       harness.dependencies.decodeOpaquePageToken.mock.calls[0]?.[0] ?? null;
