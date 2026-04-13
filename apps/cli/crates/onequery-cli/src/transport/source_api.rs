@@ -20,6 +20,7 @@ pub(crate) type SourceApiOperationKind = types::CliSourceApiOperationKind;
 pub(crate) type SourceApiSelectorKind = types::CliSourceApiSelectorKind;
 pub(crate) type SourceApiPaginationPolicy = types::CliSourceApiPaginationPolicy;
 pub(crate) type SourceApiBodyKind = types::CliSourceApiBodyKind;
+pub(crate) type SourceApiProvider = types::CliSourceProvider;
 pub(crate) type SourceApiSource = types::CliSourceApiSource;
 pub(crate) type SourceApiHeader = types::CliSourceApiHeader;
 pub(crate) type SourceApiExample = types::CliSourceApiExample;
@@ -30,7 +31,7 @@ pub(crate) type SourceApiOperation = types::CliSourceApiOperation;
 pub(crate) type SourceApiDescriptor = types::DescribeSourceApiResponse;
 pub(crate) type SourceApiDraft = types::SourceApiDraft;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
-pub(crate) type PreparedSourceApiPreview = types::PreparedSourceApiPreview;
+pub(crate) type SourceApiPreview = types::SourceApiPreview;
 pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
 pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body;
 
@@ -44,6 +45,39 @@ pub(crate) struct SourceApiExecutionPage {
     pub(crate) content_type: String,
     pub(crate) body: Option<SourceApiResponseBody>,
     pub(crate) continuation_token: Option<String>,
+}
+
+macro_rules! source_api_enum_surface {
+    (
+        $normalize:ident,
+        $label_fn:ident,
+        $enum_ty:ty,
+        $default:path,
+        $unspecified:path,
+        {
+            $(
+                $variant:path => $label:literal,
+            )+
+        }
+    ) => {
+        pub(crate) fn $normalize(value: EnumValue<$enum_ty>) -> $enum_ty {
+            match value.as_known() {
+                $(
+                    Some($variant) => $variant,
+                )+
+                Some($unspecified) | None => $default,
+            }
+        }
+
+        pub(crate) fn $label_fn(value: EnumValue<$enum_ty>) -> &'static str {
+            match $normalize(value) {
+                $(
+                    $variant => $label,
+                )+
+                $unspecified => unreachable!(),
+            }
+        }
+    };
 }
 
 pub(crate) async fn describe_source_api(
@@ -89,7 +123,9 @@ pub(crate) async fn execute_source_api(
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Start(Box::new(
                 types::StartSourceApiExecution {
-                    draft: MessageField::some(source_api_draft_with_context(org, source_key, draft)?),
+                    draft: MessageField::some(source_api_draft_with_context(
+                        org, source_key, draft,
+                    )?),
                     mode: if preview_only {
                         types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
                     } else {
@@ -153,125 +189,69 @@ pub(crate) async fn resume_source_api(
     })
 }
 
-pub(crate) fn source_api_operation_kind_or_http_request(
-    value: EnumValue<SourceApiOperationKind>,
-) -> SourceApiOperationKind {
-    match value.as_known() {
-        Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST) => {
-            SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST
-        }
-        Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST)
-        | Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED)
-        | None => SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST,
-    }
-}
-
-pub(crate) fn source_api_selector_kind_or_none(
-    value: EnumValue<SourceApiSelectorKind>,
-) -> SourceApiSelectorKind {
-    match value.as_known() {
-        Some(SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH) => {
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-        }
-        Some(SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER) => {
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER
-        }
-        Some(SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE)
-        | Some(SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED)
-        | None => SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE,
-    }
-}
-
-pub(crate) fn source_api_pagination_policy_or_none(
-    value: EnumValue<SourceApiPaginationPolicy>,
-) -> SourceApiPaginationPolicy {
-    match value.as_known() {
-        Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN) => {
-            SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
-        }
-        Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
-        | Some(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED)
-        | None => SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE,
-    }
-}
-
-pub(crate) fn source_api_body_kind_or_none(
-    value: EnumValue<SourceApiBodyKind>,
-) -> SourceApiBodyKind {
-    match value.as_known() {
-        Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON) => {
-            SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON
-        }
-        Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT) => {
-            SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT
-        }
-        Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_BINARY) => {
-            SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_BINARY
-        }
-        Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE)
-        | Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_UNSPECIFIED)
-        | None => SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE,
-    }
-}
-
-pub(crate) fn source_api_input_mode_or_none(
-    value: EnumValue<SourceApiInputMode>,
-) -> SourceApiInputMode {
-    match value.as_known() {
-        Some(SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT) => {
-            SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT
-        }
-        Some(SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY) => {
-            SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY
-        }
-        Some(SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE)
-        | Some(SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED)
-        | None => SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE,
-    }
-}
-
-pub(crate) fn source_api_operation_kind_label(
-    value: EnumValue<SourceApiOperationKind>,
-) -> &'static str {
-    match source_api_operation_kind_or_http_request(value) {
+source_api_enum_surface!(
+    source_api_operation_kind_or_http_request,
+    source_api_operation_kind_label,
+    SourceApiOperationKind,
+    SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST,
+    SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED,
+    {
         SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST => "http_request",
-        SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST => {
-            "structured_request"
-        }
-        SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED => unreachable!(),
+        SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST => "structured_request",
     }
-}
+);
 
-pub(crate) fn source_api_body_kind_label(value: EnumValue<SourceApiBodyKind>) -> &'static str {
-    match source_api_body_kind_or_none(value) {
+source_api_enum_surface!(
+    source_api_selector_kind_or_none,
+    source_api_selector_kind_label,
+    SourceApiSelectorKind,
+    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE,
+    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED,
+    {
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => "none",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
+    }
+);
+
+source_api_enum_surface!(
+    source_api_pagination_policy_or_none,
+    source_api_pagination_policy_label,
+    SourceApiPaginationPolicy,
+    SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE,
+    SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED,
+    {
+        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE => "none",
+        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN => "continuation_token",
+    }
+);
+
+source_api_enum_surface!(
+    source_api_body_kind_or_none,
+    source_api_body_kind_label,
+    SourceApiBodyKind,
+    SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE,
+    SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_UNSPECIFIED,
+    {
         SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE => "none",
         SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON => "json",
         SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT => "text",
         SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_BINARY => "binary",
-        SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_UNSPECIFIED => unreachable!(),
     }
-}
+);
 
-pub(crate) fn source_api_pagination_policy_label(
-    value: EnumValue<SourceApiPaginationPolicy>,
-) -> &'static str {
-    match source_api_pagination_policy_or_none(value) {
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE => "none",
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN => {
-            "continuation_token"
-        }
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED => unreachable!(),
-    }
-}
-
-pub(crate) fn source_api_input_mode_label(value: EnumValue<SourceApiInputMode>) -> &'static str {
-    match source_api_input_mode_or_none(value) {
+source_api_enum_surface!(
+    source_api_input_mode_or_none,
+    source_api_input_mode_label,
+    SourceApiInputMode,
+    SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE,
+    SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED,
+    {
         SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE => "none",
         SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT => "request object",
         SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY => "request body",
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
     }
-}
+);
 
 pub(crate) fn proto_json_value_from_json(
     value: JsonValue,
@@ -456,6 +436,7 @@ mod tests {
     use super::source_api_input_mode_label;
     use super::source_api_operation_kind_label;
     use super::source_api_pagination_policy_label;
+    use super::source_api_selector_kind_label;
     use super::source_api_selector_kind_or_none;
     use super::types;
     use super::validate_execute_source_api_result;
@@ -487,7 +468,7 @@ mod tests {
             &types::DescribeSourceApiResponse {
                 source: buffa::MessageField::some(types::CliSourceApiSource {
                     key: "github-prod".to_owned(),
-                    provider: "github".to_owned(),
+                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
                     ..Default::default()
                 }),
                 descriptor_version: "github.v1".to_owned(),
@@ -534,9 +515,9 @@ mod tests {
     fn validate_execute_source_api_result_requires_source() {
         let error = execute_source_api_result(
             &types::ExecuteSourceApiResponse {
-                preview: buffa::MessageField::some(types::PreparedSourceApiPreview {
+                preview: buffa::MessageField::some(types::SourceApiPreview {
                     source_key: "github-prod".to_owned(),
-                    provider: "github".to_owned(),
+                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
                     operation: "fetch".to_owned(),
                     kind:
                         types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
@@ -595,6 +576,12 @@ mod tests {
                 types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY.into(),
             ),
             "request body"
+        );
+        assert_eq!(
+            source_api_selector_kind_label(
+                types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER.into(),
+            ),
+            "identifier"
         );
         assert_eq!(
             source_api_selector_kind_or_none(

@@ -1,8 +1,10 @@
-import type { MessageInitShape } from "@bufbuild/protobuf";
+import { fromJson, toJson } from "@bufbuild/protobuf";
+import type { JsonValue, MessageInitShape } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
-  createPreparedSourceApiPreview,
+  createPreparedSourceApiPreview as createSourceApiPreview,
   decodeSourceApiContinuationToken,
   describeSourceApi,
   encodeSourceApiContinuationToken,
@@ -17,11 +19,19 @@ import {
 } from "@onequery/server/source-api";
 import type {
   PreparedSourceApi,
+  PreparedSourceApiPreview as DomainSourceApiPreview,
   PreparedSourceConnection,
   SourceApiActorContext,
+  SourceApiBodyKind,
   SourceApiDescriptor,
-  SourceApiExecutionResponse,
   SourceApiExecutionResult,
+  SourceApiFieldPolicy,
+  SourceApiHeader,
+  SourceApiOperation,
+  SourceApiRequestBody,
+  SourceApiResponseBody,
+  SourceApiSource,
+  SourceApiDraft as DomainSourceApiDraft,
 } from "@onequery/server/source-api";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
@@ -36,17 +46,21 @@ import { runCliLoadSourceEffect } from "../../source/effects";
 import { requireCliConnectRequestContext } from "../context";
 import { createCliConnectError } from "../error";
 import {
+  CliSourceApiBodyKind,
+  CliSourceApiExecuteMode,
+  CliSourceApiInputMode,
+  CliSourceApiOperationKind,
+  CliSourceApiPaginationPolicy,
+  CliSourceApiSelectorKind,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
-import {
-  fromCliSourceApiDraft,
-  isCliSourceApiPreviewOnlyMode,
-  requireCliSourceApiExecutionStart,
-  toCliDescribeSourceApiResponse,
-  toCliExecuteSourceApiResponse,
-} from "./conversions";
+import type {
+  ExecuteSourceApiRequest,
+  SourceApiDraft as CliSourceApiDraft,
+} from "../gen/onequery/cli/v1/source_api_pb";
 import { throwCliConnectSourceNotFound } from "./errors";
+import { toCliSourceProvider } from "./source-provider";
 import type { CliHonoContext, CliServiceMethod } from "./types";
 
 type DescribeSourceApiResponseInit = MessageInitShape<
@@ -55,12 +69,18 @@ type DescribeSourceApiResponseInit = MessageInitShape<
 type ExecuteSourceApiResponseInit = MessageInitShape<
   typeof ExecuteSourceApiResponseSchema
 >;
+type CliSourceApiPreviewInit = NonNullable<
+  ExecuteSourceApiResponseInit["preview"]
+>;
+type CliSourceApiExecutionResultInit = NonNullable<
+  ExecuteSourceApiResponseInit["result"]
+>;
 
 type SourceApiConnectFailurePhase = "authorize" | "describe" | "execute";
 
 type SourceApiServiceDependencies = {
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
-  createPreparedSourceApiPreview: typeof createPreparedSourceApiPreview;
+  createSourceApiPreview: typeof createSourceApiPreview;
   decodeSourceApiContinuationToken: typeof decodeSourceApiContinuationToken;
   describeSourceApi: typeof describeSourceApi;
   encodeSourceApiContinuationToken: typeof encodeSourceApiContinuationToken;
@@ -76,7 +96,7 @@ type SourceApiServiceDependencies = {
 
 const sourceApiServiceDependencies: SourceApiServiceDependencies = {
   buildCliRequestLogDetails,
-  createPreparedSourceApiPreview,
+  createSourceApiPreview,
   decodeSourceApiContinuationToken,
   describeSourceApi,
   encodeSourceApiContinuationToken,
@@ -90,6 +110,274 @@ const sourceApiServiceDependencies: SourceApiServiceDependencies = {
   toCliErrorMessage,
 };
 
+function requireCliSourceApiExecutionStart(
+  input: ExecuteSourceApiRequest["input"]
+) {
+  if (input.case === "start" && input.value.draft) {
+    return {
+      draft: input.value.draft,
+      mode: input.value.mode,
+    };
+  }
+
+  throw createCliConnectError({
+    detail: "source API request missing draft payload",
+    key: "READ_QUERY_INPUT_INVALID",
+  });
+}
+
+function isCliSourceApiPreviewOnlyMode(
+  value: CliSourceApiExecuteMode
+): boolean {
+  return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
+}
+
+function buildDomainSourceApiDraft(
+  request: CliSourceApiDraft
+): DomainSourceApiDraft {
+  return {
+    body: buildDomainSourceApiRequestBody(request.body),
+    fieldPatch: request.fieldPatch,
+    headers: request.headers.map(buildDomainSourceApiHeader),
+    methodOverride: request.methodOverride,
+    operation: request.operation,
+    selector: request.selector,
+  };
+}
+
+function buildDomainSourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function buildDomainSourceApiRequestBody(
+  body: CliSourceApiDraft["body"]
+): SourceApiRequestBody {
+  switch (body.case) {
+    case "jsonBody":
+      return {
+        kind: "json",
+        value: toJson(ValueSchema, body.value),
+      };
+    case "textBody":
+      return {
+        kind: "text",
+        value: body.value,
+      };
+    case "binaryBody":
+      return {
+        kind: "binary",
+        value: body.value,
+      };
+    case undefined:
+      return {
+        kind: "none",
+      };
+  }
+}
+
+function buildCliDescribeSourceApiResponse(
+  value: SourceApiDescriptor
+): DescribeSourceApiResponseInit {
+  return {
+    defaultPathOperation: value.defaultPathOperation,
+    descriptorVersion: value.descriptorVersion,
+    examples: value.examples.map(buildCliSourceApiExample),
+    notes: [...value.notes],
+    operations: value.operations.map(buildCliSourceApiOperation),
+    source: buildCliSourceApiSource(value.source),
+  };
+}
+
+function buildCliExecuteSourceApiResponse(input: {
+  continuationToken?: string;
+  preview: DomainSourceApiPreview;
+  result?: SourceApiExecutionResult;
+}): ExecuteSourceApiResponseInit {
+  return {
+    continuationToken: input.continuationToken,
+    preview: buildCliSourceApiPreview(input.preview),
+    result: input.result
+      ? buildCliSourceApiExecutionResult(input.result)
+      : undefined,
+  };
+}
+
+function buildCliSourceApiPreview(
+  value: DomainSourceApiPreview
+): CliSourceApiPreviewInit {
+  return {
+    bodyKind: toCliSourceApiBodyKind(value.bodyKind),
+    bodyPaths: [...value.bodyPaths],
+    headerNames: [...value.headerNames],
+    host: value.host,
+    kind: toCliSourceApiOperationKind(value.kind),
+    method: value.method,
+    operation: value.operation,
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    provider: toCliSourceProvider(value.provider),
+    selector: value.selector,
+    sourceKey: value.sourceKey,
+    url: value.url,
+  };
+}
+
+function buildCliSourceApiExecutionResult(
+  value: SourceApiExecutionResult
+): CliSourceApiExecutionResultInit {
+  return {
+    body: buildCliSourceApiResponseBody(value.body),
+    contentType: value.contentType,
+    headers: value.headers.map(buildDomainSourceApiHeader),
+    operation: value.operation,
+    selector: value.selector,
+    source: buildCliSourceApiSource(value.source),
+    status: value.status,
+  };
+}
+
+function buildCliSourceApiOperation(value: SourceApiOperation) {
+  return {
+    description: value.description,
+    examples: value.examples.map(buildCliSourceApiExample),
+    fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
+    headerPolicy: {
+      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+    },
+    kind: toCliSourceApiOperationKind(value.kind),
+    methodPolicy: {
+      allowedMethods: [...value.methodPolicy.allowedMethods],
+      defaultMethod: value.methodPolicy.defaultMethod,
+    },
+    name: value.name,
+    notes: [...value.notes],
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    selectorKind: toCliSourceApiSelectorKind(value.selectorKind),
+    selectorLabel: value.selectorLabel,
+    summary: value.summary,
+  };
+}
+
+function buildCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
+  return {
+    acceptsInput: value.acceptsInput,
+    inputMode: toCliSourceApiInputMode(value.inputMode),
+    mergePatches: value.mergePatches,
+    supportsArrayPaths: value.supportsArrayPaths,
+    supportsNestedPaths: value.supportsNestedPaths,
+    supportsRawFields: value.allowsRawFields,
+    supportsTypedFields: value.allowsTypedFields,
+  };
+}
+
+function buildCliSourceApiExample(
+  value: SourceApiOperation["examples"][number]
+) {
+  return {
+    command: value.command,
+    description: value.description,
+    label: value.label,
+  };
+}
+
+function buildCliSourceApiResponseBody(
+  value: SourceApiResponseBody
+): CliSourceApiExecutionResultInit["body"] {
+  switch (value.kind) {
+    case "json":
+      return {
+        case: "json",
+        value: fromJson(ValueSchema, value.value as JsonValue),
+      };
+    case "text":
+      return {
+        case: "text",
+        value: value.value,
+      };
+    case "binary":
+      return {
+        case: "binary",
+        value: value.value,
+      };
+    case "none":
+      return {
+        case: undefined,
+        value: undefined,
+      };
+  }
+}
+
+function buildCliSourceApiSource(value: SourceApiSource) {
+  return {
+    displayName: value.displayName ?? undefined,
+    key: value.key,
+    provider: toCliSourceProvider(value.provider),
+  };
+}
+
+function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
+  switch (value) {
+    case "none":
+      return CliSourceApiInputMode.NONE;
+    case "request_object":
+      return CliSourceApiInputMode.REQUEST_OBJECT;
+    case "request_body":
+      return CliSourceApiInputMode.REQUEST_BODY;
+  }
+}
+
+function toCliSourceApiOperationKind(
+  value: SourceApiOperation["kind"]
+): CliSourceApiOperationKind {
+  switch (value) {
+    case "http_request":
+      return CliSourceApiOperationKind.HTTP_REQUEST;
+    case "structured_request":
+      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+  }
+}
+
+function toCliSourceApiBodyKind(
+  value: SourceApiBodyKind
+): CliSourceApiBodyKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiBodyKind.NONE;
+    case "json":
+      return CliSourceApiBodyKind.JSON;
+    case "text":
+      return CliSourceApiBodyKind.TEXT;
+    case "binary":
+      return CliSourceApiBodyKind.BINARY;
+  }
+}
+
+function toCliSourceApiPaginationPolicy(
+  value: SourceApiOperation["paginationPolicy"]
+): CliSourceApiPaginationPolicy {
+  switch (value) {
+    case "none":
+      return CliSourceApiPaginationPolicy.NONE;
+    case "continuation_token":
+      return CliSourceApiPaginationPolicy.CONTINUATION_TOKEN;
+  }
+}
+
+function toCliSourceApiSelectorKind(
+  value: SourceApiOperation["selectorKind"]
+): CliSourceApiSelectorKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiSelectorKind.NONE;
+    case "path":
+      return CliSourceApiSelectorKind.PATH;
+    case "identifier":
+      return CliSourceApiSelectorKind.IDENTIFIER;
+  }
+}
+
 function buildSourceApiActor(input: {
   authorizedOrg: AuthorizedCliOrgContext;
   requestId: string;
@@ -102,22 +390,6 @@ function buildSourceApiActor(input: {
     organizationSlug: input.authorizedOrg.org.slug,
     requestId: input.requestId,
     userId: input.session.user.id,
-  };
-}
-
-function buildSourceApiExecutionResponse(input: {
-  continuationToken?: string;
-  result: SourceApiExecutionResult;
-}): SourceApiExecutionResponse {
-  return {
-    body: input.result.body,
-    continuationToken: input.continuationToken,
-    contentType: input.result.contentType,
-    headers: input.result.headers,
-    operation: input.result.operation,
-    selector: input.result.selector,
-    source: input.result.source,
-    status: input.result.status,
   };
 }
 
@@ -321,7 +593,7 @@ export function createHandleDescribeSourceApi(
       level: "info",
     });
 
-    return toCliDescribeSourceApiResponse(
+    return buildCliDescribeSourceApiResponse(
       descriptor
     ) satisfies DescribeSourceApiResponseInit;
   };
@@ -375,11 +647,10 @@ export function createHandleExecuteSourceApi(
         const prepared = await resolvedDependencies.prepareSourceApiDraft({
           actor,
           descriptor,
-          draft: fromCliSourceApiDraft(draft),
+          draft: buildDomainSourceApiDraft(draft),
           source,
         });
-        const preview =
-          resolvedDependencies.createPreparedSourceApiPreview(prepared);
+        const preview = resolvedDependencies.createSourceApiPreview(prepared);
 
         if (isCliSourceApiPreviewOnlyMode(start.mode)) {
           resolvedDependencies.logCliEvent({
@@ -395,7 +666,7 @@ export function createHandleExecuteSourceApi(
             level: "info",
           });
 
-          return toCliExecuteSourceApiResponse({
+          return buildCliExecuteSourceApiResponse({
             preview,
           }) satisfies ExecuteSourceApiResponseInit;
         }
@@ -405,37 +676,34 @@ export function createHandleExecuteSourceApi(
           prepared,
           source,
         });
-        const response = buildSourceApiExecutionResponse({
-          continuationToken: encodeSourceApiContinuationTokenValue(
-            {
-              organizationSlug: authorizedOrg.org.slug,
-              prepared,
-              result,
-              secret: c.var.runtime.crypto.masterEncryptionKey,
-            },
-            resolvedDependencies
-          ),
-          result,
-        });
+        const continuationToken = encodeSourceApiContinuationTokenValue(
+          {
+            organizationSlug: authorizedOrg.org.slug,
+            prepared,
+            result,
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+          },
+          resolvedDependencies
+        );
 
         resolvedDependencies.logCliEvent({
           details: resolvedDependencies.buildCliRequestLogDetails(c, {
             mode: "execute",
-            operation: response.operation,
+            operation: result.operation,
             orgSlug: authorizedOrg.org.slug,
-            provider: response.source.provider,
+            provider: result.source.provider,
             roles: authorizedOrg.membershipRoles,
-            sourceKey: response.source.key,
-            status: response.status,
+            sourceKey: result.source.key,
+            status: result.status,
           }),
           event: "source_api.execute.resolved",
-          level: resolvedDependencies.getCliLogLevelForStatus(response.status),
+          level: resolvedDependencies.getCliLogLevelForStatus(result.status),
         });
 
-        return toCliExecuteSourceApiResponse({
-          continuationToken: response.continuationToken,
+        return buildCliExecuteSourceApiResponse({
+          continuationToken,
           preview,
-          result: response,
+          result,
         }) satisfies ExecuteSourceApiResponseInit;
       }
 
@@ -486,40 +754,37 @@ export function createHandleExecuteSourceApi(
           prepared: continuation.prepared,
           source,
         });
-        const preview = resolvedDependencies.createPreparedSourceApiPreview(
+        const preview = resolvedDependencies.createSourceApiPreview(
           continuation.prepared
         );
-        const response = buildSourceApiExecutionResponse({
-          continuationToken: encodeSourceApiContinuationTokenValue(
-            {
-              organizationSlug: authorizedOrg.org.slug,
-              prepared: continuation.prepared,
-              result,
-              secret: c.var.runtime.crypto.masterEncryptionKey,
-            },
-            resolvedDependencies
-          ),
-          result,
-        });
+        const continuationToken = encodeSourceApiContinuationTokenValue(
+          {
+            organizationSlug: authorizedOrg.org.slug,
+            prepared: continuation.prepared,
+            result,
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+          },
+          resolvedDependencies
+        );
 
         resolvedDependencies.logCliEvent({
           details: resolvedDependencies.buildCliRequestLogDetails(c, {
             mode: "resume",
-            operation: response.operation,
+            operation: result.operation,
             orgSlug: authorizedOrg.org.slug,
-            provider: response.source.provider,
+            provider: result.source.provider,
             roles: authorizedOrg.membershipRoles,
-            sourceKey: response.source.key,
-            status: response.status,
+            sourceKey: result.source.key,
+            status: result.status,
           }),
           event: "source_api.execute.resolved",
-          level: resolvedDependencies.getCliLogLevelForStatus(response.status),
+          level: resolvedDependencies.getCliLogLevelForStatus(result.status),
         });
 
-        return toCliExecuteSourceApiResponse({
-          continuationToken: response.continuationToken,
+        return buildCliExecuteSourceApiResponse({
+          continuationToken,
           preview,
-          result: response,
+          result,
         }) satisfies ExecuteSourceApiResponseInit;
       }
 

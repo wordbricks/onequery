@@ -15,9 +15,9 @@ use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
-use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiExecutionPage;
+use crate::transport::source_api::SourceApiPreview;
 
 use super::CommandContext;
 use super::Runtime;
@@ -105,27 +105,25 @@ pub(super) async fn execute<B, T>(
                 &execute_response.preview,
                 plan.render,
             )
-            .map(
-                |output| {
-                    output.with_request_id(if context.verbose {
-                        execute_response.request_id.clone()
-                    } else {
-                        None
-                    })
-                },
-            )
+            .map(|output| {
+                output.with_request_id(if context.verbose {
+                    execute_response.request_id.clone()
+                } else {
+                    None
+                })
+            })
         }
     }
 }
 
 struct PreviewedSourceApiExecution {
-    preview: PreparedSourceApiPreview,
+    preview: SourceApiPreview,
     request_id: Option<String>,
 }
 
 struct ExecutedSourceApiPages {
     pages: Vec<SourceApiExecutionPage>,
-    preview: PreparedSourceApiPreview,
+    preview: SourceApiPreview,
     request_id: Option<String>,
 }
 
@@ -137,9 +135,10 @@ async fn preview_source_api_execution(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> Result<PreviewedSourceApiExecution, CliError> {
-    let preview_response = source_api::execute_source_api(client, org_slug, source_key, draft, true)
-        .await
-        .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
+    let preview_response =
+        source_api::execute_source_api(client, org_slug, source_key, draft, true)
+            .await
+            .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
     let Some(preview) = preview_response.payload.preview.into_option() else {
         return Err(source_api_error(
             context,
@@ -207,8 +206,8 @@ async fn execute_source_api_pages(
         };
 
         let response = source_api::resume_source_api(client, continuation_token_value.as_str())
-        .await
-        .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+            .await
+            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
         continuation_token = response.payload.continuation_token.clone();
         let Some(page) = response.payload.result.into_option() else {

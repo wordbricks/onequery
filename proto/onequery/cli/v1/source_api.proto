@@ -4,6 +4,7 @@ package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
+import "onequery/cli/v1/source.proto";
 
 message DescribeSourceApiRequest {
   string org_slug = 1 [
@@ -52,12 +53,15 @@ message SourceApiDraft {
   }
 }
 
-message PreparedSourceApiPreview {
+message SourceApiPreview {
   string source_key = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  string provider = 2 [(buf.validate.field).string.min_len = 1];
+  CliSourceProvider provider = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   string operation = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
@@ -129,7 +133,7 @@ message SourceApiExecutionResult {
 }
 
 message ExecuteSourceApiResponse {
-  PreparedSourceApiPreview preview = 1 [(buf.validate.field).required = true];
+  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
   SourceApiExecutionResult result = 2;
   optional string continuation_token = 3 [(buf.validate.field).string.min_len = 1];
 }
@@ -139,7 +143,10 @@ message CliSourceApiSource {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  string provider = 2 [(buf.validate.field).string.min_len = 1];
+  CliSourceProvider provider = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   optional string display_name = 3 [(buf.validate.field).string.min_len = 1];
 }
 

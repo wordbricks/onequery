@@ -578,7 +578,9 @@ mod tests {
                 slurp: true,
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
+            &operation(
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+            ),
             &context(),
             "github-prod",
         )
@@ -598,7 +600,9 @@ mod tests {
                 max_pages: Some(2),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
+            &operation(
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+            ),
             &context(),
             "github-prod",
         )
@@ -619,7 +623,9 @@ mod tests {
                 max_pages: Some(0),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
+            &operation(
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+            ),
             &context(),
             "github-prod",
         )
@@ -654,7 +660,9 @@ mod tests {
                 max_pages: Some(3),
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
+            &operation(
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+            ),
             &context(),
             "github-prod",
         )
@@ -931,7 +939,9 @@ mod tests {
         SourceApiDescriptor {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
                 key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
+                provider:
+                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                        .into(),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()
             }),

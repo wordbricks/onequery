@@ -23,10 +23,15 @@ import type {
   DescribeSourceApiResponse,
   ExecuteSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
+import { CliSourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
 } from "./source_api";
+
+function summarizeCliSourceProvider(provider: CliSourceProvider): string {
+  return CliSourceProvider[provider].toLowerCase();
+}
 
 expect.addSnapshotSerializer({
   serialize(value, config, indentation, depth, refs, printer) {
@@ -161,7 +166,7 @@ const prepared = {
   url: "https://api.github.com/issues",
 } as const;
 
-const preparedPreview = {
+const sourceApiPreview = {
   bodyKind: "text",
   bodyPaths: [],
   headerNames: ["accept"],
@@ -228,7 +233,7 @@ function createHarness() {
         ...(details ?? {}),
       })
     ),
-    createPreparedSourceApiPreview: vi.fn().mockReturnValue(preparedPreview),
+    createSourceApiPreview: vi.fn().mockReturnValue(sourceApiPreview),
     decodeSourceApiContinuationToken: vi
       .fn()
       .mockReturnValue(decodedContinuationToken),
@@ -290,7 +295,12 @@ function summarizeDescribeSourceApiResponse(
       paginationPolicy:
         CliSourceApiPaginationPolicy[operation.paginationPolicy],
     })),
-    source: response.source ?? null,
+    source: response.source
+      ? {
+          ...response.source,
+          provider: summarizeCliSourceProvider(response.source.provider),
+        }
+      : null,
   };
 }
 
@@ -328,7 +338,7 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
           operation: preview.operation,
           paginationPolicy:
             CliSourceApiPaginationPolicy[preview.paginationPolicy],
-          provider: preview.provider,
+          provider: summarizeCliSourceProvider(preview.provider),
           selector: preview.selector ?? null,
           sourceKey: preview.sourceKey,
           url: preview.url ?? null,
@@ -341,7 +351,12 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
           headers: result.headers,
           operation: result.operation,
           selector: result.selector ?? null,
-          source: result.source ?? null,
+          source: result.source
+            ? {
+                ...result.source,
+                provider: summarizeCliSourceProvider(result.source.provider),
+              }
+            : null,
           status: result.status,
         }
       : null,

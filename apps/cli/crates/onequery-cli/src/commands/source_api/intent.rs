@@ -2,6 +2,7 @@ use onequery_cli_core::error::CliError;
 
 use crate::cli::ApiArgs;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiProvider;
 
 use super::CommandContext;
 use super::args::has_execute_intent_flags;
@@ -89,7 +90,8 @@ fn infer_selector_target(target: &str, descriptor: &SourceApiDescriptor) -> Opti
         return None;
     }
 
-    if descriptor.source.provider == "github" {
+    if descriptor.source.provider.as_known() == Some(SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB)
+    {
         return infer_github_repository_selector(target);
     }
 
@@ -352,7 +354,9 @@ mod tests {
         SourceApiDescriptor {
             source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
+                provider:
+                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                        .into(),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()
             }),

@@ -24,6 +24,7 @@ import {
 } from "../../source/model";
 import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
+import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import {
   CliSourceConnectAmplitudeRegion,
   CliSourceConnectMixpanelRegion,
@@ -31,6 +32,7 @@ import {
   ConnectSourceResponseSchema,
   GetSourceConnectGuideResponseSchema,
   GetSourceResponseSchema,
+  CliSourceStatus,
 } from "../gen/onequery/cli/v1/source_pb";
 import type {
   ConnectSourceCredentials,
@@ -38,16 +40,11 @@ import type {
   ConnectSourceServiceAccountCredentials,
 } from "../gen/onequery/cli/v1/source_pb";
 import {
-  fromCliSourceProvider,
-  toCliContentFormat,
-  toCliSourceProvider,
-  toCliSourceStatus,
-} from "./conversions";
-import {
   throwCliConnectSourceNameConflict,
   throwCliConnectSourceNotFound,
 } from "./errors";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
+import { fromCliSourceProvider, toCliSourceProvider } from "./source-provider";
 import type { CliServiceMethod } from "./types";
 
 type GetSourceConnectGuideResponseInit = MessageInitShape<
@@ -57,6 +54,24 @@ type ConnectSourceResponseInit = MessageInitShape<
   typeof ConnectSourceResponseSchema
 >;
 type GetSourceResponseInit = MessageInitShape<typeof GetSourceResponseSchema>;
+
+function toCliContentFormat(value: "markdown") {
+  switch (value) {
+    case "markdown":
+      return CliContentFormat.MARKDOWN;
+  }
+}
+
+function toCliSourceStatus(value: DataSourceStatus) {
+  switch (value) {
+    case "active":
+      return CliSourceStatus.ACTIVE;
+    case "error":
+      return CliSourceStatus.ERROR;
+    case "disconnected":
+      return CliSourceStatus.DISCONNECTED;
+  }
+}
 
 export const handleListSources: CliServiceMethod<"listSources"> = async (
   request,

@@ -29,13 +29,13 @@ import { toCliAuthUserView } from "../../domain/workflows";
 import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
+  CliAuthMode,
   CliAuthorizedDeviceAuthorizationSchema,
   GetSessionResponseSchema,
   PollDeviceAuthorizationResponseSchema,
   RefreshSessionResponseSchema,
 } from "../gen/onequery/cli/v1/auth_pb";
 import { requireCliSessionIdentity } from "./access";
-import { toCliAuthMode, timestampFromIsoString } from "./conversions";
 import type { CliServiceMethod } from "./types";
 
 type GetSessionResponseInit = MessageInitShape<typeof GetSessionResponseSchema>;
@@ -51,6 +51,24 @@ type CliAuthUserInit = {
   email?: string;
   displayName?: string;
 };
+
+function timestampFromIsoString(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return undefined;
+  }
+
+  return timestampFromDate(parsed);
+}
+
+function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
+  switch (value) {
+    case "browser_session":
+      return CliAuthMode.BROWSER_SESSION;
+    case "bearer_token":
+      return CliAuthMode.BEARER_TOKEN;
+  }
+}
 
 export const handleGetSession: CliServiceMethod<"getSession"> = async (
   _request,

@@ -1,14 +1,13 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
-use crate::transport::source_api::SourceApiExecutionPage;
-use crate::transport::source_api::PreparedSourceApiPreview;
+use crate::transport::labels::source_provider_to_str;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiExecutionPage;
 use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
-use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
-use crate::transport::source_api::SourceApiOperationKind;
+use crate::transport::source_api::SourceApiPreview;
 use crate::transport::source_api::SourceApiResponseBody;
 use crate::transport::source_api::SourceApiSelectorKind;
 use crate::transport::source_api::json_from_proto_json_value;
@@ -17,6 +16,7 @@ use crate::transport::source_api::source_api_body_kind_label;
 use crate::transport::source_api::source_api_input_mode_label;
 use crate::transport::source_api::source_api_operation_kind_label;
 use crate::transport::source_api::source_api_pagination_policy_label;
+use crate::transport::source_api::source_api_selector_kind_label;
 use crate::transport::source_api::source_api_selector_kind_or_none;
 use base64::Engine;
 use jaq_core::Compiler;
@@ -42,7 +42,8 @@ pub(super) fn render_descriptor_output(
 
     let mut lines = vec![format!(
         "Source: {} ({})",
-        descriptor.source.key, descriptor.source.provider
+        descriptor.source.key,
+        source_provider_to_str(descriptor.source.provider)
     )];
     if let Some(display_name) = descriptor.source.display_name.as_deref() {
         lines.push(format!("Display name: {display_name}"));
@@ -74,16 +75,16 @@ pub(super) fn render_descriptor_output(
 }
 
 pub(super) fn render_dry_run_output(
-    plan: &PreparedSourceApiPreview,
+    preview: &SourceApiPreview,
     verbose: bool,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_dry_run_plan(plan, verbose)?;
+    let data = serialize_dry_run_preview(preview, verbose)?;
     Ok(CommandOutput::raw_json(pretty_json_lines(&data), data))
 }
 
 pub(super) fn render_execute_output(
     responses: Vec<SourceApiExecutionPage>,
-    preview: &PreparedSourceApiPreview,
+    preview: &SourceApiPreview,
     render: SourceApiRenderOptions,
 ) -> Result<CommandOutput, CliError> {
     let response = assemble_execute_response(responses, &render)?;
@@ -112,7 +113,7 @@ pub(super) fn render_execute_output(
 
 fn serialize_execute_response(
     response: &SourceApiExecutionPage,
-    preview: &PreparedSourceApiPreview,
+    preview: &SourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
     if !render.verbose {
@@ -138,30 +139,30 @@ fn serialize_execute_response(
     serialize_verbose_execute_response(response, preview, render)
 }
 
-fn serialize_dry_run_plan(
-    plan: &PreparedSourceApiPreview,
+fn serialize_dry_run_preview(
+    preview: &SourceApiPreview,
     verbose: bool,
 ) -> Result<serde_json::Value, CliError> {
     if verbose {
-        return Ok(prepared_preview_json(plan, true));
+        return Ok(preview_json(preview, true));
     }
 
     let mut object = serde_json::Map::new();
     object.insert(
         "operation".to_owned(),
-        serde_json::Value::String(plan.operation.clone()),
+        serde_json::Value::String(preview.operation.clone()),
     );
     object.insert(
         "kind".to_owned(),
-        serde_json::Value::String(source_api_operation_kind_label(plan.kind).to_owned()),
+        serde_json::Value::String(source_api_operation_kind_label(preview.kind).to_owned()),
     );
-    if let Some(method) = plan.method.as_ref() {
+    if let Some(method) = preview.method.as_ref() {
         object.insert(
             "method".to_owned(),
             serde_json::Value::String(method.clone()),
         );
     }
-    if let Some(selector) = plan.selector.as_ref() {
+    if let Some(selector) = preview.selector.as_ref() {
         object.insert(
             "selector".to_owned(),
             serde_json::Value::String(selector.clone()),
@@ -169,7 +170,7 @@ fn serialize_dry_run_plan(
     }
     object.insert(
         "bodyKind".to_owned(),
-        serde_json::Value::String(source_api_body_kind_label(plan.body_kind).to_owned()),
+        serde_json::Value::String(source_api_body_kind_label(preview.body_kind).to_owned()),
     );
 
     Ok(serde_json::Value::Object(object))
@@ -177,11 +178,11 @@ fn serialize_dry_run_plan(
 
 fn serialize_verbose_execute_response(
     response: &SourceApiExecutionPage,
-    preview: &PreparedSourceApiPreview,
+    preview: &SourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
     let mut object = serde_json::Map::new();
-    object.insert("preview".to_owned(), prepared_preview_json(preview, true));
+    object.insert("preview".to_owned(), preview_json(preview, true));
     object.insert("source".to_owned(), source_json(&response.source));
     object.insert(
         "operation".to_owned(),
@@ -539,10 +540,7 @@ fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value
     Ok(serde_json::Value::Object(object))
 }
 
-fn prepared_preview_json(
-    preview: &PreparedSourceApiPreview,
-    include_business_metadata: bool,
-) -> serde_json::Value {
+fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> serde_json::Value {
     let mut object = serde_json::Map::new();
     if include_business_metadata {
         object.insert(
@@ -551,7 +549,7 @@ fn prepared_preview_json(
         );
         object.insert(
             "provider".to_owned(),
-            serde_json::Value::String(preview.provider.clone()),
+            serde_json::Value::String(source_provider_to_str(preview.provider)),
         );
     }
     object.insert(
@@ -643,7 +641,9 @@ fn operation_json(operation: &SourceApiOperation) -> Result<serde_json::Value, C
     );
     object.insert(
         "selectorKind".to_owned(),
-        serde_json::Value::String(selector_kind_label(operation.selector_kind).to_owned()),
+        serde_json::Value::String(
+            source_api_selector_kind_label(operation.selector_kind).to_owned(),
+        ),
     );
     if let Some(selector_label) = operation.selector_label.as_ref() {
         object.insert(
@@ -699,7 +699,7 @@ fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_
     );
     object.insert(
         "provider".to_owned(),
-        serde_json::Value::String(source.provider.clone()),
+        serde_json::Value::String(source_provider_to_str(source.provider)),
     );
     if let Some(display_name) = source.display_name.as_ref() {
         object.insert(
@@ -787,15 +787,6 @@ fn example_json(example: &crate::transport::source_api::SourceApiExample) -> ser
     serde_json::Value::Object(object)
 }
 
-fn selector_kind_label(kind: buffa::EnumValue<SourceApiSelectorKind>) -> &'static str {
-    match source_api_selector_kind_or_none(kind) {
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => "none",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
-    }
-}
-
 fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> CliError {
     CliError::new(
         "failed to render source API response",
@@ -808,7 +799,10 @@ fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> Cli
 
 fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     let mut lines = vec![operation.name.clone()];
-    lines.push(format!("  kind: {}", operation_kind_label(operation.kind)));
+    lines.push(format!(
+        "  kind: {}",
+        source_api_operation_kind_label(operation.kind)
+    ));
     lines.push(format!(
         "  selector: {}",
         selector_summary(operation).unwrap_or_else(|| "none".to_owned())
@@ -854,7 +848,7 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     }
     lines.push(format!(
         "  input: {}",
-        input_mode_label(operation.field_policy.input_mode)
+        source_api_input_mode_label(operation.field_policy.input_mode)
     ));
     if operation.field_policy.accepts_input {
         lines.push(format!(
@@ -993,15 +987,13 @@ fn binary_tty_render_error() -> CliError {
     )
 }
 
-fn operation_kind_label(kind: buffa::EnumValue<SourceApiOperationKind>) -> &'static str {
-    source_api_operation_kind_label(kind)
-}
-
 fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
     let kind = match source_api_selector_kind_or_none(operation.selector_kind) {
         SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => return None,
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
+        | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
+            source_api_selector_kind_label(operation.selector_kind)
+        }
         SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
     };
 
@@ -1028,10 +1020,6 @@ fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
     examples
 }
 
-fn input_mode_label(mode: buffa::EnumValue<SourceApiInputMode>) -> &'static str {
-    source_api_input_mode_label(mode)
-}
-
 #[cfg(test)]
 mod tests {
     use buffa::MessageField;
@@ -1042,12 +1030,12 @@ mod tests {
     use crate::output::RenderedOutput;
     use crate::output::render_output;
     use crate::output::render_output_payload;
-    use crate::transport::source_api::PreparedSourceApiPreview;
     use crate::transport::source_api::ProtoJsonValue;
     use crate::transport::source_api::SourceApiBodyKind;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiPaginationPolicy;
+    use crate::transport::source_api::SourceApiPreview;
     use crate::transport::source_api::SourceApiSource;
     use crate::transport::source_api::proto_json_value_from_json;
 
@@ -1058,12 +1046,12 @@ mod tests {
     use super::render_execute_output;
 
     #[test]
-    fn render_dry_run_output_serializes_prepared_preview_shape() {
+    fn render_dry_run_output_serializes_preview_shape() {
         let output = render_dry_run_output(
-            &prepared_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &source_api_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
             false,
         )
-        .expect("expected prepared dry-run preview to render");
+        .expect("expected dry-run preview to render");
 
         let rendered = render_output(output, EffectiveOutputMode::Text);
         assert_snapshot!(
@@ -1092,14 +1080,14 @@ mod tests {
     }
 
     #[test]
-    fn render_dry_run_output_serializes_verbose_prepared_preview_shape() {
+    fn render_dry_run_output_serializes_verbose_preview_shape() {
         let output = render_dry_run_output(
-            &prepared_preview(
+            &source_api_preview(
                 SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             true,
         )
-        .expect("expected verbose prepared dry-run preview to render");
+        .expect("expected verbose dry-run preview to render");
 
         assert_eq!(
             serde_json::from_str::<serde_json::Value>(&render_output(
@@ -1381,7 +1369,7 @@ mod tests {
     }
 
     #[test]
-    fn render_execute_output_includes_prepare_preview_when_verbose() {
+    fn render_execute_output_includes_preview_when_verbose() {
         let output = render_execute_output(
             vec![json_response(json_body(json!({"items": [1, 2]})))],
             &execute_preview(),
@@ -1520,7 +1508,9 @@ mod tests {
         SourceApiExecutionPage {
             source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
+                provider:
+                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                        .into(),
                 display_name: None,
                 ..Default::default()
             }),
@@ -1535,10 +1525,11 @@ mod tests {
         }
     }
 
-    fn prepared_preview(pagination_policy: SourceApiPaginationPolicy) -> PreparedSourceApiPreview {
-        PreparedSourceApiPreview {
+    fn source_api_preview(pagination_policy: SourceApiPaginationPolicy) -> SourceApiPreview {
+        SourceApiPreview {
             source_key: "github-prod".to_owned(),
-            provider: "github".to_owned(),
+            provider: crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                .into(),
             operation: "fetch".to_owned(),
             kind: SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
             method: Some("GET".to_owned()),
@@ -1569,8 +1560,8 @@ mod tests {
         proto_json_value_from_json(value).expect("expected test JSON value to convert to WKT")
     }
 
-    fn execute_preview() -> PreparedSourceApiPreview {
-        prepared_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+    fn execute_preview() -> SourceApiPreview {
+        source_api_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
     }
 
     fn render_options() -> SourceApiRenderOptions {
