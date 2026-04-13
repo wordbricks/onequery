@@ -88,14 +88,14 @@ pub(crate) fn present_api_client_build_failure(
     command: &str,
 ) -> CliError {
     match failure {
-        ApiClientBuildFailure::InvalidBaseUrl { base_url, message } => CliError::new(
+        ApiClientBuildFailure::BaseUrl { base_url, message } => CliError::new(
             "invalid base URL",
             command.to_owned(),
             ErrorStage::LoadConfig,
             format!("{message}: {base_url}"),
             vec!["rebuild onequery with a valid default base URL".to_owned()],
         ),
-        ApiClientBuildFailure::InvalidAuthToken { message } => CliError::new(
+        ApiClientBuildFailure::AuthToken { message } => CliError::new(
             "invalid auth token",
             command.to_owned(),
             ErrorStage::Auth,
@@ -105,7 +105,7 @@ pub(crate) fn present_api_client_build_failure(
                 "onequery auth login".to_owned(),
             ],
         ),
-        ApiClientBuildFailure::InvalidRequestId { message } => CliError::new(
+        ApiClientBuildFailure::RequestId { message } => CliError::new(
             "invalid request ID",
             command.to_owned(),
             ErrorStage::Http,
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn present_api_client_build_failure_reports_invalid_base_url() {
         let error = present_api_client_build_failure(
-            ApiClientBuildFailure::InvalidBaseUrl {
+            ApiClientBuildFailure::BaseUrl {
                 base_url: "invalid-url".to_owned(),
                 message: "relative URL without a base".to_owned(),
             },
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn present_api_client_build_failure_reports_invalid_auth_token() {
         let error = present_api_client_build_failure(
-            ApiClientBuildFailure::InvalidAuthToken {
+            ApiClientBuildFailure::AuthToken {
                 message: "invalid bearer token".to_owned(),
             },
             "onequery auth whoami",
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn present_api_client_build_failure_reports_invalid_request_id() {
         let error = present_api_client_build_failure(
-            ApiClientBuildFailure::InvalidRequestId {
+            ApiClientBuildFailure::RequestId {
                 message: "failed to parse header value".to_owned(),
             },
             "onequery org list",

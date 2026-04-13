@@ -16,9 +16,9 @@ const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ApiClientBuildFailure {
-    InvalidBaseUrl { base_url: String, message: String },
-    InvalidAuthToken { message: String },
-    InvalidRequestId { message: String },
+    BaseUrl { base_url: String, message: String },
+    AuthToken { message: String },
+    RequestId { message: String },
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -118,7 +118,7 @@ fn build_client<State>(
     request_id: Option<&str>,
 ) -> Result<ApiClient<State>, ApiClientBuildFailure> {
     let mut base_url =
-        Url::parse(base_url).map_err(|url_error| ApiClientBuildFailure::InvalidBaseUrl {
+        Url::parse(base_url).map_err(|url_error| ApiClientBuildFailure::BaseUrl {
             base_url: base_url.to_owned(),
             message: url_error.to_string(),
         })?;
@@ -129,7 +129,7 @@ fn build_client<State>(
     if let AuthHeader::Bearer(raw_token) = auth_header {
         let trimmed_token = raw_token.trim();
         if trimmed_token.is_empty() {
-            return Err(ApiClientBuildFailure::InvalidAuthToken {
+            return Err(ApiClientBuildFailure::AuthToken {
                 message: "auth token must not be empty".to_owned(),
             });
         }
@@ -138,7 +138,7 @@ fn build_client<State>(
         // validate shared auth/request metadata before building the client.
         let bearer = format!("Bearer {trimmed_token}");
         HeaderValue::from_str(&bearer).map_err(|header_error| {
-            ApiClientBuildFailure::InvalidAuthToken {
+            ApiClientBuildFailure::AuthToken {
                 message: header_error.to_string(),
             }
         })?;
@@ -151,7 +151,7 @@ fn build_client<State>(
         .map(ToOwned::to_owned);
     if let Some(request_id) = request_id.as_deref() {
         HeaderValue::from_str(request_id).map_err(|header_error| {
-            ApiClientBuildFailure::InvalidRequestId {
+            ApiClientBuildFailure::RequestId {
                 message: header_error.to_string(),
             }
         })?;
@@ -184,7 +184,7 @@ fn connect_config(
     request_id: Option<&str>,
 ) -> Result<ClientConfig, ApiClientBuildFailure> {
     let mut config = ClientConfig::new(base_url.parse::<http::Uri>().map_err(|error| {
-        ApiClientBuildFailure::InvalidBaseUrl {
+        ApiClientBuildFailure::BaseUrl {
             base_url: base_url.to_owned(),
             message: error.to_string(),
         }
@@ -208,7 +208,7 @@ fn connect_transport_for_base_url(
     match base_url.scheme() {
         "http" => Ok(ConnectHttpClient::plaintext()),
         "https" => Ok(ConnectHttpClient::with_tls(default_tls_config())),
-        scheme => Err(ApiClientBuildFailure::InvalidBaseUrl {
+        scheme => Err(ApiClientBuildFailure::BaseUrl {
             base_url: base_url.to_string(),
             message: format!("unsupported URL scheme {scheme}"),
         }),
@@ -284,7 +284,7 @@ mod tests {
             client
                 .authenticate("   ")
                 .expect_err("expected invalid token"),
-            ApiClientBuildFailure::InvalidAuthToken {
+            ApiClientBuildFailure::AuthToken {
                 message: "auth token must not be empty".to_owned(),
             }
         );
@@ -335,7 +335,7 @@ mod tests {
                 Some("bad\nid"),
             )
             .expect_err("expected invalid request ID"),
-            ApiClientBuildFailure::InvalidRequestId {
+            ApiClientBuildFailure::RequestId {
                 message: "failed to parse header value".to_owned(),
             }
         );
