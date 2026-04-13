@@ -1,13 +1,13 @@
 import { ConnectError } from "@connectrpc/connect";
 import type { Interceptor } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
+import { honoConnectMiddleware } from "@onequery/hono-connect";
 
 import { createCliApp } from "../app";
 import type { CreateCliAppOptions } from "../app";
 import { getCliRequestId } from "../error";
-import { cliHonoContextKey } from "./context";
+import { cliHonoContextKey, createCliConnectContextValues } from "./context";
 import { withCliRequestId } from "./error";
-import { honoConnectMiddleware } from "./middleware";
 import { registerCliConnectRoutes } from "./routes";
 
 const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
@@ -33,6 +33,7 @@ export function createCliConnectRoute(input: CreateCliConnectRouteOptions) {
       connect: true,
       grpc: false,
       grpcWeb: false,
+      contextValues: createCliConnectContextValues,
       interceptors: [cliRequestIdInterceptor, createValidateInterceptor()],
       // Comment: the outer Bun app owns the `/api/cli` mount, so pass the
       // prefix explicitly instead of inferring it from Hono's full request path.

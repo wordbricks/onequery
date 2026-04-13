@@ -9,7 +9,7 @@ that the rewrite is complete.
 
 ## Progress Board
 
-- [ ] 1. Align the Hono Connect adapter with reference Connect behavior
+- [x] 1. Align the Hono Connect adapter with reference Connect behavior
 - [ ] 2. Collapse duplicate Connect error mappings into the canonical problem catalog
 - [ ] 3. Remove stale parallel HTTP client scaffolding from the Rust CLI
 - [ ] 4. Re-verify the affected Connect and CLI transport paths
@@ -18,16 +18,20 @@ that the rewrite is complete.
 
 Files:
 
-- `packages/cli-server/src/connect/middleware.ts`
+- `packages/hono-connect/src/index.ts`
+- `packages/hono-connect/package.json`
+- `packages/cli-server/src/connect/hono-connect.ts`
 - `packages/cli-server/src/connect/middleware.test.ts`
 
 Changes:
 
-- [ ] Set the same default `acceptCompression` behavior used by the reference
+- [x] Set the same default `acceptCompression` behavior used by the reference
   Connect adapters.
-- [ ] Keep matched Connect route failures inside the Connect handler path
+- [x] Keep matched Connect route failures inside the Connect handler path
   instead of rethrowing them through the outer Hono error pipeline.
-- [ ] Add focused tests for the updated middleware behavior.
+- [x] Extract the generic Hono adapter into `@onequery/hono-connect` so
+  `packages/cli-server` only owns CLI-specific context and interceptor wiring.
+- [x] Add focused tests for the updated middleware behavior.
 
 Deliverable:
 
@@ -75,6 +79,6 @@ Deliverable:
 
 ## 4. Verification
 
-- [ ] `bun test packages/cli-server/src/connect`
+- [x] `bun test packages/cli-server/src/connect`
 - [ ] `cargo test transport::`
-- [ ] `bun lint --format json`
+- [x] `bun lint --format json`

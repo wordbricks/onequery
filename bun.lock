@@ -132,6 +132,7 @@
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/db": "workspace:*",
+        "@onequery/hono-connect": "workspace:*",
         "@onequery/server": "workspace:*",
         "hono": "catalog:",
         "hono-problem-details": "catalog:",
@@ -200,6 +201,15 @@
       "version": "0.0.0",
       "devDependencies": {
         "vitest": "catalog:",
+      },
+    },
+    "packages/hono-connect": {
+      "name": "@onequery/hono-connect",
+      "version": "0.0.0",
+      "dependencies": {
+        "@connectrpc/connect": "2.1.1",
+        "@connectrpc/connect-node": "2.1.1",
+        "hono": "catalog:",
       },
     },
     "packages/self-host-runtime": {
@@ -496,6 +506,8 @@
 
     "@connectrpc/connect": ["@connectrpc/connect@2.1.1", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0" } }, "sha512-JzhkaTvM73m2K1URT6tv53k2RwngSmCXLZJgK580qNQOXRzZRR/BCMfZw3h+90JpnG6XksP5bYT+cz0rpUzUWQ=="],
 
+    "@connectrpc/connect-node": ["@connectrpc/connect-node@2.1.1", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.7.0", "@connectrpc/connect": "2.1.1" } }, "sha512-s3TfsI1XF+n+1z6MBS9rTnFsxxR4Rw5wmdEnkQINli81ESGxcsfaEet8duzq8LVuuCupmhUsgpRo0Nv9pZkufg=="],
+
     "@connectrpc/validate": ["@connectrpc/validate@0.2.0", "", { "peerDependencies": { "@bufbuild/protobuf": "^2.9.0", "@bufbuild/protovalidate": "^1.0.0", "@connectrpc/connect": "^2.0.3" } }, "sha512-u1hdyt1WaFkKpuT/3J2wYlCjYLkYHMZamoatgxTIsV5Q8H9fO2px3zecmb0Q47YDjkZqnX6z0PAEstK+dNYiEQ=="],
 
     "@date-fns/tz": ["@date-fns/tz@1.4.1", "", {}, "sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA=="],
@@ -669,6 +681,8 @@
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
 
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
+
+    "@onequery/hono-connect": ["@onequery/hono-connect@workspace:packages/hono-connect"],
 
     "@onequery/landing": ["@onequery/landing@workspace:apps/landing"],
 
