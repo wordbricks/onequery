@@ -89,7 +89,7 @@ describe("runtime app", () => {
       "text/x-shellscript"
     );
     await expect(response.text()).resolves.toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
     expect(spaAssets.fetch).not.toHaveBeenCalled();
   });

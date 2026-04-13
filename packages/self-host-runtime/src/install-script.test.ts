@@ -52,7 +52,7 @@ describe("install script surface", () => {
       "text/x-shellscript"
     );
     expect(script).toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
     expect(script).toContain(
       'NODE_DIST_BASE_URL="$' +
@@ -64,10 +64,7 @@ describe("install script surface", () => {
     const script = createInstallScript();
 
     expect(script).toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
-    );
-    expect(script).toContain(
-      'platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
@@ -75,6 +72,7 @@ describe("install script surface", () => {
     expect(script).toContain(
       "Installing managed Node.js 24.x for onequery gateway..."
     );
+    expect(script).toContain('mv "$package_dir" "$staging_dir"');
     expect(script).toContain(
       'if [ -z "$' +
         '{ONEQUERY_SERVER_JS_RUNTIME:-}" ] && [ -x "$managed_node_path" ]; then'
@@ -186,7 +184,7 @@ case "$url" in
   */SHASUMS256.txt)
     printf '%s\\n' '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  node-v24.11.0-darwin-arm64.tar.gz'
     ;;
-  */onequery-npm.tgz|*/onequery-npm-darwin-arm64.tgz|*/node-v24.11.0-darwin-arm64.tar.gz)
+  */onequery-install-darwin-arm64.tgz|*/node-v24.11.0-darwin-arm64.tar.gz)
     : > "$out_path"
     ;;
   *)
@@ -220,14 +218,11 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$(basename "$archive_path")" in
-  root.tgz)
-    mkdir -p "$extract_dir/package"
+  install.tgz)
+    mkdir -p "$extract_dir/package/vendor/aarch64-apple-darwin/onequery"
     cat > "$extract_dir/package/package.json" <<'EOF'
 {"version":"0.1.22"}
 EOF
-    ;;
-  platform.tgz)
-    mkdir -p "$extract_dir/package/vendor/aarch64-apple-darwin/onequery"
     cat > "$extract_dir/package/vendor/aarch64-apple-darwin/onequery/onequery" <<'EOF'
 #!/bin/sh
 printf '%s\\n' "$ONEQUERY_RUNTIME_ROOT"

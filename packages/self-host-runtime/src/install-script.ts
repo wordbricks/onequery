@@ -3,7 +3,7 @@ import {
   getRuntimeBundleDirectoryConfig,
 } from "@onequery/base/runtime-bundle";
 
-// Comment: the installer still relies on mutable latest-release tarballs.
+// Comment: the installer still relies on mutable latest-release assets.
 // Keep the shell flow minimal here until the release pipeline can publish
 // checksums or signatures for end-to-end artifact verification.
 const RELEASE_BASE_URL =
@@ -69,7 +69,6 @@ RELEASE_BASE_URL="\${ONEQUERY_RELEASE_BASE_URL:-${RELEASE_BASE_URL}}"
 NODE_DIST_BASE_URL="\${ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/latest-v24.x}"
 INSTALL_ROOT="\${ONEQUERY_INSTALL_ROOT:-$HOME/.local/share/onequery}"
 BIN_DIR="\${ONEQUERY_BIN_DIR:-$HOME/.local/bin}"
-MANAGED_NODE_BIN_RELATIVE_PATH="runtime/node/bin/node"
 
 need_cmd() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -89,7 +88,6 @@ need_cmd chmod
 need_cmd ln
 need_cmd mkdir
 need_cmd rm
-need_cmd cp
 need_cmd mv
 need_cmd tr
 need_cmd head
@@ -277,8 +275,7 @@ EOF
 
 platform_tag="$(resolve_platform_tag)"
 target_triple="$(resolve_target_triple "$platform_tag")"
-root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"
-platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"
+install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"
 tmp_dir="$(mktemp -d "\${TMPDIR:-/tmp}/onequery-install.XXXXXX")"
 
 cleanup() {
@@ -288,14 +285,18 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 printf 'Downloading onequery for %s...\\n' "$platform_tag"
-curl -fsSL "$root_tarball_url" -o "$tmp_dir/root.tgz"
-curl -fsSL "$platform_tarball_url" -o "$tmp_dir/platform.tgz"
+curl -fsSL "$install_bundle_url" -o "$tmp_dir/install.tgz"
 
-mkdir -p "$tmp_dir/root" "$tmp_dir/platform"
-tar -xzf "$tmp_dir/root.tgz" -C "$tmp_dir/root"
-tar -xzf "$tmp_dir/platform.tgz" -C "$tmp_dir/platform"
+mkdir -p "$tmp_dir/install"
+tar -xzf "$tmp_dir/install.tgz" -C "$tmp_dir/install"
 
-version="$(read_package_version "$tmp_dir/root")"
+package_dir="$tmp_dir/install/package"
+if [ ! -d "$package_dir" ]; then
+  printf 'onequery installer: extracted install bundle is missing package/\\n' >&2
+  exit 1
+fi
+
+version="$(read_package_version "$tmp_dir/install")"
 install_dir="$INSTALL_ROOT/versions/$version"
 staging_dir="$INSTALL_ROOT/versions/$version.tmp.$$"
 managed_node_required=0
@@ -306,9 +307,7 @@ fi
 
 rm -rf "$staging_dir"
 mkdir -p "$INSTALL_ROOT/versions" "$BIN_DIR"
-cp -R "$tmp_dir/root/package" "$staging_dir"
-mkdir -p "$staging_dir/vendor"
-cp -R "$tmp_dir/platform/package/vendor/." "$staging_dir/vendor/"
+mv "$package_dir" "$staging_dir"
 if [ "$managed_node_required" -eq 1 ]; then
   install_managed_node "$staging_dir" "$platform_tag"
 fi

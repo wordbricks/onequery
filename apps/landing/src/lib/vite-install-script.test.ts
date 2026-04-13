@@ -12,7 +12,7 @@ describe("createInstallScriptAsset", () => {
     expect(asset.fileName).toBe("install.sh");
     expect(asset.headers["content-type"]).toContain("text/x-shellscript");
     expect(asset.source).toContain(
-      'platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
   });
 });

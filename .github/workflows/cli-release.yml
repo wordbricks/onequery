@@ -347,18 +347,13 @@ jobs:
             --vendor-src dist/vendor \
             --output-dir dist/release
 
-      - name: Stage stable installer assets
-        shell: bash
+      - name: Stage stable installer bundles
         run: |
-          set -euo pipefail
-          version="${{ needs.tag-check.outputs.version }}"
-          mkdir -p dist/npm-assets
-
-          cp "dist/npm-publish/onequery-npm-${version}.tgz" "dist/npm-assets/onequery-npm.tgz"
-          cp "dist/npm-publish/onequery-npm-darwin-arm64-${version}.tgz" "dist/npm-assets/onequery-npm-darwin-arm64.tgz"
-          cp "dist/npm-publish/onequery-npm-darwin-x64-${version}.tgz" "dist/npm-assets/onequery-npm-darwin-x64.tgz"
-          cp "dist/npm-publish/onequery-npm-linux-arm64-${version}.tgz" "dist/npm-assets/onequery-npm-linux-arm64.tgz"
-          cp "dist/npm-publish/onequery-npm-linux-x64-${version}.tgz" "dist/npm-assets/onequery-npm-linux-x64.tgz"
+          bun apps/cli/scripts/stage-npm-packages.js \
+            --package cli-install \
+            --release-version "${{ needs.tag-check.outputs.version }}" \
+            --vendor-src dist/vendor \
+            --output-dir dist/install
 
       - uses: actions/upload-artifact@v6
         with:
@@ -381,7 +376,7 @@ jobs:
           # COMMENT: Keep the release step rerunnable without depending on
           # softprops/action-gh-release, whose current v2 line still executes on
           # the deprecated Node 20 runtime.
-          release_assets=(dist/npm-publish/*.tgz dist/npm-assets/*.tgz dist/release/*.tgz)
+          release_assets=(dist/npm-publish/*.tgz dist/install/*.tgz dist/release/*.tgz)
           [[ ${#release_assets[@]} -gt 0 ]] || {
             echo "No release assets were staged"
             exit 1

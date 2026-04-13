@@ -48,6 +48,7 @@ const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 const WORKSPACE_MANIFEST_PATH = path.join(WORKSPACE_ROOT, "package.json");
 const workspacePackageRequireCache = new Map();
 let workspacePackageManifestPathIndexPromise = null;
+let buildWebAssetsPromise = null;
 const WEB_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "web");
 const WEB_DIST_DIR = path.join(WEB_BUILD_ROOT, "dist");
 const WEB_DIST_ENTRY = getRuntimeBundleEntryConfig("webDist");
@@ -65,9 +66,19 @@ const DB_MIGRATIONS_DIR = path.join(
   "src",
   "migrations"
 );
+const CLI_INSTALL_TARBALL_PREFIX = "onequery-install";
+const INSTALL_BUNDLE_PACKAGES = Object.fromEntries(
+  Object.values(PLATFORM_PACKAGES)
+    .filter((platformPackage) => platformPackage.os !== "win32")
+    .map((platformPackage) => [
+      `cli-install-${platformPackage.npmTag}`,
+      platformPackage,
+    ])
+);
 
 export const PACKAGE_EXPANSIONS = {
   cli: ["cli", ...Object.keys(PLATFORM_PACKAGES)],
+  "cli-install": Object.keys(INSTALL_BUNDLE_PACKAGES),
   "cli-release-extras": Object.keys(EXTRA_RELEASE_PLATFORM_PACKAGES),
 };
 const BUILD_NPM_PACKAGE_OPTIONS = new Set([
@@ -84,6 +95,11 @@ const BUILD_NPM_PACKAGE_OPTIONS = new Set([
 export function tarballNameForPackage(packageName, version) {
   if (packageName === "cli") {
     return `${CLI_NPM_TARBALL_PREFIX}-${version}.tgz`;
+  }
+
+  const installBundlePackage = INSTALL_BUNDLE_PACKAGES[packageName];
+  if (installBundlePackage) {
+    return `${CLI_INSTALL_TARBALL_PREFIX}-${installBundlePackage.npmTag}.tgz`;
   }
 
   const platformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
@@ -113,23 +129,42 @@ export async function buildPackage({
     ? await prepareStagingDir(stagingDir)
     : await mkdtemp(path.join(tmpdir(), CLI_NPM_STAGE_DIR_PREFIX));
 
-  await stageSources({
-    packageName,
-    stagingDir: resolvedStagingDir,
-    version,
-  });
+  const packageJson = await readCliPackageJson();
+  const readmePath = path.join(CLI_ROOT, "README.md");
+  const installBundlePackage = INSTALL_BUNDLE_PACKAGES[packageName];
+  const releasePlatformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
+  const vendorTargetTriple =
+    installBundlePackage?.targetTriple ?? releasePlatformPackage?.targetTriple;
 
-  if (packageName in RELEASE_PLATFORM_PACKAGES) {
-    if (!vendorSrc) {
-      throw new Error(
-        `Package '${packageName}' requires --vendor-src pointing to staged release binaries.`
-      );
-    }
+  if (vendorTargetTriple && !vendorSrc) {
+    throw new Error(
+      `Package '${packageName}' requires --vendor-src pointing to staged release binaries.`
+    );
+  }
 
-    const platformPackage = RELEASE_PLATFORM_PACKAGES[packageName];
+  if (installBundlePackage) {
+    await stageInstallBundle({
+      packageJson,
+      readmePath,
+      stagingDir: resolvedStagingDir,
+      targetTriple: vendorTargetTriple,
+      vendorSrc,
+      version,
+    });
+  } else {
+    await stageSources({
+      packageJson,
+      packageName,
+      readmePath,
+      stagingDir: resolvedStagingDir,
+      version,
+    });
+  }
+
+  if (releasePlatformPackage) {
     await copyPlatformVendor({
       stagingDir: resolvedStagingDir,
-      targetTriple: platformPackage.targetTriple,
+      targetTriple: vendorTargetTriple,
       vendorSrc,
     });
   }
@@ -144,6 +179,12 @@ export async function buildPackage({
   return resolvedStagingDir;
 }
 
+async function readCliPackageJson() {
+  return JSON.parse(
+    await readFile(path.join(CLI_ROOT, "package.json"), "utf8")
+  );
+}
+
 async function prepareStagingDir(stagingDir) {
   const resolvedStagingDir = path.resolve(stagingDir);
   await mkdir(resolvedStagingDir, { recursive: true });
@@ -155,11 +196,13 @@ async function prepareStagingDir(stagingDir) {
   return resolvedStagingDir;
 }
 
-async function stageSources({ stagingDir, packageName, version }) {
-  const packageJsonPath = path.join(CLI_ROOT, "package.json");
-  const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
-  const readmePath = path.join(CLI_ROOT, "README.md");
-
+async function stageSources({
+  packageJson,
+  packageName,
+  readmePath,
+  stagingDir,
+  version,
+}) {
   if (packageName === "cli") {
     await cp(path.join(CLI_ROOT, "bin"), path.join(stagingDir, "bin"), {
       recursive: true,
@@ -224,6 +267,39 @@ async function stageSources({ stagingDir, packageName, version }) {
   await writeJson(path.join(stagingDir, "package.json"), stagedPlatformPackage);
 }
 
+async function stageInstallBundle({
+  packageJson,
+  readmePath,
+  stagingDir,
+  targetTriple,
+  vendorSrc,
+  version,
+}) {
+  await copyFile(readmePath, path.join(stagingDir, "README.md"));
+  await copyFile(
+    resolveRuntimeBundleSpecSourcePath(),
+    path.join(stagingDir, RUNTIME_BUNDLE_SPEC_FILENAME)
+  );
+  await stagePackagedRuntime({
+    runtimeRoot: path.join(stagingDir, "vendor", targetTriple),
+  });
+  await copyPlatformVendor({
+    stagingDir,
+    targetTriple,
+    vendorSrc,
+  });
+
+  delete packageJson.private;
+  delete packageJson.scripts;
+  delete packageJson.devDependencies;
+  delete packageJson.bin;
+  delete packageJson.optionalDependencies;
+  packageJson.version = version;
+  packageJson.files = ["README.md", RUNTIME_BUNDLE_SPEC_FILENAME, "vendor"];
+
+  await writeJson(path.join(stagingDir, "package.json"), packageJson);
+}
+
 function platformPackageVersion(version, platformTag) {
   return `${version}-${platformTag}`;
 }
@@ -263,7 +339,7 @@ async function restorePackagedExecutableModes({ targetRoot, targetTriple }) {
 }
 
 export async function stagePackagedRuntime({ runtimeRoot }) {
-  await buildWebAssets();
+  await ensureWebAssetsBuilt();
 
   const migrationsOutDir = resolvePackagedRuntimeEntryDir(
     runtimeRoot,
@@ -515,11 +591,16 @@ function indexWorkspacePackageManifestPaths(workspacePackageManifests) {
 }
 
 export const __internal = {
+  INSTALL_BUNDLE_PACKAGES,
   indexWorkspacePackageManifestPaths,
+  readCliPackageJson,
   restorePackagedExecutableModes,
   resolveRuntimeAssetSourcePaths,
   resolveWorkspacePackageManifestPath,
   resolveWorkspacePackageRequire,
+  stageInstallBundle,
+  stageSources,
+  stagePackagedRuntime,
 };
 
 async function buildWebAssets() {
@@ -551,6 +632,17 @@ async function buildWebAssets() {
 
     throw new Error(message);
   }
+}
+
+async function ensureWebAssetsBuilt() {
+  if (!buildWebAssetsPromise) {
+    buildWebAssetsPromise = buildWebAssets().catch((error) => {
+      buildWebAssetsPromise = null;
+      throw error;
+    });
+  }
+
+  await buildWebAssetsPromise;
 }
 
 async function resolveBuiltWebDistDir() {
