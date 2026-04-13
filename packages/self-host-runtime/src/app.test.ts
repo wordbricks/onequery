@@ -24,7 +24,7 @@ function createTestApp() {
   };
 }
 
-describe("bun runtime app", () => {
+describe("runtime app", () => {
   const originalConsoleLog = console.log;
 
   afterEach(() => {

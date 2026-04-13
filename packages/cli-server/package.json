@@ -26,5 +26,7 @@
     "hono-problem-details": "catalog:",
     "zod": "catalog:"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@hono/node-server": "catalog:"
+  }
 }

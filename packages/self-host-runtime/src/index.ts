@@ -29,7 +29,7 @@ import { loadStartupLaunchConfig } from "./startup";
 import type { ServerStartupInput } from "./startup";
 
 type AppFetchHandler = {
-  fetch(request: Request): Response | Promise<Response>;
+  fetch(request: Request, env?: unknown): Response | Promise<Response>;
 };
 
 const RUNTIME_LOG_PREFIX = "[onequery-server]";
@@ -63,7 +63,7 @@ export interface StartServerDependencies {
   loadStartupLaunchConfig: typeof loadStartupLaunchConfig;
   prepareRuntimeDatabase: typeof prepareRuntimeDatabase;
   serve(options: {
-    fetch(request: Request): Response | Promise<Response>;
+    fetch(request: Request, env?: unknown): Response | Promise<Response>;
     hostname: string;
     idleTimeout: number;
     port: number;
@@ -184,9 +184,7 @@ export function createStartServer(
       });
 
       const server = await resolvedDependencies.serve({
-        fetch(request) {
-          return app.fetch(request);
-        },
+        fetch: app.fetch.bind(app),
         hostname: launchConfig.listen.host,
         idleTimeout: DEFAULT_SERVER_IDLE_TIMEOUT_SECONDS,
         port: launchConfig.listen.port,

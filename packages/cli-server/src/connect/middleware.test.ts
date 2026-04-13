@@ -1,9 +1,12 @@
+import { once } from "node:events";
 import { gzipSync } from "node:zlib";
 
 import { create } from "@bufbuild/protobuf";
 import { createContextKey, createContextValues } from "@connectrpc/connect";
 import type { ContextValues } from "@connectrpc/connect";
+import { createAdaptorServer } from "@hono/node-server";
 import { honoConnectMiddleware } from "@onequery/hono-connect";
+import type { HonoNodeBindings } from "@onequery/hono-connect";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,19 +22,60 @@ const CONNECT_JSON_HEADERS = {
   "content-type": "application/json",
 };
 
+type TestEnv = {
+  Bindings: HonoNodeBindings;
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function withNodeServer(
+  app: Hono<TestEnv>,
+  run: (baseUrl: string) => Promise<void>
+) {
+  const server = createAdaptorServer({
+    autoCleanupIncoming: true,
+    fetch(request, env) {
+      return app.fetch(request, env);
+    },
+    hostname: "127.0.0.1",
+    overrideGlobalObjects: false,
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("expected TCP listen address for Hono node server test");
+  }
+
+  try {
+    await run(`http://127.0.0.1:${address.port}`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+}
+
 function createTestApp(
   input: {
-    contextValues?: (context: Context) => ContextValues;
+    contextValues?: (context: Context<TestEnv>) => ContextValues;
     onGetSession?: () => void;
     onOuterError?: () => Response;
     requestPathPrefix?: string;
   } = {}
 ) {
-  const app = new Hono();
+  const app = new Hono<TestEnv>();
   if (input.onOuterError) {
     app.onError(
       () => input.onOuterError?.() ?? new Response(null, { status: 500 })
@@ -70,29 +114,31 @@ describe("hono connect middleware", () => {
       requestPathPrefix: "/api/cli",
     });
 
-    const matchedResponse = await app.request(
-      "https://cli.example/api/cli/onequery.cli.v1.CliService/GetSession",
-      {
-        body: "{}",
-        headers: CONNECT_JSON_HEADERS,
-        method: "POST",
-      }
-    );
+    await withNodeServer(app, async (baseUrl) => {
+      const matchedResponse = await fetch(
+        `${baseUrl}/api/cli/onequery.cli.v1.CliService/GetSession`,
+        {
+          body: "{}",
+          headers: CONNECT_JSON_HEADERS,
+          method: "POST",
+        }
+      );
 
-    expect(matchedResponse.status).toBe(200);
-    expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(matchedResponse.status).toBe(200);
+      expect(onGetSession).toHaveBeenCalledTimes(1);
 
-    const unmatchedResponse = await app.request(
-      "https://cli.example/api/cli/x/onequery.cli.v1.CliService/GetSession",
-      {
-        body: "{}",
-        headers: CONNECT_JSON_HEADERS,
-        method: "POST",
-      }
-    );
+      const unmatchedResponse = await fetch(
+        `${baseUrl}/api/cli/x/onequery.cli.v1.CliService/GetSession`,
+        {
+          body: "{}",
+          headers: CONNECT_JSON_HEADERS,
+          method: "POST",
+        }
+      );
 
-    expect(unmatchedResponse.status).toBe(404);
-    expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(unmatchedResponse.status).toBe(404);
+      expect(onGetSession).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("accepts gzip-compressed connect requests by default", async () => {
@@ -101,20 +147,22 @@ describe("hono connect middleware", () => {
       onGetSession,
     });
 
-    const response = await app.request(
-      "https://cli.example/onequery.cli.v1.CliService/GetSession",
-      {
-        body: gzipSync(Buffer.from("{}")),
-        headers: {
-          ...CONNECT_JSON_HEADERS,
-          "content-encoding": "gzip",
-        },
-        method: "POST",
-      }
-    );
+    await withNodeServer(app, async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+        {
+          body: gzipSync(Buffer.from("{}")),
+          headers: {
+            ...CONNECT_JSON_HEADERS,
+            "content-encoding": "gzip",
+          },
+          method: "POST",
+        }
+      );
 
-    expect(response.status).toBe(200);
-    expect(onGetSession).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(200);
+      expect(onGetSession).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("keeps matched-route adapter failures out of the outer hono error pipeline", async () => {
@@ -132,19 +180,21 @@ describe("hono connect middleware", () => {
     });
 
     try {
-      const response = await app.request(
-        "https://cli.example/onequery.cli.v1.CliService/GetSession",
-        {
-          body: "{}",
-          headers: CONNECT_JSON_HEADERS,
-          method: "POST",
-        }
-      );
+      await withNodeServer(app, async (baseUrl) => {
+        const response = await fetch(
+          `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+          {
+            body: "{}",
+            headers: CONNECT_JSON_HEADERS,
+            method: "POST",
+          }
+        );
 
-      expect(response.status).toBe(500);
-      expect(await response.text()).toBe("");
-      expect(outerError).not.toHaveBeenCalled();
-      expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(response.status).toBe(500);
+        expect(await response.text()).toBe("");
+        expect(outerError).not.toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalledTimes(1);
+      });
     } finally {
       console.error = originalConsoleError;
     }
@@ -155,7 +205,7 @@ describe("hono connect middleware", () => {
       description: "test-request-context",
     });
     const seenRequestId = vi.fn();
-    const app = new Hono();
+    const app = new Hono<TestEnv>();
 
     app.use(
       "*",
@@ -182,19 +232,21 @@ describe("hono connect middleware", () => {
       })
     );
 
-    const response = await app.request(
-      "https://cli.example/onequery.cli.v1.CliService/GetSession",
-      {
-        body: "{}",
-        headers: {
-          ...CONNECT_JSON_HEADERS,
-          "x-request-id": "req_test",
-        },
-        method: "POST",
-      }
-    );
+    await withNodeServer(app, async (baseUrl) => {
+      const response = await fetch(
+        `${baseUrl}/onequery.cli.v1.CliService/GetSession`,
+        {
+          body: "{}",
+          headers: {
+            ...CONNECT_JSON_HEADERS,
+            "x-request-id": "req_test",
+          },
+          method: "POST",
+        }
+      );
 
-    expect(response.status).toBe(200);
-    expect(seenRequestId).toHaveBeenCalledWith("req_test");
+      expect(response.status).toBe(200);
+      expect(seenRequestId).toHaveBeenCalledWith("req_test");
+    });
   });
 });

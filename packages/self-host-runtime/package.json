@@ -25,6 +25,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@onequery/base": "workspace:*",
     "@onequery/cli-server": "workspace:*",

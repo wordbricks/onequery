@@ -32,10 +32,13 @@ Changes:
 - [x] Extract the generic Hono adapter into `@onequery/hono-connect` so
   `packages/cli-server` only owns CLI-specific context and interceptor wiring.
 - [x] Add focused tests for the updated middleware behavior.
+- [x] Narrow the extracted adapter contract around the current Node.js runtime,
+  leaving Cloudflare Workers as a follow-up transport instead of a mixed
+  adapter.
 
 Deliverable:
 
-- a custom Hono adapter that behaves like a thin Connect adapter, not a
+- a custom Node/Hono adapter that behaves like a thin Connect adapter, not a
   parallel error transport
 
 ## 2. Collapse Duplicate Connect Error Mappings
@@ -80,5 +83,7 @@ Deliverable:
 ## 4. Verification
 
 - [x] `bun test packages/cli-server/src/connect`
+- [x] `bun test packages/cli-server/src/connect packages/cli-server/src/route.test.ts packages/self-host-runtime/src`
+- [x] `bunx turbo typecheck --filter=@onequery/hono-connect --filter=@onequery/cli-server --filter=@onequery/self-host-runtime --json`
 - [ ] `cargo test transport::`
 - [x] `bun lint --format json`

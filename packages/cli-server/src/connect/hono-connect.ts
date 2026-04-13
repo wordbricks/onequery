@@ -35,7 +35,7 @@ export function createCliConnectRoute(input: CreateCliConnectRouteOptions) {
       grpcWeb: false,
       contextValues: createCliConnectContextValues,
       interceptors: [cliRequestIdInterceptor, createValidateInterceptor()],
-      // Comment: the outer Bun app owns the `/api/cli` mount, so pass the
+      // Comment: the outer runtime app owns the `/api/cli` mount, so pass the
       // prefix explicitly instead of inferring it from Hono's full request path.
       requestPathPrefix: input.requestPathPrefix,
       routes: registerCliConnectRoutes,
