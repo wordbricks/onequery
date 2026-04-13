@@ -77,13 +77,15 @@ pub(super) async fn execute<B, T>(
             .await
             .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
 
-            render_dry_run_output(prepare_response.payload.preview, context.verbose).map(|output| {
-                output.with_request_id(if context.verbose {
-                    prepare_response.request_id.clone()
-                } else {
-                    None
-                })
-            })
+            render_dry_run_output(&prepare_response.payload.preview, context.verbose).map(
+                |output| {
+                    output.with_request_id(if context.verbose {
+                        prepare_response.request_id.clone()
+                    } else {
+                        None
+                    })
+                },
+            )
         }
         PlannedCommand::Execute { plan } => {
             let prepare_response = source_api::prepare_source_api(

@@ -1,6 +1,5 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
-use crate::output::serialize_command_data;
 use crate::transport::source_api::ExecuteSourceApiResponse;
 use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::ProtoJsonValue;
@@ -14,6 +13,11 @@ use crate::transport::source_api::SourceApiResponseBody;
 use crate::transport::source_api::SourceApiSelectorKind;
 use crate::transport::source_api::json_from_proto_json_value;
 use crate::transport::source_api::proto_json_value_from_json;
+use crate::transport::source_api::source_api_body_kind_label;
+use crate::transport::source_api::source_api_input_mode_label;
+use crate::transport::source_api::source_api_operation_kind_label;
+use crate::transport::source_api::source_api_pagination_policy_label;
+use crate::transport::source_api::source_api_selector_kind_or_none;
 use base64::Engine;
 use jaq_core::Compiler;
 use jaq_core::Ctx;
@@ -34,7 +38,7 @@ use super::plan::SourceApiRenderOptions;
 pub(super) fn render_descriptor_output(
     descriptor: SourceApiDescriptor,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&descriptor, "onequery api")?;
+    let data = descriptor_json(&descriptor)?;
 
     let mut lines = vec![format!(
         "Source: {} ({})",
@@ -70,10 +74,10 @@ pub(super) fn render_descriptor_output(
 }
 
 pub(super) fn render_dry_run_output(
-    plan: PreparedSourceApiPreview,
+    plan: &PreparedSourceApiPreview,
     verbose: bool,
 ) -> Result<CommandOutput, CliError> {
-    let data = serialize_dry_run_plan(&plan, verbose)?;
+    let data = serialize_dry_run_plan(plan, verbose)?;
     Ok(CommandOutput::raw_json(pretty_json_lines(&data), data))
 }
 
@@ -105,7 +109,7 @@ fn serialize_execute_response(
         let body = if render.silent {
             None
         } else {
-            json_body_value(&response.body)?
+            json_body_value(response.body.as_ref())?
         };
 
         return Ok(match (body, response.next_page_token.as_deref()) {
@@ -129,7 +133,7 @@ fn serialize_dry_run_plan(
     verbose: bool,
 ) -> Result<serde_json::Value, CliError> {
     if verbose {
-        return serialize_command_data(plan, "onequery api");
+        return Ok(prepared_preview_json(plan, true));
     }
 
     let mut object = serde_json::Map::new();
@@ -139,7 +143,7 @@ fn serialize_dry_run_plan(
     );
     object.insert(
         "kind".to_owned(),
-        serialize_command_data(&plan.kind, "onequery api")?,
+        serde_json::Value::String(source_api_operation_kind_label(plan.kind).to_owned()),
     );
     if let Some(method) = plan.method.as_ref() {
         object.insert(
@@ -155,7 +159,7 @@ fn serialize_dry_run_plan(
     }
     object.insert(
         "bodyKind".to_owned(),
-        serialize_command_data(&plan.body_kind, "onequery api")?,
+        serde_json::Value::String(source_api_body_kind_label(plan.body_kind).to_owned()),
     );
 
     Ok(serde_json::Value::Object(object))
@@ -166,10 +170,7 @@ fn serialize_verbose_execute_response(
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
     let mut object = serde_json::Map::new();
-    object.insert(
-        "source".to_owned(),
-        serialize_command_data(&response.source, "onequery api")?,
-    );
+    object.insert("source".to_owned(), source_json(&response.source));
     object.insert(
         "operation".to_owned(),
         serde_json::Value::String(response.operation.clone()),
@@ -191,10 +192,10 @@ fn serialize_verbose_execute_response(
         "contentType".to_owned(),
         serde_json::Value::String(response.content_type.clone()),
     );
-    if !render.silent {
-        if let Some(body) = json_body_value(&response.body)? {
-            object.insert("body".to_owned(), body);
-        }
+    if !render.silent
+        && let Some(body) = json_body_value(response.body.as_ref())?
+    {
+        object.insert("body".to_owned(), body);
     }
     if let Some(next_page_token) = response.next_page_token.as_ref() {
         object.insert(
@@ -217,14 +218,18 @@ fn json_headers(headers: &[SourceApiHeader]) -> serde_json::Value {
     serde_json::Value::Object(object)
 }
 
-fn json_body_value(body: &SourceApiResponseBody) -> Result<Option<serde_json::Value>, CliError> {
+fn json_body_value(
+    body: Option<&SourceApiResponseBody>,
+) -> Result<Option<serde_json::Value>, CliError> {
     match body {
-        SourceApiResponseBody::None => Ok(None),
-        SourceApiResponseBody::Json { value } => renderable_json_value(value).map(Some),
-        SourceApiResponseBody::Text { value } => Ok(Some(serde_json::Value::String(value.clone()))),
-        SourceApiResponseBody::Binary { value_base64 } => {
-            Ok(Some(serde_json::Value::String(value_base64.clone())))
+        None => Ok(None),
+        Some(SourceApiResponseBody::Json(value)) => renderable_json_value(value).map(Some),
+        Some(SourceApiResponseBody::Text(value)) => {
+            Ok(Some(serde_json::Value::String(value.clone())))
         }
+        Some(SourceApiResponseBody::Binary(value)) => Ok(Some(serde_json::Value::String(
+            base64::engine::general_purpose::STANDARD.encode(value),
+        ))),
     }
 }
 
@@ -262,7 +267,7 @@ fn assemble_paginated_response(
     let body = assemble_paginated_body(
         std::iter::once(&first)
             .chain(remaining.iter())
-            .map(|response| &response.body)
+            .map(|response| response.body.as_ref())
             .collect::<Vec<_>>(),
         slurp,
     )?;
@@ -273,9 +278,9 @@ fn assemble_paginated_response(
 }
 
 fn assemble_paginated_body(
-    bodies: Vec<&SourceApiResponseBody>,
+    bodies: Vec<Option<&SourceApiResponseBody>>,
     slurp: bool,
-) -> Result<SourceApiResponseBody, CliError> {
+) -> Result<Option<SourceApiResponseBody>, CliError> {
     let Some(first_body) = bodies.first() else {
         return Err(source_api_render_error(
             "source API execution returned no response body",
@@ -284,59 +289,45 @@ fn assemble_paginated_body(
     };
 
     match first_body {
-        SourceApiResponseBody::None => {
-            if bodies
-                .iter()
-                .all(|body| matches!(body, SourceApiResponseBody::None))
-            {
-                Ok(SourceApiResponseBody::None)
+        None => {
+            if bodies.iter().all(Option::is_none) {
+                Ok(None)
             } else {
                 Err(mixed_paginated_body_error())
             }
         }
-        SourceApiResponseBody::Json { .. } => {
+        Some(SourceApiResponseBody::Json(..)) => {
             let values = bodies
                 .into_iter()
                 .map(|body| match body {
-                    SourceApiResponseBody::Json { value } => renderable_json_value(value),
+                    Some(SourceApiResponseBody::Json(value)) => renderable_json_value(value),
                     _ => Err(mixed_paginated_body_error()),
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(SourceApiResponseBody::Json {
-                value: transport_json_value(assemble_paginated_json(values, slurp))?,
-            })
+            Ok(Some(SourceApiResponseBody::Json(Box::new(
+                transport_json_value(assemble_paginated_json(values, slurp))?,
+            ))))
         }
-        SourceApiResponseBody::Text { .. } => {
+        Some(SourceApiResponseBody::Text(..)) => {
             let value = bodies
                 .into_iter()
                 .map(|body| match body {
-                    SourceApiResponseBody::Text { value } => Ok(value.as_str()),
+                    Some(SourceApiResponseBody::Text(value)) => Ok(value.as_str()),
                     _ => Err(mixed_paginated_body_error()),
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .join("");
-            Ok(SourceApiResponseBody::Text { value })
+            Ok(Some(SourceApiResponseBody::Text(value)))
         }
-        SourceApiResponseBody::Binary { .. } => {
+        Some(SourceApiResponseBody::Binary(..)) => {
             let mut bytes = Vec::new();
             for body in bodies {
-                let SourceApiResponseBody::Binary { value_base64 } = body else {
+                let Some(SourceApiResponseBody::Binary(value)) = body else {
                     return Err(mixed_paginated_body_error());
                 };
-
-                let decoded = base64::engine::general_purpose::STANDARD
-                    .decode(value_base64)
-                    .map_err(|decode_error| {
-                        source_api_render_error(
-                            format!("failed to assemble paginated binary response: {decode_error}"),
-                            vec!["retry onequery api --output json ...".to_owned()],
-                        )
-                    })?;
-                bytes.extend(decoded);
+                bytes.extend_from_slice(value);
             }
-            Ok(SourceApiResponseBody::Binary {
-                value_base64: base64::engine::general_purpose::STANDARD.encode(bytes),
-            })
+            Ok(Some(SourceApiResponseBody::Binary(bytes)))
         }
     }
 }
@@ -360,22 +351,22 @@ fn assemble_paginated_json(values: Vec<serde_json::Value>, slurp: bool) -> serde
 }
 
 fn apply_jq_to_response_body(
-    body: SourceApiResponseBody,
+    body: Option<SourceApiResponseBody>,
     expression: &str,
-) -> Result<SourceApiResponseBody, CliError> {
+) -> Result<Option<SourceApiResponseBody>, CliError> {
     match body {
-        SourceApiResponseBody::Json { value } => Ok(SourceApiResponseBody::Json {
-            value: transport_json_value(apply_jq_expression(
+        Some(SourceApiResponseBody::Json(value)) => Ok(Some(SourceApiResponseBody::Json(
+            Box::new(transport_json_value(apply_jq_expression(
                 renderable_json_value(&value)?,
                 expression,
-            )?)?,
-        }),
-        SourceApiResponseBody::None
-        | SourceApiResponseBody::Text { .. }
-        | SourceApiResponseBody::Binary { .. } => Err(source_api_render_error(
-            "`--jq` requires a JSON source API response body",
-            vec!["retry onequery api without --jq".to_owned()],
-        )),
+            )?)?),
+        ))),
+        None | Some(SourceApiResponseBody::Text(..)) | Some(SourceApiResponseBody::Binary(..)) => {
+            Err(source_api_render_error(
+                "`--jq` requires a JSON source API response body",
+                vec!["retry onequery api without --jq".to_owned()],
+            ))
+        }
     }
 }
 
@@ -489,6 +480,310 @@ fn transport_json_value(value: serde_json::Value) -> Result<ProtoJsonValue, CliE
     })
 }
 
+fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value, CliError> {
+    let mut object = serde_json::Map::new();
+    object.insert("source".to_owned(), source_json(&descriptor.source));
+    object.insert(
+        "descriptorVersion".to_owned(),
+        serde_json::Value::String(descriptor.descriptor_version.clone()),
+    );
+    if let Some(default_path_operation) = descriptor.default_path_operation.as_ref() {
+        object.insert(
+            "defaultPathOperation".to_owned(),
+            serde_json::Value::String(default_path_operation.clone()),
+        );
+    }
+    if !descriptor.operations.is_empty() {
+        object.insert(
+            "operations".to_owned(),
+            serde_json::Value::Array(
+                descriptor
+                    .operations
+                    .iter()
+                    .map(operation_json)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+        );
+    }
+    if !descriptor.examples.is_empty() {
+        object.insert(
+            "examples".to_owned(),
+            serde_json::Value::Array(descriptor.examples.iter().map(example_json).collect()),
+        );
+    }
+    if !descriptor.notes.is_empty() {
+        object.insert(
+            "notes".to_owned(),
+            serde_json::Value::Array(
+                descriptor
+                    .notes
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    Ok(serde_json::Value::Object(object))
+}
+
+fn prepared_preview_json(
+    preview: &PreparedSourceApiPreview,
+    include_business_metadata: bool,
+) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    if include_business_metadata {
+        object.insert(
+            "sourceKey".to_owned(),
+            serde_json::Value::String(preview.source_key.clone()),
+        );
+        object.insert(
+            "provider".to_owned(),
+            serde_json::Value::String(preview.provider.clone()),
+        );
+    }
+    object.insert(
+        "operation".to_owned(),
+        serde_json::Value::String(preview.operation.clone()),
+    );
+    object.insert(
+        "kind".to_owned(),
+        serde_json::Value::String(source_api_operation_kind_label(preview.kind).to_owned()),
+    );
+    if let Some(method) = preview.method.as_ref() {
+        object.insert(
+            "method".to_owned(),
+            serde_json::Value::String(method.clone()),
+        );
+    }
+    if let Some(selector) = preview.selector.as_ref() {
+        object.insert(
+            "selector".to_owned(),
+            serde_json::Value::String(selector.clone()),
+        );
+    }
+    if include_business_metadata {
+        if let Some(url) = preview.url.as_ref() {
+            object.insert("url".to_owned(), serde_json::Value::String(url.clone()));
+        }
+        if let Some(host) = preview.host.as_ref() {
+            object.insert("host".to_owned(), serde_json::Value::String(host.clone()));
+        }
+        if !preview.header_names.is_empty() {
+            object.insert(
+                "headerNames".to_owned(),
+                serde_json::Value::Array(
+                    preview
+                        .header_names
+                        .iter()
+                        .cloned()
+                        .map(serde_json::Value::String)
+                        .collect(),
+                ),
+            );
+        }
+    }
+    object.insert(
+        "bodyKind".to_owned(),
+        serde_json::Value::String(source_api_body_kind_label(preview.body_kind).to_owned()),
+    );
+    if include_business_metadata && !preview.body_paths.is_empty() {
+        object.insert(
+            "bodyPaths".to_owned(),
+            serde_json::Value::Array(
+                preview
+                    .body_paths
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    if include_business_metadata {
+        object.insert(
+            "paginationPolicy".to_owned(),
+            serde_json::Value::String(
+                source_api_pagination_policy_label(preview.pagination_policy).to_owned(),
+            ),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn operation_json(operation: &SourceApiOperation) -> Result<serde_json::Value, CliError> {
+    let mut object = serde_json::Map::new();
+    object.insert(
+        "name".to_owned(),
+        serde_json::Value::String(operation.name.clone()),
+    );
+    object.insert(
+        "kind".to_owned(),
+        serde_json::Value::String(source_api_operation_kind_label(operation.kind).to_owned()),
+    );
+    object.insert(
+        "summary".to_owned(),
+        serde_json::Value::String(operation.summary.clone()),
+    );
+    object.insert(
+        "description".to_owned(),
+        serde_json::Value::String(operation.description.clone()),
+    );
+    object.insert(
+        "selectorKind".to_owned(),
+        serde_json::Value::String(selector_kind_label(operation.selector_kind).to_owned()),
+    );
+    if let Some(selector_label) = operation.selector_label.as_ref() {
+        object.insert(
+            "selectorLabel".to_owned(),
+            serde_json::Value::String(selector_label.clone()),
+        );
+    }
+    object.insert(
+        "methodPolicy".to_owned(),
+        method_policy_json(&operation.method_policy),
+    );
+    object.insert(
+        "fieldPolicy".to_owned(),
+        field_policy_json(&operation.field_policy),
+    );
+    object.insert(
+        "headerPolicy".to_owned(),
+        header_policy_json(&operation.header_policy),
+    );
+    object.insert(
+        "paginationPolicy".to_owned(),
+        serde_json::Value::String(
+            source_api_pagination_policy_label(operation.pagination_policy).to_owned(),
+        ),
+    );
+    if !operation.examples.is_empty() {
+        object.insert(
+            "examples".to_owned(),
+            serde_json::Value::Array(operation.examples.iter().map(example_json).collect()),
+        );
+    }
+    if !operation.notes.is_empty() {
+        object.insert(
+            "notes".to_owned(),
+            serde_json::Value::Array(
+                operation
+                    .notes
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    Ok(serde_json::Value::Object(object))
+}
+
+fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    object.insert(
+        "key".to_owned(),
+        serde_json::Value::String(source.key.clone()),
+    );
+    object.insert(
+        "provider".to_owned(),
+        serde_json::Value::String(source.provider.clone()),
+    );
+    if let Some(display_name) = source.display_name.as_ref() {
+        object.insert(
+            "displayName".to_owned(),
+            serde_json::Value::String(display_name.clone()),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn method_policy_json(
+    policy: &crate::transport::source_api::SourceApiMethodPolicy,
+) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    if let Some(default_method) = policy.default_method.as_ref() {
+        object.insert(
+            "defaultMethod".to_owned(),
+            serde_json::Value::String(default_method.clone()),
+        );
+    }
+    if !policy.allowed_methods.is_empty() {
+        object.insert(
+            "allowedMethods".to_owned(),
+            serde_json::Value::Array(
+                policy
+                    .allowed_methods
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn field_policy_json(policy: &SourceApiFieldPolicy) -> serde_json::Value {
+    serde_json::json!({
+        "supportsRawFields": policy.supports_raw_fields,
+        "supportsTypedFields": policy.supports_typed_fields,
+        "supportsNestedPaths": policy.supports_nested_paths,
+        "supportsArrayPaths": policy.supports_array_paths,
+        "acceptsInput": policy.accepts_input,
+        "inputMode": source_api_input_mode_label(policy.input_mode),
+        "mergePatches": policy.merge_patches,
+    })
+}
+
+fn header_policy_json(
+    policy: &crate::transport::source_api::SourceApiHeaderPolicy,
+) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    if !policy.allowed_names.is_empty() {
+        object.insert(
+            "allowedNames".to_owned(),
+            serde_json::Value::Array(
+                policy
+                    .allowed_names
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect(),
+            ),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn example_json(example: &crate::transport::source_api::SourceApiExample) -> serde_json::Value {
+    let mut object = serde_json::Map::new();
+    object.insert(
+        "label".to_owned(),
+        serde_json::Value::String(example.label.clone()),
+    );
+    if let Some(description) = example.description.as_ref() {
+        object.insert(
+            "description".to_owned(),
+            serde_json::Value::String(description.clone()),
+        );
+    }
+    object.insert(
+        "command".to_owned(),
+        serde_json::Value::String(example.command.clone()),
+    );
+    serde_json::Value::Object(object)
+}
+
+fn selector_kind_label(kind: buffa::EnumValue<SourceApiSelectorKind>) -> &'static str {
+    match source_api_selector_kind_or_none(kind) {
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => "none",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
+    }
+}
+
 fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> CliError {
     CliError::new(
         "failed to render source API response",
@@ -501,7 +796,7 @@ fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> Cli
 
 fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     let mut lines = vec![operation.name.clone()];
-    lines.push(format!("  kind: {}", operation_kind_label(&operation.kind)));
+    lines.push(format!("  kind: {}", operation_kind_label(operation.kind)));
     lines.push(format!(
         "  selector: {}",
         selector_summary(operation).unwrap_or_else(|| "none".to_owned())
@@ -602,10 +897,12 @@ fn render_response_lines(
     }
 
     let body_lines = match &response.body {
-        SourceApiResponseBody::None => Vec::new(),
-        SourceApiResponseBody::Json { value } => pretty_json_lines(&renderable_json_value(value)?),
-        SourceApiResponseBody::Text { value } => value.lines().map(ToOwned::to_owned).collect(),
-        SourceApiResponseBody::Binary { .. } => Vec::new(),
+        None => Vec::new(),
+        Some(SourceApiResponseBody::Json(value)) => {
+            pretty_json_lines(&renderable_json_value(value)?)
+        }
+        Some(SourceApiResponseBody::Text(value)) => value.lines().map(ToOwned::to_owned).collect(),
+        Some(SourceApiResponseBody::Binary(..)) => Vec::new(),
     };
 
     if render.include && !body_lines.is_empty() {
@@ -623,7 +920,7 @@ fn render_response_text_stdout(
         return None;
     }
 
-    let SourceApiResponseBody::Text { value } = &response.body else {
+    let Some(SourceApiResponseBody::Text(value)) = response.body.as_ref() else {
         return None;
     };
 
@@ -653,18 +950,9 @@ fn render_response_stdout_bytes(
         return Ok(None);
     }
 
-    let SourceApiResponseBody::Binary { value_base64 } = &response.body else {
+    let Some(SourceApiResponseBody::Binary(value)) = response.body.as_ref() else {
         return Ok(None);
     };
-
-    let body = base64::engine::general_purpose::STANDARD
-        .decode(value_base64)
-        .map_err(|decode_error| {
-            source_api_render_error(
-                format!("failed to decode binary source API response: {decode_error}"),
-                vec!["retry onequery api --output json ...".to_owned()],
-            )
-        })?;
 
     let mut rendered = Vec::new();
     if render.include {
@@ -678,7 +966,7 @@ fn render_response_stdout_bytes(
 
         rendered.push(b'\n');
     }
-    rendered.extend_from_slice(&body);
+    rendered.extend_from_slice(value);
 
     Ok(Some(rendered))
 }
@@ -693,18 +981,16 @@ fn binary_tty_render_error() -> CliError {
     )
 }
 
-fn operation_kind_label(kind: &SourceApiOperationKind) -> &'static str {
-    match kind {
-        SourceApiOperationKind::HttpRequest => "http_request",
-        SourceApiOperationKind::StructuredRequest => "structured_request",
-    }
+fn operation_kind_label(kind: buffa::EnumValue<SourceApiOperationKind>) -> &'static str {
+    source_api_operation_kind_label(kind)
 }
 
 fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
-    let kind = match operation.selector_kind {
-        SourceApiSelectorKind::None => return None,
-        SourceApiSelectorKind::Path => "path",
-        SourceApiSelectorKind::Identifier => "identifier",
+    let kind = match source_api_selector_kind_or_none(operation.selector_kind) {
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => return None,
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
+        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
     };
 
     Some(match operation.selector_label.as_deref() {
@@ -730,17 +1016,13 @@ fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
     examples
 }
 
-fn input_mode_label(mode: SourceApiInputMode) -> &'static str {
-    match mode {
-        SourceApiInputMode::None => "none",
-        SourceApiInputMode::RequestObject => "request object",
-        SourceApiInputMode::RequestBody => "request body",
-    }
+fn input_mode_label(mode: buffa::EnumValue<SourceApiInputMode>) -> &'static str {
+    source_api_input_mode_label(mode)
 }
 
 #[cfg(test)]
 mod tests {
-    use base64::Engine;
+    use buffa::MessageField;
     use insta::assert_snapshot;
     use serde_json::json;
 
@@ -753,6 +1035,7 @@ mod tests {
     use crate::transport::source_api::SourceApiBodyKind;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiOperationKind;
+    use crate::transport::source_api::SourceApiPaginationPolicy;
     use crate::transport::source_api::SourceApiSource;
     use crate::transport::source_api::proto_json_value_from_json;
 
@@ -765,20 +1048,7 @@ mod tests {
     #[test]
     fn render_dry_run_output_serializes_prepared_preview_shape() {
         let output = render_dry_run_output(
-            PreparedSourceApiPreview {
-                source_key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
-                operation: "fetch".to_owned(),
-                kind: SourceApiOperationKind::HttpRequest,
-                method: Some("GET".to_owned()),
-                selector: Some("/pulls".to_owned()),
-                url: Some("https://api.github.com/pulls".to_owned()),
-                host: Some("api.github.com".to_owned()),
-                header_names: vec!["accept".to_owned()],
-                body_kind: SourceApiBodyKind::Json,
-                body_paths: vec!["params".to_owned()],
-                pagination_policy: crate::transport::source_api::SourceApiPaginationPolicy::None,
-            },
+            &prepared_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
             false,
         )
         .expect("expected prepared dry-run preview to render");
@@ -812,21 +1082,9 @@ mod tests {
     #[test]
     fn render_dry_run_output_serializes_verbose_prepared_preview_shape() {
         let output = render_dry_run_output(
-            PreparedSourceApiPreview {
-                source_key: "github-prod".to_owned(),
-                provider: "github".to_owned(),
-                operation: "fetch".to_owned(),
-                kind: SourceApiOperationKind::HttpRequest,
-                method: Some("GET".to_owned()),
-                selector: Some("/pulls".to_owned()),
-                url: Some("https://api.github.com/pulls".to_owned()),
-                host: Some("api.github.com".to_owned()),
-                header_names: vec!["accept".to_owned()],
-                body_kind: SourceApiBodyKind::Json,
-                body_paths: vec!["params".to_owned()],
-                pagination_policy:
-                    crate::transport::source_api::SourceApiPaginationPolicy::OpaqueToken,
-            },
+            &prepared_preview(
+                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_OPAQUE_TOKEN,
+            ),
             true,
         )
         .expect("expected verbose prepared dry-run preview to render");
@@ -857,9 +1115,7 @@ mod tests {
     #[test]
     fn render_execute_output_keeps_single_page_json_shape_without_slurp() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Json {
-                value: proto_json(json!({"items": [1, 2]})),
-            })],
+            vec![json_response(json_body(json!({"items": [1, 2]})))],
             render_options(),
         )
         .expect("expected source API response to render");
@@ -879,9 +1135,7 @@ mod tests {
     #[test]
     fn render_execute_output_serializes_text_body_as_plain_string_in_json_mode() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Text {
-                value: "plain text\nnext line".to_owned(),
-            })],
+            vec![json_response(text_body("plain text\nnext line"))],
             render_options(),
         )
         .expect("expected source API response to render");
@@ -899,9 +1153,7 @@ mod tests {
     #[test]
     fn render_execute_output_pretty_prints_json_body_in_text_mode() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Json {
-                value: proto_json(json!({"items": [1, 2]})),
-            })],
+            vec![json_response(json_body(json!({"items": [1, 2]})))],
             render_options(),
         )
         .expect("expected source API response to render");
@@ -916,9 +1168,7 @@ mod tests {
     #[test]
     fn render_execute_output_renders_text_body_verbatim_in_text_mode() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Text {
-                value: "plain text\r\nnext line\n".to_owned(),
-            })],
+            vec![json_response(text_body("plain text\r\nnext line\n"))],
             render_options(),
         )
         .expect("expected source API response to render");
@@ -934,12 +1184,8 @@ mod tests {
     fn render_execute_output_collects_paginated_json_pages_without_slurp() {
         let output = render_execute_output(
             vec![
-                json_response(SourceApiResponseBody::Json {
-                    value: proto_json(json!([{"id": 1}])),
-                }),
-                json_response(SourceApiResponseBody::Json {
-                    value: proto_json(json!([{"id": 2}])),
-                }),
+                json_response(json_body(json!([{"id": 1}]))),
+                json_response(json_body(json!([{"id": 2}]))),
             ],
             render_options(),
         )
@@ -962,12 +1208,8 @@ mod tests {
     fn render_execute_output_slurps_paginated_json_arrays() {
         let output = render_execute_output(
             vec![
-                json_response(SourceApiResponseBody::Json {
-                    value: proto_json(json!([{"id": 1}])),
-                }),
-                json_response(SourceApiResponseBody::Json {
-                    value: proto_json(json!([{"id": 2}])),
-                }),
+                json_response(json_body(json!([{"id": 1}]))),
+                json_response(json_body(json!([{"id": 2}]))),
             ],
             SourceApiRenderOptions {
                 slurp: true,
@@ -992,9 +1234,9 @@ mod tests {
     #[test]
     fn render_execute_output_applies_jq_to_assembled_body() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Json {
-                value: proto_json(json!({"items": [{"id": 1}, {"id": 2}]})),
-            })],
+            vec![json_response(json_body(
+                json!({"items": [{"id": 1}, {"id": 2}]}),
+            ))],
             SourceApiRenderOptions {
                 jq: Some(".items[].id".to_owned()),
                 ..render_options()
@@ -1015,9 +1257,7 @@ mod tests {
     #[test]
     fn render_execute_output_rejects_jq_for_text_bodies() {
         let error = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Text {
-                value: "plain text".to_owned(),
-            })],
+            vec![json_response(text_body("plain text"))],
             SourceApiRenderOptions {
                 jq: Some(".items".to_owned()),
                 ..render_options()
@@ -1030,17 +1270,17 @@ mod tests {
 
     #[test]
     fn render_execute_output_includes_status_headers_and_body_in_text_mode() {
-        let mut response = json_response(SourceApiResponseBody::Text {
-            value: "plain text\nnext line".to_owned(),
-        });
+        let mut response = json_response(text_body("plain text\nnext line"));
         response.headers = vec![
             SourceApiHeader {
                 name: "content-type".to_owned(),
                 value: "text/plain".to_owned(),
+                ..Default::default()
             },
             SourceApiHeader {
                 name: "x-request-id".to_owned(),
                 value: "rq_upstream_123".to_owned(),
+                ..Default::default()
             },
         ];
 
@@ -1065,12 +1305,11 @@ mod tests {
 
     #[test]
     fn render_execute_output_suppresses_body_when_silent_but_keeps_included_metadata() {
-        let mut response = json_response(SourceApiResponseBody::Json {
-            value: proto_json(json!({"items": [1, 2]})),
-        });
+        let mut response = json_response(json_body(json!({"items": [1, 2]})));
         response.headers = vec![SourceApiHeader {
             name: "content-type".to_owned(),
             value: "application/json".to_owned(),
+            ..Default::default()
         }];
 
         let output = render_execute_output(
@@ -1092,12 +1331,11 @@ mod tests {
 
     #[test]
     fn render_execute_output_omits_body_in_json_mode_when_silent() {
-        let mut response = json_response(SourceApiResponseBody::Json {
-            value: proto_json(json!({"items": [1, 2]})),
-        });
+        let mut response = json_response(json_body(json!({"items": [1, 2]})));
         response.headers = vec![SourceApiHeader {
             name: "content-type".to_owned(),
             value: "application/json".to_owned(),
+            ..Default::default()
         }];
 
         let output = render_execute_output(
@@ -1122,9 +1360,7 @@ mod tests {
     #[test]
     fn render_execute_output_keeps_response_metadata_only_when_verbose() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Json {
-                value: proto_json(json!({"items": [1, 2]})),
-            })],
+            vec![json_response(json_body(json!({"items": [1, 2]})))],
             SourceApiRenderOptions {
                 verbose: true,
                 ..render_options()
@@ -1156,9 +1392,7 @@ mod tests {
     #[test]
     fn render_execute_output_emits_binary_stdout_when_stdout_is_not_a_tty() {
         let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Binary {
-                value_base64: base64::engine::general_purpose::STANDARD.encode(b"hello"),
-            })],
+            vec![json_response(binary_body(b"hello"))],
             SourceApiRenderOptions {
                 include: true,
                 ..render_options()
@@ -1175,13 +1409,9 @@ mod tests {
 
     #[test]
     fn render_execute_output_rejects_binary_stdout_when_stdout_is_a_tty() {
-        let output = render_execute_output(
-            vec![json_response(SourceApiResponseBody::Binary {
-                value_base64: base64::engine::general_purpose::STANDARD.encode(b"hello"),
-            })],
-            render_options(),
-        )
-        .expect("expected binary source API response to render");
+        let output =
+            render_execute_output(vec![json_response(binary_body(b"hello"))], render_options())
+                .expect("expected binary source API response to render");
 
         let error = render_output_payload(output, EffectiveOutputMode::Text, true)
             .expect_err("expected TTY binary output to fail");
@@ -1194,19 +1424,51 @@ mod tests {
 
     fn json_response(body: SourceApiResponseBody) -> ExecuteSourceApiResponse {
         ExecuteSourceApiResponse {
-            source: SourceApiSource {
+            source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
                 provider: "github".to_owned(),
                 display_name: None,
-            },
+                ..Default::default()
+            }),
             operation: "fetch".to_owned(),
             selector: None,
             status: 200,
             headers: Vec::new(),
             content_type: "application/json".to_owned(),
-            body,
+            body: Some(body),
             next_page_token: None,
+            ..Default::default()
         }
+    }
+
+    fn prepared_preview(pagination_policy: SourceApiPaginationPolicy) -> PreparedSourceApiPreview {
+        PreparedSourceApiPreview {
+            source_key: "github-prod".to_owned(),
+            provider: "github".to_owned(),
+            operation: "fetch".to_owned(),
+            kind: SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
+            method: Some("GET".to_owned()),
+            selector: Some("/pulls".to_owned()),
+            url: Some("https://api.github.com/pulls".to_owned()),
+            host: Some("api.github.com".to_owned()),
+            header_names: vec!["accept".to_owned()],
+            body_kind: SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON.into(),
+            body_paths: vec!["params".to_owned()],
+            pagination_policy: pagination_policy.into(),
+            ..Default::default()
+        }
+    }
+
+    fn json_body(value: serde_json::Value) -> SourceApiResponseBody {
+        SourceApiResponseBody::Json(Box::new(proto_json(value)))
+    }
+
+    fn text_body(value: &str) -> SourceApiResponseBody {
+        SourceApiResponseBody::Text(value.to_owned())
+    }
+
+    fn binary_body(value: &[u8]) -> SourceApiResponseBody {
+        SourceApiResponseBody::Binary(value.to_vec())
     }
 
     fn proto_json(value: serde_json::Value) -> ProtoJsonValue {

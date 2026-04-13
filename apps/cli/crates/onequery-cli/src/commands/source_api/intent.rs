@@ -115,6 +115,7 @@ fn infer_github_repository_selector(target: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use buffa::MessageField;
     use onequery_cli_core::error::ErrorStage;
 
     use crate::cli::ApiArgs;
@@ -349,11 +350,12 @@ mod tests {
 
     fn descriptor_with_operation(operation_name: &str) -> SourceApiDescriptor {
         SourceApiDescriptor {
-            source: SourceApiSource {
+            source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
                 provider: "github".to_owned(),
                 display_name: Some("GitHub".to_owned()),
-            },
+                ..Default::default()
+            }),
             descriptor_version: "2026-04-09".to_owned(),
             default_path_operation: Some("fetch".to_owned()),
             operations: if operation_name.is_empty() {
@@ -366,6 +368,7 @@ mod tests {
             },
             examples: Vec::new(),
             notes: Vec::new(),
+            ..Default::default()
         }
     }
 

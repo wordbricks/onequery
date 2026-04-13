@@ -12,7 +12,7 @@ It does not redefine the state machine or the public contract.
 - [x] 2. Replace the TypeScript domain model with prepared execution truth
 - [x] 3. Replace the Connect boundary and service handlers
 - [x] 4. Replace provider adapter execution and pagination binding
-- [ ] 5. Replace the Rust transport layer
+- [x] 5. Replace the Rust transport layer
 - [ ] 6. Replace the CLI command flow and rendering
 - [ ] 7. Delete legacy surfaces from the source-api path
 - [ ] 8. Pass the quality bar and completion checks
@@ -171,7 +171,7 @@ Files:
 
 Changes:
 
-- [ ] Remove transport-owned serde structs for source-api payload truth where
+- [x] Remove transport-owned serde structs for source-api payload truth where
   generated protobuf types can be used directly.
 - [x] Stop using `serde_json::Value` as the transport model for request and
   response bodies.
