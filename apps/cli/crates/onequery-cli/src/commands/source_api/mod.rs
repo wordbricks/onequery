@@ -15,7 +15,7 @@ use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
-use crate::transport::source_api::ExecuteSourceApiResponse;
+use crate::transport::source_api::ExecutePreparedSourceApiResult;
 use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::SourceApiDraft;
 
@@ -127,7 +127,7 @@ struct PreparedSourceApiExecution {
 }
 
 struct ExecuteSourceApiPages {
-    pages: Vec<ExecuteSourceApiResponse>,
+    pages: Vec<ExecutePreparedSourceApiResult>,
     request_id: Option<String>,
 }
 

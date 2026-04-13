@@ -1,6 +1,6 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
-use crate::transport::source_api::ExecuteSourceApiResponse;
+use crate::transport::source_api::ExecutePreparedSourceApiResult;
 use crate::transport::source_api::PreparedSourceApiPreview;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
@@ -82,7 +82,7 @@ pub(super) fn render_dry_run_output(
 }
 
 pub(super) fn render_execute_output(
-    responses: Vec<ExecuteSourceApiResponse>,
+    responses: Vec<ExecutePreparedSourceApiResult>,
     preview: &PreparedSourceApiPreview,
     render: SourceApiRenderOptions,
 ) -> Result<CommandOutput, CliError> {
@@ -111,7 +111,7 @@ pub(super) fn render_execute_output(
 }
 
 fn serialize_execute_response(
-    response: &ExecuteSourceApiResponse,
+    response: &ExecutePreparedSourceApiResult,
     preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
@@ -176,7 +176,7 @@ fn serialize_dry_run_plan(
 }
 
 fn serialize_verbose_execute_response(
-    response: &ExecuteSourceApiResponse,
+    response: &ExecutePreparedSourceApiResult,
     preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
@@ -246,9 +246,9 @@ fn json_body_value(
 }
 
 fn assemble_execute_response(
-    responses: Vec<ExecuteSourceApiResponse>,
+    responses: Vec<ExecutePreparedSourceApiResult>,
     render: &SourceApiRenderOptions,
-) -> Result<ExecuteSourceApiResponse, CliError> {
+) -> Result<ExecutePreparedSourceApiResult, CliError> {
     let mut responses = responses.into_iter();
     let mut response = responses.next().ok_or_else(|| {
         source_api_render_error(
@@ -270,10 +270,10 @@ fn assemble_execute_response(
 }
 
 fn assemble_paginated_response(
-    first: ExecuteSourceApiResponse,
-    remaining: Vec<ExecuteSourceApiResponse>,
+    first: ExecutePreparedSourceApiResult,
+    remaining: Vec<ExecutePreparedSourceApiResult>,
     slurp: bool,
-) -> Result<ExecuteSourceApiResponse, CliError> {
+) -> Result<ExecutePreparedSourceApiResult, CliError> {
     let last_page = remaining.last().unwrap_or(&first);
     let next_page_token = last_page.next_page_token.clone();
     let body = assemble_paginated_body(
@@ -893,7 +893,7 @@ fn render_example_lines(example: &crate::transport::source_api::SourceApiExample
 }
 
 fn render_response_lines(
-    response: &ExecuteSourceApiResponse,
+    response: &ExecutePreparedSourceApiResult,
     render: &SourceApiRenderOptions,
 ) -> Result<Vec<String>, CliError> {
     let mut lines = Vec::new();
@@ -925,7 +925,7 @@ fn render_response_lines(
 }
 
 fn render_response_text_stdout(
-    response: &ExecuteSourceApiResponse,
+    response: &ExecutePreparedSourceApiResult,
     render: &SourceApiRenderOptions,
 ) -> Option<String> {
     if render.silent {
@@ -955,7 +955,7 @@ fn render_response_text_stdout(
 }
 
 fn render_response_stdout_bytes(
-    response: &ExecuteSourceApiResponse,
+    response: &ExecutePreparedSourceApiResult,
     render: &SourceApiRenderOptions,
 ) -> Result<Option<Vec<u8>>, CliError> {
     if render.silent {
@@ -1051,7 +1051,7 @@ mod tests {
     use crate::transport::source_api::SourceApiSource;
     use crate::transport::source_api::proto_json_value_from_json;
 
-    use super::ExecuteSourceApiResponse;
+    use super::ExecutePreparedSourceApiResult;
     use super::SourceApiRenderOptions;
     use super::SourceApiResponseBody;
     use super::render_dry_run_output;
@@ -1516,8 +1516,8 @@ mod tests {
         );
     }
 
-    fn json_response(body: SourceApiResponseBody) -> ExecuteSourceApiResponse {
-        ExecuteSourceApiResponse {
+    fn json_response(body: SourceApiResponseBody) -> ExecutePreparedSourceApiResult {
+        ExecutePreparedSourceApiResult {
             source: MessageField::some(SourceApiSource {
                 key: "github-prod".to_owned(),
                 provider: "github".to_owned(),

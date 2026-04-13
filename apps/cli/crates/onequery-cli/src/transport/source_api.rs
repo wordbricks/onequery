@@ -35,7 +35,7 @@ pub(crate) type SourceApiDraft = types::SourceApiDraft;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
 pub(crate) type PrepareSourceApiResult = types::PrepareSourceApiResponse;
 pub(crate) type PreparedSourceApiPreview = types::PreparedSourceApiPreview;
-pub(crate) type ExecuteSourceApiResponse = types::ExecutePreparedSourceApiResponse;
+pub(crate) type ExecutePreparedSourceApiResult = types::ExecutePreparedSourceApiResponse;
 pub(crate) type SourceApiResponseBody = types::execute_prepared_source_api_response::Body;
 
 pub(crate) async fn describe_source_api(
@@ -92,7 +92,9 @@ pub(crate) async fn prepare_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(execute_source_api_problem_stage_for_code),
+                ResponseFailureStages::from_connect_code(
+                    execute_prepared_source_api_problem_stage_for_code,
+                ),
             ));
         }
     };
@@ -110,7 +112,7 @@ pub(crate) async fn execute_prepared_source_api(
     client: &AuthenticatedApiClient,
     prepared_token: &str,
     page_token: Option<&str>,
-) -> Result<ApiSuccess<ExecuteSourceApiResponse>, ApiFailure> {
+) -> Result<ApiSuccess<ExecutePreparedSourceApiResult>, ApiFailure> {
     let response = match client
         .cli()
         .execute_prepared_source_api(types::ExecutePreparedSourceApiRequest {
@@ -124,13 +126,15 @@ pub(crate) async fn execute_prepared_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ResponseFailureStages::from_connect_code(execute_source_api_problem_stage_for_code),
+                ResponseFailureStages::from_connect_code(
+                    execute_prepared_source_api_problem_stage_for_code,
+                ),
             ));
         }
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    validate_source_api_response(&payload, request_id.clone())?;
+    validate_execute_prepared_source_api_result(&payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -414,8 +418,8 @@ fn validate_prepare_source_api_result(
     ))
 }
 
-fn validate_source_api_response(
-    value: &ExecuteSourceApiResponse,
+fn validate_execute_prepared_source_api_result(
+    value: &ExecutePreparedSourceApiResult,
     request_id: Option<String>,
 ) -> Result<(), ApiFailure> {
     if value.source.is_set() {
@@ -440,7 +444,7 @@ fn describe_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     }
 }
 
-fn execute_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
+fn execute_prepared_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
     if matches!(
         code,
         ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
@@ -541,8 +545,8 @@ mod tests {
     }
 
     #[test]
-    fn validate_source_api_response_requires_source() {
-        let error = source_api_response(
+    fn validate_execute_prepared_source_api_result_requires_source() {
+        let error = execute_prepared_source_api_result(
             &types::ExecutePreparedSourceApiResponse {
                 operation: "fetch".to_owned(),
                 status: 200,
@@ -620,10 +624,10 @@ mod tests {
         super::validate_source_api_descriptor(value, request_id)
     }
 
-    fn source_api_response(
+    fn execute_prepared_source_api_result(
         value: &types::ExecutePreparedSourceApiResponse,
         request_id: Option<String>,
     ) -> Result<(), ApiFailure> {
-        super::validate_source_api_response(value, request_id)
+        super::validate_execute_prepared_source_api_result(value, request_id)
     }
 }

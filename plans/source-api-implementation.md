@@ -14,7 +14,7 @@ It does not redefine the state machine or the public contract.
 - [x] 4. Replace provider adapter execution and pagination binding
 - [x] 5. Replace the Rust transport layer
 - [x] 6. Replace the CLI command flow and rendering
-- [ ] 7. Delete legacy surfaces from the source-api path
+- [x] 7. Delete legacy surfaces from the source-api path
 - [ ] 8. Pass the quality bar and completion checks
 
 ## Current Shape To Remove
@@ -227,16 +227,16 @@ Deliverable:
 
 These names and shapes must disappear from the new source-api path:
 
-- [ ] `NormalizeSourceApi`
-- [ ] `CliSourceApiPlan`
-- [ ] `ExecuteSourceApiRequest`
+- [x] `NormalizeSourceApi`
+- [x] `CliSourceApiPlan`
+- [x] `ExecuteSourceApiRequest`
 - [x] `ExecuteSourceApiResponse.request_id`
-- [ ] `SourceApiJsonValue`
-- [ ] `toSourceApiJsonValue()`
-- [ ] public `request_fingerprint`
-- [ ] public `requestFingerprint`
-- [ ] source-api compatibility branches for normalized plan responses
-- [ ] source-api code that clones JSON through `JSON.parse(JSON.stringify(...))`
+- [x] `SourceApiJsonValue`
+- [x] `toSourceApiJsonValue()`
+- [x] public `request_fingerprint`
+- [x] public `requestFingerprint`
+- [x] source-api compatibility branches for normalized plan responses
+- [x] source-api code that clones JSON through `JSON.parse(JSON.stringify(...))`
 
 ## 8. Quality Bar Verification
 

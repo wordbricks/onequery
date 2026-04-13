@@ -117,25 +117,6 @@ export async function prepareSourceApiDraft(input: {
   return finalizePreparedSourceApi(prepared);
 }
 
-export async function normalizeSourceApiRequest(input: {
-  source: PreparedSourceConnection;
-  actor: SourceApiActorContext;
-  descriptor: SourceApiDescriptor;
-  request: SourceApiDraft;
-  registry?: SourceApiRegistry;
-}): Promise<PreparedSourceApi> {
-  return prepareSourceApiDraft({
-    actor: input.actor,
-    descriptor: input.descriptor,
-    draft: input.request,
-    registry: input.registry,
-    source: input.source,
-  });
-}
-
-export const finalizeNormalizedExecutionPlan = finalizePreparedSourceApi;
-export const createSourceApiRequestFingerprint = createPreparedSourceApiBinding;
-
 function stableStringify(value: unknown): string {
   if (
     value === null ||

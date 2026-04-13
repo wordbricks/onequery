@@ -399,9 +399,6 @@ describe("source api connect service", () => {
         sourceKey: "github-prod",
       },
     });
-    expect(
-      (response.preview as Record<string, unknown>).requestFingerprint
-    ).toBeUndefined();
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {

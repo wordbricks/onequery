@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { SourceApiDescriptorVersionMismatchError } from "./errors";
 import {
-  createSourceApiRequestFingerprint,
-  finalizeNormalizedExecutionPlan,
-  normalizeSourceApiRequest,
+  createPreparedSourceApiBinding,
+  finalizePreparedSourceApi,
+  prepareSourceApiDraft,
 } from "./normalize";
 import { createSourceApiRegistry } from "./registry";
 import type { PreparedSourceConnection, SourceApiAdapter } from "./types";
@@ -36,15 +36,15 @@ const descriptor = {
   },
 } as const;
 
-describe("createSourceApiRequestFingerprint", () => {
+describe("createPreparedSourceApiBinding", () => {
   it("is stable across object key order", () => {
     expect(
-      createSourceApiRequestFingerprint({
+      createPreparedSourceApiBinding({
         headers: { b: 2, a: 1 },
         request: { selector: "/pulls" },
       })
     ).toBe(
-      createSourceApiRequestFingerprint({
+      createPreparedSourceApiBinding({
         request: { selector: "/pulls" },
         headers: { a: 1, b: 2 },
       })
@@ -52,9 +52,9 @@ describe("createSourceApiRequestFingerprint", () => {
   });
 });
 
-describe("finalizeNormalizedExecutionPlan", () => {
-  it("adds a deterministic fingerprint", () => {
-    const plan = finalizeNormalizedExecutionPlan({
+describe("finalizePreparedSourceApi", () => {
+  it("adds a deterministic prepared binding", () => {
+    const plan = finalizePreparedSourceApi({
       body: { kind: "none" },
       descriptorVersion: "github.v1",
       headers: [],
@@ -76,7 +76,7 @@ describe("finalizeNormalizedExecutionPlan", () => {
     expect(plan.method).toBe("GET");
     expect(plan.selectorTemplate).toBe("/{path}");
     expect(plan.preparedBinding).toBe(
-      finalizeNormalizedExecutionPlan({
+      finalizePreparedSourceApi({
         body: { kind: "none" },
         descriptorVersion: "github.v1",
         headers: [],
@@ -93,8 +93,8 @@ describe("finalizeNormalizedExecutionPlan", () => {
     );
   });
 
-  it("derives structured request body paths from the normalized request object", () => {
-    const plan = finalizeNormalizedExecutionPlan({
+  it("derives structured request body paths from the prepared request object", () => {
+    const plan = finalizePreparedSourceApi({
       body: {
         kind: "json",
         value: {
@@ -132,7 +132,7 @@ describe("finalizeNormalizedExecutionPlan", () => {
   });
 });
 
-describe("normalizeSourceApiRequest", () => {
+describe("prepareSourceApiDraft", () => {
   it("rejects descriptor version mismatches before adapter normalization", async () => {
     const adapter: SourceApiAdapter = {
       async describe() {
@@ -149,16 +149,16 @@ describe("normalizeSourceApiRequest", () => {
 
     const registry = createSourceApiRegistry([adapter]);
 
-    const normalization = normalizeSourceApiRequest({
+    const normalization = prepareSourceApiDraft({
       actor,
       descriptor,
-      registry,
-      request: {
+      draft: {
         body: { kind: "none" },
         descriptorVersion: "github.v2",
         headers: [],
         operation: "fetch",
       },
+      registry,
       source,
     });
 
@@ -170,7 +170,7 @@ describe("normalizeSourceApiRequest", () => {
     );
   });
 
-  it("finalizes policy metadata before returning the normalized plan", async () => {
+  it("finalizes policy metadata before returning the prepared request", async () => {
     const adapter: SourceApiAdapter = {
       async describe() {
         return descriptor;
@@ -201,15 +201,15 @@ describe("normalizeSourceApiRequest", () => {
     };
 
     const registry = createSourceApiRegistry([adapter]);
-    const plan = await normalizeSourceApiRequest({
+    const plan = await prepareSourceApiDraft({
       actor,
       descriptor,
-      registry,
-      request: {
+      draft: {
         body: { kind: "none" },
         headers: [],
         operation: "fetch",
       },
+      registry,
       source,
     });
 

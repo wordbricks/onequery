@@ -231,26 +231,6 @@ export type UnboundPreparedSourceApi =
   | UnboundPreparedHttpSourceApi
   | UnboundPreparedStructuredSourceApi;
 
-export type NormalizedHttpRequestPlan = PreparedHttpSourceApi;
-
-export type NormalizedStructuredRequestPlan = PreparedStructuredSourceApi;
-
-export type NormalizedExecutionPlan = PreparedSourceApi;
-
-export type FinalizedNormalizedExecutionPlan = Omit<
-  PreparedSourceApi,
-  "preparedBinding"
->;
-
-export type UnfingerprintedNormalizedHttpRequestPlan =
-  UnboundPreparedHttpSourceApi & UnboundPreparedPaginationBasis;
-
-export type UnfingerprintedNormalizedStructuredRequestPlan =
-  UnboundPreparedStructuredSourceApi & UnboundPreparedPaginationBasis;
-
-export type UnfingerprintedNormalizedExecutionPlan = UnboundPreparedSourceApi &
-  UnboundPreparedPaginationBasis;
-
 export type PreparedSourceApiPreview = {
   sourceKey: string;
   provider: ProviderType;
