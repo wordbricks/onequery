@@ -83,15 +83,24 @@ pub(super) fn render_dry_run_output(
 
 pub(super) fn render_execute_output(
     responses: Vec<ExecuteSourceApiResponse>,
+    preview: &PreparedSourceApiPreview,
     render: SourceApiRenderOptions,
 ) -> Result<CommandOutput, CliError> {
     let response = assemble_execute_response(responses, &render)?;
-    let data = serialize_execute_response(&response, &render)?;
-    let lines = render_response_lines(&response, &render)?;
-    let text_stdout = render_response_text_stdout(&response, &render);
-    let raw_stdout = render_response_stdout_bytes(&response, &render)?;
+    let data = serialize_execute_response(&response, preview, &render)?;
+    let lines = if render.verbose {
+        pretty_json_lines(&data)
+    } else {
+        render_response_lines(&response, &render)?
+    };
+    let text_stdout = (!render.verbose).then(|| render_response_text_stdout(&response, &render));
+    let raw_stdout = if render.verbose {
+        None
+    } else {
+        render_response_stdout_bytes(&response, &render)?
+    };
     let output = CommandOutput::raw_json(lines, data);
-    let output = match text_stdout {
+    let output = match text_stdout.flatten() {
         Some(text_stdout) => output.with_text_stdout(text_stdout),
         None => output,
     };
@@ -103,6 +112,7 @@ pub(super) fn render_execute_output(
 
 fn serialize_execute_response(
     response: &ExecuteSourceApiResponse,
+    preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
     if !render.verbose {
@@ -125,7 +135,7 @@ fn serialize_execute_response(
         });
     }
 
-    serialize_verbose_execute_response(response, render)
+    serialize_verbose_execute_response(response, preview, render)
 }
 
 fn serialize_dry_run_plan(
@@ -167,9 +177,11 @@ fn serialize_dry_run_plan(
 
 fn serialize_verbose_execute_response(
     response: &ExecuteSourceApiResponse,
+    preview: &PreparedSourceApiPreview,
     render: &SourceApiRenderOptions,
 ) -> Result<serde_json::Value, CliError> {
     let mut object = serde_json::Map::new();
+    object.insert("preview".to_owned(), prepared_preview_json(preview, true));
     object.insert("source".to_owned(), source_json(&response.source));
     object.insert(
         "operation".to_owned(),
@@ -1116,6 +1128,7 @@ mod tests {
     fn render_execute_output_keeps_single_page_json_shape_without_slurp() {
         let output = render_execute_output(
             vec![json_response(json_body(json!({"items": [1, 2]})))],
+            &execute_preview(),
             render_options(),
         )
         .expect("expected source API response to render");
@@ -1136,6 +1149,7 @@ mod tests {
     fn render_execute_output_serializes_text_body_as_plain_string_in_json_mode() {
         let output = render_execute_output(
             vec![json_response(text_body("plain text\nnext line"))],
+            &execute_preview(),
             render_options(),
         )
         .expect("expected source API response to render");
@@ -1154,6 +1168,7 @@ mod tests {
     fn render_execute_output_pretty_prints_json_body_in_text_mode() {
         let output = render_execute_output(
             vec![json_response(json_body(json!({"items": [1, 2]})))],
+            &execute_preview(),
             render_options(),
         )
         .expect("expected source API response to render");
@@ -1169,6 +1184,7 @@ mod tests {
     fn render_execute_output_renders_text_body_verbatim_in_text_mode() {
         let output = render_execute_output(
             vec![json_response(text_body("plain text\r\nnext line\n"))],
+            &execute_preview(),
             render_options(),
         )
         .expect("expected source API response to render");
@@ -1187,6 +1203,7 @@ mod tests {
                 json_response(json_body(json!([{"id": 1}]))),
                 json_response(json_body(json!([{"id": 2}]))),
             ],
+            &execute_preview(),
             render_options(),
         )
         .expect("expected source API response to render");
@@ -1211,6 +1228,7 @@ mod tests {
                 json_response(json_body(json!([{"id": 1}]))),
                 json_response(json_body(json!([{"id": 2}]))),
             ],
+            &execute_preview(),
             SourceApiRenderOptions {
                 slurp: true,
                 ..render_options()
@@ -1237,6 +1255,7 @@ mod tests {
             vec![json_response(json_body(
                 json!({"items": [{"id": 1}, {"id": 2}]}),
             ))],
+            &execute_preview(),
             SourceApiRenderOptions {
                 jq: Some(".items[].id".to_owned()),
                 ..render_options()
@@ -1258,6 +1277,7 @@ mod tests {
     fn render_execute_output_rejects_jq_for_text_bodies() {
         let error = render_execute_output(
             vec![json_response(text_body("plain text"))],
+            &execute_preview(),
             SourceApiRenderOptions {
                 jq: Some(".items".to_owned()),
                 ..render_options()
@@ -1286,6 +1306,7 @@ mod tests {
 
         let output = render_execute_output(
             vec![response],
+            &execute_preview(),
             SourceApiRenderOptions {
                 include: true,
                 ..render_options()
@@ -1314,6 +1335,7 @@ mod tests {
 
         let output = render_execute_output(
             vec![response],
+            &execute_preview(),
             SourceApiRenderOptions {
                 include: true,
                 silent: true,
@@ -1340,6 +1362,7 @@ mod tests {
 
         let output = render_execute_output(
             vec![response],
+            &execute_preview(),
             SourceApiRenderOptions {
                 silent: true,
                 ..render_options()
@@ -1358,9 +1381,10 @@ mod tests {
     }
 
     #[test]
-    fn render_execute_output_keeps_response_metadata_only_when_verbose() {
+    fn render_execute_output_includes_prepare_preview_when_verbose() {
         let output = render_execute_output(
             vec![json_response(json_body(json!({"items": [1, 2]})))],
+            &execute_preview(),
             SourceApiRenderOptions {
                 verbose: true,
                 ..render_options()
@@ -1375,6 +1399,20 @@ mod tests {
             ))
             .expect("expected raw JSON output"),
             json!({
+                "preview": {
+                    "sourceKey": "github-prod",
+                    "provider": "github",
+                    "operation": "fetch",
+                    "kind": "http_request",
+                    "method": "GET",
+                    "selector": "/pulls",
+                    "url": "https://api.github.com/pulls",
+                    "host": "api.github.com",
+                    "headerNames": ["accept"],
+                    "bodyKind": "json",
+                    "bodyPaths": ["params"],
+                    "paginationPolicy": "none"
+                },
                 "source": {
                     "key": "github-prod",
                     "provider": "github",
@@ -1390,9 +1428,62 @@ mod tests {
     }
 
     #[test]
+    fn render_execute_output_renders_verbose_preview_and_response_in_text_mode() {
+        let output = render_execute_output(
+            vec![json_response(json_body(json!({"items": [1, 2]})))],
+            &execute_preview(),
+            SourceApiRenderOptions {
+                verbose: true,
+                ..render_options()
+            },
+        )
+        .expect("expected verbose source API response to render");
+
+        assert_snapshot!(
+            render_output(output, EffectiveOutputMode::Text),
+            @r#"
+            {
+              "body": {
+                "items": [
+                  1,
+                  2
+                ]
+              },
+              "contentType": "application/json",
+              "operation": "fetch",
+              "preview": {
+                "bodyKind": "json",
+                "bodyPaths": [
+                  "params"
+                ],
+                "headerNames": [
+                  "accept"
+                ],
+                "host": "api.github.com",
+                "kind": "http_request",
+                "method": "GET",
+                "operation": "fetch",
+                "paginationPolicy": "none",
+                "provider": "github",
+                "selector": "/pulls",
+                "sourceKey": "github-prod",
+                "url": "https://api.github.com/pulls"
+              },
+              "source": {
+                "key": "github-prod",
+                "provider": "github"
+              },
+              "status": 200
+            }
+            "#
+        );
+    }
+
+    #[test]
     fn render_execute_output_emits_binary_stdout_when_stdout_is_not_a_tty() {
         let output = render_execute_output(
             vec![json_response(binary_body(b"hello"))],
+            &execute_preview(),
             SourceApiRenderOptions {
                 include: true,
                 ..render_options()
@@ -1409,9 +1500,12 @@ mod tests {
 
     #[test]
     fn render_execute_output_rejects_binary_stdout_when_stdout_is_a_tty() {
-        let output =
-            render_execute_output(vec![json_response(binary_body(b"hello"))], render_options())
-                .expect("expected binary source API response to render");
+        let output = render_execute_output(
+            vec![json_response(binary_body(b"hello"))],
+            &execute_preview(),
+            render_options(),
+        )
+        .expect("expected binary source API response to render");
 
         let error = render_output_payload(output, EffectiveOutputMode::Text, true)
             .expect_err("expected TTY binary output to fail");
@@ -1473,6 +1567,10 @@ mod tests {
 
     fn proto_json(value: serde_json::Value) -> ProtoJsonValue {
         proto_json_value_from_json(value).expect("expected test JSON value to convert to WKT")
+    }
+
+    fn execute_preview() -> PreparedSourceApiPreview {
+        prepared_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
     }
 
     fn render_options() -> SourceApiRenderOptions {

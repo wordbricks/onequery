@@ -306,7 +306,7 @@ pub(crate) struct ApiArgs {
     /// Apply a JSON selection expression after response assembly.
     #[arg(short = 'q', long = "jq", value_name = "EXPR")]
     pub jq: Option<String>,
-    /// Print the normalized request plan without executing it.
+    /// Prepare the request and print its preview without executing it.
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,
 }

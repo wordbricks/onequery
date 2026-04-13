@@ -2,8 +2,8 @@ use buffa::MessageField;
 use serde_json::Value;
 
 use crate::cli::ApiArgs;
-use crate::transport::source_api::ExecuteSourceApiRequestPayload;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
@@ -46,7 +46,7 @@ pub(super) struct SourceApiRenderOptions {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct ExecutePlan {
-    pub(super) request: ExecuteSourceApiRequestPayload,
+    pub(super) draft: SourceApiDraft,
     pub(super) execution: SourceApiExecutionOptions,
     pub(super) render: SourceApiRenderOptions,
 }
@@ -54,12 +54,8 @@ pub(super) struct ExecutePlan {
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum PlannedCommand {
     Describe,
-    DryRun {
-        request: ExecuteSourceApiRequestPayload,
-    },
-    Execute {
-        plan: ExecutePlan,
-    },
+    DryRun { draft: SourceApiDraft },
+    Execute { plan: ExecutePlan },
 }
 
 pub(super) async fn build_plan(
@@ -149,7 +145,7 @@ pub(super) async fn build_plan(
     )
     .await?;
 
-    let request = ExecuteSourceApiRequestPayload {
+    let draft = SourceApiDraft {
         org_slug: String::new(),
         source_key: String::new(),
         operation: operation.name.clone(),
@@ -164,12 +160,12 @@ pub(super) async fn build_plan(
     };
 
     if args.dry_run {
-        return Ok(PlannedCommand::DryRun { request });
+        return Ok(PlannedCommand::DryRun { draft });
     }
 
     Ok(PlannedCommand::Execute {
         plan: ExecutePlan {
-            request,
+            draft,
             execution: SourceApiExecutionOptions {
                 paginate: args.paginate,
                 max_pages: args.max_pages,

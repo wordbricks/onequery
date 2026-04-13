@@ -16,6 +16,8 @@ use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure;
 use crate::transport::source_api;
 use crate::transport::source_api::ExecuteSourceApiResponse;
+use crate::transport::source_api::PreparedSourceApiPreview;
+use crate::transport::source_api::SourceApiDraft;
 
 use super::CommandContext;
 use super::Runtime;
@@ -67,58 +69,88 @@ pub(super) async fn execute<B, T>(
                 })
             })
         }
-        PlannedCommand::DryRun { request } => {
-            let prepare_response = source_api::prepare_source_api(
+        PlannedCommand::DryRun { draft } => {
+            let prepared = prepare_source_api_execution(
                 &client,
                 org_slug.as_str(),
                 args.source.as_str(),
-                &request,
+                &draft,
+                args,
+                context,
             )
-            .await
-            .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
+            .await?;
 
-            render_dry_run_output(&prepare_response.payload.preview, context.verbose).map(
-                |output| {
-                    output.with_request_id(if context.verbose {
-                        prepare_response.request_id.clone()
-                    } else {
-                        None
-                    })
-                },
-            )
+            render_dry_run_output(&prepared.preview, context.verbose).map(|output| {
+                output.with_request_id(if context.verbose {
+                    prepared.request_id.clone()
+                } else {
+                    None
+                })
+            })
         }
         PlannedCommand::Execute { plan } => {
-            let prepare_response = source_api::prepare_source_api(
+            let prepared = prepare_source_api_execution(
                 &client,
                 org_slug.as_str(),
                 args.source.as_str(),
-                &plan.request,
+                &plan.draft,
+                args,
+                context,
             )
-            .await
-            .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
+            .await?;
             let execute_response = execute_source_api_pages(
                 &client,
-                prepare_response.payload.prepared_token.as_str(),
+                prepared.prepared_token.as_str(),
                 &plan.execution,
                 args,
                 context,
             )
             .await?;
 
-            render_execute_output(execute_response.pages, plan.render).map(|output| {
-                output.with_request_id(if context.verbose {
-                    execute_response.request_id.clone()
-                } else {
-                    None
-                })
-            })
+            render_execute_output(execute_response.pages, &prepared.preview, plan.render).map(
+                |output| {
+                    output.with_request_id(if context.verbose {
+                        execute_response.request_id.clone()
+                    } else {
+                        None
+                    })
+                },
+            )
         }
     }
+}
+
+struct PreparedSourceApiExecution {
+    preview: PreparedSourceApiPreview,
+    prepared_token: String,
+    request_id: Option<String>,
 }
 
 struct ExecuteSourceApiPages {
     pages: Vec<ExecuteSourceApiResponse>,
     request_id: Option<String>,
+}
+
+async fn prepare_source_api_execution(
+    client: &crate::transport::client::AuthenticatedApiClient,
+    org_slug: &str,
+    source_key: &str,
+    draft: &SourceApiDraft,
+    args: &ApiArgs,
+    context: &CommandContext,
+) -> Result<PreparedSourceApiExecution, CliError> {
+    let prepare_response = source_api::prepare_source_api(client, org_slug, source_key, draft)
+        .await
+        .map_err(|failure| present_source_api_prepare_failure(failure, args, context))?;
+    let Some(preview) = prepare_response.payload.preview.into_option() else {
+        unreachable!("validated source API prepare response must include preview");
+    };
+
+    Ok(PreparedSourceApiExecution {
+        preview,
+        prepared_token: prepare_response.payload.prepared_token,
+        request_id: prepare_response.request_id,
+    })
 }
 
 async fn execute_source_api_pages(

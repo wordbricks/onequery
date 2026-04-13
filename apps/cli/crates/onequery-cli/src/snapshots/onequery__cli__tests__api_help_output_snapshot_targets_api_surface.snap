@@ -25,7 +25,7 @@ Options:
   -i, --include                Include status and allowed response headers in text output
       --silent                 Suppress body output
   -q, --jq <EXPR>              Apply a JSON selection expression after response assembly
-      --dry-run                Print the normalized request plan without executing it
+      --dry-run                Prepare the request and print its preview without executing it
   -h, --help                   Print help
   -V, --version                Print version
 

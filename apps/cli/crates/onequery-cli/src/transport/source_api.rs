@@ -31,7 +31,7 @@ pub(crate) type SourceApiFieldPolicy = types::CliSourceApiFieldPolicy;
 pub(crate) type SourceApiHeaderPolicy = types::CliSourceApiHeaderPolicy;
 pub(crate) type SourceApiOperation = types::CliSourceApiOperation;
 pub(crate) type SourceApiDescriptor = types::DescribeSourceApiResponse;
-pub(crate) type ExecuteSourceApiRequestPayload = types::SourceApiDraft;
+pub(crate) type SourceApiDraft = types::SourceApiDraft;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
 pub(crate) type PrepareSourceApiResult = types::PrepareSourceApiResponse;
 pub(crate) type PreparedSourceApiPreview = types::PreparedSourceApiPreview;
@@ -78,12 +78,12 @@ pub(crate) async fn prepare_source_api(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
-    payload: &ExecuteSourceApiRequestPayload,
+    draft: &SourceApiDraft,
 ) -> Result<ApiSuccess<PrepareSourceApiResult>, ApiFailure> {
     let response = match client
         .cli()
         .prepare_source_api(types::PrepareSourceApiRequest {
-            draft: MessageField::some(source_api_draft_with_context(org, source_key, payload)?),
+            draft: MessageField::some(source_api_draft_with_context(org, source_key, draft)?),
             ..Default::default()
         })
         .await
@@ -329,12 +329,12 @@ fn normalize_renderable_json_number(number: serde_json::Number) -> JsonValue {
 fn source_api_draft_with_context(
     org: &str,
     source_key: &str,
-    payload: &ExecuteSourceApiRequestPayload,
+    draft: &SourceApiDraft,
 ) -> Result<types::SourceApiDraft, ApiFailure> {
-    let mut payload = payload.clone();
-    payload.org_slug = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    payload.source_key = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    Ok(payload)
+    let mut draft = draft.clone();
+    draft.org_slug = try_into_value(org, ErrorStage::ExecuteQuery)?;
+    draft.source_key = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
+    Ok(draft)
 }
 
 fn validate_source_api_descriptor(

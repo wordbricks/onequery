@@ -13,7 +13,7 @@ It does not redefine the state machine or the public contract.
 - [x] 3. Replace the Connect boundary and service handlers
 - [x] 4. Replace provider adapter execution and pagination binding
 - [x] 5. Replace the Rust transport layer
-- [ ] 6. Replace the CLI command flow and rendering
+- [x] 6. Replace the CLI command flow and rendering
 - [ ] 7. Delete legacy surfaces from the source-api path
 - [ ] 8. Pass the quality bar and completion checks
 
@@ -210,13 +210,13 @@ Command behavior:
 
 Changes:
 
-- [ ] Remove normalize-specific transport and presentation code.
-- [ ] Render preview output from `PreparedSourceApiPreview`.
-- [ ] Stop expecting `requestFingerprint` anywhere.
+- [x] Remove normalize-specific transport and presentation code.
+- [x] Render preview output from `PreparedSourceApiPreview`.
+- [x] Stop expecting `requestFingerprint` anywhere.
 - [x] Keep request ID presentation sourced from header metadata, not payload
   fields.
-- [ ] Keep default output body-first.
-- [ ] Allow verbose output to show preview and business metadata without
+- [x] Keep default output body-first.
+- [x] Allow verbose output to show preview and business metadata without
   exposing token internals.
 
 Deliverable:
