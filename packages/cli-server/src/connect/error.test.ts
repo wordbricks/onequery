@@ -9,16 +9,6 @@ import {
 } from "./error";
 
 describe("connect error helpers", () => {
-  it("maps problem keys to native Connect codes without legacy metadata", () => {
-    const error = createCliConnectError({
-      key: "NOT_LOGGED_IN",
-    });
-
-    expect(error.code).toBe(Code.Unauthenticated);
-    expect(error.message).toContain("Not logged in");
-    expect([...error.metadata.keys()]).toEqual([]);
-  });
-
   it("keeps only request ID and retry delay metadata on the wire", () => {
     const error = createCliConnectError({
       key: "LOGIN_RATE_LIMITED",

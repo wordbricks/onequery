@@ -17,28 +17,6 @@ It does not redefine the state machine or the public contract.
 - [x] 7. Delete legacy surfaces from the source-api path
 - [x] 8. Pass the quality bar and completion checks
 
-## Current Shape To Remove
-
-Today the public surface is still:
-
-- `DescribeSourceApi`
-- `NormalizeSourceApi`
-- `ExecuteSourceApi`
-
-and the implementation still spreads truth across:
-
-- protobuf messages
-- a custom TypeScript JSON AST
-- Connect conversion helpers that rebuild JSON trees
-- Rust transport structs serialized through `serde_json::Value`
-
-Comment: the current execute path still performs describe and normalize during
-execute, which means the prepared state is not yet first-class.
-
-Comment: the current CLI dry-run path already strips `requestFingerprint` from
-rendered output after receiving it, which is a good sign that the field should
-never have been public.
-
 ## Workstream Order
 
 Implement in this order:

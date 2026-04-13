@@ -98,7 +98,7 @@ pub(super) async fn execute<B, T>(
                 context,
             )
             .await?;
-            let execute_response = execute_source_api_pages(
+            let execute_response = execute_prepared_source_api_pages(
                 &client,
                 prepared.prepared_token.as_str(),
                 &plan.execution,
@@ -126,7 +126,7 @@ struct PreparedSourceApiExecution {
     request_id: Option<String>,
 }
 
-struct ExecuteSourceApiPages {
+struct ExecutedSourceApiPages {
     pages: Vec<ExecutePreparedSourceApiResult>,
     request_id: Option<String>,
 }
@@ -153,13 +153,13 @@ async fn prepare_source_api_execution(
     })
 }
 
-async fn execute_source_api_pages(
+async fn execute_prepared_source_api_pages(
     client: &crate::transport::client::AuthenticatedApiClient,
     prepared_token: &str,
     execution: &SourceApiExecutionOptions,
     args: &ApiArgs,
     context: &CommandContext,
-) -> Result<ExecuteSourceApiPages, CliError> {
+) -> Result<ExecutedSourceApiPages, CliError> {
     let max_pages = execution.max_pages.unwrap_or(u32::MAX);
 
     let first_response = source_api::execute_prepared_source_api(client, prepared_token, None)
@@ -186,7 +186,7 @@ async fn execute_source_api_pages(
         pages.push(response.payload);
     }
 
-    Ok(ExecuteSourceApiPages { pages, request_id })
+    Ok(ExecutedSourceApiPages { pages, request_id })
 }
 
 fn present_source_api_prepare_failure(
