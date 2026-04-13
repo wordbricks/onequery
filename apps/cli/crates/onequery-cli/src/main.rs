@@ -112,7 +112,7 @@ async fn main() {
             error.exit_code()
         }
     };
-    startup_effects.finish().await;
+    startup_effects.finish().await.report();
     std::process::exit(exit_code);
 }
 
