@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { PostHogCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -26,7 +27,7 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -97,11 +98,6 @@ export const postHogSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new PostHogInvalidRequestError(
-        `PostHog operation "${operation.name}" does not support page tokens`
-      );
-    }
     if (request.selector?.trim()) {
       throw new PostHogInvalidRequestError(
         `PostHog operation "${operation.name}" does not accept a selector`
@@ -131,27 +127,28 @@ export const postHogSourceApiAdapter: SourceApiAdapter = {
       kind: "structured_request",
       method: "POST",
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
-      request: normalizedRequest,
+      request: normalizedRequest as JsonObject,
       selectorTemplate: "/api/projects/{projectId}/query/",
       sourceId: source.id,
       sourceKey: source.sourceKey,
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "structured_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "structured_request") {
       throw new Error(
-        `PostHog source API operation "${plan.operation}" requires a structured plan`
+        `PostHog source API operation "${prepared.operation}" requires a structured plan`
       );
     }
 
     const response = await requestPostHogSourceApi({
       credentials: requirePostHogCredentials(source),
-      request: parsePostHogRunQueryRequest(plan.request),
+      request: parsePostHogRunQueryRequest(prepared.request),
     });
 
     return buildPostHogExecutionResponse({
-      operation: plan.operation,
+      operation: prepared.operation,
       response,
       source,
     });
@@ -220,9 +217,7 @@ function requirePostHogCredentials(
   throw new Error("PostHog source credentials are invalid");
 }
 
-function parsePostHogRequestBody(
-  body: SourceApiRequestBody
-): Record<string, unknown> {
+function parsePostHogRequestBody(body: SourceApiRequestBody): JsonObject {
   switch (body.kind) {
     case "none":
       return {};
@@ -369,7 +364,7 @@ function buildPostHogExecutionResponse(input: {
   operation: string;
   response: PostHogTransportResponse;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,

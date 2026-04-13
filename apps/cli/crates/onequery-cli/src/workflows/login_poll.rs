@@ -1,6 +1,6 @@
+use crate::transport::api_failure::ApiFailure;
 use crate::transport::auth::LoginPollOutcome;
 use crate::transport::auth::LoginSession;
-use crate::transport::http::ApiFailure;
 use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 

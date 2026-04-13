@@ -1,0 +1,229 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`google analytics source api adapter > describes report and realtime operations 1`] = `
+{
+  "descriptorVersion": "ga.v1",
+  "examples": [
+    {
+      "command": "onequery api --source ga-prod --op run_report --input '{"dateRanges":[{"startDate":"7daysAgo","endDate":"today"}],"dimensions":[{"name":"date"}],"metrics":[{"name":"activeUsers"}],"limit":100}'",
+      "description": "Run a standard report with the property saved on the connected source.",
+      "label": "Run a report",
+    },
+    {
+      "command": "onequery api --source ga-prod --op run_realtime_report -F 'property="properties/123456789"' -F 'dimensions[]={"name":"country"}' -F 'metrics[]={"name":"activeUsers"}'",
+      "description": "Override the property and run a realtime report with typed field patches.",
+      "label": "Run a realtime report",
+    },
+  ],
+  "notes": [
+    "If the request omits \`property\`, OneQuery uses the property saved on the connected source.",
+  ],
+  "operations": [
+    {
+      "description": "Run a Google Analytics Data API report against the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source ga-prod --op run_report --input '{"dateRanges":[{"startDate":"7daysAgo","endDate":"today"}],"dimensions":[{"name":"date"}],"metrics":[{"name":"activeUsers"}],"limit":100}'",
+          "description": "Run a standard report with the property saved on the connected source.",
+          "label": "Run a report",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "run_report",
+      "notes": [
+        "Request fields match the Google Analytics Data API runReport payload.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Execute a Google Analytics report query.",
+    },
+    {
+      "description": "Run a Google Analytics realtime report against the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source ga-prod --op run_realtime_report -F 'property="properties/123456789"' -F 'dimensions[]={"name":"country"}' -F 'metrics[]={"name":"activeUsers"}'",
+          "description": "Override the property and run a realtime report with typed field patches.",
+          "label": "Run a realtime report",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_object",
+        "mergePatches": true,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "structured_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "POST",
+        ],
+        "defaultMethod": "POST",
+      },
+      "name": "run_realtime_report",
+      "notes": [
+        "Request fields match the Google Analytics Data API runRealtimeReport payload.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "none",
+      "selectorLabel": undefined,
+      "summary": "Execute a Google Analytics realtime query.",
+    },
+  ],
+  "source": {
+    "displayName": "Google Analytics Prod",
+    "key": "ga-prod",
+    "provider": "ga",
+  },
+}
+`;
+
+exports[`google analytics source api adapter > executes Google Analytics requests with upstream status and headers 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "rows": [],
+    },
+  },
+  "contentType": "application/json; charset=utf-8",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json; charset=utf-8",
+    },
+  ],
+  "operation": "run_report",
+  "source": {
+    "displayName": "Google Analytics Prod",
+    "key": "ga-prod",
+    "provider": "ga",
+  },
+  "status": 200,
+}
+`;
+
+exports[`google analytics source api adapter > normalizes missing Google Analytics response content types to octet-stream 1`] = `
+{
+  "body": {
+    "kind": "binary",
+    "value": Uint8Array [
+      1,
+      2,
+      3,
+    ],
+  },
+  "contentType": "application/octet-stream",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/octet-stream",
+    },
+  ],
+  "operation": "run_report",
+  "source": {
+    "displayName": "Google Analytics Prod",
+    "key": "ga-prod",
+    "provider": "ga",
+  },
+  "status": 200,
+}
+`;
+
+exports[`google analytics source api adapter > normalizes structured requests and resolves the connected property 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "dateRanges": [
+        {
+          "endDate": "today",
+          "startDate": "7daysAgo",
+        },
+      ],
+      "dimensions": [
+        {
+          "name": "date",
+        },
+      ],
+    },
+  },
+  "bodyKind": "json",
+  "bodyPaths": [
+    "dateRanges",
+    "dateRanges[]",
+    "dimensions",
+    "dimensions[]",
+    "limit",
+    "metrics",
+    "metrics[]",
+    "property",
+  ],
+  "descriptorVersion": "ga.v1",
+  "headerNames": [],
+  "headers": [],
+  "kind": "structured_request",
+  "metadata": {
+    "propertyPath": "properties/123456789",
+  },
+  "method": "POST",
+  "operation": "run_report",
+  "paginationPolicy": "none",
+  "preparedBinding": "q3pL7D8TB_H3Fgqb3PdVByESa16g_KRy_kk05R3rj_I",
+  "provider": "ga",
+  "request": {
+    "dateRanges": [
+      {
+        "endDate": "today",
+        "startDate": "7daysAgo",
+      },
+    ],
+    "dimensions": [
+      {
+        "name": "date",
+      },
+    ],
+    "limit": 100,
+    "metrics": [
+      {
+        "name": "activeUsers",
+      },
+    ],
+    "property": "properties/123456789",
+  },
+  "selector": "properties/123456789",
+  "selectorTemplate": "properties/{propertyId}",
+  "sourceId": "source_1",
+  "sourceKey": "ga-prod",
+}
+`;

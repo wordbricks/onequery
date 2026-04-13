@@ -1,0 +1,105 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`source connect guide > renders canonical source connect guides 1`] = `
+{
+  "postgres": {
+    "command": "onequery source connect --source postgres --input '<json>'",
+    "content": "# OneQuery Source Connect Guide
+
+Provider: \`postgres\`
+
+Agent workflow:
+1. If this provider requires a browser or dashboard setup flow, do not just ask the user to hand over the final token or secret. Work through the setup with the user step by step.
+2. First check whether you already have browser capability in the current environment.
+3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
+4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
+
+Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Run: \`onequery source connect --source postgres --input '<json>'\`
+Verify: \`onequery source show <name>\`
+Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
+The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+
+Connect a Postgres database with a direct host, database, and login.
+
+Steps:
+1. Retrieve the Postgres host, database name, username, and password from the database deployment or secret manager.
+2. Confirm the correct port and SSL mode for this environment before sending the payload.
+
+Example input:
+\`\`\`json
+{
+  "name": "warehouse",
+  "credentials": {
+    "host": "db.example.com",
+    "port": 5432,
+    "database": "app",
+    "username": "onequery",
+    "password": "secret",
+    "sslMode": "prefer"
+  }
+}
+\`\`\`
+",
+    "description": "Follow these steps to gather credentials and create one postgres org-scoped OneQuery source.",
+    "format": "markdown",
+    "title": "OneQuery Source Connect Guide",
+  },
+  "posthog": {
+    "command": "onequery source connect --source posthog --input '<json>'",
+    "content": "# OneQuery Source Connect Guide
+
+Provider: \`posthog\`
+
+Agent workflow:
+1. If this provider requires a browser or dashboard setup flow, do not just ask the user to hand over the final token or secret. Work through the setup with the user step by step.
+2. First check whether you already have browser capability in the current environment.
+3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
+4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
+
+Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Run: \`onequery source connect --source posthog --input '<json>'\`
+Verify: \`onequery source show <name>\`
+Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
+The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+
+Connect PostHog with the PostHog app host URL, a personal API key, and project ID.
+
+Steps:
+1. Open the PostHog project you want to connect, then go to \`Settings -> Project -> General\` and copy the \`Project ID\` from the \`Project token & ID\` section.
+2. Use the PostHog app origin as \`credentials.hostUrl\`: \`https://us.posthog.com\` for US Cloud, \`https://eu.posthog.com\` for EU Cloud, or your self-hosted base URL. Do not use the SDK \`api_host\` value such as \`https://us.i.posthog.com\`.
+3. Go to \`Settings -> Account -> Personal API keys\`, create a personal API key, and make sure \`Organization & project access\` includes the project you plan to connect.
+4. Grant at least \`Read\` access to \`Project\` and \`Query\`, then copy the secret immediately into \`credentials.personalApiKey\`. PostHog may only show the full key once.
+5. Use the canonical host URL without a trailing slash when possible; the server still normalizes extra trailing slashes.
+
+Example input:
+\`\`\`json
+{
+  "name": "posthog_main",
+  "credentials": {
+    "hostUrl": "https://us.posthog.com",
+    "personalApiKey": "phx_personal_key",
+    "projectId": "12345"
+  }
+}
+\`\`\`
+",
+    "description": "Follow these steps to gather credentials and create one posthog org-scoped OneQuery source.",
+    "format": "markdown",
+    "title": "OneQuery Source Connect Guide",
+  },
+}
+`;
+
+exports[`source connect guide > reuses the canonical show command in connect results 1`] = `
+{
+  "nextCommand": "onequery source show warehouse",
+  "source": {
+    "displayName": null,
+    "id": "source_123",
+    "provider": "postgres",
+    "sourceKey": "warehouse",
+    "status": "active",
+  },
+}
+`;

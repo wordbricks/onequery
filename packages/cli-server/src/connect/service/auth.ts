@@ -26,19 +26,16 @@ import {
 } from "../../cli-defaults";
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
-import {
-  requireCliConnectHonoContext,
-  requireCliConnectRequestContext,
-} from "../context";
+import { requireCliConnectRequestContext } from "../context";
 import { throwCliConnectError } from "../error";
 import {
+  CliAuthMode,
   CliAuthorizedDeviceAuthorizationSchema,
   GetSessionResponseSchema,
   PollDeviceAuthorizationResponseSchema,
   RefreshSessionResponseSchema,
 } from "../gen/onequery/cli/v1/auth_pb";
 import { requireCliSessionIdentity } from "./access";
-import { toCliAuthMode, timestampFromIsoString } from "./conversions";
 import type { CliServiceMethod } from "./types";
 
 type GetSessionResponseInit = MessageInitShape<typeof GetSessionResponseSchema>;
@@ -55,6 +52,24 @@ type CliAuthUserInit = {
   displayName?: string;
 };
 
+function timestampFromIsoString(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return undefined;
+  }
+
+  return timestampFromDate(parsed);
+}
+
+function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
+  switch (value) {
+    case "browser_session":
+      return CliAuthMode.BROWSER_SESSION;
+    case "bearer_token":
+      return CliAuthMode.BEARER_TOKEN;
+  }
+}
+
 export const handleGetSession: CliServiceMethod<"getSession"> = async (
   _request,
   context
@@ -69,8 +84,8 @@ export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
   _request,
   context
 ) => {
-  const c = requireCliConnectHonoContext(context);
   const requestContext = requireCliConnectRequestContext(context);
+  const c = requestContext.honoContext;
   await requestContext.requireSession();
   const session = requireCliSessionIdentity(
     await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
@@ -82,7 +97,7 @@ export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
 export const handleStartDeviceAuthorization: CliServiceMethod<
   "startDeviceAuthorization"
 > = async (_request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const c = requireCliConnectRequestContext(context).honoContext;
   const response = await c.var.storage.auth.handler(
     createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_CODE_PATH, {
       client_id: CLI_DEVICE_AUTH_CLIENT_ID,
@@ -110,7 +125,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
     const payload = await readBetterAuthDeviceTokenErrorResponse(response);
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
-      key: "INVALID_REQUEST",
+      key: "AUTH_REQUEST_INVALID",
     });
   }
 
@@ -130,7 +145,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
 export const handlePollDeviceAuthorization: CliServiceMethod<
   "pollDeviceAuthorization"
 > = async (request, context) => {
-  const c = requireCliConnectHonoContext(context);
+  const c = requireCliConnectRequestContext(context).honoContext;
   const response = await c.var.storage.auth.handler(
     createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
       client_id: CLI_DEVICE_AUTH_CLIENT_ID,
@@ -206,7 +221,7 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
 
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
-      key: "INVALID_REQUEST",
+      key: "AUTH_REQUEST_INVALID",
     });
   }
 

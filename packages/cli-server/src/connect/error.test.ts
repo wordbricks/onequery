@@ -1,25 +1,70 @@
-import { Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 
-import { CLI_REQUEST_ID_HEADER } from "../error";
 import {
-  CLI_RETRY_AFTER_MS_METADATA,
-  createCliConnectError,
-  withCliRequestId,
-} from "./error";
+  CLI_PROBLEM_CATALOG,
+  cliProblemCodeToString,
+  cliProblemStageToString,
+} from "../domain/problems";
+import type { CliProblemCatalogEntry, CliProblemKey } from "../domain/problems";
+import { CLI_REQUEST_ID_HEADER } from "../error";
+import { createCliConnectError, withCliRequestId } from "./error";
+import {
+  BadRequestSchema,
+  RetryInfoSchema,
+} from "./gen/google/rpc/error_details_pb";
+import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
+
+function summarizeConnectError(error: ConnectError) {
+  return {
+    badRequest: error.findDetails(BadRequestSchema).map((detail) => ({
+      fieldViolations: detail.fieldViolations.map((violation) => ({
+        description: violation.description,
+        field: violation.field,
+        reason: violation.reason,
+      })),
+    })),
+    cliDetails: error.findDetails(CliErrorDetailSchema).map((detail) => ({
+      code: cliProblemCodeToString(detail.code),
+      ...(detail.hint ? { hint: detail.hint } : {}),
+      ...(detail.requestId ? { requestId: detail.requestId } : {}),
+      retryable: detail.retryable,
+      stage: cliProblemStageToString(detail.stage),
+      title: detail.title,
+    })),
+    code: Code[error.code],
+    metadata: Object.fromEntries(error.metadata.entries()),
+    rawMessage: error.rawMessage,
+    retryInfo: error.findDetails(RetryInfoSchema).map((detail) => ({
+      retryDelay: detail.retryDelay
+        ? {
+            nanos: detail.retryDelay.nanos,
+            seconds: detail.retryDelay.seconds.toString(),
+          }
+        : null,
+    })),
+  };
+}
 
 describe("connect error helpers", () => {
-  it("maps problem keys to native Connect codes without legacy metadata", () => {
-    const error = createCliConnectError({
-      key: "NOT_LOGGED_IN",
-    });
+  it("projects every canonical CLI problem into a Connect code and typed CLI error details", () => {
+    const projectedErrors = Object.fromEntries(
+      Object.entries(CLI_PROBLEM_CATALOG).map(([key, problem]) => {
+        const typedProblem = problem as CliProblemCatalogEntry;
+        const error = createCliConnectError({
+          key: key as CliProblemKey,
+        });
 
-    expect(error.code).toBe(Code.Unauthenticated);
-    expect(error.message).toContain("Not logged in");
-    expect([...error.metadata.keys()]).toEqual([]);
+        expect(error.rawMessage).toBe(typedProblem.title);
+
+        return [key, summarizeConnectError(error)];
+      })
+    );
+
+    expect(projectedErrors).toMatchSnapshot();
   });
 
-  it("keeps only request ID and retry delay metadata on the wire", () => {
+  it("keeps request IDs in transport metadata and attaches retry info as a Connect detail", () => {
     const error = createCliConnectError({
       key: "LOGIN_RATE_LIMITED",
       retryAfterMs: 1500,
@@ -27,11 +72,28 @@ describe("connect error helpers", () => {
 
     withCliRequestId(error, "req_cli_123");
 
-    expect(error.code).toBe(Code.ResourceExhausted);
     expect(error.metadata.get(CLI_REQUEST_ID_HEADER)).toBe("req_cli_123");
-    expect(error.metadata.get(CLI_RETRY_AFTER_MS_METADATA)).toBe("1500");
-    expect([...error.metadata.keys()].toSorted()).toEqual(
-      [CLI_REQUEST_ID_HEADER, CLI_RETRY_AFTER_MS_METADATA].toSorted()
-    );
+    expect(summarizeConnectError(error)).toMatchSnapshot();
+  });
+
+  it("serializes structured validation issues as google.rpc.BadRequest details", () => {
+    const error = createCliConnectError({
+      detail: "invalid source connect request",
+      errors: [
+        {
+          code: "invalid_string",
+          field: "credentials.host",
+          message: "must be a hostname",
+        },
+        {
+          code: "too_small",
+          field: "credentials.port",
+          message: "must be at least 1",
+        },
+      ],
+      key: "SOURCE_REQUEST_INVALID",
+    });
+
+    expect(summarizeConnectError(error)).toMatchSnapshot();
   });
 });

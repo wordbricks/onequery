@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -14,7 +15,7 @@ import {
 import {
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
-  normalizeSourceApiContentType,
+  readSourceApiHttpTransportResponse,
 } from "../helpers/http-rest";
 import {
   createStructuredRequestOperation,
@@ -25,9 +26,8 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -106,11 +106,6 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new GoogleAnalyticsInvalidRequestError(
-        `Google Analytics operation "${operation.name}" does not support page tokens`
-      );
-    }
     if (request.selector?.trim()) {
       throw new GoogleAnalyticsInvalidRequestError(
         `Google Analytics operation "${operation.name}" does not accept a selector`
@@ -151,6 +146,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
         propertyPath: resolvedPropertyPath,
       },
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
       request: {
         ...normalizedRequest,
@@ -162,23 +158,23 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       sourceKey: source.sourceKey,
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "structured_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "structured_request") {
       throw new Error(
-        `Google Analytics source API operation "${plan.operation}" requires a structured plan`
+        `Google Analytics source API operation "${prepared.operation}" requires a structured plan`
       );
     }
 
     const response = await requestGoogleAnalyticsSourceApi({
       credentials: requireGoogleAnalyticsCredentials(source),
-      operation: parseGoogleAnalyticsSourceApiOperation(plan.operation),
-      request: plan.request,
+      operation: parseGoogleAnalyticsSourceApiOperation(prepared.operation),
+      request: prepared.request,
     });
 
     return buildGoogleAnalyticsExecutionResponse({
       response,
       source,
-      operation: plan.operation,
+      operation: prepared.operation,
     });
   },
 };
@@ -197,7 +193,7 @@ function isGoogleAnalyticsSourceCredentials(
 export async function requestGoogleAnalyticsSourceApi(input: {
   credentials: GoogleAnalyticsCredentials;
   operation: GoogleAnalyticsSourceApiOperation;
-  request: Record<string, unknown>;
+  request: JsonObject;
 }): Promise<GoogleAnalyticsTransportResponse> {
   const resolvedPropertyPath = resolveGoogleAnalyticsPropertyPath({
     credentials: input.credentials,
@@ -231,24 +227,14 @@ export async function requestGoogleAnalyticsSourceApi(input: {
     propertyPath: resolvedPropertyPath,
     requestBody,
   });
-  const contentType = normalizeSourceApiContentType(
-    response.headers.get("content-type")
-  );
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const transportResponse = await readSourceApiHttpTransportResponse(response);
 
   return {
-    body: parseGoogleAnalyticsResponseBody({
-      bytes,
-      contentType,
-      status: response.status,
-    }),
-    contentType,
-    headers: Array.from(response.headers.entries()).map(([name, value]) => ({
-      name,
-      value,
-    })),
+    body: transportResponse.body,
+    contentType: transportResponse.contentType,
+    headers: transportResponse.headers,
     resolvedPropertyPath,
-    status: response.status,
+    status: transportResponse.status,
   };
 }
 
@@ -313,8 +299,8 @@ function requireGoogleAnalyticsCredentials(
 
 function normalizeGoogleAnalyticsStructuredRequest(input: {
   body: SourceApiRequestBody;
-  fieldPatch?: Record<string, unknown>;
-}): Record<string, unknown> {
+  fieldPatch?: JsonObject;
+}): JsonObject {
   const baseRequest = parseGoogleAnalyticsRequestBody(input.body);
   return mergeStructuredFieldPatch({
     base: baseRequest,
@@ -324,7 +310,7 @@ function normalizeGoogleAnalyticsStructuredRequest(input: {
 
 function parseGoogleAnalyticsRequestBody(
   body: SourceApiRequestBody
-): Record<string, unknown> {
+): JsonObject {
   switch (body.kind) {
     case "none":
       return {};
@@ -347,7 +333,7 @@ function buildGoogleAnalyticsExecutionResponse(input: {
   response: GoogleAnalyticsTransportResponse;
   source: PreparedSourceConnection;
   operation: string;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
@@ -363,52 +349,6 @@ function buildGoogleAnalyticsExecutionResponse(input: {
       provider: input.source.provider,
     },
     status: input.response.status,
-  };
-}
-
-function parseGoogleAnalyticsResponseBody(input: {
-  bytes: Uint8Array;
-  contentType: string;
-  status: number;
-}): SourceApiResponseBody {
-  if (input.status === 204 || input.bytes.length === 0) {
-    return { kind: "none" };
-  }
-
-  if (
-    input.contentType.includes("application/json") ||
-    input.contentType.includes("+json")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "json",
-      value: JSON.parse(text) as SourceApiJsonValue,
-    };
-  }
-
-  if (
-    input.contentType.startsWith("text/") ||
-    input.contentType.includes("application/xml") ||
-    input.contentType.includes("application/x-www-form-urlencoded")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "text",
-      value: text,
-    };
-  }
-
-  return {
-    kind: "binary",
-    value: input.bytes,
   };
 }
 

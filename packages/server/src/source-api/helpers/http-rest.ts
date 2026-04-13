@@ -188,6 +188,13 @@ export type SourceApiHttpTransportResponse = {
   status: number;
 };
 
+type ParseSourceApiHttpResponseBodyInput = {
+  bytes: Uint8Array;
+  contentType: string;
+  status: number;
+  mapText?: (text: string) => string;
+};
+
 export function normalizeSourceApiContentType(
   contentType: string | null | undefined
 ): string {
@@ -198,7 +205,10 @@ export function normalizeSourceApiContentType(
 }
 
 export async function readSourceApiHttpTransportResponse(
-  response: Response
+  response: Response,
+  input: {
+    mapText?: (text: string) => string;
+  } = {}
 ): Promise<SourceApiHttpTransportResponse> {
   const contentType = normalizeSourceApiContentType(
     response.headers.get("content-type")
@@ -209,6 +219,7 @@ export async function readSourceApiHttpTransportResponse(
     body: parseSourceApiHttpResponseBody({
       bytes,
       contentType,
+      mapText: input.mapText,
       status: response.status,
     }),
     contentType,
@@ -220,11 +231,9 @@ export async function readSourceApiHttpTransportResponse(
   };
 }
 
-export function parseSourceApiHttpResponseBody(input: {
-  bytes: Uint8Array;
-  contentType: string;
-  status: number;
-}): SourceApiResponseBody {
+export function parseSourceApiHttpResponseBody(
+  input: ParseSourceApiHttpResponseBodyInput
+): SourceApiResponseBody {
   if (input.status === 204 || input.bytes.length === 0) {
     return { kind: "none" };
   }
@@ -249,7 +258,8 @@ export function parseSourceApiHttpResponseBody(input: {
     input.contentType.includes("application/xml") ||
     input.contentType.includes("application/x-www-form-urlencoded")
   ) {
-    const text = new TextDecoder().decode(input.bytes);
+    const decodedText = new TextDecoder().decode(input.bytes);
+    const text = input.mapText ? input.mapText(decodedText) : decodedText;
     if (text.trim().length === 0) {
       return { kind: "none" };
     }

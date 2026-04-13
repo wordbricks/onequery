@@ -1,18 +1,16 @@
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::try_into_option;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::try_into_option;
-use crate::transport::http::try_into_value;
 use crate::transport::labels::org_capability_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
@@ -56,10 +54,7 @@ pub(crate) async fn get_org_with_controls(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::from_connect_code(get_org_problem_stage_for_code),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ResolveOrg));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -117,10 +112,7 @@ async fn fetch_org_page(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::from_connect_code(list_org_problem_stage_for_code),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -144,28 +136,6 @@ async fn fetch_org_page(
         },
         request_id,
     })
-}
-
-fn get_org_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ResolveOrg
-    }
-}
-
-fn list_org_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::Http
-    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -200,8 +170,6 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
-    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::read_controls::PageInfo;
@@ -209,29 +177,9 @@ mod tests {
     use super::OrgDetails;
     use super::OrgListPayload;
     use super::OrgSummary;
-    use super::get_org_problem_stage_for_code;
-    use super::list_org_problem_stage_for_code;
     use super::org_details_from_generated;
     use super::org_summary_from_generated;
     use super::types;
-
-    #[test]
-    fn org_problem_stage_mappings_preserve_auth_failures() {
-        assert_eq!(
-            [
-                list_org_problem_stage_for_code(ErrorCode::Unauthenticated),
-                list_org_problem_stage_for_code(ErrorCode::InvalidArgument),
-                get_org_problem_stage_for_code(ErrorCode::PermissionDenied),
-                get_org_problem_stage_for_code(ErrorCode::NotFound),
-            ],
-            [
-                ErrorStage::Auth,
-                ErrorStage::Http,
-                ErrorStage::Auth,
-                ErrorStage::ResolveOrg,
-            ]
-        );
-    }
 
     #[test]
     fn org_summary_from_generated_maps_list_payload() {

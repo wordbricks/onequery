@@ -155,8 +155,8 @@ describe("self-host lifecycle lease", () => {
       expect(server.stop).toHaveBeenCalledWith(true);
     });
     expect(exitProcess).not.toHaveBeenCalled();
-    await expect(access(paths.pidPath)).resolves.toBeUndefined();
-    await expect(access(paths.lockPath)).resolves.toBeUndefined();
+    await access(paths.pidPath);
+    await access(paths.lockPath);
 
     resolveServerStop();
 

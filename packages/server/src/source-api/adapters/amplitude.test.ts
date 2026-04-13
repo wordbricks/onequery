@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { finalizeNormalizedExecutionPlan } from "../normalize";
+import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { amplitudeSourceApiAdapter } from "./amplitude";
 
@@ -38,13 +38,7 @@ describe("amplitude source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_api");
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "http_request",
-        name: "fetch_api",
-        selectorKind: "path",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes path selectors into canonical Amplitude URLs", async () => {
@@ -82,18 +76,10 @@ describe("amplitude source api adapter", () => {
       },
       source,
     });
-    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
+    const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "http_request",
-      method: "GET",
-      operation: "fetch_api",
-      selector: "/2/events/segmentation",
-      selectorTemplate: "/{path}",
-      url: "https://amplitude.com/2/events/segmentation?end=2026-03-07&start=2026-03-01",
-    });
     expect(finalizedPlan.host).toBe("amplitude.com");
-    expect(finalizedPlan.bodyPaths).toEqual([]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes Amplitude requests with upstream status and headers", async () => {
@@ -115,20 +101,22 @@ describe("amplitude source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: { kind: "none" },
         bodyKind: "none",
+        bodyPaths: [],
         descriptorVersion: "amplitude.v1",
         headerNames: [],
         headers: [],
         kind: "http_request",
         method: "GET",
         operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "amplitude",
         query: {
           start: "2026-03-01",
         },
-        requestFingerprint: "fingerprint",
         selector: "/2/events/segmentation",
         sourceId: "source_1",
         sourceKey: "amplitude-prod",
@@ -137,16 +125,7 @@ describe("amplitude source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "fetch_api",
-      selector: "/2/events/segmentation",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { data: [] },
-    });
+    expect(response).toMatchSnapshot();
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(

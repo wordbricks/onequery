@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { finalizeNormalizedExecutionPlan } from "../normalize";
+import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { sentrySourceApiAdapter } from "./sentry";
 
@@ -38,13 +38,7 @@ describe("sentry source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_api");
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "http_request",
-        name: "fetch_api",
-        selectorKind: "path",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes selectors into canonical Sentry URLs", async () => {
@@ -81,18 +75,10 @@ describe("sentry source api adapter", () => {
       },
       source,
     });
-    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
+    const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "http_request",
-      method: "GET",
-      operation: "fetch_api",
-      selector: "/organizations/{organizationSlug}/issues/",
-      selectorTemplate: "/{path}",
-      url: "https://sentry.io/api/0/organizations/acme/issues/?query=is%3Aunresolved",
-    });
     expect(finalizedPlan.host).toBe("sentry.io");
-    expect(finalizedPlan.bodyPaths).toEqual([]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes Sentry requests with upstream status and headers", async () => {
@@ -114,20 +100,22 @@ describe("sentry source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: { kind: "none" },
         bodyKind: "none",
+        bodyPaths: [],
         descriptorVersion: "sentry.v1",
         headerNames: [],
         headers: [],
         kind: "http_request",
         method: "GET",
         operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "sentry",
         query: {
           query: "is:unresolved",
         },
-        requestFingerprint: "fingerprint",
         selector: "/organizations/{organizationSlug}/issues/",
         sourceId: "source_1",
         sourceKey: "sentry-prod",
@@ -136,16 +124,7 @@ describe("sentry source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "fetch_api",
-      selector: "/organizations/{organizationSlug}/issues/",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: [{ id: "1" }],
-    });
+    expect(response).toMatchSnapshot();
 
     const [calledUrl] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(

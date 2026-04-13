@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`source model > sorts loaded source records by source key and provider 1`] = `
+[
+  {
+    "displayName": null,
+    "id": "source-3",
+    "provider": "postgres",
+    "sourceKey": "broken_warehouse",
+    "status": "error",
+  },
+  {
+    "displayName": null,
+    "id": "source-2",
+    "provider": "linear",
+    "sourceKey": "team_linear",
+    "status": "active",
+  },
+  {
+    "displayName": null,
+    "id": "source-1",
+    "provider": "postgres",
+    "sourceKey": "warehouse",
+    "status": "active",
+  },
+]
+`;

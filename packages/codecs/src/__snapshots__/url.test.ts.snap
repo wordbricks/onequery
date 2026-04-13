@@ -1,0 +1,88 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`stringToHttpURL > matches decoded HTTP URL snapshots 1`] = `
+{
+  "path and query": {
+    "hash": "",
+    "hostname": "api.example.com",
+    "href": "https://api.example.com/v1/users?limit=10",
+    "password": "",
+    "pathname": "/v1/users",
+    "port": "",
+    "protocol": "https:",
+    "searchParams": {
+      "limit": "10",
+    },
+    "username": "",
+  },
+}
+`;
+
+exports[`stringToHttpURL > matches encoded HTTP URL snapshots 1`] = `
+{
+  "https": "https://secure.example.com/",
+}
+`;
+
+exports[`stringToURL > matches decoded URL snapshots 1`] = `
+{
+  "file URL": {
+    "hash": "",
+    "hostname": "",
+    "href": "file:///path/to/file.txt",
+    "password": "",
+    "pathname": "/path/to/file.txt",
+    "port": "",
+    "protocol": "file:",
+    "searchParams": {},
+    "username": "",
+  },
+  "full URL": {
+    "hash": "#section",
+    "hostname": "example.com",
+    "href": "https://user:pass@example.com:8080/path/to/resource?foo=bar&baz=qux#section",
+    "password": "pass",
+    "pathname": "/path/to/resource",
+    "port": "8080",
+    "protocol": "https:",
+    "searchParams": {
+      "baz": "qux",
+      "foo": "bar",
+    },
+    "username": "user",
+  },
+}
+`;
+
+exports[`stringToURL > matches encoded URL snapshots 1`] = `
+{
+  "URL with path": "https://example.com/path",
+  "query values with spaces": "https://example.com/?q=hello+world",
+}
+`;
+
+exports[`uriComponent > matches decoded URI component snapshots 1`] = `
+{
+  "emoji": "😀",
+  "empty string": "",
+  "mixed encoded and plain text": "key=value&other=123",
+  "plain text unchanged": "hello",
+  "plus signs remain literal": "a+b",
+  "spaces": "hello world",
+  "special characters": "!@#$%",
+  "unicode characters": "你好",
+}
+`;
+
+exports[`uriComponent > matches encoded URI component snapshots 1`] = `
+{
+  "emoji": "%F0%9F%98%80",
+  "empty string": "",
+  "plain text unchanged": "hello",
+  "query string characters": "key%3Dvalue%26other%3D123",
+  "spaces": "hello%20world",
+  "special characters": "!%40%23%24%25",
+  "unicode characters": "%E4%BD%A0%E5%A5%BD",
+  "unreserved characters": "-_.~",
+}
+`;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { finalizeNormalizedExecutionPlan } from "../normalize";
+import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { googleAnalyticsSourceApiAdapter } from "./ga";
 
@@ -40,18 +40,7 @@ describe("google analytics source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBeUndefined();
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "structured_request",
-        name: "run_report",
-        selectorKind: "none",
-      },
-      {
-        kind: "structured_request",
-        name: "run_realtime_report",
-        selectorKind: "none",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes structured requests and resolves the connected property", async () => {
@@ -92,39 +81,13 @@ describe("google analytics source api adapter", () => {
       },
       source,
     });
-    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
+    const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "structured_request",
-      method: "POST",
-      operation: "run_report",
-      provider: "ga",
-      selector: "properties/123456789",
-      selectorTemplate: "properties/{propertyId}",
-      sourceId: "source_1",
-      sourceKey: "ga-prod",
-    });
     expect(plan.kind).toBe("structured_request");
     if (plan.kind !== "structured_request") {
       throw new Error("expected structured request plan");
     }
-    expect(plan.request).toEqual({
-      dateRanges: [{ endDate: "today", startDate: "7daysAgo" }],
-      dimensions: [{ name: "date" }],
-      limit: 100,
-      metrics: [{ name: "activeUsers" }],
-      property: "properties/123456789",
-    });
-    expect(finalizedPlan.bodyPaths).toEqual([
-      "dateRanges",
-      "dateRanges[]",
-      "dimensions",
-      "dimensions[]",
-      "limit",
-      "metrics",
-      "metrics[]",
-      "property",
-    ]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes Google Analytics requests with upstream status and headers", async () => {
@@ -146,7 +109,7 @@ describe("google analytics source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -155,17 +118,20 @@ describe("google analytics source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "ga.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_report",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "ga",
         request: {
           limit: 25,
           property: "properties/123456789",
         },
-        requestFingerprint: "fingerprint",
         selector: "properties/123456789",
         sourceId: "source_1",
         sourceKey: "ga-prod",
@@ -173,15 +139,7 @@ describe("google analytics source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json; charset=utf-8",
-      operation: "run_report",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { rows: [] },
-    });
+    expect(response).toMatchSnapshot();
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(
@@ -215,7 +173,7 @@ describe("google analytics source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -224,17 +182,20 @@ describe("google analytics source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "ga.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_report",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "ga",
         request: {
           limit: 25,
           property: "properties/123456789",
         },
-        requestFingerprint: "fingerprint",
         selector: "properties/123456789",
         sourceId: "source_1",
         sourceKey: "ga-prod",
@@ -242,14 +203,6 @@ describe("google analytics source api adapter", () => {
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/octet-stream",
-      operation: "run_report",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "binary",
-      value: new Uint8Array([1, 2, 3]),
-    });
+    expect(response).toMatchSnapshot();
   });
 });

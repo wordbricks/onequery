@@ -26,7 +26,6 @@ jaq-std = "3.0.0"
 libc = "0.2.177"
 path-absolutize = { workspace = true }
 regress = "0.10"
-reqwest = { workspace = true, features = ["json", "query", "rustls", "stream"] }
 serde = { workspace = true, features = ["derive"] }
 tar = "0.4"
 tabled = { workspace = true }
@@ -45,6 +44,7 @@ toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 time = { workspace = true, features = ["formatting", "parsing"] }
+ureq = { workspace = true, features = ["json", "rustls"] }
 url = { workspace = true }
 webbrowser = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }

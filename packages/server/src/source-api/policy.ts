@@ -1,13 +1,13 @@
 import { listSourceApiJsonPaths } from "./json-paths";
 import type {
-  FinalizedNormalizedExecutionPlan,
+  PreparedSourceApiWithoutBinding,
   SourceApiHeader,
-  UnfingerprintedNormalizedExecutionPlan,
+  UnboundPreparedSourceApi,
 } from "./types";
 
 export function finalizeSourceApiPolicyPlan(
-  plan: UnfingerprintedNormalizedExecutionPlan
-): FinalizedNormalizedExecutionPlan {
+  plan: UnboundPreparedSourceApi
+): PreparedSourceApiWithoutBinding {
   // Keep policy-relevant metadata canonical in one place so authorization
   // never depends on adapter-specific field shaping.
   const selector = normalizeOptionalString(plan.selector);
@@ -20,7 +20,7 @@ export function finalizeSourceApiPolicyPlan(
     const method = normalizeOptionalString(plan.method)?.toUpperCase();
     if (!method) {
       throw new Error(
-        `HTTP source API plan "${plan.operation}" is missing a method`
+        `HTTP prepared source API "${plan.operation}" is missing a method`
       );
     }
 
@@ -39,7 +39,7 @@ export function finalizeSourceApiPolicyPlan(
   const method = normalizeOptionalString(plan.method)?.toUpperCase();
   if (!method) {
     throw new Error(
-      `Structured source API plan "${plan.operation}" is missing a method`
+      `Structured prepared source API "${plan.operation}" is missing a method`
     );
   }
 
@@ -75,9 +75,7 @@ function normalizeOptionalString(
   return normalized ? normalized : undefined;
 }
 
-function readSourceApiBodyPaths(
-  plan: UnfingerprintedNormalizedExecutionPlan
-): string[] {
+function readSourceApiBodyPaths(plan: UnboundPreparedSourceApi): string[] {
   if (plan.kind === "structured_request") {
     return listSourceApiJsonPaths(plan.request);
   }

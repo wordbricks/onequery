@@ -16,6 +16,7 @@ use connectrpc_codegen::codegen::Options as ConnectOptions;
 const PROTO_ROOT: &str = "proto";
 const CLI_PROTO_DIR: &str = "onequery/cli/v1";
 const CLI_PROTO_ENTRYPOINT: &str = "onequery/cli/v1/cli.proto";
+const GOOGLE_RPC_ERROR_DETAILS_PROTO: &str = "google/rpc/error_details.proto";
 const GENERATED_MODULE_ROOT: &str = "crate::transport::generated";
 const GENERATED_INCLUDE_FILE: &str = "_connectrpc.rs";
 
@@ -255,7 +256,8 @@ fn generate_connect_modules(
             )
         });
 
-    let proto_files_to_generate = proto_relative_names(discovered_proto_files);
+    let proto_files_to_generate =
+        proto_relative_names_with_google_rpc_details(discovered_proto_files, &file_descriptor_set);
     let cli_service_entrypoint = proto_relative_name(cli_proto_entrypoint);
     let mut buffa_config = CodeGenConfig::default();
     buffa_config.generate_views = true;
@@ -381,6 +383,21 @@ fn proto_relative_names(proto_files: &[PathBuf]) -> Vec<String> {
         .iter()
         .map(|proto_file| proto_relative_name(proto_file))
         .collect()
+}
+
+fn proto_relative_names_with_google_rpc_details(
+    proto_files: &[PathBuf],
+    descriptor_set: &FileDescriptorSet,
+) -> Vec<String> {
+    let mut proto_relative_names = proto_relative_names(proto_files);
+    let google_rpc_error_details_present = descriptor_set.file.iter().any(|file_descriptor| {
+        file_descriptor.name.as_deref() == Some(GOOGLE_RPC_ERROR_DETAILS_PROTO)
+    });
+    if google_rpc_error_details_present {
+        proto_relative_names.push(GOOGLE_RPC_ERROR_DETAILS_PROTO.to_owned());
+    }
+
+    proto_relative_names
 }
 
 fn proto_relative_name(proto_file: &Path) -> String {

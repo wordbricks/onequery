@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { finalizeNormalizedExecutionPlan } from "../normalize";
+import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { mixpanelSourceApiAdapter } from "./mixpanel";
 
@@ -40,12 +40,7 @@ describe("mixpanel source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_query_api");
-    expect(descriptor.operations).toMatchObject([
-      { kind: "structured_request", name: "query_engage" },
-      { kind: "structured_request", name: "query_segmentation" },
-      { kind: "http_request", name: "fetch_query_api", selectorKind: "path" },
-      { kind: "http_request", name: "export_events", selectorKind: "none" },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes raw query API requests into canonical Mixpanel URLs", async () => {
@@ -84,18 +79,10 @@ describe("mixpanel source api adapter", () => {
       },
       source,
     });
-    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
+    const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "http_request",
-      method: "GET",
-      operation: "fetch_query_api",
-      selector: "/query/events/top",
-      selectorTemplate: "/{path}",
-      url: "https://mixpanel.com/api/query/events/top?from_date=2026-03-01&to_date=2026-03-07&type=general&project_id=123&workspace_id=456",
-    });
     expect(finalizedPlan.host).toBe("mixpanel.com");
-    expect(finalizedPlan.bodyPaths).toEqual([]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes structured segmentation requests through the shared transport", async () => {
@@ -117,7 +104,7 @@ describe("mixpanel source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -127,33 +114,28 @@ describe("mixpanel source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "mixpanel.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "query_segmentation",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "mixpanel",
         request: {
           event: "Signup",
           fromDate: "2026-03-01",
           toDate: "2026-03-07",
         },
-        requestFingerprint: "fingerprint",
         sourceId: "source_1",
         sourceKey: "mixpanel-prod",
       },
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "query_segmentation",
-      status: 200,
-    });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { results: [] },
-    });
+    expect(response).toMatchSnapshot();
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(
@@ -162,5 +144,73 @@ describe("mixpanel source api adapter", () => {
     expect(calledInit).toMatchObject({
       method: "GET",
     });
+  });
+
+  it("binds query_engage continuation state to Mixpanel session paging", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          page: 1,
+          page_size: 1,
+          results: [{ distinct_id: "user-2" }],
+          session_id: "session_1",
+        }),
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+          status: 200,
+        }
+      )
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const response = await mixpanelSourceApiAdapter.execute({
+      actor: {
+        capabilities: ["source_api.execute"],
+        membershipRoles: ["owner"],
+        organizationId: "org_1",
+        organizationSlug: "acme",
+        userId: "user_1",
+      },
+      continuation: {
+        page: 1,
+        sessionId: "session_1",
+      },
+      prepared: {
+        body: {
+          kind: "json",
+          value: {
+            pageSize: 1,
+          },
+        },
+        bodyKind: "json",
+        bodyPaths: [],
+        descriptorVersion: "mixpanel.v1",
+        headerNames: [],
+        headers: [],
+        kind: "structured_request",
+        method: "POST",
+        operation: "query_engage",
+        paginationPolicy: "continuation_token",
+        preparedBinding: "binding",
+        provider: "mixpanel",
+        request: {
+          pageSize: 1,
+        },
+        sourceId: "source_1",
+        sourceKey: "mixpanel-prod",
+      },
+      source,
+    });
+
+    expect(response).toMatchSnapshot();
+
+    const [, calledInit] = fetchMock.mock.calls[0] ?? [];
+    const requestBody = calledInit?.body;
+    expect(typeof requestBody).toBe("string");
+    expect(requestBody).toContain("page=1");
+    expect(requestBody).toContain("page_size=1");
+    expect(requestBody).toContain("session_id=session_1");
   });
 });

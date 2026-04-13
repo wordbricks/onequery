@@ -54,16 +54,7 @@ describe("github ruleset planner", () => {
       })
     );
 
-    expect(plan.drift).toEqual([
-      "Missing team: release-engineering",
-      "Team onequery-maintainers is missing members: bob, carol",
-      "Missing ruleset: Protect main",
-    ]);
-    expect(plan.items).toEqual([
-      { summary: "Create team release-engineering" },
-      { summary: "Add members to team onequery-maintainers: bob, carol" },
-      { summary: "Create ruleset Protect main" },
-    ]);
+    expect(plan).toMatchSnapshot();
   });
 
   it("describes ruleset drift and remote-only rulesets", () => {
@@ -96,19 +87,7 @@ describe("github ruleset planner", () => {
       })
     );
 
-    expect(plan.drift).toEqual([
-      "Ruleset drift detected: Protect main",
-      "Unmanaged remote ruleset present: Protect CLI release tags",
-    ]);
-    expect(plan.items).toHaveLength(2);
-    expect(plan.items[0]?.summary).toBe("Update ruleset Protect main");
-    expect(plan.items[0]?.details).toContain(
-      'bypass_actors: ["Team:onequery-maintainers:always"] -> ["Team:onequery-maintainers:pull_request"]'
-    );
-    expect(plan.items[1]).toEqual({
-      summary:
-        "Remote-only ruleset present: Protect CLI release tags (manual cleanup)",
-    });
+    expect(plan).toMatchSnapshot();
   });
 });
 

@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { base64ToBytes } from "@onequery/codecs/base64";
 import type { GitHubCredentials } from "@onequery/db/server";
 import { isGitHubCredentials } from "@onequery/db/server";
@@ -20,17 +21,16 @@ import {
   createHttpRequestOperation,
   filterAllowedResponseHeaders,
   normalizeAllowedHeaders,
-  normalizeSourceApiContentType,
+  readSourceApiHttpTransportResponse,
   resolveHttpMethodOverride,
   toHeaderRecord,
 } from "../helpers/http-rest";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiExample,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -156,6 +156,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       descriptorVersion: GITHUB_DESCRIPTOR_VERSION,
       examples,
       notes: [
+        "CLI repository shorthand like `owner/repo` expands to `/repos/<owner>/<repo>`.",
         "Repo-scoped selectors like `/issues` require exactly one connected repository unless `repository` is passed in the field patch.",
         "Explicit `/repos/<owner>/<repo>/...` selectors must target a repository already connected to this source.",
       ],
@@ -185,20 +186,20 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       },
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "http_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "http_request") {
       throw new Error(
-        `GitHub source API operation "${plan.operation}" requires an HTTP plan`
+        `GitHub source API operation "${prepared.operation}" requires an HTTP plan`
       );
     }
 
     const response = await requestGitHubApi({
-      body: plan.body,
+      body: prepared.body,
       credentials: requireGitHubCredentials(source),
-      headers: toHeaderRecord(plan.headers),
-      method: plan.method,
-      timeoutMs: readGitHubTimeoutMs(plan),
-      url: plan.url,
+      headers: toHeaderRecord(prepared.headers),
+      method: prepared.method,
+      timeoutMs: readGitHubTimeoutMs(prepared),
+      url: prepared.url,
     });
 
     return {
@@ -209,8 +210,8 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
         contentType: response.contentType,
         headers: response.headers,
       }),
-      operation: plan.operation,
-      selector: plan.selector,
+      operation: prepared.operation,
+      selector: prepared.selector,
       source: {
         displayName: source.displayName,
         key: source.sourceKey,
@@ -224,11 +225,6 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       descriptor,
       operationName: request.operation,
     });
-    if (request.pageToken) {
-      throw new SourceApiInvalidRequestError(
-        'GitHub operation "fetch" does not support page tokens'
-      );
-    }
 
     const selector = request.selector?.trim();
     if (!selector) {
@@ -273,6 +269,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
           : { timeoutMs: fieldPatch.timeoutMs },
       method,
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
       selector,
       selectorTemplate: buildGitHubSelectorTemplate({
@@ -401,24 +398,15 @@ export async function requestGitHubApi(input: {
     method: input.method,
     timeoutMs: input.timeoutMs,
   });
-  const contentType = normalizeSourceApiContentType(
-    response.headers.get("content-type")
-  );
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const transportResponse = await readSourceApiHttpTransportResponse(response, {
+    mapText: (text) => sanitizeGitHubText(text, input.credentials),
+  });
 
   return {
-    body: parseGitHubResponseBody({
-      bytes,
-      contentType,
-      credentials: input.credentials,
-      status: response.status,
-    }),
-    contentType,
-    headers: Array.from(response.headers.entries()).map(([name, value]) => ({
-      name,
-      value,
-    })),
-    status: response.status,
+    body: transportResponse.body,
+    contentType: transportResponse.contentType,
+    headers: transportResponse.headers,
+    status: transportResponse.status,
   };
 }
 
@@ -445,15 +433,20 @@ export function toLegacyGitHubRelayBody(
 function buildGitHubExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
+      command: `onequery api --source ${sourceKey} openai/example`,
+      description: "Fetch repository details using owner/repo shorthand.",
+      label: "Show repository details",
+    },
+    {
       command: `onequery api --source ${sourceKey} /issues -f 'params[state]=open'`,
       description:
         "Fetch repo-scoped issues for the connected repository selection.",
       label: "List open issues",
     },
     {
-      command: `onequery api --source ${sourceKey} --op fetch /repos/openai/example/pulls -f 'params[per_page]=20'`,
+      command: `onequery api --source ${sourceKey} openai/example/pulls -f 'params[per_page]=20'`,
       description:
-        "Call an explicit repository path when multiple repositories are connected.",
+        "Call an explicit repository path using owner/repo shorthand.",
       label: "List pull requests",
     },
   ];
@@ -474,7 +467,7 @@ function requireGitHubSourceApiOperation(input: {
 }
 
 function parseGitHubFieldPatch(
-  value: Record<string, unknown> | undefined
+  value: JsonObject | undefined
 ): GitHubFieldPatch {
   if (!value) {
     return {};
@@ -498,9 +491,7 @@ function requireGitHubCredentials(
   throw new Error("GitHub source credentials are invalid");
 }
 
-function readGitHubTimeoutMs(
-  plan: NormalizedHttpRequestPlan
-): number | undefined {
+function readGitHubTimeoutMs(plan: PreparedHttpSourceApi): number | undefined {
   const timeoutMs = plan.metadata?.timeoutMs;
   return typeof timeoutMs === "number" ? timeoutMs : undefined;
 }
@@ -754,54 +745,4 @@ function ensureDefaultContentType(
   if (!hasContentTypeHeader) {
     headers["Content-Type"] = contentType;
   }
-}
-
-function parseGitHubResponseBody(input: {
-  bytes: Uint8Array;
-  contentType: string;
-  credentials: GitHubCredentials;
-  status: number;
-}): SourceApiResponseBody {
-  if (input.status === 204 || input.bytes.length === 0) {
-    return { kind: "none" };
-  }
-
-  if (
-    input.contentType.includes("application/json") ||
-    input.contentType.includes("+json")
-  ) {
-    const text = new TextDecoder().decode(input.bytes);
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "json",
-      value: JSON.parse(text) as SourceApiJsonValue,
-    };
-  }
-
-  if (
-    input.contentType.startsWith("text/") ||
-    input.contentType.includes("application/xml") ||
-    input.contentType.includes("application/x-www-form-urlencoded")
-  ) {
-    const text = sanitizeGitHubText(
-      new TextDecoder().decode(input.bytes),
-      input.credentials
-    );
-    if (text.trim().length === 0) {
-      return { kind: "none" };
-    }
-
-    return {
-      kind: "text",
-      value: text,
-    };
-  }
-
-  return {
-    kind: "binary",
-    value: input.bytes,
-  };
 }

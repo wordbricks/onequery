@@ -1,22 +1,20 @@
 use buffa::MessageField;
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::output_metadata::SanitizationMetadata;
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::conversion_failure;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::sanitization_metadata_from_generated;
+use crate::transport::api_failure::try_into_option;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::conversion_failure;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::sanitization_metadata_from_generated;
-use crate::transport::http::try_into_option;
-use crate::transport::http::try_into_value;
 use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
@@ -196,10 +194,7 @@ async fn fetch_query_page(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::from_connect_code(execute_query_problem_stage_for_code),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -233,10 +228,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::from_connect_code(validate_query_problem_stage_for_code),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::ReadQueryInput));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -246,28 +238,6 @@ pub(crate) async fn validate_read_only_query_with_controls(
         payload: query_validation_from_generated(payload, request_id.clone())?,
         request_id,
     })
-}
-
-fn execute_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ExecuteQuery
-    }
-}
-
-fn validate_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ReadQueryInput
-    }
 }
 
 fn query_request_from_payload(
@@ -440,15 +410,14 @@ fn non_empty(value: String) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
-    use reqwest::StatusCode;
     use serde_json::json;
 
     use crate::output_metadata::SanitizationMetadata;
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
+    use crate::transport::generated::types;
     use crate::transport::query_parameter::QueryCanonicalParameter;
     use crate::transport::query_parameter::QueryCanonicalParameterType;
     use crate::transport::query_parameter::QueryRequestParameter;
@@ -461,8 +430,6 @@ mod tests {
     use super::QueryResult;
     use super::QueryResultWindow;
     use super::QueryValidationResult;
-    use super::execute_query_problem_stage_for_code;
-    use super::validate_query_problem_stage_for_code;
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -595,65 +562,31 @@ mod tests {
         assert_eq!(
             [
                 ApiFailure::Problem(ApiProblem {
-                    connect_code: None,
-                    status: Some(StatusCode::BAD_GATEWAY),
-                    title: None,
-                    detail: None,
-                    code: None,
+                    title: "Query Execution Unavailable".to_owned(),
+                    detail: "query execution is temporarily unavailable".to_owned(),
+                    code: types::CliProblemCode::CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE,
                     retryable: true,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
                     hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
-                    raw_body: String::new(),
                 })
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
-                    connect_code: None,
-                    status: Some(StatusCode::BAD_REQUEST),
-                    title: None,
-                    detail: None,
-                    code: None,
+                    title: "Invalid Request".to_owned(),
+                    detail: "query request is invalid".to_owned(),
+                    code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
                     retryable: false,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
                     hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
-                    raw_body: String::new(),
                 })
                 .is_retryable(),
             ],
             [true, false]
-        );
-    }
-
-    #[test]
-    fn execute_query_problem_stage_maps_auth_failures_to_auth_stage() {
-        assert_eq!(
-            [
-                execute_query_problem_stage_for_code(ErrorCode::Unauthenticated),
-                execute_query_problem_stage_for_code(ErrorCode::PermissionDenied),
-                execute_query_problem_stage_for_code(ErrorCode::InvalidArgument),
-            ],
-            [ErrorStage::Auth, ErrorStage::Auth, ErrorStage::ExecuteQuery,]
-        );
-    }
-
-    #[test]
-    fn validate_query_problem_stage_maps_auth_failures_to_auth_stage() {
-        assert_eq!(
-            [
-                validate_query_problem_stage_for_code(ErrorCode::Unauthenticated),
-                validate_query_problem_stage_for_code(ErrorCode::PermissionDenied),
-                validate_query_problem_stage_for_code(ErrorCode::InvalidArgument),
-            ],
-            [
-                ErrorStage::Auth,
-                ErrorStage::Auth,
-                ErrorStage::ReadQueryInput
-            ]
         );
     }
 
@@ -895,7 +828,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ReadQueryInput,
                 message: "query validation response missing source metadata".to_owned(),
                 request_id: Some("req_missing_validation_source".to_owned()),
@@ -923,7 +856,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing page metadata".to_owned(),
                 request_id: Some("req_missing_page".to_owned()),
@@ -949,7 +882,7 @@ mod tests {
 
         assert_eq!(
             error,
-            ApiFailure::Decode(crate::transport::http::DecodeFailure {
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_query_source".to_owned()),

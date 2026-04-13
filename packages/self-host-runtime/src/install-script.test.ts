@@ -42,7 +42,7 @@ describe("install script surface", () => {
     expect(shouldServeInstallScript(request)).toBe(true);
   });
 
-  it("returns a shell script response with the stable release assets", async () => {
+  it("returns a shell script response with the stable install bundle and pinned managed Node runtime", async () => {
     const response = createInstallScriptResponse(
       new Request("https://onequery.dev/install.sh")
     );
@@ -52,29 +52,29 @@ describe("install script surface", () => {
       "text/x-shellscript"
     );
     expect(script).toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
+    expect(script).toContain('MANAGED_NODE_VERSION="24.11.0"');
     expect(script).toContain(
       'NODE_DIST_BASE_URL="$' +
-        '{ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/latest-v24.x}"'
+        '{ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/v24.11.0}"'
     );
   });
 
-  it("builds an installer that links the packaged runtime and provisions managed Node.js 24 when needed", () => {
+  it("builds an installer that links the packaged runtime and provisions pinned managed Node.js 24 when needed", () => {
     const script = createInstallScript();
 
     expect(script).toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
-    );
-    expect(script).toContain(
-      'platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"'
+      'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
     );
     expect(script).toContain(
-      "Installing managed Node.js 24.x for onequery gateway..."
+      `printf 'Installing managed Node.js %s for onequery gateway...\\n' "$MANAGED_NODE_VERSION"`
     );
+    expect(script).toContain('platform_info="$(resolve_platform_info)"');
+    expect(script).toContain('mv "$package_dir" "$staging_dir"');
     expect(script).toContain(
       'if [ -z "$' +
         '{ONEQUERY_SERVER_JS_RUNTIME:-}" ] && [ -x "$managed_node_path" ]; then'
@@ -83,6 +83,9 @@ describe("install script surface", () => {
       'export ONEQUERY_SERVER_JS_RUNTIME="$managed_node_path"'
     );
     expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
+    expect(script).not.toContain("resolve_platform_tag()");
+    expect(script).not.toContain("resolve_target_triple()");
+    expect(script).not.toContain("SHASUMS256.txt");
   });
 
   it("escapes launcher runtime references while baking the resolved target triple", () => {
@@ -183,10 +186,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$url" in
-  */SHASUMS256.txt)
-    printf '%s\\n' '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  node-v24.11.0-darwin-arm64.tar.gz'
-    ;;
-  */onequery-npm.tgz|*/onequery-npm-darwin-arm64.tgz|*/node-v24.11.0-darwin-arm64.tar.gz)
+  */onequery-install-darwin-arm64.tgz|*/node-v24.11.0-darwin-arm64.tar.gz)
     : > "$out_path"
     ;;
   *)
@@ -220,14 +220,11 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$(basename "$archive_path")" in
-  root.tgz)
-    mkdir -p "$extract_dir/package"
+  install.tgz)
+    mkdir -p "$extract_dir/package/vendor/aarch64-apple-darwin/onequery"
     cat > "$extract_dir/package/package.json" <<'EOF'
 {"version":"0.1.22"}
 EOF
-    ;;
-  platform.tgz)
-    mkdir -p "$extract_dir/package/vendor/aarch64-apple-darwin/onequery"
     cat > "$extract_dir/package/vendor/aarch64-apple-darwin/onequery/onequery" <<'EOF'
 #!/bin/sh
 printf '%s\\n' "$ONEQUERY_RUNTIME_ROOT"

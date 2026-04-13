@@ -4,9 +4,9 @@ expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Forbidden
 Command: onequery org list
-Stage: auth
+Stage: resolve_org
 Why: this account can no longer access the org list
 Request ID: req_org_auth
 Hint: refresh your session and retry
 Try:
-  - onequery auth login
+  - refresh your session and retry

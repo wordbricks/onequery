@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import type { Credentials, ProviderType } from "@onequery/db/server";
 
 import type { OrganizationRoleName } from "../auth/organization-permissions";
@@ -6,17 +7,9 @@ export type SourceApiOperationKind = "http_request" | "structured_request";
 
 export type SourceApiSelectorKind = "none" | "path" | "identifier";
 
-export type SourceApiPaginationPolicy = "none" | "opaque_token";
+export type SourceApiPaginationPolicy = "none" | "continuation_token";
 
 export type SourceApiBodyKind = "none" | "json" | "text" | "binary";
-
-export type SourceApiJsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | SourceApiJsonValue[]
-  | { [key: string]: SourceApiJsonValue };
 
 export type ConnectedSourceRecord = {
   id: string;
@@ -120,26 +113,38 @@ export type SourceApiDescriptor = {
 
 export type SourceApiRequestBody =
   | { kind: "none" }
-  | { kind: "json"; value: SourceApiJsonValue }
+  | { kind: "json"; value: JsonValue }
   | { kind: "text"; value: string }
   | { kind: "binary"; value: Uint8Array };
 
-export type SourceApiExecuteRequest = {
+export type SourceApiDraft = {
   descriptorVersion?: string;
   operation: string;
   selector?: string;
   methodOverride?: string;
   headers: readonly SourceApiHeader[];
-  fieldPatch?: Record<string, unknown>;
+  fieldPatch?: JsonObject;
   body: SourceApiRequestBody;
-  pageToken?: string;
 };
 
 export type SourceApiResponseBody =
   | { kind: "none" }
-  | { kind: "json"; value: SourceApiJsonValue }
+  | { kind: "json"; value: JsonValue }
   | { kind: "text"; value: string }
   | { kind: "binary"; value: Uint8Array };
+
+export type SourceApiContinuationState = JsonValue;
+
+export type SourceApiExecutionResult = {
+  source: SourceApiSource;
+  operation: string;
+  selector?: string;
+  status: number;
+  headers: readonly SourceApiHeader[];
+  contentType: string;
+  body: SourceApiResponseBody;
+  nextContinuationState?: SourceApiContinuationState;
+};
 
 export type SourceApiExecutionResponse = {
   source: SourceApiSource;
@@ -149,11 +154,10 @@ export type SourceApiExecutionResponse = {
   headers: readonly SourceApiHeader[];
   contentType: string;
   body: SourceApiResponseBody;
-  requestId?: string;
-  nextPageToken?: string;
+  continuationToken?: string;
 };
 
-type NormalizedExecutionPlanBase = {
+type SourceApiPreparedBase = {
   sourceId: string;
   sourceKey: string;
   provider: ProviderType;
@@ -165,64 +169,94 @@ type NormalizedExecutionPlanBase = {
   host?: string;
   headerNames: readonly string[];
   bodyKind: SourceApiBodyKind;
-  bodyPaths?: readonly string[];
-  requestFingerprint: string;
+  bodyPaths: readonly string[];
+  preparedBinding: string;
   descriptorVersion?: string;
   headers: readonly SourceApiHeader[];
   body: SourceApiRequestBody;
 };
 
-export type NormalizedHttpRequestPlan = NormalizedExecutionPlanBase & {
+type SourceApiPreparedPaginationBasis = {
+  paginationPolicy: SourceApiPaginationPolicy;
+};
+
+type SourceApiPreparedInputBase = Omit<
+  SourceApiPreparedBase & SourceApiPreparedPaginationBasis,
+  "headerNames" | "bodyKind" | "bodyPaths" | "preparedBinding" | "host"
+>;
+
+export type PreparedHttpSourceApi = SourceApiPreparedBase &
+  SourceApiPreparedPaginationBasis & {
+    kind: "http_request";
+    method: string;
+    url: string;
+    timeoutMs?: number;
+    query?: JsonObject;
+    metadata?: JsonObject;
+  };
+
+export type PreparedStructuredSourceApi = SourceApiPreparedBase &
+  SourceApiPreparedPaginationBasis & {
+    kind: "structured_request";
+    method: string;
+    request: JsonObject;
+    metadata?: JsonObject;
+  };
+
+export type PreparedSourceApi =
+  | PreparedHttpSourceApi
+  | PreparedStructuredSourceApi;
+
+export type PreparedSourceApiWithoutBinding =
+  | Omit<PreparedHttpSourceApi, "preparedBinding">
+  | Omit<PreparedStructuredSourceApi, "preparedBinding">;
+
+export type UnboundPreparedHttpSourceApi = SourceApiPreparedInputBase & {
   kind: "http_request";
   method: string;
   url: string;
   timeoutMs?: number;
-  query?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  query?: JsonObject;
+  metadata?: JsonObject;
 };
 
-export type NormalizedStructuredRequestPlan = NormalizedExecutionPlanBase & {
+export type UnboundPreparedStructuredSourceApi = SourceApiPreparedInputBase & {
   kind: "structured_request";
-  request: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  method: string;
+  request: JsonObject;
+  metadata?: JsonObject;
 };
 
-export type NormalizedExecutionPlan =
-  | NormalizedHttpRequestPlan
-  | NormalizedStructuredRequestPlan;
+export type UnboundPreparedSourceApi =
+  | UnboundPreparedHttpSourceApi
+  | UnboundPreparedStructuredSourceApi;
 
-export type FinalizedNormalizedExecutionPlan =
-  | Omit<NormalizedHttpRequestPlan, "requestFingerprint">
-  | Omit<NormalizedStructuredRequestPlan, "requestFingerprint">;
-
-export type UnfingerprintedNormalizedHttpRequestPlan = Omit<
-  NormalizedHttpRequestPlan,
-  "bodyKind" | "headerNames" | "requestFingerprint"
-> & {
-  bodyKind?: SourceApiBodyKind;
-  headerNames?: readonly string[];
-};
-
-export type UnfingerprintedNormalizedStructuredRequestPlan = Omit<
-  NormalizedStructuredRequestPlan,
-  "bodyKind" | "headerNames" | "requestFingerprint"
-> & {
-  bodyKind?: SourceApiBodyKind;
-  headerNames?: readonly string[];
-};
-
-export type UnfingerprintedNormalizedExecutionPlan =
-  | UnfingerprintedNormalizedHttpRequestPlan
-  | UnfingerprintedNormalizedStructuredRequestPlan;
-
-export type SourceApiPaginationTokenPayload = {
+export type SourceApiPreview = {
   sourceKey: string;
+  provider: ProviderType;
   operation: string;
-  requestFingerprint: string;
-  descriptorVersion?: string;
+  selector?: string;
+  kind: SourceApiOperationKind;
+  method?: string;
+  host?: string;
+  url?: string;
+  headerNames: readonly string[];
+  bodyKind: SourceApiBodyKind;
+  bodyPaths: readonly string[];
+  paginationPolicy: SourceApiPaginationPolicy;
+};
+
+export type SourceApiContinuationTokenPayload = {
+  version: 1;
+  organizationSlug: string;
   issuedAt: string;
   expiresAt: string;
-  state: SourceApiJsonValue;
+  prepared: PreparedSourceApi;
+  state: JsonValue;
+};
+
+type UnboundPreparedPaginationBasis = {
+  paginationPolicy: SourceApiPaginationPolicy;
 };
 
 export type SourceApiAdapter = {
@@ -235,11 +269,12 @@ export type SourceApiAdapter = {
     source: PreparedSourceConnection;
     actor: SourceApiActorContext;
     descriptor: SourceApiDescriptor;
-    request: SourceApiExecuteRequest;
-  }): Promise<UnfingerprintedNormalizedExecutionPlan>;
+    request: SourceApiDraft;
+  }): Promise<UnboundPreparedSourceApi & UnboundPreparedPaginationBasis>;
   execute(input: {
     source: PreparedSourceConnection;
     actor: SourceApiActorContext;
-    plan: NormalizedExecutionPlan;
-  }): Promise<SourceApiExecutionResponse>;
+    prepared: PreparedSourceApi;
+    continuation?: SourceApiContinuationState;
+  }): Promise<SourceApiExecutionResult>;
 };

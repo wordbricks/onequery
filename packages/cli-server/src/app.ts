@@ -1,4 +1,5 @@
 import type { Database } from "@onequery/db/server";
+import type { HonoNodeBindings } from "@onequery/hono-connect";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
@@ -19,6 +20,7 @@ import {
 export type CliRouteEnv<
   Variables extends Record<string, unknown> = Record<string, never>,
 > = {
+  Bindings: HonoNodeBindings;
   Variables: {
     requestId: string;
     requestStartedAtMs: number;

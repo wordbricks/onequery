@@ -10,53 +10,23 @@ import {
 describe("formatDate", () => {
   const testDate = new Date("2024-06-15T14:30:00Z");
 
-  it.each([
-    {
-      input: testDate,
-      label: "formats the default style",
-      locale: "en-US",
-      expected: "Jun 15, 2024",
-    },
-    {
-      input: testDate,
-      label: "formats the short style",
-      locale: "en-US",
-      style: "short" as const,
-      expected: "6/15/24",
-    },
-    {
-      input: testDate,
-      label: "formats the long style",
-      locale: "en-US",
-      style: "long" as const,
-      expected: "June 15, 2024",
-    },
-    {
-      input: testDate,
-      label: "formats the full style with weekday text",
-      locale: "en-US",
-      style: "full" as const,
-      expected: /Saturday, June 15, 2024/,
-    },
-    {
-      input: "2024-06-15T14:30:00Z",
-      label: "accepts string date input",
-      locale: "en-US",
-      expected: "Jun 15, 2024",
-    },
-    {
-      input: testDate,
-      label: "honors locale-specific formatting",
-      locale: "ko-KR",
-      expected: /2024.*6.*15/,
-    },
-  ])("$label", ({ expected, input, locale, style }) => {
-    const result = formatDate(input, locale, style);
-    if (expected instanceof RegExp) {
-      expect(result).toMatch(expected);
-      return;
-    }
-    expect(result).toBe(expected);
+  it("matches stable date format snapshots", () => {
+    expect({
+      "default style": formatDate(testDate, "en-US"),
+      "long style": formatDate(testDate, "en-US", "long"),
+      "short style": formatDate(testDate, "en-US", "short"),
+      "string input": formatDate("2024-06-15T14:30:00Z", "en-US"),
+    }).toMatchSnapshot();
+  });
+
+  it("formats the full style with weekday text", () => {
+    expect(formatDate(testDate, "en-US", "full")).toMatch(
+      /Saturday, June 15, 2024/
+    );
+  });
+
+  it("honors locale-specific formatting", () => {
+    expect(formatDate(testDate, "ko-KR")).toMatch(/2024.*6.*15/);
   });
 });
 
@@ -127,28 +97,14 @@ describe("formatTime", () => {
 
 describe("formatUtcDateTimeLabel", () => {
   const testDate = new Date("2024-06-15T14:30:45Z");
-  const utcLabelCases: Array<{
-    label: string;
-    locale: string;
-    options?: Intl.DateTimeFormatOptions;
-  }> = [
-    {
-      label: "appends UTC to the default label",
-      locale: "en-US",
-    },
-    {
-      label: "ignores timeZoneName options without throwing",
-      locale: "en-US",
-      options: {
+  it("matches UTC label snapshots", () => {
+    expect({
+      default: formatUtcDateTimeLabel(testDate, "en-US"),
+      "timeZoneName stripped": formatUtcDateTimeLabel(testDate, "en-US", {
         dateStyle: "medium",
         timeStyle: "short",
         timeZoneName: "short",
-      },
-    },
-  ];
-
-  it.each(utcLabelCases)("$label", ({ locale, options }) => {
-    const result = formatUtcDateTimeLabel(testDate, locale, options);
-    expect(result.endsWith(" UTC")).toBe(true);
+      }),
+    }).toMatchSnapshot();
   });
 });

@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { MongoDBCredentials } from "@onequery/db/server";
 import { isMongoCredentials } from "@onequery/db/server";
@@ -25,9 +26,8 @@ import type {
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiHeader,
-  SourceApiJsonValue,
   SourceApiOperation,
   SourceApiRequestBody,
   SourceApiResponseBody,
@@ -201,11 +201,6 @@ export function createMongoDbSourceApiAdapter(
         operationName: request.operation,
       });
 
-      if (request.pageToken) {
-        throw new MongoDbInvalidRequestError(
-          `MongoDB operation "${operation.name}" does not support page tokens`
-        );
-      }
       if (request.methodOverride?.trim()) {
         throw new MongoDbInvalidRequestError(
           `MongoDB operation "${operation.name}" does not support method overrides`
@@ -230,32 +225,33 @@ export function createMongoDbSourceApiAdapter(
         kind: "structured_request",
         method: "POST",
         operation: operation.name,
+        paginationPolicy: operation.paginationPolicy,
         provider: source.provider,
-        request: normalizedRequest.request,
+        request: normalizedRequest.request as JsonObject,
         selector: normalizedRequest.selector,
         selectorTemplate: readMongoDbSelectorTemplate(normalizedRequest),
         sourceId: source.id,
         sourceKey: source.sourceKey,
       };
     },
-    async execute({ plan, source }) {
-      if (plan.kind !== "structured_request") {
+    async execute({ prepared, source }) {
+      if (prepared.kind !== "structured_request") {
         throw new Error(
-          `MongoDB source API operation "${plan.operation}" requires a structured plan`
+          `MongoDB source API operation "${prepared.operation}" requires a structured plan`
         );
       }
 
       const response = await requestMongoDbSourceApi({
         credentials: requireMongoDbCredentials(source),
         dependencies,
-        operation: parseMongoDbSourceApiOperation(plan.operation),
-        request: plan.request,
+        operation: parseMongoDbSourceApiOperation(prepared.operation),
+        request: prepared.request,
       });
 
       return buildMongoDbExecutionResponse({
-        operation: plan.operation,
+        operation: prepared.operation,
         response,
-        selector: plan.selector,
+        selector: prepared.selector,
         source,
       });
     },
@@ -377,7 +373,7 @@ function requireMongoDbCredentials(
 
 function normalizeMongoDbStructuredRequest(input: {
   body: SourceApiRequestBody;
-  fieldPatch?: Record<string, unknown>;
+  fieldPatch?: JsonObject;
   operation: MongoDbSourceApiOperation;
   selector?: string;
 }): MongoDbSourceApiRequest {
@@ -392,9 +388,7 @@ function normalizeMongoDbStructuredRequest(input: {
   });
 }
 
-function parseMongoDbRequestBody(
-  body: SourceApiRequestBody
-): Record<string, unknown> {
+function parseMongoDbRequestBody(body: SourceApiRequestBody): JsonObject {
   switch (body.kind) {
     case "none":
       return {};
@@ -535,7 +529,7 @@ function buildMongoDbTransportResponse(
   return {
     body: {
       kind: "json",
-      value: toSourceApiJsonValue(value),
+      value: toMongoDbJsonValue(value),
     },
     contentType: MONGODB_CONTENT_TYPE,
     headers: [
@@ -553,7 +547,7 @@ function buildMongoDbExecutionResponse(input: {
   response: MongoDbTransportResponse;
   selector?: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,
@@ -573,8 +567,54 @@ function buildMongoDbExecutionResponse(input: {
   };
 }
 
-function toSourceApiJsonValue(value: unknown): SourceApiJsonValue {
-  return JSON.parse(JSON.stringify(value)) as SourceApiJsonValue;
+function toMongoDbJsonValue(value: unknown): JsonValue {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      entry === undefined ||
+      typeof entry === "function" ||
+      typeof entry === "symbol"
+        ? null
+        : toMongoDbJsonValue(entry)
+    );
+  }
+
+  if (typeof value === "object") {
+    const toJSON = (value as { toJSON?: unknown }).toJSON;
+    if (typeof toJSON === "function") {
+      return toMongoDbJsonValue(toJSON.call(value));
+    }
+
+    if (isRecord(value)) {
+      const jsonObject: JsonObject = {};
+      for (const [key, entry] of Object.entries(value)) {
+        if (
+          entry === undefined ||
+          typeof entry === "function" ||
+          typeof entry === "symbol"
+        ) {
+          continue;
+        }
+        jsonObject[key] = toMongoDbJsonValue(entry);
+      }
+      return jsonObject;
+    }
+  }
+
+  throw new MongoDbInvalidRequestError(
+    "MongoDB source API response must be JSON-serializable"
+  );
 }
 
 function normalizeSelector(value: string | undefined): string | undefined {

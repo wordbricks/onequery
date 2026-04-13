@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { finalizeNormalizedExecutionPlan } from "../normalize";
+import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
 import { postHogSourceApiAdapter } from "./posthog";
 
@@ -38,13 +38,7 @@ describe("posthog source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBeUndefined();
-    expect(descriptor.operations).toMatchObject([
-      {
-        kind: "structured_request",
-        name: "run_query",
-        selectorKind: "none",
-      },
-    ]);
+    expect(descriptor).toMatchSnapshot();
   });
 
   it("normalizes structured run_query requests", async () => {
@@ -85,32 +79,13 @@ describe("posthog source api adapter", () => {
       },
       source,
     });
-    const finalizedPlan = finalizeNormalizedExecutionPlan(plan);
+    const finalizedPlan = finalizePreparedSourceApi(plan);
 
-    expect(plan).toMatchObject({
-      kind: "structured_request",
-      method: "POST",
-      operation: "run_query",
-      provider: "posthog",
-      selectorTemplate: "/api/projects/{projectId}/query/",
-      sourceId: "source_1",
-      sourceKey: "posthog-prod",
-    });
     expect(plan.kind).toBe("structured_request");
     if (plan.kind !== "structured_request") {
       throw new Error("expected structured request plan");
     }
-    expect(plan.request).toEqual({
-      query: {
-        kind: "TrendsQuery",
-      },
-      refresh: "force_async",
-    });
-    expect(finalizedPlan.bodyPaths).toEqual([
-      "query",
-      "query[kind]",
-      "refresh",
-    ]);
+    expect(finalizedPlan).toMatchSnapshot();
   });
 
   it("executes PostHog requests with upstream status and headers", async () => {
@@ -133,7 +108,7 @@ describe("posthog source api adapter", () => {
         organizationSlug: "acme",
         userId: "user_1",
       },
-      plan: {
+      prepared: {
         body: {
           kind: "json",
           value: {
@@ -143,39 +118,32 @@ describe("posthog source api adapter", () => {
           },
         },
         bodyKind: "json",
+        bodyPaths: [],
         descriptorVersion: "posthog.v1",
         headerNames: [],
         headers: [],
         kind: "structured_request",
+        method: "POST",
         operation: "run_query",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
         provider: "posthog",
         request: {
           query: {
             kind: "TrendsQuery",
           },
         },
-        requestFingerprint: "fingerprint",
         sourceId: "source_1",
         sourceKey: "posthog-prod",
       },
       source,
     });
 
-    expect(response).toMatchObject({
-      contentType: "application/json",
-      operation: "run_query",
-      status: 200,
+    expect(response).toMatchSnapshot();
+    expect(response.headers).not.toContainEqual({
+      name: "x-request-id",
+      value: "rq_123",
     });
-    expect(response.body).toEqual({
-      kind: "json",
-      value: { results: [] },
-    });
-    expect(response.headers).toEqual([
-      {
-        name: "content-type",
-        value: "application/json",
-      },
-    ]);
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(

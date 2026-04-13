@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { CLI_PROBLEM_CATALOG } from "./problems";
+import {
+  CLI_PROBLEM_CATALOG,
+  cliProblemCodeToString,
+  cliProblemStageToString,
+} from "./problems";
 import { toCliAuthUserView } from "./workflows";
 
 describe("cli domain model", () => {
@@ -11,23 +15,33 @@ describe("cli domain model", () => {
         email: "alice@example.com",
         id: "user-1",
       })
-    ).toEqual({
-      displayName: "Alice",
-      email: "alice@example.com",
-      id: "user-1",
-    });
+    ).toMatchSnapshot();
   });
 
   it("keeps CLI problem metadata in the canonical catalog", () => {
-    expect(CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND).toMatchObject({
-      code: "source_not_found",
-      hint: "run `onequery source list`",
-      stage: "resolve_source",
-      status: 404,
-      title: "Source Not Found",
-      type: "https://onequery.invalid/problems/cli/source-not-found",
-    });
-    expect("stage" in CLI_PROBLEM_CATALOG.INVALID_REQUEST).toBe(false);
-    expect("hint" in CLI_PROBLEM_CATALOG.INVALID_REQUEST).toBe(false);
+    expect({
+      sourceApiExecutionStateInvalid: {
+        ...CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID,
+        code: cliProblemCodeToString(
+          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.code
+        ),
+        stage: cliProblemStageToString(
+          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.stage
+        ),
+      },
+      sourceNotFound: {
+        ...CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND,
+        code: cliProblemCodeToString(CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND.code),
+        stage: cliProblemStageToString(
+          CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND.stage
+        ),
+      },
+    }).toMatchSnapshot();
+    expect(CLI_PROBLEM_CATALOG.AUTH_REQUEST_INVALID.stage).toBeDefined();
+    expect(CLI_PROBLEM_CATALOG.SOURCE_REQUEST_INVALID.stage).toBeDefined();
+    expect(CLI_PROBLEM_CATALOG.READ_QUERY_INPUT_INVALID.stage).toBeDefined();
+    expect(
+      CLI_PROBLEM_CATALOG.EXECUTE_QUERY_REQUEST_INVALID.stage
+    ).toBeDefined();
   });
 });

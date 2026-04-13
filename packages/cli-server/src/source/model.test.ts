@@ -28,29 +28,7 @@ describe("source model", () => {
       },
     ];
 
-    expect(sortCliSourceRecords(sources)).toEqual([
-      {
-        displayName: null,
-        id: "source-3",
-        provider: "postgres",
-        sourceKey: "broken_warehouse",
-        status: "error",
-      },
-      {
-        displayName: null,
-        id: "source-2",
-        provider: "linear",
-        sourceKey: "team_linear",
-        status: "active",
-      },
-      {
-        displayName: null,
-        id: "source-1",
-        provider: "postgres",
-        sourceKey: "warehouse",
-        status: "active",
-      },
-    ]);
+    expect(sortCliSourceRecords(sources)).toMatchSnapshot();
   });
 
   it("rejects traversal-style source keys when normalizing db rows", () => {

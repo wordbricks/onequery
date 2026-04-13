@@ -1,0 +1,621 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`source api connect service > binds continuation tokens to execution state during resume 1`] = `
+{
+  "decodeSourceApiContinuationTokenCall": {
+    "now": "<date>",
+    "secret": "master-key",
+    "token": "continuation_1",
+  },
+  "encodeSourceApiContinuationTokenCall": {
+    "now": null,
+    "organizationSlug": "acme",
+    "prepared": {
+      "body": {
+        "kind": "text",
+        "value": "body text",
+      },
+      "bodyKind": "text",
+      "bodyPaths": [],
+      "descriptorVersion": "github-v1",
+      "headerNames": [
+        "accept",
+      ],
+      "headers": [
+        {
+          "name": "accept",
+          "value": "application/json",
+        },
+      ],
+      "host": "api.github.com",
+      "kind": "http_request",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "continuation_token",
+      "preparedBinding": "prepared_binding_123",
+      "provider": "github",
+      "selector": "/issues",
+      "selectorTemplate": "/{path}",
+      "sourceId": "source-1",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "secret": "master-key",
+    "state": {
+      "cursor": "page_3",
+    },
+  },
+  "executePreparedSourceApiCall": {
+    "actor": {
+      "capabilities": [
+        "source_api.describe",
+        "source_api.execute",
+      ],
+      "membershipRoles": [
+        "owner",
+      ],
+      "organizationId": "org-1",
+      "organizationSlug": "acme",
+      "requestId": "req_cli_123",
+      "userId": "user-1",
+    },
+    "continuation": {
+      "cursor": "page_2",
+    },
+    "prepared": {
+      "body": {
+        "kind": "text",
+        "value": "body text",
+      },
+      "bodyKind": "text",
+      "bodyPaths": [],
+      "descriptorVersion": "github-v1",
+      "headerNames": [
+        "accept",
+      ],
+      "headers": [
+        {
+          "name": "accept",
+          "value": "application/json",
+        },
+      ],
+      "host": "api.github.com",
+      "kind": "http_request",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "continuation_token",
+      "preparedBinding": "prepared_binding_123",
+      "provider": "github",
+      "selector": "/issues",
+      "selectorTemplate": "/{path}",
+      "sourceId": "source-1",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "source": {
+      "credentials": {
+        "token": "secret",
+      },
+      "displayName": "GitHub Prod",
+      "id": "source-1",
+      "provider": "github",
+      "sourceKey": "github-prod",
+    },
+  },
+  "response": {
+    "continuationToken": "continuation_2",
+    "preview": {
+      "bodyKind": "TEXT",
+      "bodyPaths": [],
+      "headerNames": [
+        "accept",
+      ],
+      "host": "api.github.com",
+      "kind": "HTTP_REQUEST",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "NONE",
+      "provider": "github",
+      "selector": "/issues",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "result": {
+      "body": {
+        "case": "text",
+        "value": "ok",
+      },
+      "contentType": "text/plain",
+      "headers": [
+        {
+          "name": "content-type",
+          "value": "text/plain",
+        },
+      ],
+      "operation": "fetch",
+      "selector": "/issues",
+      "source": {
+        "displayName": "GitHub Prod",
+        "key": "github-prod",
+        "provider": "github",
+      },
+      "status": 200,
+    },
+  },
+}
+`;
+
+exports[`source api connect service > converts protobuf JSON draft bodies into canonical JsonValue once 1`] = `
+{
+  "actor": {
+    "capabilities": [
+      "source_api.describe",
+      "source_api.execute",
+    ],
+    "membershipRoles": [
+      "owner",
+    ],
+    "organizationId": "org-1",
+    "organizationSlug": "acme",
+    "requestId": "req_cli_123",
+    "userId": "user-1",
+  },
+  "descriptor": {
+    "defaultPathOperation": "fetch",
+    "descriptorVersion": "github-v1",
+    "examples": [
+      {
+        "command": "onequery api --source github-prod /issues",
+        "description": "Fetch issues",
+        "label": "issues",
+      },
+    ],
+    "notes": [
+      "Uses the GitHub REST API.",
+    ],
+    "operations": [
+      {
+        "description": "Fetch one GitHub API path.",
+        "examples": [],
+        "fieldPolicy": {
+          "acceptsInput": false,
+          "allowsRawFields": false,
+          "allowsTypedFields": false,
+          "inputMode": "none",
+          "mergePatches": false,
+          "supportsArrayPaths": false,
+          "supportsNestedPaths": false,
+        },
+        "headerPolicy": {
+          "allowedRequestHeaders": [
+            "accept",
+          ],
+          "allowedResponseHeaders": [
+            "content-type",
+          ],
+        },
+        "kind": "http_request",
+        "methodPolicy": {
+          "allowedMethods": [
+            "GET",
+          ],
+          "defaultMethod": "GET",
+        },
+        "name": "fetch",
+        "notes": [],
+        "paginationPolicy": "none",
+        "selectorKind": "path",
+        "selectorLabel": "path",
+        "summary": "Fetch a GitHub path",
+      },
+    ],
+    "source": {
+      "displayName": "GitHub Prod",
+      "key": "github-prod",
+      "provider": "github",
+    },
+  },
+  "draft": {
+    "body": {
+      "kind": "json",
+      "value": {
+        "filter": {
+          "state": "open",
+        },
+        "limit": 25,
+      },
+    },
+    "fieldPatch": undefined,
+    "headers": [],
+    "methodOverride": undefined,
+    "operation": "fetch",
+    "selector": undefined,
+  },
+  "source": {
+    "credentials": {
+      "token": "secret",
+    },
+    "displayName": "GitHub Prod",
+    "id": "source-1",
+    "provider": "github",
+    "sourceKey": "github-prod",
+  },
+}
+`;
+
+exports[`source api connect service > describes the source API through the Connect handler 1`] = `
+{
+  "describeSourceApiCall": {
+    "actor": {
+      "capabilities": [
+        "source_api.describe",
+        "source_api.execute",
+      ],
+      "membershipRoles": [
+        "owner",
+      ],
+      "organizationId": "org-1",
+      "organizationSlug": "acme",
+      "requestId": "req_cli_123",
+      "userId": "user-1",
+    },
+    "source": {
+      "credentials": {
+        "token": "secret",
+      },
+      "displayName": "GitHub Prod",
+      "id": "source-1",
+      "provider": "github",
+      "sourceKey": "github-prod",
+    },
+  },
+  "requireAuthorizedOrgCall": {
+    "action": "source_api.describe",
+    "orgSlug": "acme",
+    "session": {
+      "user": {
+        "id": "user-1",
+      },
+    },
+  },
+  "response": {
+    "defaultPathOperation": "fetch",
+    "descriptorVersion": "github-v1",
+    "examples": [
+      {
+        "command": "onequery api --source github-prod /issues",
+        "description": "Fetch issues",
+        "label": "issues",
+      },
+    ],
+    "notes": [
+      "Uses the GitHub REST API.",
+    ],
+    "operations": [
+      {
+        "description": "Fetch one GitHub API path.",
+        "examples": [],
+        "fieldPolicy": {
+          "acceptsInput": false,
+          "inputMode": 1,
+          "mergePatches": false,
+          "supportsArrayPaths": false,
+          "supportsNestedPaths": false,
+          "supportsRawFields": false,
+          "supportsTypedFields": false,
+        },
+        "headerPolicy": {
+          "allowedNames": [
+            "accept",
+          ],
+        },
+        "kind": "HTTP_REQUEST",
+        "methodPolicy": {
+          "allowedMethods": [
+            "GET",
+          ],
+          "defaultMethod": "GET",
+        },
+        "name": "fetch",
+        "notes": [],
+        "paginationPolicy": "NONE",
+        "selectorKind": 2,
+        "selectorLabel": "path",
+        "summary": "Fetch a GitHub path",
+      },
+    ],
+    "source": {
+      "displayName": "GitHub Prod",
+      "key": "github-prod",
+      "provider": "github",
+    },
+  },
+}
+`;
+
+exports[`source api connect service > executes source API requests through the Connect handler 1`] = `
+{
+  "encodeSourceApiContinuationTokenCalls": 0,
+  "executePreparedSourceApiCall": {
+    "actor": {
+      "capabilities": [
+        "source_api.describe",
+        "source_api.execute",
+      ],
+      "membershipRoles": [
+        "owner",
+      ],
+      "organizationId": "org-1",
+      "organizationSlug": "acme",
+      "requestId": "req_cli_123",
+      "userId": "user-1",
+    },
+    "prepared": {
+      "body": {
+        "kind": "text",
+        "value": "body text",
+      },
+      "bodyKind": "text",
+      "bodyPaths": [],
+      "descriptorVersion": "github-v1",
+      "headerNames": [
+        "accept",
+      ],
+      "headers": [
+        {
+          "name": "accept",
+          "value": "application/json",
+        },
+      ],
+      "host": "api.github.com",
+      "kind": "http_request",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "none",
+      "preparedBinding": "prepared_binding_123",
+      "provider": "github",
+      "selector": "/issues",
+      "selectorTemplate": "/{path}",
+      "sourceId": "source-1",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "source": {
+      "credentials": {
+        "token": "secret",
+      },
+      "displayName": "GitHub Prod",
+      "id": "source-1",
+      "provider": "github",
+      "sourceKey": "github-prod",
+    },
+  },
+  "requireAuthorizedOrgCall": {
+    "action": "source_api.execute",
+    "orgSlug": "acme",
+    "session": {
+      "user": {
+        "id": "user-1",
+      },
+    },
+  },
+  "response": {
+    "continuationToken": null,
+    "preview": {
+      "bodyKind": "TEXT",
+      "bodyPaths": [],
+      "headerNames": [
+        "accept",
+      ],
+      "host": "api.github.com",
+      "kind": "HTTP_REQUEST",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "NONE",
+      "provider": "github",
+      "selector": "/issues",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "result": {
+      "body": {
+        "case": "text",
+        "value": "ok",
+      },
+      "contentType": "text/plain",
+      "headers": [
+        {
+          "name": "content-type",
+          "value": "text/plain",
+        },
+      ],
+      "operation": "fetch",
+      "selector": "/issues",
+      "source": {
+        "displayName": "GitHub Prod",
+        "key": "github-prod",
+        "provider": "github",
+      },
+      "status": 200,
+    },
+  },
+}
+`;
+
+exports[`source api connect service > preserves JSON source API response bodies through the Connect handler 1`] = `
+{
+  "continuationToken": null,
+  "preview": {
+    "bodyKind": "TEXT",
+    "bodyPaths": [],
+    "headerNames": [
+      "accept",
+    ],
+    "host": "api.github.com",
+    "kind": "HTTP_REQUEST",
+    "method": "POST",
+    "operation": "fetch",
+    "paginationPolicy": "NONE",
+    "provider": "github",
+    "selector": "/issues",
+    "sourceKey": "github-prod",
+    "url": "https://api.github.com/issues",
+  },
+  "result": {
+    "body": {
+      "case": "json",
+      "value": {
+        "id": 1,
+        "name": "onequery",
+        "private": false,
+      },
+    },
+    "contentType": "application/json",
+    "headers": [
+      {
+        "name": "content-type",
+        "value": "text/plain",
+      },
+    ],
+    "operation": "fetch",
+    "selector": "/issues",
+    "source": {
+      "displayName": "GitHub Prod",
+      "key": "github-prod",
+      "provider": "github",
+    },
+    "status": 200,
+  },
+}
+`;
+
+exports[`source api connect service > previews source API execution through the Connect handler 1`] = `
+{
+  "prepareSourceApiDraftCall": {
+    "actor": {
+      "capabilities": [
+        "source_api.describe",
+        "source_api.execute",
+      ],
+      "membershipRoles": [
+        "owner",
+      ],
+      "organizationId": "org-1",
+      "organizationSlug": "acme",
+      "requestId": "req_cli_123",
+      "userId": "user-1",
+    },
+    "descriptor": {
+      "defaultPathOperation": "fetch",
+      "descriptorVersion": "github-v1",
+      "examples": [
+        {
+          "command": "onequery api --source github-prod /issues",
+          "description": "Fetch issues",
+          "label": "issues",
+        },
+      ],
+      "notes": [
+        "Uses the GitHub REST API.",
+      ],
+      "operations": [
+        {
+          "description": "Fetch one GitHub API path.",
+          "examples": [],
+          "fieldPolicy": {
+            "acceptsInput": false,
+            "allowsRawFields": false,
+            "allowsTypedFields": false,
+            "inputMode": "none",
+            "mergePatches": false,
+            "supportsArrayPaths": false,
+            "supportsNestedPaths": false,
+          },
+          "headerPolicy": {
+            "allowedRequestHeaders": [
+              "accept",
+            ],
+            "allowedResponseHeaders": [
+              "content-type",
+            ],
+          },
+          "kind": "http_request",
+          "methodPolicy": {
+            "allowedMethods": [
+              "GET",
+            ],
+            "defaultMethod": "GET",
+          },
+          "name": "fetch",
+          "notes": [],
+          "paginationPolicy": "none",
+          "selectorKind": "path",
+          "selectorLabel": "path",
+          "summary": "Fetch a GitHub path",
+        },
+      ],
+      "source": {
+        "displayName": "GitHub Prod",
+        "key": "github-prod",
+        "provider": "github",
+      },
+    },
+    "draft": {
+      "body": {
+        "kind": "text",
+        "value": "body text",
+      },
+      "fieldPatch": {
+        "perPage": 50,
+      },
+      "headers": [
+        {
+          "name": "accept",
+          "value": "application/json",
+        },
+      ],
+      "methodOverride": "POST",
+      "operation": "fetch",
+      "selector": "/issues",
+    },
+    "source": {
+      "credentials": {
+        "token": "secret",
+      },
+      "displayName": "GitHub Prod",
+      "id": "source-1",
+      "provider": "github",
+      "sourceKey": "github-prod",
+    },
+  },
+  "requireAuthorizedOrgCall": {
+    "action": "source_api.execute",
+    "orgSlug": "acme",
+    "session": {
+      "user": {
+        "id": "user-1",
+      },
+    },
+  },
+  "response": {
+    "continuationToken": null,
+    "preview": {
+      "bodyKind": "TEXT",
+      "bodyPaths": [],
+      "headerNames": [
+        "accept",
+      ],
+      "host": "api.github.com",
+      "kind": "HTTP_REQUEST",
+      "method": "POST",
+      "operation": "fetch",
+      "paginationPolicy": "NONE",
+      "provider": "github",
+      "selector": "/issues",
+      "sourceKey": "github-prod",
+      "url": "https://api.github.com/issues",
+    },
+    "result": null,
+  },
+}
+`;

@@ -29,6 +29,19 @@ function writeWorkspaceDevConfig(rootDir: string): void {
   );
 }
 
+function normalizeWorkspaceDevSecretsFile(contents: string): string {
+  return contents
+    .replace(/secret = "[^"]+"/, 'secret = "<generated-auth-secret>"')
+    .replace(
+      /master_encryption_key = "[^"]+"/,
+      'master_encryption_key = "<generated-master-encryption-key>"'
+    )
+    .replace(
+      /enrollment_token = "[^"]+"/,
+      'enrollment_token = "<generated-enrollment-token>"'
+    );
+}
+
 describe("ensureWorkspaceDevSecretsFileSync", () => {
   it("creates onequery.dev.secrets.toml when missing", () => {
     const rootDir = createTempRootDir();
@@ -40,15 +53,14 @@ describe("ensureWorkspaceDevSecretsFileSync", () => {
         rootDir,
       });
 
-      expect(result).toEqual({
-        created: true,
-        path: join(rootDir, WORKSPACE_DEV_SECRETS_FILENAME),
-      });
-
       const contents = readFileSync(result.path, "utf8");
-      expect(contents).toContain("[auth]");
-      expect(contents).toContain("[crypto]");
-      expect(contents).toContain("[connectors]");
+      expect({
+        contents: normalizeWorkspaceDevSecretsFile(contents),
+        result: {
+          ...result,
+          path: result.path.replace(rootDir, "<rootDir>"),
+        },
+      }).toMatchSnapshot();
 
       const resolved = resolveWorkspaceDev({
         rootDir,

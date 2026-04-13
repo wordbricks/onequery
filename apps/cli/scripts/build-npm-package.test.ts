@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { __internal } from "./build-npm-package.js";
+import { __internal, tarballNameForPackage } from "./build-npm-package.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +18,12 @@ const SERVER_PACKAGE_MANIFEST_PATH = path.join(
 );
 
 describe("build-npm-package runtime asset resolution", () => {
+  it("uses stable filenames for standalone installer bundles", () => {
+    expect(tarballNameForPackage("cli-install-darwin-arm64", "1.2.3")).toBe(
+      "onequery-install-darwin-arm64.tgz"
+    );
+  });
+
   it("anchors sqlParser assets to the declared owner package manifest", async () => {
     const sourcePaths =
       await __internal.resolveRuntimeAssetSourcePaths("sqlParser");

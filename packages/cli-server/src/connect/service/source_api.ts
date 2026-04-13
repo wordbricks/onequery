@@ -1,19 +1,37 @@
-import type { MessageInitShape } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { fromJson, toJson } from "@bufbuild/protobuf";
+import type { JsonValue, MessageInitShape } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import { ConnectError } from "@connectrpc/connect";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
+  createSourceApiPreview,
+  decodeSourceApiContinuationToken,
   describeSourceApi,
-  executeSourceApi,
-  normalizeSourceApiRequest,
-  SourceApiDescriptorVersionMismatchError,
+  encodeSourceApiContinuationToken,
+  executePreparedSourceApi,
+  prepareSourceApiDraft,
   SourceApiExecutionStageError,
+  SourceApiExpiredError,
+  SourceApiInvalidatedError,
+  SourceApiInvalidRequestError,
   SourceApiPermissionDeniedError,
   SourceApiRequestError,
 } from "@onequery/server/source-api";
 import type {
+  PreparedSourceApi,
   PreparedSourceConnection,
+  SourceApiPreview,
   SourceApiActorContext,
+  SourceApiBodyKind,
   SourceApiDescriptor,
+  SourceApiExecutionResult,
+  SourceApiFieldPolicy,
+  SourceApiHeader,
+  SourceApiOperation,
+  SourceApiRequestBody,
+  SourceApiResponseBody,
+  SourceApiSource,
+  SourceApiDraft,
 } from "@onequery/server/source-api";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
@@ -26,20 +44,23 @@ import {
 } from "../../observability";
 import { runCliLoadSourceEffect } from "../../source/effects";
 import { requireCliConnectRequestContext } from "../context";
+import { createCliConnectError } from "../error";
 import {
+  CliSourceApiBodyKind,
+  CliSourceApiExecuteMode,
+  CliSourceApiInputMode,
+  CliSourceApiOperationKind,
+  CliSourceApiPaginationPolicy,
+  CliSourceApiSelectorKind,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiResponseSchema,
-  NormalizeSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
-import {
-  fromCliExecuteSourceApiRequest,
-  fromCliNormalizeSourceApiRequest,
-  requireCliSourceApiInvocation,
-  toCliDescribeSourceApiResponse,
-  toCliExecuteSourceApiResponse,
-  toCliNormalizeSourceApiResponse,
-} from "./conversions";
+import type {
+  ExecuteSourceApiRequest,
+  SourceApiDraft as CliSourceApiDraft,
+} from "../gen/onequery/cli/v1/source_api_pb";
 import { throwCliConnectSourceNotFound } from "./errors";
+import { toCliSourceProvider } from "./source-provider";
 import type { CliHonoContext, CliServiceMethod } from "./types";
 
 type DescribeSourceApiResponseInit = MessageInitShape<
@@ -48,18 +69,26 @@ type DescribeSourceApiResponseInit = MessageInitShape<
 type ExecuteSourceApiResponseInit = MessageInitShape<
   typeof ExecuteSourceApiResponseSchema
 >;
-type NormalizeSourceApiResponseInit = MessageInitShape<
-  typeof NormalizeSourceApiResponseSchema
+type CliSourceApiPreviewInit = NonNullable<
+  ExecuteSourceApiResponseInit["preview"]
 >;
+type CliSourceApiExecutionResultInit = NonNullable<
+  ExecuteSourceApiResponseInit["result"]
+>;
+
+type SourceApiConnectFailurePhase = "authorize" | "describe" | "execute";
 
 type SourceApiServiceDependencies = {
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
+  createSourceApiPreview: typeof createSourceApiPreview;
+  decodeSourceApiContinuationToken: typeof decodeSourceApiContinuationToken;
   describeSourceApi: typeof describeSourceApi;
-  executeSourceApi: typeof executeSourceApi;
+  encodeSourceApiContinuationToken: typeof encodeSourceApiContinuationToken;
+  executePreparedSourceApi: typeof executePreparedSourceApi;
   getCliLogLevelForStatus: typeof getCliLogLevelForStatus;
   logCliEvent: typeof logCliEvent;
-  normalizeSourceApiRequest: typeof normalizeSourceApiRequest;
   prepareDataSourceCredentials: typeof prepareDataSourceCredentials;
+  prepareSourceApiDraft: typeof prepareSourceApiDraft;
   requireCliConnectRequestContext: typeof requireCliConnectRequestContext;
   runCliLoadSourceEffect: typeof runCliLoadSourceEffect;
   toCliErrorMessage: typeof toCliErrorMessage;
@@ -67,16 +96,285 @@ type SourceApiServiceDependencies = {
 
 const sourceApiServiceDependencies: SourceApiServiceDependencies = {
   buildCliRequestLogDetails,
+  createSourceApiPreview,
+  decodeSourceApiContinuationToken,
   describeSourceApi,
-  executeSourceApi,
+  encodeSourceApiContinuationToken,
+  executePreparedSourceApi,
   getCliLogLevelForStatus,
   logCliEvent,
-  normalizeSourceApiRequest,
   prepareDataSourceCredentials,
+  prepareSourceApiDraft,
   requireCliConnectRequestContext,
   runCliLoadSourceEffect,
   toCliErrorMessage,
 };
+
+function requireCliSourceApiExecutionStart(
+  input: ExecuteSourceApiRequest["input"]
+) {
+  if (input.case === "start" && input.value.draft) {
+    return {
+      draft: input.value.draft,
+      mode: input.value.mode,
+    };
+  }
+
+  throw createCliConnectError({
+    detail: "source API request missing draft payload",
+    key: "READ_QUERY_INPUT_INVALID",
+  });
+}
+
+function isCliSourceApiPreviewOnlyMode(
+  value: CliSourceApiExecuteMode
+): boolean {
+  return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
+}
+
+function buildSourceApiDraft(request: CliSourceApiDraft): SourceApiDraft {
+  return {
+    body: buildSourceApiRequestBody(request.body),
+    fieldPatch: request.fieldPatch,
+    headers: request.headers.map(copySourceApiHeader),
+    methodOverride: request.methodOverride,
+    operation: request.operation,
+    selector: request.selector,
+  };
+}
+
+function copySourceApiHeader(value: SourceApiHeader) {
+  return {
+    name: value.name,
+    value: value.value,
+  };
+}
+
+function buildSourceApiRequestBody(
+  body: CliSourceApiDraft["body"]
+): SourceApiRequestBody {
+  switch (body.case) {
+    case "jsonBody":
+      return {
+        kind: "json",
+        value: toJson(ValueSchema, body.value),
+      };
+    case "textBody":
+      return {
+        kind: "text",
+        value: body.value,
+      };
+    case "binaryBody":
+      return {
+        kind: "binary",
+        value: body.value,
+      };
+    case undefined:
+      return {
+        kind: "none",
+      };
+  }
+}
+
+function buildCliDescribeSourceApiResponse(
+  value: SourceApiDescriptor
+): DescribeSourceApiResponseInit {
+  return {
+    defaultPathOperation: value.defaultPathOperation,
+    descriptorVersion: value.descriptorVersion,
+    examples: value.examples.map(buildCliSourceApiExample),
+    notes: [...value.notes],
+    operations: value.operations.map(buildCliSourceApiOperation),
+    source: buildCliSourceApiSource(value.source),
+  };
+}
+
+function buildCliExecuteSourceApiResponse(input: {
+  continuationToken?: string;
+  preview: SourceApiPreview;
+  result?: SourceApiExecutionResult;
+}): ExecuteSourceApiResponseInit {
+  return {
+    continuationToken: input.continuationToken,
+    preview: buildCliSourceApiPreview(input.preview),
+    result: input.result
+      ? buildCliSourceApiExecutionResult(input.result)
+      : undefined,
+  };
+}
+
+function buildCliSourceApiPreview(
+  value: SourceApiPreview
+): CliSourceApiPreviewInit {
+  return {
+    bodyKind: toCliSourceApiBodyKind(value.bodyKind),
+    bodyPaths: [...value.bodyPaths],
+    headerNames: [...value.headerNames],
+    host: value.host,
+    kind: toCliSourceApiOperationKind(value.kind),
+    method: value.method,
+    operation: value.operation,
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    provider: toCliSourceProvider(value.provider),
+    selector: value.selector,
+    sourceKey: value.sourceKey,
+    url: value.url,
+  };
+}
+
+function buildCliSourceApiExecutionResult(
+  value: SourceApiExecutionResult
+): CliSourceApiExecutionResultInit {
+  return {
+    body: buildCliSourceApiResponseBody(value.body),
+    contentType: value.contentType,
+    headers: value.headers.map(copySourceApiHeader),
+    operation: value.operation,
+    selector: value.selector,
+    source: buildCliSourceApiSource(value.source),
+    status: value.status,
+  };
+}
+
+function buildCliSourceApiOperation(value: SourceApiOperation) {
+  return {
+    description: value.description,
+    examples: value.examples.map(buildCliSourceApiExample),
+    fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
+    headerPolicy: {
+      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+    },
+    kind: toCliSourceApiOperationKind(value.kind),
+    methodPolicy: {
+      allowedMethods: [...value.methodPolicy.allowedMethods],
+      defaultMethod: value.methodPolicy.defaultMethod,
+    },
+    name: value.name,
+    notes: [...value.notes],
+    paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
+    selectorKind: toCliSourceApiSelectorKind(value.selectorKind),
+    selectorLabel: value.selectorLabel,
+    summary: value.summary,
+  };
+}
+
+function buildCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
+  return {
+    acceptsInput: value.acceptsInput,
+    inputMode: toCliSourceApiInputMode(value.inputMode),
+    mergePatches: value.mergePatches,
+    supportsArrayPaths: value.supportsArrayPaths,
+    supportsNestedPaths: value.supportsNestedPaths,
+    supportsRawFields: value.allowsRawFields,
+    supportsTypedFields: value.allowsTypedFields,
+  };
+}
+
+function buildCliSourceApiExample(
+  value: SourceApiOperation["examples"][number]
+) {
+  return {
+    command: value.command,
+    description: value.description,
+    label: value.label,
+  };
+}
+
+function buildCliSourceApiResponseBody(
+  value: SourceApiResponseBody
+): CliSourceApiExecutionResultInit["body"] {
+  switch (value.kind) {
+    case "json":
+      return {
+        case: "json",
+        value: fromJson(ValueSchema, value.value as JsonValue),
+      };
+    case "text":
+      return {
+        case: "text",
+        value: value.value,
+      };
+    case "binary":
+      return {
+        case: "binary",
+        value: value.value,
+      };
+    case "none":
+      return {
+        case: undefined,
+        value: undefined,
+      };
+  }
+}
+
+function buildCliSourceApiSource(value: SourceApiSource) {
+  return {
+    displayName: value.displayName ?? undefined,
+    key: value.key,
+    provider: toCliSourceProvider(value.provider),
+  };
+}
+
+function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
+  switch (value) {
+    case "none":
+      return CliSourceApiInputMode.NONE;
+    case "request_object":
+      return CliSourceApiInputMode.REQUEST_OBJECT;
+    case "request_body":
+      return CliSourceApiInputMode.REQUEST_BODY;
+  }
+}
+
+function toCliSourceApiOperationKind(
+  value: SourceApiOperation["kind"]
+): CliSourceApiOperationKind {
+  switch (value) {
+    case "http_request":
+      return CliSourceApiOperationKind.HTTP_REQUEST;
+    case "structured_request":
+      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+  }
+}
+
+function toCliSourceApiBodyKind(
+  value: SourceApiBodyKind
+): CliSourceApiBodyKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiBodyKind.NONE;
+    case "json":
+      return CliSourceApiBodyKind.JSON;
+    case "text":
+      return CliSourceApiBodyKind.TEXT;
+    case "binary":
+      return CliSourceApiBodyKind.BINARY;
+  }
+}
+
+function toCliSourceApiPaginationPolicy(
+  value: SourceApiOperation["paginationPolicy"]
+): CliSourceApiPaginationPolicy {
+  switch (value) {
+    case "none":
+      return CliSourceApiPaginationPolicy.NONE;
+    case "continuation_token":
+      return CliSourceApiPaginationPolicy.CONTINUATION_TOKEN;
+  }
+}
+
+function toCliSourceApiSelectorKind(
+  value: SourceApiOperation["selectorKind"]
+): CliSourceApiSelectorKind {
+  switch (value) {
+    case "none":
+      return CliSourceApiSelectorKind.NONE;
+    case "path":
+      return CliSourceApiSelectorKind.PATH;
+    case "identifier":
+      return CliSourceApiSelectorKind.IDENTIFIER;
+  }
+}
 
 function buildSourceApiActor(input: {
   authorizedOrg: AuthorizedCliOrgContext;
@@ -93,6 +391,32 @@ function buildSourceApiActor(input: {
   };
 }
 
+function encodeSourceApiContinuationTokenValue(
+  input: {
+    now?: Date;
+    organizationSlug: string;
+    prepared: PreparedSourceApi;
+    result: SourceApiExecutionResult;
+    secret: string | Uint8Array;
+  },
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "encodeSourceApiContinuationToken"
+  >
+): string | undefined {
+  if (input.result.nextContinuationState === undefined) {
+    return undefined;
+  }
+
+  return dependencies.encodeSourceApiContinuationToken({
+    now: input.now,
+    organizationSlug: input.organizationSlug,
+    prepared: input.prepared,
+    secret: input.secret,
+    state: input.result.nextContinuationState,
+  });
+}
+
 async function resolveSourceApiDescriptor(
   input: {
     actor: SourceApiActorContext;
@@ -106,10 +430,11 @@ async function resolveSourceApiDescriptor(
   return Promise.resolve()
     .then(() => dependencies.describeSourceApi(input))
     .catch((error: unknown) => {
-      throw toSourceApiRequestConnectError(
+      throw createSourceApiConnectError({
         error,
-        dependencies.toCliErrorMessage
-      );
+        phase: "describe",
+        renderError: dependencies.toCliErrorMessage,
+      });
     });
 }
 
@@ -161,7 +486,10 @@ async function requirePreparedCliSourceApiSource(
     masterEncryptionKey: input.c.var.runtime.crypto.masterEncryptionKey,
   });
   if (!credentials.ok) {
-    throw new ConnectError(credentials.error, Code.FailedPrecondition);
+    throw createCliConnectError({
+      detail: credentials.error,
+      key: "SOURCE_API_SOURCE_UNAVAILABLE",
+    });
   }
 
   return {
@@ -171,6 +499,45 @@ async function requirePreparedCliSourceApiSource(
     provider: source.source.provider,
     sourceKey: source.source.sourceKey,
   };
+}
+
+async function assertPreparedSourceApiStillValid(
+  input: {
+    actor: SourceApiActorContext;
+    prepared: PreparedSourceApi;
+    source: PreparedSourceConnection;
+  },
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "describeSourceApi" | "toCliErrorMessage"
+  >
+): Promise<void> {
+  if (
+    input.source.id !== input.prepared.sourceId ||
+    input.source.provider !== input.prepared.provider ||
+    input.source.sourceKey !== input.prepared.sourceKey
+  ) {
+    throw new SourceApiInvalidatedError(
+      "Source API execution state no longer matches the current source"
+    );
+  }
+
+  if (!input.prepared.descriptorVersion) {
+    return;
+  }
+
+  const descriptor = await resolveSourceApiDescriptor(
+    {
+      actor: input.actor,
+      source: input.source,
+    },
+    dependencies
+  );
+  if (descriptor.descriptorVersion !== input.prepared.descriptorVersion) {
+    throw new SourceApiInvalidatedError(
+      "Source API execution state descriptor version no longer matches the current source API descriptor"
+    );
+  }
 }
 
 export function createHandleDescribeSourceApi(
@@ -224,89 +591,13 @@ export function createHandleDescribeSourceApi(
       level: "info",
     });
 
-    return toCliDescribeSourceApiResponse(
+    return buildCliDescribeSourceApiResponse(
       descriptor
     ) satisfies DescribeSourceApiResponseInit;
   };
 }
 
 export const handleDescribeSourceApi = createHandleDescribeSourceApi();
-
-export function createHandleNormalizeSourceApi(
-  dependencies: Partial<SourceApiServiceDependencies> = {}
-): CliServiceMethod<"normalizeSourceApi"> {
-  const resolvedDependencies = {
-    ...sourceApiServiceDependencies,
-    ...dependencies,
-  } satisfies SourceApiServiceDependencies;
-
-  return async (request, context) => {
-    const requestContext =
-      resolvedDependencies.requireCliConnectRequestContext(context);
-    const c = requestContext.honoContext;
-    const session = await requestContext.requireSession();
-    const invocation = requireCliSourceApiInvocation(request.invocation);
-    const authorizedOrg = await requestContext.requireAuthorizedOrg({
-      action: "source_api.execute",
-      orgSlug: invocation.orgSlug,
-      session,
-    });
-    const source = await requirePreparedCliSourceApiSource(
-      {
-        authorizedOrg,
-        c,
-        sourceKey: invocation.sourceKey,
-      },
-      resolvedDependencies
-    );
-    const actor = buildSourceApiActor({
-      authorizedOrg,
-      requestId: requestContext.requestId,
-      session,
-    });
-    const descriptor = await resolveSourceApiDescriptor(
-      {
-        actor,
-        source,
-      },
-      resolvedDependencies
-    );
-    const normalizedRequest = fromCliNormalizeSourceApiRequest(request);
-    const plan = await Promise.resolve()
-      .then(() =>
-        resolvedDependencies.normalizeSourceApiRequest({
-          actor,
-          descriptor,
-          request: normalizedRequest,
-          source,
-        })
-      )
-      .catch((error: unknown) => {
-        throw toSourceApiRequestConnectError(
-          error,
-          resolvedDependencies.toCliErrorMessage
-        );
-      });
-
-    resolvedDependencies.logCliEvent({
-      details: resolvedDependencies.buildCliRequestLogDetails(c, {
-        kind: plan.kind,
-        operation: plan.operation,
-        orgSlug: authorizedOrg.org.slug,
-        provider: plan.provider,
-        sourceKey: plan.sourceKey,
-      }),
-      event: "source_api.normalize.resolved",
-      level: "info",
-    });
-
-    return toCliNormalizeSourceApiResponse(
-      plan
-    ) satisfies NormalizeSourceApiResponseInit;
-  };
-}
-
-export const handleNormalizeSourceApi = createHandleNormalizeSourceApi();
 
 export function createHandleExecuteSourceApi(
   dependencies: Partial<SourceApiServiceDependencies> = {}
@@ -321,115 +612,253 @@ export function createHandleExecuteSourceApi(
       resolvedDependencies.requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
     const session = await requestContext.requireSession();
-    const invocation = requireCliSourceApiInvocation(request.invocation);
-    const authorizedOrg = await requestContext.requireAuthorizedOrg({
-      action: "source_api.execute",
-      orgSlug: invocation.orgSlug,
-      session,
-    });
-    const source = await requirePreparedCliSourceApiSource(
-      {
-        authorizedOrg,
-        c,
-        sourceKey: invocation.sourceKey,
-      },
-      resolvedDependencies
-    );
-    const actor = buildSourceApiActor({
-      authorizedOrg,
-      requestId: requestContext.requestId,
-      session,
-    });
-    const normalizedRequest = fromCliExecuteSourceApiRequest(request);
-    const response = await Promise.resolve()
-      .then(() =>
-        resolvedDependencies.executeSourceApi({
-          actor,
-          source,
-          request: normalizedRequest,
-        })
-      )
-      .catch((error: unknown) => {
-        throw toSourceApiExecuteConnectError(
-          error,
-          resolvedDependencies.toCliErrorMessage
+
+    try {
+      if (request.input.case === "start") {
+        const start = requireCliSourceApiExecutionStart(request.input);
+        const draft = start.draft;
+        const authorizedOrg = await requestContext.requireAuthorizedOrg({
+          action: "source_api.execute",
+          orgSlug: draft.orgSlug,
+          session,
+        });
+        const source = await requirePreparedCliSourceApiSource(
+          {
+            authorizedOrg,
+            c,
+            sourceKey: draft.sourceKey,
+          },
+          resolvedDependencies
         );
+        const actor = buildSourceApiActor({
+          authorizedOrg,
+          requestId: requestContext.requestId,
+          session,
+        });
+        const descriptor = await resolveSourceApiDescriptor(
+          {
+            actor,
+            source,
+          },
+          resolvedDependencies
+        );
+        const prepared = await resolvedDependencies.prepareSourceApiDraft({
+          actor,
+          descriptor,
+          draft: buildSourceApiDraft(draft),
+          source,
+        });
+        const preview = resolvedDependencies.createSourceApiPreview(prepared);
+
+        if (isCliSourceApiPreviewOnlyMode(start.mode)) {
+          resolvedDependencies.logCliEvent({
+            details: resolvedDependencies.buildCliRequestLogDetails(c, {
+              kind: preview.kind,
+              mode: "preview_only",
+              operation: preview.operation,
+              orgSlug: authorizedOrg.org.slug,
+              provider: preview.provider,
+              sourceKey: preview.sourceKey,
+            }),
+            event: "source_api.execute.preview_resolved",
+            level: "info",
+          });
+
+          return buildCliExecuteSourceApiResponse({
+            preview,
+          }) satisfies ExecuteSourceApiResponseInit;
+        }
+
+        const result = await resolvedDependencies.executePreparedSourceApi({
+          actor,
+          prepared,
+          source,
+        });
+        const continuationToken = encodeSourceApiContinuationTokenValue(
+          {
+            organizationSlug: authorizedOrg.org.slug,
+            prepared,
+            result,
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+          },
+          resolvedDependencies
+        );
+
+        resolvedDependencies.logCliEvent({
+          details: resolvedDependencies.buildCliRequestLogDetails(c, {
+            mode: "execute",
+            operation: result.operation,
+            orgSlug: authorizedOrg.org.slug,
+            provider: result.source.provider,
+            roles: authorizedOrg.membershipRoles,
+            sourceKey: result.source.key,
+            status: result.status,
+          }),
+          event: "source_api.execute.resolved",
+          level: resolvedDependencies.getCliLogLevelForStatus(result.status),
+        });
+
+        return buildCliExecuteSourceApiResponse({
+          continuationToken,
+          preview,
+          result,
+        }) satisfies ExecuteSourceApiResponseInit;
+      }
+
+      if (request.input.case === "resume") {
+        const continuation =
+          resolvedDependencies.decodeSourceApiContinuationToken({
+            now: new Date(),
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+            token: request.input.value.continuationToken,
+          });
+        const authorizedOrg = await requestContext.requireAuthorizedOrg({
+          action: "source_api.execute",
+          orgSlug: continuation.organizationSlug,
+          session,
+        });
+        const source = await requirePreparedCliSourceApiSource(
+          {
+            authorizedOrg,
+            c,
+            sourceKey: continuation.prepared.sourceKey,
+          },
+          resolvedDependencies
+        );
+        const actor = buildSourceApiActor({
+          authorizedOrg,
+          requestId: requestContext.requestId,
+          session,
+        });
+
+        await assertPreparedSourceApiStillValid(
+          {
+            actor,
+            prepared: continuation.prepared,
+            source,
+          },
+          resolvedDependencies
+        );
+
+        if (continuation.prepared.paginationPolicy !== "continuation_token") {
+          throw new SourceApiInvalidRequestError(
+            `Source API operation "${continuation.prepared.operation}" does not support continuation_token resume`
+          );
+        }
+
+        const result = await resolvedDependencies.executePreparedSourceApi({
+          actor,
+          continuation: continuation.state,
+          prepared: continuation.prepared,
+          source,
+        });
+        const preview = resolvedDependencies.createSourceApiPreview(
+          continuation.prepared
+        );
+        const continuationToken = encodeSourceApiContinuationTokenValue(
+          {
+            organizationSlug: authorizedOrg.org.slug,
+            prepared: continuation.prepared,
+            result,
+            secret: c.var.runtime.crypto.masterEncryptionKey,
+          },
+          resolvedDependencies
+        );
+
+        resolvedDependencies.logCliEvent({
+          details: resolvedDependencies.buildCliRequestLogDetails(c, {
+            mode: "resume",
+            operation: result.operation,
+            orgSlug: authorizedOrg.org.slug,
+            provider: result.source.provider,
+            roles: authorizedOrg.membershipRoles,
+            sourceKey: result.source.key,
+            status: result.status,
+          }),
+          event: "source_api.execute.resolved",
+          level: resolvedDependencies.getCliLogLevelForStatus(result.status),
+        });
+
+        return buildCliExecuteSourceApiResponse({
+          continuationToken,
+          preview,
+          result,
+        }) satisfies ExecuteSourceApiResponseInit;
+      }
+
+      throw createCliConnectError({
+        detail: "source API request missing execution input",
+        key: "EXECUTE_QUERY_REQUEST_INVALID",
       });
-
-    resolvedDependencies.logCliEvent({
-      details: resolvedDependencies.buildCliRequestLogDetails(c, {
-        operation: response.operation,
-        orgSlug: authorizedOrg.org.slug,
-        provider: response.source.provider,
-        roles: authorizedOrg.membershipRoles,
-        sourceKey: response.source.key,
-        status: response.status,
-      }),
-      event: "source_api.execute.resolved",
-      level: resolvedDependencies.getCliLogLevelForStatus(response.status),
-    });
-
-    return toCliExecuteSourceApiResponse(
-      response
-    ) satisfies ExecuteSourceApiResponseInit;
+    } catch (error: unknown) {
+      throw createSourceApiConnectError({
+        error,
+        phase: "execute",
+        renderError: resolvedDependencies.toCliErrorMessage,
+      });
+    }
   };
 }
 
 export const handleExecuteSourceApi = createHandleExecuteSourceApi();
 
-function toSourceApiRequestConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
-  if (error instanceof ConnectError) {
-    return error;
-  }
+function createSourceApiConnectError(input: {
+  error: unknown;
+  phase: SourceApiConnectFailurePhase;
+  renderError?: SourceApiServiceDependencies["toCliErrorMessage"];
+}) {
+  const renderError = input.renderError ?? toCliErrorMessage;
+  const { error, phase } = input;
 
-  const detail = renderError(error);
-  if (error instanceof SourceApiDescriptorVersionMismatchError) {
-    return new ConnectError(detail, Code.FailedPrecondition);
-  }
-
-  if (error instanceof SourceApiRequestError) {
-    return new ConnectError(detail, Code.InvalidArgument);
-  }
-
-  return new ConnectError(detail, Code.Unknown);
-}
-
-function toSourceApiAuthorizeConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
-  if (error instanceof ConnectError) {
-    return error;
-  }
-
-  if (error instanceof SourceApiPermissionDeniedError) {
-    return new ConnectError(renderError(error), Code.PermissionDenied);
-  }
-
-  return new ConnectError(renderError(error), Code.Unknown);
-}
-
-function toSourceApiExecuteConnectError(
-  error: unknown,
-  renderError: SourceApiServiceDependencies["toCliErrorMessage"] = toCliErrorMessage
-) {
   if (error instanceof ConnectError) {
     return error;
   }
 
   if (error instanceof SourceApiExecutionStageError) {
-    switch (error.stage) {
-      case "normalize":
-        return toSourceApiRequestConnectError(error.cause, renderError);
-      case "authorize":
-        return toSourceApiAuthorizeConnectError(error.cause, renderError);
-      case "execute":
-        return new ConnectError(renderError(error.cause), Code.Unknown);
-    }
+    return createSourceApiConnectError({
+      error: error.cause,
+      phase: error.stage,
+      renderError,
+    });
   }
 
-  return new ConnectError(renderError(error), Code.Unknown);
+  const detail = renderError(error);
+  if (error instanceof SourceApiPermissionDeniedError) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key: "SOURCE_API_FORBIDDEN",
+    });
+  }
+
+  if (
+    error instanceof SourceApiExpiredError ||
+    error instanceof SourceApiInvalidatedError
+  ) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key: "SOURCE_API_EXECUTION_STATE_INVALID",
+    });
+  }
+
+  if (error instanceof SourceApiRequestError) {
+    return createCliConnectError({
+      cause: error,
+      detail,
+      key:
+        phase === "describe"
+          ? "SOURCE_REQUEST_INVALID"
+          : "EXECUTE_QUERY_REQUEST_INVALID",
+    });
+  }
+
+  return createCliConnectError({
+    cause: error,
+    detail,
+    key:
+      phase === "describe"
+        ? "SOURCE_API_DESCRIBE_FAILED"
+        : "SOURCE_API_EXECUTION_FAILED",
+  });
 }

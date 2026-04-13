@@ -1,3 +1,4 @@
+import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { AmplitudeCredentials } from "@onequery/db/server";
 import { z } from "zod";
@@ -20,12 +21,12 @@ import {
   resolveHttpMethodOverride,
 } from "../helpers/http-rest";
 import type {
-  NormalizedHttpRequestPlan,
+  PreparedHttpSourceApi,
   PreparedSourceConnection,
   SourceApiAdapter,
   SourceApiDescriptor,
   SourceApiExample,
-  SourceApiExecutionResponse,
+  SourceApiExecutionResult,
   SourceApiOperation,
   SourceApiRequestBody,
 } from "../types";
@@ -107,12 +108,6 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
       operationName: request.operation,
     });
 
-    if (request.pageToken) {
-      throw new AmplitudeInvalidRequestError(
-        `Amplitude operation "${operation.name}" does not support page tokens`
-      );
-    }
-
     const selector = normalizeAmplitudeSelector(request.selector);
     const fieldPatch = parseAmplitudeFieldPatch(request.fieldPatch);
     const method = resolveHttpMethodOverride({
@@ -139,8 +134,9 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
       kind: "http_request",
       method,
       operation: operation.name,
+      paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
-      query: fieldPatch.params,
+      query: fieldPatch.params as JsonObject | undefined,
       selector,
       selectorTemplate: "/{path}",
       sourceId: source.id,
@@ -153,25 +149,25 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
       }),
     };
   },
-  async execute({ plan, source }) {
-    if (plan.kind !== "http_request") {
+  async execute({ prepared, source }) {
+    if (prepared.kind !== "http_request") {
       throw new Error(
-        `Amplitude source API operation "${plan.operation}" requires an HTTP plan`
+        `Amplitude source API operation "${prepared.operation}" requires an HTTP plan`
       );
     }
 
-    const selector = normalizeAmplitudePlanSelector(plan);
+    const selector = normalizeAmplitudePlanSelector(prepared);
     const response = await requestAmplitudeSourceApi({
-      body: plan.body,
+      body: prepared.body,
       credentials: requireAmplitudeCredentials(source),
-      method: plan.method,
-      params: plan.query,
+      method: prepared.method,
+      params: prepared.query,
       selector,
-      timeoutMs: plan.timeoutMs,
+      timeoutMs: prepared.timeoutMs,
     });
 
     return buildAmplitudeExecutionResponse({
-      operation: plan.operation,
+      operation: prepared.operation,
       response,
       selector,
       source,
@@ -286,9 +282,7 @@ function requireAmplitudeCredentials(
   throw new Error("Amplitude source credentials are invalid");
 }
 
-function normalizeAmplitudePlanSelector(
-  plan: NormalizedHttpRequestPlan
-): string {
+function normalizeAmplitudePlanSelector(plan: PreparedHttpSourceApi): string {
   const selector = plan.selector?.trim();
   if (selector) {
     return selector;
@@ -406,7 +400,7 @@ function buildAmplitudeExecutionResponse(input: {
   response: AmplitudeTransportResponse;
   selector: string;
   source: PreparedSourceConnection;
-}): SourceApiExecutionResponse {
+}): SourceApiExecutionResult {
   return {
     body: input.response.body,
     contentType: input.response.contentType,

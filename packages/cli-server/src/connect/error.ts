@@ -1,107 +1,120 @@
+import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 
-import type { CliProblemKey } from "../domain/problems";
+import { CLI_PROBLEM_CATALOG } from "../domain/problems";
+import type {
+  CliConnectCode,
+  CliProblemCatalogEntry,
+  CliProblemKey,
+} from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../error";
+import {
+  BadRequestSchema,
+  RetryInfoSchema,
+} from "./gen/google/rpc/error_details_pb";
+import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
 
-export const CLI_RETRY_AFTER_MS_METADATA = "retry-after-ms";
-
-type CliConnectErrorDefinition = {
-  code: Code;
+type CliConnectValidationIssue = {
+  field: string;
   message: string;
+  code: string;
 };
-
-const CLI_CONNECT_ERROR_DEFINITIONS = {
-  FORBIDDEN: {
-    code: Code.PermissionDenied,
-    message: "Forbidden",
-  },
-  INVALID_REQUEST: {
-    code: Code.InvalidArgument,
-    message: "Invalid request",
-  },
-  LOGIN_DENIED: {
-    code: Code.PermissionDenied,
-    message: "Login denied",
-  },
-  LOGIN_RATE_LIMITED: {
-    code: Code.ResourceExhausted,
-    message: "Login rate limited",
-  },
-  LOGIN_SESSION_EXPIRED: {
-    code: Code.FailedPrecondition,
-    message: "Login session expired",
-  },
-  MALFORMED_JSON: {
-    code: Code.InvalidArgument,
-    message: "Malformed JSON",
-  },
-  NOT_LOGGED_IN: {
-    code: Code.Unauthenticated,
-    message: "Not logged in",
-  },
-  ORG_NOT_FOUND: {
-    code: Code.NotFound,
-    message: "Organization not found",
-  },
-  QUERY_EXECUTION_FAILED: {
-    code: Code.Internal,
-    message: "Query execution failed",
-  },
-  QUERY_EXECUTION_TIMED_OUT: {
-    code: Code.DeadlineExceeded,
-    message: "Query execution timed out",
-  },
-  QUERY_EXECUTION_UNAVAILABLE: {
-    code: Code.Unavailable,
-    message: "Query execution unavailable",
-  },
-  QUERY_PREPARATION_FAILED: {
-    code: Code.Internal,
-    message: "Query preparation failed",
-  },
-  QUERY_REJECTED: {
-    code: Code.InvalidArgument,
-    message: "Query rejected",
-  },
-  SOURCE_NOT_FOUND: {
-    code: Code.NotFound,
-    message: "Source not found",
-  },
-  SOURCE_NAME_CONFLICT: {
-    code: Code.AlreadyExists,
-    message: "Source name conflict",
-  },
-  SOURCE_NOT_QUERYABLE: {
-    code: Code.FailedPrecondition,
-    message: "Source not queryable",
-  },
-} as const satisfies Record<CliProblemKey, CliConnectErrorDefinition>;
 
 type CreateCliConnectErrorInput = {
   key: CliProblemKey;
   detail?: string;
   retryAfterMs?: number;
   cause?: unknown;
+  errors?: CliConnectValidationIssue[];
 };
 
+function toCliConnectCode(code: CliConnectCode): Code {
+  switch (code) {
+    case "already_exists":
+      return Code.AlreadyExists;
+    case "deadline_exceeded":
+      return Code.DeadlineExceeded;
+    case "failed_precondition":
+      return Code.FailedPrecondition;
+    case "internal":
+      return Code.Internal;
+    case "invalid_argument":
+      return Code.InvalidArgument;
+    case "not_found":
+      return Code.NotFound;
+    case "permission_denied":
+      return Code.PermissionDenied;
+    case "resource_exhausted":
+      return Code.ResourceExhausted;
+    case "unauthenticated":
+      return Code.Unauthenticated;
+    case "unavailable":
+      return Code.Unavailable;
+  }
+}
+
+function toCliValidationReason(code: string) {
+  return code.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase();
+}
+
+function toRetryDelayMessage(retryAfterMs: number) {
+  const normalizedRetryAfterMs = Math.max(0, Math.trunc(retryAfterMs));
+  return {
+    nanos: (normalizedRetryAfterMs % 1000) * 1_000_000,
+    seconds: BigInt(Math.trunc(normalizedRetryAfterMs / 1000)),
+  } satisfies MessageInitShape<typeof RetryInfoSchema>["retryDelay"];
+}
+
+function createCliErrorDetail(problem: CliProblemCatalogEntry) {
+  return {
+    desc: CliErrorDetailSchema,
+    value: {
+      code: problem.code,
+      stage: problem.stage,
+      title: problem.title,
+      ...(problem.hint ? { hint: problem.hint } : {}),
+      retryable: problem.retryable,
+    } satisfies MessageInitShape<typeof CliErrorDetailSchema>,
+  };
+}
+
+function createCliBadRequestDetail(errors: CliConnectValidationIssue[]) {
+  return {
+    desc: BadRequestSchema,
+    value: {
+      fieldViolations: errors.map((issue) => ({
+        description: issue.message,
+        field: issue.field,
+        reason: toCliValidationReason(issue.code),
+      })),
+    } satisfies MessageInitShape<typeof BadRequestSchema>,
+  };
+}
+
 export function createCliConnectError(input: CreateCliConnectErrorInput) {
-  const definition = CLI_CONNECT_ERROR_DEFINITIONS[input.key];
-  const metadata = new Headers();
+  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[input.key];
+  const details: NonNullable<ConstructorParameters<typeof ConnectError>[3]> = [
+    createCliErrorDetail(problem),
+  ];
 
   if (typeof input.retryAfterMs === "number") {
-    metadata.set(
-      CLI_RETRY_AFTER_MS_METADATA,
-      String(Math.max(0, Math.trunc(input.retryAfterMs)))
-    );
+    details.push({
+      desc: RetryInfoSchema,
+      value: {
+        retryDelay: toRetryDelayMessage(input.retryAfterMs),
+      } satisfies MessageInitShape<typeof RetryInfoSchema>,
+    });
   }
 
-  // Comment: request IDs and retry hints are the only transport metadata we
-  // keep on Connect errors during the migration.
+  if (input.errors && input.errors.length > 0) {
+    details.push(createCliBadRequestDetail(input.errors));
+  }
+
   return new ConnectError(
-    input.detail ?? definition.message,
-    definition.code,
-    metadata,
-    [],
+    input.detail ?? problem.title,
+    toCliConnectCode(problem.connectCode),
+    undefined,
+    details,
     input.cause
   );
 }
@@ -112,5 +125,19 @@ export function throwCliConnectError(input: CreateCliConnectErrorInput): never {
 
 export function withCliRequestId(error: ConnectError, requestId: string) {
   error.metadata.set(CLI_REQUEST_ID_HEADER, requestId);
+
+  for (const detail of error.details) {
+    if (!("desc" in detail) || detail.desc !== CliErrorDetailSchema) {
+      continue;
+    }
+
+    const value = detail.value as MessageInitShape<typeof CliErrorDetailSchema>;
+    detail.value = {
+      ...value,
+      requestId,
+    };
+    break;
+  }
+
   return error;
 }

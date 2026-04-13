@@ -537,7 +537,7 @@ async fn execute_resolve_login_identity<B, T>(
     }
 }
 
-fn auth_failure_outcome(failure: &crate::transport::http::ApiFailure) -> AuthFailureOutcome {
+fn auth_failure_outcome(failure: &crate::transport::api_failure::ApiFailure) -> AuthFailureOutcome {
     if classify_retry_directive(failure) == RetryDirective::NeedsReauth {
         AuthFailureOutcome::NeedsReauth
     } else {

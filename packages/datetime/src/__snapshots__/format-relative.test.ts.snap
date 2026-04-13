@@ -1,0 +1,16 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`formatRelativeTime > matches relative-time snapshots for fixed inputs 1`] = `
+{
+  "days ago": "2 days ago",
+  "future dates": "in 3 hours",
+  "hours ago": "3 hours ago",
+  "invalid dates": "Invalid date",
+  "minutes ago": "5 minutes ago",
+  "months ago": "2 months ago",
+  "numeric auto day labels": "yesterday",
+  "seconds ago": "30 seconds ago",
+  "weeks ago": "2 weeks ago",
+  "years ago": "2 years ago",
+}
+`;

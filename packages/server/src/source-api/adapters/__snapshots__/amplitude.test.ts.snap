@@ -1,0 +1,125 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`amplitude source api adapter > describes the canonical fetch operation 1`] = `
+{
+  "defaultPathOperation": "fetch_api",
+  "descriptorVersion": "amplitude.v1",
+  "examples": [
+    {
+      "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07",
+      "description": "Run an Amplitude segmentation request against the connected source.",
+      "label": "Fetch event segmentation",
+    },
+  ],
+  "notes": [
+    "Use the selector for the Amplitude REST path and \`params\` in the field patch for query string values.",
+  ],
+  "operations": [
+    {
+      "description": "Call an Amplitude REST endpoint for the connected source.",
+      "examples": [
+        {
+          "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07",
+          "description": "Run an Amplitude segmentation request against the connected source.",
+          "label": "Fetch event segmentation",
+        },
+      ],
+      "fieldPolicy": {
+        "acceptsInput": true,
+        "allowsRawFields": true,
+        "allowsTypedFields": true,
+        "inputMode": "request_body",
+        "mergePatches": false,
+        "supportsArrayPaths": true,
+        "supportsNestedPaths": true,
+      },
+      "headerPolicy": {
+        "allowedRequestHeaders": [],
+        "allowedResponseHeaders": [
+          "content-type",
+        ],
+      },
+      "kind": "http_request",
+      "methodPolicy": {
+        "allowedMethods": [
+          "DELETE",
+          "GET",
+          "POST",
+          "PUT",
+        ],
+        "defaultMethod": "GET",
+      },
+      "name": "fetch_api",
+      "notes": [
+        "Amplitude selectors must be relative REST paths such as \`/2/events/segmentation\`.",
+        "Amplitude request bodies must be JSON objects.",
+      ],
+      "paginationPolicy": "none",
+      "selectorKind": "path",
+      "selectorLabel": "PATH",
+      "summary": "Execute one Amplitude API request.",
+    },
+  ],
+  "source": {
+    "displayName": "Amplitude Prod",
+    "key": "amplitude-prod",
+    "provider": "amplitude",
+  },
+}
+`;
+
+exports[`amplitude source api adapter > executes Amplitude requests with upstream status and headers 1`] = `
+{
+  "body": {
+    "kind": "json",
+    "value": {
+      "data": [],
+    },
+  },
+  "contentType": "application/json",
+  "headers": [
+    {
+      "name": "content-type",
+      "value": "application/json",
+    },
+  ],
+  "operation": "fetch_api",
+  "selector": "/2/events/segmentation",
+  "source": {
+    "displayName": "Amplitude Prod",
+    "key": "amplitude-prod",
+    "provider": "amplitude",
+  },
+  "status": 200,
+}
+`;
+
+exports[`amplitude source api adapter > normalizes path selectors into canonical Amplitude URLs 1`] = `
+{
+  "body": {
+    "kind": "none",
+  },
+  "bodyKind": "none",
+  "bodyPaths": [],
+  "descriptorVersion": "amplitude.v1",
+  "headerNames": [],
+  "headers": [],
+  "host": "amplitude.com",
+  "kind": "http_request",
+  "method": "GET",
+  "operation": "fetch_api",
+  "paginationPolicy": "none",
+  "preparedBinding": "fHopa1TNVC66Yk7eS_WSPv6mG4I8SBgWb6MP82Kk4ls",
+  "provider": "amplitude",
+  "query": {
+    "end": "2026-03-07",
+    "start": "2026-03-01",
+  },
+  "selector": "/2/events/segmentation",
+  "selectorTemplate": "/{path}",
+  "sourceId": "source_1",
+  "sourceKey": "amplitude-prod",
+  "timeoutMs": undefined,
+  "url": "https://amplitude.com/2/events/segmentation?end=2026-03-07&start=2026-03-01",
+}
+`;

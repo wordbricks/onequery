@@ -47,7 +47,6 @@ import {
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../gen/onequery/cli/v1/query_pb";
-import { toCliQueryLogicalType } from "./conversions";
 import {
   throwForCliConnectQueryPlanResult,
   throwForCliConnectQueryWorkflowResult,
@@ -95,6 +94,27 @@ type ExecuteQueryPayload = {
   rows?: ExecuteQueryRowMessage[];
   truncated?: boolean;
 };
+
+function toCliQueryLogicalType(value: string) {
+  switch (value) {
+    case "string":
+      return CliQueryLogicalType.STRING;
+    case "number":
+      return CliQueryLogicalType.NUMBER;
+    case "boolean":
+      return CliQueryLogicalType.BOOLEAN;
+    case "bigint":
+      return CliQueryLogicalType.BIGINT;
+    case "datetime":
+      return CliQueryLogicalType.DATETIME;
+    case "array":
+      return CliQueryLogicalType.ARRAY;
+    case "json":
+      return CliQueryLogicalType.JSON;
+    default:
+      return undefined;
+  }
+}
 
 export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
   request,

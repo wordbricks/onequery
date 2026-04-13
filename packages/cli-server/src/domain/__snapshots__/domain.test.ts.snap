@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cli domain model > keeps CLI problem metadata in the canonical catalog 1`] = `
+{
+  "sourceApiExecutionStateInvalid": {
+    "code": "source_api_execution_state_invalid",
+    "connectCode": "failed_precondition",
+    "hint": "rerun the \`onequery api\` command to refresh source API execution state",
+    "retryable": false,
+    "stage": "execute_query",
+    "status": 410,
+    "title": "Source API Execution State Invalid",
+    "type": "https://onequery.invalid/problems/cli/source-api-execution-state-invalid",
+  },
+  "sourceNotFound": {
+    "code": "source_not_found",
+    "connectCode": "not_found",
+    "hint": "run \`onequery source list\`",
+    "retryable": false,
+    "stage": "resolve_source",
+    "status": 404,
+    "title": "Source Not Found",
+    "type": "https://onequery.invalid/problems/cli/source-not-found",
+  },
+}
+`;
+
+exports[`cli domain model > projects display users into CLI auth user views 1`] = `
+{
+  "displayName": "Alice",
+  "email": "alice@example.com",
+  "id": "user-1",
+}
+`;

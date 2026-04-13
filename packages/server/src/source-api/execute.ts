@@ -1,17 +1,16 @@
 import { authorizeSourceApi } from "./authorize";
-import { describeSourceApi } from "./describe";
 import { readSourceApiErrorMessage } from "./errors";
-import { normalizeSourceApiRequest } from "./normalize";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
+  PreparedSourceApi,
   PreparedSourceConnection,
   SourceApiActorContext,
-  SourceApiExecuteRequest,
-  SourceApiExecutionResponse,
+  SourceApiContinuationState,
+  SourceApiExecutionResult,
 } from "./types";
 
-export type SourceApiExecutionStage = "normalize" | "authorize" | "execute";
+export type SourceApiExecutionStage = "authorize" | "execute";
 
 export class SourceApiExecutionStageError extends Error {
   override readonly cause: unknown;
@@ -27,43 +26,20 @@ export class SourceApiExecutionStageError extends Error {
   }
 }
 
-export async function executeSourceApi(input: {
+export async function executePreparedSourceApi(input: {
   source: PreparedSourceConnection;
   actor: SourceApiActorContext;
-  request: SourceApiExecuteRequest;
+  prepared: PreparedSourceApi;
+  continuation?: SourceApiContinuationState;
   registry?: SourceApiRegistry;
-}): Promise<SourceApiExecutionResponse> {
+}): Promise<SourceApiExecutionResult> {
   const registry = input.registry ?? sourceApiRegistry;
-  const descriptor = await Promise.resolve()
-    .then(() =>
-      describeSourceApi({
-        actor: input.actor,
-        registry,
-        source: input.source,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("normalize", error);
-    });
-  const plan = await Promise.resolve()
-    .then(() =>
-      normalizeSourceApiRequest({
-        actor: input.actor,
-        descriptor,
-        registry,
-        request: input.request,
-        source: input.source,
-      })
-    )
-    .catch((error: unknown) => {
-      throw toSourceApiExecutionStageError("normalize", error);
-    });
 
   await Promise.resolve()
     .then(() =>
       authorizeSourceApi({
         actor: input.actor,
-        plan,
+        prepared: input.prepared,
       })
     )
     .catch((error: unknown) => {
@@ -75,7 +51,8 @@ export async function executeSourceApi(input: {
     .then(() =>
       adapter.execute({
         actor: input.actor,
-        plan,
+        continuation: input.continuation,
+        prepared: input.prepared,
         source: input.source,
       })
     )

@@ -11,13 +11,18 @@ import type {
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
+import type {
+  BadRequest,
+  RetryInfo,
+} from "../../../google/rpc/error_details_pb.js";
+import { file_google_rpc_error_details } from "../../../google/rpc/error_details_pb.js";
 
 /**
  * Describes the file onequery/cli/v1/common.proto.
  */
 export const file_onequery_cli_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiYAoHQ2xpUGFnZRIhCgtuZXh0X2N1cnNvchgBIAEoCUIHukgEcgIQAUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJbCg9DbGlTYW5pdGl6YXRpb24SGAoHcHJvZmlsZRgBIAEoCUIHukgEcgIQARIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCpXChBDbGlDb250ZW50Rm9ybWF0EiIKHkNMSV9DT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEh8KG0NMSV9DT05URU5UX0ZPUk1BVF9NQVJLRE9XThABYgZwcm90bzM",
-  [file_buf_validate_validate]
+  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiYAoHQ2xpUGFnZRIhCgtuZXh0X2N1cnNvchgBIAEoCUIHukgEcgIQAUgAiAEBEhAKCHJldHVybmVkGAIgASgEEhAKCGhhc19tb3JlGAMgASgIQg4KDF9uZXh0X2N1cnNvciJbCg9DbGlTYW5pdGl6YXRpb24SGAoHcHJvZmlsZRgBIAEoCUIHukgEcgIQARIXCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAkSFQoNcmF3X2F2YWlsYWJsZRgDIAEoCCKJAgoOQ2xpRXJyb3JEZXRhaWwSOQoEY29kZRgBIAEoDjIfLm9uZXF1ZXJ5LmNsaS52MS5DbGlQcm9ibGVtQ29kZUIKukgHggEEEAEgABI7CgVzdGFnZRgCIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlQcm9ibGVtU3RhZ2VCCrpIB4IBBBABIAASFgoFdGl0bGUYAyABKAlCB7pIBHICEAESGgoEaGludBgEIAEoCUIHukgEcgIQAUgAiAEBEhEKCXJldHJ5YWJsZRgFIAEoCBIgCgpyZXF1ZXN0X2lkGAYgASgJQge6SARyAhABSAGIAQFCBwoFX2hpbnRCDQoLX3JlcXVlc3RfaWQiwwEKHkNsaUNvbm5lY3RFcnJvckRldGFpbFJlZmVyZW5jZRI0CgljbGlfZXJyb3IYASABKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpRXJyb3JEZXRhaWxIABItCgtiYWRfcmVxdWVzdBgCIAEoCzIWLmdvb2dsZS5ycGMuQmFkUmVxdWVzdEgAEisKCnJldHJ5X2luZm8YAyABKAsyFS5nb29nbGUucnBjLlJldHJ5SW5mb0gAQg8KBmRldGFpbBIFukgCCAEqVwoQQ2xpQ29udGVudEZvcm1hdBIiCh5DTElfQ09OVEVOVF9GT1JNQVRfVU5TUEVDSUZJRUQQABIfChtDTElfQ09OVEVOVF9GT1JNQVRfTUFSS0RPV04QASrsBwoOQ2xpUHJvYmxlbUNvZGUSIAocQ0xJX1BST0JMRU1fQ09ERV9VTlNQRUNJRklFRBAAEh4KGkNMSV9QUk9CTEVNX0NPREVfRk9SQklEREVOEAESJAogQ0xJX1BST0JMRU1fQ09ERV9JTlZBTElEX1JFUVVFU1QQAhIhCh1DTElfUFJPQkxFTV9DT0RFX0xPR0lOX0RFTklFRBADEicKI0NMSV9QUk9CTEVNX0NPREVfTE9HSU5fUkFURV9MSU1JVEVEEAQSKgomQ0xJX1BST0JMRU1fQ09ERV9MT0dJTl9TRVNTSU9OX0VYUElSRUQQBRIjCh9DTElfUFJPQkxFTV9DT0RFX01BTEZPUk1FRF9KU09OEAYSIgoeQ0xJX1BST0JMRU1fQ09ERV9OT1RfTE9HR0VEX0lOEAcSIgoeQ0xJX1BST0JMRU1fQ09ERV9PUkdfTk9UX0ZPVU5EEAgSKwonQ0xJX1BST0JMRU1fQ09ERV9RVUVSWV9FWEVDVVRJT05fRkFJTEVEEAkSLgoqQ0xJX1BST0JMRU1fQ09ERV9RVUVSWV9FWEVDVVRJT05fVElNRURfT1VUEAoSMAosQ0xJX1BST0JMRU1fQ09ERV9RVUVSWV9FWEVDVVRJT05fVU5BVkFJTEFCTEUQCxItCilDTElfUFJPQkxFTV9DT0RFX1FVRVJZX1BSRVBBUkFUSU9OX0ZBSUxFRBAMEiMKH0NMSV9QUk9CTEVNX0NPREVfUVVFUllfUkVKRUNURUQQDRIvCitDTElfUFJPQkxFTV9DT0RFX1NPVVJDRV9BUElfREVTQ1JJQkVfRkFJTEVEEA4SMAosQ0xJX1BST0JMRU1fQ09ERV9TT1VSQ0VfQVBJX0VYRUNVVElPTl9GQUlMRUQQDxIpCiVDTElfUFJPQkxFTV9DT0RFX1NPVVJDRV9BUElfRk9SQklEREVOEBASMgouQ0xJX1BST0JMRU1fQ09ERV9TT1VSQ0VfQVBJX1BSRVBBUkFUSU9OX0ZBSUxFRBAREjcKM0NMSV9QUk9CTEVNX0NPREVfU09VUkNFX0FQSV9FWEVDVVRJT05fU1RBVEVfSU5WQUxJRBASEjIKLkNMSV9QUk9CTEVNX0NPREVfU09VUkNFX0FQSV9TT1VSQ0VfVU5BVkFJTEFCTEUQExIlCiFDTElfUFJPQkxFTV9DT0RFX1NPVVJDRV9OT1RfRk9VTkQQFBIpCiVDTElfUFJPQkxFTV9DT0RFX1NPVVJDRV9OQU1FX0NPTkZMSUNUEBUSKQolQ0xJX1BST0JMRU1fQ09ERV9TT1VSQ0VfTk9UX1FVRVJZQUJMRRAWKuYBCg9DbGlQcm9ibGVtU3RhZ2USIQodQ0xJX1BST0JMRU1fU1RBR0VfVU5TUEVDSUZJRUQQABIaChZDTElfUFJPQkxFTV9TVEFHRV9BVVRIEAESIwofQ0xJX1BST0JMRU1fU1RBR0VfRVhFQ1VURV9RVUVSWRACEiYKIkNMSV9QUk9CTEVNX1NUQUdFX1JFQURfUVVFUllfSU5QVVQQAxIhCh1DTElfUFJPQkxFTV9TVEFHRV9SRVNPTFZFX09SRxAEEiQKIENMSV9QUk9CTEVNX1NUQUdFX1JFU09MVkVfU09VUkNFEAViBnByb3RvMw",
+  [file_buf_validate_validate, file_google_rpc_error_details]
 );
 
 /**
@@ -77,6 +82,91 @@ export const CliSanitizationSchema: GenMessage<CliSanitization> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_common, 1);
 
 /**
+ * @generated from message onequery.cli.v1.CliErrorDetail
+ */
+export type CliErrorDetail = Message<"onequery.cli.v1.CliErrorDetail"> & {
+  /**
+   * @generated from field: onequery.cli.v1.CliProblemCode code = 1;
+   */
+  code: CliProblemCode;
+
+  /**
+   * @generated from field: onequery.cli.v1.CliProblemStage stage = 2;
+   */
+  stage: CliProblemStage;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * @generated from field: optional string hint = 4;
+   */
+  hint?: string;
+
+  /**
+   * @generated from field: bool retryable = 5;
+   */
+  retryable: boolean;
+
+  /**
+   * @generated from field: optional string request_id = 6;
+   */
+  requestId?: string;
+};
+
+/**
+ * Describes the message onequery.cli.v1.CliErrorDetail.
+ * Use `create(CliErrorDetailSchema)` to create a new message.
+ */
+export const CliErrorDetailSchema: GenMessage<CliErrorDetail> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_common, 2);
+
+/**
+ * Comment: this message exists to keep generated Connect error-detail schemas
+ * available to both the CLI server and the Rust CLI Connect client.
+ *
+ * @generated from message onequery.cli.v1.CliConnectErrorDetailReference
+ */
+export type CliConnectErrorDetailReference =
+  Message<"onequery.cli.v1.CliConnectErrorDetailReference"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.CliConnectErrorDetailReference.detail
+     */
+    detail:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.CliErrorDetail cli_error = 1;
+           */
+          value: CliErrorDetail;
+          case: "cliError";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.BadRequest bad_request = 2;
+           */
+          value: BadRequest;
+          case: "badRequest";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.RetryInfo retry_info = 3;
+           */
+          value: RetryInfo;
+          case: "retryInfo";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.CliConnectErrorDetailReference.
+ * Use `create(CliConnectErrorDetailReferenceSchema)` to create a new message.
+ */
+export const CliConnectErrorDetailReferenceSchema: GenMessage<CliConnectErrorDetailReference> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_common, 3);
+
+/**
  * @generated from enum onequery.cli.v1.CliContentFormat
  */
 export enum CliContentFormat {
@@ -96,3 +186,170 @@ export enum CliContentFormat {
  */
 export const CliContentFormatSchema: GenEnum<CliContentFormat> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_common, 0);
+
+/**
+ * @generated from enum onequery.cli.v1.CliProblemCode
+ */
+export enum CliProblemCode {
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_FORBIDDEN = 1;
+   */
+  FORBIDDEN = 1,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_INVALID_REQUEST = 2;
+   */
+  INVALID_REQUEST = 2,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_LOGIN_DENIED = 3;
+   */
+  LOGIN_DENIED = 3,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED = 4;
+   */
+  LOGIN_RATE_LIMITED = 4,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED = 5;
+   */
+  LOGIN_SESSION_EXPIRED = 5,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_MALFORMED_JSON = 6;
+   */
+  MALFORMED_JSON = 6,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_NOT_LOGGED_IN = 7;
+   */
+  NOT_LOGGED_IN = 7,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_ORG_NOT_FOUND = 8;
+   */
+  ORG_NOT_FOUND = 8,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_QUERY_EXECUTION_FAILED = 9;
+   */
+  QUERY_EXECUTION_FAILED = 9,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_QUERY_EXECUTION_TIMED_OUT = 10;
+   */
+  QUERY_EXECUTION_TIMED_OUT = 10,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE = 11;
+   */
+  QUERY_EXECUTION_UNAVAILABLE = 11,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_QUERY_PREPARATION_FAILED = 12;
+   */
+  QUERY_PREPARATION_FAILED = 12,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_QUERY_REJECTED = 13;
+   */
+  QUERY_REJECTED = 13,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_DESCRIBE_FAILED = 14;
+   */
+  SOURCE_API_DESCRIBE_FAILED = 14,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_EXECUTION_FAILED = 15;
+   */
+  SOURCE_API_EXECUTION_FAILED = 15,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_FORBIDDEN = 16;
+   */
+  SOURCE_API_FORBIDDEN = 16,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_PREPARATION_FAILED = 17;
+   */
+  SOURCE_API_PREPARATION_FAILED = 17,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_EXECUTION_STATE_INVALID = 18;
+   */
+  SOURCE_API_EXECUTION_STATE_INVALID = 18,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_API_SOURCE_UNAVAILABLE = 19;
+   */
+  SOURCE_API_SOURCE_UNAVAILABLE = 19,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_NOT_FOUND = 20;
+   */
+  SOURCE_NOT_FOUND = 20,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_NAME_CONFLICT = 21;
+   */
+  SOURCE_NAME_CONFLICT = 21,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_CODE_SOURCE_NOT_QUERYABLE = 22;
+   */
+  SOURCE_NOT_QUERYABLE = 22,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.CliProblemCode.
+ */
+export const CliProblemCodeSchema: GenEnum<CliProblemCode> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_common, 1);
+
+/**
+ * @generated from enum onequery.cli.v1.CliProblemStage
+ */
+export enum CliProblemStage {
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_AUTH = 1;
+   */
+  AUTH = 1,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_EXECUTE_QUERY = 2;
+   */
+  EXECUTE_QUERY = 2,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_READ_QUERY_INPUT = 3;
+   */
+  READ_QUERY_INPUT = 3,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_RESOLVE_ORG = 4;
+   */
+  RESOLVE_ORG = 4,
+
+  /**
+   * @generated from enum value: CLI_PROBLEM_STAGE_RESOLVE_SOURCE = 5;
+   */
+  RESOLVE_SOURCE = 5,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.CliProblemStage.
+ */
+export const CliProblemStageSchema: GenEnum<CliProblemStage> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_common, 2);

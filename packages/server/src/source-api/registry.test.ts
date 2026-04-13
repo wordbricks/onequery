@@ -45,6 +45,7 @@ function createAdapter(
         method: "POST",
         metadata: {},
         operation: "noop",
+        paginationPolicy: "none",
         provider,
         request: {},
         selectorTemplate: "/noop",

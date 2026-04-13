@@ -1,16 +1,15 @@
 use serde::Deserialize;
 
+use crate::transport::api_failure::ApiFailure;
+use crate::transport::api_failure::ApiProblem;
+use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::decode_failure;
+use crate::transport::api_failure::failure_from_connect;
+use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::http::ApiFailure;
-use crate::transport::http::ApiProblem;
-use crate::transport::http::ApiSuccess;
-use crate::transport::http::ResponseFailureStages;
-use crate::transport::http::decode_failure;
-use crate::transport::http::failure_from_connect;
-use crate::transport::http::response_request_id;
-use crate::transport::http::try_into_value;
 use onequery_cli_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
@@ -68,10 +67,7 @@ pub(crate) async fn start_login_session(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::Auth));
         }
     };
 
@@ -94,10 +90,7 @@ pub(crate) async fn poll_login_session(
     };
     let response = match client.cli().poll_device_authorization(body).await {
         Ok(response) => Ok(response),
-        Err(error) => Err(failure_from_connect(
-            error,
-            ResponseFailureStages::fixed(ErrorStage::Auth),
-        )),
+        Err(error) => Err(failure_from_connect(error, ErrorStage::Auth)),
     };
 
     match response {
@@ -129,10 +122,7 @@ pub(crate) async fn whoami(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::Auth));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -159,10 +149,7 @@ pub(crate) async fn refresh_session(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(
-                error,
-                ResponseFailureStages::fixed(ErrorStage::Auth),
-            ));
+            return Err(failure_from_connect(error, ErrorStage::Auth));
         }
     };
     let request_id = response_request_id(response.headers());
@@ -176,15 +163,10 @@ pub(crate) async fn refresh_session(
 fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
-    let payload = match problem.connect_code {
-        Some(connectrpc::ErrorCode::PermissionDenied) => LoginPollOutcome::Denied,
-        Some(connectrpc::ErrorCode::FailedPrecondition) => LoginPollOutcome::Expired,
-        Some(_) => return Err(ApiFailure::Problem(problem)),
-        None => match problem.code.as_deref() {
-            Some("permission_denied") => LoginPollOutcome::Denied,
-            Some("failed_precondition") => LoginPollOutcome::Expired,
-            _ => return Err(ApiFailure::Problem(problem)),
-        },
+    let payload = match problem.code {
+        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
+        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
+        _ => return Err(ApiFailure::Problem(problem)),
     };
 
     Ok(ApiSuccess {
@@ -412,9 +394,9 @@ fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>)
 
 #[cfg(test)]
 mod tests {
-    use crate::transport::http::ApiFailure;
-    use crate::transport::http::ApiProblem;
-    use crate::transport::http::ApiSuccess;
+    use crate::transport::api_failure::ApiFailure;
+    use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::ApiSuccess;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
@@ -540,35 +522,29 @@ mod tests {
     }
 
     #[test]
-    fn interpret_login_poll_problem_maps_connect_codes_to_terminal_outcomes() {
+    fn interpret_login_poll_problem_maps_typed_problem_codes_to_terminal_outcomes() {
         let denied = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::PermissionDenied),
-            status: None,
-            title: Some("Forbidden".to_owned()),
-            detail: Some("device authorization was denied".to_owned()),
-            code: Some("permission_denied".to_owned()),
+            title: "Login Denied".to_owned(),
+            detail: "device authorization was denied".to_owned(),
+            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
             hint: None,
             request_id: Some("req_denied".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "device authorization was denied".to_owned(),
         })
         .expect("expected denied outcome");
         let expired = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::FailedPrecondition),
-            status: None,
-            title: Some("Failed precondition".to_owned()),
-            detail: Some("device authorization session expired".to_owned()),
-            code: Some("failed_precondition".to_owned()),
+            title: "Login Session Expired".to_owned(),
+            detail: "device authorization session expired".to_owned(),
+            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
             hint: None,
             request_id: Some("req_expired".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "device authorization session expired".to_owned(),
         })
         .expect("expected expired outcome");
 
@@ -660,36 +636,30 @@ mod tests {
     #[test]
     fn interpret_login_poll_problem_preserves_retryable_connect_failures() {
         let failure = interpret_login_poll_problem(ApiProblem {
-            connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
-            status: None,
-            title: Some("Rate limited".to_owned()),
-            detail: Some("polling is temporarily rate limited".to_owned()),
-            code: Some("resource_exhausted".to_owned()),
+            title: "Login Rate Limited".to_owned(),
+            detail: "polling is temporarily rate limited".to_owned(),
+            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
             retryable: true,
             retry_after_ms: Some(10_000),
             stage: ErrorStage::Auth,
             hint: None,
             request_id: Some("req_rate_limited".to_owned()),
             validation_issues: Vec::new(),
-            raw_body: "polling is temporarily rate limited".to_owned(),
         })
         .expect_err("expected rate limited failure to remain a problem");
 
         assert_eq!(
             failure,
             ApiFailure::Problem(ApiProblem {
-                connect_code: Some(connectrpc::ErrorCode::ResourceExhausted),
-                status: None,
-                title: Some("Rate limited".to_owned()),
-                detail: Some("polling is temporarily rate limited".to_owned()),
-                code: Some("resource_exhausted".to_owned()),
+                title: "Login Rate Limited".to_owned(),
+                detail: "polling is temporarily rate limited".to_owned(),
+                code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
                 retryable: true,
                 retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,
                 hint: None,
                 request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
-                raw_body: "polling is temporarily rate limited".to_owned(),
             })
         );
     }

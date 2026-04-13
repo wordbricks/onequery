@@ -9,8 +9,6 @@ use chrono::DateTime;
 use chrono::Duration;
 #[cfg(any(test, not(debug_assertions)))]
 use chrono::Utc;
-#[cfg(not(debug_assertions))]
-use reqwest::header::USER_AGENT;
 #[cfg(any(test, not(debug_assertions)))]
 use serde::Deserialize;
 #[cfg(any(test, not(debug_assertions)))]
@@ -51,7 +49,12 @@ enum VersionError {
     #[error("failed to fetch latest CLI version from GitHub releases: {source}")]
     FetchLatest {
         #[source]
-        source: reqwest::Error,
+        source: ureq::Error,
+    },
+    #[error("failed to join latest CLI version fetch task: {source}")]
+    FetchLatestTask {
+        #[source]
+        source: tokio::task::JoinError,
     },
     #[error("failed to parse latest CLI release tag '{tag_name}'")]
     ParseLatestTag { tag_name: String },
@@ -172,22 +175,9 @@ fn read_version_info_if_present(version_file: &Path) -> Option<VersionInfo> {
 
 #[cfg(not(debug_assertions))]
 async fn check_for_update(version_file: &Path) -> VersionResult<()> {
-    let client = reqwest::Client::new();
-    let latest_tag_name = client
-        .get(CLI_LATEST_RELEASE_URL)
-        .header(
-            USER_AGENT,
-            format!("onequery/{}", env!("CARGO_PKG_VERSION")),
-        )
-        .send()
+    let latest_tag_name = tokio::task::spawn_blocking(fetch_latest_release_tag)
         .await
-        .map_err(|source| VersionError::FetchLatest { source })?
-        .error_for_status()
-        .map_err(|source| VersionError::FetchLatest { source })?
-        .json::<ReleaseInfo>()
-        .await
-        .map_err(|source| VersionError::FetchLatest { source })?
-        .tag_name;
+        .map_err(|source| VersionError::FetchLatestTask { source })??;
 
     let latest_version = extract_version_from_latest_tag(&latest_tag_name)?;
 
@@ -217,6 +207,21 @@ async fn check_for_update(version_file: &Path) -> VersionResult<()> {
             source,
         })?;
     Ok(())
+}
+
+#[cfg(not(debug_assertions))]
+fn fetch_latest_release_tag() -> VersionResult<String> {
+    let user_agent = format!("onequery/{}", env!("CARGO_PKG_VERSION"));
+    let mut response = ureq::get(CLI_LATEST_RELEASE_URL)
+        .header("user-agent", &user_agent)
+        .call()
+        .map_err(|source| VersionError::FetchLatest { source })?;
+
+    response
+        .body_mut()
+        .read_json::<ReleaseInfo>()
+        .map(|release| release.tag_name)
+        .map_err(|source| VersionError::FetchLatest { source })
 }
 
 #[cfg(any(test, not(debug_assertions)))]
