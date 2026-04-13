@@ -35,9 +35,10 @@ use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
 use crate::transport::query::QueryResultWindow;
 use crate::transport::read_controls::ReadRequestControls;
-use crate::version;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+
+pub(crate) const STARTUP_COMMAND: &str = "onequery";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum ResolvedOrgSource {
@@ -97,14 +98,12 @@ impl Runtime<SystemBrowserLauncher, StderrTerminal> {
         // CONTEXT: docs/core/SPEC.md recommends a Rust crate layout while the monorepo runtime is
         // Bun-first.
         // Keep Rust state isolated in apps/cli and avoid hidden cross-runtime coupling.
-        let startup_command = "onequery";
         let config = ConfigStore::load_with_overrides(
-            startup_command,
+            STARTUP_COMMAND,
             raw_config_overrides,
             typed_config_overrides,
         )?;
-        version::refresh_cache_on_startup(startup_command);
-        let auth_session = AuthSessionStore::load(startup_command)?;
+        let auth_session = AuthSessionStore::load(STARTUP_COMMAND)?;
         let platform = PlatformAdapters::system();
         Ok(Self {
             config,

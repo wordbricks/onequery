@@ -8,6 +8,7 @@ mod output_metadata;
 mod path_utils;
 mod platform;
 mod presentation;
+mod startup;
 #[cfg(test)]
 mod test_support;
 mod transport;
@@ -81,6 +82,7 @@ async fn main() {
             std::process::exit(error.exit_code());
         }
     };
+    startup::dispatch(startup::plan(commands::STARTUP_COMMAND));
 
     match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
@@ -172,6 +174,7 @@ fn exit_for_output_error(error: std::io::Error) -> ! {
 }
 
 fn init_tracing(verbose: bool) {
+    // Comment: stdout belongs to command results, so shared tracing must stay on stderr.
     let subscriber = build_tracing_subscriber(verbose, std::io::stderr);
     let _ = tracing::subscriber::set_global_default(subscriber);
 }
@@ -240,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn tracing_subscriber_writes_warn_logs_to_configured_writer() {
+    fn tracing_subscriber_writes_logs_to_the_configured_writer() {
         let _subscriber_lock = crate::test_support::lock_tracing_subscriber();
         let log_writer = SharedLogWriter::default();
         let subscriber = super::build_tracing_subscriber(false, log_writer.clone());
