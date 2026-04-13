@@ -29,7 +29,7 @@ export const CLI_ERROR_STAGES = [
 type CliApiErrorCode = (typeof CLI_ERROR_CODES)[number];
 export type CliApiErrorStage = (typeof CLI_ERROR_STAGES)[number];
 
-type CliProblemCatalogEntry = {
+export type CliProblemCatalogEntry = {
   type: `${typeof CLI_PROBLEM_TYPE_PREFIX}/${string}`;
   status: number;
   title: string;
@@ -185,3 +185,5 @@ export const CLI_PROBLEM_CATALOG = {
 } as const satisfies Record<string, CliProblemCatalogEntry>;
 
 export type CliProblemKey = keyof typeof CLI_PROBLEM_CATALOG;
+export type CliProblemStatus =
+  (typeof CLI_PROBLEM_CATALOG)[CliProblemKey]["status"];

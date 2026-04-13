@@ -10,7 +10,7 @@ that the rewrite is complete.
 ## Progress Board
 
 - [x] 1. Align the Hono Connect adapter with reference Connect behavior
-- [ ] 2. Collapse duplicate Connect error mappings into the canonical problem catalog
+- [x] 2. Collapse duplicate Connect error mappings into the canonical problem catalog
 - [ ] 3. Remove stale parallel HTTP client scaffolding from the Rust CLI
 - [ ] 4. Re-verify the affected Connect and CLI transport paths
 
@@ -51,10 +51,10 @@ Files:
 
 Changes:
 
-- [ ] Derive Connect-facing titles and codes from the canonical CLI problem
+- [x] Derive Connect-facing titles and codes from the canonical CLI problem
   catalog instead of maintaining a second transport-specific truth table.
-- [ ] Keep only transport-specific metadata wiring in the Connect error helper.
-- [ ] Preserve request ID and retry delay metadata behavior.
+- [x] Keep only transport-specific metadata wiring in the Connect error helper.
+- [x] Preserve request ID and retry delay metadata behavior.
 
 Deliverable:
 
@@ -84,6 +84,9 @@ Deliverable:
 
 - [x] `bun test packages/cli-server/src/connect`
 - [x] `bun test packages/cli-server/src/connect packages/cli-server/src/route.test.ts packages/self-host-runtime/src`
+- [x] `bun test packages/cli-server/src/connect/error.test.ts packages/cli-server/src/domain/domain.test.ts`
+- [x] `bunx turbo typecheck --filter=@onequery/cli-server --json`
 - [x] `bunx turbo typecheck --filter=@onequery/hono-connect --filter=@onequery/cli-server --filter=@onequery/self-host-runtime --json`
 - [ ] `cargo test transport::`
 - [x] `bun lint --format json`
+- [x] `bun lint --format json packages/cli-server/src/connect/error.ts packages/cli-server/src/connect/error.test.ts packages/cli-server/src/domain/problems.ts`
