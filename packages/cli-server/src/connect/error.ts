@@ -3,7 +3,6 @@ import { Code, ConnectError } from "@connectrpc/connect";
 
 import { CLI_PROBLEM_CATALOG } from "../domain/problems";
 import type {
-  CliApiErrorStage,
   CliConnectCode,
   CliProblemCatalogEntry,
   CliProblemKey,
@@ -11,17 +10,9 @@ import type {
 import { CLI_REQUEST_ID_HEADER } from "../error";
 import {
   BadRequestSchema,
-  ErrorInfoSchema,
   RetryInfoSchema,
 } from "./gen/google/rpc/error_details_pb";
-
-const CLI_CONNECT_ERROR_DOMAIN = "onequery.cli";
-const CLI_ERROR_INFO_CODE_METADATA_KEY = "code";
-const CLI_ERROR_INFO_HINT_METADATA_KEY = "hint";
-const CLI_ERROR_INFO_REQUEST_ID_METADATA_KEY = "requestId";
-const CLI_ERROR_INFO_RETRYABLE_METADATA_KEY = "retryable";
-const CLI_ERROR_INFO_STAGE_METADATA_KEY = "stage";
-const CLI_ERROR_INFO_TITLE_METADATA_KEY = "title";
+import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
 
 type CliConnectValidationIssue = {
   field: string;
@@ -34,8 +25,6 @@ type CreateCliConnectErrorInput = {
   detail?: string;
   retryAfterMs?: number;
   cause?: unknown;
-  stage?: CliApiErrorStage;
-  hint?: string;
   errors?: CliConnectValidationIssue[];
 };
 
@@ -64,28 +53,6 @@ function toCliConnectCode(code: CliConnectCode): Code {
   }
 }
 
-function requireCliProblemStage(input: {
-  key: CliProblemKey;
-  stage?: CliApiErrorStage;
-}) {
-  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[input.key];
-  const stage = input.stage ?? problem.stage;
-  if (!stage) {
-    throw new Error(`CLI problem ${input.key} is missing a required stage`);
-  }
-
-  return stage;
-}
-
-function cliProblemHint(input: { key: CliProblemKey; hint?: string }) {
-  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[input.key];
-  return input.hint ?? problem.hint;
-}
-
-function toCliErrorInfoReason(code: string) {
-  return code.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase();
-}
-
 function toCliValidationReason(code: string) {
   return code.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase();
 }
@@ -98,27 +65,16 @@ function toRetryDelayMessage(retryAfterMs: number) {
   } satisfies MessageInitShape<typeof RetryInfoSchema>["retryDelay"];
 }
 
-function createCliErrorInfoDetail(input: {
-  hint?: string;
-  key: CliProblemKey;
-  stage: CliApiErrorStage;
-}) {
-  const problem = CLI_PROBLEM_CATALOG[input.key];
+function createCliErrorDetail(problem: CliProblemCatalogEntry) {
   return {
-    desc: ErrorInfoSchema,
+    desc: CliErrorDetailSchema,
     value: {
-      domain: CLI_CONNECT_ERROR_DOMAIN,
-      metadata: {
-        [CLI_ERROR_INFO_CODE_METADATA_KEY]: problem.code,
-        ...(input.hint
-          ? { [CLI_ERROR_INFO_HINT_METADATA_KEY]: input.hint }
-          : {}),
-        [CLI_ERROR_INFO_RETRYABLE_METADATA_KEY]: String(problem.retryable),
-        [CLI_ERROR_INFO_STAGE_METADATA_KEY]: input.stage,
-        [CLI_ERROR_INFO_TITLE_METADATA_KEY]: problem.title,
-      },
-      reason: toCliErrorInfoReason(problem.code),
-    } satisfies MessageInitShape<typeof ErrorInfoSchema>,
+      code: problem.code,
+      stage: problem.stage,
+      title: problem.title,
+      ...(problem.hint ? { hint: problem.hint } : {}),
+      retryable: problem.retryable,
+    } satisfies MessageInitShape<typeof CliErrorDetailSchema>,
   };
 }
 
@@ -137,16 +93,8 @@ function createCliBadRequestDetail(errors: CliConnectValidationIssue[]) {
 
 export function createCliConnectError(input: CreateCliConnectErrorInput) {
   const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[input.key];
-  const stage = requireCliProblemStage({
-    key: input.key,
-    stage: input.stage,
-  });
-  const hint = cliProblemHint({
-    hint: input.hint,
-    key: input.key,
-  });
   const details: NonNullable<ConstructorParameters<typeof ConnectError>[3]> = [
-    createCliErrorInfoDetail({ hint, key: input.key, stage }),
+    createCliErrorDetail(problem),
   ];
 
   if (typeof input.retryAfterMs === "number") {
@@ -179,17 +127,14 @@ export function withCliRequestId(error: ConnectError, requestId: string) {
   error.metadata.set(CLI_REQUEST_ID_HEADER, requestId);
 
   for (const detail of error.details) {
-    if (!("desc" in detail) || detail.desc !== ErrorInfoSchema) {
+    if (!("desc" in detail) || detail.desc !== CliErrorDetailSchema) {
       continue;
     }
 
-    const value = detail.value as MessageInitShape<typeof ErrorInfoSchema>;
+    const value = detail.value as MessageInitShape<typeof CliErrorDetailSchema>;
     detail.value = {
       ...value,
-      metadata: {
-        ...(value.metadata ?? {}),
-        [CLI_ERROR_INFO_REQUEST_ID_METADATA_KEY]: requestId,
-      },
+      requestId,
     };
     break;
   }

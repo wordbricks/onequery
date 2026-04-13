@@ -1,4 +1,3 @@
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -97,7 +96,7 @@ async fn fetch_source_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(list_sources_problem_stage_for_code),
+                ProblemStageFallback::auth_or(ErrorStage::Http),
             ));
         }
     };
@@ -145,7 +144,7 @@ pub(crate) async fn get_source_by_key_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(get_source_problem_stage_for_code),
+                ProblemStageFallback::auth_or(ErrorStage::ResolveSource),
             ));
         }
     };
@@ -157,28 +156,6 @@ pub(crate) async fn get_source_by_key_with_controls(
         payload: source_summary_from_generated(payload),
         request_id,
     })
-}
-
-fn list_sources_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::Http
-    }
-}
-
-fn get_source_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ResolveSource
-    }
 }
 
 pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
@@ -193,7 +170,6 @@ pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -
 
 #[cfg(test)]
 mod tests {
-    use connectrpc::ErrorCode;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -201,27 +177,6 @@ mod tests {
 
     use super::SourceListPayload;
     use super::SourceSummary;
-    use super::get_source_problem_stage_for_code;
-    use super::list_sources_problem_stage_for_code;
-    use onequery_cli_core::error::ErrorStage;
-
-    #[test]
-    fn source_problem_stage_mappings_preserve_auth_failures() {
-        assert_eq!(
-            [
-                list_sources_problem_stage_for_code(ErrorCode::Unauthenticated),
-                list_sources_problem_stage_for_code(ErrorCode::InvalidArgument),
-                get_source_problem_stage_for_code(ErrorCode::PermissionDenied),
-                get_source_problem_stage_for_code(ErrorCode::NotFound),
-            ],
-            [
-                ErrorStage::Auth,
-                ErrorStage::Http,
-                ErrorStage::Auth,
-                ErrorStage::ResolveSource,
-            ]
-        );
-    }
 
     #[test]
     fn source_list_response_deserializes_canonical_shape() {

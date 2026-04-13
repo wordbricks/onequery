@@ -35,7 +35,6 @@ export function buildCliPage(page: {
 function throwCliReadControlsProblem(detail: string): never {
   throwCliConnectError({
     detail,
-    key: "INVALID_REQUEST",
-    stage: "execute_query",
+    key: "READ_QUERY_INPUT_INVALID",
   });
 }

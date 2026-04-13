@@ -107,8 +107,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
     const payload = await readBetterAuthDeviceTokenErrorResponse(response);
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
-      key: "INVALID_REQUEST",
-      stage: "auth",
+      key: "AUTH_REQUEST_INVALID",
     });
   }
 
@@ -204,8 +203,7 @@ export const handlePollDeviceAuthorization: CliServiceMethod<
 
     throwCliConnectError({
       detail: toCliDeviceAuthProblemDetail(payload),
-      key: "INVALID_REQUEST",
-      stage: "auth",
+      key: "AUTH_REQUEST_INVALID",
     });
   }
 

@@ -1,4 +1,5 @@
 use base64::Engine;
+use buffa::Enumeration;
 use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
@@ -9,17 +10,10 @@ use crate::output_metadata::SanitizationMetadata;
 use crate::transport::generated;
 use crate::transport::generated::types;
 
-const CLI_CONNECT_ERROR_DOMAIN: &str = "onequery.cli";
-const ERROR_INFO_DETAIL_TYPE: &str = "google.rpc.ErrorInfo";
+const CLI_ERROR_DETAIL_TYPE: &str = "onequery.cli.v1.CliErrorDetail";
 const BAD_REQUEST_DETAIL_TYPE: &str = "google.rpc.BadRequest";
 const RETRY_INFO_DETAIL_TYPE: &str = "google.rpc.RetryInfo";
 const REQUEST_ID_HEADER: &str = "x-request-id";
-const ERROR_INFO_CODE_METADATA_KEY: &str = "code";
-const ERROR_INFO_HINT_METADATA_KEY: &str = "hint";
-const ERROR_INFO_REQUEST_ID_METADATA_KEY: &str = "requestId";
-const ERROR_INFO_RETRYABLE_METADATA_KEY: &str = "retryable";
-const ERROR_INFO_STAGE_METADATA_KEY: &str = "stage";
-const ERROR_INFO_TITLE_METADATA_KEY: &str = "title";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ApiSuccess<T> {
@@ -95,25 +89,57 @@ pub(crate) struct DecodeFailure {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum ProblemStageFallback {
-    Fixed(ErrorStage),
-    FromConnectCode(fn(ErrorCode) -> ErrorStage),
+pub(crate) struct ProblemStageFallback {
+    default_stage: ErrorStage,
+    auth_stage: Option<ErrorStage>,
+    not_found_stage: Option<ErrorStage>,
 }
 
 impl ProblemStageFallback {
-    pub(crate) const fn fixed(problem_stage: ErrorStage) -> Self {
-        Self::Fixed(problem_stage)
+    pub(crate) const fn fixed(default_stage: ErrorStage) -> Self {
+        Self {
+            default_stage,
+            auth_stage: None,
+            not_found_stage: None,
+        }
     }
 
-    pub(crate) const fn from_connect_code(problem_stage: fn(ErrorCode) -> ErrorStage) -> Self {
-        Self::FromConnectCode(problem_stage)
+    pub(crate) const fn auth_or(default_stage: ErrorStage) -> Self {
+        Self {
+            default_stage,
+            auth_stage: Some(ErrorStage::Auth),
+            not_found_stage: None,
+        }
+    }
+
+    pub(crate) const fn auth_or_not_found(
+        default_stage: ErrorStage,
+        not_found_stage: ErrorStage,
+    ) -> Self {
+        Self {
+            default_stage,
+            auth_stage: Some(ErrorStage::Auth),
+            not_found_stage: Some(not_found_stage),
+        }
     }
 
     fn resolve(self, code: ErrorCode) -> ErrorStage {
-        match self {
-            Self::Fixed(stage) => stage,
-            Self::FromConnectCode(resolve_stage) => resolve_stage(code),
+        if let Some(auth_stage) = self.auth_stage
+            && matches!(
+                code,
+                ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
+            )
+        {
+            return auth_stage;
         }
+
+        if let Some(not_found_stage) = self.not_found_stage
+            && matches!(code, ErrorCode::NotFound)
+        {
+            return not_found_stage;
+        }
+
+        self.default_stage
     }
 }
 
@@ -225,59 +251,31 @@ fn parse_connect_problem_details(
 
     for detail in &error.details {
         match detail.type_url.as_str() {
-            ERROR_INFO_DETAIL_TYPE => {
-                let Some(error_info) =
-                    decode_connect_detail::<generated::google::rpc::ErrorInfo>(detail)
-                else {
+            CLI_ERROR_DETAIL_TYPE => {
+                let Some(cli_error) = decode_connect_detail::<types::CliErrorDetail>(detail) else {
                     continue;
                 };
 
-                if error_info.domain != CLI_CONNECT_ERROR_DOMAIN {
-                    if parsed.code.is_none() {
-                        parsed.code = reason_to_code(error_info.reason.as_str());
-                    }
-                    continue;
-                }
-
                 if parsed.code.is_none() {
-                    parsed.code = error_info
-                        .metadata
-                        .get(ERROR_INFO_CODE_METADATA_KEY)
-                        .cloned()
-                        .or_else(|| reason_to_code(error_info.reason.as_str()));
+                    parsed.code = cli_problem_code_to_string(cli_error.code);
                 }
                 if parsed.title.is_none() {
-                    parsed.title = error_info
-                        .metadata
-                        .get(ERROR_INFO_TITLE_METADATA_KEY)
-                        .cloned()
-                        .filter(|value| !value.trim().is_empty());
+                    parsed.title = non_empty(Some(cli_error.title));
                 }
                 if parsed.stage.is_none() {
-                    parsed.stage = error_info
-                        .metadata
-                        .get(ERROR_INFO_STAGE_METADATA_KEY)
-                        .map(|stage| ErrorStage::from_api_stage(stage, fallback_stage));
+                    parsed.stage = Some(cli_problem_stage_to_error_stage(
+                        cli_error.stage,
+                        fallback_stage,
+                    ));
                 }
                 if parsed.hint.is_none() {
-                    parsed.hint = error_info
-                        .metadata
-                        .get(ERROR_INFO_HINT_METADATA_KEY)
-                        .cloned()
-                        .filter(|value| !value.trim().is_empty());
+                    parsed.hint = non_empty(cli_error.hint);
                 }
                 if parsed.retryable.is_none() {
-                    parsed.retryable = error_info
-                        .metadata
-                        .get(ERROR_INFO_RETRYABLE_METADATA_KEY)
-                        .and_then(|value| parse_retryable(value));
+                    parsed.retryable = Some(cli_error.retryable);
                 }
                 if parsed.request_id.is_none() {
-                    parsed.request_id = error_info
-                        .metadata
-                        .get(ERROR_INFO_REQUEST_ID_METADATA_KEY)
-                        .cloned()
-                        .filter(|value| !value.trim().is_empty());
+                    parsed.request_id = non_empty(cli_error.request_id);
                 }
             }
             RETRY_INFO_DETAIL_TYPE => {
@@ -338,11 +336,26 @@ fn duration_to_ms(duration: buffa_types::google::protobuf::Duration) -> Option<u
     millis_from_seconds.checked_add(millis_from_nanos)
 }
 
-fn parse_retryable(value: &str) -> Option<bool> {
-    match value {
-        "true" => Some(true),
-        "false" => Some(false),
-        _ => None,
+fn cli_problem_code_to_string(code: buffa::EnumValue<types::CliProblemCode>) -> Option<String> {
+    code.as_known()?
+        .proto_name()
+        .strip_prefix("CLI_PROBLEM_CODE_")
+        .map(str::to_ascii_lowercase)
+}
+
+fn cli_problem_stage_to_error_stage(
+    stage: buffa::EnumValue<types::CliProblemStage>,
+    fallback_stage: ErrorStage,
+) -> ErrorStage {
+    match stage.as_known() {
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH) => ErrorStage::Auth,
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_EXECUTE_QUERY) => ErrorStage::ExecuteQuery,
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_READ_QUERY_INPUT) => {
+            ErrorStage::ReadQueryInput
+        }
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_ORG) => ErrorStage::ResolveOrg,
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_SOURCE) => ErrorStage::ResolveSource,
+        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_UNSPECIFIED) | None => fallback_stage,
     }
 }
 
@@ -437,28 +450,56 @@ mod tests {
     }
 
     #[test]
-    fn failure_from_connect_prefers_google_rpc_details() {
+    fn problem_stage_fallback_auth_or_routes_auth_failures() {
+        let fallback = ProblemStageFallback::auth_or(ErrorStage::ExecuteQuery);
+
+        assert_eq!(
+            [
+                fallback.resolve(ErrorCode::Unauthenticated),
+                fallback.resolve(ErrorCode::PermissionDenied),
+                fallback.resolve(ErrorCode::InvalidArgument),
+            ],
+            [ErrorStage::Auth, ErrorStage::Auth, ErrorStage::ExecuteQuery,]
+        );
+    }
+
+    #[test]
+    fn problem_stage_fallback_auth_or_not_found_routes_not_found() {
+        let fallback = ProblemStageFallback::auth_or_not_found(
+            ErrorStage::ResolveSource,
+            ErrorStage::ResolveOrg,
+        );
+
+        assert_eq!(
+            [
+                fallback.resolve(ErrorCode::Unauthenticated),
+                fallback.resolve(ErrorCode::NotFound),
+                fallback.resolve(ErrorCode::InvalidArgument),
+            ],
+            [
+                ErrorStage::Auth,
+                ErrorStage::ResolveOrg,
+                ErrorStage::ResolveSource,
+            ]
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_prefers_cli_error_details() {
         let mut error = ConnectError::new(ErrorCode::ResourceExhausted, "polling is rate limited");
         error.response_headers.insert(
             "x-request-id",
             http::HeaderValue::from_static("req_header_fallback"),
         );
         error.details.push(error_detail(
-            "google.rpc.ErrorInfo",
-            &generated::google::rpc::ErrorInfo {
-                reason: "LOGIN_RATE_LIMITED".to_owned(),
-                domain: "onequery.cli".to_owned(),
-                metadata: std::collections::HashMap::from([
-                    ("code".to_owned(), "login_rate_limited".to_owned()),
-                    (
-                        "hint".to_owned(),
-                        "wait briefly, then retry `onequery auth login`".to_owned(),
-                    ),
-                    ("requestId".to_owned(), "req_problem".to_owned()),
-                    ("retryable".to_owned(), "true".to_owned()),
-                    ("stage".to_owned(), "auth".to_owned()),
-                    ("title".to_owned(), "Login Rate Limited".to_owned()),
-                ]),
+            "onequery.cli.v1.CliErrorDetail",
+            &generated::types::CliErrorDetail {
+                code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
+                stage: generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into(),
+                title: "Login Rate Limited".to_owned(),
+                hint: Some("wait briefly, then retry `onequery auth login`".to_owned()),
+                retryable: true,
+                request_id: Some("req_problem".to_owned()),
                 ..Default::default()
             },
         ));

@@ -210,8 +210,7 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
     if (!organizationCheck.ok) {
       throwCliConnectError({
         detail: organizationCheck.error,
-        key: "INVALID_REQUEST",
-        stage: "resolve_source",
+        key: "SOURCE_REQUEST_INVALID",
       });
     }
   }
@@ -290,8 +289,7 @@ function throwCliConnectSourceValidationError(input: {
       field: validationIssue.path.map((segment) => String(segment)).join("."),
       message: validationIssue.message,
     })),
-    key: "INVALID_REQUEST",
-    stage: "resolve_source",
+    key: "SOURCE_REQUEST_INVALID",
   });
 }
 
@@ -445,8 +443,7 @@ function parseConnectSourceCredentials(
     default:
       throwCliConnectError({
         detail: "source connect request must include typed credentials",
-        key: "INVALID_REQUEST",
-        stage: "resolve_source",
+        key: "SOURCE_REQUEST_INVALID",
       });
   }
 }
@@ -541,8 +538,7 @@ function bigQueryCredentialsFromMessage(input: {
     default:
       throwCliConnectError({
         detail: "bigquery credentials must choose one auth mode",
-        key: "INVALID_REQUEST",
-        stage: "resolve_source",
+        key: "SOURCE_REQUEST_INVALID",
       });
   }
 }
@@ -594,8 +590,7 @@ function googleAnalyticsCredentialsFromMessage(input: {
     default:
       throwCliConnectError({
         detail: "google analytics credentials must choose one auth mode",
-        key: "INVALID_REQUEST",
-        stage: "resolve_source",
+        key: "SOURCE_REQUEST_INVALID",
       });
   }
 }
@@ -649,8 +644,7 @@ function linearCredentialsFromMessage(input: {
     default:
       throwCliConnectError({
         detail: "linear credentials must choose one auth mode",
-        key: "INVALID_REQUEST",
-        stage: "resolve_source",
+        key: "SOURCE_REQUEST_INVALID",
       });
   }
 }
@@ -673,8 +667,7 @@ function requirePresent<T>(value: T | undefined, detail: string): T {
 
   throwCliConnectError({
     detail,
-    key: "INVALID_REQUEST",
-    stage: "resolve_source",
+    key: "SOURCE_REQUEST_INVALID",
   });
 }
 
@@ -682,8 +675,7 @@ function numberFromUInt64(value: bigint, field: string) {
   if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
     throwCliConnectError({
       detail: `${field} exceeds the supported numeric range`,
-      key: "INVALID_REQUEST",
-      stage: "resolve_source",
+      key: "SOURCE_REQUEST_INVALID",
     });
   }
 

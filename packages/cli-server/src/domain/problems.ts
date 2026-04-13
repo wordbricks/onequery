@@ -1,38 +1,10 @@
+import {
+  CliProblemCode,
+  CliProblemStage,
+} from "../connect/gen/onequery/cli/v1/common_pb";
+
 export const CLI_PROBLEM_TYPE_PREFIX = "https://onequery.invalid/problems/cli";
 
-const CLI_ERROR_CODES = [
-  "forbidden",
-  "invalid_request",
-  "login_denied",
-  "login_rate_limited",
-  "login_session_expired",
-  "not_logged_in",
-  "org_not_found",
-  "query_execution_failed",
-  "query_execution_timed_out",
-  "query_execution_unavailable",
-  "query_preparation_failed",
-  "query_rejected",
-  "source_api_describe_failed",
-  "source_api_execution_failed",
-  "source_api_forbidden",
-  "source_api_preparation_failed",
-  "source_api_prepared_request_invalid",
-  "source_api_source_unavailable",
-  "source_not_found",
-  "source_name_conflict",
-  "source_not_queryable",
-] as const;
-
-export const CLI_ERROR_STAGES = [
-  "auth",
-  "execute_query",
-  "read_query_input",
-  "resolve_org",
-  "resolve_source",
-] as const;
-
-type CliApiErrorCode = (typeof CLI_ERROR_CODES)[number];
 export type CliConnectCode =
   | "already_exists"
   | "deadline_exceeded"
@@ -44,18 +16,63 @@ export type CliConnectCode =
   | "resource_exhausted"
   | "unauthenticated"
   | "unavailable";
-export type CliApiErrorStage = (typeof CLI_ERROR_STAGES)[number];
 
 export type CliProblemCatalogEntry = {
   type: `${typeof CLI_PROBLEM_TYPE_PREFIX}/${string}`;
   status: number;
   connectCode: CliConnectCode;
   title: string;
-  code: CliApiErrorCode;
-  stage?: CliApiErrorStage;
+  code: CliProblemCode;
+  stage: CliProblemStage;
   retryable: boolean;
   hint?: string;
 };
+
+function requireEnumMemberName(
+  value: number,
+  enumObject: Record<number, string>,
+  label: string
+) {
+  const name = enumObject[value];
+  if (!name || name === "UNSPECIFIED") {
+    throw new Error(`invalid ${label} enum value: ${value}`);
+  }
+
+  return name;
+}
+
+export function cliProblemCodeToString(code: CliProblemCode) {
+  return requireEnumMemberName(
+    code,
+    CliProblemCode,
+    "problem code"
+  ).toLowerCase();
+}
+
+export function cliProblemStageToString(stage: CliProblemStage) {
+  return requireEnumMemberName(
+    stage,
+    CliProblemStage,
+    "problem stage"
+  ).toLowerCase();
+}
+
+function createInvalidRequestProblem(input: {
+  stage: CliProblemStage;
+  type: string;
+  hint: string;
+}) {
+  return {
+    type: `${CLI_PROBLEM_TYPE_PREFIX}/${input.type}`,
+    status: 422,
+    connectCode: "invalid_argument",
+    title: "Invalid Request",
+    code: CliProblemCode.INVALID_REQUEST,
+    stage: input.stage,
+    retryable: false,
+    hint: input.hint,
+  } satisfies CliProblemCatalogEntry;
+}
 
 export const CLI_PROBLEM_CATALOG = {
   FORBIDDEN: {
@@ -63,26 +80,38 @@ export const CLI_PROBLEM_CATALOG = {
     status: 403,
     connectCode: "permission_denied",
     title: "Forbidden",
-    code: "forbidden",
-    stage: "resolve_org",
+    code: CliProblemCode.FORBIDDEN,
+    stage: CliProblemStage.RESOLVE_ORG,
     retryable: false,
     hint: "verify org membership and retry",
   },
-  INVALID_REQUEST: {
-    type: `${CLI_PROBLEM_TYPE_PREFIX}/invalid-request`,
-    status: 422,
-    connectCode: "invalid_argument",
-    title: "Invalid Request",
-    code: "invalid_request",
-    retryable: false,
-  },
+  AUTH_REQUEST_INVALID: createInvalidRequestProblem({
+    hint: "correct the auth request and retry",
+    stage: CliProblemStage.AUTH,
+    type: "auth-request-invalid",
+  }),
+  SOURCE_REQUEST_INVALID: createInvalidRequestProblem({
+    hint: "correct the source request and retry",
+    stage: CliProblemStage.RESOLVE_SOURCE,
+    type: "source-request-invalid",
+  }),
+  READ_QUERY_INPUT_INVALID: createInvalidRequestProblem({
+    hint: "correct the query input and retry",
+    stage: CliProblemStage.READ_QUERY_INPUT,
+    type: "read-query-input-invalid",
+  }),
+  EXECUTE_QUERY_REQUEST_INVALID: createInvalidRequestProblem({
+    hint: "correct the query request and retry",
+    stage: CliProblemStage.EXECUTE_QUERY,
+    type: "execute-query-request-invalid",
+  }),
   LOGIN_DENIED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/login-denied`,
     status: 403,
     connectCode: "permission_denied",
     title: "Login Denied",
-    code: "login_denied",
-    stage: "auth",
+    code: CliProblemCode.LOGIN_DENIED,
+    stage: CliProblemStage.AUTH,
     retryable: false,
     hint: "run `onequery auth login` again",
   },
@@ -91,8 +120,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 429,
     connectCode: "resource_exhausted",
     title: "Login Rate Limited",
-    code: "login_rate_limited",
-    stage: "auth",
+    code: CliProblemCode.LOGIN_RATE_LIMITED,
+    stage: CliProblemStage.AUTH,
     retryable: true,
     hint: "wait briefly, then retry `onequery auth login`",
   },
@@ -101,8 +130,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 410,
     connectCode: "failed_precondition",
     title: "Login Session Expired",
-    code: "login_session_expired",
-    stage: "auth",
+    code: CliProblemCode.LOGIN_SESSION_EXPIRED,
+    stage: CliProblemStage.AUTH,
     retryable: false,
     hint: "run `onequery auth login` again",
   },
@@ -111,8 +140,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 400,
     connectCode: "invalid_argument",
     title: "Malformed JSON",
-    code: "invalid_request",
-    stage: "read_query_input",
+    code: CliProblemCode.MALFORMED_JSON,
+    stage: CliProblemStage.READ_QUERY_INPUT,
     retryable: false,
     hint: "correct the request body and retry",
   },
@@ -121,8 +150,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 401,
     connectCode: "unauthenticated",
     title: "Not Logged In",
-    code: "not_logged_in",
-    stage: "auth",
+    code: CliProblemCode.NOT_LOGGED_IN,
+    stage: CliProblemStage.AUTH,
     retryable: false,
     hint: "login via the OneQuery web app and retry",
   },
@@ -131,8 +160,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 404,
     connectCode: "not_found",
     title: "Organization Not Found",
-    code: "org_not_found",
-    stage: "resolve_org",
+    code: CliProblemCode.ORG_NOT_FOUND,
+    stage: CliProblemStage.RESOLVE_ORG,
     retryable: false,
     hint: "run `onequery org list`",
   },
@@ -141,8 +170,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 500,
     connectCode: "internal",
     title: "Query Execution Failed",
-    code: "query_execution_failed",
-    stage: "execute_query",
+    code: CliProblemCode.QUERY_EXECUTION_FAILED,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
@@ -151,8 +180,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 504,
     connectCode: "deadline_exceeded",
     title: "Query Execution Timed Out",
-    code: "query_execution_timed_out",
-    stage: "execute_query",
+    code: CliProblemCode.QUERY_EXECUTION_TIMED_OUT,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: true,
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
@@ -161,8 +190,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 503,
     connectCode: "unavailable",
     title: "Query Execution Unavailable",
-    code: "query_execution_unavailable",
-    stage: "execute_query",
+    code: CliProblemCode.QUERY_EXECUTION_UNAVAILABLE,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: true,
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
@@ -171,8 +200,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 500,
     connectCode: "internal",
     title: "Query Preparation Failed",
-    code: "query_preparation_failed",
-    stage: "execute_query",
+    code: CliProblemCode.QUERY_PREPARATION_FAILED,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
@@ -181,8 +210,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 400,
     connectCode: "invalid_argument",
     title: "Query Rejected",
-    code: "query_rejected",
-    stage: "execute_query",
+    code: CliProblemCode.QUERY_REJECTED,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: "use a single read-only SELECT query",
   },
@@ -191,8 +220,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 500,
     connectCode: "internal",
     title: "Source API Describe Failed",
-    code: "source_api_describe_failed",
-    stage: "resolve_source",
+    code: CliProblemCode.SOURCE_API_DESCRIBE_FAILED,
+    stage: CliProblemStage.RESOLVE_SOURCE,
     retryable: false,
     hint: "retry `onequery api --source <source>`",
   },
@@ -201,8 +230,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 500,
     connectCode: "internal",
     title: "Source API Execution Failed",
-    code: "source_api_execution_failed",
-    stage: "execute_query",
+    code: CliProblemCode.SOURCE_API_EXECUTION_FAILED,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: "retry `onequery api --source <source>`",
   },
@@ -211,8 +240,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 403,
     connectCode: "permission_denied",
     title: "Source API Forbidden",
-    code: "source_api_forbidden",
-    stage: "execute_query",
+    code: CliProblemCode.SOURCE_API_FORBIDDEN,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: "verify source API permissions and retry",
   },
@@ -221,8 +250,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 500,
     connectCode: "internal",
     title: "Source API Preparation Failed",
-    code: "source_api_preparation_failed",
-    stage: "execute_query",
+    code: CliProblemCode.SOURCE_API_PREPARATION_FAILED,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: "retry `onequery api --source <source>`",
   },
@@ -231,8 +260,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 410,
     connectCode: "failed_precondition",
     title: "Prepared Source API Request Invalid",
-    code: "source_api_prepared_request_invalid",
-    stage: "execute_query",
+    code: CliProblemCode.SOURCE_API_PREPARED_REQUEST_INVALID,
+    stage: CliProblemStage.EXECUTE_QUERY,
     retryable: false,
     hint: "rerun the `onequery api` command to refresh prepared source API state",
   },
@@ -241,8 +270,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 410,
     connectCode: "failed_precondition",
     title: "Source API Source Unavailable",
-    code: "source_api_source_unavailable",
-    stage: "resolve_source",
+    code: CliProblemCode.SOURCE_API_SOURCE_UNAVAILABLE,
+    stage: CliProblemStage.RESOLVE_SOURCE,
     retryable: false,
     hint: "review source credentials in OneQuery and retry",
   },
@@ -251,8 +280,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 404,
     connectCode: "not_found",
     title: "Source Not Found",
-    code: "source_not_found",
-    stage: "resolve_source",
+    code: CliProblemCode.SOURCE_NOT_FOUND,
+    stage: CliProblemStage.RESOLVE_SOURCE,
     retryable: false,
     hint: "run `onequery source list`",
   },
@@ -261,8 +290,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 409,
     connectCode: "already_exists",
     title: "Source Name Conflict",
-    code: "source_name_conflict",
-    stage: "resolve_source",
+    code: CliProblemCode.SOURCE_NAME_CONFLICT,
+    stage: CliProblemStage.RESOLVE_SOURCE,
     retryable: false,
     hint: "choose a different source name and retry",
   },
@@ -271,8 +300,8 @@ export const CLI_PROBLEM_CATALOG = {
     status: 400,
     connectCode: "invalid_argument",
     title: "Source Not Queryable",
-    code: "source_not_queryable",
-    stage: "resolve_source",
+    code: CliProblemCode.SOURCE_NOT_QUERYABLE,
+    stage: CliProblemStage.RESOLVE_SOURCE,
     retryable: false,
     hint: "run `onequery source list` and choose a source where QUERY is yes",
   },

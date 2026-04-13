@@ -1,6 +1,5 @@
 use buffa::EnumValue;
 use buffa::MessageField;
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::Value as JsonValue;
 
@@ -58,7 +57,7 @@ pub(crate) async fn describe_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(describe_source_api_problem_stage_for_code),
+                ProblemStageFallback::auth_or(ErrorStage::ResolveSource),
             ));
         }
     };
@@ -90,8 +89,9 @@ pub(crate) async fn prepare_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(
-                    execute_prepared_source_api_problem_stage_for_code,
+                ProblemStageFallback::auth_or_not_found(
+                    ErrorStage::ExecuteQuery,
+                    ErrorStage::ResolveSource,
                 ),
             ));
         }
@@ -124,8 +124,9 @@ pub(crate) async fn execute_prepared_source_api(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(
-                    execute_prepared_source_api_problem_stage_for_code,
+                ProblemStageFallback::auth_or_not_found(
+                    ErrorStage::ExecuteQuery,
+                    ErrorStage::ResolveSource,
                 ),
             ));
         }
@@ -429,30 +430,6 @@ fn validate_execute_prepared_source_api_result(
         "source API execution response missing source metadata",
         request_id,
     ))
-}
-
-fn describe_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ResolveSource
-    }
-}
-
-fn execute_prepared_source_api_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else if matches!(code, ErrorCode::NotFound) {
-        ErrorStage::ResolveSource
-    } else {
-        ErrorStage::ExecuteQuery
-    }
 }
 
 #[cfg(test)]

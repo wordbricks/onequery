@@ -516,8 +516,7 @@ export function createHandleExecutePreparedSourceApi(
       ) {
         throw createCliConnectError({
           detail: `Source API operation "${preparedToken.prepared.operation}" does not support page_token continuation`,
-          key: "INVALID_REQUEST",
-          stage: "execute_query",
+          key: "EXECUTE_QUERY_REQUEST_INVALID",
         });
       }
 
@@ -625,8 +624,12 @@ function createSourceApiConnectError(input: {
     return createCliConnectError({
       cause: error,
       detail,
-      key: "INVALID_REQUEST",
-      stage: phase === "describe" ? "resolve_source" : "execute_query",
+      key:
+        phase === "describe"
+          ? "SOURCE_REQUEST_INVALID"
+          : phase === "prepare"
+            ? "READ_QUERY_INPUT_INVALID"
+            : "EXECUTE_QUERY_REQUEST_INVALID",
     });
   }
 

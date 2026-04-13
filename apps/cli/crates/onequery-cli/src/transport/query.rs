@@ -1,5 +1,4 @@
 use buffa::MessageField;
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -198,7 +197,7 @@ async fn fetch_query_page(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(execute_query_problem_stage_for_code),
+                ProblemStageFallback::auth_or(ErrorStage::ExecuteQuery),
             ));
         }
     };
@@ -235,7 +234,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(validate_query_problem_stage_for_code),
+                ProblemStageFallback::auth_or(ErrorStage::ReadQueryInput),
             ));
         }
     };
@@ -246,28 +245,6 @@ pub(crate) async fn validate_read_only_query_with_controls(
         payload: query_validation_from_generated(payload, request_id.clone())?,
         request_id,
     })
-}
-
-fn execute_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ExecuteQuery
-    }
-}
-
-fn validate_query_problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    if matches!(
-        code,
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied
-    ) {
-        ErrorStage::Auth
-    } else {
-        ErrorStage::ReadQueryInput
-    }
 }
 
 fn query_request_from_payload(
@@ -460,8 +437,6 @@ mod tests {
     use super::QueryResult;
     use super::QueryResultWindow;
     use super::QueryValidationResult;
-    use super::execute_query_problem_stage_for_code;
-    use super::validate_query_problem_stage_for_code;
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -621,34 +596,6 @@ mod tests {
                 .is_retryable(),
             ],
             [true, false]
-        );
-    }
-
-    #[test]
-    fn execute_query_problem_stage_maps_auth_failures_to_auth_stage() {
-        assert_eq!(
-            [
-                execute_query_problem_stage_for_code(ErrorCode::Unauthenticated),
-                execute_query_problem_stage_for_code(ErrorCode::PermissionDenied),
-                execute_query_problem_stage_for_code(ErrorCode::InvalidArgument),
-            ],
-            [ErrorStage::Auth, ErrorStage::Auth, ErrorStage::ExecuteQuery,]
-        );
-    }
-
-    #[test]
-    fn validate_query_problem_stage_maps_auth_failures_to_auth_stage() {
-        assert_eq!(
-            [
-                validate_query_problem_stage_for_code(ErrorCode::Unauthenticated),
-                validate_query_problem_stage_for_code(ErrorCode::PermissionDenied),
-                validate_query_problem_stage_for_code(ErrorCode::InvalidArgument),
-            ],
-            [
-                ErrorStage::Auth,
-                ErrorStage::Auth,
-                ErrorStage::ReadQueryInput
-            ]
         );
     }
 

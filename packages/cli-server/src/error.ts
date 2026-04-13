@@ -8,8 +8,10 @@ import { HTTPException } from "hono/http-exception";
 import {
   CLI_PROBLEM_CATALOG,
   CLI_PROBLEM_TYPE_PREFIX,
+  cliProblemCodeToString,
+  cliProblemStageToString,
 } from "./domain/problems";
-import type { CliApiErrorStage, CliProblemKey } from "./domain/problems";
+import type { CliProblemKey } from "./domain/problems";
 
 export const CLI_REQUEST_ID_HEADER = "x-request-id";
 const CLI_JSON_RESPONSE_CONTENT_TYPE = "application/json; charset=utf-8";
@@ -24,23 +26,16 @@ const CLI_PROBLEM_REGISTRY = createProblemTypeRegistry(CLI_PROBLEM_CATALOG);
 
 function buildCliProblemExtensions(input: {
   key: CliProblemKey;
-  stage?: CliApiErrorStage;
   hint?: string;
   errors?: CliProblemValidationIssue[];
   retryAfterMs?: number;
 }) {
   const metadata = CLI_PROBLEM_CATALOG[input.key];
-  const stage =
-    input.stage ?? ("stage" in metadata ? metadata.stage : undefined);
-  if (!stage) {
-    throw new Error(`CLI problem ${input.key} is missing a required stage`);
-  }
-
-  const hint = input.hint ?? ("hint" in metadata ? metadata.hint : undefined);
+  const hint = input.hint ?? metadata.hint;
 
   return {
-    code: metadata.code,
-    stage,
+    code: cliProblemCodeToString(metadata.code),
+    stage: cliProblemStageToString(metadata.stage),
     ...(hint ? { hint } : {}),
     retryable: metadata.retryable,
     ...(typeof input.retryAfterMs === "number"
@@ -56,7 +51,6 @@ export function createCliProblem(input: {
   key: CliProblemKey;
   detail?: string;
   instance?: string;
-  stage?: CliApiErrorStage;
   hint?: string;
   errors?: CliProblemValidationIssue[];
   retryAfterMs?: number;
@@ -72,7 +66,6 @@ export function throwCliProblem(input: {
   key: CliProblemKey;
   detail?: string;
   instance?: string;
-  stage?: CliApiErrorStage;
   hint?: string;
   errors?: CliProblemValidationIssue[];
   retryAfterMs?: number;

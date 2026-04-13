@@ -1,6 +1,5 @@
 use buffa::EnumValue;
 use buffa::MessageField;
-use connectrpc::ErrorCode;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -198,7 +197,10 @@ pub(crate) async fn load_source_connect_guide(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(problem_stage_for_code),
+                ProblemStageFallback::auth_or_not_found(
+                    ErrorStage::ResolveSource,
+                    ErrorStage::ResolveOrg,
+                ),
             ));
         }
     };
@@ -254,7 +256,10 @@ pub(crate) async fn connect_source(
         Err(error) => {
             return Err(failure_from_connect(
                 error,
-                ProblemStageFallback::from_connect_code(problem_stage_for_code),
+                ProblemStageFallback::auth_or_not_found(
+                    ErrorStage::ResolveSource,
+                    ErrorStage::ResolveOrg,
+                ),
             ));
         }
     };
@@ -801,14 +806,6 @@ fn service_account_from_input(
 
 fn require_field<T>(value: Option<T>, message: impl Into<String>) -> Result<T, ApiFailure> {
     value.ok_or_else(|| source_connect_input_failure(message))
-}
-
-fn problem_stage_for_code(code: ErrorCode) -> ErrorStage {
-    match code {
-        ErrorCode::Unauthenticated | ErrorCode::PermissionDenied => ErrorStage::Auth,
-        ErrorCode::NotFound => ErrorStage::ResolveOrg,
-        _ => ErrorStage::ResolveSource,
-    }
 }
 
 fn source_connect_guide_from_generated(
