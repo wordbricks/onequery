@@ -51,8 +51,8 @@ bunx @onequery/cli --help
 After a published install, run `onequery upgrade` to update in place when the
 CLI can detect the installer family.
 
-On macOS and Linux, the hosted install script downloads a managed official
-Node.js 24.x runtime under the OneQuery install directory when `node` 24+ is
+On macOS and Linux, the hosted install script downloads a pinned official
+Node.js 24 runtime under the OneQuery install directory when `node` 24+ is
 not already available. Direct `npm` and `bun` installs still require Node.js
 22+ on `PATH` or `ONEQUERY_SERVER_JS_RUNTIME` for `onequery gateway start`.
 

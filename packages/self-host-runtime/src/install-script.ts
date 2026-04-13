@@ -3,11 +3,13 @@ import {
   getRuntimeBundleDirectoryConfig,
 } from "@onequery/base/runtime-bundle";
 
-// Comment: the installer still relies on mutable latest-release assets.
-// Keep the shell flow minimal here until the release pipeline can publish
-// checksums or signatures for end-to-end artifact verification.
+// Comment: release publishes one stable install bundle per Unix platform, so
+// keep the shell bootstrap deterministic and narrowly scoped to download,
+// extract, install, and link.
 const RELEASE_BASE_URL =
   "https://github.com/wordbricks/onequery/releases/latest/download";
+const MANAGED_NODE_VERSION = "24.11.0";
+const MANAGED_NODE_DIST_BASE_URL = `https://nodejs.org/dist/v${MANAGED_NODE_VERSION}`;
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
 const PACKAGED_CLI_DIR = getRuntimeBundleDirectoryConfig("cli").relativePath;
@@ -66,7 +68,8 @@ export function createInstallScript(): string {
 set -eu
 
 RELEASE_BASE_URL="\${ONEQUERY_RELEASE_BASE_URL:-${RELEASE_BASE_URL}}"
-NODE_DIST_BASE_URL="\${ONEQUERY_NODE_DIST_BASE_URL:-https://nodejs.org/dist/latest-v24.x}"
+MANAGED_NODE_VERSION="${MANAGED_NODE_VERSION}"
+NODE_DIST_BASE_URL="\${ONEQUERY_NODE_DIST_BASE_URL:-${MANAGED_NODE_DIST_BASE_URL}}"
 INSTALL_ROOT="\${ONEQUERY_INSTALL_ROOT:-$HOME/.local/share/onequery}"
 BIN_DIR="\${ONEQUERY_BIN_DIR:-$HOME/.local/bin}"
 
@@ -90,33 +93,32 @@ need_cmd mkdir
 need_cmd rm
 need_cmd mv
 need_cmd tr
-need_cmd head
 need_cmd cat
 
-resolve_platform_tag() {
+resolve_platform_info() {
   os="$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')"
   arch="$(uname -m 2>/dev/null)"
 
-  case "$os" in
-    darwin)
-      case "$arch" in
-        arm64|aarch64) printf '%s\\n' 'darwin-arm64' ;;
-        x86_64|amd64) printf '%s\\n' 'darwin-x64' ;;
-        *)
-          printf 'onequery installer: unsupported architecture on macOS: %s\\n' "$arch" >&2
-          exit 1
-          ;;
-      esac
+  case "$os:$arch" in
+    darwin:arm64|darwin:aarch64)
+      printf '%s\\n' 'darwin-arm64 aarch64-apple-darwin darwin-arm64.tar.gz'
       ;;
-    linux)
-      case "$arch" in
-        arm64|aarch64) printf '%s\\n' 'linux-arm64' ;;
-        x86_64|amd64) printf '%s\\n' 'linux-x64' ;;
-        *)
-          printf 'onequery installer: unsupported architecture on Linux: %s\\n' "$arch" >&2
-          exit 1
-          ;;
-      esac
+    darwin:x86_64|darwin:amd64)
+      printf '%s\\n' 'darwin-x64 x86_64-apple-darwin darwin-x64.tar.gz'
+      ;;
+    linux:arm64|linux:aarch64)
+      printf '%s\\n' 'linux-arm64 aarch64-unknown-linux-musl linux-arm64.tar.gz'
+      ;;
+    linux:x86_64|linux:amd64)
+      printf '%s\\n' 'linux-x64 x86_64-unknown-linux-musl linux-x64.tar.gz'
+      ;;
+    darwin:*)
+      printf 'onequery installer: unsupported architecture on macOS: %s\\n' "$arch" >&2
+      exit 1
+      ;;
+    linux:*)
+      printf 'onequery installer: unsupported architecture on Linux: %s\\n' "$arch" >&2
+      exit 1
       ;;
     *)
       printf 'onequery installer: unsupported operating system: %s\\n' "$os" >&2
@@ -125,28 +127,15 @@ resolve_platform_tag() {
   esac
 }
 
-resolve_target_triple() {
-  case "$1" in
-    darwin-arm64) printf '%s\\n' 'aarch64-apple-darwin' ;;
-    darwin-x64) printf '%s\\n' 'x86_64-apple-darwin' ;;
-    linux-arm64) printf '%s\\n' 'aarch64-unknown-linux-musl' ;;
-    linux-x64) printf '%s\\n' 'x86_64-unknown-linux-musl' ;;
-    *)
-      printf 'onequery installer: unsupported platform tag: %s\\n' "$1" >&2
-      exit 1
-      ;;
-  esac
-}
-
 read_package_version() {
-  package_json="$1/package/package.json"
+  package_json="$1/package.json"
   if [ ! -f "$package_json" ]; then
     printf 'onequery installer: extracted package is missing package.json\\n' >&2
     exit 1
   fi
 
   version="$(
-    sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' "$package_json" | head -n 1
+    sed -n '/"version"[[:space:]]*:/ { s/.*"version"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p; q; }' "$package_json"
   )"
 
   if [ -z "$version" ]; then
@@ -161,7 +150,7 @@ read_runtime_major_version() {
   runtime_command="$1"
   version_output="$("$runtime_command" --version 2>/dev/null || true)"
 
-  printf '%s\\n' "$version_output" | sed -n 's/^v\\([0-9][0-9]*\\).*/\\1/p' | head -n 1
+  printf '%s\\n' "$version_output" | sed -n '/^v[0-9][0-9]*/ { s/^v\\([0-9][0-9]*\\).*/\\1/p; q; }'
 }
 
 should_install_managed_node() {
@@ -177,46 +166,16 @@ should_install_managed_node() {
   [ "$node_major_version" -lt 24 ]
 }
 
-resolve_managed_node_archive_suffix() {
-  case "$1" in
-    darwin-arm64) printf '%s\\n' 'darwin-arm64.tar.gz' ;;
-    darwin-x64) printf '%s\\n' 'darwin-x64.tar.gz' ;;
-    linux-arm64) printf '%s\\n' 'linux-arm64.tar.gz' ;;
-    linux-x64) printf '%s\\n' 'linux-x64.tar.gz' ;;
-    *)
-      printf 'onequery installer: unsupported platform tag for managed Node.js: %s\\n' "$1" >&2
-      exit 1
-      ;;
-  esac
-}
-
-resolve_managed_node_archive_name() {
-  managed_node_platform_tag="$1"
-  managed_node_archive_suffix="$(resolve_managed_node_archive_suffix "$managed_node_platform_tag")"
-  managed_node_archive_name="$(
-    curl -fsSL "$NODE_DIST_BASE_URL/SHASUMS256.txt" \
-      | sed -n "s/^[[:xdigit:]]\\{64\\}[[:space:]][[:space:]]\\(node-v[^[:space:]]*-$managed_node_archive_suffix\\)$/\\1/p" \
-      | head -n 1
-  )"
-
-  if [ -z "$managed_node_archive_name" ]; then
-    printf 'onequery installer: failed to resolve a managed Node.js 24.x archive for %s from %s\\n' "$managed_node_platform_tag" "$NODE_DIST_BASE_URL" >&2
-    exit 1
-  fi
-
-  printf '%s\\n' "$managed_node_archive_name"
-}
-
 install_managed_node() {
   managed_node_install_dir="$1"
-  managed_node_platform_tag="$2"
-  managed_node_archive_name="$(resolve_managed_node_archive_name "$managed_node_platform_tag")"
+  managed_node_archive_suffix="$2"
+  managed_node_archive_name="node-v$MANAGED_NODE_VERSION-$managed_node_archive_suffix"
   managed_node_archive_path="$tmp_dir/$managed_node_archive_name"
   managed_node_extract_root="$tmp_dir/node"
   managed_node_extract_dir="\${managed_node_archive_name%.tar.gz}"
   managed_node_target_dir="$managed_node_install_dir/runtime/node"
 
-  printf 'Installing managed Node.js 24.x for onequery gateway...\\n'
+  printf 'Installing managed Node.js %s for onequery gateway...\\n' "$MANAGED_NODE_VERSION"
   rm -rf "$managed_node_extract_root" "$managed_node_target_dir"
   mkdir -p "$managed_node_extract_root" "$managed_node_install_dir/runtime"
   curl -fsSL "$NODE_DIST_BASE_URL/$managed_node_archive_name" -o "$managed_node_archive_path"
@@ -273,8 +232,11 @@ EOF
   chmod 755 "$launcher_path"
 }
 
-platform_tag="$(resolve_platform_tag)"
-target_triple="$(resolve_target_triple "$platform_tag")"
+platform_info="$(resolve_platform_info)"
+platform_tag="\${platform_info%% *}"
+platform_info="\${platform_info#* }"
+target_triple="\${platform_info%% *}"
+managed_node_archive_suffix="\${platform_info#* }"
 install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"
 tmp_dir="$(mktemp -d "\${TMPDIR:-/tmp}/onequery-install.XXXXXX")"
 
@@ -296,7 +258,7 @@ if [ ! -d "$package_dir" ]; then
   exit 1
 fi
 
-version="$(read_package_version "$tmp_dir/install")"
+version="$(read_package_version "$package_dir")"
 install_dir="$INSTALL_ROOT/versions/$version"
 staging_dir="$INSTALL_ROOT/versions/$version.tmp.$$"
 managed_node_required=0
@@ -309,7 +271,7 @@ rm -rf "$staging_dir"
 mkdir -p "$INSTALL_ROOT/versions" "$BIN_DIR"
 mv "$package_dir" "$staging_dir"
 if [ "$managed_node_required" -eq 1 ]; then
-  install_managed_node "$staging_dir" "$platform_tag"
+  install_managed_node "$staging_dir" "$managed_node_archive_suffix"
 fi
 write_launcher "$staging_dir" "$target_triple"
 

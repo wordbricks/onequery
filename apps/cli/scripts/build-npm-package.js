@@ -196,6 +196,37 @@ async function prepareStagingDir(stagingDir) {
   return resolvedStagingDir;
 }
 
+async function stagePublishedMetadataFiles({
+  includeRuntimeBundleSpec = false,
+  readmePath,
+  stagingDir,
+}) {
+  await copyFile(readmePath, path.join(stagingDir, "README.md"));
+
+  if (includeRuntimeBundleSpec) {
+    await copyFile(
+      resolveRuntimeBundleSpecSourcePath(),
+      path.join(stagingDir, RUNTIME_BUNDLE_SPEC_FILENAME)
+    );
+  }
+}
+
+async function stagePublishedRuntimeFiles({
+  includeRuntimeBundleSpec = false,
+  readmePath,
+  stagingDir,
+  targetTriple,
+}) {
+  await stagePublishedMetadataFiles({
+    includeRuntimeBundleSpec,
+    readmePath,
+    stagingDir,
+  });
+  await stagePackagedRuntime({
+    runtimeRoot: path.join(stagingDir, "vendor", targetTriple),
+  });
+}
+
 async function stageSources({
   packageJson,
   packageName,
@@ -207,30 +238,16 @@ async function stageSources({
     await cp(path.join(CLI_ROOT, "bin"), path.join(stagingDir, "bin"), {
       recursive: true,
     });
-    await copyFile(readmePath, path.join(stagingDir, "README.md"));
-    await copyFile(
-      resolveRuntimeBundleSpecSourcePath(),
-      path.join(stagingDir, RUNTIME_BUNDLE_SPEC_FILENAME)
-    );
+    await stagePublishedMetadataFiles({
+      includeRuntimeBundleSpec: true,
+      readmePath,
+      stagingDir,
+    });
 
-    // CONTEXT: apps/cli is both the Rust workspace root and the npm package
-    // source. Only published platform aliases belong in optionalDependencies;
-    // GNU Linux extras stay as GitHub-release-only tarballs.
-    delete packageJson.private;
-    delete packageJson.scripts;
-    delete packageJson.devDependencies;
-    packageJson.version = version;
-    packageJson.files = ["bin", RUNTIME_BUNDLE_SPEC_FILENAME, "README.md"];
-    // CONTEXT: optional dependency keys stay unscoped because they are npm
-    // alias names. The published package backing each alias is @onequery/cli.
-    packageJson.optionalDependencies = Object.fromEntries(
-      Object.values(PLATFORM_PACKAGES).map((platformPackage) => [
-        platformPackage.optionalDependencyName,
-        `npm:${CLI_PACKAGE_NAME}@${platformPackageVersion(version, platformPackage.npmTag)}`,
-      ])
+    await writeJson(
+      path.join(stagingDir, "package.json"),
+      createCliPackageManifest(packageJson, version)
     );
-
-    await writeJson(path.join(stagingDir, "package.json"), packageJson);
     return;
   }
 
@@ -239,11 +256,79 @@ async function stageSources({
     throw new Error(`Unknown package '${packageName}'.`);
   }
 
-  await copyFile(readmePath, path.join(stagingDir, "README.md"));
-  await stagePackagedRuntime({
-    runtimeRoot: path.join(stagingDir, "vendor", platformPackage.targetTriple),
+  await stagePublishedRuntimeFiles({
+    readmePath,
+    stagingDir,
+    targetTriple: platformPackage.targetTriple,
   });
 
+  await writeJson(
+    path.join(stagingDir, "package.json"),
+    createReleasePlatformPackageManifest(packageJson, platformPackage, version)
+  );
+}
+
+async function stageInstallBundle({
+  packageJson,
+  readmePath,
+  stagingDir,
+  targetTriple,
+  vendorSrc,
+  version,
+}) {
+  await stagePublishedRuntimeFiles({
+    includeRuntimeBundleSpec: true,
+    readmePath,
+    stagingDir,
+    targetTriple,
+  });
+  await copyPlatformVendor({
+    stagingDir,
+    targetTriple,
+    vendorSrc,
+  });
+
+  await writeJson(
+    path.join(stagingDir, "package.json"),
+    createInstallBundlePackageManifest(packageJson, version)
+  );
+}
+
+function platformPackageVersion(version, platformTag) {
+  return `${version}-${platformTag}`;
+}
+
+function createCliPackageManifest(packageJson, version) {
+  const {
+    private: _private,
+    scripts: _scripts,
+    devDependencies: _devDependencies,
+    ...publishedPackageJson
+  } = packageJson;
+
+  return {
+    ...publishedPackageJson,
+    version,
+    files: ["bin", RUNTIME_BUNDLE_SPEC_FILENAME, "README.md"],
+    // CONTEXT: apps/cli is both the Rust workspace root and the npm package
+    // source. Only published platform aliases belong in optionalDependencies;
+    // GNU Linux extras stay as GitHub-release-only tarballs.
+    // CONTEXT: optional dependency keys stay unscoped because they are npm
+    // alias names. The published package backing each alias is @onequery/cli.
+    optionalDependencies: Object.fromEntries(
+      Object.values(PLATFORM_PACKAGES).map((platformPackage) => [
+        platformPackage.optionalDependencyName,
+        `npm:${CLI_PACKAGE_NAME}@${platformPackageVersion(version, platformPackage.npmTag)}`,
+      ])
+    ),
+  };
+}
+
+function createReleasePlatformPackageManifest(
+  packageJson,
+  platformPackage,
+  version
+) {
   const stagedPlatformPackage = {
     cpu: [platformPackage.cpu],
     description: packageJson.description,
@@ -264,44 +349,24 @@ async function stageSources({
     stagedPlatformPackage.packageManager = packageJson.packageManager;
   }
 
-  await writeJson(path.join(stagingDir, "package.json"), stagedPlatformPackage);
+  return stagedPlatformPackage;
 }
 
-async function stageInstallBundle({
-  packageJson,
-  readmePath,
-  stagingDir,
-  targetTriple,
-  vendorSrc,
-  version,
-}) {
-  await copyFile(readmePath, path.join(stagingDir, "README.md"));
-  await copyFile(
-    resolveRuntimeBundleSpecSourcePath(),
-    path.join(stagingDir, RUNTIME_BUNDLE_SPEC_FILENAME)
-  );
-  await stagePackagedRuntime({
-    runtimeRoot: path.join(stagingDir, "vendor", targetTriple),
-  });
-  await copyPlatformVendor({
-    stagingDir,
-    targetTriple,
-    vendorSrc,
-  });
+function createInstallBundlePackageManifest(packageJson, version) {
+  const {
+    private: _private,
+    scripts: _scripts,
+    devDependencies: _devDependencies,
+    bin: _bin,
+    optionalDependencies: _optionalDependencies,
+    ...publishedPackageJson
+  } = packageJson;
 
-  delete packageJson.private;
-  delete packageJson.scripts;
-  delete packageJson.devDependencies;
-  delete packageJson.bin;
-  delete packageJson.optionalDependencies;
-  packageJson.version = version;
-  packageJson.files = ["README.md", RUNTIME_BUNDLE_SPEC_FILENAME, "vendor"];
-
-  await writeJson(path.join(stagingDir, "package.json"), packageJson);
-}
-
-function platformPackageVersion(version, platformTag) {
-  return `${version}-${platformTag}`;
+  return {
+    ...publishedPackageJson,
+    version,
+    files: ["README.md", RUNTIME_BUNDLE_SPEC_FILENAME, "vendor"],
+  };
 }
 
 async function copyPlatformVendor({ vendorSrc, stagingDir, targetTriple }) {
