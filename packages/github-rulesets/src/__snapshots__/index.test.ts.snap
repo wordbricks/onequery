@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`github ruleset planner > describes ruleset drift and remote-only rulesets 1`] = `
+{
+  "drift": [
+    "Ruleset drift detected: Protect main",
+    "Unmanaged remote ruleset present: Protect CLI release tags",
+  ],
+  "items": [
+    {
+      "details": [
+        "bypass_actors: ["Team:onequery-maintainers:always"] -> ["Team:onequery-maintainers:pull_request"]",
+      ],
+      "summary": "Update ruleset Protect main",
+    },
+    {
+      "summary": "Remote-only ruleset present: Protect CLI release tags (manual cleanup)",
+    },
+  ],
+  "missingTeamSlugs": [],
+  "repoNameWithOwner": "wordbricks/onequery",
+  "teamMembershipUpdates": [],
+}
+`;
+
+exports[`github ruleset planner > plans missing teams, memberships, and rulesets 1`] = `
+{
+  "drift": [
+    "Missing team: release-engineering",
+    "Team onequery-maintainers is missing members: bob, carol",
+    "Missing ruleset: Protect main",
+  ],
+  "items": [
+    {
+      "summary": "Create team release-engineering",
+    },
+    {
+      "summary": "Add members to team onequery-maintainers: bob, carol",
+    },
+    {
+      "summary": "Create ruleset Protect main",
+    },
+  ],
+  "missingTeamSlugs": [
+    "release-engineering",
+  ],
+  "repoNameWithOwner": "wordbricks/onequery",
+  "teamMembershipUpdates": [
+    {
+      "missingMembers": [
+        "bob",
+        "carol",
+      ],
+      "team": {
+        "members": [
+          "alice",
+        ],
+        "name": "OneQuery Maintainers",
+        "privacy": "closed",
+        "slug": "onequery-maintainers",
+      },
+    },
+  ],
+}
+`;

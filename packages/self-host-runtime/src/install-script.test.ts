@@ -61,28 +61,7 @@ describe("install script surface", () => {
   });
 
   it("builds an installer that links the packaged runtime and provisions managed Node.js 24 when needed", () => {
-    const script = createInstallScript();
-
-    expect(script).toContain(
-      'root_tarball_url="$RELEASE_BASE_URL/onequery-npm.tgz"'
-    );
-    expect(script).toContain(
-      'platform_tarball_url="$RELEASE_BASE_URL/onequery-npm-$platform_tag.tgz"'
-    );
-    expect(script).toContain(
-      'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
-    );
-    expect(script).toContain(
-      "Installing managed Node.js 24.x for onequery gateway..."
-    );
-    expect(script).toContain(
-      'if [ -z "$' +
-        '{ONEQUERY_SERVER_JS_RUNTIME:-}" ] && [ -x "$managed_node_path" ]; then'
-    );
-    expect(script).toContain(
-      'export ONEQUERY_SERVER_JS_RUNTIME="$managed_node_path"'
-    );
-    expect(script).not.toContain("export ONEQUERY_SERVER_EXECUTABLE=");
+    expect(createInstallScript()).toMatchSnapshot();
   });
 
   it("escapes launcher runtime references while baking the resolved target triple", () => {

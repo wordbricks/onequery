@@ -55,6 +55,27 @@ function writeTrackedWorkspaceDevConfig(rootDir: string): void {
   );
 }
 
+function normalizeSnapshotValue(value: unknown, rootDir: string): unknown {
+  if (typeof value === "string") {
+    return value.replaceAll(rootDir, "<rootDir>");
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeSnapshotValue(entry, rootDir));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        normalizeSnapshotValue(entry, rootDir),
+      ])
+    );
+  }
+
+  return value;
+}
+
 describe("@onequery/config workspace-dev", () => {
   it("resolves workspace-dev values from the tracked dev config file", () => {
     const rootDir = createTempRootDir();
@@ -63,51 +84,9 @@ describe("@onequery/config workspace-dev", () => {
       writeTrackedWorkspaceDevConfig(rootDir);
       writeDefaultWorkspaceDevSecrets(rootDir);
 
-      expect(resolveWorkspaceDev({ rootDir })).toEqual({
-        api: {
-          host: "127.0.0.1",
-          listen: {
-            host: "127.0.0.1",
-            port: 4555,
-          },
-          origin: "http://127.0.0.1:4555",
-          port: 4555,
-        },
-        auth: {
-          secret: "better-auth-secret",
-        },
-        browser: {
-          host: "localhost",
-          origin: "http://localhost:4545",
-          port: 4545,
-        },
-        connectors: {
-          enrollmentToken: "connector-token",
-        },
-        crypto: {
-          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-        },
-        flags: {
-          disableRateLimit: true,
-        },
-        paths: {
-          configPath: join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-          rootDir,
-          secretsPath: join(rootDir, WORKSPACE_DEV_SECRETS_FILENAME),
-        },
-        postgres: {
-          containerPort: 5432,
-          database: "onequery",
-          host: "localhost",
-          hostPort: 5454,
-          password: "onequery",
-          portBinding: "5454:5432",
-          url: "postgres://onequery:onequery@localhost:5454/onequery",
-          user: "onequery",
-        },
-        profile: "workspace-dev",
-        publicOrigin: "http://localhost:4545",
-      });
+      expect(
+        normalizeSnapshotValue(resolveWorkspaceDev({ rootDir }), rootDir)
+      ).toMatchSnapshot();
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }
@@ -149,74 +128,17 @@ describe("@onequery/config workspace-dev", () => {
 
       const workspaceDev = resolveWorkspaceDev({ rootDir });
 
-      expect(projectViteDevServerConfig(workspaceDev)).toEqual({
-        apiProxyTarget: "http://127.0.0.1:4601",
-        port: 4600,
-      });
-      expect(projectDrizzleConfig(workspaceDev)).toEqual({
-        databaseUrl: "postgres://workspace:secret@localhost:6500/workspace",
-      });
-      expect(projectDockerComposeConfig(workspaceDev)).toEqual({
-        environment: {
-          POSTGRES_DB: "workspace",
-          POSTGRES_PASSWORD: "secret",
-          POSTGRES_USER: "workspace",
-        },
-        postgres: {
-          containerPort: 5433,
-          hostPort: 6500,
-          portBinding: "6500:5433",
-        },
-      });
-      expect(
-        projectWorkspaceDevServerLaunchConfig(workspaceDev, {
+      expect({
+        dockerCompose: projectDockerComposeConfig(workspaceDev),
+        drizzle: projectDrizzleConfig(workspaceDev),
+        serverLaunch: projectWorkspaceDevServerLaunchConfig(workspaceDev, {
           assetDir: "/tmp/workspace-web",
           migrationsDir: "/tmp/workspace-migrations",
-        })
-      ).toEqual({
-        assets: {
-          distDir: "/tmp/workspace-web",
-        },
-        auth: {
-          secret: "workspace-auth-secret",
-        },
-        connectors: {
-          enrollmentToken: "workspace-connector-token",
-        },
-        crypto: {
-          masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
-        },
-        listen: {
-          host: "127.0.0.1",
-          port: 4601,
-        },
-        migrations: {
-          dir: "/tmp/workspace-migrations",
-        },
-        mode: "workspace-dev",
-        publicOrigin: "http://127.0.0.1:4600",
-        rateLimit: {
-          api: {
-            storage: "memory",
-          },
-          enabled: true,
-        },
-        storage: {
-          kind: "postgres",
-          url: "postgres://workspace:secret@localhost:6500/workspace",
-        },
-      });
-      expect(deriveTestProfile(workspaceDev)).toEqual({
-        database: {
-          database: "test",
-          host: "localhost",
-          password: "test",
-          port: 6500,
-          url: "postgres://test:test@localhost:6500/test",
-          user: "test",
-        },
-        profile: "test",
-      });
+        }),
+        testProfile: deriveTestProfile(workspaceDev),
+        vite: projectViteDevServerConfig(workspaceDev),
+        workspaceDev: normalizeSnapshotValue(workspaceDev, rootDir),
+      }).toMatchSnapshot();
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }

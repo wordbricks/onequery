@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`spa asset binding > serves built assets and falls back to index.html for client routes 1`] = `
+{
+  "asset": {
+    "body": "console.log('app');",
+    "headers": {
+      "content-type": "text/javascript; charset=utf-8",
+    },
+    "status": 200,
+  },
+  "route": {
+    "body": "<!doctype html><div>SPA Shell</div>",
+    "headers": {
+      "content-type": "text/html; charset=utf-8",
+    },
+    "status": 200,
+  },
+}
+`;

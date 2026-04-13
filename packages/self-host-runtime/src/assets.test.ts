@@ -27,6 +27,18 @@ function createAssetDir() {
   return assetDir;
 }
 
+function summarizeResponse(response: Response, body: string) {
+  return {
+    body,
+    headers: Object.fromEntries(
+      [...response.headers.entries()].sort(([left], [right]) =>
+        left.localeCompare(right)
+      )
+    ),
+    status: response.status,
+  };
+}
+
 describe("spa asset binding", () => {
   afterEach(() => {
     while (tempDirs.length > 0) {
@@ -47,15 +59,13 @@ describe("spa asset binding", () => {
     const routeResponse = await binding.fetch(
       new Request("http://local/dashboard")
     );
+    const assetBody = await assetResponse.text();
+    const routeBody = await routeResponse.text();
 
-    expect(assetResponse.status).toBe(200);
-    await expect(assetResponse.text()).resolves.toContain(
-      "console.log('app');"
-    );
-
-    expect(routeResponse.status).toBe(200);
-    expect(routeResponse.headers.get("content-type")).toContain("text/html");
-    await expect(routeResponse.text()).resolves.toContain("SPA Shell");
+    expect({
+      asset: summarizeResponse(assetResponse, assetBody),
+      route: summarizeResponse(routeResponse, routeBody),
+    }).toMatchSnapshot();
   });
 
   it("returns 404 for missing file-like paths and traversal attempts", async () => {
