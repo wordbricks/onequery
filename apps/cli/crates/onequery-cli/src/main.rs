@@ -82,15 +82,16 @@ async fn main() {
             std::process::exit(error.exit_code());
         }
     };
-    startup::dispatch(startup::plan(commands::STARTUP_COMMAND));
+    let startup_effects = startup::start(startup::plan(commands::STARTUP_COMMAND));
 
-    match workflows::app::run(invocation, &mut runtime).await {
+    let exit_code = match workflows::app::run(invocation, &mut runtime).await {
         Ok(command_output) => {
             match output::render_output_payload(command_output, output_mode, stdout_is_tty) {
                 Ok(rendered) => {
                     if let Err(error) = emit_success(rendered) {
                         exit_for_output_error(error);
                     }
+                    0
                 }
                 Err(error) => {
                     if let Err(write_error) =
@@ -98,10 +99,9 @@ async fn main() {
                     {
                         exit_for_output_error(write_error);
                     }
-                    std::process::exit(error.exit_code());
+                    error.exit_code()
                 }
             }
-            std::process::exit(0);
         }
         Err(error) => {
             if let Err(write_error) =
@@ -109,9 +109,11 @@ async fn main() {
             {
                 exit_for_output_error(write_error);
             }
-            std::process::exit(error.exit_code());
+            error.exit_code()
         }
-    }
+    };
+    startup_effects.finish().await;
+    std::process::exit(exit_code);
 }
 
 fn emit_success(rendered: output::RenderedOutput) -> std::io::Result<()> {
