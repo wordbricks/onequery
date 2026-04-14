@@ -9,7 +9,7 @@ Usage: onequery [OPTIONS] <COMMAND>
 Commands:
   auth     Manage authentication and stored sessions
   backup   Create a self-host backup archive from the current runtime state
-  config   Persist local CLI targeting defaults
+  config   Inspect and persist local CLI config values
   org      Inspect org access and select the active org
   source   Inspect sources available to the active org
   query    Execute or validate source queries

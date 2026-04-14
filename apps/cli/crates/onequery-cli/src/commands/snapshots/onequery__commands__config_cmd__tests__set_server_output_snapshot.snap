@@ -1,7 +1,0 @@
----
-source: crates/onequery-cli/src/commands/config_cmd.rs
-expression: "output.lines.join(\"\\n\")"
----
-Server URL updated.
-Server URL: http://127.0.0.1:5656
-Config path: /tmp/onequery-config-command/config.toml

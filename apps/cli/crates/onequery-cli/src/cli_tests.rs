@@ -7,7 +7,6 @@ use onequery_cli_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
-use crate::config::default_base_url;
 use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
@@ -17,8 +16,8 @@ use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
 use super::Command;
 use super::ConfigCommand;
-use super::ConfigGetKey;
-use super::ConfigSetCommand;
+use super::ConfigKey;
+use super::ConfigSetKey;
 use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
@@ -100,6 +99,16 @@ fn config_get_help_output_lists_supported_keys() {
 }
 
 #[test]
+fn config_help_output_lists_get_and_set_surfaces() {
+    assert_snapshot!(rendered_display(&["onequery", "config", "--help"]));
+}
+
+#[test]
+fn config_set_help_output_lists_writable_keys() {
+    assert_snapshot!(rendered_display(&["onequery", "config", "set", "--help"]));
+}
+
+#[test]
 fn source_connect_help_output_lists_supported_providers() {
     assert_snapshot!(rendered_display(&[
         "onequery", "source", "connect", "--help"
@@ -129,48 +138,61 @@ fn parse_invocation_renders_bare_config_as_help() {
 }
 
 #[test]
-fn parse_invocation_accepts_config_set_server() {
-    let default_base_url = default_base_url();
-    let invocation = parse_invocation(&[
-        "onequery",
-        "config",
-        "set",
-        "server",
-        default_base_url.as_str(),
-    ]);
-
-    match invocation.command {
-        Command::Config(ConfigCommand::Set {
-            action: ConfigSetCommand::Server { url },
-        }) => {
-            assert_eq!(url, default_base_url);
-        }
-        other => panic!("expected config set server command, got {other:?}"),
-    }
-}
-
-#[test]
-fn parse_invocation_accepts_config_get_canonical_and_alias_keys() {
-    for (args, expected_key) in [
+fn parse_invocation_accepts_config_set_keys() {
+    for (args, expected_key, expected_value, expected_command_path) in [
         (
-            &["onequery", "config", "get", "api.server_url"][..],
-            ConfigGetKey::ApiServerUrl,
+            &[
+                "onequery",
+                "config",
+                "set",
+                "api.server_url",
+                "http://127.0.0.1:5656",
+            ][..],
+            ConfigSetKey::ApiServerUrl,
+            "http://127.0.0.1:5656",
+            "config set api.server_url",
         ),
         (
-            &["onequery", "config", "get", "server"][..],
-            ConfigGetKey::ApiServerUrl,
-        ),
-        (
-            &["onequery", "config", "get", "org.active"][..],
-            ConfigGetKey::OrgActive,
-        ),
-        (
-            &["onequery", "config", "get", "timeout"][..],
-            ConfigGetKey::ApiRequestTimeoutSec,
+            &["onequery", "config", "set", "api.request_timeout_sec", "45"][..],
+            ConfigSetKey::ApiRequestTimeoutSec,
+            "45",
+            "config set api.request_timeout_sec",
         ),
     ] {
         let invocation = parse_invocation(args);
 
+        assert_eq!(invocation.command.command_path(), expected_command_path);
+        match invocation.command {
+            Command::Config(ConfigCommand::Set { key, value }) => {
+                assert_eq!((key, value), (expected_key, expected_value.to_owned()));
+            }
+            other => panic!("expected config set command, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn parse_invocation_accepts_config_get_keys() {
+    for (args, expected_key) in [
+        (
+            &["onequery", "config", "get", "api.server_url"][..],
+            ConfigKey::ApiServerUrl,
+        ),
+        (
+            &["onequery", "config", "get", "org.active"][..],
+            ConfigKey::OrgActive,
+        ),
+        (
+            &["onequery", "config", "get", "api.request_timeout_sec"][..],
+            ConfigKey::ApiRequestTimeoutSec,
+        ),
+    ] {
+        let invocation = parse_invocation(args);
+
+        assert_eq!(
+            invocation.command.command_path(),
+            format!("config get {}", expected_key.canonical_key())
+        );
         match invocation.command {
             Command::Config(ConfigCommand::Get { key }) => {
                 assert_eq!(key, expected_key);

@@ -2,7 +2,6 @@ use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use clap::ValueHint;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use onequery_config::parse_cli_overrides;
@@ -158,7 +157,7 @@ pub(crate) enum Command {
     Auth(AuthSubcommand),
     /// Create a self-host backup archive from the current runtime state.
     Backup(BackupArgs),
-    /// Persist local CLI targeting defaults.
+    /// Inspect and persist local CLI config values.
     #[command(subcommand)]
     Config(ConfigCommand),
     /// Inspect org access and select the active org.
@@ -199,10 +198,8 @@ impl Command {
                 action: super::args::AuthSessionSubcommand::Refresh,
             }) => "auth session refresh",
             Self::Backup(_) => "backup",
-            Self::Config(ConfigCommand::Get { .. }) => "config get",
-            Self::Config(ConfigCommand::Set {
-                action: ConfigSetCommand::Server { .. },
-            }) => "config set server",
+            Self::Config(ConfigCommand::Get { key }) => key.get_command_path(),
+            Self::Config(ConfigCommand::Set { key, .. }) => key.command_path(),
             Self::Org(OrgSubcommand::List { .. }) => "org list",
             Self::Org(OrgSubcommand::Get { .. }) => "org get",
             Self::Org(OrgSubcommand::Current) => "org current",
@@ -228,34 +225,33 @@ pub(crate) enum ConfigCommand {
     Get {
         /// Select which config key to inspect.
         #[arg(value_name = "KEY", value_enum)]
-        key: ConfigGetKey,
+        key: ConfigKey,
     },
-    /// Persist local CLI config values.
+    /// Persist one supported CLI config value.
     Set {
-        #[command(subcommand)]
-        action: ConfigSetCommand,
+        /// Select which config key to persist.
+        #[arg(value_name = "KEY", value_enum)]
+        key: ConfigSetKey,
+        /// Persist this value for the selected config key.
+        #[arg(value_name = "VALUE", value_parser = parse_trimmed_non_empty)]
+        value: String,
     },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, Eq, PartialEq)]
-pub(crate) enum ConfigGetKey {
+pub(crate) enum ConfigKey {
     /// The active org slug used by default when `--org` is not supplied.
-    #[value(name = "org.active", alias = "org", alias = "active-org")]
+    #[value(name = "org.active")]
     OrgActive,
     /// The default app origin used by API-facing commands.
-    #[value(name = "api.server_url", alias = "server", alias = "server-url")]
+    #[value(name = "api.server_url")]
     ApiServerUrl,
     /// The default request timeout in seconds for outbound API calls.
-    #[value(
-        name = "api.request_timeout_sec",
-        alias = "timeout",
-        alias = "request-timeout",
-        alias = "request-timeout-sec"
-    )]
+    #[value(name = "api.request_timeout_sec")]
     ApiRequestTimeoutSec,
 }
 
-impl ConfigGetKey {
+impl ConfigKey {
     pub(crate) const fn canonical_key(self) -> &'static str {
         match self {
             Self::OrgActive => "org.active",
@@ -263,16 +259,46 @@ impl ConfigGetKey {
             Self::ApiRequestTimeoutSec => "api.request_timeout_sec",
         }
     }
+
+    const fn get_command_path(self) -> &'static str {
+        match self {
+            Self::OrgActive => "config get org.active",
+            Self::ApiServerUrl => "config get api.server_url",
+            Self::ApiRequestTimeoutSec => "config get api.request_timeout_sec",
+        }
+    }
 }
 
-#[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
-pub(crate) enum ConfigSetCommand {
-    /// Persist the default app origin used by CLI API commands.
-    Server {
-        /// Set this origin as the default CLI target server, for example http://127.0.0.1:5656.
-        #[arg(value_hint = ValueHint::Url, value_name = "URL")]
-        url: String,
-    },
+#[derive(Debug, Clone, Copy, ValueEnum, Eq, PartialEq)]
+pub(crate) enum ConfigSetKey {
+    // Comment: org.active stays writable through `org use` so the CLI validates
+    // the selected org against the caller's visible org set before persisting it.
+    /// The default app origin used by API-facing commands.
+    #[value(name = "api.server_url")]
+    ApiServerUrl,
+    /// The default request timeout in seconds for outbound API calls.
+    #[value(name = "api.request_timeout_sec")]
+    ApiRequestTimeoutSec,
+}
+
+impl ConfigSetKey {
+    pub(crate) const fn config_key(self) -> ConfigKey {
+        match self {
+            Self::ApiServerUrl => ConfigKey::ApiServerUrl,
+            Self::ApiRequestTimeoutSec => ConfigKey::ApiRequestTimeoutSec,
+        }
+    }
+
+    pub(crate) const fn canonical_key(self) -> &'static str {
+        self.config_key().canonical_key()
+    }
+
+    const fn command_path(self) -> &'static str {
+        match self {
+            Self::ApiServerUrl => "config set api.server_url",
+            Self::ApiRequestTimeoutSec => "config set api.request_timeout_sec",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]

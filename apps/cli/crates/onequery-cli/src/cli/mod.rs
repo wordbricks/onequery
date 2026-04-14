@@ -29,8 +29,8 @@ pub(crate) use args::SourceConnectArgs;
 pub(crate) use args::SourceSubcommand;
 pub(crate) use model::Command;
 pub(crate) use model::ConfigCommand;
-pub(crate) use model::ConfigGetKey;
-pub(crate) use model::ConfigSetCommand;
+pub(crate) use model::ConfigKey;
+pub(crate) use model::ConfigSetKey;
 pub(crate) use model::GatewayCommand;
 #[cfg(test)]
 pub(crate) use model::GlobalOptions;

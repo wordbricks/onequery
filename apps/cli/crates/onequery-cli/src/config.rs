@@ -3,6 +3,7 @@ mod paths;
 #[allow(dead_code)]
 pub(crate) mod self_host;
 
+use std::fmt::Display;
 use std::fs;
 use std::num::NonZeroU16;
 use std::path::Path;
@@ -18,7 +19,7 @@ use url::Position;
 use url::Url;
 
 use self::layers::ConfigOrigins;
-use self::layers::ConfigValueOrigin;
+pub(crate) use self::layers::ConfigValueOrigin;
 use self::layers::RawConfigLayerData;
 use self::layers::default_config_layer;
 use self::layers::layer_stack_for_persisted_state;
@@ -79,8 +80,16 @@ pub(crate) fn default_base_url() -> String {
     default_public_origin()
 }
 
-pub(crate) fn config_set_server_command_example() -> String {
-    format!("onequery config set server {}", default_base_url())
+fn config_set_command_example(value_key: &str, value: impl Display) -> String {
+    format!("onequery config set {value_key} {value}")
+}
+
+pub(crate) fn config_set_server_url_command_example() -> String {
+    config_set_command_example("api.server_url", default_base_url())
+}
+
+pub(crate) fn config_set_request_timeout_sec_command_example() -> String {
+    config_set_command_example("api.request_timeout_sec", DEFAULT_REQUEST_TIMEOUT_SEC)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -410,15 +419,13 @@ impl ConfigStore {
         org: Option<String>,
         command_line: &str,
     ) -> Result<(), CliError> {
-        let next_data = AppConfig {
-            active_org: org,
-            ..self.data.clone()
-        };
-        self.persist(&next_data, command_line)?;
-        self.data = next_data;
-        self.layer_stack = layer_stack_for_persisted_state(&self.path, &self.data, command_line)?;
-        self.origins = origins_for_layer_stack(&self.layer_stack);
-        Ok(())
+        self.replace_persisted_data(
+            AppConfig {
+                active_org: org,
+                ..self.data.clone()
+            },
+            command_line,
+        )
     }
 
     pub(crate) fn clear_active_org(&mut self, command_line: &str) -> Result<(), CliError> {
@@ -434,10 +441,34 @@ impl ConfigStore {
         server_url: Option<String>,
         command_line: &str,
     ) -> Result<(), CliError> {
-        let next_data = AppConfig {
-            server_url,
-            ..self.data.clone()
-        };
+        self.replace_persisted_data(
+            AppConfig {
+                server_url,
+                ..self.data.clone()
+            },
+            command_line,
+        )
+    }
+
+    pub(crate) fn set_request_timeout_sec(
+        &mut self,
+        request_timeout_sec: u64,
+        command_line: &str,
+    ) -> Result<(), CliError> {
+        self.replace_persisted_data(
+            AppConfig {
+                request_timeout_sec,
+                ..self.data.clone()
+            },
+            command_line,
+        )
+    }
+
+    fn replace_persisted_data(
+        &mut self,
+        next_data: AppConfig,
+        command_line: &str,
+    ) -> Result<(), CliError> {
         self.persist(&next_data, command_line)?;
         self.data = next_data;
         self.layer_stack = layer_stack_for_persisted_state(&self.path, &self.data, command_line)?;
@@ -493,6 +524,13 @@ impl ConfigStore {
             typed_overrides: TypedConfigOverrides::default(),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn with_unpersisted_defaults_for_test(path: PathBuf) -> Self {
+        Self::load_from_path(path, "onequery test").unwrap_or_else(|error| {
+            panic!("expected defaults-only config load to succeed: {error}")
+        })
+    }
 }
 
 #[cfg(test)]
@@ -528,7 +566,8 @@ mod tests {
     use super::TypedConfigOverrides;
     use super::WORKSPACE_DEV_CONFIG_FILENAME;
     use super::WorkspaceDevBaseUrlFailure;
-    use super::config_set_server_command_example;
+    use super::config_set_request_timeout_sec_command_example;
+    use super::config_set_server_url_command_example;
     use super::default_base_url;
     use super::layers::ConfigOrigins;
     use super::layers::ConfigValueOrigin;
@@ -634,11 +673,18 @@ mod tests {
     }
 
     #[test]
-    fn default_cli_server_examples_follow_the_self_host_default_public_origin() {
+    fn default_cli_config_set_examples_follow_the_supported_public_surfaces() {
         assert_eq!(default_base_url(), default_public_origin());
         assert_eq!(
-            config_set_server_command_example(),
-            format!("onequery config set server {}", default_public_origin())
+            config_set_server_url_command_example(),
+            format!(
+                "onequery config set api.server_url {}",
+                default_public_origin()
+            )
+        );
+        assert_eq!(
+            config_set_request_timeout_sec_command_example(),
+            format!("onequery config set api.request_timeout_sec {DEFAULT_REQUEST_TIMEOUT_SEC}")
         );
     }
 
