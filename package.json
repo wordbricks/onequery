@@ -7,6 +7,7 @@
       "packages/*"
     ],
     "catalog": {
+      "better-result": "2.8.2",
       "hono": "4.11.4",
       "@hono/node-server": "1.19.13",
       "hono-problem-details": "0.1.5",

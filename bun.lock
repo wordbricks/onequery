@@ -320,6 +320,7 @@
     "@vitest/coverage-v8": "4.1.1",
     "babel-plugin-react-compiler": "1.0.0",
     "better-auth": "1.5.5",
+    "better-result": "2.8.2",
     "hono": "4.11.4",
     "hono-problem-details": "0.1.5",
     "hono-rate-limiter": "0.5.3",
