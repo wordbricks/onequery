@@ -107,6 +107,31 @@ For skills-compatible agents, install the `onequery-cli` skill:
 npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
 ```
 
+## OpenClaw Plugin
+
+For OpenClaw, install the local plugin package from this repository:
+
+```bash
+openclaw plugins install -l ./packages/openclaw-plugin
+openclaw plugins enable onequery
+```
+
+Then enable the plugin in `openclaw.json`:
+
+```json5
+{
+  plugins: {
+    entries: {
+      onequery: { enabled: true },
+    },
+  }
+}
+```
+
+The OpenClaw plugin ships a bundled `onequery-openclaw` skill. It teaches the
+agent to run the `onequery` CLI directly through OpenClaw's core `exec` tool
+for org, source, and bounded read-only SQL inspection.
+
 ---
 
 ## Contributing
