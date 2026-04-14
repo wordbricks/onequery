@@ -9,10 +9,10 @@ describe("openclaw plugin entry", () => {
     expect(plugin.description).toContain("onequery-openclaw");
   });
 
-  it("does not register custom agent tools", () => {
+  it("does not register custom agent tools", async () => {
     const registerTool = vi.fn();
 
-    plugin.register({ registerTool } as never);
+    await plugin.register({ registerTool } as never);
 
     expect(registerTool).not.toHaveBeenCalled();
   });
