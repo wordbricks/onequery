@@ -85,11 +85,12 @@ code {
   letter-spacing: -0.02em;
 }
 
-.brand-mark-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--ink);
+.brand-mark-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
 }
 
 .site-nav,
