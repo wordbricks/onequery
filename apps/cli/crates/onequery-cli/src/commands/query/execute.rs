@@ -5,7 +5,7 @@ use tokio::time::sleep;
 
 use crate::cli::QueryExecuteArgs;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::query;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::retry::classify_retry_directive;
@@ -404,8 +404,9 @@ where
                         QUERY_RETRY_DELAY_MS,
                         classify_retry_directive(&failure),
                     ),
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "query failed",

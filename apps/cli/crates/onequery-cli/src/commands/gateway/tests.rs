@@ -22,8 +22,6 @@ use super::render::render_gateway_status_output;
 use super::runtime::LogPreview;
 use super::runtime::mark_stop_requested;
 use super::runtime::parse_runtime_major_version;
-use super::runtime::runtime_accepting_connections;
-use super::runtime::runtime_probe_host;
 use super::runtime::stop_request_matches;
 use super::runtime::validate_runtime_version_output;
 use super::state::GatewayRuntimeState;
@@ -35,6 +33,8 @@ use crate::config::self_host::bootstrap_self_host_foundation_for_test;
 use crate::config::self_host::default_port;
 use crate::config::self_host::load_self_host_config_for_test;
 use crate::config::self_host::write_self_host_launch_config_for_test;
+use crate::local_target::runtime_accepting_connections;
+use crate::local_target::runtime_probe_host;
 
 fn sample_paths() -> SelfHostRuntimePaths {
     SelfHostRuntimePaths {

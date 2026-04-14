@@ -7,7 +7,7 @@ use crate::output::append_padded_cell;
 use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::source;
 use crate::transport::source::SourceListPayload;
@@ -343,8 +343,9 @@ async fn execute_effect<B, T>(
                     let outcome = source_failure_outcome(&failure);
 
                     SourceEvent::SourceListLoadFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "source list failed",
@@ -394,8 +395,9 @@ async fn execute_effect<B, T>(
                     let outcome = source_failure_outcome(&failure);
 
                     SourceEvent::SourceLoadFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "source show failed",

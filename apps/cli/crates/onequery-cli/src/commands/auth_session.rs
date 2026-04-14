@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::auth;
 use crate::transport::auth::LoginCompletion;
 use crate::transport::client::AuthenticatedApiClient;
@@ -266,8 +266,9 @@ async fn execute_auth_session_effect<B, T>(
                     completion: response.payload.completion,
                 },
                 Err(failure) => AuthSessionEvent::SessionRefreshFailed {
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "auth session refresh failed",

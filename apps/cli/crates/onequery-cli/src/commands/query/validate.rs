@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::cli::QueryValidateArgs;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::query;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
 use crate::workflows::runner::Transition;
@@ -325,8 +325,9 @@ async fn execute_validate_effect<B, T>(
                 },
                 Err(failure) => QueryValidateEvent::QueryValidateFailed {
                     outcome: query_validate_failure_outcome(&failure),
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "query validation failed",

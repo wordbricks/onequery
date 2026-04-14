@@ -5,7 +5,7 @@ use crate::cli::ReadArgs;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::org;
 use crate::transport::org::OrgDetails;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -228,8 +228,9 @@ async fn execute_effect<B, T>(
                     };
 
                     OrgGetEvent::LoadFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "org get failed",

@@ -7,7 +7,7 @@ use crate::credentials::AuthSessionSource;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::auth;
 use crate::transport::auth::RefreshedAuthSession;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -192,8 +192,9 @@ async fn execute_effect<B, T>(
                     request_id: response.request_id,
                 },
                 Err(failure) => SessionRefreshEvent::SessionRefreshFailed {
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "auth session refresh failed",

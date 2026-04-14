@@ -6,7 +6,7 @@ use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::source_connect;
 use crate::transport::source_connect::SourceConnectGuide;
 use crate::transport::source_connect::SourceConnectResult;
@@ -312,8 +312,9 @@ async fn execute_effect<B, T>(
                 Err(failure) => {
                     let outcome = source_connect_failure_outcome(&failure);
                     SourceConnectEvent::GuideLoadFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "source connect failed",
@@ -347,8 +348,9 @@ async fn execute_effect<B, T>(
                 Err(failure) => {
                     let outcome = source_connect_failure_outcome(&failure);
                     SourceConnectEvent::SourceConnectFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "source connect failed",

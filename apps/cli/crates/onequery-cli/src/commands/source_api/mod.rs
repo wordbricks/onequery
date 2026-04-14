@@ -14,7 +14,7 @@ use onequery_cli_core::error::ErrorStage;
 use crate::cli::ApiArgs;
 use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::source_api;
 use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiHeader;
@@ -48,8 +48,9 @@ pub(super) async fn execute<B, T>(
         source_api::describe_source_api(&client, org_slug.as_str(), args.source.as_str())
             .await
             .map_err(|failure| {
-                present_api_failure(
+                present_api_failure_with_context(
                     failure,
+                    context,
                     ApiErrorPresentation {
                         command: &context.command_line,
                         title: "source API describe failed",
@@ -263,8 +264,9 @@ fn present_source_api_preview_failure(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
-    present_api_failure(
+    present_api_failure_with_context(
         failure,
+        context,
         ApiErrorPresentation {
             command: &context.command_line,
             title: "source API preview failed",
@@ -284,8 +286,9 @@ fn present_source_api_execute_failure(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
-    present_api_failure(
+    present_api_failure_with_context(
         failure,
+        context,
         ApiErrorPresentation {
             command: &context.command_line,
             title: "source API execution failed",
