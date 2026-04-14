@@ -1,33 +1,19 @@
+import { Result } from "better-result";
+
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
-import type { ConnectionTestResult } from "./postgres-tester";
 
 interface HttpTesterOptions<TCredentials> {
   parseError?: (
     err: Error,
     latencyMs: number,
     timeoutSeconds: number
-  ) => ConnectionTestResult;
+  ) => ConnectionTestOutcome;
   probe: (credentials: TCredentials, timeoutMs: number) => Promise<unknown>;
-}
-
-function createSuccessResult(latencyMs: number): ConnectionTestResult {
-  return {
-    latencyMs,
-    message: `Connection successful (${latencyMs}ms)`,
-    success: true,
-  };
-}
-
-function createFailureResult(
-  error: string,
-  latencyMs: number
-): ConnectionTestResult {
-  return {
-    error,
-    latencyMs,
-    message: "Connection failed",
-    success: false,
-  };
 }
 
 export function createHttpTester<TCredentials>(
@@ -35,27 +21,35 @@ export function createHttpTester<TCredentials>(
 ): (
   credentials: TCredentials,
   timeoutSeconds?: number
-) => Promise<ConnectionTestResult> {
+) => Promise<ConnectionTestOutcome> {
   return async (
     credentials: TCredentials,
     timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS
-  ): Promise<ConnectionTestResult> => {
+  ): Promise<ConnectionTestOutcome> => {
     const startTime = Date.now();
     const timeoutMs = Math.max(1, Math.round(timeoutSeconds * 1000));
 
-    try {
-      await options.probe(credentials, timeoutMs);
-      return createSuccessResult(Date.now() - startTime);
-    } catch (error) {
-      const latencyMs = Date.now() - startTime;
-      if (options.parseError && error instanceof Error) {
-        return options.parseError(error, latencyMs, timeoutSeconds);
-      }
+    const probeResult = await Result.tryPromise(async () =>
+      options.probe(credentials, timeoutMs)
+    );
+    const latencyMs = Date.now() - startTime;
 
-      return createFailureResult(
-        error instanceof Error ? error.message : String(error),
-        latencyMs
-      );
+    if (probeResult.isOk()) {
+      return Result.ok(createSuccessfulConnectionTest(latencyMs));
     }
+
+    if (options.parseError && probeResult.error instanceof Error) {
+      return options.parseError(probeResult.error, latencyMs, timeoutSeconds);
+    }
+
+    return Result.err(
+      createFailedConnectionTest({
+        detail:
+          probeResult.error instanceof Error
+            ? probeResult.error.message
+            : String(probeResult.error),
+        latencyMs,
+      })
+    );
   };
 }

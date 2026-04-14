@@ -9,6 +9,8 @@ import {
 import { dirname, join } from "node:path";
 
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 export interface SelfHostLifecyclePaths {
   dataDir: string;
@@ -73,15 +75,21 @@ interface GracefulShutdownController {
   shutdown(reason: string): Promise<void>;
 }
 
-type ShutdownResult =
-  | {
-      error: null;
-      exitCode: 0;
-    }
-  | {
-      error: unknown;
-      exitCode: 1;
-    };
+class RuntimeLockRecordReadError extends TaggedError(
+  "RuntimeLockRecordReadError"
+)<{
+  cause: unknown;
+  message: string;
+  path: string;
+}>() {}
+
+class RuntimeShutdownError extends TaggedError("RuntimeShutdownError")<{
+  cause: unknown;
+  message: string;
+  reason: string;
+}>() {}
+
+type ShutdownResult = ResultType<void, RuntimeShutdownError>;
 
 type ShutdownState = {
   completion: "cleanup_only" | "cleanup_and_exit";
@@ -149,40 +157,54 @@ export function attachGracefulShutdownHandlers(args: {
       `[runtime] graceful shutdown requested reason=${reason}`
     );
 
-    const errors: unknown[] = [];
+    const stopResult = await Result.tryPromise({
+      try: async () => {
+        await args.server.stop(true);
+      },
+      catch: (cause) =>
+        new RuntimeShutdownError({
+          cause,
+          message: `failed to stop runtime server for ${reason}`,
+          reason,
+        }),
+    });
+    const releaseResult = await Result.tryPromise({
+      try: async () => {
+        await args.lease.release({
+          reason,
+          stopServer: true,
+        });
+      },
+      catch: (cause) =>
+        new RuntimeShutdownError({
+          cause,
+          message: `failed to release lifecycle lease for ${reason}`,
+          reason,
+        }),
+    });
 
-    try {
-      await args.server.stop(true);
-    } catch (error) {
-      errors.push(error);
+    if (stopResult.isOk() && releaseResult.isOk()) {
+      return Result.ok(undefined);
     }
 
-    try {
-      await args.lease.release({
+    const causes = [
+      stopResult.isErr() ? stopResult.error.cause : null,
+      releaseResult.isErr() ? releaseResult.error.cause : null,
+    ].filter((cause): cause is unknown => cause !== null);
+
+    return Result.err(
+      new RuntimeShutdownError({
+        cause:
+          causes.length === 1
+            ? causes[0]
+            : new AggregateError(
+                causes,
+                `failed to shut down runtime for ${reason}`
+              ),
+        message: `failed to shut down runtime for ${reason}`,
         reason,
-        stopServer: true,
-      });
-    } catch (error) {
-      errors.push(error);
-    }
-
-    if (errors.length === 0) {
-      return {
-        error: null,
-        exitCode: 0,
-      };
-    }
-
-    return {
-      error:
-        errors.length === 1
-          ? errors[0]
-          : new AggregateError(
-              errors,
-              `failed to shut down runtime for ${reason}`
-            ),
-      exitCode: 1,
-    };
+      })
+    );
   };
 
   const scheduleExit = (state: ShutdownState) => {
@@ -194,7 +216,7 @@ export function attachGracefulShutdownHandlers(args: {
     void state.result.then((result) => {
       // Comment: keep one shutdown state so signal-driven exits and direct
       // cleanup callers converge on the same lease-release path.
-      exitProcess(result.exitCode);
+      exitProcess(result.isOk() ? 0 : 1);
     });
   };
 
@@ -217,7 +239,7 @@ export function attachGracefulShutdownHandlers(args: {
     }
 
     return shutdownState.result.then((result) => {
-      if (result.error === null) {
+      if (result.isOk()) {
         return;
       }
 
@@ -290,16 +312,19 @@ async function acquireLock(
       throw error;
     }
 
-    const existing = await readLockRecord(paths.lockPath);
-    if (existing && options.isProcessRunning(existing.pid)) {
+    const existingRecord = await readLockRecord(paths.lockPath);
+    if (
+      existingRecord.isOk() &&
+      options.isProcessRunning(existingRecord.value.pid)
+    ) {
       await options.logWriter.append(
-        `[runtime] duplicate start blocked pid=${existing.pid} dataDir=${paths.dataDir}`
+        `[runtime] duplicate start blocked pid=${existingRecord.value.pid} dataDir=${paths.dataDir}`
       );
-      throw new DuplicateRuntimeStartError(paths, existing.pid);
+      throw new DuplicateRuntimeStartError(paths, existingRecord.value.pid);
     }
 
     await options.logWriter.append(
-      `[runtime] removing stale lifecycle lock dataDir=${paths.dataDir} existingPid=${existing?.pid ?? "unknown"}`
+      `[runtime] removing stale lifecycle lock dataDir=${paths.dataDir} existingPid=${existingRecord.isOk() ? existingRecord.value.pid : "unknown"}`
     );
     await removeIfPresent(paths.lockPath);
     await removeIfPresent(paths.pidPath);
@@ -321,27 +346,55 @@ async function writeNewLock(
   }
 }
 
-async function readLockRecord(path: string): Promise<RuntimeLockRecord | null> {
-  try {
-    const contents = await readFile(path, "utf8");
-    const parsed = JSON.parse(contents) as Partial<RuntimeLockRecord>;
-    if (
-      typeof parsed.pid === "number" &&
-      Number.isInteger(parsed.pid) &&
-      typeof parsed.acquiredAt === "string" &&
-      typeof parsed.dataDir === "string"
-    ) {
-      return {
-        pid: parsed.pid,
-        acquiredAt: parsed.acquiredAt,
-        dataDir: parsed.dataDir,
-      };
-    }
-  } catch {
-    return null;
+async function readLockRecord(
+  path: string
+): Promise<ResultType<RuntimeLockRecord, RuntimeLockRecordReadError>> {
+  const contents = await Result.tryPromise({
+    try: async () => readFile(path, "utf8"),
+    catch: (cause) =>
+      new RuntimeLockRecordReadError({
+        cause,
+        message: `failed to read runtime lock record at ${path}`,
+        path,
+      }),
+  });
+  if (contents.isErr()) {
+    return Result.err(contents.error);
   }
 
-  return null;
+  const parsed = Result.try({
+    try: () => JSON.parse(contents.value) as Partial<RuntimeLockRecord>,
+    catch: (cause) =>
+      new RuntimeLockRecordReadError({
+        cause,
+        message: `invalid runtime lock record at ${path}`,
+        path,
+      }),
+  });
+  if (parsed.isErr()) {
+    return Result.err(parsed.error);
+  }
+
+  if (
+    typeof parsed.value.pid !== "number" ||
+    !Number.isInteger(parsed.value.pid) ||
+    typeof parsed.value.acquiredAt !== "string" ||
+    typeof parsed.value.dataDir !== "string"
+  ) {
+    return Result.err(
+      new RuntimeLockRecordReadError({
+        cause: parsed.value,
+        message: `invalid runtime lock record at ${path}`,
+        path,
+      })
+    );
+  }
+
+  return Result.ok({
+    pid: parsed.value.pid,
+    acquiredAt: parsed.value.acquiredAt,
+    dataDir: parsed.value.dataDir,
+  });
 }
 
 function defaultIsProcessRunning(pid: number): boolean {

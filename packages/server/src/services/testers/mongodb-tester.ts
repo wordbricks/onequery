@@ -1,34 +1,37 @@
 import type { MongoDBCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import { listMongoDatabases } from "../mongodb/relay";
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
-import type { ConnectionTestResult } from "./mysql-tester";
 
 export async function testMongoConnection(
   credentials: MongoDBCredentials,
   _timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS
-): Promise<ConnectionTestResult> {
+): Promise<ConnectionTestOutcome> {
   const startTime = Date.now();
+  const outcome = await Result.tryPromise(
+    // Comment: Relay currently owns Mongo connection timeout configuration.
+    async () => listMongoDatabases({ credentials })
+  );
+  const latencyMs = Date.now() - startTime;
 
-  // NOTE: Relay currently owns Mongo connection timeout configuration.
-  return listMongoDatabases({ credentials })
-    .then(() => {
-      const latencyMs = Date.now() - startTime;
-      return {
-        latencyMs,
-        message: `Connection successful (${latencyMs}ms)`,
-        success: true,
-      };
+  if (outcome.isOk()) {
+    return Result.ok(createSuccessfulConnectionTest(latencyMs));
+  }
+
+  return Result.err(
+    createFailedConnectionTest({
+      detail: readErrorMessage(outcome.error),
+      latencyMs,
     })
-    .catch((error: unknown) => {
-      const latencyMs = Date.now() - startTime;
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      return {
-        error: errorMessage,
-        latencyMs,
-        message: "Connection failed",
-        success: false,
-      };
-    });
+  );
+}
+
+function readErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

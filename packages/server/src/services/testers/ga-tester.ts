@@ -1,10 +1,12 @@
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import {
   resolveGoogleAnalyticsAccessToken,
   resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "../google-analytics/relay";
+import { createFailedConnectionTest } from "./connection-test-outcome";
 import { createHttpTester } from "./create-http-tester";
 import { parseHttpStatusError } from "./parse-http-error";
 
@@ -37,19 +39,23 @@ export const testGoogleAnalyticsConnection =
   createHttpTester<GoogleAnalyticsCredentials>({
     parseError: (error, latencyMs, timeoutSeconds) => {
       if (error.message.startsWith(REQUEST_TIMEOUT_PREFIX)) {
-        return {
-          error: `Connection timed out after ${timeoutSeconds} seconds`,
-          latencyMs,
-          message: "Connection timed out",
-          success: false,
-        };
+        return Result.err(
+          createFailedConnectionTest({
+            detail: `Connection timed out after ${timeoutSeconds} seconds`,
+            latencyMs,
+            message: "Connection timed out",
+          })
+        );
       }
 
-      return parseHttpStatusError(error, latencyMs, timeoutSeconds, {
-        accessDeniedError:
-          "Google credentials do not have access to this property",
-        authenticationError: "Invalid or expired Google Analytics credentials",
-      });
+      return Result.err(
+        parseHttpStatusError(error, latencyMs, timeoutSeconds, {
+          accessDeniedError:
+            "Google credentials do not have access to this property",
+          authenticationError:
+            "Invalid or expired Google Analytics credentials",
+        })
+      );
     },
     probe: async (credentials, timeoutMs) => {
       const propertyPath = resolveGoogleAnalyticsPropertyPath({

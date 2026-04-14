@@ -2,14 +2,12 @@ import type { MySQLCredentials } from "@onequery/db/server";
 import { Result } from "better-result";
 import mysql from "mysql2/promise";
 
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
-
-export type ConnectionTestResult = {
-  success: boolean;
-  message: string;
-  error?: string;
-  latencyMs?: number;
-};
 
 export type MySQLConnectionConfig = {
   host: string;
@@ -31,7 +29,7 @@ const shouldFallbackToPlaintext = (sslMode: SslMode): boolean =>
 export function buildMySQLConnectionConfig(
   credentials: MySQLCredentials,
   timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS,
-  useSsl = shouldUseSsl("prefer")
+  useSsl = shouldUseSsl(credentials.sslMode)
 ): MySQLConnectionConfig {
   const { host, port, database, username, password } = credentials;
 
@@ -71,15 +69,15 @@ const attemptMySQLConnection = async (
 export async function testMySQLConnection(
   credentials: MySQLCredentials,
   timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS
-): Promise<ConnectionTestResult> {
+): Promise<ConnectionTestOutcome> {
   const startTime = Date.now();
-  const initialUseSsl = shouldUseSsl("prefer");
+  const initialUseSsl = shouldUseSsl(credentials.sslMode);
   const initialAttempt = attemptMySQLConnection(
     credentials,
     timeoutSeconds,
     initialUseSsl
   );
-  const finalAttempt = shouldFallbackToPlaintext("prefer")
+  const finalAttempt = shouldFallbackToPlaintext(credentials.sslMode)
     ? initialAttempt.then(async (result) => {
         if (result.isOk()) {
           return result;
@@ -96,22 +94,18 @@ export async function testMySQLConnection(
   return finalAttempt.then((result) => {
     const latencyMs = Date.now() - startTime;
     if (result.isOk()) {
-      return {
-        latencyMs,
-        message: `Connection successful (${latencyMs}ms)`,
-        success: true,
-      };
+      return Result.ok(createSuccessfulConnectionTest(latencyMs));
     }
     const errorMessage =
       result.error instanceof Error
         ? result.error.message
         : String(result.error);
-    return {
-      error: sanitizeErrorMessage(errorMessage),
-      latencyMs,
-      message: "Connection failed",
-      success: false,
-    };
+    return Result.err(
+      createFailedConnectionTest({
+        detail: sanitizeErrorMessage(errorMessage),
+        latencyMs,
+      })
+    );
   });
 }
 

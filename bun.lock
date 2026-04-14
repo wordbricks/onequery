@@ -233,6 +233,7 @@
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/server": "workspace:*",
+        "better-result": "catalog:",
         "hono": "catalog:",
         "hono-problem-details": "catalog:",
         "unstorage": "catalog:",
