@@ -1,0 +1,289 @@
+import { safeValidateCredentials } from "@onequery/db/server";
+import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
+import { Result } from "better-result";
+
+import type {
+  AuthorizedCliOrgContext,
+  CliAction,
+} from "../../../authorization";
+import { buildCliRequestLogDetails, logCliEvent } from "../../../observability";
+import { paginateItems } from "../../../read-controls-policy";
+import {
+  buildCliSourceConnectGuide,
+  buildCliSourceConnectResult,
+} from "../../../source/connect";
+import {
+  runCliConnectSourceEffect,
+  runCliListSourcesEffect,
+  runCliLoadSourceEffect,
+} from "../../../source/effects";
+import {
+  getCliQueryableDatabaseProviderType,
+  sortCliSourceRecords,
+} from "../../../source/model";
+import { requireCliConnectRequestContext } from "../../context";
+import {
+  createCliConnectSourceNameConflictProblem,
+  createCliConnectSourceNotFoundProblem,
+} from "../errors";
+import { buildCliPage, parseCliPaginatedReadControls } from "../read-controls";
+import type { CliResultServiceMethod, CliServiceResult } from "../result";
+import { cliServiceErr, liftCliServiceMethod } from "../result";
+import { fromCliSourceProvider } from "../source-provider";
+import type { CliHonoContext, CliServiceMethod } from "../types";
+import {
+  createCliConnectSourceValidationError,
+  parseConnectSourceCredentials,
+} from "./credentials";
+import { buildGetSourceResponse, toCliContentFormat } from "./response";
+import type {
+  ConnectSourceResponseInit,
+  GetSourceConnectGuideResponseInit,
+} from "./types";
+
+const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleListSourcesFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.list",
+        request.orgSlug,
+        context
+      )
+    );
+    const readControls = yield* parseCliPaginatedReadControls(request);
+    const sources = await runCliListSourcesEffect({
+      db: access.c.var.storage.db,
+      effect: {
+        kind: "list_sources",
+        organizationId: access.authorizedOrg.org.id,
+      },
+    });
+    const sortedSources = sortCliSourceRecords(sources.sources);
+    const page = paginateItems(sortedSources, readControls);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        roles: access.authorizedOrg.membershipRoles,
+        sourceCount: sortedSources.length,
+      }),
+      event: "source.list.resolved",
+      level: "info",
+    });
+
+    return Result.ok({
+      sources: page.items.map(buildGetSourceResponse),
+      page: buildCliPage(page.page),
+    });
+  });
+
+const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleGetSourceFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.read",
+        request.orgSlug,
+        context
+      )
+    );
+    const source = await runCliLoadSourceEffect({
+      db: access.c.var.storage.db,
+      effect: {
+        kind: "load_source",
+        organizationId: access.authorizedOrg.org.id,
+        sourceKey: request.sourceKey,
+      },
+    });
+
+    if (source.kind === "not_found") {
+      logCliEvent({
+        details: buildCliRequestLogDetails(access.c, {
+          orgSlug: access.authorizedOrg.org.slug,
+          roles: access.authorizedOrg.membershipRoles,
+          sourceKey: request.sourceKey,
+        }),
+        event: "source.lookup.not_found",
+        level: "warn",
+      });
+
+      return Result.err(
+        createCliConnectSourceNotFoundProblem(
+          access.authorizedOrg.org.slug,
+          request.sourceKey
+        )
+      );
+    }
+
+    const queryable =
+      getCliQueryableDatabaseProviderType(
+        source.source.provider,
+        source.source.status
+      ) !== null;
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        roles: access.authorizedOrg.membershipRoles,
+        sourceKey: request.sourceKey,
+        provider: source.source.provider,
+        queryable,
+      }),
+      event: "source.lookup.resolved",
+      level: "info",
+    });
+
+    return Result.ok(buildGetSourceResponse(source.source));
+  });
+
+const handleGetSourceConnectGuideImpl: CliResultServiceMethod<
+  "getSourceConnectGuide"
+> = async (request, context) =>
+  Result.gen(async function* handleGetSourceConnectGuideFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.connect",
+        request.orgSlug,
+        context
+      )
+    );
+    const provider = yield* fromCliSourceProvider(request.source);
+    const guide = buildCliSourceConnectGuide(provider);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        provider,
+        roles: access.authorizedOrg.membershipRoles,
+      }),
+      event: "source.connect.guide_served",
+      level: "info",
+    });
+
+    return Result.ok({
+      title: guide.title,
+      description: guide.description,
+      format: toCliContentFormat(guide.format),
+      content: guide.content,
+      command: guide.command,
+    } satisfies GetSourceConnectGuideResponseInit);
+  });
+
+const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleConnectSourceFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.connect",
+        request.orgSlug,
+        context
+      )
+    );
+    const { credentials, provider } = yield* parseConnectSourceCredentials(
+      request.credentials
+    );
+    const parsedCredentials = safeValidateCredentials(credentials);
+    if (!parsedCredentials.success) {
+      return createCliConnectSourceValidationError(parsedCredentials.error);
+    }
+
+    if (
+      credentials.type === "aws_athena_connector" &&
+      parsedCredentials.data.type === "aws_athena_connector"
+    ) {
+      const organizationCheck = await ensureConnectorOrganization({
+        connectorId: parsedCredentials.data.connectorId,
+        db: access.c.var.storage.db,
+        organizationId: access.authorizedOrg.org.id,
+      });
+      if (organizationCheck.isErr()) {
+        return cliServiceErr({
+          detail: organizationCheck.error.message,
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+    }
+
+    const result = await runCliConnectSourceEffect({
+      db: access.c.var.storage.db,
+      effect: {
+        credentials: parsedCredentials.data,
+        kind: "connect_source",
+        name: request.name,
+        organizationId: access.authorizedOrg.org.id,
+        provider,
+      },
+      masterEncryptionKey: access.c.var.runtime.crypto.masterEncryptionKey,
+    });
+    if (result.kind === "name_conflict") {
+      return Result.err(
+        createCliConnectSourceNameConflictProblem(
+          access.authorizedOrg.org.slug,
+          result.sourceName
+        )
+      );
+    }
+
+    const response = buildCliSourceConnectResult(result.source);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        provider: response.source.provider,
+        roles: access.authorizedOrg.membershipRoles,
+        sourceName: response.source.sourceKey,
+      }),
+      event: "source.connect.created",
+      level: "info",
+    });
+
+    return Result.ok({
+      nextCommand: response.nextCommand,
+      source: buildGetSourceResponse(response.source),
+    } satisfies ConnectSourceResponseInit);
+  });
+
+export const handleListSources = liftCliServiceMethod(handleListSourcesImpl);
+
+export const handleGetSource = liftCliServiceMethod(handleGetSourceImpl);
+
+export const handleGetSourceConnectGuide = liftCliServiceMethod(
+  handleGetSourceConnectGuideImpl
+);
+
+export const handleConnectSource = liftCliServiceMethod(
+  handleConnectSourceImpl
+);
+
+async function resolveAuthorizedSourceRequestState(
+  action: CliAction,
+  orgSlug: string,
+  context: Parameters<CliServiceMethod<"listSources">>[1]
+): Promise<
+  CliServiceResult<{
+    authorizedOrg: AuthorizedCliOrgContext;
+    c: CliHonoContext;
+  }>
+> {
+  return Result.gen(async function* resolveAuthorizedSourceRequestStateFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action,
+        orgSlug,
+      })
+    );
+
+    return Result.ok({
+      authorizedOrg,
+      c: requestContext.honoContext,
+    });
+  });
+}

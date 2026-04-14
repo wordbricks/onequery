@@ -144,13 +144,19 @@ pub(crate) async fn execute_source_api(
 
 pub(crate) async fn resume_source_api(
     client: &AuthenticatedApiClient,
+    org: &str,
+    source_key: &str,
     continuation_token: &str,
 ) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Resume(Box::new(
                 types::ResumeSourceApiExecution {
+                    org_slug,
+                    source_key,
                     continuation_token: try_into_value(
                         continuation_token,
                         ErrorStage::ExecuteQuery,

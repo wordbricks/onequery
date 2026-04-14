@@ -9,7 +9,6 @@ exports[`source api connect service > binds continuation tokens to execution sta
   },
   "encodeSourceApiContinuationTokenCall": {
     "now": null,
-    "organizationSlug": "acme",
     "prepared": {
       "body": {
         "kind": "text",

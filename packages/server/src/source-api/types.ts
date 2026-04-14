@@ -247,8 +247,7 @@ export type SourceApiPreview = {
 };
 
 export type SourceApiContinuationTokenPayload = {
-  version: 1;
-  organizationSlug: string;
+  version: 2;
   issuedAt: string;
   expiresAt: string;
   prepared: PreparedSourceApi;

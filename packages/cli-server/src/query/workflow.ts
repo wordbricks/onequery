@@ -408,6 +408,25 @@ function finishCliQueryUsagePersistence(input: {
   };
 }
 
+type CliQueryWorkflowObservationFailure = {
+  kind: "query_preparation_failed";
+  requestId: string;
+  detail: string;
+};
+
+function createCliQueryWorkflowObservationFailure(
+  requestId: string
+): CliQueryWorkflowObservationFailure {
+  // Comment: workflow event observation sits outside the query state machine
+  // proper. When that deferred effect fails, terminate deterministically here
+  // and let outer adapters surface the effect-specific failure.
+  return {
+    kind: "query_preparation_failed",
+    requestId,
+    detail: "query workflow event observation failed",
+  };
+}
+
 export async function runCliQueryExecutionWorkflow(
   input: {
     org: AccessibleCliOrg;
@@ -433,34 +452,46 @@ export async function runCliQueryExecutionWorkflow(
         });
         switch (next.kind) {
           case "validate_query": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              requestId: next.requestId,
-              source: next.source,
-              sourceKey: state.sourceName,
-              type: "source_loaded",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                requestId: next.requestId,
+                source: next.source,
+                sourceKey: state.sourceName,
+                type: "source_loaded",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "source_not_found": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              orgSlug: next.orgSlug,
-              requestId: next.requestId,
-              sourceKey: state.sourceName,
-              type: "source_not_found",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                orgSlug: next.orgSlug,
+                requestId: next.requestId,
+                sourceKey: state.sourceName,
+                type: "source_not_found",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "source_not_queryable": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              provider: next.provider,
-              requestId: next.requestId,
-              sourceKey: state.sourceName,
-              sourceStatus: next.status,
-              type: "source_not_queryable",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                provider: next.provider,
+                requestId: next.requestId,
+                sourceKey: state.sourceName,
+                sourceStatus: next.status,
+                type: "source_not_queryable",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
         }
@@ -478,26 +509,34 @@ export async function runCliQueryExecutionWorkflow(
         });
         switch (next.kind) {
           case "load_credentials": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              normalizedSql: next.normalizedSql,
-              normalizedSqlChanged: next.truncated,
-              requestId: next.requestId,
-              source: next.source,
-              sourceKey: state.sourceName,
-              type: "query_validated",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                normalizedSql: next.normalizedSql,
+                normalizedSqlChanged: next.truncated,
+                requestId: next.requestId,
+                source: next.source,
+                sourceKey: state.sourceName,
+                type: "query_validated",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "query_rejected": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              detail: next.detail,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_rejected",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                detail: next.detail,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_rejected",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
         }
@@ -514,25 +553,33 @@ export async function runCliQueryExecutionWorkflow(
         });
         switch (next.kind) {
           case "execute_query": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              requestId: next.requestId,
-              source: next.source,
-              sourceKey: state.sourceName,
-              type: "credentials_loaded",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                requestId: next.requestId,
+                source: next.source,
+                sourceKey: state.sourceName,
+                type: "credentials_loaded",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "query_preparation_failed": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              detail: next.detail,
-              hint: next.hint,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_preparation_failed",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                detail: next.detail,
+                hint: next.hint,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_preparation_failed",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
         }
@@ -553,48 +600,64 @@ export async function runCliQueryExecutionWorkflow(
         });
         switch (next.kind) {
           case "persist_usage": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              elapsedMs: next.response.elapsedMs,
-              requestId: state.requestId,
-              rowCount: next.response.rowCount,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_executed",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                elapsedMs: next.response.elapsedMs,
+                requestId: state.requestId,
+                rowCount: next.response.rowCount,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_executed",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(state.requestId);
+            }
             break;
           }
           case "query_unavailable": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              detail: next.detail,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_unavailable",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                detail: next.detail,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_unavailable",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "query_timed_out": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              detail: next.detail,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_timed_out",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                detail: next.detail,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_timed_out",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "query_execution_failed": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "execute",
-              detail: next.detail,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_execution_failed",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "execute",
+                detail: next.detail,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_execution_failed",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
         }
@@ -606,25 +669,29 @@ export async function runCliQueryExecutionWorkflow(
           kind: "persist_usage",
           sourceId: state.sourceId,
         });
-        await emitCliQueryWorkflowEvent(
-          input,
-          usagePersistence.kind === "usage_persisted"
-            ? {
-                actionType: "execute",
-                requestId: state.requestId,
-                sourceId: state.sourceId,
-                sourceKey: state.sourceKey,
-                type: "usage_persisted",
-              }
-            : {
-                actionType: "execute",
-                detail: usagePersistence.detail,
-                requestId: state.requestId,
-                sourceId: state.sourceId,
-                sourceKey: state.sourceKey,
-                type: "usage_persist_failed",
-              }
-        );
+        if (
+          !(await emitCliQueryWorkflowEvent(
+            input,
+            usagePersistence.kind === "usage_persisted"
+              ? {
+                  actionType: "execute",
+                  requestId: state.requestId,
+                  sourceId: state.sourceId,
+                  sourceKey: state.sourceKey,
+                  type: "usage_persisted",
+                }
+              : {
+                  actionType: "execute",
+                  detail: usagePersistence.detail,
+                  requestId: state.requestId,
+                  sourceId: state.sourceId,
+                  sourceKey: state.sourceKey,
+                  type: "usage_persist_failed",
+                }
+          ))
+        ) {
+          return createCliQueryWorkflowObservationFailure(state.requestId);
+        }
         return finishCliQueryUsagePersistence({
           state,
           usagePersistence,
@@ -669,34 +736,46 @@ export async function runCliQueryValidationWorkflow(
         });
         switch (next.kind) {
           case "validate_query": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              requestId: next.requestId,
-              source: next.source,
-              sourceKey: state.sourceName,
-              type: "source_loaded",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                requestId: next.requestId,
+                source: next.source,
+                sourceKey: state.sourceName,
+                type: "source_loaded",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "source_not_found": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              orgSlug: next.orgSlug,
-              requestId: next.requestId,
-              sourceKey: state.sourceName,
-              type: "source_not_found",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                orgSlug: next.orgSlug,
+                requestId: next.requestId,
+                sourceKey: state.sourceName,
+                type: "source_not_found",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
           case "source_not_queryable": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              provider: next.provider,
-              requestId: next.requestId,
-              sourceKey: state.sourceName,
-              sourceStatus: next.status,
-              type: "source_not_queryable",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                provider: next.provider,
+                requestId: next.requestId,
+                sourceKey: state.sourceName,
+                sourceStatus: next.status,
+                type: "source_not_queryable",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             break;
           }
         }
@@ -715,15 +794,19 @@ export async function runCliQueryValidationWorkflow(
 
         switch (next.kind) {
           case "load_credentials": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              normalizedSql: next.normalizedSql,
-              normalizedSqlChanged: next.truncated,
-              requestId: next.requestId,
-              source: next.source,
-              sourceKey: state.sourceName,
-              type: "query_validated",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                normalizedSql: next.normalizedSql,
+                normalizedSqlChanged: next.truncated,
+                requestId: next.requestId,
+                source: next.source,
+                sourceKey: state.sourceName,
+                type: "query_validated",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             return {
               kind: "ready",
               requestId: next.requestId,
@@ -735,14 +818,18 @@ export async function runCliQueryValidationWorkflow(
             };
           }
           case "query_rejected": {
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              detail: next.detail,
-              requestId: next.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_rejected",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                detail: next.detail,
+                requestId: next.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_rejected",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(next.requestId);
+            }
             return next;
           }
           default: {
@@ -751,14 +838,20 @@ export async function runCliQueryValidationWorkflow(
               requestId: state.requestId,
               detail: "unexpected query validation state",
             };
-            await emitCliQueryWorkflowEvent(input, {
-              actionType: "validate",
-              detail: failure.detail,
-              requestId: failure.requestId,
-              source: state.source,
-              sourceKey: state.sourceName,
-              type: "query_preparation_failed",
-            });
+            if (
+              !(await emitCliQueryWorkflowEvent(input, {
+                actionType: "validate",
+                detail: failure.detail,
+                requestId: failure.requestId,
+                source: state.source,
+                sourceKey: state.sourceName,
+                type: "query_preparation_failed",
+              }))
+            ) {
+              return createCliQueryWorkflowObservationFailure(
+                failure.requestId
+              );
+            }
             return failure;
           }
         }
@@ -775,14 +868,18 @@ export async function runCliQueryValidationWorkflow(
           requestId: input.requestId,
           detail: `unexpected query validation state: ${state.kind}`,
         };
-        await emitCliQueryWorkflowEvent(input, {
-          actionType: "validate",
-          detail: failure.detail,
-          requestId: failure.requestId,
-          source: null,
-          sourceKey: input.sourceName,
-          type: "query_preparation_failed",
-        });
+        if (
+          !(await emitCliQueryWorkflowEvent(input, {
+            actionType: "validate",
+            detail: failure.detail,
+            requestId: failure.requestId,
+            source: null,
+            sourceKey: input.sourceName,
+            type: "query_preparation_failed",
+          }))
+        ) {
+          return createCliQueryWorkflowObservationFailure(failure.requestId);
+        }
         return failure;
       }
     }
@@ -792,13 +889,14 @@ export async function runCliQueryValidationWorkflow(
 async function emitCliQueryWorkflowEvent(
   observer: CliQueryWorkflowObserver,
   event: CliQueryWorkflowEvent
-): Promise<void> {
+): Promise<boolean> {
   if (!observer.observeEvent) {
-    return;
+    return true;
   }
 
   try {
     await observer.observeEvent(event);
+    return true;
   } catch (error) {
     if (observer.observeEventFailure) {
       await observer.observeEventFailure({
@@ -806,8 +904,7 @@ async function emitCliQueryWorkflowEvent(
         event,
       });
     }
-
-    throw error;
+    return false;
   }
 }
 

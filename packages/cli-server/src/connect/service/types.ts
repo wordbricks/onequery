@@ -7,8 +7,15 @@ import { CliService } from "../gen/onequery/cli/v1/cli_pb";
 
 type CliServiceImplementation = ServiceImpl<typeof CliService>;
 
-export type CliServiceMethod<Name extends keyof CliServiceImplementation> =
-  NonNullable<CliServiceImplementation[Name]>;
+export type CliServiceMethodName = keyof CliServiceImplementation;
+
+export type CliServiceMethod<Name extends CliServiceMethodName> = NonNullable<
+  CliServiceImplementation[Name]
+>;
+
+export type CliServiceResponse<Name extends CliServiceMethodName> = Awaited<
+  ReturnType<CliServiceMethod<Name>>
+>;
 
 export type CliHonoContext = Context<CliRouteEnv>;
 

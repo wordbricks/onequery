@@ -2,119 +2,125 @@ import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 
 import type { CliQueryPlanResult } from "../../domain/workflows";
 import type { CliQueryExecutionWorkflowResult } from "../../query/workflow";
-import { throwCliConnectError } from "../error";
+import { createCliConnectProblem } from "../error";
 
-export function throwCliConnectSourceNotFound(
+export function createCliConnectSourceNotFoundProblem(
   orgSlug: string,
   sourceKey: string
-): never {
-  throwCliConnectError({
+) {
+  return createCliConnectProblem({
     detail: `no source named "${sourceKey}" exists in org "${orgSlug}"`,
     key: "SOURCE_NOT_FOUND",
   });
 }
 
-export function throwCliConnectSourceNameConflict(
+export function createCliConnectSourceNameConflictProblem(
   orgSlug: string,
   sourceName: string
-): never {
-  throwCliConnectError({
+) {
+  return createCliConnectProblem({
     detail: `source "${sourceName}" already exists in org "${orgSlug}"`,
     key: "SOURCE_NAME_CONFLICT",
   });
 }
 
-export function throwForCliConnectQueryWorkflowResult(
+export function createCliConnectProblemForQueryWorkflowResult(
   result: Exclude<CliQueryExecutionWorkflowResult, { kind: "response_ready" }>
-): never {
+) {
   switch (result.kind) {
     case "source_not_found":
-      return throwCliConnectSourceNotFound(result.orgSlug, result.sourceName);
+      return createCliConnectSourceNotFoundProblem(
+        result.orgSlug,
+        result.sourceName
+      );
     case "source_not_queryable":
-      return throwCliConnectSourceNotQueryable({
+      return createCliConnectSourceNotQueryableProblem({
         provider: result.provider,
         sourceName: result.sourceName,
         status: result.status,
       });
     case "query_rejected":
-      return throwCliConnectQueryRejected(result.detail);
+      return createCliConnectQueryRejectedProblem(result.detail);
     case "query_preparation_failed":
-      return throwCliConnectQueryFailure({
+      return createCliConnectQueryFailureProblem({
         detail: result.detail,
         key: "QUERY_PREPARATION_FAILED",
       });
     case "query_unavailable":
-      return throwCliConnectQueryFailure({
+      return createCliConnectQueryFailureProblem({
         detail: result.detail,
         key: "QUERY_EXECUTION_UNAVAILABLE",
       });
     case "query_timed_out":
-      return throwCliConnectQueryFailure({
+      return createCliConnectQueryFailureProblem({
         detail: result.detail,
         key: "QUERY_EXECUTION_TIMED_OUT",
       });
     case "query_execution_failed":
-      return throwCliConnectQueryFailure({
+      return createCliConnectQueryFailureProblem({
         detail: result.detail,
         key: "QUERY_EXECUTION_FAILED",
       });
   }
 }
 
-export function throwForCliConnectQueryPlanResult(
+export function createCliConnectProblemForQueryPlanResult(
   result: Exclude<CliQueryPlanResult, { kind: "ready" }>
-): never {
+) {
   switch (result.kind) {
     case "source_not_found":
-      return throwCliConnectSourceNotFound(result.orgSlug, result.sourceName);
+      return createCliConnectSourceNotFoundProblem(
+        result.orgSlug,
+        result.sourceName
+      );
     case "source_not_queryable":
-      return throwCliConnectSourceNotQueryable({
+      return createCliConnectSourceNotQueryableProblem({
         provider: result.provider,
         sourceName: result.sourceName,
         status: result.status,
       });
     case "query_rejected":
-      return throwCliConnectQueryRejected(result.detail);
+      return createCliConnectQueryRejectedProblem(result.detail);
     case "query_preparation_failed":
-      return throwCliConnectQueryFailure({
+      return createCliConnectQueryFailureProblem({
         detail: result.detail,
         key: "QUERY_PREPARATION_FAILED",
       });
   }
 }
 
-function throwCliConnectSourceNotQueryable(input: {
+function createCliConnectSourceNotQueryableProblem(input: {
   sourceName: string;
   provider: ProviderType;
   status: DataSourceStatus;
-}): never {
+}) {
   const detail =
     input.status !== "active"
       ? `source "${input.sourceName}" is "${input.status}" and cannot be queried`
       : `source "${input.sourceName}" uses provider "${input.provider}", which is visible in OneQuery but does not support SQL query execution in v1`;
 
-  throwCliConnectError({
+  return createCliConnectProblem({
     detail,
     key: "SOURCE_NOT_QUERYABLE",
   });
 }
 
-function throwCliConnectQueryRejected(detail: string): never {
-  throwCliConnectError({
+function createCliConnectQueryRejectedProblem(detail: string) {
+  return createCliConnectProblem({
     detail,
     key: "QUERY_REJECTED",
   });
 }
 
-function throwCliConnectQueryFailure(input: {
+function createCliConnectQueryFailureProblem(input: {
   key:
     | "QUERY_PREPARATION_FAILED"
     | "QUERY_EXECUTION_FAILED"
     | "QUERY_EXECUTION_UNAVAILABLE"
     | "QUERY_EXECUTION_TIMED_OUT";
   detail: string;
-}): never {
-  throwCliConnectError({
+}) {
+  return createCliConnectProblem({
     detail: input.detail,
     key: input.key,
   });

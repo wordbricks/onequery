@@ -42,7 +42,6 @@ describe("source api continuation token", () => {
   it("round-trips prepared state, continuation state, and binary request bodies", () => {
     const token = encodeSourceApiContinuationToken({
       now: new Date("2026-04-10T00:00:00.000Z"),
-      organizationSlug: "acme",
       prepared,
       secret: "secret",
       state: {
@@ -60,19 +59,17 @@ describe("source api continuation token", () => {
     expect(decoded).toEqual({
       expiresAt: "2026-04-10T00:01:00.000Z",
       issuedAt: "2026-04-10T00:00:00.000Z",
-      organizationSlug: "acme",
       prepared,
       state: {
         cursor: "page_2",
       },
-      version: 1,
+      version: 2,
     });
   });
 
   it("rejects tampered continuation token signatures", () => {
     const token = encodeSourceApiContinuationToken({
       now: new Date("2026-04-10T00:00:00.000Z"),
-      organizationSlug: "acme",
       prepared,
       secret: "secret",
       state: {
@@ -103,7 +100,6 @@ describe("source api continuation token", () => {
   it("rejects expired continuation tokens", () => {
     const token = encodeSourceApiContinuationToken({
       now: new Date("2026-04-10T00:00:00.000Z"),
-      organizationSlug: "acme",
       prepared,
       secret: "secret",
       state: {
@@ -131,7 +127,6 @@ describe("source api continuation token", () => {
   it("preserves JSON bodies that use the binary sentinel key literally", () => {
     const token = encodeSourceApiContinuationToken({
       now: new Date("2026-04-10T00:00:00.000Z"),
-      organizationSlug: "acme",
       prepared: {
         ...prepared,
         body: {
@@ -174,7 +169,6 @@ describe("source api continuation token", () => {
       JSON.stringify({
         expiresAt: "2026-04-10T00:01:00.000Z",
         issuedAt: "2026-04-10T00:00:00.000Z",
-        organizationSlug: "acme",
         prepared: {
           ...prepared,
           body: {
@@ -185,7 +179,7 @@ describe("source api continuation token", () => {
         state: {
           cursor: "page_2",
         },
-        version: 1,
+        version: 2,
       })
     );
     const signature = createHmac("sha256", "secret")

@@ -1,10 +1,13 @@
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createAuthenticatedCliConnectRequestContext,
   createCliConnectContextValues,
   createCliConnectRequestContext,
   requireCliConnectRequestContext,
 } from "./context";
+import type { CliConnectRequestContext } from "./context";
 
 describe("cli connect request context", () => {
   beforeEach(() => {
@@ -18,21 +21,24 @@ describe("cli connect request context", () => {
         id: "user-1",
       },
     } as never;
-    const requireAuthenticatedCliSession = vi.fn().mockResolvedValue(session);
+    const sessionResult = Result.ok(session);
+    const resolveAuthenticatedCliSession = vi
+      .fn()
+      .mockResolvedValue(sessionResult);
 
     const c = {
       get: vi.fn().mockReturnValue("req_cli_123"),
     } as never;
     const requestContext = createCliConnectRequestContext(c, {
-      requireAuthenticatedCliSession,
+      resolveAuthenticatedCliSession,
     });
 
-    await expect(requestContext.requireSession()).resolves.toBe(session);
-    await expect(requestContext.requireSession()).resolves.toBe(session);
+    await expect(requestContext.resolveSession()).resolves.toBe(sessionResult);
+    await expect(requestContext.resolveSession()).resolves.toBe(sessionResult);
 
     expect(requestContext.requestId).toBe("req_cli_123");
-    expect(requireAuthenticatedCliSession).toHaveBeenCalledTimes(1);
-    expect(requireAuthenticatedCliSession).toHaveBeenCalledWith(c);
+    expect(resolveAuthenticatedCliSession).toHaveBeenCalledTimes(1);
+    expect(resolveAuthenticatedCliSession).toHaveBeenCalledWith(c);
   });
 
   it("caches org authorization by action and org slug", async () => {
@@ -53,48 +59,53 @@ describe("cli connect request context", () => {
         slug: "acme",
       },
     } as never;
-    const requireAuthenticatedCliSession = vi.fn().mockResolvedValue(session);
-    const requireAuthorizedCliOrg = vi
+    const sessionResult = Result.ok(session);
+    const resolveAuthenticatedCliSession = vi
       .fn()
-      .mockResolvedValueOnce(sourceListOrg)
-      .mockResolvedValueOnce(sourceReadOrg);
+      .mockResolvedValue(sessionResult);
+    const sourceListOrgResult = Result.ok(sourceListOrg);
+    const sourceReadOrgResult = Result.ok(sourceReadOrg);
+    const resolveAuthorizedCliOrg = vi
+      .fn()
+      .mockResolvedValueOnce(sourceListOrgResult)
+      .mockResolvedValueOnce(sourceReadOrgResult);
 
     const c = {
       get: vi.fn().mockReturnValue("req_cli_123"),
     } as never;
     const requestContext = createCliConnectRequestContext(c, {
-      requireAuthenticatedCliSession,
-      requireAuthorizedCliOrg,
+      resolveAuthenticatedCliSession,
+      resolveAuthorizedCliOrg,
     });
 
     await expect(
-      requestContext.requireAuthorizedOrg({
+      requestContext.resolveAuthorizedOrg({
         action: "source.list",
         orgSlug: "acme",
       })
-    ).resolves.toBe(sourceListOrg);
+    ).resolves.toBe(sourceListOrgResult);
     await expect(
-      requestContext.requireAuthorizedOrg({
+      requestContext.resolveAuthorizedOrg({
         action: "source.list",
         orgSlug: "acme",
       })
-    ).resolves.toBe(sourceListOrg);
+    ).resolves.toBe(sourceListOrgResult);
     await expect(
-      requestContext.requireAuthorizedOrg({
+      requestContext.resolveAuthorizedOrg({
         action: "source.read",
         orgSlug: "acme",
       })
-    ).resolves.toBe(sourceReadOrg);
+    ).resolves.toBe(sourceReadOrgResult);
 
-    expect(requireAuthenticatedCliSession).toHaveBeenCalledTimes(1);
-    expect(requireAuthorizedCliOrg).toHaveBeenCalledTimes(2);
-    expect(requireAuthorizedCliOrg).toHaveBeenNthCalledWith(1, {
+    expect(resolveAuthenticatedCliSession).toHaveBeenCalledTimes(1);
+    expect(resolveAuthorizedCliOrg).toHaveBeenCalledTimes(2);
+    expect(resolveAuthorizedCliOrg).toHaveBeenNthCalledWith(1, {
       action: "source.list",
       c,
       orgSlug: "acme",
       session,
     });
-    expect(requireAuthorizedCliOrg).toHaveBeenNthCalledWith(2, {
+    expect(resolveAuthorizedCliOrg).toHaveBeenNthCalledWith(2, {
       action: "source.read",
       c,
       orgSlug: "acme",
@@ -113,5 +124,45 @@ describe("cli connect request context", () => {
 
     expect(requestContext.honoContext).toBe(c);
     expect(requestContext.requestId).toBe("req_cli_123");
+  });
+
+  it("binds org authorization to the authenticated session", async () => {
+    const session = {
+      user: {
+        id: "user-1",
+      },
+    } as never;
+    const authorizedOrg = {
+      org: {
+        slug: "acme",
+      },
+    } as never;
+    const resolveAuthorizedOrg = vi
+      .fn()
+      .mockResolvedValue(Result.ok(authorizedOrg));
+    const requestContext: CliConnectRequestContext = {
+      honoContext: { get: vi.fn() } as never,
+      requestId: "req_cli_123",
+      resolveAuthorizedOrg,
+      resolveSession: vi.fn(),
+    };
+
+    const authenticatedContext = createAuthenticatedCliConnectRequestContext(
+      requestContext,
+      session
+    );
+
+    await expect(
+      authenticatedContext.resolveAuthorizedOrg({
+        action: "source.read",
+        orgSlug: "acme",
+      })
+    ).resolves.toEqual(Result.ok(authorizedOrg));
+    expect(authenticatedContext.session).toBe(session);
+    expect(resolveAuthorizedOrg).toHaveBeenCalledWith({
+      action: "source.read",
+      orgSlug: "acme",
+      session,
+    });
   });
 });

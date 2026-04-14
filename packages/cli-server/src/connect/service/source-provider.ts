@@ -1,7 +1,9 @@
 import type { ProviderType } from "@onequery/db/server";
+import { Result } from "better-result";
 
-import { throwCliConnectError } from "../error";
 import { CliSourceProvider } from "../gen/onequery/cli/v1/source_pb";
+import type { CliServiceResult } from "./result";
+import { cliServiceErr } from "./result";
 
 export function toCliSourceProvider(value: ProviderType): CliSourceProvider {
   switch (value) {
@@ -36,38 +38,40 @@ export function toCliSourceProvider(value: ProviderType): CliSourceProvider {
   }
 }
 
-export function fromCliSourceProvider(value: CliSourceProvider): ProviderType {
+export function fromCliSourceProvider(
+  value: CliSourceProvider
+): CliServiceResult<ProviderType> {
   switch (value) {
     case CliSourceProvider.POSTGRES:
-      return "postgres";
+      return Result.ok("postgres");
     case CliSourceProvider.SUPABASE:
-      return "supabase";
+      return Result.ok("supabase");
     case CliSourceProvider.MYSQL:
-      return "mysql";
+      return Result.ok("mysql");
     case CliSourceProvider.MONGODB:
-      return "mongodb";
+      return Result.ok("mongodb");
     case CliSourceProvider.BIGQUERY:
-      return "bigquery";
+      return Result.ok("bigquery");
     case CliSourceProvider.LAMINAR:
-      return "laminar";
+      return Result.ok("laminar");
     case CliSourceProvider.AWS_ATHENA_CONNECTOR:
-      return "aws_athena_connector";
+      return Result.ok("aws_athena_connector");
     case CliSourceProvider.GA:
-      return "ga";
+      return Result.ok("ga");
     case CliSourceProvider.AMPLITUDE:
-      return "amplitude";
+      return Result.ok("amplitude");
     case CliSourceProvider.MIXPANEL:
-      return "mixpanel";
+      return Result.ok("mixpanel");
     case CliSourceProvider.POSTHOG:
-      return "posthog";
+      return Result.ok("posthog");
     case CliSourceProvider.SENTRY:
-      return "sentry";
+      return Result.ok("sentry");
     case CliSourceProvider.GITHUB:
-      return "github";
+      return Result.ok("github");
     case CliSourceProvider.LINEAR:
-      return "linear";
+      return Result.ok("linear");
     default:
-      throwCliConnectError({
+      return cliServiceErr({
         detail: "unsupported source provider",
         key: "SOURCE_REQUEST_INVALID",
       });

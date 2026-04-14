@@ -1,4 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
+import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
 import { runCliListVisibleOrgs } from "../../organization/effects";
@@ -9,7 +10,8 @@ import {
   GetOrganizationResponseSchema,
 } from "../gen/onequery/cli/v1/org_pb";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
-import type { CliServiceMethod } from "./types";
+import type { CliResultServiceMethod } from "./result";
+import { liftCliServiceMethod } from "./result";
 
 type GetOrganizationResponseInit = MessageInitShape<
   typeof GetOrganizationResponseSchema
@@ -38,39 +40,51 @@ function toCliOrgCapability(
   }
 }
 
-export const handleListOrganizations: CliServiceMethod<
+const handleListOrganizationsImpl: CliResultServiceMethod<
   "listOrganizations"
-> = async (request, context) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const readControls = parseCliPaginatedReadControls(request);
-  const session = await requestContext.requireSession();
-  const organizations = await runCliListVisibleOrgs({
-    db: c.var.storage.db,
-    userId: session.user.id,
+> = async (request, context) =>
+  Result.gen(async function* handleListOrganizationsFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const readControls = yield* parseCliPaginatedReadControls(request);
+    const session = yield* Result.await(requestContext.resolveSession());
+    const organizations = await runCliListVisibleOrgs({
+      db: c.var.storage.db,
+      userId: session.user.id,
+    });
+    const page = paginateItems(organizations, readControls);
+
+    return Result.ok({
+      organizations: page.items.map((organization) => ({
+        slug: organization.slug,
+        name: organization.name,
+      })),
+      page: buildCliPage(page.page),
+    });
   });
-  const page = paginateItems(organizations, readControls);
 
-  return {
-    organizations: page.items.map((organization) => ({
-      slug: organization.slug,
-      name: organization.name,
-    })),
-    page: buildCliPage(page.page),
-  };
-};
-
-export const handleGetOrganization: CliServiceMethod<
+const handleGetOrganizationImpl: CliResultServiceMethod<
   "getOrganization"
-> = async (request, context) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "org.read",
-    orgSlug: request.orgSlug,
+> = async (request, context) =>
+  Result.gen(async function* handleGetOrganizationFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "org.read",
+        orgSlug: request.orgSlug,
+      })
+    );
+
+    return Result.ok(buildCliOrganizationDetails(authorizedOrg));
   });
 
-  return buildCliOrganizationDetails(authorizedOrg);
-};
+export const handleListOrganizations = liftCliServiceMethod(
+  handleListOrganizationsImpl
+);
+
+export const handleGetOrganization = liftCliServiceMethod(
+  handleGetOrganizationImpl
+);
 
 function buildCliOrganizationDetails(
   authorizedOrg: AuthorizedCliOrgContext
