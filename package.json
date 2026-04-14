@@ -47,7 +47,8 @@
     "dev:with-connector": "bun run dev:setup && turbo dev",
     "dev:setup": "bun run scripts/dev-setup.ts",
     "landing:build": "bun run --cwd apps/landing build",
-    "landing:deploy:cloudflare": "bun run landing:build && bunx wrangler pages deploy apps/landing/dist/client",
+    "landing:deploy": "bun run landing:build && bunx wrangler deploy",
+    "landing:deploy:preview": "bun run landing:build && bunx wrangler versions upload",
     "github:rulesets:check": "bun run --cwd packages/github-rulesets rulesets:check",
     "github:rulesets:plan": "bun run --cwd packages/github-rulesets rulesets:plan",
     "github:rulesets:apply": "bun run --cwd packages/github-rulesets rulesets:apply",
@@ -98,7 +99,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "0.17.0",
     "turbo": "2.9.1",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "wrangler": "4.81.1"
   },
   "resolutions": {
     "@tanstack/query-core": "5.90.20"
