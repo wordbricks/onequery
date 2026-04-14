@@ -3,7 +3,6 @@
 <p align="center">
   <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=for-the-badge" alt="Site"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
-  <img src="https://img.shields.io/badge/Written%20in-Rust-orange?style=for-the-badge&logo=rust" alt="Written in Rust">
 </p>
 
 **Self-host OneQuery to connect databases, analytics tools, and APIs, manage credentials centrally, and run safe, auditable queries from a CLI and web UI.**
