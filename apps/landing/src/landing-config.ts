@@ -8,17 +8,39 @@ export const LANDING_REPOSITORY_URL =
   "https://github.com/wordbricks/onequery" as const;
 export const LANDING_CLI_SOURCE_URL =
   `${LANDING_REPOSITORY_URL}/tree/main/apps/cli` as const;
+export const LANDING_SELF_HOST_DOCS_URL =
+  `${LANDING_REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
 export const LANDING_INSTALL_SCRIPT_URL =
   "https://onequery.dev/install.sh" as const;
-const LANDING_LOCAL_SERVER_URL = "http://127.0.0.1:5656" as const;
 
 export const LANDING_DOWNLOAD_COMMAND =
   `curl -fsSL ${LANDING_INSTALL_SCRIPT_URL} | sh` as const;
 
+// Note: README currently uses `bun add -g @onequery/cli`, while
+// docs/self-host.md still says `bun install -g @onequery/cli`.
+// Keep the README wording here until the docs are reconciled.
+export const LANDING_INSTALL_COMMANDS = [
+  {
+    label: "Install script",
+    command: LANDING_DOWNLOAD_COMMAND,
+  },
+  {
+    label: "Homebrew",
+    command: "brew install wordbricks/tap/onequery",
+  },
+  {
+    label: "npm",
+    command: "npm install -g @onequery/cli",
+  },
+  {
+    label: "Bun",
+    command: "bun add -g @onequery/cli",
+  },
+] as const;
+
 export const LANDING_INSTALL_SNIPPET = `${LANDING_DOWNLOAD_COMMAND}
 
-onequery gateway
-onequery config set server ${LANDING_LOCAL_SERVER_URL}
+onequery gateway start
 onequery auth login` as const;
 
 export const LANDING_COPY_FEEDBACK_RESET_DELAY_MS = 1500;

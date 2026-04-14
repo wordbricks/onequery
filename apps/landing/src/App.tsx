@@ -3,11 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   LANDING_CLI_SOURCE_URL,
   LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
-  LANDING_DOWNLOAD_COMMAND,
+  LANDING_INSTALL_COMMANDS,
   LANDING_INSTALL_SCRIPT_URL,
   LANDING_INSTALL_SNIPPET,
   LANDING_REPOSITORY_URL,
   LANDING_SECTION_IDS,
+  LANDING_SELF_HOST_DOCS_URL,
 } from "./landing-config";
 
 const querySnippet = `onequery query exec \\
@@ -17,49 +18,104 @@ const querySnippet = `onequery query exec \\
          group by 1 order by 2 desc"`;
 
 const workflowSnippet = `connect source  -> ready
-run query       -> results (or clear error)
-session expires -> auto-refresh -> continue`;
+run query       -> results
+token expires   -> refresh
+retry           -> resume`;
 
 const navigationItems = [
-  { href: `#${LANDING_SECTION_IDS.install}`, label: "INSTALL" },
-  { href: `#${LANDING_SECTION_IDS.surface}`, label: "WHAT IT DOES" },
-  { href: `#${LANDING_SECTION_IDS.workflow}`, label: "HOW IT WORKS" },
+  { href: `#${LANDING_SECTION_IDS.surface}`, label: "Product" },
+  { href: `#${LANDING_SECTION_IDS.install}`, label: "Install" },
+  { href: `#${LANDING_SECTION_IDS.workflow}`, label: "Workflow" },
 ];
 
-const cards = [
+const heroSignals = [
+  "Local gateway, not a hosted control plane",
+  "Terminal and browser share the same runtime state",
+  "Explicit workflows with visible status transitions",
+];
+
+const featureRows = [
   {
-    label: "RUN LOCALLY",
-    title: "Start a server on your machine",
-    body: "One command spins up a local server. Open the browser dashboard or stay in the terminal. Both connect to the same instance.",
+    eyebrow: "Local Control Plane",
+    title: "Run the gateway where your data already lives.",
+    body: "Start OneQuery on your own machine, point it at your own sources, and keep the control plane inside your environment. The landing page should feel like software proof, not brand theater.",
+    points: [
+      "Boot a local server with one command.",
+      "Keep credentials and query execution inside your own network boundary.",
+      "Use the browser UI only as another view onto the same running process.",
+    ],
+    placeholderType: "Product screenshot placeholder",
+    placeholderTitle: "Gateway dashboard",
+    placeholderBody:
+      "Replace with a real dashboard capture showing sources, auth state, and query activity.",
   },
   {
-    label: "LOG IN ONCE",
-    title: "Authenticate and stay signed in",
-    body: "Sign in from the CLI and your session carries over to the browser UI. Tokens refresh automatically so you don't get logged out mid-workflow.",
+    eyebrow: "Shared Runtime State",
+    title: "The browser and the CLI read from the same truth.",
+    body: "This product is built around explicit workflow state, so the marketing surface should show state transitions clearly. A user should immediately understand that auth, source connection, query execution, and retries are observable lifecycle steps.",
+    points: [
+      "CLI actions should reflect instantly in the browser view.",
+      "Session refresh is modeled as a normal transition, not a hidden exception path.",
+      "Each surface should make the current state legible without extra narration.",
+    ],
+    placeholderType: "Animated GIF placeholder",
+    placeholderTitle: "CLI to dashboard sync",
+    placeholderBody:
+      "Replace with a short GIF showing sign-in, source connection, and synchronized status updates.",
   },
   {
-    label: "QUERY ANYTHING",
-    title: "Run SQL across all your connected databases",
-    body: "Point at any connected data source like Postgres or MySQL and run queries directly from the terminal. No extra scripts needed.",
+    eyebrow: "Explicit Query Flow",
+    title: "Every query is visible, inspectable, and recoverable.",
+    body: "The page should emphasize that failures, retries, and success states are part of the normal operating model. This is a better fit for OneQuery than generic AI-product marketing language.",
+    points: [
+      "Show request, execution, results, and failure states as first-class UI.",
+      "Use clean terminal and table placeholders instead of decorative illustration.",
+      "Keep copy short so the product frame carries the proof.",
+    ],
+    placeholderType: "Product screenshot placeholder",
+    placeholderTitle: "Query result surface",
+    placeholderBody:
+      "Replace with a real query result table, error state, or retry flow capture.",
   },
 ];
 
-const explicitItems = [
-  "Start and stop the server with clear status feedback",
-  "Log in, refresh sessions, and handle expired tokens",
-  "Validate and run SQL with structured results",
-  "Keep the browser UI and terminal in sync",
+const infrastructureCards = [
+  {
+    title: "Gateway runtime",
+    body: "A local control plane that keeps source connections, auth, and query execution in one place.",
+  },
+  {
+    title: "CLI surface",
+    body: "Fast terminal workflows for install, auth, source management, and SQL execution.",
+  },
+  {
+    title: "Browser view",
+    body: "A visual surface for the same underlying runtime state, useful for inspection and onboarding.",
+  },
+  {
+    title: "Workflow model",
+    body: "Deterministic transitions for loading, failure, retry, and success instead of hidden side effects.",
+  },
 ];
 
-const timeline = [
-  "Install OneQuery with a single command (curl, bunx, or npx all work).",
-  "Run `onequery gateway` to start the local server.",
-  "Open the browser UI or configure the CLI to connect to it.",
-  "Log in, connect your data sources, and start querying.",
+const installSteps = [
+  "Install the CLI with the bootstrap script.",
+  "Start the local gateway.",
+  "Point the CLI at the local server and sign in once.",
+  "Connect a source, then run queries from either surface.",
+];
+
+const footerLinks = [
+  { href: LANDING_REPOSITORY_URL, label: "GitHub" },
+  { href: LANDING_CLI_SOURCE_URL, label: "CLI source" },
+  { href: LANDING_INSTALL_SCRIPT_URL, label: "Install script" },
 ];
 
 function DownloadCommand() {
-  const [copied, setCopied] = useState(false);
+  const [selectedMethodLabel, setSelectedMethodLabel] = useState<string>(
+    LANDING_INSTALL_COMMANDS[0].label
+  );
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
   const resetTimerRef = useRef<number | null>(null);
 
   useEffect(
@@ -71,35 +127,122 @@ function DownloadCommand() {
     []
   );
 
-  async function handleCopy() {
+  async function handleCopy(label: string, command: string) {
     try {
-      await navigator.clipboard.writeText(LANDING_DOWNLOAD_COMMAND);
-      setCopied(true);
+      await navigator.clipboard.writeText(command);
+      setCopiedLabel(label);
+
       if (resetTimerRef.current !== null) {
         window.clearTimeout(resetTimerRef.current);
       }
+
       resetTimerRef.current = window.setTimeout(() => {
-        setCopied(false);
+        setCopiedLabel(null);
       }, LANDING_COPY_FEEDBACK_RESET_DELAY_MS);
     } catch {
-      setCopied(false);
+      setCopiedLabel(null);
     }
   }
 
+  const selectedMethod =
+    LANDING_INSTALL_COMMANDS.find(
+      (method) => method.label === selectedMethodLabel
+    ) ?? LANDING_INSTALL_COMMANDS[0];
+
   return (
-    <div className="download-command" role="group" aria-label="Install command">
-      <span className="download-command-prompt" aria-hidden="true">
-        $
-      </span>
-      <code>{LANDING_DOWNLOAD_COMMAND}</code>
-      <button
-        type="button"
-        className="download-command-copy"
-        onClick={handleCopy}
-        aria-label="Copy install command"
+    <div className="install-selector">
+      <div className="install-tabs" role="tablist" aria-label="Install method">
+        {LANDING_INSTALL_COMMANDS.map((method) => {
+          const isSelected = method.label === selectedMethod.label;
+
+          return (
+            <button
+              key={method.label}
+              id={`install-tab-${method.label}`}
+              type="button"
+              role="tab"
+              aria-selected={isSelected}
+              aria-controls="install-command-panel"
+              className={`install-tab ${isSelected ? "install-tab-active" : ""}`}
+              onClick={() => setSelectedMethodLabel(method.label)}
+            >
+              {method.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        id="install-command-panel"
+        className="download-command"
+        role="tabpanel"
+        aria-labelledby={`install-tab-${selectedMethod.label}`}
       >
-        {copied ? "COPIED" : "⧉"}
-      </button>
+        <span className="download-command-label">{selectedMethod.label}</span>
+        <code>{selectedMethod.command}</code>
+        <button
+          type="button"
+          className="install-method-copy"
+          onClick={() =>
+            handleCopy(selectedMethod.label, selectedMethod.command)
+          }
+          aria-label={`Copy ${selectedMethod.label} install command`}
+        >
+          {copiedLabel === selectedMethod.label ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type PlaceholderFrameProps = {
+  badge: string;
+  title: string;
+  body: string;
+  variant?: "hero" | "media" | "terminal";
+};
+
+function PlaceholderFrame({
+  badge,
+  title,
+  body,
+  variant = "media",
+}: PlaceholderFrameProps) {
+  return (
+    <div className={`placeholder-frame placeholder-frame-${variant}`}>
+      <div className="placeholder-toolbar">
+        <div className="placeholder-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span className="placeholder-toolbar-label">{badge}</span>
+      </div>
+
+      <div className="placeholder-canvas">
+        <div className="placeholder-pane placeholder-pane-sidebar">
+          <span>runtime</span>
+          <span>sources</span>
+          <span>queries</span>
+          <span>auth</span>
+        </div>
+
+        <div className="placeholder-pane placeholder-pane-main">
+          <div className="placeholder-badges">
+            <span>local</span>
+            <span>active</span>
+            <span>placeholder</span>
+          </div>
+          <h3>{title}</h3>
+          <p>{body}</p>
+          <div className="placeholder-grid" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -109,14 +252,12 @@ export function App() {
     <div className="page-shell">
       <header className="site-header">
         <a
-          href={LANDING_REPOSITORY_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="brand-tile"
-          aria-label="OneQuery GitHub repository"
+          href="/"
+          className="brand-mark"
+          aria-label="OneQuery landing homepage"
         >
-          <span>ONEQUERY</span>
-          <span>CLI</span>
+          <span className="brand-mark-dot" aria-hidden="true" />
+          <span>OneQuery</span>
         </a>
 
         <nav className="site-nav" aria-label="Primary">
@@ -125,86 +266,87 @@ export function App() {
               {item.label}
             </a>
           ))}
-          <a href={LANDING_CLI_SOURCE_URL} target="_blank" rel="noreferrer">
-            SOURCE
-          </a>
         </nav>
 
-        <a
-          className="header-cta"
-          href={LANDING_REPOSITORY_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          GITHUB
-        </a>
+        <div className="header-actions">
+          <a href={LANDING_CLI_SOURCE_URL} target="_blank" rel="noreferrer">
+            Source
+          </a>
+          <a
+            className="button button-primary"
+            href={LANDING_REPOSITORY_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        </div>
       </header>
 
       <main className="page-main">
-        <section className="hero-grid">
+        <section className="hero-section">
           <div className="hero-copy">
-            <p className="section-kicker">
-              OPEN-SOURCE CLI FOR SELF-HOSTED ONEQUERY
-            </p>
-            <h1>Query all your databases from one command line.</h1>
+            <p className="eyebrow">Self-hosted data workspace</p>
+            <h1>Data ready for AI agents.</h1>
             <p className="hero-body">
-              OneQuery CLI lets you run a local server, connect your databases,
-              and query them from the terminal or a browser dashboard. Install
-              it in seconds and get started right away.
+              One safe gateway connecting all data sources.
             </p>
+
             <DownloadCommand />
+
             <div className="hero-actions">
               <a
+                className="button button-primary"
                 href={`#${LANDING_SECTION_IDS.install}`}
-                className="action-link action-link-dark"
               >
-                GET STARTED
+                Get started
               </a>
               <a
+                className="button button-secondary"
                 href={LANDING_REPOSITORY_URL}
                 target="_blank"
                 rel="noreferrer"
-                className="action-link"
               >
-                BROWSE REPOSITORY
+                Browse repository
               </a>
             </div>
+
+            <ul className="hero-signals">
+              {heroSignals.map((signal) => (
+                <li key={signal}>{signal}</li>
+              ))}
+            </ul>
           </div>
 
-          <div className="hero-art" aria-hidden="true">
-            <div className="hero-globe">
-              <div className="hero-continent continent-a" />
-              <div className="hero-continent continent-b" />
-              <div className="hero-continent continent-c" />
-              <div className="hero-continent continent-d" />
-              <div className="hero-tag tag-a">serve</div>
-              <div className="hero-tag tag-b">auth</div>
-              <div className="hero-tag tag-c">query</div>
-              <div className="hero-tag tag-d">state</div>
-            </div>
+          <div className="hero-visual">
+            <PlaceholderFrame
+              badge="Product screenshot placeholder"
+              title="Unified local dashboard"
+              body="Replace this frame with a real capture of the browser UI, source list, query panel, and runtime status."
+              variant="hero"
+            />
           </div>
         </section>
 
         <section
-          className="content-block intro-block"
+          className="section section-summary"
           id={LANDING_SECTION_IDS.surface}
         >
-          <div className="content-heading">
-            <p className="section-kicker">WHAT THIS CLI DOES</p>
+          <div className="section-intro">
+            <p className="eyebrow">What the landing needs to prove</p>
             <h2>
-              A local server, a browser dashboard, and a terminal, all in sync.
+              Show real workflow surfaces instead of decorative marketing art.
             </h2>
             <p>
-              The CLI handles everything you need to get started: running the
-              server, logging in, connecting data sources, and running queries
-              from the terminal or browser.
+              The target design is quiet, monochrome, and screenshot-led. Large
+              headlines set the pace, but the real proof comes from product
+              frames, terminal snippets, and explicit state transitions.
             </p>
           </div>
 
-          <div className="card-grid">
-            {cards.map((card) => (
-              <article key={card.title} className="info-card">
-                <p className="card-label">{card.label}</p>
+          <div className="infrastructure-grid">
+            {infrastructureCards.map((card) => (
+              <article key={card.title} className="infrastructure-card">
                 <h3>{card.title}</h3>
                 <p>{card.body}</p>
               </article>
@@ -212,82 +354,128 @@ export function App() {
           </div>
         </section>
 
+        <section className="section feature-stack">
+          {featureRows.map((feature, index) => (
+            <article
+              key={feature.title}
+              className={`feature-row ${index % 2 === 1 ? "feature-row-reversed" : ""}`}
+            >
+              <div className="feature-copy">
+                <p className="eyebrow">{feature.eyebrow}</p>
+                <h2>{feature.title}</h2>
+                <p>{feature.body}</p>
+                <ul className="detail-list">
+                  {feature.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="feature-media">
+                <PlaceholderFrame
+                  badge={feature.placeholderType}
+                  title={feature.placeholderTitle}
+                  body={feature.placeholderBody}
+                />
+              </div>
+            </article>
+          ))}
+        </section>
+
         <section
-          className="content-block two-column"
+          className="section utility-grid"
           id={LANDING_SECTION_IDS.install}
         >
-          <article className="text-panel">
-            <p className="section-kicker">INSTALL AND BOOT</p>
-            <h2>Up and running in four steps.</h2>
-            <ol className="timeline-list">
-              {timeline.map((item) => (
-                <li key={item}>{item}</li>
+          <article className="utility-panel">
+            <p className="eyebrow">Install</p>
+            <h2>Up and running with one bootstrap path.</h2>
+            <ol className="step-list">
+              {installSteps.map((step) => (
+                <li key={step}>{step}</li>
               ))}
             </ol>
           </article>
 
-          <article className="code-panel">
-            <p className="section-kicker">QUICKSTART</p>
+          <article className="utility-panel utility-panel-code">
+            <p className="eyebrow">Quickstart</p>
             <pre>{LANDING_INSTALL_SNIPPET}</pre>
           </article>
         </section>
 
         <section
-          className="content-block two-column"
+          className="section utility-grid utility-grid-offset"
           id={LANDING_SECTION_IDS.workflow}
         >
-          <article className="code-panel code-panel-dark">
-            <p className="section-kicker">EXAMPLE QUERY</p>
+          <article className="utility-panel utility-panel-code">
+            <p className="eyebrow">Query example</p>
             <pre>{querySnippet}</pre>
           </article>
 
-          <article className="text-panel text-panel-accent">
-            <p className="section-kicker">HOW IT WORKS</p>
-            <h2>Every step is visible. Errors are clear, never hidden.</h2>
+          <article className="utility-panel">
+            <p className="eyebrow">Workflow state</p>
+            <h2>Failure and retry are part of the normal product story.</h2>
             <p>
-              OneQuery shows you exactly what is happening at each stage. If
-              something fails, you get a clear message instead of a silent error
-              buried in a log file.
+              OneQuery is easier to trust when the landing page shows that
+              errors are modeled, visible, and recoverable. This section should
+              read like operating software, not a conceptual brand statement.
             </p>
-            <ul className="explicit-list">
-              {explicitItems.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-            <pre className="workflow-inline">{workflowSnippet}</pre>
+            <pre className="workflow-block">{workflowSnippet}</pre>
           </article>
         </section>
 
-        <section className="cta-band">
-          <div className="cta-copy">
-            <p className="section-kicker">OPEN SOURCE, RUNS ON YOUR MACHINE</p>
-            <h2>Your data stays local. Your queries stay yours.</h2>
+        <section className="section final-cta">
+          <div className="final-cta-copy">
+            <p className="eyebrow">Open source, self-hostable</p>
+            <h2>
+              Run OneQuery on your own infrastructure, or point the CLI at an
+              existing server.
+            </h2>
             <p>
-              Install OneQuery, start the server on your machine, and use the
-              browser dashboard or terminal to query your databases. No cloud
-              required.
+              OneQuery is an open-source platform for unified data querying.
+              Self-host the full product with{" "}
+              <code>onequery gateway start</code>, connect databases, analytics
+              tools, and APIs from one place, and use the CLI or web UI with
+              centralized credential management, query safety controls, and
+              organization-level access control.
             </p>
           </div>
-          <div className="cta-actions">
+
+          <div className="final-cta-actions">
             <a
+              className="button button-primary"
               href={LANDING_INSTALL_SCRIPT_URL}
               target="_blank"
               rel="noreferrer"
-              className="action-link action-link-dark"
             >
-              INSTALL NOW
+              Install now
             </a>
             <a
-              href={LANDING_CLI_SOURCE_URL}
+              className="button button-secondary"
+              href={LANDING_SELF_HOST_DOCS_URL}
               target="_blank"
               rel="noreferrer"
-              className="action-link"
             >
-              READ CLI SOURCE
+              Read docs on GitHub
             </a>
           </div>
         </section>
       </main>
+
+      <footer className="site-footer">
+        <p>OneQuery OSS CLI</p>
+        <div className="footer-links">
+          {footerLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </footer>
     </div>
   );
 }
