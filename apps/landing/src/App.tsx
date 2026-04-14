@@ -329,7 +329,9 @@ function HeroDashboardSurface() {
       setActiveTab((currentTab) => {
         const currentIndex = tabOrder.indexOf(currentTab);
         const nextIndex = (currentIndex + 1) % tabOrder.length;
-        return tabOrder[nextIndex] ?? tabOrder[0];
+        // The order is fixed, but indexed access still widens to `undefined`.
+        const nextTab = tabOrder[nextIndex];
+        return nextTab === undefined ? "integrations" : nextTab;
       });
     }, 5000);
 
