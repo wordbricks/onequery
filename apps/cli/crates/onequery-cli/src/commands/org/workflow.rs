@@ -8,7 +8,7 @@ use crate::cli::OrgSubcommand;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::org;
 use crate::transport::org::OrgListPayload;
 use crate::transport::read_controls::ReadRequestControls;
@@ -511,8 +511,9 @@ where
                     );
 
                     OrgEvent::OrgsLoadFailed {
-                        error: present_api_failure(
+                        error: present_api_failure_with_context(
                             failure,
+                            context,
                             ApiErrorPresentation {
                                 command: &context.command_line,
                                 title: "org list failed",

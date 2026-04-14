@@ -161,6 +161,12 @@ pub(crate) fn default_public_origin() -> String {
     resolve_default_public_origin(DEFAULT_SELF_HOST_LISTEN_HOST, DEFAULT_SELF_HOST_PORT)
 }
 
+pub(crate) fn self_host_public_origin(config: &SelfHostConfig) -> String {
+    config.server.public_origin.clone().unwrap_or_else(|| {
+        resolve_default_public_origin(&config.server.listen_host, config.server.port)
+    })
+}
+
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SecretsConfig {
@@ -470,6 +476,14 @@ pub(crate) fn load_self_host_config_for_test(
 }
 
 #[cfg(test)]
+pub(crate) fn load_self_host_public_config_for_test(
+    paths: SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<SelfHostConfig, CliError> {
+    load_self_host_public_config_with_paths(&paths, command_line)
+}
+
+#[cfg(test)]
 pub(crate) fn write_self_host_launch_config_for_test(
     paths: SelfHostRuntimePaths,
     assets_dist_dir: &Path,
@@ -542,11 +556,18 @@ fn bootstrap_self_host_foundation_with_paths(
     })
 }
 
+pub(crate) fn load_self_host_public_config_with_paths(
+    paths: &SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<SelfHostConfig, CliError> {
+    load_toml_file(&paths.config_path, command_line, "self-host config")
+}
+
 fn load_self_host_config_with_paths(
     paths: SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<SelfHostConfigBundle, CliError> {
-    let config = load_toml_file(&paths.config_path, command_line, "self-host config")?;
+    let config = load_self_host_public_config_with_paths(&paths, command_line)?;
     let secrets = load_toml_file(&paths.secrets_path, command_line, "secrets config")?;
     validate_self_host_secrets(&secrets, &paths.secrets_path, command_line)?;
 
@@ -591,17 +612,7 @@ fn resolve_self_host_launch_config(
     assets_dist_dir: &Path,
     migrations_dir: &Path,
 ) -> ServerLaunchConfig {
-    let public_origin = bundle
-        .config
-        .server
-        .public_origin
-        .clone()
-        .unwrap_or_else(|| {
-            resolve_default_public_origin(
-                &bundle.config.server.listen_host,
-                bundle.config.server.port,
-            )
-        });
+    let public_origin = self_host_public_origin(&bundle.config);
 
     ServerLaunchConfig {
         assets: ServerLaunchAssetsConfig {
@@ -781,6 +792,7 @@ mod tests {
     use super::bootstrap_self_host_foundation_with_paths;
     use super::default_port;
     use super::load_self_host_config_with_paths;
+    use super::load_self_host_public_config_for_test;
     use super::write_self_host_launch_config_for_test;
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
 
@@ -975,6 +987,43 @@ public_origin = "https://onequery.example.com"
                 connectors: ConnectorSecrets {
                     enrollment_token: "connector".to_owned(),
                 },
+            }
+        );
+
+        fs::remove_dir_all(test_dir)
+            .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+    }
+
+    #[test]
+    fn public_config_can_load_without_secrets_file() {
+        let (test_dir, paths) = create_test_paths("self-host-public-config");
+
+        fs::create_dir_all(&paths.config_dir)
+            .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
+        fs::write(
+            &paths.config_path,
+            r#"[server]
+listen_host = "0.0.0.0"
+port = 7777
+public_origin = "https://onequery.example.com"
+"#,
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+
+        let config = load_self_host_public_config_for_test(paths, "onequery gateway")
+            .unwrap_or_else(|error| {
+                panic!("expected self-host public config load to succeed: {error}")
+            });
+
+        assert_eq!(
+            config,
+            SelfHostConfig {
+                server: ServerSection {
+                    listen_host: "0.0.0.0".to_owned(),
+                    port: 7777,
+                    public_origin: Some("https://onequery.example.com".to_owned()),
+                },
+                smtp: SmtpConfig::default(),
             }
         );
 

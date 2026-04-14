@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::auth;
 use crate::transport::auth::LoginCompletion;
 use crate::transport::client::AuthenticatedApiClient;
@@ -130,6 +130,14 @@ pub(crate) async fn ensure_authenticated<B, T>(
         AuthSessionTerminalState::Authenticated => Ok(()),
         AuthSessionTerminalState::Failed { error } => Err(error),
     }
+}
+
+pub(crate) async fn ensure_authenticated_org<B, T>(
+    context: &CommandContext,
+    runtime: &mut Runtime<B, T>,
+) -> Result<String, CliError> {
+    ensure_authenticated(context, runtime).await?;
+    super::require_org(context).map(ToOwned::to_owned)
 }
 
 fn reduce_auth_session(
@@ -266,8 +274,9 @@ async fn execute_auth_session_effect<B, T>(
                     completion: response.payload.completion,
                 },
                 Err(failure) => AuthSessionEvent::SessionRefreshFailed {
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "auth session refresh failed",
@@ -414,6 +423,7 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
+    use insta::assert_snapshot;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use uuid::Uuid;
@@ -421,10 +431,13 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::commands::test_support::refresh_session_response_body;
     use crate::commands::test_support::write_proto_response;
+    use crate::commands::with_command_snapshot_path;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
     use crate::config::default_base_url;
     use crate::credentials::AuthSessionStore;
+    use crate::output::EffectiveOutputMode;
+    use crate::output::render_error;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
     use crate::platform::Terminal;
@@ -435,6 +448,7 @@ mod tests {
     use super::Runtime;
     use super::authenticated_api_client;
     use super::ensure_authenticated;
+    use super::ensure_authenticated_org;
 
     #[derive(Debug)]
     struct NoopBrowser;
@@ -541,6 +555,43 @@ mod tests {
                 ],
             )
         );
+    }
+
+    #[tokio::test]
+    async fn ensure_authenticated_org_reports_login_guidance_before_org_selection_when_logged_out()
+    {
+        let context = test_context(
+            default_base_url(),
+            "onequery query exec --source warehouse --sql \"select 1\"",
+        );
+        let mut runtime = test_runtime(auth_session_store_for_test(None));
+
+        let error = ensure_authenticated_org(&context, &mut runtime)
+            .await
+            .expect_err("expected auth+org preflight to fail without a token");
+
+        assert_eq!(
+            error.try_next,
+            vec![
+                "onequery auth login".to_owned(),
+                "onequery auth import --input <path|->".to_owned(),
+            ]
+        );
+
+        with_command_snapshot_path(|| {
+            assert_snapshot!(
+                render_error(&error, EffectiveOutputMode::Text),
+                @r#"
+Error: not logged in
+Command: onequery query exec --source warehouse --sql "select 1"
+Stage: auth
+Why: no OneQuery token was found in the environment or local auth store.
+Try:
+  - onequery auth login
+  - onequery auth import --input <path|->
+"#
+            );
+        });
     }
 
     #[test]

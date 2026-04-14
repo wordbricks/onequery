@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::cli::QueryValidateArgs;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::query;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
 use crate::workflows::runner::Transition;
@@ -14,6 +14,7 @@ use onequery_cli_core::error::CliError;
 use super::CommandContext;
 use super::CompletedState;
 use super::FailedState;
+use super::PendingValidateQueryRequest;
 use super::QueryValidateEffect;
 use super::QueryValidateEvent;
 use super::QueryValidateFailureOutcome;
@@ -27,14 +28,13 @@ use super::ValidateLoadingQueryInputState;
 use super::ValidateQueryRequest;
 use super::ValidatingQueryState;
 use super::authenticated_api_client_with_timeout;
-use super::ensure_authenticated;
+use super::ensure_authenticated_org;
 use super::input::effective_query_http_timeout;
 use super::input::load_query_request_payload;
 use super::input::query_validate_failure_outcome;
 use super::input::with_effective_query_timeout;
 use super::presentation::render_query_validation_output;
 use super::read_controls_from_read_args;
-use super::require_org;
 use super::validate_query_source_key;
 use crate::output::TerminalOutput;
 
@@ -103,7 +103,7 @@ fn reduce_validate_idle(
                 QueryValidateEffect::LoadQueryRequest { input },
             )
         }
-        QueryValidateEvent::Authenticated
+        QueryValidateEvent::Authenticated { .. }
         | QueryValidateEvent::AuthFailed { .. }
         | QueryValidateEvent::RequestLoaded { .. }
         | QueryValidateEvent::RequestLoadFailed { .. }
@@ -121,26 +121,21 @@ fn reduce_validate_loading_query_input(
 ) -> QueryValidateTransition {
     match event {
         QueryValidateEvent::RequestLoaded { payload } => {
-            let org = match require_org(context) {
-                Ok(org) => org,
-                Err(error) => return Transition::done(validate_failed_state(error)),
-            };
-            let request = Rc::new(ValidateQueryRequest {
-                org: org.to_owned(),
+            let request = Rc::new(PendingValidateQueryRequest {
                 source_key: state.source_key,
                 read: state.read,
                 payload,
             });
             Transition::continue_with_effect(
                 QueryValidateState::CheckingAuth(ValidateCheckingAuthState { request }),
-                QueryValidateEffect::EnsureAuthenticated,
+                QueryValidateEffect::EnsureAuthenticatedOrg,
             )
         }
         QueryValidateEvent::RequestLoadFailed { error } => {
             Transition::done(validate_failed_state(error))
         }
         QueryValidateEvent::Start
-        | QueryValidateEvent::Authenticated
+        | QueryValidateEvent::Authenticated { .. }
         | QueryValidateEvent::AuthFailed { .. }
         | QueryValidateEvent::QueryValidated { .. }
         | QueryValidateEvent::QueryValidateFailed { .. } => {
@@ -155,8 +150,13 @@ fn reduce_validate_checking_auth(
     context: &CommandContext,
 ) -> QueryValidateTransition {
     match event {
-        QueryValidateEvent::Authenticated => {
-            let request = state.request;
+        QueryValidateEvent::Authenticated { org } => {
+            let request = Rc::new(ValidateQueryRequest {
+                org,
+                source_key: state.request.source_key.clone(),
+                read: state.request.read.clone(),
+                payload: state.request.payload.clone(),
+            });
             Transition::continue_with_effect(
                 QueryValidateState::ValidatingQuery(ValidatingQueryState {
                     request: Rc::clone(&request),
@@ -199,7 +199,7 @@ pub(super) fn reduce_validating_query(
             QueryValidateFailureOutcome::Failed => Transition::done(validate_failed_state(error)),
         },
         QueryValidateEvent::Start
-        | QueryValidateEvent::Authenticated
+        | QueryValidateEvent::Authenticated { .. }
         | QueryValidateEvent::AuthFailed { .. }
         | QueryValidateEvent::RequestLoaded { .. }
         | QueryValidateEvent::RequestLoadFailed { .. } => {
@@ -229,7 +229,7 @@ fn unexpected_validate_transition(
 fn query_validate_event_name(event: &QueryValidateEvent) -> &'static str {
     match event {
         QueryValidateEvent::Start => "Start",
-        QueryValidateEvent::Authenticated => "Authenticated",
+        QueryValidateEvent::Authenticated { .. } => "Authenticated",
         QueryValidateEvent::AuthFailed { .. } => "AuthFailed",
         QueryValidateEvent::RequestLoaded { .. } => "RequestLoaded",
         QueryValidateEvent::RequestLoadFailed { .. } => "RequestLoadFailed",
@@ -268,7 +268,7 @@ impl WorkflowLabel for QueryValidateEvent {
 impl WorkflowLabel for QueryValidateEffect {
     fn workflow_label(&self) -> &'static str {
         match self {
-            Self::EnsureAuthenticated => "EnsureAuthenticated",
+            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::LoadQueryRequest { .. } => "LoadQueryRequest",
             Self::ValidateQuery { .. } => "ValidateQuery",
         }
@@ -281,9 +281,9 @@ async fn execute_validate_effect<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> QueryValidateEvent {
     match effect {
-        QueryValidateEffect::EnsureAuthenticated => {
-            match ensure_authenticated(context, runtime).await {
-                Ok(()) => QueryValidateEvent::Authenticated,
+        QueryValidateEffect::EnsureAuthenticatedOrg => {
+            match ensure_authenticated_org(context, runtime).await {
+                Ok(org) => QueryValidateEvent::Authenticated { org },
                 Err(error) => QueryValidateEvent::AuthFailed { error },
             }
         }
@@ -325,8 +325,9 @@ async fn execute_validate_effect<B, T>(
                 },
                 Err(failure) => QueryValidateEvent::QueryValidateFailed {
                     outcome: query_validate_failure_outcome(&failure),
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "query validation failed",

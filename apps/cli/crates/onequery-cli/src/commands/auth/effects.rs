@@ -13,7 +13,7 @@ use crate::credentials::ImportedAuthSession;
 use crate::path_utils::resolve_user_path_for_cli;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::auth;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::org;
@@ -266,8 +266,9 @@ where
                 },
                 Err(failure) => AuthEvent::BootstrapOrgsLoadFailed {
                     completion,
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "org list failed",
@@ -313,8 +314,9 @@ where
                 },
                 Err(failure) => AuthEvent::WhoamiFetchFailed {
                     outcome: auth_failure_outcome(&failure),
-                    error: present_api_failure(
+                    error: present_api_failure_with_context(
                         failure,
+                        context,
                         ApiErrorPresentation {
                             command: &context.command_line,
                             title: "whoami failed",
@@ -354,8 +356,9 @@ async fn execute_start_login_session<B, T>(
             session: response.payload,
         },
         Err(failure) => AuthEvent::LoginSessionStartFailed {
-            error: present_api_failure(
+            error: present_api_failure_with_context(
                 failure,
+                context,
                 ApiErrorPresentation {
                     command: &context.command_line,
                     title: "login start failed",
@@ -468,8 +471,9 @@ where
         }
         Ok(login_poll::LoginPollTerminalState::TransportFailed { failure }) => {
             AuthEvent::LoginCompletionFailed {
-                error: present_api_failure(
+                error: present_api_failure_with_context(
                     failure,
+                    context,
                     ApiErrorPresentation {
                         command: &context.command_line,
                         title: "login poll failed",
@@ -522,8 +526,9 @@ async fn execute_resolve_login_identity<B, T>(
             }
         }
         Err(failure) => AuthEvent::LoginCompletionFailed {
-            error: present_api_failure(
+            error: present_api_failure_with_context(
                 failure,
+                context,
                 ApiErrorPresentation {
                     command: &context.command_line,
                     title: "login identity lookup failed",

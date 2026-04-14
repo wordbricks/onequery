@@ -3,6 +3,7 @@ mod commands;
 mod config;
 mod credentials;
 mod identifiers;
+mod local_target;
 mod output;
 mod output_metadata;
 mod path_utils;

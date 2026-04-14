@@ -43,6 +43,7 @@ use super::QueryValidateTerminalState;
 use super::ValidateQueryRequest;
 use super::ValidatingQueryState;
 use super::WaitingToRetryQueryState;
+use super::execute::reduce_checking_auth;
 use super::execute::reduce_executing_query;
 use super::execute::reduce_idle;
 use super::execute::reduce_loading_query_input;
@@ -280,7 +281,7 @@ fn validate_query_source_key_rejects_unsafe_path_segments() {
 }
 
 #[test]
-fn loading_sql_input_resolves_org_before_authentication() {
+fn loading_sql_input_defers_org_resolution_until_authenticated_org_is_resolved() {
     let context = sample_context();
 
     let transition = reduce_loading_query_input(
@@ -298,9 +299,8 @@ fn loading_sql_input_resolves_org_before_authentication() {
         match transition.into_progress() {
             TransitionProgress::Continue {
                 next_state: QueryState::CheckingAuth(CheckingAuthState { request }),
-                effect: QueryEffect::EnsureAuthenticated,
+                effect: QueryEffect::EnsureAuthenticatedOrg,
             } => (
-                request.org.clone(),
                 request.source_key.clone(),
                 request.read.clone(),
                 request.payload.clone(),
@@ -308,10 +308,63 @@ fn loading_sql_input_resolves_org_before_authentication() {
             other => panic!("expected auth-check transition, got {other:?}"),
         },
         (
+            "warehouse".to_owned(),
+            ListReadArgs::default(),
+            sample_query_payload(),
+        )
+    );
+}
+
+#[test]
+fn authenticated_query_transition_materializes_scoped_request_after_authentication() {
+    let context = sample_context();
+
+    let transition = reduce_checking_auth(
+        CheckingAuthState {
+            request: Rc::new(super::PendingQueryRequest {
+                source_key: "warehouse".to_owned(),
+                read: ListReadArgs::default(),
+                payload: sample_query_payload(),
+            }),
+        },
+        QueryEvent::Authenticated {
+            org: "acme".to_owned(),
+        },
+        &context,
+    );
+
+    assert_eq!(
+        match transition.into_progress() {
+            TransitionProgress::Continue {
+                next_state: QueryState::ExecutingQuery(ExecutingQueryState { request }),
+                effect:
+                    QueryEffect::ExecuteQuery {
+                        request: effect_request,
+                        attempt,
+                    },
+            } => (
+                request.org.clone(),
+                request.source_key.clone(),
+                request.read.clone(),
+                request.payload.clone(),
+                effect_request.org.clone(),
+                effect_request.source_key.clone(),
+                effect_request.read.clone(),
+                effect_request.payload.clone(),
+                attempt,
+            ),
+            other => panic!("expected execute transition, got {other:?}"),
+        },
+        (
             "acme".to_owned(),
             "warehouse".to_owned(),
             ListReadArgs::default(),
             sample_query_payload(),
+            "acme".to_owned(),
+            "warehouse".to_owned(),
+            ListReadArgs::default(),
+            sample_query_payload(),
+            1,
         )
     );
 }

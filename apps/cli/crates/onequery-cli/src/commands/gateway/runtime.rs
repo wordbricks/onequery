@@ -1,20 +1,19 @@
 use std::ffi::OsString;
 use std::fs;
 use std::fs::OpenOptions;
-use std::net::TcpStream;
-use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
 use std::process::Stdio;
-use std::time::Duration;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
 
 use crate::config::self_host::write_self_host_launch_config;
+use crate::local_target::runtime_accepting_connections;
+use crate::local_target::runtime_probe_host;
 use crate::output::CommandOutput;
 
 use super::super::is_process_running;
@@ -551,25 +550,6 @@ fn wait_for_background_runtime_start(
             retry_command_hint(check.retry_command),
         ],
     ))
-}
-
-pub(super) fn runtime_accepting_connections(listen_host: &str, listen_port: u16) -> bool {
-    let timeout = Duration::from_millis(GATEWAY_START_POLL_INTERVAL_MS);
-
-    (runtime_probe_host(listen_host), listen_port)
-        .to_socket_addrs()
-        .ok()
-        .into_iter()
-        .flatten()
-        .any(|address| TcpStream::connect_timeout(&address, timeout).is_ok())
-}
-
-pub(super) fn runtime_probe_host(listen_host: &str) -> &str {
-    match listen_host {
-        "0.0.0.0" => "127.0.0.1",
-        "::" => "::1",
-        _ => listen_host,
-    }
 }
 
 fn describe_exit_status(status: ExitStatus) -> String {

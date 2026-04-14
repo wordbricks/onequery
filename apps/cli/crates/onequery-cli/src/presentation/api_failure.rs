@@ -2,6 +2,8 @@ use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
 
+use crate::commands::CommandContext;
+use crate::local_target::managed_gateway_unavailable_error;
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::cli_problem_code_string;
 use crate::transport::client::ApiClientBuildFailure;
@@ -81,6 +83,21 @@ pub(crate) fn present_api_failure(
         .with_code(Some("decode_error".to_owned()))
         .with_request_id(decode.request_id),
     }
+}
+
+pub(crate) fn present_api_failure_with_context(
+    failure: ApiFailure,
+    context: &CommandContext,
+    presentation: ApiErrorPresentation<'_>,
+) -> CliError {
+    if let ApiFailure::Transport(transport) = &failure {
+        match managed_gateway_unavailable_error(context, transport.stage) {
+            Ok(Some(error)) | Err(error) => return error,
+            Ok(None) => {}
+        }
+    }
+
+    present_api_failure(failure, presentation)
 }
 
 pub(crate) fn present_api_client_build_failure(

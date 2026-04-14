@@ -14,7 +14,7 @@ use onequery_cli_core::error::ErrorStage;
 use crate::cli::ApiArgs;
 use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
-use crate::presentation::api_failure::present_api_failure;
+use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::transport::source_api;
 use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiHeader;
@@ -25,8 +25,7 @@ use crate::transport::source_api::SourceApiSource;
 use super::CommandContext;
 use super::Runtime;
 use super::auth_session::authenticated_api_client_with_timeout;
-use super::auth_session::ensure_authenticated;
-use super::require_org;
+use super::auth_session::ensure_authenticated_org;
 use plan::PlannedCommand;
 use plan::SourceApiExecutionOptions;
 use render::render_descriptor_output;
@@ -38,8 +37,7 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let org_slug = require_org(context)?.to_owned();
-    ensure_authenticated(context, runtime).await?;
+    let org_slug = ensure_authenticated_org(context, runtime).await?;
 
     let request_timeout = Duration::from_secs(runtime.config.data().request_timeout_sec);
     let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;
@@ -48,8 +46,9 @@ pub(super) async fn execute<B, T>(
         source_api::describe_source_api(&client, org_slug.as_str(), args.source.as_str())
             .await
             .map_err(|failure| {
-                present_api_failure(
+                present_api_failure_with_context(
                     failure,
+                    context,
                     ApiErrorPresentation {
                         command: &context.command_line,
                         title: "source API describe failed",
@@ -263,8 +262,9 @@ fn present_source_api_preview_failure(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
-    present_api_failure(
+    present_api_failure_with_context(
         failure,
+        context,
         ApiErrorPresentation {
             command: &context.command_line,
             title: "source API preview failed",
@@ -284,8 +284,9 @@ fn present_source_api_execute_failure(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> CliError {
-    present_api_failure(
+    present_api_failure_with_context(
         failure,
+        context,
         ApiErrorPresentation {
             command: &context.command_line,
             title: "source API execution failed",

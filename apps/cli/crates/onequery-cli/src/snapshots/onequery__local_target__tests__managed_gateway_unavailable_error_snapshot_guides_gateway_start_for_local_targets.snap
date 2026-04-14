@@ -1,0 +1,12 @@
+---
+source: crates/onequery-cli/src/local_target.rs
+expression: "render_error(&error, EffectiveOutputMode::Text)"
+---
+Error: self-host gateway is not running
+Command: onequery auth login
+Stage: auth
+Why: http://127.0.0.1:5656 is configured as the CLI server, but no process is accepting connections on 127.0.0.1:5656
+Try:
+  - onequery gateway start
+  - onequery gateway status
+  - retry onequery auth login
