@@ -1,6 +1,7 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use clap::CommandFactory;
 use insta::assert_snapshot;
 use onequery_cli_core::error::CliError;
 use pretty_assertions::assert_eq;
@@ -16,6 +17,7 @@ use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
 use super::Command;
 use super::ConfigCommand;
+use super::ConfigSetCommand;
 use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
@@ -24,6 +26,7 @@ use super::QueryInputArgs;
 use super::QueryResultWindowArgs;
 use super::QuerySubcommand;
 use super::ReadArgs;
+use super::model::Cli;
 
 fn argv(args: &[&str]) -> Vec<OsString> {
     args.iter().map(OsString::from).collect()
@@ -58,6 +61,11 @@ fn parse_error(args: &[&str]) -> CliError {
 #[test]
 fn help_output_snapshot_keeps_config_commands_out_of_public_surface() {
     assert_snapshot!(rendered_display(&["onequery"]));
+}
+
+#[test]
+fn clap_command_definition_passes_debug_assertions() {
+    Cli::command().debug_assert();
 }
 
 #[test]
@@ -126,7 +134,9 @@ fn parse_invocation_accepts_config_set_server() {
     ]);
 
     match invocation.command {
-        Command::Config(ConfigCommand::SetServer { url }) => {
+        Command::Config(ConfigCommand::Set {
+            action: ConfigSetCommand::Server { url },
+        }) => {
             assert_eq!(url, default_base_url);
         }
         other => panic!("expected config set server command, got {other:?}"),
@@ -207,7 +217,7 @@ fn parse_invocation_accepts_gateway_foreground_start_and_status_subcommands() {
 
         assert!(matches!(
             invocation.command,
-            Command::Gateway(command) if command == expected
+            Command::Gateway(command) if command.command() == expected
         ));
     }
 }

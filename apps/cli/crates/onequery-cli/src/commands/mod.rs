@@ -233,8 +233,8 @@ where
         Command::Source(source_command) => source::execute(&source_command, context, runtime).await,
         Command::Query(query_command) => query::execute(query_command, context, runtime).await,
         Command::Restore(restore_args) => restore::execute(&restore_args, context, runtime).await,
-        Command::Gateway(gateway_command) => {
-            gateway::execute(gateway_command, context, runtime).await
+        Command::Gateway(gateway_args) => {
+            gateway::execute(gateway_args.command(), context, runtime).await
         }
         Command::Upgrade => upgrade::execute(context, runtime).await,
         Command::Api(api_args) => source_api::execute(&api_args, context, runtime).await,

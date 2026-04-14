@@ -1,5 +1,7 @@
 use std::ffi::OsString;
 
+use clap::Parser;
+
 use crate::output::RequestedOutputMode;
 
 pub(super) fn normalize_command_line(args: &[OsString]) -> String {
@@ -124,27 +126,20 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
     (excerpt, characters.next().is_some())
 }
 
-pub(crate) fn requested_output_from_args(args: &[OsString]) -> Option<RequestedOutputMode> {
-    let mut index = 1;
-    while index < args.len() {
-        let token = args[index].to_string_lossy();
-        if token == "--output" {
-            let value = args.get(index + 1)?;
-            return parse_requested_output_token(value.to_string_lossy().as_ref());
-        }
-        if let Some(value) = token.strip_prefix("--output=") {
-            return parse_requested_output_token(value);
-        }
-        index += 1;
-    }
-
-    None
+// CONTEXT: parse errors still need an output mode before the main clap parse succeeds,
+// so this tiny probe ignores unrelated CLI failures and only extracts `--output`.
+#[derive(Debug, Parser)]
+#[command(
+    name = "onequery",
+    disable_help_flag = true,
+    disable_version_flag = true,
+    ignore_errors = true
+)]
+struct OutputModeProbe {
+    #[arg(long, global = true, value_enum)]
+    output: Option<RequestedOutputMode>,
 }
 
-fn parse_requested_output_token(raw: &str) -> Option<RequestedOutputMode> {
-    match raw.trim() {
-        "text" => Some(RequestedOutputMode::Text),
-        "json" => Some(RequestedOutputMode::Json),
-        _ => None,
-    }
+pub(crate) fn requested_output_from_args(args: &[OsString]) -> Option<RequestedOutputMode> {
+    OutputModeProbe::try_parse_from(args).ok()?.output
 }
