@@ -3,30 +3,6 @@
 This app is a static Vite SPA that builds to `apps/landing/dist/client` and is
 intended to deploy through **Cloudflare Workers Static Assets**, not Pages.
 
-## Local Manual Deploy
-
-The root workspace now includes `wrangler.jsonc` configured for this landing
-site:
-
-- Worker name: `onequery-landing`
-- Asset directory: `apps/landing/dist/client`
-- SPA fallback: `single-page-application`
-
-Build and deploy manually:
-
-```bash
-bun run landing:deploy
-```
-
-For a preview-style upload without promoting to the latest deployed version:
-
-```bash
-bun run landing:deploy:preview
-```
-
-The first run will ask you to authenticate Wrangler with Cloudflare if you have
-not already done so.
-
 ## GitHub Auto Deploy
 
 Recommended Cloudflare Workers Builds settings for this monorepo:
@@ -35,8 +11,6 @@ Recommended Cloudflare Workers Builds settings for this monorepo:
 - Production branch: `main`
 - Root directory: `.`
 - Build command: `bun run landing:build`
-- Deploy command: `bunx wrangler deploy`
-- Non-production deploy command: `bunx wrangler versions upload`
 
 Recommended build environment variables:
 

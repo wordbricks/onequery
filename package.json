@@ -99,8 +99,7 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "0.17.0",
     "turbo": "2.9.1",
-    "vitest": "catalog:",
-    "wrangler": "4.81.1"
+    "vitest": "catalog:"
   },
   "resolutions": {
     "@tanstack/query-core": "5.90.20"
