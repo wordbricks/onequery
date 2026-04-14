@@ -1,3 +1,4 @@
+import { Result, TaggedError } from "better-result";
 import { importPKCS8, SignJWT } from "jose";
 
 import {
@@ -8,6 +9,20 @@ import {
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SERVICE_ACCOUNT_TOKEN_GRANT_TYPE =
   "urn:ietf:params:oauth:grant-type:jwt-bearer";
+
+class ServiceAccountTokenRequestError extends TaggedError(
+  "ServiceAccountTokenRequestError"
+)<{
+  message: string;
+  cause?: unknown;
+}>() {}
+
+class ServiceAccountTokenResponseError extends TaggedError(
+  "ServiceAccountTokenResponseError"
+)<{
+  message: string;
+  cause?: unknown;
+}>() {}
 
 function requireNonEmptyField(value: string, fieldName: string): string {
   const normalized = value.trim();
@@ -88,45 +103,56 @@ export async function getServiceAccountAccessToken(input: {
     () => controller.abort(),
     DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS
   );
-  const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
-    body: body.toString(),
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    method: "POST",
-    signal: controller.signal,
-  })
-    .catch((error: unknown) => {
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(
-          `Service account token request timed out after ${DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS}ms`,
-          { cause: error }
-        );
+  const responseResult = await Result.tryPromise({
+    try: async () => {
+      try {
+        return await fetch(GOOGLE_TOKEN_ENDPOINT, {
+          body: body.toString(),
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          method: "POST",
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
       }
-      throw error;
-    })
-    .finally(() => {
-      clearTimeout(timeoutId);
-    });
+    },
+    catch: (cause) =>
+      new ServiceAccountTokenRequestError({
+        cause,
+        message:
+          cause instanceof Error && cause.name === "AbortError"
+            ? `Service account token request timed out after ${DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS}ms`
+            : toErrorMessage(cause),
+      }),
+  });
+  if (responseResult.isErr()) {
+    throw responseResult.error;
+  }
+
+  const response = responseResult.value;
   if (!response.ok) {
-    const errorText = await response.text().catch(() => "Unknown error");
-    throw new Error(
-      `Failed to exchange service account token: ${response.status} ${parseGoogleTokenErrorDetail(errorText)}`
+    const errorText = (await Result.tryPromise(() => response.text())).unwrapOr(
+      "Unknown error"
     );
+    throw new ServiceAccountTokenRequestError({
+      message: `Failed to exchange service account token: ${response.status} ${parseGoogleTokenErrorDetail(errorText)}`,
+    });
   }
-  const tokenResult = await response
-    .json()
-    .then((value) => ({ ok: true as const, value }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
-  if (!tokenResult.ok) {
-    const message =
-      tokenResult.error instanceof Error
-        ? tokenResult.error.message
-        : String(tokenResult.error);
-    throw new Error(
-      `Failed to parse service account token response: ${message}`
-    );
+
+  const tokenResult = await Result.tryPromise({
+    try: () => response.json(),
+    catch: (cause) =>
+      new ServiceAccountTokenResponseError({
+        cause,
+        message: `Failed to parse service account token response: ${toErrorMessage(cause)}`,
+      }),
+  });
+  if (tokenResult.isErr()) {
+    throw tokenResult.error;
   }
+
   const accessToken =
     typeof tokenResult.value === "object" &&
     tokenResult.value !== null &&
@@ -135,9 +161,17 @@ export async function getServiceAccountAccessToken(input: {
       ? tokenResult.value.access_token.trim()
       : null;
   if (!accessToken) {
-    throw new Error(
-      "Service account token response did not include access_token"
-    );
+    throw new ServiceAccountTokenResponseError({
+      message: "Service account token response did not include access_token",
+    });
   }
   return accessToken;
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }

@@ -1,4 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -68,23 +70,30 @@ const connectorJobErrorSchema = z.object({
   status: z.literal("error"),
 });
 
+class ConnectorAuthorizationError extends TaggedError(
+  "ConnectorAuthorizationError"
+)<{
+  message: string;
+  status: 401;
+}>() {
+  constructor(message: string) {
+    super({ message, status: 401 });
+  }
+}
+
 function requireBearerAuthToken(c: {
   req: {
     header: (name: string) => string | undefined;
   };
-}) {
+}): ResultType<string, ConnectorAuthorizationError> {
   const authToken = readBearerToken(c.req.header("authorization"));
   if (!authToken) {
-    return {
-      ok: false as const,
-      response: { error: "Missing or invalid Authorization header" },
-    };
+    return Result.err(
+      new ConnectorAuthorizationError("Missing or invalid Authorization header")
+    );
   }
 
-  return {
-    authToken,
-    ok: true as const,
-  };
+  return Result.ok(authToken);
 }
 
 export const connectorsRoute = new Hono<{
@@ -127,19 +136,19 @@ export const connectorsRoute = new Hono<{
     zValidator("json", connectorHeartbeatSchema, zodProblemHook()),
     async (c) => {
       const auth = requireBearerAuthToken(c);
-      if (!auth.ok) {
-        return c.json(auth.response, 401);
+      if (auth.isErr()) {
+        return c.json({ error: auth.error.message }, auth.error.status);
       }
 
       const db = c.var.storage.db;
       const result = await recordConnectorHeartbeat({
-        authToken: auth.authToken,
+        authToken: auth.value,
         connectorId: c.req.param("id"),
         db,
         payload: c.req.valid("json"),
       });
-      if (!result.ok) {
-        return c.json({ error: result.error }, result.status);
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, result.error.status);
       }
 
       return c.body(null, 204);
@@ -147,22 +156,22 @@ export const connectorsRoute = new Hono<{
   )
   .post("/:id/jobs/next", async (c) => {
     const auth = requireBearerAuthToken(c);
-    if (!auth.ok) {
-      return c.json(auth.response, 401);
+    if (auth.isErr()) {
+      return c.json({ error: auth.error.message }, auth.error.status);
     }
 
     const db = c.var.storage.db;
     const result = await pollConnectorJob({
-      authToken: auth.authToken,
+      authToken: auth.value,
       connectorId: c.req.param("id"),
       db,
       signal: c.req.raw.signal,
     });
-    if (!result.ok) {
-      return c.json({ error: result.error }, result.status);
+    if (result.isErr()) {
+      return c.json({ error: result.error.message }, result.error.status);
     }
 
-    return c.json({ job: result.job });
+    return c.json({ job: result.value });
   });
 
 export const connectorJobsRoute = new Hono<{
@@ -173,28 +182,31 @@ export const connectorJobsRoute = new Hono<{
     zValidator("json", connectorJobResultSchema, zodProblemHook()),
     async (c) => {
       const auth = requireBearerAuthToken(c);
-      if (!auth.ok) {
-        return c.json(auth.response, 401);
+      if (auth.isErr()) {
+        return c.json({ error: auth.error.message }, auth.error.status);
       }
 
       const db = c.var.storage.db;
-      const connectorId = await findConnectorIdByAuthToken({
-        authToken: auth.authToken,
+      const connector = await findConnectorIdByAuthToken({
+        authToken: auth.value,
         db,
       });
-      if (!connectorId) {
-        return c.json({ error: "Invalid connector token" }, 401);
+      if (connector.isErr()) {
+        return c.json(
+          { error: connector.error.message },
+          connector.error.status
+        );
       }
 
       const result = await submitConnectorJobResult({
-        authToken: auth.authToken,
-        connectorId,
+        authToken: auth.value,
+        connectorId: connector.value,
         db,
         jobId: c.req.param("jobId"),
         payload: c.req.valid("json"),
       });
-      if (!result.ok) {
-        return c.json({ error: result.error }, result.status);
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, result.error.status);
       }
 
       return c.body(null, 204);
@@ -205,28 +217,31 @@ export const connectorJobsRoute = new Hono<{
     zValidator("json", connectorJobErrorSchema, zodProblemHook()),
     async (c) => {
       const auth = requireBearerAuthToken(c);
-      if (!auth.ok) {
-        return c.json(auth.response, 401);
+      if (auth.isErr()) {
+        return c.json({ error: auth.error.message }, auth.error.status);
       }
 
       const db = c.var.storage.db;
-      const connectorId = await findConnectorIdByAuthToken({
-        authToken: auth.authToken,
+      const connector = await findConnectorIdByAuthToken({
+        authToken: auth.value,
         db,
       });
-      if (!connectorId) {
-        return c.json({ error: "Invalid connector token" }, 401);
+      if (connector.isErr()) {
+        return c.json(
+          { error: connector.error.message },
+          connector.error.status
+        );
       }
 
       const result = await submitConnectorJobError({
-        authToken: auth.authToken,
-        connectorId,
+        authToken: auth.value,
+        connectorId: connector.value,
         db,
         jobId: c.req.param("jobId"),
         payload: c.req.valid("json"),
       });
-      if (!result.ok) {
-        return c.json({ error: result.error }, result.status);
+      if (result.isErr()) {
+        return c.json({ error: result.error.message }, result.error.status);
       }
 
       return c.body(null, 204);

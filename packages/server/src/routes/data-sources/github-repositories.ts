@@ -6,6 +6,7 @@ import {
   getDatabaseSchema,
   isGitHubCredentials,
 } from "@onequery/db/server";
+import { Result } from "better-result";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -90,10 +91,10 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         return c.json({ error: "Invalid GitHub credentials" }, 400);
       }
 
-      const result = await listGitHubRepositories({ credentials })
-        .then((value) => ({ ok: true as const, value }))
-        .catch((error: unknown) => ({ error, ok: false as const }));
-      if (!result.ok) {
+      const result = await Result.tryPromise(() =>
+        listGitHubRepositories({ credentials })
+      );
+      if (result.isErr()) {
         return c.json(
           createPrefixedQueryError("GitHub API error", result.error),
           502

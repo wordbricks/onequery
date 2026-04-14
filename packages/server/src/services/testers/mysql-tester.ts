@@ -1,4 +1,5 @@
 import type { MySQLCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 import mysql from "mysql2/promise";
 
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
@@ -50,30 +51,22 @@ export function buildMySQLConnectionConfig(
   return config;
 }
 
-type ConnectionAttemptResult = { ok: true } | { ok: false; error: unknown };
-
 const attemptMySQLConnection = async (
   credentials: MySQLCredentials,
   timeoutSeconds: number,
   useSsl: boolean
-): Promise<ConnectionAttemptResult> => {
-  try {
+): Promise<Result<void, unknown>> =>
+  Result.tryPromise(async () => {
     const connection = await mysql.createConnection(
       buildMySQLConnectionConfig(credentials, timeoutSeconds, useSsl)
     );
 
     try {
       await connection.execute("SELECT 1 as result");
-      return { ok: true };
-    } catch (error: unknown) {
-      return { error, ok: false };
     } finally {
       await connection.end().catch(() => {});
     }
-  } catch (error: unknown) {
-    return { error, ok: false };
-  }
-};
+  });
 
 export async function testMySQLConnection(
   credentials: MySQLCredentials,
@@ -88,7 +81,7 @@ export async function testMySQLConnection(
   );
   const finalAttempt = shouldFallbackToPlaintext("prefer")
     ? initialAttempt.then(async (result) => {
-        if (result.ok) {
+        if (result.isOk()) {
           return result;
         }
         const fallbackResult = await attemptMySQLConnection(
@@ -96,13 +89,13 @@ export async function testMySQLConnection(
           timeoutSeconds,
           false
         );
-        return fallbackResult.ok ? fallbackResult : result;
+        return fallbackResult.isOk() ? fallbackResult : result;
       })
     : initialAttempt;
 
   return finalAttempt.then((result) => {
     const latencyMs = Date.now() - startTime;
-    if (result.ok) {
+    if (result.isOk()) {
       return {
         latencyMs,
         message: `Connection successful (${latencyMs}ms)`,

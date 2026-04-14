@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, member } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -39,9 +40,10 @@ const UpdateMemberRoleBodySchema = z.object({
   role: TeamRoleSelectionSchema,
 });
 
-type TeamPermissionResult =
-  | { ok: true }
-  | { ok: false; status: 401 | 403; error: string };
+class TeamPermissionError extends TaggedError("TeamPermissionError")<{
+  message: string;
+  status: 401 | 403;
+}>() {}
 
 async function findOrganizationMembership(
   db: Database,
@@ -62,11 +64,16 @@ async function requireTeamPermission(input: {
   organizationId: string;
   permission: OrganizationPermissionCheck;
   session: SessionVariables["session"];
-}): Promise<TeamPermissionResult> {
+}) {
   const { db, organizationId, permission, session } = input;
 
   if (!session?.user) {
-    return { error: "Unauthorized", ok: false, status: 401 };
+    return Result.err(
+      new TeamPermissionError({
+        message: "Unauthorized",
+        status: 401,
+      })
+    );
   }
 
   const membership = await findOrganizationMembership(
@@ -82,10 +89,15 @@ async function requireTeamPermission(input: {
       rawRole: membership.role,
     })
   ) {
-    return { ok: true };
+    return Result.ok(undefined);
   }
 
-  return { error: "Forbidden", ok: false, status: 403 };
+  return Result.err(
+    new TeamPermissionError({
+      message: "Forbidden",
+      status: 403,
+    })
+  );
 }
 
 export const teamRoute = new Hono<{
@@ -107,8 +119,8 @@ export const teamRoute = new Hono<{
         session,
       });
 
-      if (!access.ok) {
-        return c.json({ error: access.error }, access.status);
+      if (access.isErr()) {
+        return c.json({ error: access.error.message }, access.error.status);
       }
 
       const auth = c.var.storage.auth;
@@ -140,8 +152,8 @@ export const teamRoute = new Hono<{
         session,
       });
 
-      if (!access.ok) {
-        return c.json({ error: access.error }, access.status);
+      if (access.isErr()) {
+        return c.json({ error: access.error.message }, access.error.status);
       }
 
       const auth = c.var.storage.auth;
@@ -168,8 +180,8 @@ export const teamRoute = new Hono<{
         session,
       });
 
-      if (!access.ok) {
-        return c.json({ error: access.error }, access.status);
+      if (access.isErr()) {
+        return c.json({ error: access.error.message }, access.error.status);
       }
 
       const auth = c.var.storage.auth;
@@ -198,8 +210,8 @@ export const teamRoute = new Hono<{
         session,
       });
 
-      if (!access.ok) {
-        return c.json({ error: access.error }, access.status);
+      if (access.isErr()) {
+        return c.json({ error: access.error.message }, access.error.status);
       }
 
       const auth = c.var.storage.auth;

@@ -7,6 +7,7 @@ import {
   SourceApiInvalidRequestError,
   SourceApiPermissionDeniedError,
 } from "@onequery/server/source-api";
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -242,12 +243,12 @@ function createHarness() {
     executePreparedSourceApi: vi.fn().mockResolvedValue(executionResponse),
     getCliLogLevelForStatus: vi.fn((): "info" => "info"),
     logCliEvent: vi.fn(),
-    prepareDataSourceCredentials: vi.fn().mockResolvedValue({
-      ok: true,
-      value: {
+    prepareDataSourceCredentials: vi.fn().mockResolvedValue(
+      Result.ok({
         credentials: preparedSource.credentials,
-      },
-    }),
+        refreshed: false,
+      })
+    ),
     prepareSourceApiDraft: vi.fn().mockResolvedValue(prepared),
     requireCliConnectRequestContext: vi.fn().mockReturnValue(requestContext),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),

@@ -14,35 +14,47 @@ describe("read controls policy", () => {
       ["sources.name", "sources.status"]
     );
 
-    expect(result).toEqual({
-      ok: true,
-      value: new Set(["sources.name", "sources.status"]),
-    });
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toEqual(new Set(["sources.name", "sources.status"]));
   });
 
   it("rejects unsupported selected fields", () => {
     const result = parseSelectedFields("sources.provider", ["sources.name"]);
 
-    expect(result).toEqual({
-      message: 'unsupported field selection "sources.provider"',
-      ok: false,
-    });
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected selected fields parsing to fail");
+    }
+
+    expect(result.error.message).toBe(
+      'unsupported field selection "sources.provider"'
+    );
   });
 
   it("round-trips page cursors", () => {
     const cursor = encodePageCursor(25);
 
-    expect(parsePageCursor(cursor)).toEqual({
-      ok: true,
-      value: 25,
-    });
+    const result = parsePageCursor(cursor);
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toBe(25);
   });
 
   it("rejects invalid page cursors", () => {
-    expect(parsePageCursor("not-a-cursor")).toEqual({
-      message: "cursor is invalid",
-      ok: false,
-    });
+    const result = parsePageCursor("not-a-cursor");
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected cursor parsing to fail");
+    }
+
+    expect(result.error.message).toBe("cursor is invalid");
   });
 
   it("paginates from the decoded offset", () => {

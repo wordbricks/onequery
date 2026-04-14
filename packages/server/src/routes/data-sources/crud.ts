@@ -8,6 +8,8 @@ import {
   ne,
 } from "@onequery/db/server";
 import type { ProviderType } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 import { Hono } from "hono";
 
 import {
@@ -32,6 +34,20 @@ import {
 
 const GOOGLE_OAUTH_DATA_SOURCE_ERROR =
   "Google Analytics and BigQuery data sources must use service account credentials.";
+
+class LinearTokenRevocationError extends TaggedError(
+  "LinearTokenRevocationError"
+)<{
+  message: string;
+  cause?: unknown;
+}>() {}
+
+class LinearCredentialsDecryptError extends TaggedError(
+  "LinearCredentialsDecryptError"
+)<{
+  message: string;
+  cause: unknown;
+}>() {}
 
 function doesProviderMatchCredentials(input: {
   provider: ProviderType;
@@ -68,40 +84,40 @@ function getLinearRevocationToken(
 
 async function revokeLinearToken(input: {
   token: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<ResultType<void, LinearTokenRevocationError>> {
   const body = new URLSearchParams({
     token: input.token,
     token_type_hint: "access_token",
   });
 
-  const response = await fetch("https://api.linear.app/oauth/revoke", {
-    body: body.toString(),
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    method: "POST",
-  })
-    .then((result) => ({ ok: true as const, result }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
-
-  if (!response.ok) {
-    return {
-      error:
-        response.error instanceof Error
-          ? response.error.message
-          : "Failed to reach Linear revoke endpoint",
-      ok: false,
-    };
+  const response = await Result.tryPromise({
+    try: () =>
+      fetch("https://api.linear.app/oauth/revoke", {
+        body: body.toString(),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        method: "POST",
+      }),
+    catch: (cause) =>
+      new LinearTokenRevocationError({
+        cause,
+        message: "Failed to reach Linear revoke endpoint",
+      }),
+  });
+  if (response.isErr()) {
+    return Result.err(response.error);
   }
 
-  if (response.result.ok) {
-    return { ok: true };
+  if (!response.value.ok) {
+    return Result.err(
+      new LinearTokenRevocationError({
+        message: `Linear revoke failed with status ${response.value.status}`,
+      })
+    );
   }
 
-  return {
-    error: `Linear revoke failed with status ${response.result.status}`,
-    ok: false,
-  };
+  return Result.ok(undefined);
 }
 
 export const dataSourcesCrudRoute = new Hono<{
@@ -224,10 +240,10 @@ export const dataSourcesCrudRoute = new Hono<{
           db,
           organizationId: body.organizationId,
         });
-        if (!organizationCheck.ok) {
+        if (organizationCheck.isErr()) {
           return c.json(
-            { error: organizationCheck.error },
-            organizationCheck.status
+            { error: organizationCheck.error.message },
+            organizationCheck.error.status
           );
         }
       }
@@ -366,10 +382,10 @@ export const dataSourcesCrudRoute = new Hono<{
             db,
             organizationId,
           });
-          if (!organizationCheck.ok) {
+          if (organizationCheck.isErr()) {
             return c.json(
-              { error: organizationCheck.error },
-              organizationCheck.status
+              { error: organizationCheck.error.message },
+              organizationCheck.error.status
             );
           }
         }
@@ -438,42 +454,42 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       if (existing.provider === "linear") {
-        const decryptOutcome = await Promise.resolve()
-          .then(() =>
+        const decryptOutcome = Result.try({
+          try: () =>
             decryptCredentialsObject(
               existing.credentialsEncrypted,
               existing.credentialsIv,
               c.var.runtime.crypto.masterEncryptionKey,
               credentialSchemaMap.linear
-            )
-          )
-          .then((credentials) => ({ credentials, ok: true as const }))
-          .catch((error: unknown) => ({ error, ok: false as const }));
+            ),
+          catch: (cause) =>
+            new LinearCredentialsDecryptError({
+              cause,
+              message: "Failed to decrypt Linear credentials during disconnect",
+            }),
+        });
 
-        if (decryptOutcome.ok) {
+        if (decryptOutcome.isOk()) {
           const revokeOutcome = await revokeLinearToken({
-            token: getLinearRevocationToken(decryptOutcome.credentials),
+            token: getLinearRevocationToken(decryptOutcome.value),
           });
-          if (!revokeOutcome.ok) {
+          if (revokeOutcome.isErr()) {
             console.warn(
               "[data-sources] Failed to revoke Linear token during disconnect",
               {
                 dataSourceId: existing.id,
-                error: revokeOutcome.error,
+                error: revokeOutcome.error.message,
               }
             );
           }
         }
 
-        if (!decryptOutcome.ok) {
+        if (decryptOutcome.isErr()) {
           console.warn(
             "[data-sources] Failed to decrypt Linear credentials during disconnect",
             {
               dataSourceId: existing.id,
-              error:
-                decryptOutcome.error instanceof Error
-                  ? decryptOutcome.error.message
-                  : String(decryptOutcome.error),
+              error: decryptOutcome.error.message,
             }
           );
         }

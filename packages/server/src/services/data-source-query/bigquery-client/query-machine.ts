@@ -1,3 +1,5 @@
+import { Result } from "better-result";
+
 import { mergeSchemaWithRows } from "./rows";
 import { parseJobsQueryResponse } from "./schemas";
 import { createRequestId, requestBigQueryJson } from "./transport";
@@ -102,19 +104,18 @@ async function runBigQueryQueryStateMachine(
     }
 
     const effect = describeBigQueryQueryEffect(state, nowMs);
-    const outcome = await requestBigQueryJson({
-      ...context,
-      ...effect,
-    })
-      .then((response) => ({
-        ok: true as const,
-        response: parseJobsQueryResponse(response),
-      }))
-      .catch((error: unknown) => ({ error, ok: false as const }));
+    const outcome = await Result.tryPromise(async () =>
+      parseJobsQueryResponse(
+        await requestBigQueryJson({
+          ...context,
+          ...effect,
+        })
+      )
+    );
 
-    state = outcome.ok
+    state = outcome.isOk()
       ? reduceBigQueryQueryState(state, {
-          response: outcome.response,
+          response: outcome.value,
           type: "request_succeeded",
         })
       : reduceBigQueryQueryState(state, {
