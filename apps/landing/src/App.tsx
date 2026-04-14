@@ -12,48 +12,50 @@ import {
 
 const querySnippet = `onequery query exec \\
   --source postgres-prod \\
-  --sql "select team, sum(cost) as spend from monthly_costs group by 1 order by 2 desc"`;
+  --sql "select team, sum(cost) as spend \\
+         from monthly_costs \\
+         group by 1 order by 2 desc"`;
 
-const workflowSnippet = `state -> reducer -> effect
-failure -> retry -> explicit transition
-query -> result envelope -> terminal output`;
+const workflowSnippet = `connect source  -> ready
+run query       -> results (or clear error)
+session expires -> auto-refresh -> continue`;
 
 const navigationItems = [
   { href: `#${LANDING_SECTION_IDS.install}`, label: "INSTALL" },
   { href: `#${LANDING_SECTION_IDS.surface}`, label: "WHAT IT DOES" },
-  { href: `#${LANDING_SECTION_IDS.workflow}`, label: "WORKFLOW" },
+  { href: `#${LANDING_SECTION_IDS.workflow}`, label: "HOW IT WORKS" },
 ];
 
 const cards = [
   {
     label: "RUN LOCALLY",
-    title: "Start the control plane on your machine",
-    body: "Use `onequery gateway` to bring up the local runtime, then point the browser UI and CLI at the same instance.",
+    title: "Start a server on your machine",
+    body: "One command spins up a local server. Open the browser dashboard or stay in the terminal. Both connect to the same instance.",
   },
   {
-    label: "AUTH CLEARLY",
-    title: "Keep sign-in and session lifecycle inspectable",
-    body: "The CLI models device and session flows explicitly so retry, refresh, and failure stay legible to operators.",
+    label: "LOG IN ONCE",
+    title: "Authenticate and stay signed in",
+    body: "Sign in from the CLI and your session carries over to the browser UI. Tokens refresh automatically so you don't get logged out mid-workflow.",
   },
   {
-    label: "QUERY DIRECTLY",
-    title: "Work across connected sources from one surface",
-    body: "Validate SQL, execute queries, and read structured results without inventing one-off shell glue for every source.",
+    label: "QUERY ANYTHING",
+    title: "Run SQL across all your connected databases",
+    body: "Point at any connected data source like Postgres or MySQL and run queries directly from the terminal. No extra scripts needed.",
   },
 ];
 
 const explicitItems = [
-  "Serve lifecycle and runtime status",
-  "Auth login plus session refresh behavior",
-  "CLI query validation and execution contracts",
-  "Shared browser and terminal control plane",
+  "Start and stop the server with clear status feedback",
+  "Log in, refresh sessions, and handle expired tokens",
+  "Validate and run SQL with structured results",
+  "Keep the browser UI and terminal in sync",
 ];
 
 const timeline = [
-  "Install the published `onequery` package with curl, bunx, or npx.",
-  "Run `onequery gateway` and open the local browser UI.",
-  "Bootstrap the instance once, then point the CLI at it.",
-  "Use the same runtime for authentication, organization context, and query workflows.",
+  "Install OneQuery with a single command (curl, bunx, or npx all work).",
+  "Run `onequery gateway` to start the local server.",
+  "Open the browser UI or configure the CLI to connect to it.",
+  "Log in, connect your data sources, and start querying.",
 ];
 
 function DownloadCommand() {
@@ -111,10 +113,9 @@ export function App() {
           target="_blank"
           rel="noreferrer"
           className="brand-tile"
-          aria-label="OneQuery OSS GitHub repository"
+          aria-label="OneQuery GitHub repository"
         >
           <span>ONEQUERY</span>
-          <span>OSS</span>
           <span>CLI</span>
         </a>
 
@@ -143,15 +144,13 @@ export function App() {
         <section className="hero-grid">
           <div className="hero-copy">
             <p className="section-kicker">
-              OPEN-SOURCE COMMAND LINE FOR SELF-HOSTED ONEQUERY
+              OPEN-SOURCE CLI FOR SELF-HOSTED ONEQUERY
             </p>
-            <h1>
-              Operate your data workspace with a lighter, explicit surface.
-            </h1>
+            <h1>Query all your databases from one command line.</h1>
             <p className="hero-body">
-              OneQuery OSS CLI is built for local operation: install it, run the
-              control plane on Bun, keep the browser UI and terminal pointed at
-              the same instance, and make transitions visible instead of hidden.
+              OneQuery CLI lets you run a local server, connect your databases,
+              and query them from the terminal or a browser dashboard. Install
+              it in seconds and get started right away.
             </p>
             <DownloadCommand />
             <div className="hero-actions">
@@ -159,7 +158,7 @@ export function App() {
                 href={`#${LANDING_SECTION_IDS.install}`}
                 className="action-link action-link-dark"
               >
-                SEE INSTALL FLOW
+                GET STARTED
               </a>
               <a
                 href={LANDING_REPOSITORY_URL}
@@ -191,14 +190,14 @@ export function App() {
           id={LANDING_SECTION_IDS.surface}
         >
           <div className="content-heading">
-            <p className="section-kicker">WHAT THIS CLI IS FOR</p>
+            <p className="section-kicker">WHAT THIS CLI DOES</p>
             <h2>
-              Not a thin shell around APIs, but the operating surface itself.
+              A local server, a browser dashboard, and a terminal, all in sync.
             </h2>
             <p>
-              The OSS CLI owns local serve lifecycle, authentication, query
-              workflows, and the bridge between the browser session and terminal
-              session.
+              The CLI handles everything you need to get started: running the
+              server, logging in, connecting data sources, and running queries
+              from the terminal or browser.
             </p>
           </div>
 
@@ -219,7 +218,7 @@ export function App() {
         >
           <article className="text-panel">
             <p className="section-kicker">INSTALL AND BOOT</p>
-            <h2>From installer to live runtime in a few deliberate steps.</h2>
+            <h2>Up and running in four steps.</h2>
             <ol className="timeline-list">
               {timeline.map((item) => (
                 <li key={item}>{item}</li>
@@ -238,19 +237,17 @@ export function App() {
           id={LANDING_SECTION_IDS.workflow}
         >
           <article className="code-panel code-panel-dark">
-            <p className="section-kicker">QUERY SURFACE</p>
+            <p className="section-kicker">EXAMPLE QUERY</p>
             <pre>{querySnippet}</pre>
           </article>
 
           <article className="text-panel text-panel-accent">
-            <p className="section-kicker">WORKFLOW SEMANTICS</p>
-            <h2>
-              Reducers stay pure. Effects stay deferred. Failure stays modeled.
-            </h2>
+            <p className="section-kicker">HOW IT WORKS</p>
+            <h2>Every step is visible. Errors are clear, never hidden.</h2>
             <p>
-              This repository treats workflows as explicit state machines.
-              Hidden exceptions are not the design center; lifecycle transitions
-              are.
+              OneQuery shows you exactly what is happening at each stage. If
+              something fails, you get a clear message instead of a silent error
+              buried in a log file.
             </p>
             <ul className="explicit-list">
               {explicitItems.map((item) => (
@@ -263,14 +260,12 @@ export function App() {
 
         <section className="cta-band">
           <div className="cta-copy">
-            <p className="section-kicker">OPEN SOURCE, LOCALLY OPERABLE</p>
-            <h2>
-              Use the CLI when you want the runtime, contracts, and state
-              transitions to remain visible.
-            </h2>
+            <p className="section-kicker">OPEN SOURCE, RUNS ON YOUR MACHINE</p>
+            <h2>Your data stays local. Your queries stay yours.</h2>
             <p>
-              Install it, run the server locally, and keep the web UI plus
-              terminal anchored to the same OneQuery instance.
+              Install OneQuery, start the server on your machine, and use the
+              browser dashboard or terminal to query your databases. No cloud
+              required.
             </p>
           </div>
           <div className="cta-actions">
