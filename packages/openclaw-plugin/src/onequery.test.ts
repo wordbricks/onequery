@@ -50,6 +50,22 @@ describe("isObviouslyMutatingSql", () => {
     ).toBe(false);
   });
 
+  it("ignores quoted content when scanning for mutating keywords", () => {
+    expect(
+      isObviouslyMutatingSql(
+        "select * from audit where action = 'update' and detail like 'delete from users'"
+      )
+    ).toBe(false);
+    expect(
+      isObviouslyMutatingSql(
+        'select "update" from "audit" where note = $$grant admin$$'
+      )
+    ).toBe(false);
+    expect(isObviouslyMutatingSql("select [delete from] from [grant]")).toBe(
+      false
+    );
+  });
+
   it("rejects obvious writes", () => {
     expect(isObviouslyMutatingSql("update users set admin = true")).toBe(true);
     expect(
@@ -142,6 +158,90 @@ describe("tool registrations", () => {
 
     expect(payload.ok).toBe(true);
     expect(payload.plugin.cliCommand).toContain("onequery --org wb");
+  });
+
+  it("keeps pagination exec-only for query validate", async () => {
+    const calls: RunnerArgs[] = [];
+    const registrations = createToolRegistrations(
+      { ...DEFAULT_PLUGIN_CONFIG },
+      async (binaryPath, args) => {
+        calls.push({ args, binaryPath });
+        return {
+          exitCode: 0,
+          stderr: "",
+          stdout: JSON.stringify({
+            command: "query validate",
+            data: { valid: true },
+            ok: true,
+            warnings: [],
+          }),
+        };
+      }
+    );
+
+    const validateTool = registrations.find(
+      (entry) => entry.tool.name === "onequery_query_validate"
+    )?.tool;
+    const execTool = registrations.find(
+      (entry) => entry.tool.name === "onequery_query_exec"
+    )?.tool;
+
+    if (!validateTool || !execTool) {
+      throw new Error("query tools missing");
+    }
+
+    const validateProperties = (
+      validateTool.parameters as {
+        properties?: Record<string, unknown>;
+      }
+    ).properties;
+    const execProperties = (
+      execTool.parameters as {
+        properties?: Record<string, unknown>;
+      }
+    ).properties;
+
+    expect(validateProperties?.cursor).toBeUndefined();
+    expect(validateProperties?.pageAll).toBeUndefined();
+    expect(validateProperties?.pageSize).toBeUndefined();
+    expect(execProperties?.cursor).toBeDefined();
+    expect(execProperties?.pageAll).toBeDefined();
+    expect(execProperties?.pageSize).toBeDefined();
+
+    await validateTool.execute("call-validate", {
+      cursor: "cursor-1",
+      org: "wb",
+      pageAll: true,
+      pageSize: 25,
+      source: "warehouse",
+      sql: "select 1",
+    });
+
+    expect(calls).toEqual([
+      {
+        args: [
+          "--org",
+          "wb",
+          "--output",
+          "json",
+          "query",
+          "validate",
+          "--source",
+          "warehouse",
+          "--sql",
+          "select 1",
+          "--max-rows",
+          "100",
+          "--max-bytes",
+          "1048576",
+          "--cell-max-chars",
+          "2000",
+          "--timeout-ms",
+          "60000",
+        ],
+        binaryPath: "onequery",
+      },
+    ]);
   });
 
   it("applies bounded defaults to query exec", async () => {
@@ -241,10 +341,12 @@ describe("tool registrations", () => {
     expect(calls).toEqual([]);
 
     const payload = parseToolPayload(result.content[0]?.text ?? "") as {
+      command: string;
       error: { stage: string; title: string };
       ok: boolean;
     };
 
+    expect(payload.command).toBe("query exec");
     expect(payload.ok).toBe(false);
     expect(payload.error.stage).toBe("guard");
     expect(payload.error.title).toBe("mutating SQL rejected");

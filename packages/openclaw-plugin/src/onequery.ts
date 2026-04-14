@@ -312,29 +312,41 @@ function buildListArgs(
   return args;
 }
 
-function buildQueryArgs(
-  action: "exec" | "validate",
-  params: {
-    cellMaxChars?: number;
-    fields?: string;
-    maxBytes?: number;
-    maxRows?: number;
-    org: string;
-    pageAll?: boolean;
-    pageSize?: number;
-    requestId?: string;
-    source: string;
-    sql: string;
-    timeoutMs?: number;
-    cursor?: string;
-  }
-): string[] {
+type QueryAction = "exec" | "validate";
+
+type QueryBaseArgs = {
+  cellMaxChars?: number;
+  fields?: string;
+  maxBytes?: number;
+  maxRows?: number;
+  org: string;
+  requestId?: string;
+  source: string;
+  sql: string;
+  timeoutMs?: number;
+};
+
+type QueryExecArgs = QueryBaseArgs & {
+  action: "exec";
+  cursor?: string;
+  pageAll?: boolean;
+  pageSize?: number;
+};
+
+type QueryValidateArgs = QueryBaseArgs & {
+  action: "validate";
+};
+
+function buildQueryArgs(params: QueryExecArgs | QueryValidateArgs): string[] {
   const args = buildGlobalArgs(params);
-  args.push("query", action, "--source", params.source);
+  args.push("query", params.action, "--source", params.source);
   pushFlag(args, "--fields", params.fields);
-  pushFlag(args, "--page-size", params.pageSize);
-  pushFlag(args, "--cursor", params.cursor);
-  pushBooleanFlag(args, "--page-all", params.pageAll);
+  if (params.action === "exec") {
+    // Surprising: the CLI only exposes pagination on `query exec`, not `query validate`.
+    pushFlag(args, "--page-size", params.pageSize);
+    pushFlag(args, "--cursor", params.cursor);
+    pushBooleanFlag(args, "--page-all", params.pageAll);
+  }
   args.push("--sql", params.sql);
   pushFlag(args, "--max-rows", params.maxRows);
   pushFlag(args, "--max-bytes", params.maxBytes);
@@ -343,8 +355,154 @@ function buildQueryArgs(
   return args;
 }
 
-function stripSqlComments(sql: string): string {
-  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--.*$/gm, " ");
+function maskSqlFragment(fragment: string): string {
+  return fragment.replace(/[^\n]/g, " ");
+}
+
+function consumeQuotedSegment(
+  sql: string,
+  startIndex: number,
+  quoteCharacter: "'" | '"' | "`"
+): number {
+  let index = startIndex + 1;
+
+  while (index < sql.length) {
+    const character = sql[index];
+
+    if (character === "\\") {
+      index += 2;
+      continue;
+    }
+
+    if (character === quoteCharacter) {
+      if (sql[index + 1] === quoteCharacter) {
+        index += 2;
+        continue;
+      }
+
+      return index + 1;
+    }
+
+    index += 1;
+  }
+
+  return sql.length;
+}
+
+function consumeBracketIdentifier(sql: string, startIndex: number): number {
+  let index = startIndex + 1;
+
+  while (index < sql.length) {
+    if (sql[index] === "]") {
+      if (sql[index + 1] === "]") {
+        index += 2;
+        continue;
+      }
+
+      return index + 1;
+    }
+
+    index += 1;
+  }
+
+  return sql.length;
+}
+
+function readDollarQuoteDelimiter(
+  sql: string,
+  startIndex: number
+): string | null {
+  if (sql[startIndex] !== "$") {
+    return null;
+  }
+
+  if (sql.startsWith("$$", startIndex)) {
+    return "$$";
+  }
+
+  const match = /^\$[A-Za-z_][A-Za-z0-9_]*\$/.exec(sql.slice(startIndex));
+  return match?.[0] ?? null;
+}
+
+function consumeDollarQuotedSegment(sql: string, startIndex: number): number {
+  const delimiter = readDollarQuoteDelimiter(sql, startIndex);
+
+  if (!delimiter) {
+    return startIndex + 1;
+  }
+
+  const closingIndex = sql.indexOf(delimiter, startIndex + delimiter.length);
+  return closingIndex === -1 ? sql.length : closingIndex + delimiter.length;
+}
+
+function stripSqlForKeywordGuard(sql: string): string {
+  let sanitizedSql = "";
+  let index = 0;
+
+  while (index < sql.length) {
+    const character = sql[index];
+    const nextCharacter = sql[index + 1];
+
+    if (character === "-" && nextCharacter === "-") {
+      const startIndex = index;
+
+      index += 2;
+
+      while (index < sql.length && sql[index] !== "\n") {
+        index += 1;
+      }
+
+      sanitizedSql += maskSqlFragment(sql.slice(startIndex, index));
+      continue;
+    }
+
+    if (character === "/" && nextCharacter === "*") {
+      const startIndex = index;
+
+      index += 2;
+
+      while (
+        index < sql.length &&
+        !(sql[index] === "*" && sql[index + 1] === "/")
+      ) {
+        index += 1;
+      }
+
+      if (index < sql.length) {
+        index += 2;
+      }
+
+      sanitizedSql += maskSqlFragment(sql.slice(startIndex, index));
+      continue;
+    }
+
+    const dollarQuoteDelimiter = readDollarQuoteDelimiter(sql, index);
+    if (dollarQuoteDelimiter) {
+      const endIndex = consumeDollarQuotedSegment(sql, index);
+      sanitizedSql += maskSqlFragment(sql.slice(index, endIndex));
+      index = endIndex;
+      continue;
+    }
+
+    if (character === "'" || character === '"' || character === "`") {
+      const endIndex = consumeQuotedSegment(sql, index, character);
+      sanitizedSql += maskSqlFragment(sql.slice(index, endIndex));
+      index = endIndex;
+      continue;
+    }
+
+    if (character === "[") {
+      const endIndex = consumeBracketIdentifier(sql, index);
+      sanitizedSql += maskSqlFragment(sql.slice(index, endIndex));
+      index = endIndex;
+      continue;
+    }
+
+    sanitizedSql += character;
+    index += 1;
+  }
+
+  return sanitizedSql;
 }
 
 const MUTATING_SQL_PATTERNS = [
@@ -368,17 +526,20 @@ const MUTATING_SQL_PATTERNS = [
 ];
 
 export function isObviouslyMutatingSql(sql: string): boolean {
-  const normalizedSql = stripSqlComments(sql).replace(/\s+/g, " ").trim();
+  const normalizedSql = stripSqlForKeywordGuard(sql)
+    .replace(/\s+/g, " ")
+    .trim();
 
   return MUTATING_SQL_PATTERNS.some((pattern) => pattern.test(normalizedSql));
 }
 
 function createReadOnlyViolationEnvelope(
+  action: QueryAction,
   binaryPath: string,
   args: string[]
 ): OneQueryEnvelope {
   return createEnvelope(
-    "query exec",
+    `query ${action}`,
     false,
     formatCliCommand(binaryPath, args),
     {
@@ -488,7 +649,7 @@ function createSourceShowTool(
 }
 
 function createQueryTool(
-  action: "exec" | "validate",
+  action: QueryAction,
   config: OneQueryPluginConfig,
   runner: Runner
 ): ToolRegistration {
@@ -505,12 +666,11 @@ function createQueryTool(
       description,
       execute: async (_id, params) => {
         const sql = typeof params.sql === "string" ? params.sql : "";
-        const args = buildQueryArgs(action, {
+        const baseQueryArgs = {
           cellMaxChars:
             typeof params.cellMaxChars === "number"
               ? params.cellMaxChars
               : config.defaultCellMaxChars,
-          cursor: typeof params.cursor === "string" ? params.cursor : undefined,
           fields: typeof params.fields === "string" ? params.fields : undefined,
           maxBytes:
             typeof params.maxBytes === "number"
@@ -521,9 +681,6 @@ function createQueryTool(
               ? params.maxRows
               : config.defaultMaxRows,
           org: typeof params.org === "string" ? params.org : "",
-          pageAll: params.pageAll === true,
-          pageSize:
-            typeof params.pageSize === "number" ? params.pageSize : undefined,
           requestId:
             typeof params.requestId === "string" ? params.requestId : undefined,
           source: typeof params.source === "string" ? params.source : "",
@@ -532,13 +689,31 @@ function createQueryTool(
             typeof params.timeoutMs === "number"
               ? params.timeoutMs
               : config.defaultQueryTimeoutMs,
-        });
+        } satisfies QueryBaseArgs;
+
+        const args =
+          action === "exec"
+            ? buildQueryArgs({
+                action,
+                ...baseQueryArgs,
+                cursor:
+                  typeof params.cursor === "string" ? params.cursor : undefined,
+                pageAll: params.pageAll === true,
+                pageSize:
+                  typeof params.pageSize === "number"
+                    ? params.pageSize
+                    : undefined,
+              })
+            : buildQueryArgs({
+                action,
+                ...baseQueryArgs,
+              });
 
         // Surprising: OneQuery's query CLI does not expose an explicit read-only
         // mode here, so the plugin rejects obviously mutating SQL before delegating.
         if (isObviouslyMutatingSql(sql)) {
           return textResult(
-            createReadOnlyViolationEnvelope(config.binaryPath, args)
+            createReadOnlyViolationEnvelope(action, config.binaryPath, args)
           );
         }
 
@@ -551,7 +726,7 @@ function createQueryTool(
       name,
       parameters: Type.Object({
         ...REQUEST_FIELDS,
-        ...PAGE_FIELDS,
+        ...(action === "exec" ? PAGE_FIELDS : {}),
         ...QUERY_LIMIT_FIELDS,
         org: STRING_SCHEMA,
         source: STRING_SCHEMA,
