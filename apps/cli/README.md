@@ -41,6 +41,7 @@ Install:
 - `bun install -g @onequery/cli`
 - `bunx @onequery/cli --help`
 - `npx @onequery/cli --help`
+- For skills-compatible agents, install the `onequery-cli` skill with `npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y`.
 - `onequery upgrade` upgrades a published install in place when the CLI can detect the installer family from the current binary layout.
 - The published Homebrew and npm packages support macOS and Linux.
 - The published npm package also supports Windows.
