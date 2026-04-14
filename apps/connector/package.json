@@ -17,6 +17,7 @@
     "@aws-sdk/client-glue": "3.940.0",
     "@onequery/base": "workspace:*",
     "@onequery/config-loader": "workspace:*",
+    "better-result": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

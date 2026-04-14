@@ -5,6 +5,8 @@ import type {
   ConnectorAthenaJobOutcome as StoredConnectorAthenaJobOutcome,
   ConnectorMetadata as StoredConnectorMetadata,
 } from "@onequery/db/server";
+import { Result } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 type ConnectorMetadata = StoredConnectorMetadata;
 
@@ -36,6 +38,8 @@ type ConnectorAthenaJobErrorPayload = Extract<
 
 export type ConnectorAthenaJobOutcome = StoredConnectorAthenaJobOutcome;
 
+type ConnectorBrokerStatus = 400 | 401 | 403 | 404 | 409 | 503 | 504;
+
 type ConnectorRecord = {
   connectorId: string;
   authToken: string;
@@ -60,8 +64,7 @@ type ConnectorJobRecord = {
 };
 
 type ConnectorJobWaiter = {
-  resolve: (value: ConnectorAthenaJobOutcome) => void;
-  reject: (reason?: unknown) => void;
+  resolve: (value: ConnectorBrokerResult<ConnectorAthenaJobOutcome>) => void;
   timeoutId: ReturnType<typeof setTimeout>;
 };
 
@@ -102,9 +105,9 @@ function safeEqualToken(left: string, right: string): boolean {
 }
 
 export class ConnectorBrokerError extends Error {
-  readonly status: number;
+  readonly status: ConnectorBrokerStatus;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: ConnectorBrokerStatus) {
     super(message);
     this.name = "ConnectorBrokerError";
     this.status = status;
@@ -126,18 +129,12 @@ export class ConnectorJobTimeoutError extends ConnectorBrokerError {
   }
 }
 
-type ConnectorAuthResult =
-  | { ok: true; connector: { connectorId: string; organizationId: string } }
-  | { ok: false; status: 401 | 404; error: string };
+type ConnectorAuth = {
+  connectorId: string;
+  organizationId: string;
+};
 
-type ConnectorJobMutateResult =
-  | { ok: true }
-  | { ok: false; status: 400 | 401 | 404 | 409; error: string };
-
-type ConnectorJobMutationError = Extract<
-  ConnectorJobMutateResult,
-  { ok: false }
->;
+type ConnectorBrokerResult<T> = ResultType<T, ConnectorBrokerError>;
 
 type ConnectorJobRequest = {
   connectorId: string;
@@ -258,8 +255,8 @@ async function createJobWaitPromiseInMemory(input: {
   store: ConnectorStore;
   jobId: string;
   waitTimeoutMs: number;
-}): Promise<ConnectorAthenaJobOutcome> {
-  return new Promise((resolve, reject) => {
+}): Promise<ConnectorBrokerResult<ConnectorAthenaJobOutcome>> {
+  return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       const record = input.store.jobs.get(input.jobId);
       if (record && record.status !== "completed") {
@@ -267,16 +264,17 @@ async function createJobWaitPromiseInMemory(input: {
         record.completedAt = new Date();
       }
       input.store.waiters.delete(input.jobId);
-      reject(
-        new ConnectorJobTimeoutError({
-          jobId: input.jobId,
-          timeoutMs: input.waitTimeoutMs,
-        })
+      resolve(
+        Result.err(
+          new ConnectorJobTimeoutError({
+            jobId: input.jobId,
+            timeoutMs: input.waitTimeoutMs,
+          })
+        )
       );
     }, input.waitTimeoutMs);
 
     input.store.waiters.set(input.jobId, {
-      reject,
       resolve,
       timeoutId,
     });
@@ -287,30 +285,27 @@ function authenticateConnectorInMemory(input: {
   store: ConnectorStore;
   connectorId: string;
   authToken: string;
-}): ConnectorAuthResult {
+}): ConnectorBrokerResult<ConnectorAuth> {
   const connector = input.store.connectors.get(input.connectorId);
   if (!connector) {
-    return { error: "Connector not found", ok: false, status: 404 };
+    return Result.err(new ConnectorBrokerError("Connector not found", 404));
   }
 
   if (!safeEqualToken(connector.authToken, input.authToken)) {
-    return { error: "Invalid connector token", ok: false, status: 401 };
+    return Result.err(new ConnectorBrokerError("Invalid connector token", 401));
   }
 
-  return {
-    connector: {
-      connectorId: connector.connectorId,
-      organizationId: connector.organizationId,
-    },
-    ok: true,
-  };
+  return Result.ok({
+    connectorId: connector.connectorId,
+    organizationId: connector.organizationId,
+  });
 }
 
 async function authenticateConnectorInDb(input: {
   db: Database;
   connectorId: string;
   authToken: string;
-}): Promise<ConnectorAuthResult> {
+}): Promise<ConnectorBrokerResult<ConnectorAuth>> {
   const { connectors } = getConnectorTables(input.db);
   const [connector] = await input.db
     .select({
@@ -323,21 +318,18 @@ async function authenticateConnectorInDb(input: {
     .limit(1);
 
   if (!connector) {
-    return { error: "Connector not found", ok: false, status: 404 };
+    return Result.err(new ConnectorBrokerError("Connector not found", 404));
   }
 
   const authTokenHash = await hashAuthToken(input.authToken);
   if (connector.authTokenHash !== authTokenHash) {
-    return { error: "Invalid connector token", ok: false, status: 401 };
+    return Result.err(new ConnectorBrokerError("Invalid connector token", 401));
   }
 
-  return {
-    connector: {
-      connectorId: connector.connectorId,
-      organizationId: connector.organizationId,
-    },
-    ok: true,
-  };
+  return Result.ok({
+    connectorId: connector.connectorId,
+    organizationId: connector.organizationId,
+  });
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -409,7 +401,7 @@ async function waitForConnectorJobOutcomeInDb(input: {
   db: Database;
   jobId: string;
   waitTimeoutMs: number;
-}): Promise<ConnectorAthenaJobOutcome> {
+}): Promise<ConnectorBrokerResult<ConnectorAthenaJobOutcome>> {
   const { connectorJobs } = getConnectorTables(input.db);
   const startedAt = Date.now();
 
@@ -424,18 +416,20 @@ async function waitForConnectorJobOutcomeInDb(input: {
       .limit(1);
 
     if (!job) {
-      throw new ConnectorBrokerError("Job not found", 404);
+      return Result.err(new ConnectorBrokerError("Job not found", 404));
     }
 
     if (job.status === "completed" && job.outcome) {
-      return job.outcome;
+      return Result.ok(job.outcome);
     }
 
     if (job.status === "expired") {
-      throw new ConnectorJobTimeoutError({
-        jobId: input.jobId,
-        timeoutMs: input.waitTimeoutMs,
-      });
+      return Result.err(
+        new ConnectorJobTimeoutError({
+          jobId: input.jobId,
+          timeoutMs: input.waitTimeoutMs,
+        })
+      );
     }
 
     const remainingMs = input.waitTimeoutMs - (Date.now() - startedAt);
@@ -462,13 +456,15 @@ async function waitForConnectorJobOutcomeInDb(input: {
     .limit(1);
 
   if (finalJob?.status === "completed" && finalJob.outcome) {
-    return finalJob.outcome;
+    return Result.ok(finalJob.outcome);
   }
 
-  throw new ConnectorJobTimeoutError({
-    jobId: input.jobId,
-    timeoutMs: input.waitTimeoutMs,
-  });
+  return Result.err(
+    new ConnectorJobTimeoutError({
+      jobId: input.jobId,
+      timeoutMs: input.waitTimeoutMs,
+    })
+  );
 }
 
 async function claimNextQueuedJobInDb(input: {
@@ -541,48 +537,46 @@ async function claimNextQueuedJobInDb(input: {
 function assertJobMutationAllowedInMemory(input: {
   store: ConnectorStore;
   request: ConnectorJobRequest;
-}): { ok: true; record: ConnectorJobRecord } | ConnectorJobMutationError {
+}): ConnectorBrokerResult<{ record: ConnectorJobRecord }> {
   const auth = authenticateConnectorInMemory({
     authToken: input.request.authToken,
     connectorId: input.request.connectorId,
     store: input.store,
   });
-  if (!auth.ok) {
-    return auth;
+  if (auth.isErr()) {
+    return Result.err(auth.error);
   }
 
   const record = input.store.jobs.get(input.request.jobId);
   if (!record) {
-    return { error: "Job not found", ok: false, status: 404 };
+    return Result.err(new ConnectorBrokerError("Job not found", 404));
   }
 
   if (record.connectorId !== input.request.connectorId) {
-    return {
-      error: "Job does not belong to connector",
-      ok: false,
-      status: 401,
-    };
+    return Result.err(
+      new ConnectorBrokerError("Job does not belong to connector", 401)
+    );
   }
 
   if (record.status === "completed" || record.status === "expired") {
-    return { error: "Job is already finalized", ok: false, status: 409 };
+    return Result.err(
+      new ConnectorBrokerError("Job is already finalized", 409)
+    );
   }
 
-  return { ok: true, record };
+  return Result.ok({ record });
 }
 
 async function assertJobMutationAllowedInDb(
   request: ConnectorJobRequest
 ): Promise<
-  | {
-      ok: true;
-      record: {
-        jobId: string;
-        connectorId: string;
-        status: "queued" | "leased" | "completed" | "expired";
-      };
-    }
-  | ConnectorJobMutationError
+  ConnectorBrokerResult<{
+    record: {
+      jobId: string;
+      connectorId: string;
+      status: "queued" | "leased" | "completed" | "expired";
+    };
+  }>
 > {
   const db = resolveBrokerDb(request.db);
   const { connectorJobs } = getConnectorTables(db);
@@ -591,8 +585,8 @@ async function assertJobMutationAllowedInDb(
     connectorId: request.connectorId,
     db,
   });
-  if (!auth.ok) {
-    return auth;
+  if (auth.isErr()) {
+    return Result.err(auth.error);
   }
 
   const [record] = await db
@@ -606,28 +600,28 @@ async function assertJobMutationAllowedInDb(
     .limit(1);
 
   if (!record) {
-    return { error: "Job not found", ok: false, status: 404 };
+    return Result.err(new ConnectorBrokerError("Job not found", 404));
   }
 
   if (record.connectorId !== request.connectorId) {
-    return {
-      error: "Job does not belong to connector",
-      ok: false,
-      status: 401,
-    };
+    return Result.err(
+      new ConnectorBrokerError("Job does not belong to connector", 401)
+    );
   }
 
   if (record.status === "completed" || record.status === "expired") {
-    return { error: "Job is already finalized", ok: false, status: 409 };
+    return Result.err(
+      new ConnectorBrokerError("Job is already finalized", 409)
+    );
   }
 
-  return { ok: true, record };
+  return Result.ok({ record });
 }
 
 export async function findConnectorIdByAuthToken(input: {
   authToken: string;
   db?: Database;
-}): Promise<string | null> {
+}): Promise<ConnectorBrokerResult<string>> {
   const store = getTestStoreOverride();
   if (store) {
     let matchedConnectorId: string | null = null;
@@ -636,7 +630,9 @@ export async function findConnectorIdByAuthToken(input: {
         matchedConnectorId = connector.connectorId;
       }
     }
-    return matchedConnectorId;
+    return matchedConnectorId === null
+      ? Result.err(new ConnectorBrokerError("Invalid connector token", 401))
+      : Result.ok(matchedConnectorId);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -648,7 +644,11 @@ export async function findConnectorIdByAuthToken(input: {
     .where(eq(connectors.authTokenHash, authTokenHash))
     .limit(1);
 
-  return connector?.connectorId ?? null;
+  if (!connector?.connectorId) {
+    return Result.err(new ConnectorBrokerError("Invalid connector token", 401));
+  }
+
+  return Result.ok(connector.connectorId);
 }
 
 export async function registerConnector(input: {
@@ -705,23 +705,24 @@ export async function ensureConnectorOrganization(input: {
   db?: Database;
   connectorId: string;
   organizationId: string;
-}): Promise<{ ok: true } | { ok: false; status: 403 | 404; error: string }> {
+}): Promise<ConnectorBrokerResult<void>> {
   const store = getTestStoreOverride();
   if (store) {
     const connector = store.connectors.get(input.connectorId);
     if (!connector) {
-      return { error: "Connector not found", ok: false, status: 404 };
+      return Result.err(new ConnectorBrokerError("Connector not found", 404));
     }
 
     if (connector.organizationId !== input.organizationId) {
-      return {
-        error: "Connector belongs to a different organization",
-        ok: false,
-        status: 403,
-      };
+      return Result.err(
+        new ConnectorBrokerError(
+          "Connector belongs to a different organization",
+          403
+        )
+      );
     }
 
-    return { ok: true };
+    return Result.ok(undefined);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -733,18 +734,19 @@ export async function ensureConnectorOrganization(input: {
     .limit(1);
 
   if (!connector) {
-    return { error: "Connector not found", ok: false, status: 404 };
+    return Result.err(new ConnectorBrokerError("Connector not found", 404));
   }
 
   if (connector.organizationId !== input.organizationId) {
-    return {
-      error: "Connector belongs to a different organization",
-      ok: false,
-      status: 403,
-    };
+    return Result.err(
+      new ConnectorBrokerError(
+        "Connector belongs to a different organization",
+        403
+      )
+    );
   }
 
-  return { ok: true };
+  return Result.ok(undefined);
 }
 
 export async function recordConnectorHeartbeat(input: {
@@ -752,7 +754,7 @@ export async function recordConnectorHeartbeat(input: {
   connectorId: string;
   authToken: string;
   payload: ConnectorHeartbeatPayload;
-}): Promise<{ ok: true } | { ok: false; status: 401 | 404; error: string }> {
+}): Promise<ConnectorBrokerResult<void>> {
   const store = getTestStoreOverride();
   if (store) {
     const auth = authenticateConnectorInMemory({
@@ -760,20 +762,20 @@ export async function recordConnectorHeartbeat(input: {
       connectorId: input.connectorId,
       store,
     });
-    if (!auth.ok) {
-      return auth;
+    if (auth.isErr()) {
+      return Result.err(auth.error);
     }
 
     const connector = store.connectors.get(input.connectorId);
     if (!connector) {
-      return { error: "Connector not found", ok: false, status: 404 };
+      return Result.err(new ConnectorBrokerError("Connector not found", 404));
     }
 
     const now = new Date();
     connector.lastHeartbeatAt = now;
     connector.lastSeenAt = now;
     connector.healthStatus = input.payload.status;
-    return { ok: true };
+    return Result.ok(undefined);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -783,8 +785,8 @@ export async function recordConnectorHeartbeat(input: {
     connectorId: input.connectorId,
     db,
   });
-  if (!auth.ok) {
-    return auth;
+  if (auth.isErr()) {
+    return Result.err(auth.error);
   }
 
   const now = new Date();
@@ -797,7 +799,7 @@ export async function recordConnectorHeartbeat(input: {
       updatedAt: now,
     })
     .where(eq(connectors.connectorId, input.connectorId));
-  return { ok: true };
+  return Result.ok(undefined);
 }
 
 export async function pollConnectorJob(input: {
@@ -806,10 +808,7 @@ export async function pollConnectorJob(input: {
   authToken: string;
   waitTimeoutMs?: number;
   signal?: AbortSignal;
-}): Promise<
-  | { ok: true; job: ConnectorAthenaJob | null }
-  | { ok: false; status: 401 | 404; error: string }
-> {
+}): Promise<ConnectorBrokerResult<ConnectorAthenaJob | null>> {
   const waitTimeoutMs =
     input.waitTimeoutMs ?? DEFAULT_CONNECTOR_LONG_POLL_TIMEOUT_MS;
   const startedAt = Date.now();
@@ -821,8 +820,8 @@ export async function pollConnectorJob(input: {
       connectorId: input.connectorId,
       store,
     });
-    if (!auth.ok) {
-      return auth;
+    if (auth.isErr()) {
+      return Result.err(auth.error);
     }
 
     let nextJob: ConnectorAthenaJob | null = null;
@@ -868,7 +867,7 @@ export async function pollConnectorJob(input: {
     if (connector) {
       connector.lastSeenAt = new Date();
     }
-    return { job: nextJob, ok: true };
+    return Result.ok(nextJob);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -878,8 +877,8 @@ export async function pollConnectorJob(input: {
     connectorId: input.connectorId,
     db,
   });
-  if (!auth.ok) {
-    return auth;
+  if (auth.isErr()) {
+    return Result.err(auth.error);
   }
 
   let job: ConnectorAthenaJob | null = null;
@@ -916,7 +915,7 @@ export async function pollConnectorJob(input: {
     .set({ lastSeenAt: seenAt, updatedAt: seenAt })
     .where(eq(connectors.connectorId, input.connectorId));
 
-  return { job, ok: true };
+  return Result.ok(job);
 }
 
 export async function queueConnectorAthenaJob(input: {
@@ -929,26 +928,30 @@ export async function queueConnectorAthenaJob(input: {
   timeoutMs?: number;
   maxRows?: number;
   waitTimeoutMs: number;
-}): Promise<ConnectorAthenaJobOutcome> {
+}): Promise<ConnectorBrokerResult<ConnectorAthenaJobOutcome>> {
   const store = getTestStoreOverride();
   if (store) {
     const connector = store.connectors.get(input.connectorId);
     if (!connector) {
-      throw new ConnectorBrokerError("Connector not found", 404);
+      return Result.err(new ConnectorBrokerError("Connector not found", 404));
     }
 
     if (connector.organizationId !== input.organizationId) {
-      throw new ConnectorBrokerError(
-        "Connector belongs to a different organization",
-        403
+      return Result.err(
+        new ConnectorBrokerError(
+          "Connector belongs to a different organization",
+          403
+        )
       );
     }
 
     const queue = store.queues.get(input.connectorId);
     if (!queue) {
-      throw new ConnectorBrokerError(
-        `Connector "${input.connectorId}" queue is unavailable`,
-        503
+      return Result.err(
+        new ConnectorBrokerError(
+          `Connector "${input.connectorId}" queue is unavailable`,
+          503
+        )
       );
     }
 
@@ -987,11 +990,8 @@ export async function queueConnectorAthenaJob(input: {
     db,
     organizationId: input.organizationId,
   });
-  if (!organizationCheck.ok) {
-    throw new ConnectorBrokerError(
-      organizationCheck.error,
-      organizationCheck.status
-    );
+  if (organizationCheck.isErr()) {
+    return Result.err(organizationCheck.error);
   }
 
   const now = new Date();
@@ -1023,9 +1023,9 @@ export async function submitConnectorJobResult(input: {
   authToken: string;
   jobId: string;
   payload: ConnectorAthenaJobSuccessPayload;
-}): Promise<ConnectorJobMutateResult> {
+}): Promise<ConnectorBrokerResult<void>> {
   if (input.payload.jobId !== input.jobId) {
-    return { error: "Job ID mismatch", ok: false, status: 400 };
+    return Result.err(new ConnectorBrokerError("Job ID mismatch", 400));
   }
 
   const store = getTestStoreOverride();
@@ -1034,23 +1034,23 @@ export async function submitConnectorJobResult(input: {
       request: input,
       store,
     });
-    if (!prepared.ok) {
-      return prepared;
+    if (prepared.isErr()) {
+      return Result.err(prepared.error);
     }
 
-    prepared.record.status = "completed";
-    prepared.record.completedAt = new Date();
-    prepared.record.outcome = input.payload;
+    prepared.value.record.status = "completed";
+    prepared.value.record.completedAt = new Date();
+    prepared.value.record.outcome = input.payload;
     settleWaiter({
       jobId: input.jobId,
-      settle: (waiter) => waiter.resolve(input.payload),
+      settle: (waiter) => waiter.resolve(Result.ok(input.payload)),
     });
-    return { ok: true };
+    return Result.ok(undefined);
   }
 
   const prepared = await assertJobMutationAllowedInDb(input);
-  if (!prepared.ok) {
-    return prepared;
+  if (prepared.isErr()) {
+    return Result.err(prepared.error);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -1067,16 +1067,18 @@ export async function submitConnectorJobResult(input: {
     .where(
       and(
         eq(connectorJobs.jobId, input.jobId),
-        eq(connectorJobs.status, prepared.record.status)
+        eq(connectorJobs.status, prepared.value.record.status)
       )
     )
     .returning({ jobId: connectorJobs.jobId });
 
   if (!updated) {
-    return { error: "Job is already finalized", ok: false, status: 409 };
+    return Result.err(
+      new ConnectorBrokerError("Job is already finalized", 409)
+    );
   }
 
-  return { ok: true };
+  return Result.ok(undefined);
 }
 
 export async function submitConnectorJobError(input: {
@@ -1085,9 +1087,9 @@ export async function submitConnectorJobError(input: {
   authToken: string;
   jobId: string;
   payload: ConnectorAthenaJobErrorPayload;
-}): Promise<ConnectorJobMutateResult> {
+}): Promise<ConnectorBrokerResult<void>> {
   if (input.payload.jobId !== input.jobId) {
-    return { error: "Job ID mismatch", ok: false, status: 400 };
+    return Result.err(new ConnectorBrokerError("Job ID mismatch", 400));
   }
 
   const store = getTestStoreOverride();
@@ -1096,23 +1098,23 @@ export async function submitConnectorJobError(input: {
       request: input,
       store,
     });
-    if (!prepared.ok) {
-      return prepared;
+    if (prepared.isErr()) {
+      return Result.err(prepared.error);
     }
 
-    prepared.record.status = "completed";
-    prepared.record.completedAt = new Date();
-    prepared.record.outcome = input.payload;
+    prepared.value.record.status = "completed";
+    prepared.value.record.completedAt = new Date();
+    prepared.value.record.outcome = input.payload;
     settleWaiter({
       jobId: input.jobId,
-      settle: (waiter) => waiter.resolve(input.payload),
+      settle: (waiter) => waiter.resolve(Result.ok(input.payload)),
     });
-    return { ok: true };
+    return Result.ok(undefined);
   }
 
   const prepared = await assertJobMutationAllowedInDb(input);
-  if (!prepared.ok) {
-    return prepared;
+  if (prepared.isErr()) {
+    return Result.err(prepared.error);
   }
 
   const db = resolveBrokerDb(input.db);
@@ -1129,14 +1131,16 @@ export async function submitConnectorJobError(input: {
     .where(
       and(
         eq(connectorJobs.jobId, input.jobId),
-        eq(connectorJobs.status, prepared.record.status)
+        eq(connectorJobs.status, prepared.value.record.status)
       )
     )
     .returning({ jobId: connectorJobs.jobId });
 
   if (!updated) {
-    return { error: "Job is already finalized", ok: false, status: 409 };
+    return Result.err(
+      new ConnectorBrokerError("Job is already finalized", 409)
+    );
   }
 
-  return { ok: true };
+  return Result.ok(undefined);
 }

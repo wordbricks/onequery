@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "5717187bba9c22030c7174c74012f01c359f21e2ce87e0eb80e24244d8b8c915"
     },
+    "better-result-adopt": {
+      "source": "dmmulroy/better-result",
+      "sourceType": "github",
+      "computedHash": "bb2cff6d6db16f141cf2d2789a87e0f4a54992f1839a33dc623a434ac49d6115"
+    },
     "commit": {
       "source": "odysseus0/symphony",
       "sourceType": "github",

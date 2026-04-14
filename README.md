@@ -63,15 +63,7 @@ infrastructure.
 
 ```bash
 onequery gateway start
-```
-
-Then open `http://127.0.0.1:5656`, complete first-user bootstrap, and log in
-from the CLI:
-
-```bash
 onequery auth login
-onequery org list
-onequery org use <org-slug>
 ```
 
 Add a source and execute a test query:
@@ -180,98 +172,13 @@ OneQuery is a Bun and Turbo monorepo with four main runtime surfaces:
 - Connector: a lightweight Bun agent deployed on customer infrastructure. It
   registers with OneQuery, polls for query jobs, executes them locally, and
   returns results without moving credentials into the hosted control plane.
+- Result handling: cross-package query, credential, tester, and runtime
+  boundaries use [better-result](https://github.com/dmmulroy/better-result) so
+  success, failure, timeout, and retry paths stay explicit at the state-machine
+  boundary instead of relying on thrown exceptions.
 
-## Monorepo structure
-
-```text
-apps/
-  cli/              # Rust CLI workspace
-  connector/        # Customer-side connector agent
-  landing/          # Marketing site
-  web/              # React SPA
-
-packages/
-  base/             # Shared types and org permission helpers
-  cli-server/       # CLI-facing endpoints and generated transport bindings
-  codecs/           # Shared encoding and decoding utilities
-  config/           # Workspace-dev resolver and config projections
-  config-loader/    # TOML decoding helper
-  contracts/        # Shared Zod-validated API types
-  datetime/         # Shared date and time formatting utilities
-  db/               # Drizzle schema, migrations, and DB helpers
-  github-rulesets/  # GitHub ruleset planning and apply tooling
-  self-host-runtime # Self-host runtime that serves API and SPA
-  server/           # Shared Hono API routes, services, and middleware
-  ui/               # React component library
-
-proto/
-  onequery/cli/v1/  # Buf protobuf and Connect contract for the CLI transport
-
-docs/               # Design notes, self-host docs, and migration specs
-scripts/            # Repo automation and local development helpers
-```
-
-## Development
-
-Prerequisites:
-
-- Bun `1.3.10`
-- Docker, for local Postgres
-- Rust, only if you are changing the CLI
-
-Bootstrap and start workspace development:
-
-```bash
-bun install
-bun run dev:setup
-bun dev
-```
-
-Workspace dev reads the tracked [`onequery.dev.toml`](./onequery.dev.toml) file
-plus a local `onequery.dev.secrets.toml` file that `bun run dev:setup` seeds if
-missing.
-
-Default local ports:
-
-- browser (Vite): `http://localhost:4545`
-- Bun API listener: `http://127.0.0.1:4555`
-- self-host bundled runtime: `http://127.0.0.1:5656`
-
-Use `bun dev` for workspace development only. Use `onequery gateway start` for
-the bundled self-host runtime.
-
-Validation commands:
-
-```bash
-bun lint --format json
-bunx turbo check --json
-bunx turbo typecheck --json
-bunx turbo test --json
-```
-
-Database commands:
-
-```bash
-bun run db:migrate
-bun run db:seed:dev
-bun run db:studio
-bun run db:reset
-```
-
-Proto contract commands:
-
-```bash
-bun run proto:lint
-bun run proto:generate
-bun run proto:check
-```
-
-CLI config is stored at `~/.config/onequery/` on macOS and Linux or
-`%APPDATA%\\onequery\\` on Windows.
-
-The self-host runtime writes operator-managed files under the standard config
-and data roots, including `self-host/config.toml`, `self-host/secrets.toml`,
-and the resolved startup contract at `run/launch.json`.
+For monorepo structure, local development setup, validation commands, and
+contributor workflow, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Claude Code plugin
 

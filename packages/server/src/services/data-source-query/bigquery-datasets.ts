@@ -1,6 +1,7 @@
 import { isRecord } from "@onequery/base";
-import type { Result } from "@onequery/base";
 import type { BigQueryCredentials } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 import { createBigQueryClient } from "./bigquery-client";
 
@@ -9,38 +10,48 @@ export type BigQueryDatasetInfo = {
   location?: string;
 };
 
+class BigQueryDatasetLookupError extends TaggedError(
+  "BigQueryDatasetLookupError"
+)<{
+  message: string;
+  cause?: unknown;
+}>() {}
+
 export async function listBigQueryDatasets(
   credentials: BigQueryCredentials
-): Promise<Result<BigQueryDatasetInfo[], string>> {
-  const datasetsOutcome = await Promise.resolve()
-    .then(async () => createBigQueryClient(credentials))
-    .then(async (bigquery) => bigquery.listDatasets())
-    .then((datasets) => ({ datasets, ok: true as const }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
+): Promise<ResultType<BigQueryDatasetInfo[], BigQueryDatasetLookupError>> {
+  const datasetsOutcome = await Result.tryPromise({
+    try: async () => {
+      const bigquery = await createBigQueryClient(credentials);
+      return bigquery.listDatasets();
+    },
+    catch: (cause) =>
+      new BigQueryDatasetLookupError({
+        cause,
+        message: toErrorMessage(cause),
+      }),
+  });
 
-  if (!datasetsOutcome.ok) {
-    return { error: toErrorMessage(datasetsOutcome.error), ok: false };
+  if (datasetsOutcome.isErr()) {
+    return Result.err(datasetsOutcome.error);
   }
 
-  const datasets = datasetsOutcome.datasets
+  const datasets = datasetsOutcome.value
     .map((dataset) => toDatasetInfo(dataset))
     .filter((dataset): dataset is BigQueryDatasetInfo => dataset !== null);
 
-  return { ok: true, value: dedupeDatasetInfos(datasets) };
+  return Result.ok(dedupeDatasetInfos(datasets));
 }
 
 export async function listBigQueryDatasetIds(
   credentials: BigQueryCredentials
-): Promise<Result<string[], string>> {
+): Promise<ResultType<string[], BigQueryDatasetLookupError>> {
   const datasetsOutcome = await listBigQueryDatasets(credentials);
-  if (!datasetsOutcome.ok) {
-    return { error: datasetsOutcome.error, ok: false };
+  if (datasetsOutcome.isErr()) {
+    return Result.err(datasetsOutcome.error);
   }
 
-  return {
-    ok: true,
-    value: datasetsOutcome.value.map((dataset) => dataset.id),
-  };
+  return Result.ok(datasetsOutcome.value.map((dataset) => dataset.id));
 }
 
 function toErrorMessage(error: unknown): string {

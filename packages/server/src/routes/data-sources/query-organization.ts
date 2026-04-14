@@ -1,5 +1,6 @@
 import { eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
+import { Result } from "better-result";
 import type { Context } from "hono";
 import { z } from "zod";
 
@@ -54,35 +55,23 @@ export async function resolveAccessibleOrganizationId(
     organizationId?: string;
     organizationSlug?: string;
   }
-): Promise<
-  { ok: true; organizationId: string } | { ok: false; response: Response }
-> {
+): Promise<Result<string, Response>> {
   const session = c.get("session");
   if (!session?.user) {
-    return {
-      ok: false,
-      response: c.json({ error: "Unauthorized" }, 401),
-    };
+    return Result.err(c.json({ error: "Unauthorized" }, 401));
   }
 
   const organizationId = await resolveOrganizationId(db, input);
   if (!organizationId) {
-    return {
-      ok: false,
-      response: c.json({ error: "Organization not found" }, 404),
-    };
+    return Result.err(c.json({ error: "Organization not found" }, 404));
   }
 
   const hasAccess = await verifyOrgAccess(db, session.user.id, organizationId);
   if (!hasAccess) {
-    return {
-      ok: false,
-      response: c.json(
-        { error: "Forbidden: Not a member of this organization" },
-        403
-      ),
-    };
+    return Result.err(
+      c.json({ error: "Forbidden: Not a member of this organization" }, 403)
+    );
   }
 
-  return { ok: true, organizationId };
+  return Result.ok(organizationId);
 }

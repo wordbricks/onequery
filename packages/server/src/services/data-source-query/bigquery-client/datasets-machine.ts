@@ -1,3 +1,5 @@
+import { Result } from "better-result";
+
 import { parseDatasetsListResponse } from "./schemas";
 import { requestBigQueryJson } from "./transport";
 import type {
@@ -48,20 +50,19 @@ export async function listProjectDatasets(
     }
 
     const effect = describeBigQueryDatasetEffect(state);
-    const outcome = await requestBigQueryJson({
-      accessTokenPromise: input.accessTokenPromise,
-      projectId: input.projectId,
-      ...effect,
-    })
-      .then((response) => ({
-        ok: true as const,
-        response: parseDatasetsListResponse(response),
-      }))
-      .catch((error: unknown) => ({ error, ok: false as const }));
+    const outcome = await Result.tryPromise(async () =>
+      parseDatasetsListResponse(
+        await requestBigQueryJson({
+          accessTokenPromise: input.accessTokenPromise,
+          projectId: input.projectId,
+          ...effect,
+        })
+      )
+    );
 
-    state = outcome.ok
+    state = outcome.isOk()
       ? reduceBigQueryDatasetState(state, {
-          response: outcome.response,
+          response: outcome.value,
           type: "page_loaded",
         })
       : reduceBigQueryDatasetState(state, {

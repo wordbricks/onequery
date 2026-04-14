@@ -1,4 +1,6 @@
 import { base64UrlToUtf8 } from "@onequery/codecs/base64";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 export const CLI_DEFAULT_PAGE_LIMIT = 50;
 
@@ -19,75 +21,68 @@ export type CliPage = {
   hasMore: boolean;
 };
 
-type ParseSuccess<T> = {
-  ok: true;
-  value: T;
-};
-
-type ParseFailure = {
-  ok: false;
+class ReadControlsParseError extends TaggedError("ReadControlsParseError")<{
   message: string;
-};
+  cause?: unknown;
+}>() {}
 
-type ParseResult<T> = ParseSuccess<T> | ParseFailure;
+type ParseResult<T> = ResultType<T, ReadControlsParseError>;
 
 type CursorPayload = {
   offset: number;
 };
 
-function parseFailure(message: string): ParseFailure {
-  return {
-    message,
-    ok: false,
-  };
-}
-
-function parseSuccess<T>(value: T): ParseSuccess<T> {
-  return {
-    ok: true,
-    value,
-  };
+function parseFailure(message: string): ReadControlsParseError {
+  return new ReadControlsParseError({ message });
 }
 
 function decodeBase64Url(value: string): ParseResult<string> {
-  try {
-    return parseSuccess(base64UrlToUtf8.decode(value));
-  } catch {
-    return parseFailure("cursor is invalid");
-  }
+  return Result.try({
+    try: () => base64UrlToUtf8.decode(value),
+    catch: (cause) =>
+      new ReadControlsParseError({
+        cause,
+        message: "cursor is invalid",
+      }),
+  });
 }
 
 export function parsePageCursor(
   cursor: string | undefined
 ): ParseResult<number> {
   if (!cursor) {
-    return parseSuccess(0);
+    return Result.ok(0);
   }
 
   const payloadText = decodeBase64Url(cursor);
-  if (!payloadText.ok) {
-    return payloadText;
+  if (payloadText.isErr()) {
+    return Result.err(payloadText.error);
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(payloadText.value);
-  } catch {
-    return parseFailure("cursor is invalid");
+  const parsed = Result.try({
+    try: () => JSON.parse(payloadText.value),
+    catch: (cause) =>
+      new ReadControlsParseError({
+        cause,
+        message: "cursor is invalid",
+      }),
+  });
+  if (parsed.isErr()) {
+    return Result.err(parsed.error);
   }
 
   if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    !("offset" in parsed) ||
-    typeof parsed.offset !== "number" ||
-    !Number.isInteger(parsed.offset) ||
-    parsed.offset < 0
+    typeof parsed.value !== "object" ||
+    parsed.value === null ||
+    !("offset" in parsed.value) ||
+    typeof parsed.value.offset !== "number" ||
+    !Number.isInteger(parsed.value.offset) ||
+    parsed.value.offset < 0
   ) {
-    return parseFailure("cursor is invalid");
+    return Result.err(parseFailure("cursor is invalid"));
   }
 
-  return parseSuccess(parsed.offset);
+  return Result.ok(parsed.value.offset);
 }
 
 export function encodePageCursor(offset: number): string {
@@ -118,7 +113,7 @@ export function parseSelectedFields(
   allowedFields: readonly string[]
 ): ParseResult<CliSelectedFields> {
   if (!rawFields) {
-    return parseSuccess(null);
+    return Result.ok(null);
   }
 
   const allowed = new Set(allowedFields);
@@ -130,14 +125,16 @@ export function parseSelectedFields(
   );
 
   if (selected.size === 0) {
-    return parseFailure("fields must contain at least one field path");
+    return Result.err(
+      parseFailure("fields must contain at least one field path")
+    );
   }
 
   for (const field of selected) {
     if (!allowed.has(field)) {
-      return parseFailure(`unsupported field selection "${field}"`);
+      return Result.err(parseFailure(`unsupported field selection "${field}"`));
     }
   }
 
-  return parseSuccess(selected);
+  return Result.ok(selected);
 }

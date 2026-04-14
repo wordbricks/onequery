@@ -1,7 +1,3 @@
-export type Result<T, E = string> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
-
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 

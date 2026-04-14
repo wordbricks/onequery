@@ -5,8 +5,9 @@ import type {
   SetExpr,
   Statement,
 } from "@casual-simulation/sql-parser";
-import type { Result } from "@onequery/base";
 import type { DatabaseCredentialProviderType } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 import { getNumericValueFromExpr } from "./sql-ast-utils";
 import {
@@ -30,7 +31,23 @@ type ValidationValue = {
   changed: boolean;
 };
 
-type ValidationResult = Result<ValidationValue, string>;
+type SqlValidationErrorReason =
+  | "cte_must_select"
+  | "empty_query"
+  | "limit_not_numeric"
+  | "multiple_statements"
+  | "non_select_query"
+  | "parse_failed"
+  | "parser_init_failed"
+  | "select_into_not_allowed";
+
+class SqlValidationError extends TaggedError("SqlValidationError")<{
+  reason: SqlValidationErrorReason;
+  message: string;
+  cause?: unknown;
+}>() {}
+
+type ValidationResult = ResultType<ValidationValue, SqlValidationError>;
 
 const DIALECT_MAP = {
   aws_athena_connector: "bigquery",
@@ -88,90 +105,99 @@ function getSelectIntoError(dbType: DatabaseCredentialProviderType): Violation {
 function buildContext(
   sql: string,
   dbType: DatabaseCredentialProviderType
-): Result<ValidationContext, string> {
+): ResultType<ValidationContext, SqlValidationError> {
   const trimmedSql = sql.trim();
   if (!trimmedSql) {
-    return { error: "Query cannot be empty", ok: false };
+    return invalid("empty_query", "Query cannot be empty");
   }
 
   if (dbType === "mysql" && OUTFILE_PATTERN.test(trimmedSql)) {
-    return { error: OUTFILE_ERROR, ok: false };
+    return invalid("select_into_not_allowed", OUTFILE_ERROR);
   }
 
-  return {
-    ok: true,
-    value: {
-      dbType,
-      dialect: DIALECT_MAP[dbType],
-      trimmedSql,
-    },
-  };
+  return Result.ok({
+    dbType,
+    dialect: DIALECT_MAP[dbType],
+    trimmedSql,
+  });
 }
 
-async function initSqlParser(): Promise<Result<null, string>> {
-  return ensureSqlParserInit()
-    .then(() => ({ ok: true as const, value: null }))
-    .catch((error: unknown) => ({
-      error: `Failed to initialize SQL parser: ${toErrorMessage(error)}`,
-      ok: false as const,
-    }));
+async function initSqlParser(): Promise<ResultType<null, SqlValidationError>> {
+  return Result.tryPromise({
+    try: async () => {
+      await ensureSqlParserInit();
+      return null;
+    },
+    catch: (cause) =>
+      new SqlValidationError({
+        cause,
+        message: `Failed to initialize SQL parser: ${toErrorMessage(cause)}`,
+        reason: "parser_init_failed",
+      }),
+  });
 }
 
 async function parseStatements(
   context: ValidationContext
-): Promise<Result<Statement[], string>> {
-  return Promise.resolve()
-    .then(() => parseSqlStatements(context.trimmedSql, context.dialect))
-    .then((statements) => ({ ok: true as const, value: statements }))
-    .catch((error: unknown) => ({
-      error: `Failed to parse SQL: ${toErrorMessage(error)}`,
-      ok: false as const,
-    }));
+): Promise<ResultType<Statement[], SqlValidationError>> {
+  return Result.tryPromise({
+    try: () =>
+      Promise.resolve(parseSqlStatements(context.trimmedSql, context.dialect)),
+    catch: (cause) =>
+      new SqlValidationError({
+        cause,
+        message: `Failed to parse SQL: ${toErrorMessage(cause)}`,
+        reason: "parse_failed",
+      }),
+  });
 }
 
 function extractParsedQuery(
   statements: Statement[]
-): Result<ParsedQuery, string> {
+): ResultType<ParsedQuery, SqlValidationError> {
   if (statements.length !== 1) {
-    return { error: "Multiple statements are not allowed", ok: false };
+    return invalid(
+      "multiple_statements",
+      "Multiple statements are not allowed"
+    );
   }
 
   const statement = statements[0];
   if (!statement) {
-    return { error: "Failed to parse SQL: invalid AST", ok: false };
+    return invalid("parse_failed", "Failed to parse SQL: invalid AST");
   }
 
   const query = statement.Query;
   if (!query) {
     const kind = getStatementKind(statement);
-    return {
-      error: `Only SELECT queries are allowed. Got: ${kind?.toLowerCase() ?? "unknown"}`,
-      ok: false,
-    };
+    return invalid(
+      "non_select_query",
+      `Only SELECT queries are allowed. Got: ${kind?.toLowerCase() ?? "unknown"}`
+    );
   }
 
-  return { ok: true, value: { query, statement } };
+  return Result.ok({ query, statement });
 }
 
 function validateReadOnlyQuery(
   query: Query,
   dbType: DatabaseCredentialProviderType
-): Result<Query, string> {
+): ResultType<Query, SqlValidationError> {
   const cteViolation = findCteViolation(query);
   if (cteViolation) {
-    return { error: cteViolation, ok: false };
+    return invalid("cte_must_select", cteViolation);
   }
 
   const selectIntoViolation = findSelectIntoViolationInQuery(query, dbType);
   if (selectIntoViolation) {
-    return { error: selectIntoViolation, ok: false };
+    return invalid("select_into_not_allowed", selectIntoViolation);
   }
 
   if (!isReadOnlyQuery(query)) {
-    return { error: "Only SELECT queries are allowed.", ok: false };
+    return invalid("non_select_query", "Only SELECT queries are allowed.");
   }
 
-  return { ok: true, value: query };
+  return Result.ok(query);
 }
 
 function finalizeSql(
@@ -179,18 +205,18 @@ function finalizeSql(
   trimmedSql: string
 ): ValidationResult {
   const limitResult = normalizeLimit(parsedQuery.query);
-  if (limitResult.error) {
-    return { error: limitResult.error, ok: false };
+  if (limitResult.isErr()) {
+    return Result.err(limitResult.error);
   }
 
-  if (limitResult.changed) {
-    return {
-      ok: true,
-      value: { changed: true, sql: formatStatement(parsedQuery.statement) },
-    };
+  if (limitResult.value) {
+    return Result.ok({
+      changed: true,
+      sql: formatStatement(parsedQuery.statement),
+    });
   }
 
-  return { ok: true, value: { changed: false, sql: trimmedSql } };
+  return Result.ok({ changed: false, sql: trimmedSql });
 }
 
 function createNumericExpr(value: number): Expr {
@@ -235,73 +261,71 @@ function setLimitExpr(limitClause: LimitClause, expr: Expr): void {
   }
 }
 
-function normalizeFetchLimit(query: Query): {
-  changed: boolean;
-  error?: string;
-} {
+function normalizeFetchLimit(
+  query: Query
+): ResultType<boolean, SqlValidationError> {
   const fetch = query.fetch;
   if (!fetch) {
-    return { changed: false };
+    return Result.ok(false);
   }
 
   const quantity = fetch.quantity;
   if (!quantity) {
-    return { changed: false, error: "LIMIT value must be numeric" };
+    return invalid("limit_not_numeric", "LIMIT value must be numeric");
   }
 
   const fetchValue = getNumericValueFromExpr(quantity);
   if (fetchValue === null) {
-    return { changed: false, error: "LIMIT value must be numeric" };
+    return invalid("limit_not_numeric", "LIMIT value must be numeric");
   }
 
   if (fetchValue <= MAX_LIMIT) {
-    return { changed: false };
+    return Result.ok(false);
   }
 
   fetch.quantity = createNumericExpr(MAX_LIMIT);
-  return { changed: true };
+  return Result.ok(true);
 }
 
-function normalizeLimitClause(query: Query): {
-  changed: boolean;
-  error?: string;
-} {
+function normalizeLimitClause(
+  query: Query
+): ResultType<boolean, SqlValidationError> {
   const limitClause = query.limit_clause;
   if (!limitClause) {
-    return { changed: false };
+    return Result.ok(false);
   }
 
   const limitExpr = getLimitExpr(limitClause);
   if (!limitExpr) {
     if (query.fetch) {
-      return { changed: false };
+      return Result.ok(false);
     }
 
     setLimitExpr(limitClause, createNumericExpr(MAX_LIMIT));
-    return { changed: true };
+    return Result.ok(true);
   }
 
   const limitValue = getNumericValueFromExpr(limitExpr);
   if (limitValue === null) {
-    return { changed: false, error: "LIMIT value must be numeric" };
+    return invalid("limit_not_numeric", "LIMIT value must be numeric");
   }
 
   if (limitValue <= MAX_LIMIT) {
-    return { changed: false };
+    return Result.ok(false);
   }
 
   setLimitExpr(limitClause, createNumericExpr(MAX_LIMIT));
-  return { changed: true };
+  return Result.ok(true);
 }
 
-function normalizeLimit(query: Query): { changed: boolean; error?: string } {
+function normalizeLimit(query: Query): ResultType<boolean, SqlValidationError> {
   const fetchResult = normalizeFetchLimit(query);
-  if (fetchResult.error) {
+  if (fetchResult.isErr()) {
     return fetchResult;
   }
 
   const limitResult = normalizeLimitClause(query);
-  if (limitResult.error) {
+  if (limitResult.isErr()) {
     return limitResult;
   }
 
@@ -310,10 +334,10 @@ function normalizeLimit(query: Query): { changed: boolean; error?: string } {
     Boolean(query.limit_clause && getLimitExpr(query.limit_clause));
   if (!hasLimit) {
     query.limit_clause = createLimitClause(MAX_LIMIT);
-    return { changed: true };
+    return Result.ok(true);
   }
 
-  return { changed: fetchResult.changed || limitResult.changed };
+  return Result.ok(fetchResult.value || limitResult.value);
 }
 
 function isReadOnlySetExpr(setExpr: SetExpr): boolean {
@@ -427,37 +451,28 @@ function toErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function invalid(
+  reason: SqlValidationErrorReason,
+  message: string
+): ResultType<never, SqlValidationError> {
+  return Result.err(
+    new SqlValidationError({
+      message,
+      reason,
+    })
+  );
+}
+
 export async function validateAndNormalizeReadOnlyQuery(
   sql: string,
   dbType: DatabaseCredentialProviderType
 ): Promise<ValidationResult> {
-  const contextResult = buildContext(sql, dbType);
-  if (!contextResult.ok) {
-    return { error: contextResult.error, ok: false };
-  }
-
-  const initResult = await initSqlParser();
-  if (!initResult.ok) {
-    return { error: initResult.error, ok: false };
-  }
-
-  const parseResult = await parseStatements(contextResult.value);
-  if (!parseResult.ok) {
-    return { error: parseResult.error, ok: false };
-  }
-
-  const parsedQueryResult = extractParsedQuery(parseResult.value);
-  if (!parsedQueryResult.ok) {
-    return { error: parsedQueryResult.error, ok: false };
-  }
-
-  const readOnlyResult = validateReadOnlyQuery(
-    parsedQueryResult.value.query,
-    contextResult.value.dbType
-  );
-  if (!readOnlyResult.ok) {
-    return { error: readOnlyResult.error, ok: false };
-  }
-
-  return finalizeSql(parsedQueryResult.value, contextResult.value.trimmedSql);
+  return Result.gen(async function* validateReadOnlyQueryFlow() {
+    const context = yield* buildContext(sql, dbType);
+    yield* Result.await(initSqlParser());
+    const statements = yield* Result.await(parseStatements(context));
+    const parsedQuery = yield* extractParsedQuery(statements);
+    yield* validateReadOnlyQuery(parsedQuery.query, context.dbType);
+    return finalizeSql(parsedQuery, context.trimmedSql);
+  });
 }

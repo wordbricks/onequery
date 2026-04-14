@@ -1,18 +1,22 @@
 import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
 
 export type OrgAccessWithName =
   | { hasAccess: true; organizationName: string }
   | { hasAccess: false; reason: "forbidden" | "organization_not_found" };
 
-type OrganizationNameResult =
-  | { ok: true; name: string }
-  | { ok: false; reason: "organization_not_found" };
+class OrganizationNotFoundError extends TaggedError(
+  "OrganizationNotFoundError"
+)<{
+  message: string;
+  organizationId: string;
+}>() {}
 
 async function getOrganizationName(
   db: Database,
   organizationId: string
-): Promise<OrganizationNameResult> {
+): Promise<Result<string, OrganizationNotFoundError>> {
   const { organization } = getDatabaseSchema(db);
   const [org] = await db
     .select({ name: organization.name })
@@ -21,10 +25,15 @@ async function getOrganizationName(
     .limit(1);
 
   if (!org) {
-    return { ok: false, reason: "organization_not_found" };
+    return Result.err(
+      new OrganizationNotFoundError({
+        message: `Organization ${organizationId} not found`,
+        organizationId,
+      })
+    );
   }
 
-  return { name: org.name, ok: true };
+  return Result.ok(org.name);
 }
 
 /**
@@ -65,8 +74,8 @@ export async function verifyOrgAccessWithName(
 
   if (!membership) {
     const orgResult = await getOrganizationName(db, organizationId);
-    if (!orgResult.ok) {
-      return { hasAccess: false, reason: orgResult.reason };
+    if (orgResult.isErr()) {
+      return { hasAccess: false, reason: "organization_not_found" };
     }
 
     return { hasAccess: false, reason: "forbidden" };

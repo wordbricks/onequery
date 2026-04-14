@@ -51,14 +51,19 @@ describe("prepare data source credentials", () => {
         }),
         masterEncryptionKey: masterKey,
       })
-    ).resolves.toMatchObject({
-      ok: true,
-      value: {
+    ).resolves.toSatisfy((result) => {
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return false;
+      }
+
+      expect(result.value).toMatchObject({
         credentials: {
           type: "postgres",
         },
         refreshed: false,
-      },
+      });
+      return true;
     });
   });
 
@@ -73,10 +78,14 @@ describe("prepare data source credentials", () => {
       masterEncryptionKey: masterKey,
     });
 
-    expect(result).toEqual({
-      error: "Invalid stored credentials for data source 'source_1'",
-      ok: false,
-    });
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected invalid credential decryption to fail");
+    }
+
+    expect(result.error.message).toBe(
+      "Invalid stored credentials for data source 'source_1'"
+    );
   });
 
   it("rejects provider mismatches without echoing decrypted credential contents", async () => {
@@ -99,10 +108,13 @@ describe("prepare data source credentials", () => {
       masterEncryptionKey: masterKey,
     });
 
-    expect(result).toEqual({
-      error:
-        "Stored credentials type does not match provider for data source 'source_1'",
-      ok: false,
-    });
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected provider mismatch to fail");
+    }
+
+    expect(result.error.message).toBe(
+      "Stored credentials type does not match provider for data source 'source_1'"
+    );
   });
 });

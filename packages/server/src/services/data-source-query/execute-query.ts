@@ -10,7 +10,6 @@ import type {
 } from "@onequery/db/server";
 
 import {
-  ConnectorBrokerError,
   ConnectorJobTimeoutError,
   queueConnectorAthenaJob,
 } from "../connectors/broker";
@@ -268,8 +267,8 @@ async function validateSqlForExecution(
   provider: DatabaseCredentials["type"]
 ): Promise<string> {
   const validation = await validateAndNormalizeReadOnlyQuery(sql, provider);
-  if (!validation.ok) {
-    throw new DataSourceQueryExecutionError(validation.error, {
+  if (validation.isErr()) {
+    throw new DataSourceQueryExecutionError(validation.error.message, {
       retryable: false,
       timedOut: false,
     });
@@ -802,47 +801,42 @@ async function executeConnectorAthenaJob(
 ): Promise<Extract<ConnectorAthenaJobOutcome, { status: "success" }>> {
   const timeoutMs = input.timeoutMs ?? QUERY_TIMEOUT_MS;
 
-  try {
-    const outcome = await queueConnectorAthenaJob({
-      ...(input.db ? { db: input.db } : {}),
-      connectorId: creds.connectorId,
-      database: creds.database,
-      maxRows: creds.maxRows,
-      organizationId: input.organizationId,
-      sql: query,
-      timeoutMs: creds.timeoutMs ?? timeoutMs,
-      waitTimeoutMs: timeoutMs + CONNECTOR_RESULT_TIMEOUT_BUFFER_MS,
-      workgroup: creds.workgroup,
-    });
-
-    if (outcome.status === "error") {
+  const outcome = await queueConnectorAthenaJob({
+    ...(input.db ? { db: input.db } : {}),
+    connectorId: creds.connectorId,
+    database: creds.database,
+    maxRows: creds.maxRows,
+    organizationId: input.organizationId,
+    sql: query,
+    timeoutMs: creds.timeoutMs ?? timeoutMs,
+    waitTimeoutMs: timeoutMs + CONNECTOR_RESULT_TIMEOUT_BUFFER_MS,
+    workgroup: creds.workgroup,
+  });
+  if (outcome.isOk()) {
+    if (outcome.value.status === "error") {
       throw new DataSourceQueryExecutionError(
-        `Connector query failed (${outcome.error.code}): ${outcome.error.message}`,
+        `Connector query failed (${outcome.value.error.code}): ${outcome.value.error.message}`,
         {
-          retryable: outcome.error.code === "QUERY_TIMEOUT",
-          timedOut: outcome.error.code === "QUERY_TIMEOUT",
+          retryable: outcome.value.error.code === "QUERY_TIMEOUT",
+          timedOut: outcome.value.error.code === "QUERY_TIMEOUT",
         }
       );
     }
 
-    return outcome;
-  } catch (error) {
-    if (error instanceof ConnectorJobTimeoutError) {
-      throw new DataSourceQueryExecutionError(error.message, {
-        retryable: true,
-        timedOut: true,
-      });
-    }
-
-    if (error instanceof ConnectorBrokerError) {
-      throw new DataSourceQueryExecutionError(error.message, {
-        retryable: error.status >= 500,
-        timedOut: false,
-      });
-    }
-
-    throw error;
+    return outcome.value;
   }
+
+  if (outcome.error instanceof ConnectorJobTimeoutError) {
+    throw new DataSourceQueryExecutionError(outcome.error.message, {
+      retryable: true,
+      timedOut: true,
+    });
+  }
+
+  throw new DataSourceQueryExecutionError(outcome.error.message, {
+    retryable: outcome.error.status >= 500,
+    timedOut: false,
+  });
 }
 
 export async function executeConnectorQuery(

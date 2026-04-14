@@ -222,9 +222,9 @@ export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
       db: c.var.storage.db,
       organizationId: authorizedOrg.org.id,
     });
-    if (!organizationCheck.ok) {
+    if (organizationCheck.isErr()) {
       throwCliConnectError({
-        detail: organizationCheck.error,
+        detail: organizationCheck.error.message,
         key: "SOURCE_REQUEST_INVALID",
       });
     }

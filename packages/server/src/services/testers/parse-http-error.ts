@@ -1,4 +1,4 @@
-import type { ConnectionTestResult } from "./postgres-tester";
+import { createFailedConnectionTest } from "./connection-test-outcome";
 
 const HTTP_ERROR_PATTERN =
   /^[A-Za-z0-9 _-]+ API error \((\d{3})\):\s*([\s\S]*)$/u;
@@ -15,13 +15,12 @@ function createFailureResult(input: {
   error: string;
   latencyMs: number;
   message?: string;
-}): ConnectionTestResult {
-  return {
-    error: input.error,
+}) {
+  return createFailedConnectionTest({
+    detail: input.error,
     latencyMs: input.latencyMs,
-    message: input.message ?? "Connection failed",
-    success: false,
-  };
+    message: input.message,
+  });
 }
 
 export function parseHttpStatusError(
@@ -29,14 +28,13 @@ export function parseHttpStatusError(
   latencyMs: number,
   timeoutSeconds: number,
   hints: HttpStatusErrorHints = {}
-): ConnectionTestResult {
+) {
   if (TIMEOUT_PATTERN.test(err.message)) {
-    return {
-      error: `Connection timed out after ${timeoutSeconds} seconds`,
+    return createFailedConnectionTest({
+      detail: `Connection timed out after ${timeoutSeconds} seconds`,
       latencyMs,
       message: "Connection timed out",
-      success: false,
-    };
+    });
   }
 
   const matched = HTTP_ERROR_PATTERN.exec(err.message);

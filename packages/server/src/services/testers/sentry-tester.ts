@@ -1,4 +1,5 @@
 import type { SentryCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import { fetchSentryApi, listSentryProjects } from "../sentry/relay";
 import { createHttpTester } from "./create-http-tester";
@@ -10,17 +11,19 @@ export async function testSentryConnection(
 ) {
   return createHttpTester<SentryCredentials>({
     parseError: (error, latencyMs, resolvedTimeoutSeconds) =>
-      parseHttpStatusError(error, latencyMs, resolvedTimeoutSeconds, {
-        accessDeniedError:
-          "Auth token does not have the required Sentry permissions",
-        authenticationError: "Invalid auth token",
-        notFoundError: credentials.projectSlug
-          ? "Project slug not found or not accessible"
-          : "Organization slug not found or not accessible",
-        notFoundMessage: credentials.projectSlug
-          ? "Invalid Project Slug"
-          : "Invalid Organization Slug",
-      }),
+      Result.err(
+        parseHttpStatusError(error, latencyMs, resolvedTimeoutSeconds, {
+          accessDeniedError:
+            "Auth token does not have the required Sentry permissions",
+          authenticationError: "Invalid auth token",
+          notFoundError: credentials.projectSlug
+            ? "Project slug not found or not accessible"
+            : "Organization slug not found or not accessible",
+          notFoundMessage: credentials.projectSlug
+            ? "Invalid Project Slug"
+            : "Invalid Organization Slug",
+        })
+      ),
     probe: (resolvedCredentials, timeoutMs) =>
       resolvedCredentials.projectSlug
         ? fetchSentryApi({

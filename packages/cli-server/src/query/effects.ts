@@ -10,6 +10,7 @@ import {
   executeDatabaseQuery,
 } from "@onequery/server/services/data-source-query/execute-query";
 import { validateAndNormalizeReadOnlyQuery } from "@onequery/server/services/data-source-query/validate-sql";
+import { Result } from "better-result";
 
 import type {
   CliExecuteSqlEffect,
@@ -30,9 +31,9 @@ export async function runCliValidateQueryEffect(
     effect.databaseType
   );
 
-  if (!validation.ok) {
+  if (validation.isErr()) {
     return {
-      detail: validation.error,
+      detail: validation.error.message,
       kind: "query_rejected",
     };
   }
@@ -54,9 +55,9 @@ export async function runCliLoadQueryCredentialsEffect(input: {
     masterEncryptionKey: input.masterEncryptionKey,
   });
 
-  if (!credentialsResult.ok) {
+  if (credentialsResult.isErr()) {
     return {
-      detail: credentialsResult.error,
+      detail: credentialsResult.error.message,
       kind: "credentials_invalid",
       source: input.effect.source,
     };
@@ -82,27 +83,24 @@ export async function runCliExecuteSqlEffect(input: {
   effect: CliExecuteSqlEffect;
 }): Promise<CliExecuteSqlEffectResult> {
   const startedAtMs = Date.now();
-  const execution = await Promise.resolve()
-    .then(async () =>
-      executeDatabaseQuery({
-        credentials: input.effect.credentials,
-        db: input.db,
-        organizationId: input.effect.source.organizationId,
-        sql: input.effect.sql,
-        timeoutMs: input.effect.clientTimeoutMs,
-      })
-    )
-    .then((rows) => ({ ok: true as const, rows }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
+  const execution = await Result.tryPromise(async () =>
+    executeDatabaseQuery({
+      credentials: input.effect.credentials,
+      db: input.db,
+      organizationId: input.effect.source.organizationId,
+      sql: input.effect.sql,
+      timeoutMs: input.effect.clientTimeoutMs,
+    })
+  );
 
-  if (!execution.ok) {
+  if (execution.isErr()) {
     return toCliQueryExecutionFailure(execution.error);
   }
 
   return {
     elapsedMs: Math.max(0, Math.trunc(Date.now() - startedAtMs)),
     kind: "succeeded",
-    rows: execution.rows,
+    rows: execution.value,
   };
 }
 
@@ -111,14 +109,14 @@ export async function runCliPersistQueryUsageEffect(input: {
   effect: CliPersistUsageEffect;
 }): Promise<CliPersistUsageEffectResult> {
   const { dataSources } = getDatabaseSchema(input.db);
-  const persisted = await input.db
-    .update(dataSources)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(dataSources.id, input.effect.sourceId))
-    .then(() => ({ ok: true as const }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
+  const persisted = await Result.tryPromise(async () => {
+    await input.db
+      .update(dataSources)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(dataSources.id, input.effect.sourceId));
+  });
 
-  if (!persisted.ok) {
+  if (persisted.isErr()) {
     return {
       detail: toErrorMessage(persisted.error),
       kind: "usage_persist_failed",

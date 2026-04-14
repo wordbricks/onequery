@@ -1,14 +1,13 @@
 import type { MySQLCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 import mysql from "mysql2/promise";
 
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
-
-export type ConnectionTestResult = {
-  success: boolean;
-  message: string;
-  error?: string;
-  latencyMs?: number;
-};
 
 export type MySQLConnectionConfig = {
   host: string;
@@ -30,7 +29,7 @@ const shouldFallbackToPlaintext = (sslMode: SslMode): boolean =>
 export function buildMySQLConnectionConfig(
   credentials: MySQLCredentials,
   timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS,
-  useSsl = shouldUseSsl("prefer")
+  useSsl = shouldUseSsl(credentials.sslMode)
 ): MySQLConnectionConfig {
   const { host, port, database, username, password } = credentials;
 
@@ -50,45 +49,37 @@ export function buildMySQLConnectionConfig(
   return config;
 }
 
-type ConnectionAttemptResult = { ok: true } | { ok: false; error: unknown };
-
 const attemptMySQLConnection = async (
   credentials: MySQLCredentials,
   timeoutSeconds: number,
   useSsl: boolean
-): Promise<ConnectionAttemptResult> => {
-  try {
+): Promise<Result<void, unknown>> =>
+  Result.tryPromise(async () => {
     const connection = await mysql.createConnection(
       buildMySQLConnectionConfig(credentials, timeoutSeconds, useSsl)
     );
 
     try {
       await connection.execute("SELECT 1 as result");
-      return { ok: true };
-    } catch (error: unknown) {
-      return { error, ok: false };
     } finally {
       await connection.end().catch(() => {});
     }
-  } catch (error: unknown) {
-    return { error, ok: false };
-  }
-};
+  });
 
 export async function testMySQLConnection(
   credentials: MySQLCredentials,
   timeoutSeconds = DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS
-): Promise<ConnectionTestResult> {
+): Promise<ConnectionTestOutcome> {
   const startTime = Date.now();
-  const initialUseSsl = shouldUseSsl("prefer");
+  const initialUseSsl = shouldUseSsl(credentials.sslMode);
   const initialAttempt = attemptMySQLConnection(
     credentials,
     timeoutSeconds,
     initialUseSsl
   );
-  const finalAttempt = shouldFallbackToPlaintext("prefer")
+  const finalAttempt = shouldFallbackToPlaintext(credentials.sslMode)
     ? initialAttempt.then(async (result) => {
-        if (result.ok) {
+        if (result.isOk()) {
           return result;
         }
         const fallbackResult = await attemptMySQLConnection(
@@ -96,29 +87,25 @@ export async function testMySQLConnection(
           timeoutSeconds,
           false
         );
-        return fallbackResult.ok ? fallbackResult : result;
+        return fallbackResult.isOk() ? fallbackResult : result;
       })
     : initialAttempt;
 
   return finalAttempt.then((result) => {
     const latencyMs = Date.now() - startTime;
-    if (result.ok) {
-      return {
-        latencyMs,
-        message: `Connection successful (${latencyMs}ms)`,
-        success: true,
-      };
+    if (result.isOk()) {
+      return Result.ok(createSuccessfulConnectionTest(latencyMs));
     }
     const errorMessage =
       result.error instanceof Error
         ? result.error.message
         : String(result.error);
-    return {
-      error: sanitizeErrorMessage(errorMessage),
-      latencyMs,
-      message: "Connection failed",
-      success: false,
-    };
+    return Result.err(
+      createFailedConnectionTest({
+        detail: sanitizeErrorMessage(errorMessage),
+        latencyMs,
+      })
+    );
   });
 }
 

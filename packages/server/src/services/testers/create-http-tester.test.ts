@@ -1,5 +1,7 @@
+import { Result } from "better-result";
 import { describe, expect, it, vi } from "vitest";
 
+import { createFailedConnectionTest } from "./connection-test-outcome";
 import { createHttpTester } from "./create-http-tester";
 
 describe("createHttpTester", () => {
@@ -10,17 +12,22 @@ describe("createHttpTester", () => {
 
     const result = await tester({ token: "abc" }, 2);
 
-    expect(result.success).toBe(true);
-    expect(result.message).toMatch(/^Connection successful \(\d+ms\)$/u);
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.message).toMatch(/^Connection successful \(\d+ms\)$/u);
   });
 
   it("delegates failures to the custom parser", async () => {
-    const parseError = vi.fn().mockReturnValue({
-      error: "bad creds",
-      latencyMs: 12,
-      message: "Authentication failed",
-      success: false,
-    });
+    const parsedFailure = Result.err(
+      createFailedConnectionTest({
+        detail: "bad creds",
+        latencyMs: 12,
+        message: "Authentication failed",
+      })
+    );
+    const parseError = vi.fn().mockReturnValue(parsedFailure);
     const tester = createHttpTester({
       parseError,
       probe: vi.fn().mockRejectedValue(new Error("boom")),
@@ -29,11 +36,6 @@ describe("createHttpTester", () => {
     const result = await tester({ token: "abc" }, 3);
 
     expect(parseError).toHaveBeenCalled();
-    expect(result).toEqual({
-      error: "bad creds",
-      latencyMs: 12,
-      message: "Authentication failed",
-      success: false,
-    });
+    expect(result).toBe(parseError.mock.results[0]?.value);
   });
 });

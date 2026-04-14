@@ -7,7 +7,10 @@ import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import { prepareDataSourceCredentials } from "../../services/data-source-credentials/prepare-data-source-credentials";
-import { testDataSource } from "../../services/data-source-tester";
+import {
+  serializeDataSourceTestOutcome,
+  testDataSource,
+} from "../../services/data-source-tester";
 import { OrgQuerySchema } from "./schemas";
 
 export const dataSourcesTestRoute = new Hono<{
@@ -38,24 +41,25 @@ export const dataSourcesTestRoute = new Hono<{
         dataSource,
         masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
       });
-      if (!preparedCredentials.ok) {
-        return c.json({ error: preparedCredentials.error }, 500);
+      if (preparedCredentials.isErr()) {
+        return c.json({ error: preparedCredentials.error.message }, 500);
       }
 
-      const result = await testDataSource(
+      const outcome = await testDataSource(
         preparedCredentials.value.credentials,
         {
           db,
           organizationId,
         }
       );
+      const result = serializeDataSourceTestOutcome(outcome);
       const now = new Date();
 
       if (result.kind === "supported") {
         await db
           .update(dataSources)
           .set({
-            errorMessage: result.result.error ?? null,
+            errorMessage: result.result.success ? null : result.result.error,
             lastUsedAt: now,
             status: result.result.success ? "active" : "error",
             updatedAt: now,

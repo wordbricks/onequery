@@ -1,6 +1,7 @@
 import type { JsonObject } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 import { z } from "zod";
 
 import {
@@ -205,12 +206,12 @@ export async function requestGoogleAnalyticsSourceApi(input: {
     );
   }
 
-  const tokenOutcome = await resolveGoogleAnalyticsAccessToken({
-    credentials: input.credentials,
-  })
-    .then((value) => ({ ok: true as const, value }))
-    .catch((error: unknown) => ({ error, ok: false as const }));
-  if (!tokenOutcome.ok) {
+  const tokenOutcome = await Result.tryPromise(() =>
+    resolveGoogleAnalyticsAccessToken({
+      credentials: input.credentials,
+    })
+  );
+  if (tokenOutcome.isErr()) {
     throw new GoogleAnalyticsAccessTokenError(
       buildGoogleAnalyticsErrorMessage(tokenOutcome.error)
     );
