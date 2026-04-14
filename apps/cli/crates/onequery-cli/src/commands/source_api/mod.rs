@@ -25,8 +25,7 @@ use crate::transport::source_api::SourceApiSource;
 use super::CommandContext;
 use super::Runtime;
 use super::auth_session::authenticated_api_client_with_timeout;
-use super::auth_session::ensure_authenticated;
-use super::require_org;
+use super::auth_session::ensure_authenticated_org;
 use plan::PlannedCommand;
 use plan::SourceApiExecutionOptions;
 use render::render_descriptor_output;
@@ -38,8 +37,7 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let org_slug = require_org(context)?.to_owned();
-    ensure_authenticated(context, runtime).await?;
+    let org_slug = ensure_authenticated_org(context, runtime).await?;
 
     let request_timeout = Duration::from_secs(runtime.config.data().request_timeout_sec);
     let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;

@@ -17,9 +17,8 @@ use crate::workflows::runner::run_reducer_workflow;
 use super::super::CommandContext;
 use super::super::Runtime;
 use super::super::auth_session::authenticated_api_client;
-use super::super::auth_session::ensure_authenticated;
+use super::super::auth_session::ensure_authenticated_org;
 use super::super::read_controls_from_read_args;
-use super::super::require_org;
 use super::presentation::render_org_get_output;
 
 #[derive(Debug)]
@@ -39,7 +38,9 @@ enum OrgGetTerminalState {
 #[derive(Debug)]
 enum OrgGetEvent {
     Start,
-    Authenticated,
+    Authenticated {
+        org: String,
+    },
     AuthFailed {
         error: CliError,
     },
@@ -56,7 +57,7 @@ enum OrgGetEvent {
 
 #[derive(Debug)]
 enum OrgGetEffect {
-    EnsureAuthenticated,
+    EnsureAuthenticatedOrg,
     FetchOrg { org: String, read: ReadArgs },
 }
 
@@ -106,9 +107,9 @@ fn reduce(
         OrgGetState::Idle { read } => match event {
             OrgGetEvent::Start => Transition::continue_with_effect(
                 OrgGetState::CheckingAuth { read },
-                OrgGetEffect::EnsureAuthenticated,
+                OrgGetEffect::EnsureAuthenticatedOrg,
             ),
-            OrgGetEvent::Authenticated
+            OrgGetEvent::Authenticated { .. }
             | OrgGetEvent::AuthFailed { .. }
             | OrgGetEvent::Loaded { .. }
             | OrgGetEvent::LoadFailed { .. } => Transition::done(OrgGetTerminalState::Failed {
@@ -116,17 +117,10 @@ fn reduce(
             }),
         },
         OrgGetState::CheckingAuth { read } => match event {
-            OrgGetEvent::Authenticated => {
-                let org = match require_org(context) {
-                    Ok(org) => org.to_owned(),
-                    Err(error) => return Transition::done(OrgGetTerminalState::Failed { error }),
-                };
-
-                Transition::continue_with_effect(
-                    OrgGetState::Loading,
-                    OrgGetEffect::FetchOrg { org, read },
-                )
-            }
+            OrgGetEvent::Authenticated { org } => Transition::continue_with_effect(
+                OrgGetState::Loading,
+                OrgGetEffect::FetchOrg { org, read },
+            ),
             OrgGetEvent::AuthFailed { error } => {
                 Transition::done(OrgGetTerminalState::Failed { error })
             }
@@ -159,11 +153,11 @@ fn reduce(
                     Transition::done(OrgGetTerminalState::Failed { error })
                 }
             },
-            OrgGetEvent::Start | OrgGetEvent::Authenticated | OrgGetEvent::AuthFailed { .. } => {
-                Transition::done(OrgGetTerminalState::Failed {
-                    error: unexpected_transition_error(context, OrgGetState::Loading, event),
-                })
-            }
+            OrgGetEvent::Start
+            | OrgGetEvent::Authenticated { .. }
+            | OrgGetEvent::AuthFailed { .. } => Transition::done(OrgGetTerminalState::Failed {
+                error: unexpected_transition_error(context, OrgGetState::Loading, event),
+            }),
         },
     }
 }
@@ -189,10 +183,12 @@ async fn execute_effect<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> OrgGetEvent {
     match effect {
-        OrgGetEffect::EnsureAuthenticated => match ensure_authenticated(context, runtime).await {
-            Ok(()) => OrgGetEvent::Authenticated,
-            Err(error) => OrgGetEvent::AuthFailed { error },
-        },
+        OrgGetEffect::EnsureAuthenticatedOrg => {
+            match ensure_authenticated_org(context, runtime).await {
+                Ok(org) => OrgGetEvent::Authenticated { org },
+                Err(error) => OrgGetEvent::AuthFailed { error },
+            }
+        }
         OrgGetEffect::FetchOrg { org, read } => {
             let client = match authenticated_api_client(context, runtime) {
                 Ok(client) => client,
@@ -275,7 +271,7 @@ impl WorkflowLabel for OrgGetEvent {
     fn workflow_label(&self) -> &'static str {
         match self {
             Self::Start => "Start",
-            Self::Authenticated => "Authenticated",
+            Self::Authenticated { .. } => "Authenticated",
             Self::AuthFailed { .. } => "AuthFailed",
             Self::Loaded { .. } => "Loaded",
             Self::LoadFailed { .. } => "LoadFailed",
@@ -286,7 +282,7 @@ impl WorkflowLabel for OrgGetEvent {
 impl WorkflowLabel for OrgGetEffect {
     fn workflow_label(&self) -> &'static str {
         match self {
-            Self::EnsureAuthenticated => "EnsureAuthenticated",
+            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::FetchOrg { .. } => "FetchOrg",
         }
     }

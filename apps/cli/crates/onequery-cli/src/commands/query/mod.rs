@@ -28,11 +28,10 @@ use self::validate::run_query_validate_workflow;
 use super::CommandContext;
 use super::Runtime;
 use super::auth_session::authenticated_api_client_with_timeout;
-use super::auth_session::ensure_authenticated;
+use super::auth_session::ensure_authenticated_org;
 use super::query_result_window_from_args;
 use super::read_controls_from_list_args;
 use super::read_controls_from_read_args;
-use super::require_org;
 
 const QUERY_MAX_ATTEMPTS: u8 = 3;
 const QUERY_RETRY_DELAY_MS: u64 = 250;
@@ -50,7 +49,14 @@ struct IdleState {
 
 #[derive(Debug, Clone)]
 struct CheckingAuthState {
-    pub(super) request: Rc<QueryRequest>,
+    pub(super) request: Rc<PendingQueryRequest>,
+}
+
+#[derive(Debug)]
+struct PendingQueryRequest {
+    source_key: String,
+    read: ListReadArgs,
+    payload: QueryRequestPayload,
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +97,14 @@ pub(super) struct ValidateLoadingQueryInputState {
 
 #[derive(Debug, Clone)]
 pub(super) struct ValidateCheckingAuthState {
-    request: Rc<ValidateQueryRequest>,
+    request: Rc<PendingValidateQueryRequest>,
+}
+
+#[derive(Debug)]
+struct PendingValidateQueryRequest {
+    source_key: String,
+    read: ReadArgs,
+    payload: QueryRequestPayload,
 }
 
 #[derive(Debug, Clone)]
@@ -127,7 +140,9 @@ enum QueryTerminalState {
 #[derive(Debug)]
 enum QueryEvent {
     Start,
-    Authenticated,
+    Authenticated {
+        org: String,
+    },
     AuthFailed {
         error: CliError,
     },
@@ -150,7 +165,7 @@ enum QueryEvent {
 
 #[derive(Debug)]
 enum QueryEffect {
-    EnsureAuthenticated,
+    EnsureAuthenticatedOrg,
     LoadQueryRequest {
         input: QueryInputArgs,
     },
@@ -191,7 +206,9 @@ enum QueryValidateFailureOutcome {
 #[derive(Debug)]
 enum QueryValidateEvent {
     Start,
-    Authenticated,
+    Authenticated {
+        org: String,
+    },
     AuthFailed {
         error: CliError,
     },
@@ -213,7 +230,7 @@ enum QueryValidateEvent {
 
 #[derive(Debug)]
 enum QueryValidateEffect {
-    EnsureAuthenticated,
+    EnsureAuthenticatedOrg,
     LoadQueryRequest { input: QueryInputArgs },
     ValidateQuery { request: Rc<ValidateQueryRequest> },
 }

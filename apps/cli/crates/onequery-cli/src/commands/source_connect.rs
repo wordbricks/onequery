@@ -23,9 +23,8 @@ use onequery_cli_core::error::CliError;
 use super::CommandContext;
 use super::Runtime;
 use super::auth_session::authenticated_api_client;
-use super::auth_session::ensure_authenticated;
+use super::auth_session::ensure_authenticated_org;
 use super::json_input::parse_org_scoped_json_input;
-use super::require_org;
 
 #[derive(Debug)]
 enum SourceConnectMode {
@@ -56,7 +55,9 @@ enum SourceConnectTerminalState {
 #[derive(Debug)]
 enum SourceConnectEvent {
     Start,
-    Authenticated,
+    Authenticated {
+        org: String,
+    },
     AuthFailed {
         error: CliError,
     },
@@ -80,7 +81,7 @@ enum SourceConnectEvent {
 
 #[derive(Debug)]
 enum SourceConnectEffect {
-    EnsureAuthenticated,
+    EnsureAuthenticatedOrg,
     FetchGuide {
         org: String,
         source: SourceConnectProvider,
@@ -145,9 +146,9 @@ fn reduce(
         SourceConnectState::Idle { mode } => match event {
             SourceConnectEvent::Start => Transition::continue_with_effect(
                 SourceConnectState::CheckingAuth { mode },
-                SourceConnectEffect::EnsureAuthenticated,
+                SourceConnectEffect::EnsureAuthenticatedOrg,
             ),
-            SourceConnectEvent::Authenticated
+            SourceConnectEvent::Authenticated { .. }
             | SourceConnectEvent::AuthFailed { .. }
             | SourceConnectEvent::GuideLoaded { .. }
             | SourceConnectEvent::GuideLoadFailed { .. }
@@ -163,27 +164,16 @@ fn reduce(
             }
         },
         SourceConnectState::CheckingAuth { mode } => match event {
-            SourceConnectEvent::Authenticated => {
-                let org = match require_org(context) {
-                    Ok(org) => org.to_owned(),
-                    Err(error) => {
-                        return Transition::done(SourceConnectTerminalState::Failed { error });
-                    }
-                };
-
-                match mode {
-                    SourceConnectMode::Guide { source } => Transition::continue_with_effect(
-                        SourceConnectState::LoadingGuide,
-                        SourceConnectEffect::FetchGuide { org, source },
-                    ),
-                    SourceConnectMode::Connect { source, input } => {
-                        Transition::continue_with_effect(
-                            SourceConnectState::Connecting,
-                            SourceConnectEffect::ConnectSource { org, source, input },
-                        )
-                    }
-                }
-            }
+            SourceConnectEvent::Authenticated { org } => match mode {
+                SourceConnectMode::Guide { source } => Transition::continue_with_effect(
+                    SourceConnectState::LoadingGuide,
+                    SourceConnectEffect::FetchGuide { org, source },
+                ),
+                SourceConnectMode::Connect { source, input } => Transition::continue_with_effect(
+                    SourceConnectState::Connecting,
+                    SourceConnectEffect::ConnectSource { org, source, input },
+                ),
+            },
             SourceConnectEvent::AuthFailed { error } => {
                 Transition::done(SourceConnectTerminalState::Failed { error })
             }
@@ -219,7 +209,7 @@ fn reduce(
                 }
             },
             SourceConnectEvent::Start
-            | SourceConnectEvent::Authenticated
+            | SourceConnectEvent::Authenticated { .. }
             | SourceConnectEvent::AuthFailed { .. }
             | SourceConnectEvent::SourceConnected { .. }
             | SourceConnectEvent::SourceConnectFailed { .. } => {
@@ -250,7 +240,7 @@ fn reduce(
                 }
             },
             SourceConnectEvent::Start
-            | SourceConnectEvent::Authenticated
+            | SourceConnectEvent::Authenticated { .. }
             | SourceConnectEvent::AuthFailed { .. }
             | SourceConnectEvent::GuideLoaded { .. }
             | SourceConnectEvent::GuideLoadFailed { .. } => {
@@ -287,9 +277,9 @@ async fn execute_effect<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> SourceConnectEvent {
     match effect {
-        SourceConnectEffect::EnsureAuthenticated => {
-            match ensure_authenticated(context, runtime).await {
-                Ok(()) => SourceConnectEvent::Authenticated,
+        SourceConnectEffect::EnsureAuthenticatedOrg => {
+            match ensure_authenticated_org(context, runtime).await {
+                Ok(org) => SourceConnectEvent::Authenticated { org },
                 Err(error) => SourceConnectEvent::AuthFailed { error },
             }
         }
@@ -462,7 +452,7 @@ impl WorkflowLabel for SourceConnectEvent {
     fn workflow_label(&self) -> &'static str {
         match self {
             Self::Start => "Start",
-            Self::Authenticated => "Authenticated",
+            Self::Authenticated { .. } => "Authenticated",
             Self::AuthFailed { .. } => "AuthFailed",
             Self::GuideLoaded { .. } => "GuideLoaded",
             Self::GuideLoadFailed { .. } => "GuideLoadFailed",
@@ -475,7 +465,7 @@ impl WorkflowLabel for SourceConnectEvent {
 impl WorkflowLabel for SourceConnectEffect {
     fn workflow_label(&self) -> &'static str {
         match self {
-            Self::EnsureAuthenticated => "EnsureAuthenticated",
+            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::FetchGuide { .. } => "FetchGuide",
             Self::ConnectSource { .. } => "ConnectSource",
         }
@@ -621,7 +611,7 @@ mod tests {
         match transition.into_progress() {
             TransitionProgress::Continue {
                 next_state: SourceConnectState::CheckingAuth { mode },
-                effect: SourceConnectEffect::EnsureAuthenticated,
+                effect: SourceConnectEffect::EnsureAuthenticatedOrg,
             } => assert!(matches!(
                 mode,
                 SourceConnectMode::Guide { source } if source == SourceConnectProvider::Postgres

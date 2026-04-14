@@ -25,10 +25,9 @@ use onequery_cli_core::error::ErrorStage;
 use super::CommandContext;
 use super::Runtime;
 use super::auth_session::authenticated_api_client;
-use super::auth_session::ensure_authenticated;
+use super::auth_session::ensure_authenticated_org;
 use super::read_controls_from_list_args;
 use super::read_controls_from_read_args;
-use super::require_org;
 
 #[derive(Debug)]
 enum SourceMode {
@@ -54,7 +53,9 @@ enum SourceTerminalState {
 #[derive(Debug)]
 enum SourceEvent {
     Start,
-    Authenticated,
+    Authenticated {
+        org: String,
+    },
     AuthFailed {
         error: CliError,
     },
@@ -80,7 +81,7 @@ enum SourceEvent {
 
 #[derive(Debug)]
 enum SourceEffect {
-    EnsureAuthenticated,
+    EnsureAuthenticatedOrg,
     FetchSourceList {
         org: String,
         read: ListReadArgs,
@@ -152,7 +153,7 @@ fn reduce(
                     SourceState::CheckingAuth {
                         mode: SourceMode::List { read },
                     },
-                    SourceEffect::EnsureAuthenticated,
+                    SourceEffect::EnsureAuthenticatedOrg,
                 ),
                 SourceMode::Show { source_key, read } => {
                     let Some(source_key) =
@@ -176,11 +177,11 @@ fn reduce(
                                 read,
                             },
                         },
-                        SourceEffect::EnsureAuthenticated,
+                        SourceEffect::EnsureAuthenticatedOrg,
                     )
                 }
             },
-            SourceEvent::Authenticated
+            SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceListLoaded { .. }
             | SourceEvent::SourceListLoadFailed { .. }
@@ -192,27 +193,20 @@ fn reduce(
             }
         },
         SourceState::CheckingAuth { mode } => match event {
-            SourceEvent::Authenticated => {
-                let org = match require_org(context) {
-                    Ok(org) => org.to_owned(),
-                    Err(error) => return Transition::done(SourceTerminalState::Failed { error }),
-                };
-
-                match mode {
-                    SourceMode::List { read } => Transition::continue_with_effect(
-                        SourceState::LoadingList,
-                        SourceEffect::FetchSourceList { org, read },
-                    ),
-                    SourceMode::Show { source_key, read } => Transition::continue_with_effect(
-                        SourceState::LoadingShow,
-                        SourceEffect::FetchSource {
-                            org,
-                            source_key,
-                            read,
-                        },
-                    ),
-                }
-            }
+            SourceEvent::Authenticated { org } => match mode {
+                SourceMode::List { read } => Transition::continue_with_effect(
+                    SourceState::LoadingList,
+                    SourceEffect::FetchSourceList { org, read },
+                ),
+                SourceMode::Show { source_key, read } => Transition::continue_with_effect(
+                    SourceState::LoadingShow,
+                    SourceEffect::FetchSource {
+                        org,
+                        source_key,
+                        read,
+                    },
+                ),
+            },
             SourceEvent::AuthFailed { error } => {
                 Transition::done(SourceTerminalState::Failed { error })
             }
@@ -250,7 +244,7 @@ fn reduce(
                 }
             },
             SourceEvent::Start
-            | SourceEvent::Authenticated
+            | SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceLoaded { .. }
             | SourceEvent::SourceLoadFailed { .. } => {
@@ -279,7 +273,7 @@ fn reduce(
                 }
             },
             SourceEvent::Start
-            | SourceEvent::Authenticated
+            | SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceListLoaded { .. }
             | SourceEvent::SourceListLoadFailed { .. } => {
@@ -312,10 +306,12 @@ async fn execute_effect<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> SourceEvent {
     match effect {
-        SourceEffect::EnsureAuthenticated => match ensure_authenticated(context, runtime).await {
-            Ok(()) => SourceEvent::Authenticated,
-            Err(error) => SourceEvent::AuthFailed { error },
-        },
+        SourceEffect::EnsureAuthenticatedOrg => {
+            match ensure_authenticated_org(context, runtime).await {
+                Ok(org) => SourceEvent::Authenticated { org },
+                Err(error) => SourceEvent::AuthFailed { error },
+            }
+        }
         SourceEffect::FetchSourceList { org, read } => {
             let client = match authenticated_api_client(context, runtime) {
                 Ok(client) => client,
@@ -453,7 +449,7 @@ impl WorkflowLabel for SourceEvent {
     fn workflow_label(&self) -> &'static str {
         match self {
             Self::Start => "Start",
-            Self::Authenticated => "Authenticated",
+            Self::Authenticated { .. } => "Authenticated",
             Self::AuthFailed { .. } => "AuthFailed",
             Self::SourceListLoaded { .. } => "SourceListLoaded",
             Self::SourceListLoadFailed { .. } => "SourceListLoadFailed",
@@ -466,7 +462,7 @@ impl WorkflowLabel for SourceEvent {
 impl WorkflowLabel for SourceEffect {
     fn workflow_label(&self) -> &'static str {
         match self {
-            Self::EnsureAuthenticated => "EnsureAuthenticated",
+            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::FetchSourceList { .. } => "FetchSourceList",
             Self::FetchSource { .. } => "FetchSource",
         }

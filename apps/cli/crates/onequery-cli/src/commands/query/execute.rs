@@ -24,6 +24,7 @@ use super::ExecutingQueryState;
 use super::FailedState;
 use super::IdleState;
 use super::LoadingQueryInputState;
+use super::PendingQueryRequest;
 use super::QUERY_MAX_ATTEMPTS;
 use super::QUERY_RETRY_DELAY_MS;
 use super::QueryEffect;
@@ -35,13 +36,12 @@ use super::QueryTransition;
 use super::Runtime;
 use super::WaitingToRetryQueryState;
 use super::authenticated_api_client_with_timeout;
-use super::ensure_authenticated;
+use super::ensure_authenticated_org;
 use super::input::effective_query_http_timeout;
 use super::input::load_query_request_payload;
 use super::input::with_effective_query_timeout;
 use super::presentation::render_query_output;
 use super::read_controls_from_list_args;
-use super::require_org;
 use super::validate_query_source_key;
 use crate::output::TerminalOutput;
 
@@ -109,7 +109,7 @@ pub(super) fn reduce_idle(
                 QueryEffect::LoadQueryRequest { input },
             )
         }
-        QueryEvent::Authenticated
+        QueryEvent::Authenticated { .. }
         | QueryEvent::AuthFailed { .. }
         | QueryEvent::RequestLoaded { .. }
         | QueryEvent::RequestLoadFailed { .. }
@@ -119,14 +119,19 @@ pub(super) fn reduce_idle(
     }
 }
 
-fn reduce_checking_auth(
+pub(super) fn reduce_checking_auth(
     state: CheckingAuthState,
     event: QueryEvent,
     context: &CommandContext,
 ) -> QueryTransition {
     match event {
-        QueryEvent::Authenticated => {
-            let request = state.request;
+        QueryEvent::Authenticated { org } => {
+            let request = Rc::new(QueryRequest {
+                org,
+                source_key: state.request.source_key.clone(),
+                read: state.request.read.clone(),
+                payload: state.request.payload.clone(),
+            });
             Transition::continue_with_effect(
                 QueryState::ExecutingQuery(ExecutingQueryState {
                     request: Rc::clone(&request),
@@ -156,24 +161,19 @@ pub(super) fn reduce_loading_query_input(
 ) -> QueryTransition {
     match event {
         QueryEvent::RequestLoaded { payload } => {
-            let org = match require_org(context) {
-                Ok(org) => org,
-                Err(error) => return Transition::done(failed_state(error)),
-            };
-            let request = Rc::new(QueryRequest {
-                org: org.to_owned(),
+            let request = Rc::new(PendingQueryRequest {
                 source_key: state.source_key,
                 read: state.read,
                 payload,
             });
             Transition::continue_with_effect(
                 QueryState::CheckingAuth(CheckingAuthState { request }),
-                QueryEffect::EnsureAuthenticated,
+                QueryEffect::EnsureAuthenticatedOrg,
             )
         }
         QueryEvent::RequestLoadFailed { error } => Transition::done(failed_state(error)),
         QueryEvent::Start
-        | QueryEvent::Authenticated
+        | QueryEvent::Authenticated { .. }
         | QueryEvent::AuthFailed { .. }
         | QueryEvent::QueryExecuted { .. }
         | QueryEvent::QueryExecuteFailed { .. }
@@ -221,7 +221,7 @@ pub(super) fn reduce_executing_query(
             }
         },
         QueryEvent::Start
-        | QueryEvent::Authenticated
+        | QueryEvent::Authenticated { .. }
         | QueryEvent::AuthFailed { .. }
         | QueryEvent::RequestLoaded { .. }
         | QueryEvent::RequestLoadFailed { .. }
@@ -250,7 +250,7 @@ fn reduce_waiting_to_retry_query(
             )
         }
         QueryEvent::Start
-        | QueryEvent::Authenticated
+        | QueryEvent::Authenticated { .. }
         | QueryEvent::AuthFailed { .. }
         | QueryEvent::RequestLoaded { .. }
         | QueryEvent::RequestLoadFailed { .. }
@@ -292,7 +292,7 @@ fn unexpected_transition_error(
 fn query_event_name(event: &QueryEvent) -> &'static str {
     match event {
         QueryEvent::Start => "Start",
-        QueryEvent::Authenticated => "Authenticated",
+        QueryEvent::Authenticated { .. } => "Authenticated",
         QueryEvent::AuthFailed { .. } => "AuthFailed",
         QueryEvent::RequestLoaded { .. } => "RequestLoaded",
         QueryEvent::RequestLoadFailed { .. } => "RequestLoadFailed",
@@ -333,7 +333,7 @@ impl WorkflowLabel for QueryEvent {
 impl WorkflowLabel for QueryEffect {
     fn workflow_label(&self) -> &'static str {
         match self {
-            Self::EnsureAuthenticated => "EnsureAuthenticated",
+            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::LoadQueryRequest { .. } => "LoadQueryRequest",
             Self::ExecuteQuery { .. } => "ExecuteQuery",
             Self::WaitBeforeRetryQuery { .. } => "WaitBeforeRetryQuery",
@@ -351,10 +351,12 @@ where
     T: crate::platform::Terminal,
 {
     match effect {
-        QueryEffect::EnsureAuthenticated => match ensure_authenticated(context, runtime).await {
-            Ok(()) => QueryEvent::Authenticated,
-            Err(error) => QueryEvent::AuthFailed { error },
-        },
+        QueryEffect::EnsureAuthenticatedOrg => {
+            match ensure_authenticated_org(context, runtime).await {
+                Ok(org) => QueryEvent::Authenticated { org },
+                Err(error) => QueryEvent::AuthFailed { error },
+            }
+        }
         QueryEffect::LoadQueryRequest { input } => {
             match load_query_request_payload(&input, context, super::QueryIntent::Execute).await {
                 Ok(payload) => QueryEvent::RequestLoaded { payload },
