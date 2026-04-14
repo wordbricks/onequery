@@ -1,0 +1,97 @@
+<svg width="1280" height="820" viewBox="0 0 1280 820" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">OneQuery query observability surface</title>
+  <desc id="desc">A sample OneQuery query screen showing SQL text, result rows, policy status, budget usage, and retry guidance.</desc>
+  <style>
+    text { font-family: "Geist", "Segoe UI", sans-serif; fill: #111827; }
+    .muted { fill: #667085; }
+    .heading { font-size: 22px; font-weight: 650; letter-spacing: -0.03em; }
+    .label { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .body { font-size: 15px; font-weight: 500; }
+    .small { font-size: 12px; font-weight: 600; }
+    .mono { font-family: "SFMono-Regular", Consolas, monospace; font-size: 15px; }
+    .mono-small { font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; }
+    .pill { font-size: 12px; font-weight: 700; }
+  </style>
+
+  <rect width="1280" height="820" rx="26" fill="#F4F7FB"/>
+  <rect x="24" y="24" width="1232" height="772" rx="24" fill="#FFFFFF"/>
+
+  <rect x="48" y="48" width="790" height="724" rx="22" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="80" y="92" class="heading">Query execution</text>
+  <text x="80" y="120" class="body muted">Preview the request, inspect the result, and recover when the run needs attention.</text>
+
+  <rect x="80" y="152" width="726" height="180" rx="18" fill="#0F172A"/>
+  <text x="108" y="188" class="label" fill="#8DA0BC">SQL</text>
+  <text x="108" y="226" class="mono" fill="#E2E8F0">select day, team, sum(total_usd) as spend</text>
+  <text x="108" y="252" class="mono" fill="#E2E8F0">from agent_runs</text>
+  <text x="108" y="278" class="mono" fill="#E2E8F0">where day &gt;= current_date - interval 7 day</text>
+  <text x="108" y="304" class="mono" fill="#E2E8F0">group by 1, 2 order by spend desc;</text>
+  <rect x="624" y="170" width="154" height="32" rx="16" fill="#E8F0FF"/>
+  <text x="655" y="191" class="pill" fill="#3154C9">Read-only query</text>
+
+  <rect x="80" y="356" width="726" height="64" rx="16" fill="#F8FAFC"/>
+  <text x="108" y="392" class="small muted">Result preview</text>
+  <text x="258" y="392" class="small muted">5 rows</text>
+  <text x="328" y="392" class="small muted">2.3s</text>
+  <text x="390" y="392" class="small muted">$4.20 cost</text>
+  <rect x="640" y="372" width="138" height="32" rx="16" fill="#DFF6E8"/>
+  <text x="679" y="393" class="pill" fill="#18794E">Execution ok</text>
+
+  <rect x="80" y="440" width="726" height="304" rx="18" fill="#FCFDFE" stroke="#EEF2F6"/>
+  <rect x="104" y="468" width="678" height="46" rx="12" fill="#F8FAFC"/>
+  <text x="126" y="497" class="small muted">DAY</text>
+  <text x="298" y="497" class="small muted">TEAM</text>
+  <text x="516" y="497" class="small muted">SPEND USD</text>
+  <text x="668" y="497" class="small muted">STATUS</text>
+
+  <rect x="104" y="528" width="678" height="52" rx="12" fill="#FFFFFF"/>
+  <text x="126" y="560" class="body">2026-04-14</text>
+  <text x="298" y="560" class="body">Search</text>
+  <text x="516" y="560" class="body">$2,104.32</text>
+  <rect x="654" y="542" width="104" height="28" rx="14" fill="#EEF3FF"/>
+  <text x="686" y="561" class="pill" fill="#3154C9">Tracked</text>
+
+  <rect x="104" y="590" width="678" height="52" rx="12" fill="#FFFFFF"/>
+  <text x="126" y="622" class="body">2026-04-14</text>
+  <text x="298" y="622" class="body">Assistants</text>
+  <text x="516" y="622" class="body">$1,482.65</text>
+  <rect x="654" y="604" width="104" height="28" rx="14" fill="#EEF3FF"/>
+  <text x="686" y="623" class="pill" fill="#3154C9">Tracked</text>
+
+  <rect x="104" y="652" width="678" height="68" rx="12" fill="#FFFFFF"/>
+  <text x="126" y="684" class="body">2026-04-13</text>
+  <text x="298" y="684" class="body">Platform</text>
+  <text x="516" y="684" class="body">$612.44</text>
+  <rect x="642" y="666" width="116" height="28" rx="14" fill="#FFF0DA"/>
+  <text x="670" y="685" class="pill" fill="#9A5C07">Near limit</text>
+
+  <rect x="870" y="48" width="362" height="724" rx="22" fill="#0F172A"/>
+  <text x="900" y="92" class="heading" fill="#FFFFFF">Operator context</text>
+  <text x="900" y="120" class="body" fill="#A8B3C5">Budget, policy, and retry guidance attached to the run.</text>
+
+  <rect x="900" y="154" width="302" height="118" rx="18" fill="#111C31"/>
+  <text x="924" y="186" class="label" fill="#8DA0BC">Safety policy</text>
+  <text x="924" y="220" class="body" fill="#FFFFFF">Read-only and single statement</text>
+  <text x="924" y="244" class="small" fill="#A8B3C5">Mutation keywords are blocked before execution.</text>
+
+  <rect x="900" y="290" width="302" height="128" rx="18" fill="#111C31"/>
+  <text x="924" y="322" class="label" fill="#8DA0BC">Budget usage</text>
+  <text x="924" y="356" class="body" fill="#FFFFFF">$4.20 of $12.4k this month</text>
+  <path d="M924 382 H1154" stroke="#2A3448" stroke-width="12" stroke-linecap="round"/>
+  <path d="M924 382 H1036" stroke="#D18A32" stroke-width="12" stroke-linecap="round"/>
+  <text x="924" y="406" class="small" fill="#A8B3C5">34% of monthly budget consumed</text>
+
+  <rect x="900" y="436" width="302" height="126" rx="18" fill="#111C31"/>
+  <text x="924" y="468" class="label" fill="#8DA0BC">Failure model</text>
+  <text x="924" y="502" class="body" fill="#FFFFFF">If auth or provider access fails,</text>
+  <text x="924" y="526" class="body" fill="#FFFFFF">retry remains an explicit next step.</text>
+
+  <rect x="900" y="580" width="302" height="162" rx="18" fill="#111C31"/>
+  <text x="924" y="612" class="label" fill="#8DA0BC">Next actions</text>
+  <rect x="924" y="636" width="102" height="32" rx="16" fill="#E8F0FF"/>
+  <text x="952" y="657" class="pill" fill="#3154C9">Export rows</text>
+  <rect x="1038" y="636" width="130" height="32" rx="16" fill="#FFF0DA"/>
+  <text x="1073" y="657" class="pill" fill="#9A5C07">Retry with refresh</text>
+  <text x="924" y="698" class="small" fill="#A8B3C5">Execution ids, result shape, and policy context</text>
+  <text x="924" y="718" class="small" fill="#A8B3C5">stay attached to the same workflow record.</text>
+</svg>

@@ -4,6 +4,7 @@
   --page-bg: #ffffff;
   --surface: #ffffff;
   --surface-muted: rgba(0, 0, 0, 0.02);
+  --surface-tint: rgba(244, 248, 255, 0.86);
   --ink: #0a0a0a;
   --text-muted: rgba(0, 0, 0, 0.62);
   --text-soft: rgba(0, 0, 0, 0.45);
@@ -11,6 +12,10 @@
   --line-strong: rgba(0, 0, 0, 0.18);
   --wash: rgba(0, 0, 0, 0.05);
   --wash-strong: rgba(0, 0, 0, 0.07);
+  --accent-blue: #4b77ff;
+  --accent-cyan: #2fb3c8;
+  --accent-lime: #7ab65a;
+  --accent-amber: #d18a32;
   --shadow: 0 40px 80px rgba(0, 0, 0, 0.08);
   --shadow-ring: 0 0 0 1px rgba(0, 0, 0, 0.06);
   --container: 1200px;
@@ -59,6 +64,18 @@ code {
 
 .page-shell {
   padding: 18px 16px 40px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(75, 119, 255, 0.09),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(47, 179, 200, 0.09),
+      transparent 26%
+    ),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.018), transparent 220px);
 }
 
 .site-header,
@@ -98,7 +115,8 @@ code {
 .footer-links,
 .hero-actions,
 .final-cta-actions,
-.placeholder-badges {
+.product-surface-toolbar-leading,
+.product-surface-stats {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -126,8 +144,9 @@ code {
 
 .hero-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 32px;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 40px;
+  align-items: center;
   padding: 176px 0 0;
 }
 
@@ -322,131 +341,105 @@ code {
   width: 100%;
 }
 
-.placeholder-frame {
+.product-surface {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
   box-shadow: var(--shadow), var(--shadow-ring);
+  backdrop-filter: blur(18px);
 }
 
-.placeholder-frame-hero {
-  min-height: 520px;
-}
-
-.placeholder-frame-media {
-  min-height: 420px;
-}
-
-.placeholder-frame-terminal {
-  min-height: 320px;
-}
-
-.placeholder-toolbar {
+.product-surface-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.9);
 }
 
-.placeholder-dots {
+.product-surface-dots {
   display: inline-flex;
   gap: 8px;
 }
 
-.placeholder-dots span {
+.product-surface-dots span {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.16);
 }
 
-.placeholder-toolbar-label {
+.product-surface-toolbar-label,
+.product-surface-chip {
   color: var(--text-soft);
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
 }
 
-.placeholder-canvas {
+.product-surface-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--wash);
+}
+
+.product-surface-media {
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 28%),
+    linear-gradient(135deg, rgba(75, 119, 255, 0.07), rgba(122, 182, 90, 0.06));
+}
+
+.product-surface-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: var(--surface-tint);
+}
+
+.product-surface-meta {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  min-height: inherit;
-}
-
-.placeholder-pane {
-  padding: 24px;
-}
-
-.placeholder-pane-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-right: 1px solid var(--line);
-  background: var(--surface-muted);
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.placeholder-pane-main {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   gap: 18px;
+  padding: 20px 22px 22px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.86);
 }
 
-.placeholder-badges {
-  flex-wrap: wrap;
-}
-
-.placeholder-badges span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 10px;
-  background: var(--wash-strong);
-  color: var(--text-soft);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.placeholder-pane-main h3 {
+.product-surface-copy h3 {
   margin: 0;
-  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  font-size: clamp(1.32rem, 2.2vw, 1.75rem);
   font-weight: 600;
-  line-height: 1.12;
+  line-height: 1.14;
   letter-spacing: -0.04em;
 }
 
-.placeholder-pane-main p {
-  margin: 0;
-  max-width: 560px;
+.product-surface-copy p {
+  margin: 12px 0 0;
   color: var(--text-muted);
-  font-size: 16px;
-  line-height: 1.65;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-.placeholder-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 6px;
+.product-surface-stats {
+  flex-wrap: wrap;
 }
 
-.placeholder-grid span {
-  min-height: 92px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.04),
-    rgba(0, 0, 0, 0.015)
-  );
+.product-surface-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: var(--wash-strong);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
 }
 
 .section {
@@ -619,6 +612,10 @@ code {
 }
 
 @media (max-width: 1100px) {
+  .hero-section {
+    grid-template-columns: 1fr;
+  }
+
   .infrastructure-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -664,14 +661,18 @@ code {
   }
 
   .utility-grid,
-  .infrastructure-grid,
-  .placeholder-canvas {
+  .infrastructure-grid {
     grid-template-columns: 1fr;
   }
 
-  .placeholder-pane-sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--line);
+  .product-surface-toolbar,
+  .product-surface-meta {
+    gap: 14px;
+  }
+
+  .product-surface-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -718,12 +719,16 @@ code {
     white-space: normal;
   }
 
-  .placeholder-toolbar,
-  .placeholder-pane,
+  .product-surface-toolbar,
+  .product-surface-meta,
   .utility-panel,
   .final-cta {
     padding-left: 20px;
     padding-right: 20px;
+  }
+
+  .product-surface-media {
+    padding: 14px;
   }
 
   .infrastructure-grid {
@@ -735,8 +740,8 @@ code {
     border-top: 1px solid var(--line);
   }
 
-  .placeholder-grid {
-    grid-template-columns: 1fr;
+  .product-surface-image {
+    border-radius: 14px;
   }
 }
 

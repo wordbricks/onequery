@@ -12,15 +12,19 @@ import {
 } from "./landing-config";
 
 const querySnippet = `onequery query exec \\
-  --source postgres-prod \\
-  --sql "select team, sum(cost) as spend \\
-         from monthly_costs \\
-         group by 1 order by 2 desc"`;
+  --source warehouse \\
+  --sql "select date_trunc('day', occurred_at) as day, \\
+                sum(total_usd) as spend \\
+         from agent_runs \\
+         group by 1 \\
+         order by 1 desc \\
+         limit 7"`;
 
-const workflowSnippet = `connect source  -> ready
-run query       -> results
-token expires   -> refresh
-retry           -> resume`;
+const workflowSnippet = `gateway.start   -> running
+auth.login      -> authenticated
+source.connect  -> ready
+query.exec      -> failed
+retry           -> completed`;
 
 const navigationItems = [
   { href: `#${LANDING_SECTION_IDS.surface}`, label: "Product" },
@@ -29,80 +33,92 @@ const navigationItems = [
 ];
 
 const heroSignals = [
-  "Local gateway, not a hosted control plane",
-  "Terminal and browser share the same runtime state",
-  "Explicit workflows with visible status transitions",
+  "Self-host the gateway with `onequery gateway start`.",
+  "Keep the CLI and browser pointed at the same runtime state.",
+  "Centralize budgets, policies, and source access in one control plane.",
 ];
 
 const featureRows = [
   {
-    eyebrow: "Local Control Plane",
-    title: "Run the gateway where your data already lives.",
-    body: "Start OneQuery on your own machine, point it at your own sources, and keep the control plane inside your environment. The landing page should feel like software proof, not brand theater.",
+    eyebrow: "Unified Sources",
+    title: "Connect databases, analytics tools, and APIs behind one gateway.",
+    body: "OneQuery gives your team one place to register data access across SQL databases, analytics vendors, and SaaS APIs. Operators can keep source setup, credential ownership, and query routing inside a self-hosted runtime instead of rebuilding access rules per tool.",
     points: [
-      "Boot a local server with one command.",
-      "Keep credentials and query execution inside your own network boundary.",
-      "Use the browser UI only as another view onto the same running process.",
+      "Support PostgreSQL, MySQL, MongoDB, BigQuery, GitHub, Linear, and more from one product surface.",
+      "Use provider-specific connect flows from the CLI or the browser without changing the underlying runtime.",
+      "Register customer-side connectors when protected credentials must stay inside a private network.",
     ],
-    placeholderType: "Product screenshot placeholder",
-    placeholderTitle: "Gateway dashboard",
-    placeholderBody:
-      "Replace with a real dashboard capture showing sources, auth state, and query activity.",
+    mediaBadge: "Source catalog",
+    mediaTitle: "Configured sources and ownership stay visible.",
+    mediaBody:
+      "Operators can see which providers are connected, which paths are ready, and where connector-based access is pinned.",
+    mediaSrc: "/surface-sources.svg",
+    mediaAlt:
+      "Illustrated OneQuery source catalog showing databases, analytics providers, and API integrations with runtime statuses.",
+    mediaStats: ["14 ready", "3 connector-backed", "2 need action"],
   },
   {
     eyebrow: "Shared Runtime State",
-    title: "The browser and the CLI read from the same truth.",
-    body: "This product is built around explicit workflow state, so the marketing surface should show state transitions clearly. A user should immediately understand that auth, source connection, query execution, and retries are observable lifecycle steps.",
+    title: "Move between the terminal and the browser without desync.",
+    body: "The CLI and web UI sit on top of the same gateway process. Sign-in state, source readiness, and recent activity stay aligned, so teams can bootstrap in the browser, automate in the terminal, and still inspect the same underlying workflow.",
     points: [
-      "CLI actions should reflect instantly in the browser view.",
-      "Session refresh is modeled as a normal transition, not a hidden exception path.",
-      "Each surface should make the current state legible without extra narration.",
+      "Boot the gateway once and keep both surfaces pointed at the same server.",
+      "Make auth refresh, source connection, and query execution visible as normal lifecycle transitions.",
+      "Share one organization context across operator workflows and teammate onboarding.",
     ],
-    placeholderType: "Animated GIF placeholder",
-    placeholderTitle: "CLI to dashboard sync",
-    placeholderBody:
-      "Replace with a short GIF showing sign-in, source connection, and synchronized status updates.",
+    mediaBadge: "Shared runtime state",
+    mediaTitle: "One command stream, one browser view, one source of truth.",
+    mediaBody:
+      "The same query run and auth session are legible from both surfaces instead of being split across unrelated tools.",
+    mediaSrc: "/surface-sync.svg",
+    mediaAlt:
+      "Illustrated split view showing a OneQuery CLI session and browser dashboard synchronized around the same gateway state.",
+    mediaStats: ["Gateway running", "Session synced", "Query state shared"],
   },
   {
-    eyebrow: "Explicit Query Flow",
-    title: "Every query is visible, inspectable, and recoverable.",
-    body: "The page should emphasize that failures, retries, and success states are part of the normal operating model. This is a better fit for OneQuery than generic AI-product marketing language.",
+    eyebrow: "Safety And Observability",
+    title: "Treat execution, budgets, failures, and retries as product state.",
+    body: "OneQuery makes the operational path visible: preview a request, execute it, inspect the result, and recover when something fails. Budget tracking and policy checks help teams understand cost and safety before a query turns into an outage.",
     points: [
-      "Show request, execution, results, and failure states as first-class UI.",
-      "Use clean terminal and table placeholders instead of decorative illustration.",
-      "Keep copy short so the product frame carries the proof.",
+      "Enforce read-only and single-statement safeguards for SQL-style query execution.",
+      "Track spend-sensitive providers with budget status and remaining-limit context.",
+      "Expose failure and retry paths as visible workflow steps instead of opaque exceptions.",
     ],
-    placeholderType: "Product screenshot placeholder",
-    placeholderTitle: "Query result surface",
-    placeholderBody:
-      "Replace with a real query result table, error state, or retry flow capture.",
+    mediaBadge: "Query observability",
+    mediaTitle: "Review the request, result, and next action in one place.",
+    mediaBody:
+      "Budget usage, policy outcome, result shape, and retry guidance are part of the same execution story.",
+    mediaSrc: "/surface-query.svg",
+    mediaAlt:
+      "Illustrated OneQuery query execution surface showing SQL text, result rows, policy checks, budget usage, and retry guidance.",
+    mediaStats: ["Read-only policy", "$4.20 cost", "Retry available"],
   },
 ];
 
 const infrastructureCards = [
   {
-    title: "Gateway runtime",
-    body: "A local control plane that keeps source connections, auth, and query execution in one place.",
+    title: "Self-hosted gateway",
+    body: "Run the control plane on your own infrastructure and keep query execution close to the data.",
   },
   {
-    title: "CLI surface",
-    body: "Fast terminal workflows for install, auth, source management, and SQL execution.",
+    title: "Shared surfaces",
+    body: "Use the CLI for speed and the browser for onboarding and inspection without forking the state model.",
   },
   {
-    title: "Browser view",
-    body: "A visual surface for the same underlying runtime state, useful for inspection and onboarding.",
+    title: "Source access",
+    body: "Connect databases, analytics providers, and APIs from one gateway instead of maintaining separate paths.",
   },
   {
-    title: "Workflow model",
-    body: "Deterministic transitions for loading, failure, retry, and success instead of hidden side effects.",
+    title: "Operator controls",
+    body: "Make policy, budgets, failures, and retries visible so teams can trust how agent access behaves.",
   },
 ];
 
 const installSteps = [
-  "Install the CLI with the bootstrap script.",
-  "Start the local gateway.",
-  "Point the CLI at the local server and sign in once.",
-  "Connect a source, then run queries from either surface.",
+  "Install the CLI with the script, Homebrew, npm, or Bun.",
+  "Start the self-hosted gateway with `onequery gateway start`.",
+  "Open the local UI to bootstrap the first user, then run `onequery auth login`.",
+  "Connect a source and execute queries from the CLI or the browser against the same gateway.",
 ];
 
 const footerLinks = [
@@ -195,55 +211,62 @@ function DownloadCommand() {
   );
 }
 
-type PlaceholderFrameProps = {
+type ProductSurfaceProps = {
   badge: string;
+  src: string;
+  alt: string;
   title: string;
   body: string;
-  variant?: "hero" | "media" | "terminal";
+  stats?: string[];
+  variant?: "hero" | "media";
 };
 
-function PlaceholderFrame({
+function ProductSurface({
   badge,
+  src,
+  alt,
   title,
   body,
+  stats = [],
   variant = "media",
-}: PlaceholderFrameProps) {
+}: ProductSurfaceProps) {
   return (
-    <div className={`placeholder-frame placeholder-frame-${variant}`}>
-      <div className="placeholder-toolbar">
-        <div className="placeholder-dots" aria-hidden="true">
-          <span />
-          <span />
-          <span />
+    <figure className={`product-surface product-surface-${variant}`}>
+      <div className="product-surface-toolbar">
+        <div className="product-surface-toolbar-leading">
+          <div className="product-surface-dots" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <span className="product-surface-toolbar-label">{badge}</span>
         </div>
-        <span className="placeholder-toolbar-label">{badge}</span>
+
+        <span className="product-surface-chip">Sample surface</span>
       </div>
 
-      <div className="placeholder-canvas">
-        <div className="placeholder-pane placeholder-pane-sidebar">
-          <span>runtime</span>
-          <span>sources</span>
-          <span>queries</span>
-          <span>auth</span>
-        </div>
+      <div className="product-surface-media">
+        <img src={src} alt={alt} className="product-surface-image" />
+      </div>
 
-        <div className="placeholder-pane placeholder-pane-main">
-          <div className="placeholder-badges">
-            <span>local</span>
-            <span>active</span>
-            <span>placeholder</span>
-          </div>
+      <figcaption className="product-surface-meta">
+        <div className="product-surface-copy">
           <h3>{title}</h3>
           <p>{body}</p>
-          <div className="placeholder-grid" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
         </div>
-      </div>
-    </div>
+
+        {stats.length > 0 ? (
+          <div
+            className="product-surface-stats"
+            aria-label="Surface highlights"
+          >
+            {stats.map((stat) => (
+              <span key={stat}>{stat}</span>
+            ))}
+          </div>
+        ) : null}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -291,10 +314,12 @@ export function App() {
       <main className="page-main">
         <section className="hero-section">
           <div className="hero-copy">
-            <p className="eyebrow">Self-hosted data workspace</p>
-            <h1>Data ready for AI agents.</h1>
+            <p className="eyebrow">Open source, self-hostable</p>
+            <h1>One gateway for the data your team and AI agents need.</h1>
             <p className="hero-body">
-              One safe gateway connecting all data sources.
+              Run OneQuery on your own infrastructure, connect databases,
+              analytics tools, and APIs, and work from the CLI or browser
+              against the same runtime state.
             </p>
 
             <DownloadCommand />
@@ -324,10 +349,13 @@ export function App() {
           </div>
 
           <div className="hero-visual">
-            <PlaceholderFrame
-              badge="Product screenshot placeholder"
-              title="Unified local dashboard"
-              body="Replace this frame with a real capture of the browser UI, source list, query panel, and runtime status."
+            <ProductSurface
+              badge="Local gateway dashboard"
+              src="/surface-hero.svg"
+              alt="Illustrated OneQuery dashboard showing sources, recent activity, budget status, and query runs in a self-hosted gateway."
+              title="A self-hosted control plane with visible runtime state."
+              body="Sources, sessions, recent runs, and operator controls are available from one place instead of being split across separate tools."
+              stats={["12 sources", "3 active sessions", "localhost:5656"]}
               variant="hero"
             />
           </div>
@@ -338,14 +366,17 @@ export function App() {
           id={LANDING_SECTION_IDS.surface}
         >
           <div className="section-intro">
-            <p className="eyebrow">What the landing needs to prove</p>
+            <p className="eyebrow">What OneQuery does</p>
             <h2>
-              Show real workflow surfaces instead of decorative marketing art.
+              A single query workspace across your internal data and external
+              tools.
             </h2>
             <p>
-              The target design is quiet, monochrome, and screenshot-led. Large
-              headlines set the pace, but the real proof comes from product
-              frames, terminal snippets, and explicit state transitions.
+              OneQuery combines a self-hosted gateway, multi-source access, and
+              explicit operator guardrails in one product. Teams can install the
+              CLI, run the gateway locally or on their own infrastructure, and
+              expose the same runtime truth to both terminal workflows and the
+              browser.
             </p>
           </div>
 
@@ -377,10 +408,13 @@ export function App() {
               </div>
 
               <div className="feature-media">
-                <PlaceholderFrame
-                  badge={feature.placeholderType}
-                  title={feature.placeholderTitle}
-                  body={feature.placeholderBody}
+                <ProductSurface
+                  badge={feature.mediaBadge}
+                  src={feature.mediaSrc}
+                  alt={feature.mediaAlt}
+                  title={feature.mediaTitle}
+                  body={feature.mediaBody}
+                  stats={feature.mediaStats}
                 />
               </div>
             </article>
@@ -393,7 +427,7 @@ export function App() {
         >
           <article className="utility-panel">
             <p className="eyebrow">Install</p>
-            <h2>Up and running with one bootstrap path.</h2>
+            <h2>Up and running in a few commands.</h2>
             <ol className="step-list">
               {installSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -418,11 +452,11 @@ export function App() {
 
           <article className="utility-panel">
             <p className="eyebrow">Workflow state</p>
-            <h2>Failure and retry are part of the normal product story.</h2>
+            <h2>Failure and retry are part of the normal operating model.</h2>
             <p>
-              OneQuery is easier to trust when the landing page shows that
-              errors are modeled, visible, and recoverable. This section should
-              read like operating software, not a conceptual brand statement.
+              OneQuery is built around explicit workflow state. That makes auth
+              refresh, query failure, retry, and recovery inspectable instead of
+              hidden in side effects or background exception paths.
             </p>
             <pre className="workflow-block">{workflowSnippet}</pre>
           </article>
@@ -430,18 +464,19 @@ export function App() {
 
         <section className="section final-cta">
           <div className="final-cta-copy">
-            <p className="eyebrow">Open source, self-hostable</p>
+            <p className="eyebrow">
+              Self-host or connect to an existing server
+            </p>
             <h2>
-              Run OneQuery on your own infrastructure, or point the CLI at an
-              existing server.
+              Bring OneQuery into your own environment and keep the control
+              plane close to the data.
             </h2>
             <p>
               OneQuery is an open-source platform for unified data querying.
               Self-host the full product with{" "}
               <code>onequery gateway start</code>, connect databases, analytics
-              tools, and APIs from one place, and use the CLI or web UI with
-              centralized credential management, query safety controls, and
-              organization-level access control.
+              tools, and APIs from one place, and give operators and AI agents a
+              shared surface for access, execution, and recovery.
             </p>
           </div>
 
@@ -460,7 +495,7 @@ export function App() {
               target="_blank"
               rel="noreferrer"
             >
-              Read docs on GitHub
+              Read self-host docs
             </a>
           </div>
         </section>
