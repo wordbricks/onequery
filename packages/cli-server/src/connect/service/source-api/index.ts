@@ -1,8 +1,8 @@
 export {
   createHandleDescribeSourceApi,
   handleDescribeSourceApi,
-} from "./source-api/describe";
+} from "./describe";
 export {
   createHandleExecuteSourceApi,
   handleExecuteSourceApi,
-} from "./source-api/execute";
+} from "./execute";

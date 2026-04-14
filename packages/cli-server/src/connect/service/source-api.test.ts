@@ -28,7 +28,7 @@ import { CliSourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
-} from "./source_api";
+} from "./source-api";
 
 function summarizeCliSourceProvider(provider: CliSourceProvider): string {
   return CliSourceProvider[provider].toLowerCase();

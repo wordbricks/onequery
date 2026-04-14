@@ -52,7 +52,7 @@ export function resolveSourceApiExecuteCommand(
 
       return cliServiceErr({
         detail: "source API request missing draft payload",
-        key: "EXECUTE_QUERY_REQUEST_INVALID",
+        key: "SOURCE_REQUEST_INVALID",
       });
     case "resume":
       return Result.ok({
@@ -62,7 +62,7 @@ export function resolveSourceApiExecuteCommand(
     case undefined:
       return cliServiceErr({
         detail: "source API request missing execution input",
-        key: "EXECUTE_QUERY_REQUEST_INVALID",
+        key: "SOURCE_REQUEST_INVALID",
       });
   }
 }

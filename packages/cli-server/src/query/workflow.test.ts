@@ -303,7 +303,11 @@ describe("cli query execution workflow", () => {
         sql: "select answer from stats",
         timeoutMs: undefined,
       })
-    ).rejects.toThrow("query action trail unavailable");
+    ).resolves.toMatchObject({
+      detail: "query workflow event observation failed",
+      kind: "query_preparation_failed",
+      requestId: "req-11",
+    });
     expect(observeEventFailure).toHaveBeenCalledTimes(1);
     expect(
       observeEventFailure.mock.calls.map(([input]) => input.event.type)
@@ -414,7 +418,11 @@ describe("cli query execution workflow", () => {
         sql: "select answer from stats",
         timeoutMs: undefined,
       })
-    ).rejects.toThrow("query action trail unavailable");
+    ).resolves.toMatchObject({
+      detail: "query workflow event observation failed",
+      kind: "query_preparation_failed",
+      requestId: "req-12",
+    });
     expect(observeEventFailure).toHaveBeenCalledTimes(1);
     expect(
       observeEventFailure.mock.calls.map(([input]) => input.event.type)

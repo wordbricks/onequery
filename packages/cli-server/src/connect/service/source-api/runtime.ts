@@ -244,10 +244,7 @@ export function createSourceApiConnectProblem(input: {
     return createCliServiceProblem({
       cause: input.error,
       detail,
-      key:
-        input.phase === "describe"
-          ? "SOURCE_REQUEST_INVALID"
-          : "EXECUTE_QUERY_REQUEST_INVALID",
+      key: "SOURCE_REQUEST_INVALID",
     });
   }
 
@@ -332,17 +329,15 @@ function trySourceApi<T>(
   },
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ): CliServiceResult<T> {
-  try {
-    return Result.ok(input.operation());
-  } catch (error: unknown) {
-    return Result.err(
+  return Result.try({
+    try: input.operation as () => Awaited<T>,
+    catch: (error: unknown) =>
       createSourceApiConnectProblem({
         error,
         phase: input.phase,
         renderError: dependencies.toCliErrorMessage,
-      })
-    );
-  }
+      }),
+  }) as CliServiceResult<T>;
 }
 
 async function trySourceApiPromise<T>(
