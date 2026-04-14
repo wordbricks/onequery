@@ -46,6 +46,7 @@ __pycache__/
 
 .reports
 .claude/settings.local.json
+.claude/worktrees
 AGENTS.override.md
 
 !.env.local.example
