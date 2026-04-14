@@ -485,9 +485,9 @@ async function requirePreparedCliSourceApiSource(
     dataSource: source.source,
     masterEncryptionKey: input.c.var.runtime.crypto.masterEncryptionKey,
   });
-  if (!credentials.ok) {
+  if (credentials.isErr()) {
     throw createCliConnectError({
-      detail: credentials.error,
+      detail: credentials.error.message,
       key: "SOURCE_API_SOURCE_UNAVAILABLE",
     });
   }

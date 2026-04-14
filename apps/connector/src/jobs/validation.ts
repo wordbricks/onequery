@@ -1,16 +1,24 @@
-import type { Result } from "@onequery/base";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 const FORBIDDEN_KEYWORDS =
   /\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CALL|UNLOAD|COPY|MSCK|VACUUM|ANALYZE|OPTIMIZE)\b/i;
 
-type SqlValidationError = {
+class SqlValidationError extends TaggedError("SqlValidationError")<{
   code: "INVALID_QUERY";
   message: string;
-};
+}>() {
+  constructor(message: string) {
+    super({
+      code: "INVALID_QUERY",
+      message,
+    });
+  }
+}
 
 export function validateAthenaSql(
   sql: string
-): Result<{ sql: string }, SqlValidationError> {
+): ResultType<{ sql: string }, SqlValidationError> {
   const trimmed = sql.trim();
   if (!trimmed) {
     return invalid("Query cannot be empty");
@@ -34,22 +42,13 @@ export function validateAthenaSql(
     return invalid("Query contains non-read operations");
   }
 
-  return {
-    ok: true,
-    value: {
-      sql: trimmed,
-    },
-  };
+  return Result.ok({
+    sql: trimmed,
+  });
 }
 
-function invalid(message: string): Result<never, SqlValidationError> {
-  return {
-    error: {
-      code: "INVALID_QUERY",
-      message,
-    },
-    ok: false,
-  };
+function invalid(message: string): ResultType<never, SqlValidationError> {
+  return Result.err(new SqlValidationError(message));
 }
 
 function hasMultipleStatements(sql: string): boolean {

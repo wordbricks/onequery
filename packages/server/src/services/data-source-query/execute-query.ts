@@ -268,8 +268,8 @@ async function validateSqlForExecution(
   provider: DatabaseCredentials["type"]
 ): Promise<string> {
   const validation = await validateAndNormalizeReadOnlyQuery(sql, provider);
-  if (!validation.ok) {
-    throw new DataSourceQueryExecutionError(validation.error, {
+  if (validation.isErr()) {
+    throw new DataSourceQueryExecutionError(validation.error.message, {
       retryable: false,
       timedOut: false,
     });

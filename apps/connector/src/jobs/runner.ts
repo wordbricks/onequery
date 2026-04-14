@@ -47,7 +47,7 @@ export async function runAthenaJob(input: {
     switch (state.status) {
       case "received": {
         const validation = validateAthenaSql(state.job.sql);
-        if (!validation.ok) {
+        if (validation.isErr()) {
           state = reduce(state, {
             error: validation.error,
             type: "validation_failed",

@@ -1,5 +1,7 @@
 import { CredentialsSchema } from "@onequery/db/server";
 import type { Credentials, ProviderType } from "@onequery/db/server";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 import { decryptCredentialsObject } from "../crypto/credential-encryption";
 
@@ -13,6 +15,12 @@ export type DataSourceCredentialRecord = {
 
 const INVALID_CREDENTIALS_MESSAGE = "Invalid stored credentials";
 
+class PrepareCredentialsError extends TaggedError("PrepareCredentialsError")<{
+  reason: "decrypt_failed" | "invalid_record" | "provider_mismatch";
+  message: string;
+  cause?: unknown;
+}>() {}
+
 function doesProviderMatchCredentials(input: {
   provider: ProviderType;
   credentialsType: Credentials["type"];
@@ -24,18 +32,13 @@ function doesProviderMatchCredentials(input: {
   return input.provider === "supabase" && input.credentialsType === "postgres";
 }
 
-type PrepareCredentialsResult =
-  | {
-      ok: true;
-      value: {
-        credentials: Credentials;
-        refreshed: boolean;
-      };
-    }
-  | {
-      ok: false;
-      error: string;
-    };
+type PrepareCredentialsResult = ResultType<
+  {
+    credentials: Credentials;
+    refreshed: boolean;
+  },
+  PrepareCredentialsError
+>;
 
 export async function prepareDataSourceCredentials(input: {
   dataSource: DataSourceCredentialRecord;
@@ -43,56 +46,52 @@ export async function prepareDataSourceCredentials(input: {
 }): Promise<PrepareCredentialsResult> {
   const descriptor = describeDataSourceRecord(input.dataSource);
 
-  try {
-    if (!isValidDataSourceCredentialRecord(input.dataSource)) {
-      return {
-        error: `${INVALID_CREDENTIALS_MESSAGE} for ${descriptor}`,
-        ok: false,
-      };
-    }
+  if (!isValidDataSourceCredentialRecord(input.dataSource)) {
+    return Result.err(
+      new PrepareCredentialsError({
+        message: `${INVALID_CREDENTIALS_MESSAGE} for ${descriptor}`,
+        reason: "invalid_record",
+      })
+    );
+  }
 
-    let decrypted: Credentials;
-    try {
-      decrypted = decryptCredentialsObject(
+  const decrypted = Result.try({
+    try: () =>
+      decryptCredentialsObject(
         input.dataSource.credentialsEncrypted,
         input.dataSource.credentialsIv,
         input.masterEncryptionKey,
         CredentialsSchema
-      );
-    } catch {
-      return {
-        error: `${INVALID_CREDENTIALS_MESSAGE} for ${descriptor}`,
-        ok: false,
-      };
-    }
-
-    if (
-      !doesProviderMatchCredentials({
-        credentialsType: decrypted.type,
-        provider: input.dataSource.provider,
-      })
-    ) {
-      return {
-        error: `Stored credentials type does not match provider for ${descriptor}`,
-        ok: false,
-      };
-    }
-
-    return {
-      ok: true,
-      value: {
-        credentials: decrypted,
-        refreshed: false,
-      },
-    };
-  } catch (error) {
-    return {
-      error: `Failed to prepare credentials for ${descriptor}: ${toErrorMessage(
-        error
-      )}`,
-      ok: false,
-    };
+      ),
+    catch: (cause) =>
+      new PrepareCredentialsError({
+        cause,
+        message: `${INVALID_CREDENTIALS_MESSAGE} for ${descriptor}`,
+        reason: "decrypt_failed",
+      }),
+  });
+  if (decrypted.isErr()) {
+    return Result.err(decrypted.error);
   }
+
+  if (
+    !doesProviderMatchCredentials({
+      credentialsType: decrypted.value.type,
+      provider: input.dataSource.provider,
+    })
+  ) {
+    return Result.err(
+      new PrepareCredentialsError({
+        message: `Stored credentials type does not match provider for ${descriptor}`,
+        reason: "provider_mismatch",
+      })
+    );
+  }
+
+  return Result.ok({
+    credentials: decrypted.value,
+    refreshed: false,
+  });
 }
 
 function describeDataSourceRecord(
@@ -112,12 +111,4 @@ function isValidDataSourceCredentialRecord(
     dataSource.credentialsEncrypted.trim().length > 0 &&
     dataSource.credentialsIv.trim().length > 0
   );
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

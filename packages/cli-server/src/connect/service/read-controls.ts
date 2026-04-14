@@ -10,8 +10,8 @@ import type { CliPaginatedQueryInput } from "./types";
 
 export function parseCliPaginatedReadControls(input: CliPaginatedQueryInput) {
   const offset = parsePageCursor(input.cursor);
-  if (!offset.ok) {
-    throwCliReadControlsProblem(offset.message);
+  if (offset.isErr()) {
+    throwCliReadControlsProblem(offset.error.message);
   }
 
   return {

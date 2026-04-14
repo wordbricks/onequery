@@ -22,6 +22,7 @@
     "@onequery/db": "workspace:*",
     "@onequery/hono-connect": "workspace:*",
     "@onequery/server": "workspace:*",
+    "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
     "zod": "catalog:"

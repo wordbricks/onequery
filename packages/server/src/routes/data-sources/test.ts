@@ -38,8 +38,8 @@ export const dataSourcesTestRoute = new Hono<{
         dataSource,
         masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
       });
-      if (!preparedCredentials.ok) {
-        return c.json({ error: preparedCredentials.error }, 500);
+      if (preparedCredentials.isErr()) {
+        return c.json({ error: preparedCredentials.error.message }, 500);
       }
 
       const result = await testDataSource(
