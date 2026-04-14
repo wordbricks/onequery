@@ -5,9 +5,10 @@ import type {
 import { SourceApiInvalidRequestError } from "@onequery/server/source-api";
 import { Result } from "better-result";
 
-import type { CliConnectRequestContext } from "../../context";
-import type { CliResultServiceMethod, CliServiceResult } from "../result";
-import { liftCliServiceMethod } from "../result";
+import type { AuthenticatedCliConnectRequestContext } from "../../context";
+import { liftAuthenticatedCliServiceMethod } from "../authenticated";
+import type { AuthenticatedCliResultServiceMethod } from "../authenticated";
+import type { CliServiceResult } from "../result";
 import type { CliServiceMethod } from "../types";
 import {
   buildCliExecuteSourceApiResponse,
@@ -48,12 +49,10 @@ export function createHandleExecuteSourceApi(
   const resolvedDependencies =
     resolveSourceApiServiceDependencies(dependencies);
 
-  const handleExecuteSourceApiImpl: CliResultServiceMethod<
+  const handleExecuteSourceApiImpl: AuthenticatedCliResultServiceMethod<
     "executeSourceApi"
-  > = async (request, context) =>
+  > = async (request, requestContext) =>
     Result.gen(async function* handleExecuteSourceApiFlow() {
-      const requestContext =
-        resolvedDependencies.requireCliConnectRequestContext(context);
       const command = yield* resolveSourceApiExecuteCommand(request.input);
 
       switch (command.kind) {
@@ -86,7 +85,7 @@ export function createHandleExecuteSourceApi(
       }
     });
 
-  return liftCliServiceMethod(handleExecuteSourceApiImpl);
+  return liftAuthenticatedCliServiceMethod(handleExecuteSourceApiImpl);
 }
 
 export const handleExecuteSourceApi = createHandleExecuteSourceApi();
@@ -94,21 +93,13 @@ export const handleExecuteSourceApi = createHandleExecuteSourceApi();
 async function handleStartSourceApiCommand(
   input: {
     command: StartSourceApiExecuteCommand;
-    requestContext: CliConnectRequestContext;
+    requestContext: AuthenticatedCliConnectRequestContext;
   },
   dependencies: SourceApiServiceDependencies
 ): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
   return Result.gen(async function* handleStartSourceApiCommandFlow() {
     const access = yield* Result.await(
-      resolveAuthorizedSourceApiAccess(
-        {
-          action: "source_api.execute",
-          orgSlug: input.command.draft.orgSlug,
-          requestContext: input.requestContext,
-          sourceKey: input.command.draft.sourceKey,
-        },
-        dependencies
-      )
+      resolveExecuteSourceApiAccess(input, dependencies)
     );
     const descriptor = yield* Result.await(
       resolveSourceApiDescriptor(
@@ -165,7 +156,6 @@ async function handleStartSourceApiCommand(
     );
     const continuationToken = encodeSourceApiContinuationTokenValue(
       {
-        access,
         prepared,
         result,
         secret: access.c.var.runtime.crypto.masterEncryptionKey,
@@ -195,30 +185,21 @@ async function handleStartSourceApiCommand(
 async function handleResumeSourceApiCommand(
   input: {
     command: ResumeSourceApiExecuteCommand;
-    requestContext: CliConnectRequestContext;
+    requestContext: AuthenticatedCliConnectRequestContext;
   },
   dependencies: SourceApiServiceDependencies
 ): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
   return Result.gen(async function* handleResumeSourceApiCommandFlow() {
-    const c = input.requestContext.honoContext;
+    const access = yield* Result.await(
+      resolveExecuteSourceApiAccess(input, dependencies)
+    );
     const continuation = yield* decodeSourceApiContinuationTokenResult(
       {
         now: new Date(),
-        secret: c.var.runtime.crypto.masterEncryptionKey,
+        secret: access.c.var.runtime.crypto.masterEncryptionKey,
         token: input.command.continuationToken,
       },
       dependencies
-    );
-    const access = yield* Result.await(
-      resolveAuthorizedSourceApiAccess(
-        {
-          action: "source_api.execute",
-          orgSlug: continuation.organizationSlug,
-          requestContext: input.requestContext,
-          sourceKey: continuation.prepared.sourceKey,
-        },
-        dependencies
-      )
     );
 
     yield* Result.await(
@@ -250,7 +231,6 @@ async function handleResumeSourceApiCommand(
     const preview = dependencies.createSourceApiPreview(continuation.prepared);
     const continuationToken = encodeSourceApiContinuationTokenValue(
       {
-        access,
         prepared: continuation.prepared,
         result,
         secret: access.c.var.runtime.crypto.masterEncryptionKey,
@@ -277,6 +257,27 @@ async function handleResumeSourceApiCommand(
   });
 }
 
+async function resolveExecuteSourceApiAccess(
+  input: {
+    command: SourceApiExecuteCommand;
+    requestContext: AuthenticatedCliConnectRequestContext;
+  },
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
+  >
+): Promise<CliServiceResult<SourceApiAccessState>> {
+  return resolveAuthorizedSourceApiAccess(
+    {
+      action: "source_api.execute",
+      orgSlug: input.command.target.orgSlug,
+      requestContext: input.requestContext,
+      sourceKey: input.command.target.sourceKey,
+    },
+    dependencies
+  );
+}
+
 function requireContinuationPaginationSupport(
   prepared: PreparedSourceApi,
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
@@ -298,7 +299,6 @@ function requireContinuationPaginationSupport(
 
 function encodeSourceApiContinuationTokenValue(
   input: {
-    access: SourceApiAccessState;
     now?: Date;
     prepared: PreparedSourceApi;
     result: SourceApiExecutionResult;
@@ -315,7 +315,6 @@ function encodeSourceApiContinuationTokenValue(
 
   return dependencies.encodeSourceApiContinuationToken({
     now: input.now,
-    organizationSlug: input.access.authorizedOrg.org.slug,
     prepared: input.prepared,
     secret: input.secret,
     state: input.result.nextContinuationState,

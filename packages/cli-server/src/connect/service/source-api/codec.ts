@@ -35,6 +35,7 @@ import type {
   DescribeSourceApiResponseInit,
   ExecuteSourceApiResponseInit,
   SourceApiExecuteCommand,
+  SourceApiTarget,
 } from "./types";
 
 export function resolveSourceApiExecuteCommand(
@@ -47,6 +48,7 @@ export function resolveSourceApiExecuteCommand(
           draft: input.value.draft,
           kind: "start",
           mode: input.value.mode,
+          target: buildSourceApiTarget(input.value.draft),
         });
       }
 
@@ -58,6 +60,7 @@ export function resolveSourceApiExecuteCommand(
       return Result.ok({
         continuationToken: input.value.continuationToken,
         kind: "resume",
+        target: buildSourceApiTarget(input.value),
       });
     case undefined:
       return cliServiceErr({
@@ -65,6 +68,16 @@ export function resolveSourceApiExecuteCommand(
         key: "SOURCE_REQUEST_INVALID",
       });
   }
+}
+
+function buildSourceApiTarget(input: {
+  orgSlug: string;
+  sourceKey: string;
+}): SourceApiTarget {
+  return {
+    orgSlug: input.orgSlug,
+    sourceKey: input.sourceKey,
+  };
 }
 
 export function isCliSourceApiPreviewOnlyMode(

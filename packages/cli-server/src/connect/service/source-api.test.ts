@@ -1,6 +1,6 @@
 import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
 import {
   SourceApiExecutionStageError,
   SourceApiExpiredError,
@@ -10,6 +10,8 @@ import {
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { cliConnectRequestContextKey } from "../context";
+import { createCliConnectProblem } from "../error";
 import {
   CliSourceApiBodyKind,
   CliSourceApiExecuteMode,
@@ -185,7 +187,6 @@ const sourceApiPreview = {
 const decodedContinuationToken = {
   expiresAt: "2026-04-10T00:05:00.000Z",
   issuedAt: "2026-04-10T00:00:00.000Z",
-  organizationSlug: "acme",
   prepared: {
     ...prepared,
     paginationPolicy: "continuation_token",
@@ -193,7 +194,7 @@ const decodedContinuationToken = {
   state: {
     cursor: "page_2",
   },
-  version: 1 as const,
+  version: 2 as const,
 };
 
 const executionResponse = {
@@ -250,7 +251,6 @@ function createHarness() {
       })
     ),
     prepareSourceApiDraft: vi.fn().mockResolvedValue(prepared),
-    requireCliConnectRequestContext: vi.fn().mockReturnValue(requestContext),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),
     toCliErrorMessage: vi.fn((error: unknown) =>
       error instanceof Error ? error.message : String(error)
@@ -263,6 +263,36 @@ function createHarness() {
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
     requestContext,
   };
+}
+
+function createHandlerContext(
+  requestContext: ReturnType<typeof createHarness>["requestContext"]
+) {
+  return {
+    values: createContextValues().set(
+      cliConnectRequestContextKey,
+      requestContext as never
+    ),
+  } as never;
+}
+
+function createResumeExecuteSourceApiRequest(
+  input: {
+    continuationToken?: string;
+    orgSlug?: string;
+    sourceKey?: string;
+  } = {}
+) {
+  return create(ExecuteSourceApiRequestSchema, {
+    input: {
+      case: "resume",
+      value: {
+        continuationToken: input.continuationToken ?? "continuation_1",
+        orgSlug: input.orgSlug ?? "acme",
+        sourceKey: input.sourceKey ?? "github-prod",
+      },
+    },
+  });
 }
 
 async function expectConnectError(
@@ -378,9 +408,10 @@ describe("source api connect service", () => {
 
     const response = create(
       DescribeSourceApiResponseSchema,
-      await harness.handleDescribeSourceApi(request, {
-        values: new Map(),
-      } as never)
+      await harness.handleDescribeSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      )
     );
 
     expect(harness.requestContext.resolveSession).toHaveBeenCalledTimes(1);
@@ -426,9 +457,10 @@ describe("source api connect service", () => {
 
     const response = create(
       ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never)
+      await harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      )
     );
 
     expect(
@@ -468,9 +500,10 @@ describe("source api connect service", () => {
       },
     });
 
-    await harness.handleExecuteSourceApi(request, {
-      values: new Map(),
-    } as never);
+    await harness.handleExecuteSourceApi(
+      request,
+      createHandlerContext(harness.requestContext)
+    );
 
     expect(
       harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null
@@ -496,9 +529,10 @@ describe("source api connect service", () => {
 
     const response = create(
       ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never)
+      await harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      )
     );
 
     expect({
@@ -544,9 +578,10 @@ describe("source api connect service", () => {
 
     const response = create(
       ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never)
+      await harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      )
     );
 
     expect(summarizeExecuteSourceApiResponse(response)).toMatchSnapshot();
@@ -560,20 +595,14 @@ describe("source api connect service", () => {
         cursor: "page_3",
       },
     });
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "resume",
-        value: {
-          continuationToken: "continuation_1",
-        },
-      },
-    });
+    const request = createResumeExecuteSourceApiRequest();
 
     const response = create(
       ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never)
+      await harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      )
     );
 
     const encodeContinuationTokenCall =
@@ -611,19 +640,13 @@ describe("source api connect service", () => {
         paginationPolicy: "none",
       },
     });
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "resume",
-        value: {
-          continuationToken: "continuation_1",
-        },
-      },
-    });
+    const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.InvalidArgument,
         message: 'operation "fetch" does not support continuation_token resume',
@@ -644,19 +667,13 @@ describe("source api connect service", () => {
         );
       }
     );
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "resume",
-        value: {
-          continuationToken: "continuation_1",
-        },
-      },
-    });
+    const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.InvalidArgument,
         message: "Invalid source API continuation token",
@@ -673,19 +690,13 @@ describe("source api connect service", () => {
         );
       }
     );
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "resume",
-        value: {
-          continuationToken: "continuation_1",
-        },
-      },
-    });
+    const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.FailedPrecondition,
         message: "Source API continuation token expired",
@@ -699,19 +710,13 @@ describe("source api connect service", () => {
       ...descriptor,
       descriptorVersion: "github-v2",
     });
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "resume",
-        value: {
-          continuationToken: "continuation_1",
-        },
-      },
-    });
+    const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.FailedPrecondition,
         message: "descriptor version no longer matches",
@@ -745,9 +750,10 @@ describe("source api connect service", () => {
     });
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.PermissionDenied,
         message:
@@ -779,13 +785,114 @@ describe("source api connect service", () => {
     });
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(request, {
-        values: new Map(),
-      } as never),
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
       {
         code: Code.Internal,
         message: "GitHub upstream request failed",
       }
     );
+  });
+
+  it("returns not logged in before validating source api execute input", async () => {
+    const harness = createHarness();
+    harness.requestContext.resolveSession.mockResolvedValueOnce(
+      Result.err(
+        createCliConnectProblem({
+          detail: "no authenticated session was found",
+          key: "NOT_LOGGED_IN",
+        })
+      )
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      input: {
+        case: "start",
+        value: {
+          mode: CliSourceApiExecuteMode.EXECUTE,
+        },
+      },
+    });
+
+    await expectConnectError(
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.Unauthenticated,
+        message: "no authenticated session was found",
+      }
+    );
+
+    expect(harness.dependencies.prepareSourceApiDraft).not.toHaveBeenCalled();
+  });
+
+  it("returns not logged in before decoding continuation tokens", async () => {
+    const harness = createHarness();
+    harness.requestContext.resolveSession.mockResolvedValueOnce(
+      Result.err(
+        createCliConnectProblem({
+          detail: "no authenticated session was found",
+          key: "NOT_LOGGED_IN",
+        })
+      )
+    );
+    harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
+      () => {
+        throw new SourceApiInvalidRequestError(
+          "Invalid source API continuation token"
+        );
+      }
+    );
+    const request = createResumeExecuteSourceApiRequest();
+
+    await expectConnectError(
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.Unauthenticated,
+        message: "no authenticated session was found",
+      }
+    );
+
+    expect(
+      harness.dependencies.decodeSourceApiContinuationToken
+    ).not.toHaveBeenCalled();
+  });
+
+  it("resolves the requested resume source before decoding continuation tokens", async () => {
+    const harness = createHarness();
+    harness.dependencies.runCliLoadSourceEffect.mockResolvedValueOnce({
+      kind: "not_found",
+    });
+    harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
+      () => {
+        throw new SourceApiInvalidRequestError(
+          "Invalid source API continuation token"
+        );
+      }
+    );
+    const request = createResumeExecuteSourceApiRequest({
+      sourceKey: "missing-source",
+    });
+
+    await expectConnectError(
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.NotFound,
+        message: 'no source named "missing-source" exists in org "acme"',
+      }
+    );
+
+    expect(
+      harness.dependencies.decodeSourceApiContinuationToken
+    ).not.toHaveBeenCalled();
   });
 });

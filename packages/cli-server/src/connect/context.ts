@@ -34,6 +34,16 @@ export type CliConnectRequestContext = {
   }): Promise<CliServiceResult<AuthorizedCliOrgContext>>;
 };
 
+export type AuthenticatedCliConnectRequestContext = {
+  honoContext: Context<CliRouteEnv>;
+  requestId: string;
+  session: CliSessionIdentity;
+  resolveAuthorizedOrg(input: {
+    action: CliAction;
+    orgSlug: string;
+  }): Promise<CliServiceResult<AuthorizedCliOrgContext>>;
+};
+
 export const cliConnectRequestContextKey = createContextKey<
   CliConnectRequestContext | undefined
 >(undefined, {
@@ -98,6 +108,23 @@ export function createCliConnectContextValues(
     cliConnectRequestContextKey,
     createCliConnectRequestContext(c)
   );
+}
+
+export function createAuthenticatedCliConnectRequestContext(
+  requestContext: CliConnectRequestContext,
+  session: CliSessionIdentity
+): AuthenticatedCliConnectRequestContext {
+  return {
+    honoContext: requestContext.honoContext,
+    requestId: requestContext.requestId,
+    session,
+    resolveAuthorizedOrg(input) {
+      return requestContext.resolveAuthorizedOrg({
+        ...input,
+        session,
+      });
+    },
+  };
 }
 
 export function requireCliConnectRequestContext(

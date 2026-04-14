@@ -35,14 +35,21 @@ export type SourceApiConnectFailurePhase =
 
 export type CliExecuteSourceApiInput = ExecuteSourceApiRequest["input"];
 
+export type SourceApiTarget = {
+  orgSlug: string;
+  sourceKey: string;
+};
+
 export type SourceApiExecuteCommand =
   | {
       kind: "start";
+      target: SourceApiTarget;
       draft: CliSourceApiDraft;
       mode: CliSourceApiExecuteMode;
     }
   | {
       kind: "resume";
+      target: SourceApiTarget;
       continuationToken: string;
     };
 

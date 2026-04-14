@@ -15,7 +15,6 @@ import {
   toCliErrorMessage,
 } from "../../../observability";
 import { runCliLoadSourceEffect } from "../../../source/effects";
-import { requireCliConnectRequestContext } from "../../context";
 
 export type SourceApiServiceDependencies = {
   buildCliRequestLogDetails: typeof buildCliRequestLogDetails;
@@ -28,7 +27,6 @@ export type SourceApiServiceDependencies = {
   logCliEvent: typeof logCliEvent;
   prepareDataSourceCredentials: typeof prepareDataSourceCredentials;
   prepareSourceApiDraft: typeof prepareSourceApiDraft;
-  requireCliConnectRequestContext: typeof requireCliConnectRequestContext;
   runCliLoadSourceEffect: typeof runCliLoadSourceEffect;
   toCliErrorMessage: typeof toCliErrorMessage;
 };
@@ -44,7 +42,6 @@ export const defaultSourceApiServiceDependencies = {
   logCliEvent,
   prepareDataSourceCredentials,
   prepareSourceApiDraft,
-  requireCliConnectRequestContext,
   runCliLoadSourceEffect,
   toCliErrorMessage,
 } satisfies SourceApiServiceDependencies;

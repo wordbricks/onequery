@@ -13,12 +13,11 @@ import type {
   SourceApiRequestBody,
 } from "../types";
 
-const SOURCE_API_CONTINUATION_TOKEN_VERSION = 1;
+const SOURCE_API_CONTINUATION_TOKEN_VERSION = 2;
 const DEFAULT_SOURCE_API_CONTINUATION_TOKEN_TTL_MS = 5 * 60_000;
 const CONTINUATION_TOKEN_BINARY_BODY_KEY = "valueBase64Url";
 
 type EncodeSourceApiContinuationTokenInput = {
-  organizationSlug: string;
   prepared: PreparedSourceApi;
   secret: string | Uint8Array;
   state: JsonValue;
@@ -67,7 +66,6 @@ export function encodeSourceApiContinuationToken(
   const payload = serializeSourceApiContinuationTokenPayload({
     expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
     issuedAt: now.toISOString(),
-    organizationSlug: input.organizationSlug,
     prepared: input.prepared,
     state: input.state,
     version: SOURCE_API_CONTINUATION_TOKEN_VERSION,
@@ -91,11 +89,6 @@ export function decodeSourceApiContinuationToken(
   if (payload.version !== SOURCE_API_CONTINUATION_TOKEN_VERSION) {
     throw new SourceApiInvalidRequestError(
       "Unsupported source API continuation token version"
-    );
-  }
-  if (payload.organizationSlug.trim().length === 0) {
-    throw new SourceApiInvalidRequestError(
-      "Invalid source API continuation token"
     );
   }
 
@@ -179,7 +172,6 @@ function parseSourceApiContinuationTokenPayload(
   return {
     expiresAt: readRequiredString(value.expiresAt),
     issuedAt: readRequiredString(value.issuedAt),
-    organizationSlug: readRequiredString(value.organizationSlug),
     prepared: parsePreparedSourceApi(value.prepared),
     state: value.state as JsonValue,
     version,

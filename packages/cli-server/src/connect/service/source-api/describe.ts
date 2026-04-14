@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 
-import type { CliResultServiceMethod } from "../result";
-import { liftCliServiceMethod } from "../result";
+import { liftAuthenticatedCliServiceMethod } from "../authenticated";
+import type { AuthenticatedCliResultServiceMethod } from "../authenticated";
 import type { CliServiceMethod } from "../types";
 import { buildCliDescribeSourceApiResponse } from "./codec";
 import { resolveSourceApiServiceDependencies } from "./dependencies";
@@ -17,12 +17,10 @@ export function createHandleDescribeSourceApi(
   const resolvedDependencies =
     resolveSourceApiServiceDependencies(dependencies);
 
-  const handleDescribeSourceApiImpl: CliResultServiceMethod<
+  const handleDescribeSourceApiImpl: AuthenticatedCliResultServiceMethod<
     "describeSourceApi"
-  > = async (request, context) =>
+  > = async (request, requestContext) =>
     Result.gen(async function* handleDescribeSourceApiFlow() {
-      const requestContext =
-        resolvedDependencies.requireCliConnectRequestContext(context);
       const access = yield* Result.await(
         resolveAuthorizedSourceApiAccess(
           {
@@ -59,7 +57,7 @@ export function createHandleDescribeSourceApi(
       return Result.ok(buildCliDescribeSourceApiResponse(descriptor));
     });
 
-  return liftCliServiceMethod(handleDescribeSourceApiImpl);
+  return liftAuthenticatedCliServiceMethod(handleDescribeSourceApiImpl);
 }
 
 export const handleDescribeSourceApi = createHandleDescribeSourceApi();

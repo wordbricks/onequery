@@ -15,8 +15,7 @@ import {
 import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
-import type { CliSessionIdentity } from "../../../domain/workflows";
-import type { CliConnectRequestContext } from "../../context";
+import type { AuthenticatedCliConnectRequestContext } from "../../context";
 import { CliConnectProblem } from "../../error";
 import { createCliConnectSourceNotFoundProblem } from "../errors";
 import type { CliServiceResult } from "../result";
@@ -32,7 +31,7 @@ export async function resolveAuthorizedSourceApiAccess(
   input: {
     action: "source_api.describe" | "source_api.execute";
     orgSlug: string;
-    requestContext: CliConnectRequestContext;
+    requestContext: AuthenticatedCliConnectRequestContext;
     sourceKey: string;
   },
   dependencies: Pick<
@@ -41,12 +40,10 @@ export async function resolveAuthorizedSourceApiAccess(
   >
 ): Promise<CliServiceResult<SourceApiAccessState>> {
   return Result.gen(async function* resolveAuthorizedSourceApiAccessFlow() {
-    const session = yield* Result.await(input.requestContext.resolveSession());
     const authorizedOrg = yield* Result.await(
       input.requestContext.resolveAuthorizedOrg({
         action: input.action,
         orgSlug: input.orgSlug,
-        session,
       })
     );
     const c = input.requestContext.honoContext;
@@ -65,7 +62,7 @@ export async function resolveAuthorizedSourceApiAccess(
       actor: buildSourceApiActor({
         authorizedOrg,
         requestId: input.requestContext.requestId,
-        session,
+        session: input.requestContext.session,
       }),
       authorizedOrg,
       c,
@@ -310,7 +307,7 @@ async function requirePreparedCliSourceApiSource(
 function buildSourceApiActor(input: {
   authorizedOrg: AuthorizedCliOrgContext;
   requestId: string;
-  session: CliSessionIdentity;
+  session: AuthenticatedCliConnectRequestContext["session"];
 }): SourceApiActorContext {
   return {
     capabilities: input.authorizedOrg.capabilities,

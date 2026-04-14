@@ -220,9 +220,14 @@ async fn execute_source_api_pages(
             break;
         };
 
-        let response = source_api::resume_source_api(client, continuation_token_value.as_str())
-            .await
-            .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
+        let response = source_api::resume_source_api(
+            client,
+            org_slug,
+            source_key,
+            continuation_token_value.as_str(),
+        )
+        .await
+        .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
         continuation_token = response.payload.continuation_token.clone();
         let Some(page) = response.payload.result.into_option() else {
