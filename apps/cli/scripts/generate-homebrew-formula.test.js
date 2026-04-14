@@ -18,11 +18,11 @@ void test("buildFormula renders the supported platform download blocks", () => {
 
   assert.match(
     formula,
-    /url "https:\/\/github\.com\/wordbricks\/onequery\/releases\/download\/cli-v1\.2\.3\/onequery-npm-darwin-arm64\.tgz"/
+    /url "https:\/\/github\.com\/wordbricks\/onequery\/releases\/download\/cli-v1\.2\.3\/onequery-npm-darwin-arm64-1\.2\.3\.tgz"/
   );
   assert.match(
     formula,
-    /url "https:\/\/github\.com\/wordbricks\/onequery\/releases\/download\/cli-v1\.2\.3\/onequery-npm-linux-x64\.tgz"/
+    /url "https:\/\/github\.com\/wordbricks\/onequery\/releases\/download\/cli-v1\.2\.3\/onequery-npm-linux-x64-1\.2\.3\.tgz"/
   );
   assert.match(formula, /libexec\.install "vendor"/);
   assert.match(formula, /chmod 0755, cli_binary/);
@@ -45,6 +45,6 @@ void test("buildFormula omits optional Linux arm64 downloads when no checksum is
     version: "1.2.3",
   });
 
-  assert.doesNotMatch(formula, /onequery-npm-linux-arm64\.tgz/);
-  assert.match(formula, /onequery-npm-linux-x64\.tgz/);
+  assert.doesNotMatch(formula, /onequery-npm-linux-arm64-1\.2\.3\.tgz/);
+  assert.match(formula, /onequery-npm-linux-x64-1\.2\.3\.tgz/);
 });

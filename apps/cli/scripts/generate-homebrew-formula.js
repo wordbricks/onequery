@@ -46,6 +46,10 @@ const PLATFORM_RELEASES = [
   },
 ];
 
+function versionedReleaseAssetName(assetName, version) {
+  return assetName.replace(/\.tgz$/, `-${version}.tgz`);
+}
+
 function readOptionValue(argv, index, optionName) {
   const value = argv[index + 1];
   if (value === undefined || GENERATE_HOMEBREW_FORMULA_OPTIONS.has(value)) {
@@ -252,6 +256,7 @@ export function buildFormula({
     (platformRelease) => sha256ByPlatform[platformRelease.id]
   ).map((platformRelease) => ({
     ...platformRelease,
+    assetName: versionedReleaseAssetName(platformRelease.assetName, version),
     sha256: sha256ByPlatform[platformRelease.id],
   }));
 

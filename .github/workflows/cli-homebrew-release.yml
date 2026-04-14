@@ -85,6 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
 
@@ -93,10 +94,10 @@ jobs:
           mkdir -p "$assets_dir"
 
           for asset_name in \
-            onequery-npm-darwin-arm64.tgz \
-            onequery-npm-darwin-x64.tgz \
-            onequery-npm-linux-arm64.tgz \
-            onequery-npm-linux-x64.tgz
+            "onequery-npm-darwin-arm64-${VERSION}.tgz" \
+            "onequery-npm-darwin-x64-${VERSION}.tgz" \
+            "onequery-npm-linux-arm64-${VERSION}.tgz" \
+            "onequery-npm-linux-x64-${VERSION}.tgz"
           do
             gh release download "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
@@ -110,6 +111,7 @@ jobs:
         id: shas
         env:
           ASSETS_DIR: ${{ steps.assets.outputs.assets_dir }}
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
 
@@ -118,10 +120,10 @@ jobs:
           }
 
           {
-            echo "darwin_arm64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-arm64.tgz")"
-            echo "darwin_x64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-x64.tgz")"
-            echo "linux_arm64=$(checksum "$ASSETS_DIR/onequery-npm-linux-arm64.tgz")"
-            echo "linux_x64=$(checksum "$ASSETS_DIR/onequery-npm-linux-x64.tgz")"
+            echo "darwin_arm64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-arm64-${VERSION}.tgz")"
+            echo "darwin_x64=$(checksum "$ASSETS_DIR/onequery-npm-darwin-x64-${VERSION}.tgz")"
+            echo "linux_arm64=$(checksum "$ASSETS_DIR/onequery-npm-linux-arm64-${VERSION}.tgz")"
+            echo "linux_x64=$(checksum "$ASSETS_DIR/onequery-npm-linux-x64-${VERSION}.tgz")"
           } >> "$GITHUB_OUTPUT"
 
       - name: Check out Homebrew tap
