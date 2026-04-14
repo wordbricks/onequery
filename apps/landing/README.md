@@ -1,43 +1,67 @@
-# Landing On Cloudflare Pages
+# Landing On Cloudflare Workers
 
-This app is a static Vite site that builds to `apps/landing/dist/client`.
+This app is a static Vite SPA that builds to `apps/landing/dist/client` and is
+intended to deploy through **Cloudflare Workers Static Assets**, not Pages.
 
-## Recommended setup
+## Local Manual Deploy
 
-Use a dedicated Cloudflare Pages project for the landing site and keep the repo
-root as the Pages root directory. This repo is a Bun workspace monorepo, and
-the landing build depends on the installer asset emitted from
-`packages/self-host-runtime`.
+The root workspace now includes `wrangler.jsonc` configured for this landing
+site:
 
-Cloudflare Pages settings:
+- Worker name: `onequery-landing`
+- Asset directory: `apps/landing/dist/client`
+- SPA fallback: `single-page-application`
 
-- Production branch: `main`
-- Root directory: `/`
-- Build command: `bun install && bun run landing:build`
-- Build output directory: `apps/landing/dist/client`
-
-## Direct upload
-
-If you want to create or update the Pages project from the CLI instead of Git
-integration:
+Build and deploy manually:
 
 ```bash
-bun run landing:deploy:cloudflare -- --project-name <pages-project-name>
+bun run landing:deploy
+```
+
+For a preview-style upload without promoting to the latest deployed version:
+
+```bash
+bun run landing:deploy:preview
 ```
 
 The first run will ask you to authenticate Wrangler with Cloudflare if you have
 not already done so.
 
-## onequery.dev domain
+## GitHub Auto Deploy
 
-After the Pages project is live:
+Recommended Cloudflare Workers Builds settings for this monorepo:
 
-1. Add `onequery.dev` in Cloudflare Pages under `Custom domains`.
-2. Keep DNS for `onequery.dev` hosted in Cloudflare so the apex domain can be
-   attached directly to Pages.
-3. Add `www.onequery.dev` too if you want a redirect or secondary hostname.
+- Git provider: GitHub
+- Production branch: `main`
+- Root directory: `.`
+- Build command: `bun run landing:build`
+- Deploy command: `bunx wrangler deploy`
+- Non-production deploy command: `bunx wrangler versions upload`
 
-The landing page and installer now assume the public installer URL is:
+Recommended build environment variables:
+
+- `BUN_VERSION=1.3.10`
+- `NODE_VERSION=22`
+
+Important:
+
+- The Cloudflare Worker project name must match `name` in
+  [wrangler.jsonc](/Users/dev/git/onequery/wrangler.jsonc), currently
+  `onequery-landing`.
+- This repo is a Bun workspace monorepo, so the root directory should stay at
+  repo root instead of `apps/landing`.
+- The landing build depends on the installer asset emitted from
+  `packages/self-host-runtime`, which is already handled by `bun run landing:build`.
+
+## Domain
+
+After the Worker is live, attach your custom domain in Cloudflare Workers:
+
+1. Open the `onequery-landing` Worker in Cloudflare.
+2. Go to `Settings` -> `Domains & Routes`.
+3. Add the hostname you want to serve this landing from.
+
+The landing page and installer currently assume the public installer URL is:
 
 ```text
 https://onequery.dev/install.sh
