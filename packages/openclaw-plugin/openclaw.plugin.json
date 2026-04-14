@@ -1,0 +1,63 @@
+{
+  "id": "onequery",
+  "name": "OneQuery",
+  "description": "Read-only org, source, and query tools backed by the OneQuery CLI",
+  "version": "0.0.0",
+  "skills": ["./skills"],
+  "activation": {
+    "onCapabilities": ["tool"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "binaryPath": {
+        "type": "string",
+        "default": "onequery",
+        "description": "Path or command name for the OneQuery CLI executable"
+      },
+      "defaultMaxRows": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 100,
+        "description": "Default row cap for query validate and exec tools"
+      },
+      "defaultMaxBytes": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 1048576,
+        "description": "Default response size cap for query validate and exec tools"
+      },
+      "defaultCellMaxChars": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 2000,
+        "description": "Default per-cell truncation limit for query results"
+      },
+      "defaultQueryTimeoutMs": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 60000,
+        "description": "Default query timeout passed to the OneQuery CLI"
+      }
+    }
+  },
+  "uiHints": {
+    "binaryPath": {
+      "label": "CLI path",
+      "placeholder": "onequery"
+    },
+    "defaultMaxRows": {
+      "label": "Default max rows"
+    },
+    "defaultMaxBytes": {
+      "label": "Default max bytes"
+    },
+    "defaultCellMaxChars": {
+      "label": "Default cell max chars"
+    },
+    "defaultQueryTimeoutMs": {
+      "label": "Default query timeout (ms)"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "@onequery/openclaw-plugin",
+  "version": "0.0.0",
+  "private": false,
+  "files": [
+    "src",
+    "README.md",
+    "openclaw.plugin.json",
+    "skills",
+    "tsconfig.json"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.49",
+    "openclaw": "2026.4.10"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.4.10",
+      "minGatewayVersion": "2026.4.10"
+    },
+    "build": {
+      "openclawVersion": "2026.4.10",
+      "pluginSdkVersion": "2026.4.10"
+    }
+  }
+}
