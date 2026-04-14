@@ -1,0 +1,15 @@
+---
+source: crates/onequery-cli/src/local_target.rs
+expression: rendered
+---
+Error: failed to parse self-host config
+Command: onequery auth login
+Stage: load_config
+Why: TOML parse error at line 4, column 1
+  |
+4 | log_level = "debug"
+  | ^^^^^^^^^
+unknown field `log_level`, expected one of `listen_host`, `port`, `public_origin`
+ (<CONFIG_PATH>)
+Try:
+  - remove or fix <CONFIG_PATH>

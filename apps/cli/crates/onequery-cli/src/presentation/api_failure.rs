@@ -90,10 +90,11 @@ pub(crate) fn present_api_failure_with_context(
     context: &CommandContext,
     presentation: ApiErrorPresentation<'_>,
 ) -> CliError {
-    if let ApiFailure::Transport(transport) = &failure
-        && let Some(error) = managed_gateway_unavailable_error(context, transport.stage)
-    {
-        return error;
+    if let ApiFailure::Transport(transport) = &failure {
+        match managed_gateway_unavailable_error(context, transport.stage) {
+            Ok(Some(error)) | Err(error) => return error,
+            Ok(None) => {}
+        }
     }
 
     present_api_failure(failure, presentation)

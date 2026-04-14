@@ -34,7 +34,13 @@ struct ManagedGatewayTarget {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct SelfHostTargetState {
     paths: SelfHostRuntimePaths,
-    config: Option<SelfHostConfig>,
+    config: SelfHostTargetConfig,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum SelfHostTargetConfig {
+    Missing,
+    Loaded(SelfHostConfig),
 }
 
 pub(crate) fn runtime_accepting_connections(listen_host: &str, listen_port: u16) -> bool {
@@ -59,13 +65,41 @@ pub(crate) fn runtime_probe_host(listen_host: &str) -> &str {
 pub(crate) fn managed_gateway_unavailable_error(
     context: &CommandContext,
     stage: ErrorStage,
-) -> Option<CliError> {
-    let target = managed_gateway_target_for_base_url(&context.command_line, &context.base_url)?;
-    if runtime_accepting_connections(&target.listen_host, target.port) {
-        return None;
+) -> Result<Option<CliError>, CliError> {
+    let target_url = match Url::parse(&context.base_url) {
+        Ok(target_url) => target_url,
+        Err(_) => return Ok(None),
+    };
+    if !target_host_is_loopback(&target_url) {
+        return Ok(None);
     }
 
-    Some(gateway_unavailable_error(context, stage, &target))
+    managed_gateway_unavailable_error_with_paths(
+        context,
+        stage,
+        self_host_runtime_paths(&context.command_line)?,
+    )
+}
+
+fn managed_gateway_unavailable_error_with_paths(
+    context: &CommandContext,
+    stage: ErrorStage,
+    paths: SelfHostRuntimePaths,
+) -> Result<Option<CliError>, CliError> {
+    let Some(target) = managed_gateway_target_for_base_url_with_paths(
+        &context.base_url,
+        paths,
+        &context.command_line,
+    )?
+    else {
+        return Ok(None);
+    };
+
+    if runtime_accepting_connections(&target.listen_host, target.port) {
+        return Ok(None);
+    }
+
+    Ok(Some(gateway_unavailable_error(context, stage, &target)))
 }
 
 fn gateway_unavailable_error(
@@ -96,45 +130,58 @@ fn gateway_unavailable_error(
     .with_code(Some("self_host_gateway_unavailable".to_owned()))
 }
 
-fn managed_gateway_target_for_base_url(
+fn managed_gateway_target_for_base_url_with_paths(
+    base_url: &str,
+    paths: SelfHostRuntimePaths,
     command_line: &str,
-    base_url: &str,
-) -> Option<ManagedGatewayTarget> {
-    let paths = self_host_runtime_paths(command_line).ok()?;
-    let config = if paths.config_path.is_file() {
-        // Comment: localhost gateway guidance is additive. A broken self-host config should not
-        // mask the original API failure for commands that merely happen to target a local origin.
-        load_self_host_public_config_with_paths(&paths, command_line).ok()
-    } else {
-        None
+) -> Result<Option<ManagedGatewayTarget>, CliError> {
+    let target_url = match Url::parse(base_url) {
+        Ok(target_url) => target_url,
+        Err(_) => return Ok(None),
     };
-
-    managed_gateway_target(base_url, &SelfHostTargetState { paths, config })
-}
-
-fn managed_gateway_target(
-    base_url: &str,
-    state: &SelfHostTargetState,
-) -> Option<ManagedGatewayTarget> {
-    let target_url = Url::parse(base_url).ok()?;
     if !target_host_is_loopback(&target_url) {
-        return None;
+        return Ok(None);
     }
 
-    let candidate = state.config.as_ref().map_or_else(
-        || ManagedGatewayTarget {
+    let state = load_self_host_target_state(paths, command_line)?;
+    Ok(managed_gateway(base_url, &state))
+}
+
+fn load_self_host_target_state(
+    paths: SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<SelfHostTargetState, CliError> {
+    let config = if paths.config_path.is_file() {
+        // Comment: self-host config load failures are authoritative for loopback targets. The
+        // localhost gateway hint is additive only after a valid managed-gateway config exists.
+        SelfHostTargetConfig::Loaded(load_self_host_public_config_with_paths(
+            &paths,
+            command_line,
+        )?)
+    } else {
+        SelfHostTargetConfig::Missing
+    };
+
+    Ok(SelfHostTargetState { paths, config })
+}
+
+fn managed_gateway(base_url: &str, state: &SelfHostTargetState) -> Option<ManagedGatewayTarget> {
+    let target_url = Url::parse(base_url).ok()?;
+
+    let candidate = match &state.config {
+        SelfHostTargetConfig::Missing => ManagedGatewayTarget {
             listen_host: DEFAULT_SELF_HOST_LISTEN_HOST.to_owned(),
             port: DEFAULT_SELF_HOST_PORT,
             public_origin: default_public_origin(),
             log_path: state.paths.server_log_path.clone(),
         },
-        |config| ManagedGatewayTarget {
+        SelfHostTargetConfig::Loaded(config) => ManagedGatewayTarget {
             listen_host: config.server.listen_host.clone(),
             port: config.server.port,
             public_origin: self_host_public_origin(config),
             log_path: state.paths.server_log_path.clone(),
         },
-    );
+    };
 
     if target_matches_managed_gateway(&target_url, &candidate) {
         return Some(candidate);
@@ -225,14 +272,16 @@ mod tests {
     use super::ErrorStage;
     use super::ManagedGatewayTarget;
     use super::SelfHostConfig;
+    use super::SelfHostTargetConfig;
     use super::SelfHostTargetState;
     use super::gateway_unavailable_error;
-    use super::managed_gateway_target;
+    use super::managed_gateway;
     use super::managed_gateway_unavailable_error;
+    use super::managed_gateway_unavailable_error_with_paths;
 
     fn target_state(
         paths: SelfHostRuntimePaths,
-        config: Option<SelfHostConfig>,
+        config: SelfHostTargetConfig,
     ) -> SelfHostTargetState {
         SelfHostTargetState { paths, config }
     }
@@ -263,8 +312,10 @@ mod tests {
     #[test]
     fn managed_gateway_target_matches_default_self_host_origin_without_config() {
         let paths = test_paths();
-        let target =
-            managed_gateway_target("http://127.0.0.1:5656", &target_state(paths.clone(), None));
+        let target = managed_gateway(
+            "http://127.0.0.1:5656",
+            &target_state(paths.clone(), SelfHostTargetConfig::Missing),
+        );
 
         assert_eq!(
             target,
@@ -280,11 +331,11 @@ mod tests {
     #[test]
     fn managed_gateway_target_matches_custom_local_runtime_endpoint_when_public_origin_is_remote() {
         let paths = test_paths();
-        let target = managed_gateway_target(
+        let target = managed_gateway(
             "http://127.0.0.1:7777",
             &target_state(
                 paths.clone(),
-                Some(SelfHostConfig {
+                SelfHostTargetConfig::Loaded(SelfHostConfig {
                     server: crate::config::self_host::ServerSection {
                         listen_host: "127.0.0.1".to_owned(),
                         port: 7777,
@@ -308,9 +359,9 @@ mod tests {
 
     #[test]
     fn managed_gateway_target_rejects_remote_origin() {
-        let target = managed_gateway_target(
+        let target = managed_gateway(
             "https://onequery.example.com",
-            &target_state(test_paths(), None),
+            &target_state(test_paths(), SelfHostTargetConfig::Missing),
         );
 
         assert_eq!(target, None);
@@ -338,8 +389,32 @@ mod tests {
         let error = managed_gateway_unavailable_error(
             &test_context("https://onequery.example.com", "onequery auth login"),
             ErrorStage::Auth,
-        );
+        )
+        .unwrap_or_else(|error| panic!("expected non-gateway target check to succeed: {error}"));
 
         assert_eq!(error.is_none(), true);
+    }
+
+    #[test]
+    fn managed_gateway_unavailable_error_reports_invalid_self_host_config_snapshot() {
+        let paths = test_paths();
+        let config_path = paths.config_path.display().to_string();
+        fs::write(
+            &paths.config_path,
+            "[server]\nlisten_host = \"127.0.0.1\"\nport = 5656\nlog_level = \"debug\"\n",
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
+
+        let error = managed_gateway_unavailable_error_with_paths(
+            &test_context("http://127.0.0.1:5656", "onequery auth login"),
+            ErrorStage::Auth,
+            paths,
+        )
+        .expect_err("expected invalid self-host config to fail");
+
+        let rendered =
+            render_error(&error, EffectiveOutputMode::Text).replace(&config_path, "<CONFIG_PATH>");
+
+        assert_snapshot!(rendered);
     }
 }
