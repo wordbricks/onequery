@@ -12,12 +12,15 @@ Typography does most of the branding work. The site uses `Geist`, a modern grote
 
 The product frames are the most expressive visual objects on the page. They use white cards with faint strokes, 14px rounding, and large blurred shadows (`0 40px 80px rgba(0,0,0,0.08)`) to create lift without looking ornamental. This makes the entire site feel like a polished operating surface: minimal, monochrome, and real.
 
+The OneQuery icon slightly changes the earlier "almost no color" rule. The mark is a vivid rounded blue square containing a soft white whale silhouette, with subtle glow and shading inside the tile. The system now behaves like this: the page remains monochrome, but the logo icon is allowed to act as the single saturated brand object. That blue should appear in the favicon and compact brand mark, not spread across buttons, section backgrounds, or generic accents.
+
 **Key Characteristics:**
-- White-first interface with near-black typography and almost no saturated brand color
+- White-first interface with near-black typography and one explicit saturated brand mark
 - `Geist` grotesk used for everything: hero, UI, labels, footer
 - Large semibold headlines with tight negative tracking
 - Product UI screenshots as primary visual identity
 - Alpha-black palette for text hierarchy, borders, pills, and overlays
+- A rounded blue whale icon used as the brand mark and favicon, while the rest of the page stays neutral
 - Rounded rectangles with soft, high-blur shadows instead of loud cards
 - Strong editorial spacing, but expressed through engineering minimalism rather than warmth
 - Clear "real product, real infra" tone throughout
@@ -27,11 +30,15 @@ The product frames are the most expressive visual objects on the page. They use 
 ### Primary
 - **Core Ink** (`#0a0a0a`): Primary headline and interface text. Used for hero copy, section headings, iconography, and filled buttons.
 - **Pure White** (`#ffffff`): Main page background, card surface, and high-contrast reversed text on dark CTAs.
+- **Brand Blue** (`#1f84d1` approximate): The OneQuery app icon color. Use only for the favicon and compact logo mark, not as a general UI accent.
+- **Whale White** (`#dce3eb` approximate): The light whale silhouette used inside the icon asset. This belongs to the brand mark itself, not to generic surfaces.
 
 ### Secondary & Accent
 - **Muted Ink 50** (`rgba(0, 0, 0, 0.5)` / `#00000080`): Default supporting paragraph copy, footer links, and secondary metadata.
 - **Muted Ink 35** (`rgba(0, 0, 0, 0.35)` / `#00000059`): Lower-emphasis links like the hero's secondary text CTA.
 - **Muted Ink 22** (`rgba(0, 0, 0, 0.22)` / `#00000038`): Breadcrumb dividers, tiny metadata labels, and subtle separators inside demo surfaces.
+- **Icon Highlight** (`rgba(255, 255, 255, 0.18)` approximate): Soft top highlight visible inside the app icon artwork. This belongs to the icon asset itself, not to general component styling.
+- **Icon Shadow Glow** (`rgba(0, 0, 0, 0.16)` approximate): Subtle shadowing around the whale silhouette inside the icon. Keep this inside the asset rather than recreating it in page CSS.
 
 ### Surface & Background
 - **Page White** (`#ffffff`): Full-page background. The site does not rely on tinted section bands.
@@ -118,6 +125,7 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 
 ### Navigation
 - Minimal top navigation with a lightweight wordmark and a small mode/theme control
+- Brand mark uses the OneQuery rounded-square blue whale icon at small size, paired with the wordmark
 - No heavy nav chrome, no sticky colored bar, no oversized CTA treatment
 - Typography stays small and neutral; the hero owns the emphasis
 
@@ -148,6 +156,13 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 - Small multi-column footer with muted links and restrained labels
 - No dark inversion, no decorative lockup, no brand-over-brand repetition
 
+**Brand Mark**
+- Small rounded-square icon, sourced from the shipped PNG asset
+- Approximate visible size: `18px`
+- Corner radius should stay tighter than screenshot cards, around `4px` when rendered in the header
+- The icon artwork is a white whale silhouette on a saturated blue rounded square
+- Use the icon as-is instead of recreating it with CSS
+
 ## 5. Layout Principles
 
 ### Spacing System
@@ -166,10 +181,12 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 - **Proof over decoration**: whitespace exists to isolate claims and give screenshots authority.
 - **Large calm surfaces**: the site rarely packs multiple visual ideas into one band.
 - **Short copy blocks**: text is concise, leaving room for UI proof instead of storytelling excess.
+- **Color isolation**: the blue whale icon is intentionally isolated so it reads as identity, not decoration.
 
 ### Border Radius Scale
 - `8px`: filled CTAs
 - `10px`: utility chips and active pills
+- `4px`: compact brand icon rendering in the header
 - `14px`: hero product frame and elevated screenshot containers
 - Avoid oversized 24-32px rounding; this system is softer than sharp enterprise UI, but not playful
 
@@ -196,6 +213,7 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 - Use white as the main background and let typography carry the brand
 - Keep primary text near-black (`#0a0a0a`), not charcoal-gray or navy
 - Use `Geist` with semibold display sizes and negative tracking for major headlines
+- Use the blue whale icon as the logo/favicon brand anchor and keep it small
 - Treat screenshots as primary content, not filler
 - Use alpha-black borders and fills instead of introducing a color palette
 - Keep CTA styling compact and direct
@@ -204,7 +222,8 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 
 ### Don't
 - Don't import a warm editorial palette, serif typography, or illustrative style
-- Don't add bright accent colors as pseudo-branding
+- Don't spread the icon blue or whale-white into generic buttons, cards, or section backgrounds
+- Don't redraw the whale mark in CSS or simplify it into a generic dot if the shipped asset is available
 - Don't rely on gradients, glows, or abstract mesh backgrounds
 - Don't use thick borders or high-contrast card chrome
 - Don't over-round cards or buttons into consumer-app softness
@@ -242,6 +261,8 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 ### Quick Color Reference
 - Primary text: `Core Ink (#0a0a0a)`
 - Page background: `Pure White (#ffffff)`
+- Brand icon background: `Brand Blue (#1f84d1 approximate, use asset directly when possible)`
+- Brand icon figure: `Whale White (#dce3eb approximate, use asset directly when possible)`
 - Supporting copy: `Muted Ink 50 (rgba(0,0,0,0.5))`
 - Secondary link: `Muted Ink 35 (rgba(0,0,0,0.35))`
 - Frame border: `Soft Stroke (rgba(0,0,0,0.12))`
@@ -250,6 +271,7 @@ Open Agents is effectively gradient-free. Any sense of depth comes from white-on
 
 ### Example Component Prompts
 - "Create a landing hero on pure white with a `72px` semibold `Geist` headline in `#0a0a0a`, `-3.6px` tracking, and an `18px` muted paragraph in `rgba(0,0,0,0.5)`."
+- "Use the shipped OneQuery whale icon as the favicon and the small header brand mark. Keep the rest of the interface monochrome."
 - "Design a primary CTA with `#0a0a0a` background, white text, `8px 12px` padding, and `8px` radius. Keep it compact, not pill-like."
 - "Build a product screenshot frame with white background, `1px solid rgba(0,0,0,0.12)`, `14px` radius, and shadow `0 40px 80px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)`."
 - "Create a feature row with left-aligned heading at `36px` semibold `Geist`, muted body copy, and a right-side product screenshot. Keep the page monochrome."

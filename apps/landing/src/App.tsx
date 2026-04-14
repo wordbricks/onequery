@@ -256,7 +256,12 @@ export function App() {
           className="brand-mark"
           aria-label="OneQuery landing homepage"
         >
-          <span className="brand-mark-dot" aria-hidden="true" />
+          <img
+            src="/onequery-icon.png"
+            alt=""
+            aria-hidden="true"
+            className="brand-mark-icon"
+          />
           <span>OneQuery</span>
         </a>
 
@@ -462,7 +467,7 @@ export function App() {
       </main>
 
       <footer className="site-footer">
-        <p>OneQuery OSS CLI</p>
+        <p>OneQuery</p>
         <div className="footer-links">
           {footerLinks.map((link) => (
             <a
