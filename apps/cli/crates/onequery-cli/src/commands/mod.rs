@@ -22,7 +22,7 @@ use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::config::ConfigStore;
 use crate::config::TypedConfigOverrides;
-use crate::config::config_set_server_command_example;
+use crate::config::config_set_server_url_command_example;
 use crate::config::default_base_url;
 use crate::config::normalize_server_url;
 use crate::config::workspace_dev_base_url_for_debug_build;
@@ -149,7 +149,7 @@ pub(crate) fn resolve_context<B, T>(
             invocation.raw_command.clone(),
             ErrorStage::LoadConfig,
             failure.render("base URL"),
-            vec![config_set_server_command_example()],
+            vec![config_set_server_url_command_example()],
         )
     })?;
 
@@ -208,7 +208,8 @@ pub(crate) fn resolved_base_url(
             failure.render(),
             vec![
                 "fix onequery.dev.toml".to_owned(),
-                "set ONEQUERY_BASE_URL or run onequery config set server <origin>".to_owned(),
+                "set ONEQUERY_BASE_URL or run onequery config set api.server_url <origin>"
+                    .to_owned(),
             ],
         )),
     }

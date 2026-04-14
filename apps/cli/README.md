@@ -14,6 +14,8 @@ Runtime config:
 - On Unix-like systems, the user config file is `${XDG_CONFIG_HOME:-~/.config}/onequery/config.toml`.
 - On Windows, the user config file is `%APPDATA%\\onequery\\config.toml`.
 - `config.toml` stores `[org].active`, `[api].server_url`, and `[api].request_timeout_sec`.
+- `onequery config get <key>` reads the resolved config-layer value for `org.active`, `api.server_url`, or `api.request_timeout_sec`; text mode prints the scalar value and JSON mode includes origin metadata.
+- `onequery config set <key> <value>` persists `api.server_url` and `api.request_timeout_sec`; `org.active` remains a validated selection managed through `onequery org use <org>`.
 - `[api].server_url` must be an absolute `http://` or `https://` app origin such as `http://127.0.0.1:5656`, not an API path like `/api` or `/api/cli`.
 - Persisted CLI config layering is: built-in defaults -> user config file -> internal typed runtime overrides.
 - Base URL targeting resolves in this order: `ONEQUERY_BASE_URL` -> `[api].server_url` -> debug builds read the repo-root `onequery.dev.toml` browser origin -> packaged self-host default.

@@ -297,7 +297,7 @@ fn validate_config(
                     failure.render("server_url"),
                     origins.server_url.describe()
                 ),
-                vec![super::config_set_server_command_example()],
+                vec![super::config_set_server_url_command_example()],
             )
         })?;
     }
@@ -311,7 +311,7 @@ fn validate_config(
                 "request_timeout_sec must be greater than 0 (from {})",
                 origins.request_timeout_sec.describe()
             ),
-            vec!["set request_timeout_sec to a positive integer".to_owned()],
+            vec![super::config_set_request_timeout_sec_command_example()],
         ));
     }
 
