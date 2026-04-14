@@ -4,7 +4,6 @@ mod args;
 mod model;
 mod normalize;
 mod parse;
-mod raw;
 #[cfg(test)]
 #[path = "../cli_tests.rs"]
 mod tests;
@@ -30,6 +29,7 @@ pub(crate) use args::SourceConnectArgs;
 pub(crate) use args::SourceSubcommand;
 pub(crate) use model::Command;
 pub(crate) use model::ConfigCommand;
+pub(crate) use model::ConfigSetCommand;
 pub(crate) use model::GatewayCommand;
 #[cfg(test)]
 pub(crate) use model::GlobalOptions;

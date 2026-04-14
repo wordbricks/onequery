@@ -3,6 +3,7 @@ use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
 
 use crate::cli::ConfigCommand;
+use crate::cli::ConfigSetCommand;
 use crate::config::config_set_server_command_example;
 use crate::config::normalize_server_url as normalize_server_origin_url;
 use crate::output::CommandOutput;
@@ -16,7 +17,9 @@ pub(crate) async fn execute<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
     match command {
-        ConfigCommand::SetServer { url } => {
+        ConfigCommand::Set {
+            action: ConfigSetCommand::Server { url },
+        } => {
             let normalized = normalize_server_url_for_command(url, &context.command_line)?;
             let changed = runtime.config.data().server_url.as_deref() != Some(normalized.as_str());
 
@@ -69,6 +72,7 @@ mod tests {
     use insta::assert_snapshot;
 
     use crate::cli::ConfigCommand;
+    use crate::cli::ConfigSetCommand;
     use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
@@ -122,8 +126,10 @@ mod tests {
         };
 
         let output = execute(
-            &ConfigCommand::SetServer {
-                url: default_base_url(),
+            &ConfigCommand::Set {
+                action: ConfigSetCommand::Server {
+                    url: default_base_url(),
+                },
             },
             &context,
             &mut runtime,
@@ -158,8 +164,10 @@ mod tests {
         };
 
         let error = execute(
-            &ConfigCommand::SetServer {
-                url: "http://localhost:4545/api".to_owned(),
+            &ConfigCommand::Set {
+                action: ConfigSetCommand::Server {
+                    url: "http://localhost:4545/api".to_owned(),
+                },
             },
             &context,
             &mut runtime,
