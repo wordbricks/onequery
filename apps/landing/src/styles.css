@@ -58,7 +58,7 @@ code {
 }
 
 .page-shell {
-  padding: 24px 16px 40px;
+  padding: 18px 16px 40px;
 }
 
 .site-header,
@@ -73,22 +73,22 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 14px 0 22px;
+  padding: 10px 0 20px;
 }
 
 .brand-mark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .brand-mark-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   object-fit: cover;
   flex: none;
 }
@@ -128,7 +128,7 @@ code {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 32px;
-  padding: 112px 0 0;
+  padding: 176px 0 0;
 }
 
 .hero-copy {
@@ -660,7 +660,7 @@ code {
   }
 
   .hero-section {
-    padding-top: 72px;
+    padding-top: 104px;
   }
 
   .utility-grid,
@@ -678,6 +678,10 @@ code {
 @media (max-width: 640px) {
   .page-shell {
     padding: 18px 14px 28px;
+  }
+
+  .site-header {
+    padding-bottom: 16px;
   }
 
   .page-main {

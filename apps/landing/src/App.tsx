@@ -467,7 +467,7 @@ export function App() {
       </main>
 
       <footer className="site-footer">
-        <p>OneQuery OSS CLI</p>
+        <p>OneQuery</p>
         <div className="footer-links">
           {footerLinks.map((link) => (
             <a
