@@ -5,6 +5,7 @@ import {
   createContextValues,
 } from "@connectrpc/connect";
 import type { ContextValues, HandlerContext } from "@connectrpc/connect";
+import { Result } from "better-result";
 import type { Context } from "hono";
 
 import type { CliRouteEnv } from "../app";
@@ -12,24 +13,25 @@ import type { AuthorizedCliOrgContext, CliAction } from "../authorization";
 import type { CliSessionIdentity } from "../domain/workflows";
 import { getCliRequestId } from "../error";
 import {
-  requireAuthenticatedCliSession,
-  requireAuthorizedCliOrg,
+  resolveAuthenticatedCliSession,
+  resolveAuthorizedCliOrg,
 } from "./service/access";
+import type { CliServiceResult } from "./service/result";
 
 type CliConnectRequestContextDependencies = {
-  requireAuthenticatedCliSession?: typeof requireAuthenticatedCliSession;
-  requireAuthorizedCliOrg?: typeof requireAuthorizedCliOrg;
+  resolveAuthenticatedCliSession?: typeof resolveAuthenticatedCliSession;
+  resolveAuthorizedCliOrg?: typeof resolveAuthorizedCliOrg;
 };
 
 export type CliConnectRequestContext = {
   honoContext: Context<CliRouteEnv>;
   requestId: string;
-  requireSession(): Promise<CliSessionIdentity>;
-  requireAuthorizedOrg(input: {
+  resolveSession(): Promise<CliServiceResult<CliSessionIdentity>>;
+  resolveAuthorizedOrg(input: {
     action: CliAction;
     orgSlug: string;
     session?: CliSessionIdentity;
-  }): Promise<AuthorizedCliOrgContext>;
+  }): Promise<CliServiceResult<AuthorizedCliOrgContext>>;
 };
 
 export const cliConnectRequestContextKey = createContextKey<
@@ -42,35 +44,43 @@ export function createCliConnectRequestContext(
   c: Context<CliRouteEnv>,
   dependencies: CliConnectRequestContextDependencies = {}
 ): CliConnectRequestContext {
-  const requireAuthenticatedCliSessionImpl =
-    dependencies.requireAuthenticatedCliSession ??
-    requireAuthenticatedCliSession;
-  const requireAuthorizedCliOrgImpl =
-    dependencies.requireAuthorizedCliOrg ?? requireAuthorizedCliOrg;
-  let sessionPromise: Promise<CliSessionIdentity> | undefined;
+  const resolveAuthenticatedCliSessionImpl =
+    dependencies.resolveAuthenticatedCliSession ??
+    resolveAuthenticatedCliSession;
+  const resolveAuthorizedCliOrgImpl =
+    dependencies.resolveAuthorizedCliOrg ?? resolveAuthorizedCliOrg;
+  let sessionPromise: Promise<CliServiceResult<CliSessionIdentity>> | undefined;
   const authorizedOrgPromises = new Map<
     string,
-    Promise<AuthorizedCliOrgContext>
+    Promise<CliServiceResult<AuthorizedCliOrgContext>>
   >();
 
   const requestContext: CliConnectRequestContext = {
     honoContext: c,
     requestId: getCliRequestId(c),
-    requireSession() {
-      sessionPromise ??= requireAuthenticatedCliSessionImpl(c);
+    resolveSession() {
+      sessionPromise ??= resolveAuthenticatedCliSessionImpl(c);
       return sessionPromise;
     },
-    requireAuthorizedOrg(input) {
+    resolveAuthorizedOrg(input) {
       const cacheKey = `${input.action}:${input.orgSlug}`;
       let authorizedOrgPromise = authorizedOrgPromises.get(cacheKey);
       if (!authorizedOrgPromise) {
-        authorizedOrgPromise = (async () =>
-          requireAuthorizedCliOrgImpl({
+        authorizedOrgPromise = (async () => {
+          const sessionResult = input.session
+            ? Result.ok(input.session)
+            : await requestContext.resolveSession();
+          if (sessionResult.isErr()) {
+            return Result.err(sessionResult.error);
+          }
+
+          return resolveAuthorizedCliOrgImpl({
             action: input.action,
             c,
             orgSlug: input.orgSlug,
-            session: input.session ?? (await requestContext.requireSession()),
-          }))();
+            session: sessionResult.value,
+          });
+        })();
         authorizedOrgPromises.set(cacheKey, authorizedOrgPromise);
       }
 

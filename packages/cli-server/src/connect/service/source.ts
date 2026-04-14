@@ -6,6 +6,7 @@ import type {
   ProviderType,
 } from "@onequery/db/server";
 import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
+import { Result } from "better-result";
 
 import { buildCliRequestLogDetails, logCliEvent } from "../../observability";
 import { paginateItems } from "../../read-controls-policy";
@@ -23,7 +24,6 @@ import {
   sortCliSourceRecords,
 } from "../../source/model";
 import { requireCliConnectRequestContext } from "../context";
-import { throwCliConnectError } from "../error";
 import { CliContentFormat } from "../gen/onequery/cli/v1/common_pb";
 import {
   CliSourceConnectAmplitudeRegion,
@@ -40,12 +40,13 @@ import type {
   ConnectSourceServiceAccountCredentials,
 } from "../gen/onequery/cli/v1/source_pb";
 import {
-  throwCliConnectSourceNameConflict,
-  throwCliConnectSourceNotFound,
+  createCliConnectSourceNameConflictProblem,
+  createCliConnectSourceNotFoundProblem,
 } from "./errors";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
+import type { CliResultServiceMethod, CliServiceResult } from "./result";
+import { cliServiceErr, liftCliServiceMethod } from "./result";
 import { fromCliSourceProvider, toCliSourceProvider } from "./source-provider";
-import type { CliServiceMethod } from "./types";
 
 type GetSourceConnectGuideResponseInit = MessageInitShape<
   typeof GetSourceConnectGuideResponseSchema
@@ -73,199 +74,237 @@ function toCliSourceStatus(value: DataSourceStatus) {
   }
 }
 
-export const handleListSources: CliServiceMethod<"listSources"> = async (
-  request,
-  context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const readControls = parseCliPaginatedReadControls(request);
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "source.list",
-    orgSlug: request.orgSlug,
-  });
-  const sources = await runCliListSourcesEffect({
-    db: c.var.storage.db,
-    effect: {
-      kind: "list_sources",
-      organizationId: authorizedOrg.org.id,
-    },
-  });
-  const sortedSources = sortCliSourceRecords(sources.sources);
-  const page = paginateItems(sortedSources, readControls);
-
-  logCliEvent({
-    details: buildCliRequestLogDetails(c, {
-      orgSlug: authorizedOrg.org.slug,
-      roles: authorizedOrg.membershipRoles,
-      sourceCount: sortedSources.length,
-    }),
-    event: "source.list.resolved",
-    level: "info",
-  });
-
-  return {
-    sources: page.items.map((source) => buildGetSourceResponse(source)),
-    page: buildCliPage(page.page),
-  };
+type ParsedConnectSourceCredentials = {
+  provider: ProviderType;
+  credentials: Credentials;
 };
 
-export const handleGetSource: CliServiceMethod<"getSource"> = async (
+const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
   request,
   context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "source.read",
-    orgSlug: request.orgSlug,
-  });
-  const source = await runCliLoadSourceEffect({
-    db: c.var.storage.db,
-    effect: {
-      kind: "load_source",
-      organizationId: authorizedOrg.org.id,
-      sourceKey: request.sourceKey,
-    },
+) =>
+  Result.gen(async function* handleListSourcesFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const readControls = yield* parseCliPaginatedReadControls(request);
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "source.list",
+        orgSlug: request.orgSlug,
+      })
+    );
+    const sources = await runCliListSourcesEffect({
+      db: c.var.storage.db,
+      effect: {
+        kind: "list_sources",
+        organizationId: authorizedOrg.org.id,
+      },
+    });
+    const sortedSources = sortCliSourceRecords(sources.sources);
+    const page = paginateItems(sortedSources, readControls);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(c, {
+        orgSlug: authorizedOrg.org.slug,
+        roles: authorizedOrg.membershipRoles,
+        sourceCount: sortedSources.length,
+      }),
+      event: "source.list.resolved",
+      level: "info",
+    });
+
+    return Result.ok({
+      sources: page.items.map((source) => buildGetSourceResponse(source)),
+      page: buildCliPage(page.page),
+    });
   });
 
-  if (source.kind === "not_found") {
+const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleGetSourceFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "source.read",
+        orgSlug: request.orgSlug,
+      })
+    );
+    const source = await runCliLoadSourceEffect({
+      db: c.var.storage.db,
+      effect: {
+        kind: "load_source",
+        organizationId: authorizedOrg.org.id,
+        sourceKey: request.sourceKey,
+      },
+    });
+
+    if (source.kind === "not_found") {
+      logCliEvent({
+        details: buildCliRequestLogDetails(c, {
+          orgSlug: authorizedOrg.org.slug,
+          roles: authorizedOrg.membershipRoles,
+          sourceKey: request.sourceKey,
+        }),
+        event: "source.lookup.not_found",
+        level: "warn",
+      });
+
+      return Result.err(
+        createCliConnectSourceNotFoundProblem(
+          authorizedOrg.org.slug,
+          request.sourceKey
+        )
+      );
+    }
+
+    const queryable =
+      getCliQueryableDatabaseProviderType(
+        source.source.provider,
+        source.source.status
+      ) !== null;
+
     logCliEvent({
       details: buildCliRequestLogDetails(c, {
         orgSlug: authorizedOrg.org.slug,
         roles: authorizedOrg.membershipRoles,
         sourceKey: request.sourceKey,
+        provider: source.source.provider,
+        queryable,
       }),
-      event: "source.lookup.not_found",
-      level: "warn",
+      event: "source.lookup.resolved",
+      level: "info",
     });
-    throwCliConnectSourceNotFound(authorizedOrg.org.slug, request.sourceKey);
-  }
 
-  const queryable =
-    getCliQueryableDatabaseProviderType(
-      source.source.provider,
-      source.source.status
-    ) !== null;
-
-  logCliEvent({
-    details: buildCliRequestLogDetails(c, {
-      orgSlug: authorizedOrg.org.slug,
-      roles: authorizedOrg.membershipRoles,
-      sourceKey: request.sourceKey,
-      provider: source.source.provider,
-      queryable,
-    }),
-    event: "source.lookup.resolved",
-    level: "info",
+    return Result.ok(
+      buildGetSourceResponse(source.source) satisfies GetSourceResponseInit
+    );
   });
 
-  return buildGetSourceResponse(source.source) satisfies GetSourceResponseInit;
-};
-
-export const handleGetSourceConnectGuide: CliServiceMethod<
+const handleGetSourceConnectGuideImpl: CliResultServiceMethod<
   "getSourceConnectGuide"
-> = async (request, context) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "source.connect",
-    orgSlug: request.orgSlug,
+> = async (request, context) =>
+  Result.gen(async function* handleGetSourceConnectGuideFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "source.connect",
+        orgSlug: request.orgSlug,
+      })
+    );
+    const provider = yield* fromCliSourceProvider(request.source);
+    const guide = buildCliSourceConnectGuide(provider);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(c, {
+        orgSlug: authorizedOrg.org.slug,
+        provider,
+        roles: authorizedOrg.membershipRoles,
+      }),
+      event: "source.connect.guide_served",
+      level: "info",
+    });
+
+    return Result.ok({
+      title: guide.title,
+      description: guide.description,
+      format: toCliContentFormat(guide.format),
+      content: guide.content,
+      command: guide.command,
+    } satisfies GetSourceConnectGuideResponseInit);
   });
-  const provider = fromCliSourceProvider(request.source);
-  const guide = buildCliSourceConnectGuide(provider);
 
-  logCliEvent({
-    details: buildCliRequestLogDetails(c, {
-      orgSlug: authorizedOrg.org.slug,
-      provider,
-      roles: authorizedOrg.membershipRoles,
-    }),
-    event: "source.connect.guide_served",
-    level: "info",
-  });
-
-  return {
-    title: guide.title,
-    description: guide.description,
-    format: toCliContentFormat(guide.format),
-    content: guide.content,
-    command: guide.command,
-  } satisfies GetSourceConnectGuideResponseInit;
-};
-
-export const handleConnectSource: CliServiceMethod<"connectSource"> = async (
+const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
   request,
   context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "source.connect",
-    orgSlug: request.orgSlug,
-  });
-
-  const { credentials, provider } = parseConnectSourceCredentials(
-    request.credentials
-  );
-  const parsedCredentials = safeValidateCredentials(credentials);
-  if (!parsedCredentials.success) {
-    throwCliConnectSourceValidationError(parsedCredentials.error);
-  }
-
-  if (
-    provider === "aws_athena_connector" &&
-    parsedCredentials.data.type === "aws_athena_connector"
-  ) {
-    const organizationCheck = await ensureConnectorOrganization({
-      connectorId: parsedCredentials.data.connectorId,
-      db: c.var.storage.db,
-      organizationId: authorizedOrg.org.id,
-    });
-    if (organizationCheck.isErr()) {
-      throwCliConnectError({
-        detail: organizationCheck.error.message,
-        key: "SOURCE_REQUEST_INVALID",
-      });
-    }
-  }
-
-  const result = await runCliConnectSourceEffect({
-    db: c.var.storage.db,
-    effect: {
-      credentials: parsedCredentials.data,
-      kind: "connect_source",
-      name: request.name,
-      organizationId: authorizedOrg.org.id,
-      provider,
-    },
-    masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
-  });
-  if (result.kind === "name_conflict") {
-    throwCliConnectSourceNameConflict(
-      authorizedOrg.org.slug,
-      result.sourceName
+) =>
+  Result.gen(async function* handleConnectSourceFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "source.connect",
+        orgSlug: request.orgSlug,
+      })
     );
-  }
+    const { credentials, provider } = yield* parseConnectSourceCredentials(
+      request.credentials
+    );
+    const parsedCredentials = safeValidateCredentials(credentials);
+    if (!parsedCredentials.success) {
+      return createCliConnectSourceValidationError(parsedCredentials.error);
+    }
 
-  const response = buildCliSourceConnectResult(result.source);
+    if (
+      provider === "aws_athena_connector" &&
+      parsedCredentials.data.type === "aws_athena_connector"
+    ) {
+      const organizationCheck = await ensureConnectorOrganization({
+        connectorId: parsedCredentials.data.connectorId,
+        db: c.var.storage.db,
+        organizationId: authorizedOrg.org.id,
+      });
+      if (organizationCheck.isErr()) {
+        return cliServiceErr({
+          detail: organizationCheck.error.message,
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+    }
 
-  logCliEvent({
-    details: buildCliRequestLogDetails(c, {
-      orgSlug: authorizedOrg.org.slug,
-      provider: response.source.provider,
-      roles: authorizedOrg.membershipRoles,
-      sourceName: response.source.sourceKey,
-    }),
-    event: "source.connect.created",
-    level: "info",
+    const result = await runCliConnectSourceEffect({
+      db: c.var.storage.db,
+      effect: {
+        credentials: parsedCredentials.data,
+        kind: "connect_source",
+        name: request.name,
+        organizationId: authorizedOrg.org.id,
+        provider,
+      },
+      masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
+    });
+    if (result.kind === "name_conflict") {
+      return Result.err(
+        createCliConnectSourceNameConflictProblem(
+          authorizedOrg.org.slug,
+          result.sourceName
+        )
+      );
+    }
+
+    const response = buildCliSourceConnectResult(result.source);
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(c, {
+        orgSlug: authorizedOrg.org.slug,
+        provider: response.source.provider,
+        roles: authorizedOrg.membershipRoles,
+        sourceName: response.source.sourceKey,
+      }),
+      event: "source.connect.created",
+      level: "info",
+    });
+
+    return Result.ok({
+      nextCommand: response.nextCommand,
+      source: buildGetSourceResponse(response.source),
+    } satisfies ConnectSourceResponseInit);
   });
 
-  return {
-    nextCommand: response.nextCommand,
-    source: buildGetSourceResponse(response.source),
-  } satisfies ConnectSourceResponseInit;
-};
+export const handleListSources = liftCliServiceMethod(handleListSourcesImpl);
+
+export const handleGetSource = liftCliServiceMethod(handleGetSourceImpl);
+
+export const handleGetSourceConnectGuide = liftCliServiceMethod(
+  handleGetSourceConnectGuideImpl
+);
+
+export const handleConnectSource = liftCliServiceMethod(
+  handleConnectSourceImpl
+);
 
 export function buildGetSourceResponse(source: {
   sourceKey: string;
@@ -288,16 +327,17 @@ export function buildGetSourceResponse(source: {
 
   return response;
 }
-function throwCliConnectSourceValidationError(input: {
+
+function createCliConnectSourceValidationError(input: {
   issues: readonly {
     code: string;
     path: ReadonlyArray<PropertyKey>;
     message: string;
   }[];
-}): never {
+}): CliServiceResult<never> {
   const issue = input.issues[0];
 
-  throwCliConnectError({
+  return cliServiceErr({
     detail: issue?.message ?? "invalid source connect request",
     errors: input.issues.map((validationIssue) => ({
       code: validationIssue.code,
@@ -310,36 +350,36 @@ function throwCliConnectSourceValidationError(input: {
 
 function parseConnectSourceCredentials(
   credentials: ConnectSourceCredentials | undefined
-): { provider: ProviderType; credentials: Credentials } {
+): CliServiceResult<ParsedConnectSourceCredentials> {
   const kind = credentials?.kind;
 
   switch (kind?.case) {
     case "postgres":
-      return {
+      return Result.ok({
         provider: "postgres",
         credentials: {
           type: "postgres",
           ...postgresCredentialsFromMessage(kind.value),
         },
-      };
+      });
     case "supabase":
-      return {
+      return Result.ok({
         provider: "supabase",
         credentials: {
           type: "postgres",
           ...postgresCredentialsFromMessage(kind.value),
         },
-      };
+      });
     case "mysql":
-      return {
+      return Result.ok({
         provider: "mysql",
         credentials: {
           type: "mysql",
           ...mySqlCredentialsFromMessage(kind.value),
         },
-      };
+      });
     case "mongodb":
-      return {
+      return Result.ok({
         provider: "mongodb",
         credentials: {
           type: "mongodb",
@@ -349,14 +389,14 @@ function parseConnectSourceCredentials(
             ? { databases: [...kind.value.databases] }
             : {}),
         },
-      };
+      });
     case "bigquery":
-      return {
+      return bigQueryCredentialsFromMessage(kind.value).map((parsed) => ({
         provider: "bigquery",
-        credentials: bigQueryCredentialsFromMessage(kind.value),
-      };
+        credentials: parsed,
+      }));
     case "laminar":
-      return {
+      return Result.ok({
         provider: "laminar",
         credentials: {
           type: "laminar",
@@ -365,9 +405,9 @@ function parseConnectSourceCredentials(
             ? { apiBaseUrl: kind.value.apiBaseUrl }
             : {}),
         },
-      };
+      });
     case "awsAthenaConnector":
-      return {
+      return Result.ok({
         provider: "aws_athena_connector",
         credentials: {
           type: "aws_athena_connector",
@@ -381,14 +421,16 @@ function parseConnectSourceCredentials(
             : {}),
           ...(kind.value.workgroup ? { workgroup: kind.value.workgroup } : {}),
         },
-      };
+      });
     case "ga":
-      return {
-        provider: "ga",
-        credentials: googleAnalyticsCredentialsFromMessage(kind.value),
-      };
+      return googleAnalyticsCredentialsFromMessage(kind.value).map(
+        (parsed) => ({
+          provider: "ga",
+          credentials: parsed,
+        })
+      );
     case "amplitude":
-      return {
+      return Result.ok({
         provider: "amplitude",
         credentials: {
           type: "amplitude",
@@ -396,9 +438,9 @@ function parseConnectSourceCredentials(
           region: amplitudeRegionFromMessage(kind.value.region) ?? "us",
           secretKey: kind.value.secretKey,
         },
-      };
+      });
     case "mixpanel":
-      return {
+      return Result.ok({
         provider: "mixpanel",
         credentials: {
           type: "mixpanel",
@@ -410,9 +452,9 @@ function parseConnectSourceCredentials(
             ? { workspaceId: kind.value.workspaceId }
             : {}),
         },
-      };
+      });
     case "posthog":
-      return {
+      return Result.ok({
         provider: "posthog",
         credentials: {
           type: "posthog",
@@ -420,9 +462,9 @@ function parseConnectSourceCredentials(
           personalApiKey: kind.value.personalApiKey,
           projectId: kind.value.projectId,
         },
-      };
+      });
     case "sentry":
-      return {
+      return Result.ok({
         provider: "sentry",
         credentials: {
           type: "sentry",
@@ -435,9 +477,9 @@ function parseConnectSourceCredentials(
             ? { projectSlug: kind.value.projectSlug }
             : {}),
         },
-      };
+      });
     case "github":
-      return {
+      return Result.ok({
         provider: "github",
         credentials: {
           type: "github",
@@ -449,14 +491,14 @@ function parseConnectSourceCredentials(
             ? { repositories: [...kind.value.repositories] }
             : {}),
         },
-      };
+      });
     case "linear":
-      return {
+      return linearCredentialsFromMessage(kind.value).map((parsed) => ({
         provider: "linear",
-        credentials: linearCredentialsFromMessage(kind.value),
-      };
+        credentials: parsed,
+      }));
     default:
-      throwCliConnectError({
+      return cliServiceErr({
         detail: "source connect request must include typed credentials",
         key: "SOURCE_REQUEST_INVALID",
       });
@@ -520,38 +562,58 @@ function bigQueryCredentialsFromMessage(input: {
         };
       }
     | { case: undefined; value?: undefined };
-}): Credentials {
+}): CliServiceResult<Credentials> {
   switch (input.auth.case) {
     case "oauth": {
+      const oauth = input.auth.value;
       const credentials = requirePresent(
-        input.auth.value.credentials,
+        oauth.credentials,
         "bigquery oauth credentials are required"
       );
-      return {
+      if (credentials.isErr()) {
+        return Result.err(credentials.error);
+      }
+
+      const expiresAt = numberFromUInt64(
+        credentials.value.expiresAt,
+        "bigquery.expiresAt"
+      );
+      if (expiresAt.isErr()) {
+        return Result.err(expiresAt.error);
+      }
+
+      const parsed = {
         type: "bigquery",
-        projectId: input.auth.value.projectId,
-        accessToken: credentials.accessToken,
-        refreshToken: credentials.refreshToken,
-        expiresAt: numberFromUInt64(
-          credentials.expiresAt,
-          "bigquery.expiresAt"
-        ),
-      };
+        projectId: oauth.projectId,
+        accessToken: credentials.value.accessToken,
+        refreshToken: credentials.value.refreshToken,
+        expiresAt: expiresAt.value,
+      } satisfies Credentials;
+
+      return Result.ok(parsed);
     }
-    case "serviceAccount":
-      return {
+    case "serviceAccount": {
+      const serviceAccount = requirePresent(
+        input.auth.value.serviceAccount,
+        "bigquery service account credentials are required"
+      );
+      if (serviceAccount.isErr()) {
+        return Result.err(serviceAccount.error);
+      }
+
+      const parsed = {
         type: "bigquery",
         authType: "service_account",
         projectId: input.auth.value.projectId,
         serviceAccount: serviceAccountCredentialsFromMessage(
-          requirePresent(
-            input.auth.value.serviceAccount,
-            "bigquery service account credentials are required"
-          )
+          serviceAccount.value
         ),
-      };
+      } satisfies Credentials;
+
+      return Result.ok(parsed);
+    }
     default:
-      throwCliConnectError({
+      return cliServiceErr({
         detail: "bigquery credentials must choose one auth mode",
         key: "SOURCE_REQUEST_INVALID",
       });
@@ -575,35 +637,58 @@ function googleAnalyticsCredentialsFromMessage(input: {
         };
       }
     | { case: undefined; value?: undefined };
-}): Credentials {
+}): CliServiceResult<Credentials> {
   switch (input.auth.case) {
     case "oauth": {
+      const oauth = input.auth.value;
       const credentials = requirePresent(
-        input.auth.value.credentials,
+        oauth.credentials,
         "google analytics oauth credentials are required"
       );
-      return {
+      if (credentials.isErr()) {
+        return Result.err(credentials.error);
+      }
+
+      const expiresAt = numberFromUInt64(
+        credentials.value.expiresAt,
+        "ga.expiresAt"
+      );
+      if (expiresAt.isErr()) {
+        return Result.err(expiresAt.error);
+      }
+
+      const parsed = {
         type: "ga",
-        propertyId: input.auth.value.propertyId,
-        accessToken: credentials.accessToken,
-        refreshToken: credentials.refreshToken,
-        expiresAt: numberFromUInt64(credentials.expiresAt, "ga.expiresAt"),
-      };
+        propertyId: oauth.propertyId,
+        accessToken: credentials.value.accessToken,
+        refreshToken: credentials.value.refreshToken,
+        expiresAt: expiresAt.value,
+      } satisfies Credentials;
+
+      return Result.ok(parsed);
     }
-    case "serviceAccount":
-      return {
+    case "serviceAccount": {
+      const serviceAccount = requirePresent(
+        input.auth.value.serviceAccount,
+        "google analytics service account credentials are required"
+      );
+      if (serviceAccount.isErr()) {
+        return Result.err(serviceAccount.error);
+      }
+
+      const parsed = {
         type: "ga",
         authType: "service_account",
         propertyId: input.auth.value.propertyId,
         serviceAccount: serviceAccountCredentialsFromMessage(
-          requirePresent(
-            input.auth.value.serviceAccount,
-            "google analytics service account credentials are required"
-          )
+          serviceAccount.value
         ),
-      };
+      } satisfies Credentials;
+
+      return Result.ok(parsed);
+    }
     default:
-      throwCliConnectError({
+      return cliServiceErr({
         detail: "google analytics credentials must choose one auth mode",
         key: "SOURCE_REQUEST_INVALID",
       });
@@ -627,15 +712,15 @@ function linearCredentialsFromMessage(input: {
         };
       }
     | { case: undefined; value?: undefined };
-}): Credentials {
+}): CliServiceResult<Credentials> {
   switch (input.auth.case) {
     case "apiKey":
-      return {
+      return Result.ok({
         type: "linear",
         apiKey: input.auth.value.apiKey,
-      };
+      });
     case "oauth":
-      return {
+      return Result.ok({
         type: "linear",
         accessToken: input.auth.value.accessToken,
         linearOrganizationId: input.auth.value.linearOrganizationId,
@@ -655,9 +740,9 @@ function linearCredentialsFromMessage(input: {
         ...(input.auth.value.tokenType
           ? { tokenType: input.auth.value.tokenType }
           : {}),
-      };
+      });
     default:
-      throwCliConnectError({
+      return cliServiceErr({
         detail: "linear credentials must choose one auth mode",
         key: "SOURCE_REQUEST_INVALID",
       });
@@ -675,26 +760,32 @@ function serviceAccountCredentialsFromMessage(
   };
 }
 
-function requirePresent<T>(value: T | undefined, detail: string): T {
+function requirePresent<T>(
+  value: T | undefined,
+  detail: string
+): CliServiceResult<T> {
   if (value !== undefined) {
-    return value;
+    return Result.ok(value);
   }
 
-  throwCliConnectError({
+  return cliServiceErr({
     detail,
     key: "SOURCE_REQUEST_INVALID",
   });
 }
 
-function numberFromUInt64(value: bigint, field: string) {
+function numberFromUInt64(
+  value: bigint,
+  field: string
+): CliServiceResult<number> {
   if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-    throwCliConnectError({
+    return cliServiceErr({
       detail: `${field} exceeds the supported numeric range`,
       key: "SOURCE_REQUEST_INVALID",
     });
   }
 
-  return Number(value);
+  return Result.ok(Number(value));
 }
 
 function sslModeFromMessage(

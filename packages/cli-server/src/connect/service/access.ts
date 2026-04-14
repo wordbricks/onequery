@@ -1,3 +1,5 @@
+import { Result } from "better-result";
+
 import { resolveCliSessionIdentity } from "../../auth/session-identity";
 import { authorizeCliOrgAccess } from "../../authorization";
 import type { AuthorizedCliOrgContext, CliAction } from "../../authorization";
@@ -9,25 +11,26 @@ import {
 } from "../../observability";
 import { runCliLoadOrgAccess } from "../../organization/effects";
 import { finishCliOrgAccessWorkflow } from "../../organization/workflow";
-import { throwCliConnectError } from "../error";
+import type { CliServiceResult } from "./result";
+import { cliServiceErr } from "./result";
 import type { CliHonoContext } from "./types";
 
-export function requireCliSessionIdentity(
+export function resolveCliSessionIdentityResult(
   session: CliSessionIdentity | null
-): CliSessionIdentity {
+): CliServiceResult<CliSessionIdentity> {
   if (session) {
-    return session;
+    return Result.ok(session);
   }
 
-  throwCliConnectError({
+  return cliServiceErr({
     detail: "no authenticated session was found",
     key: "NOT_LOGGED_IN",
   });
 }
 
-export async function requireAuthenticatedCliSession(
+export async function resolveAuthenticatedCliSession(
   c: CliHonoContext
-): Promise<CliSessionIdentity> {
+): Promise<CliServiceResult<CliSessionIdentity>> {
   const session = await resolveCliSessionIdentity(
     c.var.storage,
     c.req.raw.headers
@@ -38,21 +41,21 @@ export async function requireAuthenticatedCliSession(
       event: "auth.session_missing",
       level: "warn",
     });
-    throwCliConnectError({
+    return cliServiceErr({
       detail: "no authenticated session was found",
       key: "NOT_LOGGED_IN",
     });
   }
 
-  return session;
+  return Result.ok(session);
 }
 
-export async function requireAuthorizedCliOrg(input: {
+export async function resolveAuthorizedCliOrg(input: {
   c: CliHonoContext;
   session: CliSessionIdentity;
   orgSlug: string;
   action: CliAction;
-}): Promise<AuthorizedCliOrgContext> {
+}): Promise<CliServiceResult<AuthorizedCliOrgContext>> {
   const decision = finishCliOrgAccessWorkflow({
     access: await runCliLoadOrgAccess({
       db: input.c.var.storage.db,
@@ -79,7 +82,7 @@ export async function requireAuthorizedCliOrg(input: {
       event: "org.access_denied",
       level: "warn",
     });
-    interpretCliOrgAccessState(decision);
+    return interpretCliOrgAccessState(decision);
   }
 
   const authorization = authorizeCliOrgAccess({
@@ -107,13 +110,13 @@ export async function requireAuthorizedCliOrg(input: {
       event: "org.action_forbidden",
       level: "warn",
     });
-    throwCliConnectError({
+    return cliServiceErr({
       detail: `you do not have permission to ${input.action} in org "${input.orgSlug}"`,
       key: "FORBIDDEN",
     });
   }
 
-  return authorization.context;
+  return Result.ok(authorization.context);
 }
 
 function interpretCliOrgAccessState(
@@ -122,16 +125,16 @@ function interpretCliOrgAccessState(
   >[0]["access"] extends never
     ? never
     : ReturnType<typeof finishCliOrgAccessWorkflow>
-): never {
+): CliServiceResult<never> {
   if (state.kind === "org_not_found") {
-    throwCliConnectError({
+    return cliServiceErr({
       key: "ORG_NOT_FOUND",
       detail: `no org named "${state.orgSlug}" exists`,
     });
   }
 
   if (state.kind === "forbidden") {
-    throwCliConnectError({
+    return cliServiceErr({
       key: "FORBIDDEN",
       detail: `you do not have access to org "${state.orgSlug}"`,
     });

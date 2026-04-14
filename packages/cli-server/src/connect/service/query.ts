@@ -1,5 +1,6 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { ProviderType } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
 import type { CliSessionIdentity } from "../../domain/workflows";
@@ -41,19 +42,20 @@ import {
   sanitizeUndefinedableCliRemoteText,
 } from "../../transport/sanitization";
 import { requireCliConnectRequestContext } from "../context";
-import { throwCliConnectError } from "../error";
+import { CliConnectProblem } from "../error";
 import {
   CliQueryLogicalType,
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../gen/onequery/cli/v1/query_pb";
 import {
-  throwForCliConnectQueryPlanResult,
-  throwForCliConnectQueryWorkflowResult,
+  createCliConnectProblemForQueryPlanResult,
+  createCliConnectProblemForQueryWorkflowResult,
 } from "./errors";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
+import type { CliResultServiceMethod, CliServiceResult } from "./result";
+import { createCliServiceProblem, liftCliServiceMethod } from "./result";
 import { buildGetSourceResponse } from "./source";
-import type { CliServiceMethod } from "./types";
 
 type CliQueryValidationFailure = Exclude<
   CliQueryValidationWorkflowResult,
@@ -116,289 +118,286 @@ function toCliQueryLogicalType(value: string) {
   }
 }
 
-export const handleValidateQuery: CliServiceMethod<"validateQuery"> = async (
+const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
   request,
   context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const requestId = requestContext.requestId;
-  const session = await requestContext.requireSession();
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "query.execute",
-    orgSlug: request.orgSlug,
-    session,
-  });
-  const query = request.query as NonNullable<typeof request.query>;
-
-  const resultWindow = resolveQueryResultWindow(query);
-  const actionId = (
-    await createCliQueryActionTrail({
-      actionType: "validate",
-      actor: buildCliQueryActionTrailActor({
-        authorizedOrg,
+) =>
+  Result.gen(async function* handleValidateQueryFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const requestId = requestContext.requestId;
+    const session = yield* Result.await(requestContext.resolveSession());
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "query.execute",
+        orgSlug: request.orgSlug,
         session,
-      }),
-      cellMaxChars: resultWindow.cellMaxChars,
-      db: c.var.storage.db,
-      maxBytes: resultWindow.maxBytes,
-      maxRows: resultWindow.maxRows,
-      organizationId: authorizedOrg.org.id,
-      requestId,
-      sourceKey: request.sourceKey,
-      sql: query.sql,
-      timeoutMs: resultWindow.timeoutMs,
-    }).catch((error) => {
-      logCliQueryActionTrailFailure({
+      })
+    );
+    const query = request.query as NonNullable<typeof request.query>;
+    const resultWindow = resolveQueryResultWindow(query);
+    const actionTrail = yield* Result.await(
+      createCliQueryActionTrailResult({
         actionType: "validate",
-        c,
-        error,
-        operation: "create",
-        sourceKey: request.sourceKey,
-      });
-      throwCliQueryActionTrailFailure({
-        actionType: "validate",
-        operation: "create",
-        sourceKey: request.sourceKey,
-      });
-    })
-  ).actionId;
-
-  const result = await runCliQueryValidationWorkflow({
-    dispatch: {
-      loadSource: async (effect) =>
-        runCliLoadSourceEffect({
-          db: c.var.storage.db,
-          effect,
+        actor: buildCliQueryActionTrailActor({
+          authorizedOrg,
+          session,
         }),
-      validateQuery: runCliValidateQueryEffect,
-    },
-    org: authorizedOrg.org,
-    requestId,
-    sourceName: request.sourceKey,
-    sql: query.sql,
-    timeoutMs: resultWindow.timeoutMs,
-    observeEvent: async (event) => {
-      await appendCliQueryActionTrailEvent({
-        actionId,
-        db: c.var.storage.db,
-        event,
-      });
-    },
-    observeEventFailure: async ({ error, event }) => {
-      logCliQueryActionTrailFailure({
-        actionType: "validate",
         c,
-        error,
-        eventType: event.type,
-        operation: "append",
+        cellMaxChars: resultWindow.cellMaxChars,
+        db: c.var.storage.db,
+        maxBytes: resultWindow.maxBytes,
+        maxRows: resultWindow.maxRows,
+        organizationId: authorizedOrg.org.id,
+        requestId,
         sourceKey: request.sourceKey,
-      });
-      throwCliQueryActionTrailFailure({
-        actionType: "validate",
-        eventType: event.type,
-        operation: "append",
-        sourceKey: request.sourceKey,
-      });
-    },
+        sql: query.sql,
+        timeoutMs: resultWindow.timeoutMs,
+      })
+    );
+    const result = yield* Result.await(
+      catchCliServiceProblem(() =>
+        runCliQueryValidationWorkflow({
+          dispatch: {
+            loadSource: async (effect) =>
+              runCliLoadSourceEffect({
+                db: c.var.storage.db,
+                effect,
+              }),
+            validateQuery: runCliValidateQueryEffect,
+          },
+          org: authorizedOrg.org,
+          requestId,
+          sourceName: request.sourceKey,
+          sql: query.sql,
+          timeoutMs: resultWindow.timeoutMs,
+          observeEvent: async (event) => {
+            await appendCliQueryActionTrailEvent({
+              actionId: actionTrail.actionId,
+              db: c.var.storage.db,
+              event,
+            });
+          },
+          observeEventFailure: async ({ error, event }) => {
+            logCliQueryActionTrailFailure({
+              actionType: "validate",
+              c,
+              error,
+              eventType: event.type,
+              operation: "append",
+              sourceKey: request.sourceKey,
+            });
+            throw createCliQueryActionTrailFailureProblem({
+              actionType: "validate",
+              cause: error,
+              eventType: event.type,
+              operation: "append",
+              sourceKey: request.sourceKey,
+            });
+          },
+        })
+      )
+    );
+
+    if (result.kind !== "ready") {
+      logCliQueryValidationFailure(c, request.sourceKey, result);
+      return Result.err(createCliConnectProblemForQueryPlanResult(result));
+    }
+
+    logCliQueryValidationAccepted({
+      c,
+      provider: result.source.provider,
+      sourceKey: request.sourceKey,
+      truncated: result.truncated,
+    });
+
+    return Result.ok(
+      buildQueryValidateResponse({
+        request: {
+          sql: result.normalizedSql,
+          parameters: [],
+          maxRows: resultWindow.maxRows,
+          maxBytes: resultWindow.maxBytes,
+          cellMaxChars: resultWindow.cellMaxChars,
+          timeoutMs: resultWindow.timeoutMs,
+        },
+        normalizedSql: result.normalizedSql,
+        declaredResultWindow: {
+          maxRows: resultWindow.maxRows,
+          maxBytes: resultWindow.maxBytes,
+          cellMaxChars: resultWindow.cellMaxChars,
+          timeoutMs: resultWindow.timeoutMs,
+        },
+        source: result.source,
+        truncated: result.truncated,
+      }) satisfies ValidateQueryResponseInit
+    );
   });
 
-  if (result.kind !== "ready") {
-    logCliQueryValidationFailure(c, request.sourceKey, result);
-    throwForCliConnectQueryPlanResult(result);
-  }
-
-  logCliQueryValidationAccepted({
-    c,
-    provider: result.source.provider,
-    sourceKey: request.sourceKey,
-    truncated: result.truncated,
-  });
-
-  return buildQueryValidateResponse({
-    request: {
-      sql: result.normalizedSql,
-      parameters: [],
-      maxRows: resultWindow.maxRows,
-      maxBytes: resultWindow.maxBytes,
-      cellMaxChars: resultWindow.cellMaxChars,
-      timeoutMs: resultWindow.timeoutMs,
-    },
-    normalizedSql: result.normalizedSql,
-    declaredResultWindow: {
-      maxRows: resultWindow.maxRows,
-      maxBytes: resultWindow.maxBytes,
-      cellMaxChars: resultWindow.cellMaxChars,
-      timeoutMs: resultWindow.timeoutMs,
-    },
-    source: result.source,
-    truncated: result.truncated,
-  }) satisfies ValidateQueryResponseInit;
-};
-
-export const handleExecuteQuery: CliServiceMethod<"executeQuery"> = async (
+const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
   request,
   context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  const requestId = requestContext.requestId;
-  const readControls = parseCliPaginatedReadControls(request);
-  const session = await requestContext.requireSession();
-  const authorizedOrg = await requestContext.requireAuthorizedOrg({
-    action: "query.execute",
-    orgSlug: request.orgSlug,
-    session,
-  });
-  const query = request.query as NonNullable<typeof request.query>;
-
-  const resultWindow = resolveQueryResultWindow(query);
-  const startedAtMs = Date.now();
-  const actionId = (
-    await createCliQueryActionTrail({
-      actionType: "execute",
-      actor: buildCliQueryActionTrailActor({
-        authorizedOrg,
+) =>
+  Result.gen(async function* handleExecuteQueryFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
+    const requestId = requestContext.requestId;
+    const readControls = yield* parseCliPaginatedReadControls(request);
+    const session = yield* Result.await(requestContext.resolveSession());
+    const authorizedOrg = yield* Result.await(
+      requestContext.resolveAuthorizedOrg({
+        action: "query.execute",
+        orgSlug: request.orgSlug,
         session,
-      }),
+      })
+    );
+    const query = request.query as NonNullable<typeof request.query>;
+    const resultWindow = resolveQueryResultWindow(query);
+    const startedAtMs = Date.now();
+    const actionTrail = yield* Result.await(
+      createCliQueryActionTrailResult({
+        actionType: "execute",
+        actor: buildCliQueryActionTrailActor({
+          authorizedOrg,
+          session,
+        }),
+        c,
+        cellMaxChars: resultWindow.cellMaxChars,
+        db: c.var.storage.db,
+        maxBytes: resultWindow.maxBytes,
+        maxRows: resultWindow.maxRows,
+        organizationId: authorizedOrg.org.id,
+        requestId,
+        sourceKey: request.sourceKey,
+        sql: query.sql,
+        timeoutMs: resultWindow.timeoutMs,
+      })
+    );
+    const result = yield* Result.await(
+      catchCliServiceProblem(() =>
+        runCliQueryExecutionWorkflow({
+          dispatch: {
+            loadSource: async (effect) =>
+              runCliLoadSourceEffect({
+                db: c.var.storage.db,
+                effect,
+              }),
+            validateQuery: runCliValidateQueryEffect,
+            loadCredentials: async (effect) =>
+              runCliLoadQueryCredentialsEffect({
+                db: c.var.storage.db,
+                masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
+                effect,
+              }),
+            executeSql: async (effect) =>
+              runCliExecuteSqlEffect({
+                db: c.var.storage.db,
+                effect,
+              }),
+            persistUsage: async (effect) =>
+              runCliPersistQueryUsageEffect({
+                db: c.var.storage.db,
+                effect,
+              }),
+          },
+          org: authorizedOrg.org,
+          requestId,
+          sourceName: request.sourceKey,
+          sql: query.sql,
+          timeoutMs: resultWindow.timeoutMs,
+          observeEvent: async (event) => {
+            await appendCliQueryActionTrailEvent({
+              actionId: actionTrail.actionId,
+              db: c.var.storage.db,
+              event,
+            });
+          },
+          observeEventFailure: async ({ error, event }) => {
+            logCliQueryActionTrailFailure({
+              actionType: "execute",
+              c,
+              error,
+              eventType: event.type,
+              operation: "append",
+              sourceKey: request.sourceKey,
+            });
+            throw createCliQueryActionTrailFailureProblem({
+              actionType: "execute",
+              cause: error,
+              eventType: event.type,
+              operation: "append",
+              sourceKey: request.sourceKey,
+            });
+          },
+        })
+      )
+    );
+    const durationMs = Math.max(0, Date.now() - startedAtMs);
+
+    recordCliHistogramMetric({
+      name: "cli.query.latency_ms",
+      tags: {
+        outcome: result.kind === "response_ready" ? "succeeded" : result.kind,
+      },
+      value: durationMs,
+    });
+
+    if (result.kind !== "response_ready") {
+      logCliQueryExecutionFailure({
+        c,
+        durationMs,
+        result,
+        sourceKey: request.sourceKey,
+      });
+
+      return Result.err(createCliConnectProblemForQueryWorkflowResult(result));
+    }
+
+    const windowedRows = applyQueryResultWindow({
       cellMaxChars: resultWindow.cellMaxChars,
-      db: c.var.storage.db,
       maxBytes: resultWindow.maxBytes,
       maxRows: resultWindow.maxRows,
-      organizationId: authorizedOrg.org.id,
-      requestId,
-      sourceKey: request.sourceKey,
-      sql: query.sql,
-      timeoutMs: resultWindow.timeoutMs,
-    }).catch((error) => {
-      logCliQueryActionTrailFailure({
-        actionType: "execute",
-        c,
-        error,
-        operation: "create",
-        sourceKey: request.sourceKey,
-      });
-      throwCliQueryActionTrailFailure({
-        actionType: "execute",
-        operation: "create",
-        sourceKey: request.sourceKey,
-      });
-    })
-  ).actionId;
+      rows: result.response.rows,
+    });
+    const windowedResponse = {
+      ...result.response,
+      rows: windowedRows.rows,
+      truncated: result.response.truncated || windowedRows.truncated,
+    };
 
-  const result = await runCliQueryExecutionWorkflow({
-    dispatch: {
-      loadSource: async (effect) =>
-        runCliLoadSourceEffect({
-          db: c.var.storage.db,
-          effect,
-        }),
-      validateQuery: runCliValidateQueryEffect,
-      loadCredentials: async (effect) =>
-        runCliLoadQueryCredentialsEffect({
-          db: c.var.storage.db,
-          masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
-          effect,
-        }),
-      executeSql: async (effect) =>
-        runCliExecuteSqlEffect({
-          db: c.var.storage.db,
-          effect,
-        }),
-      persistUsage: async (effect) =>
-        runCliPersistQueryUsageEffect({
-          db: c.var.storage.db,
-          effect,
-        }),
-    },
-    org: authorizedOrg.org,
-    requestId,
-    sourceName: request.sourceKey,
-    sql: query.sql,
-    timeoutMs: resultWindow.timeoutMs,
-    observeEvent: async (event) => {
-      await appendCliQueryActionTrailEvent({
-        actionId,
-        db: c.var.storage.db,
-        event,
-      });
-    },
-    observeEventFailure: async ({ error, event }) => {
-      logCliQueryActionTrailFailure({
-        actionType: "execute",
-        c,
-        error,
-        eventType: event.type,
-        operation: "append",
-        sourceKey: request.sourceKey,
-      });
-      throwCliQueryActionTrailFailure({
-        actionType: "execute",
-        eventType: event.type,
-        operation: "append",
-        sourceKey: request.sourceKey,
-      });
-    },
-  });
-  const durationMs = Math.max(0, Date.now() - startedAtMs);
-
-  recordCliHistogramMetric({
-    name: "cli.query.latency_ms",
-    tags: {
-      outcome: result.kind === "response_ready" ? "succeeded" : result.kind,
-    },
-    value: durationMs,
-  });
-
-  if (result.kind !== "response_ready") {
-    logCliQueryExecutionFailure({
+    logCliQueryExecutionSuccess({
       c,
       durationMs,
-      result,
+      response: windowedResponse,
       sourceKey: request.sourceKey,
+      usagePersistence: result.usagePersistence,
     });
-    throwForCliConnectQueryWorkflowResult(result);
-  }
 
-  const windowedRows = applyQueryResultWindow({
-    cellMaxChars: resultWindow.cellMaxChars,
-    maxBytes: resultWindow.maxBytes,
-    maxRows: resultWindow.maxRows,
-    rows: result.response.rows,
-  });
-  const windowedResponse = {
-    ...result.response,
-    rows: windowedRows.rows,
-    truncated: result.response.truncated || windowedRows.truncated,
-  };
+    const page = paginateItems(windowedResponse.rows, readControls);
+    const data = buildQueryExecuteResponse({
+      columns: windowedResponse.columns,
+      elapsedMs: windowedResponse.elapsedMs,
+      rowCount: windowedResponse.rowCount,
+      rows: page.items,
+      source: windowedResponse.source,
+      truncated: windowedResponse.truncated,
+    });
+    const sanitizedPaths = resolveQueryExecuteSanitizedPaths(
+      page.items.length > 0
+    );
 
-  logCliQueryExecutionSuccess({
-    c,
-    durationMs,
-    response: windowedResponse,
-    sourceKey: request.sourceKey,
-    usagePersistence: result.usagePersistence,
+    return Result.ok({
+      ...sanitizeQueryExecuteResponse(data),
+      page: buildCliPage(page.page),
+      sanitization: buildCliSanitization(sanitizedPaths),
+    } satisfies ExecuteQueryResponseInit);
   });
 
-  const page = paginateItems(windowedResponse.rows, readControls);
-  const data = buildQueryExecuteResponse({
-    columns: windowedResponse.columns,
-    elapsedMs: windowedResponse.elapsedMs,
-    rowCount: windowedResponse.rowCount,
-    rows: page.items,
-    source: windowedResponse.source,
-    truncated: windowedResponse.truncated,
-  });
-  const sanitizedPaths = resolveQueryExecuteSanitizedPaths(
-    page.items.length > 0
-  );
+export const handleValidateQuery = liftCliServiceMethod(
+  handleValidateQueryImpl
+);
 
-  return {
-    ...sanitizeQueryExecuteResponse(data),
-    page: buildCliPage(page.page),
-    sanitization: buildCliSanitization(sanitizedPaths),
-  } satisfies ExecuteQueryResponseInit;
-};
+export const handleExecuteQuery = liftCliServiceMethod(handleExecuteQueryImpl);
 
 function buildCliQueryActionTrailActor(input: {
   authorizedOrg: Pick<AuthorizedCliOrgContext, "membershipRoles">;
@@ -441,18 +440,62 @@ function logCliQueryActionTrailFailure(input: {
   });
 }
 
-function throwCliQueryActionTrailFailure(input: {
+async function createCliQueryActionTrailResult(
+  input: Parameters<typeof createCliQueryActionTrail>[0] & {
+    c: Parameters<typeof buildCliRequestLogDetails>[0];
+  }
+) {
+  const { c, ...createInput } = input;
+
+  return Result.tryPromise({
+    try: () => createCliQueryActionTrail(createInput),
+    catch: (error) => {
+      logCliQueryActionTrailFailure({
+        actionType: input.actionType,
+        c,
+        error,
+        operation: "create",
+        sourceKey: input.sourceKey,
+      });
+
+      return createCliQueryActionTrailFailureProblem({
+        actionType: input.actionType,
+        cause: error,
+        operation: "create",
+        sourceKey: input.sourceKey,
+      });
+    },
+  });
+}
+
+async function catchCliServiceProblem<T>(
+  run: () => Promise<T>
+): Promise<CliServiceResult<T>> {
+  try {
+    return Result.ok(await run());
+  } catch (error) {
+    if (error instanceof CliConnectProblem) {
+      return Result.err(error);
+    }
+
+    throw error;
+  }
+}
+
+function createCliQueryActionTrailFailureProblem(input: {
   actionType: "execute" | "validate";
   operation: "create" | "append";
   sourceKey: string;
   eventType?: string;
-}): never {
+  cause?: unknown;
+}) {
   const detail =
     input.operation === "create"
       ? `query action trail could not be created for ${input.actionType} on source "${input.sourceKey}"`
       : `query action trail could not append ${input.eventType ?? "workflow"} for ${input.actionType} on source "${input.sourceKey}"`;
 
-  throwCliConnectError({
+  return createCliServiceProblem({
+    ...(input.cause !== undefined ? { cause: input.cause } : {}),
     detail,
     key: "QUERY_PREPARATION_FAILED",
   });

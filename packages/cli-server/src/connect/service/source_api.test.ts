@@ -222,8 +222,8 @@ function createHarness() {
   const requestContext = {
     honoContext,
     requestId: "req_cli_123",
-    requireAuthorizedOrg: vi.fn().mockResolvedValue(authorizedOrg),
-    requireSession: vi.fn().mockResolvedValue(session),
+    resolveAuthorizedOrg: vi.fn().mockResolvedValue(Result.ok(authorizedOrg)),
+    resolveSession: vi.fn().mockResolvedValue(Result.ok(session)),
   };
   const dependencies = {
     buildCliRequestLogDetails: vi.fn(
@@ -383,12 +383,12 @@ describe("source api connect service", () => {
       } as never)
     );
 
-    expect(harness.requestContext.requireSession).toHaveBeenCalledTimes(1);
+    expect(harness.requestContext.resolveSession).toHaveBeenCalledTimes(1);
     expect({
       describeSourceApiCall:
         harness.dependencies.describeSourceApi.mock.calls[0]?.[0] ?? null,
       requireAuthorizedOrgCall:
-        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
       response: summarizeDescribeSourceApiResponse(response),
     }).toMatchSnapshot();
   });
@@ -438,7 +438,7 @@ describe("source api connect service", () => {
       prepareSourceApiDraftCall:
         harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null,
       requireAuthorizedOrgCall:
-        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
       response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });
@@ -508,7 +508,7 @@ describe("source api connect service", () => {
         harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
         null,
       requireAuthorizedOrgCall:
-        harness.requestContext.requireAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
       response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });

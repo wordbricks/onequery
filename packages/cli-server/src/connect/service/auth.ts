@@ -1,5 +1,6 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { Result } from "better-result";
 
 import {
   createAuthProxyRequest,
@@ -27,7 +28,6 @@ import {
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
 import { requireCliConnectRequestContext } from "../context";
-import { throwCliConnectError } from "../error";
 import {
   CliAuthMode,
   CliAuthorizedDeviceAuthorizationSchema,
@@ -35,8 +35,9 @@ import {
   PollDeviceAuthorizationResponseSchema,
   RefreshSessionResponseSchema,
 } from "../gen/onequery/cli/v1/auth_pb";
-import { requireCliSessionIdentity } from "./access";
-import type { CliServiceMethod } from "./types";
+import { resolveCliSessionIdentityResult } from "./access";
+import type { CliResultServiceMethod } from "./result";
+import { cliServiceErr, liftCliServiceMethod } from "./result";
 
 type GetSessionResponseInit = MessageInitShape<typeof GetSessionResponseSchema>;
 type RefreshSessionResponseInit = MessageInitShape<
@@ -70,31 +71,33 @@ function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
   }
 }
 
-export const handleGetSession: CliServiceMethod<"getSession"> = async (
+const handleGetSessionImpl: CliResultServiceMethod<"getSession"> = async (
   _request,
   context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const session = await requestContext.requireSession();
+) =>
+  Result.gen(async function* handleGetSessionFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const session = yield* Result.await(requestContext.resolveSession());
 
-  return buildCliAuthSession(session);
-};
+    return Result.ok(buildCliAuthSession(session));
+  });
 
-export const handleRefreshSession: CliServiceMethod<"refreshSession"> = async (
-  _request,
-  context
-) => {
-  const requestContext = requireCliConnectRequestContext(context);
-  const c = requestContext.honoContext;
-  await requestContext.requireSession();
-  const session = requireCliSessionIdentity(
-    await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
-  );
+const handleRefreshSessionImpl: CliResultServiceMethod<
+  "refreshSession"
+> = async (_request, context) =>
+  Result.gen(async function* handleRefreshSessionFlow() {
+    const requestContext = requireCliConnectRequestContext(context);
+    const c = requestContext.honoContext;
 
-  return buildCliRefreshSession(session);
-};
+    yield* Result.await(requestContext.resolveSession());
+    const session = yield* resolveCliSessionIdentityResult(
+      await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
+    );
 
-export const handleStartDeviceAuthorization: CliServiceMethod<
+    return Result.ok(buildCliRefreshSession(session));
+  });
+
+const handleStartDeviceAuthorizationImpl: CliResultServiceMethod<
   "startDeviceAuthorization"
 > = async (_request, context) => {
   const c = requireCliConnectRequestContext(context).honoContext;
@@ -108,7 +111,7 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
     const payload = await readBetterAuthDeviceCodeResponse(response);
     const expiresInSec = payload.expires_in ?? CLI_DEFAULT_LOGIN_TIMEOUT_SEC;
 
-    return {
+    return Result.ok({
       state: "pending",
       deviceCode: payload.device_code,
       userCode: payload.user_code,
@@ -118,19 +121,19 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
       ),
       pollAfterMs: deviceAuthorizationPollAfterMs(payload.interval),
       expiresAt: timestampFromDate(new Date(Date.now() + expiresInSec * 1000)),
-    };
+    });
   }
 
   if (response.status === 400) {
     const payload = await readBetterAuthDeviceTokenErrorResponse(response);
-    throwCliConnectError({
+    return cliServiceErr({
       detail: toCliDeviceAuthProblemDetail(payload),
       key: "AUTH_REQUEST_INVALID",
     });
   }
 
   if (response.status === 429) {
-    throwCliConnectError({
+    return cliServiceErr({
       detail: "device authorization start was rate-limited",
       key: "LOGIN_RATE_LIMITED",
       retryAfterMs: parseRetryAfterMs(response),
@@ -142,101 +145,124 @@ export const handleStartDeviceAuthorization: CliServiceMethod<
   );
 };
 
-export const handlePollDeviceAuthorization: CliServiceMethod<
+const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
   "pollDeviceAuthorization"
-> = async (request, context) => {
-  const c = requireCliConnectRequestContext(context).honoContext;
-  const response = await c.var.storage.auth.handler(
-    createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
-      client_id: CLI_DEVICE_AUTH_CLIENT_ID,
-      device_code: request.deviceCode,
-      grant_type: CLI_DEVICE_AUTH_GRANT_TYPE,
-    })
-  );
-
-  if (response.status === 200) {
-    const payload = await readBetterAuthDeviceTokenSuccessResponse(response);
-    const session = await resolveCliSessionIdentity(
-      c.var.storage,
-      createBearerHeaders(c.req.raw, payload.access_token)
+> = async (request, context) =>
+  Result.gen(async function* handlePollDeviceAuthorizationFlow() {
+    const c = requireCliConnectRequestContext(context).honoContext;
+    const response = await c.var.storage.auth.handler(
+      createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
+        client_id: CLI_DEVICE_AUTH_CLIENT_ID,
+        device_code: request.deviceCode,
+        grant_type: CLI_DEVICE_AUTH_GRANT_TYPE,
+      })
     );
 
-    return {
-      outcome: {
-        case: "authorized",
-        value: buildAuthorizedDeviceAuthorizationResponse({
-          accessToken: payload.access_token,
-          session,
-        }),
-      },
-    } satisfies MessageInitShape<typeof PollDeviceAuthorizationResponseSchema>;
-  }
+    if (response.status === 200) {
+      const payload = await readBetterAuthDeviceTokenSuccessResponse(response);
+      const session = yield* resolveCliSessionIdentityResult(
+        await resolveCliSessionIdentity(
+          c.var.storage,
+          createBearerHeaders(c.req.raw, payload.access_token)
+        )
+      );
 
-  if (response.status === 400) {
-    const payload = await readBetterAuthDeviceTokenErrorResponse(response);
-
-    if (payload.error === "authorization_pending") {
-      return {
+      return Result.ok({
         outcome: {
-          case: "pending",
-          value: {
-            state: "pending",
-            pollAfterMs: CLI_DEFAULT_POLL_AFTER_MS,
-          },
+          case: "authorized",
+          value: buildAuthorizedDeviceAuthorizationResponse({
+            accessToken: payload.access_token,
+            session,
+          }),
         },
-      };
+      } satisfies MessageInitShape<
+        typeof PollDeviceAuthorizationResponseSchema
+      >);
     }
 
-    if (payload.error === "slow_down") {
-      return {
-        outcome: {
-          case: "pending",
-          value: {
-            state: "pending",
-            pollAfterMs: slowedDeviceAuthorizationPollAfterMs(),
-          },
-        },
-      };
-    }
+    if (response.status === 400) {
+      const payload = await readBetterAuthDeviceTokenErrorResponse(response);
 
-    if (payload.error === "access_denied") {
-      throwCliConnectError({
-        detail:
-          payload.error_description === undefined
-            ? "device authorization was denied"
-            : toCliDeviceAuthProblemDetail(payload),
-        key: "LOGIN_DENIED",
+      if (payload.error === "authorization_pending") {
+        return Result.ok({
+          outcome: {
+            case: "pending",
+            value: {
+              state: "pending",
+              pollAfterMs: CLI_DEFAULT_POLL_AFTER_MS,
+            },
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
+      }
+
+      if (payload.error === "slow_down") {
+        return Result.ok({
+          outcome: {
+            case: "pending",
+            value: {
+              state: "pending",
+              pollAfterMs: slowedDeviceAuthorizationPollAfterMs(),
+            },
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
+      }
+
+      if (payload.error === "access_denied") {
+        return cliServiceErr({
+          detail:
+            payload.error_description === undefined
+              ? "device authorization was denied"
+              : toCliDeviceAuthProblemDetail(payload),
+          key: "LOGIN_DENIED",
+        });
+      }
+
+      if (payload.error === "expired_token") {
+        return cliServiceErr({
+          detail:
+            payload.error_description === undefined
+              ? "device authorization session expired"
+              : toCliDeviceAuthProblemDetail(payload),
+          key: "LOGIN_SESSION_EXPIRED",
+        });
+      }
+
+      return cliServiceErr({
+        detail: toCliDeviceAuthProblemDetail(payload),
+        key: "AUTH_REQUEST_INVALID",
       });
     }
 
-    if (payload.error === "expired_token") {
-      throwCliConnectError({
-        detail:
-          payload.error_description === undefined
-            ? "device authorization session expired"
-            : toCliDeviceAuthProblemDetail(payload),
-        key: "LOGIN_SESSION_EXPIRED",
+    if (response.status === 429) {
+      return cliServiceErr({
+        detail: "device authorization polling was rate-limited",
+        key: "LOGIN_RATE_LIMITED",
+        retryAfterMs: parseRetryAfterMs(response),
       });
     }
 
-    throwCliConnectError({
-      detail: toCliDeviceAuthProblemDetail(payload),
-      key: "AUTH_REQUEST_INVALID",
-    });
-  }
+    throw new Error(
+      `unexpected Better Auth response for ${CLI_DEVICE_AUTH_TOKEN_PATH}: ${response.status}`
+    );
+  });
 
-  if (response.status === 429) {
-    throwCliConnectError({
-      detail: "device authorization polling was rate-limited",
-      key: "LOGIN_RATE_LIMITED",
-      retryAfterMs: parseRetryAfterMs(response),
-    });
-  }
+export const handleGetSession = liftCliServiceMethod(handleGetSessionImpl);
 
-  throw new Error(
-    `unexpected Better Auth response for ${CLI_DEVICE_AUTH_TOKEN_PATH}: ${response.status}`
-  );
-};
+export const handleRefreshSession = liftCliServiceMethod(
+  handleRefreshSessionImpl
+);
+
+export const handleStartDeviceAuthorization = liftCliServiceMethod(
+  handleStartDeviceAuthorizationImpl
+);
+
+export const handlePollDeviceAuthorization = liftCliServiceMethod(
+  handlePollDeviceAuthorizationImpl
+);
 
 function buildCliAuthUser(user: CliSessionIdentity["user"]): CliAuthUserInit {
   return {
@@ -281,28 +307,21 @@ function buildCliRefreshSession(
 
 function buildAuthorizedDeviceAuthorizationResponse(input: {
   accessToken: string;
-  session: CliSessionIdentity | null;
+  session: CliSessionIdentity;
 }): CliAuthorizedDeviceAuthorizationInit {
-  const session = input.session;
-  if (!session) {
-    throwCliConnectError({
-      detail:
-        "device authorization completed, but no authenticated session could be resolved",
-      key: "NOT_LOGGED_IN",
-    });
-  }
-
   return {
     state: "authorized",
     accessToken: input.accessToken,
-    authMode: toCliAuthMode(session.authMode),
-    user: buildCliAuthUser(session.user),
-    ...(session.activeOrg ? { activeOrgSlug: session.activeOrg } : {}),
-    ...(session.issuedAt
-      ? { issuedAt: timestampFromIsoString(session.issuedAt) }
+    authMode: toCliAuthMode(input.session.authMode),
+    user: buildCliAuthUser(input.session.user),
+    ...(input.session.activeOrg
+      ? { activeOrgSlug: input.session.activeOrg }
       : {}),
-    ...(session.expiresAt
-      ? { expiresAt: timestampFromIsoString(session.expiresAt) }
+    ...(input.session.issuedAt
+      ? { issuedAt: timestampFromIsoString(input.session.issuedAt) }
+      : {}),
+    ...(input.session.expiresAt
+      ? { expiresAt: timestampFromIsoString(input.session.expiresAt) }
       : {}),
   };
 }
