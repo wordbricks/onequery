@@ -116,7 +116,7 @@ openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-Then allow the plugin's optional tools in `openclaw.json`:
+Then enable the plugin in `openclaw.json`:
 
 ```json5
 {
@@ -124,15 +124,13 @@ Then allow the plugin's optional tools in `openclaw.json`:
     entries: {
       onequery: { enabled: true },
     },
-  },
-  tools: {
-    allow: ["onequery"],
-  },
+  }
 }
 ```
 
-The OpenClaw plugin also ships a bundled `onequery-openclaw` skill and read-only
-OneQuery query tools for org, source, and SQL inspection.
+The OpenClaw plugin ships a bundled `onequery-openclaw` skill. It teaches the
+agent to run the `onequery` CLI directly through OpenClaw's core `exec` tool
+for org, source, and bounded read-only SQL inspection.
 
 ---
 

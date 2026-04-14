@@ -24,7 +24,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@sinclair/typebox": "0.34.49",
     "openclaw": "2026.4.10"
   },
   "devDependencies": {

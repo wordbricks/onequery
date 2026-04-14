@@ -1,8 +1,8 @@
 # OneQuery OpenClaw Plugin
 
-OpenClaw plugin that exposes the OneQuery CLI as a small set of optional,
-read-only agent tools. It also ships a bundled skill that teaches the agent the
-recommended OneQuery workflow.
+OpenClaw plugin that bundles a `onequery-openclaw` skill. The skill teaches the
+agent to use the `onequery` CLI directly through OpenClaw's core `exec` tool
+instead of registering a separate wrapper tool surface.
 
 ## Install
 
@@ -13,48 +13,36 @@ openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-Then enable the plugin's optional tools in `openclaw.json`:
+Then enable the plugin in `openclaw.json`:
 
 ```json5
 {
   plugins: {
     entries: {
-      onequery: {
-        enabled: true,
-        config: {
-          binaryPath: "onequery",
-          defaultMaxRows: 100,
-          defaultMaxBytes: 1048576,
-          defaultCellMaxChars: 2000,
-          defaultQueryTimeoutMs: 60000,
-        },
-      },
+      onequery: { enabled: true },
     },
-  },
-  tools: {
-    allow: ["onequery"],
-  },
+  }
 }
 ```
 
-Adding the plugin id to `tools.allow` enables all of this plugin's optional
-tools.
+Start a new session after enabling the plugin so OpenClaw reloads the bundled
+skill.
 
-## Tools
+## Requirements
 
-- `onequery_auth_whoami`
-- `onequery_org_current`
-- `onequery_org_list`
-- `onequery_source_list`
-- `onequery_source_show`
-- `onequery_query_validate`
-- `onequery_query_exec`
+- `onequery` must be installed and available on `PATH`.
+- The agent needs access to OpenClaw's core `exec` tool.
+- If your OpenClaw exec policy uses approvals or allowlists, allow the resolved
+  `onequery` binary or enable skill-bin auto-allow for required skill binaries.
 
 ## Behavior
 
-- All commands run through `onequery --output json`.
-- Org-scoped source and query tools require an explicit `org`.
-- Query tools apply bounded defaults when the caller omits them.
-- Query tools reject obviously mutating SQL before the CLI is invoked.
-- The bundled `onequery-openclaw` skill teaches the agent to validate before
-  execution and keep reads small.
+- The plugin adds no custom agent tools and has no plugin-specific runtime
+  config.
+- The bundled `onequery-openclaw` skill teaches the agent to run
+  `onequery ... --output json` directly via `exec`.
+- The skill keeps the same workflow as before: resolve auth and org context,
+  inspect sources, validate unfamiliar SQL first, then execute bounded
+  read-only queries.
+- For quote-heavy or multiline SQL, the skill prefers `onequery query ... --file
+  <path>` over brittle shell escaping.
