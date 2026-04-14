@@ -1,6 +1,7 @@
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
+use clap::ValueEnum;
 use clap::ValueHint;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -198,6 +199,7 @@ impl Command {
                 action: super::args::AuthSessionSubcommand::Refresh,
             }) => "auth session refresh",
             Self::Backup(_) => "backup",
+            Self::Config(ConfigCommand::Get { .. }) => "config get",
             Self::Config(ConfigCommand::Set {
                 action: ConfigSetCommand::Server { .. },
             }) => "config set server",
@@ -222,11 +224,45 @@ impl Command {
 
 #[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
 pub(crate) enum ConfigCommand {
+    /// Read one effective CLI config value.
+    Get {
+        /// Select which config key to inspect.
+        #[arg(value_name = "KEY", value_enum)]
+        key: ConfigGetKey,
+    },
     /// Persist local CLI config values.
     Set {
         #[command(subcommand)]
         action: ConfigSetCommand,
     },
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, Eq, PartialEq)]
+pub(crate) enum ConfigGetKey {
+    /// The active org slug used by default when `--org` is not supplied.
+    #[value(name = "org.active", alias = "org", alias = "active-org")]
+    OrgActive,
+    /// The default app origin used by API-facing commands.
+    #[value(name = "api.server_url", alias = "server", alias = "server-url")]
+    ApiServerUrl,
+    /// The default request timeout in seconds for outbound API calls.
+    #[value(
+        name = "api.request_timeout_sec",
+        alias = "timeout",
+        alias = "request-timeout",
+        alias = "request-timeout-sec"
+    )]
+    ApiRequestTimeoutSec,
+}
+
+impl ConfigGetKey {
+    pub(crate) const fn canonical_key(self) -> &'static str {
+        match self {
+            Self::OrgActive => "org.active",
+            Self::ApiServerUrl => "api.server_url",
+            Self::ApiRequestTimeoutSec => "api.request_timeout_sec",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Subcommand, Eq, PartialEq)]

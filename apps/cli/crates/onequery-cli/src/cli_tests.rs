@@ -17,6 +17,7 @@ use super::AuthImportArgs;
 use super::AuthSessionSubcommand;
 use super::Command;
 use super::ConfigCommand;
+use super::ConfigGetKey;
 use super::ConfigSetCommand;
 use super::GatewayCommand;
 use super::ListReadArgs;
@@ -94,6 +95,11 @@ fn upgrade_help_output_snapshot_targets_upgrade_surface() {
 }
 
 #[test]
+fn config_get_help_output_lists_supported_keys() {
+    assert_snapshot!(rendered_display(&["onequery", "config", "get", "--help"]));
+}
+
+#[test]
 fn source_connect_help_output_lists_supported_providers() {
     assert_snapshot!(rendered_display(&[
         "onequery", "source", "connect", "--help"
@@ -140,6 +146,37 @@ fn parse_invocation_accepts_config_set_server() {
             assert_eq!(url, default_base_url);
         }
         other => panic!("expected config set server command, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_invocation_accepts_config_get_canonical_and_alias_keys() {
+    for (args, expected_key) in [
+        (
+            &["onequery", "config", "get", "api.server_url"][..],
+            ConfigGetKey::ApiServerUrl,
+        ),
+        (
+            &["onequery", "config", "get", "server"][..],
+            ConfigGetKey::ApiServerUrl,
+        ),
+        (
+            &["onequery", "config", "get", "org.active"][..],
+            ConfigGetKey::OrgActive,
+        ),
+        (
+            &["onequery", "config", "get", "timeout"][..],
+            ConfigGetKey::ApiRequestTimeoutSec,
+        ),
+    ] {
+        let invocation = parse_invocation(args);
+
+        match invocation.command {
+            Command::Config(ConfigCommand::Get { key }) => {
+                assert_eq!(key, expected_key);
+            }
+            other => panic!("expected config get command, got {other:?}"),
+        }
     }
 }
 
