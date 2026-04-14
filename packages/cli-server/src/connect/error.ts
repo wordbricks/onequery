@@ -1,5 +1,6 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { TaggedError } from "better-result";
 
 import { CLI_PROBLEM_CATALOG } from "../domain/problems";
 import type {
@@ -14,19 +15,47 @@ import {
 } from "./gen/google/rpc/error_details_pb";
 import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
 
-type CliConnectValidationIssue = {
+export type CliConnectValidationIssue = {
   field: string;
   message: string;
   code: string;
 };
 
-type CreateCliConnectErrorInput = {
+export type CreateCliConnectErrorInput = {
   key: CliProblemKey;
   detail?: string;
   retryAfterMs?: number;
   cause?: unknown;
   errors?: CliConnectValidationIssue[];
 };
+
+export class CliConnectProblem extends TaggedError("CliConnectProblem")<{
+  key: CliProblemKey;
+  message: string;
+  retryAfterMs?: number;
+  cause?: unknown;
+  errors?: readonly CliConnectValidationIssue[];
+}>() {
+  constructor(input: CreateCliConnectErrorInput) {
+    super({
+      key: input.key,
+      message: input.detail ?? CLI_PROBLEM_CATALOG[input.key].title,
+      ...(typeof input.retryAfterMs === "number"
+        ? { retryAfterMs: input.retryAfterMs }
+        : {}),
+      ...(input.cause !== undefined ? { cause: input.cause } : {}),
+      ...(input.errors
+        ? {
+            errors: input.errors.map((issue) => ({
+              code: issue.code,
+              field: issue.field,
+              message: issue.message,
+            })),
+          }
+        : {}),
+    });
+  }
+}
 
 function toCliConnectCode(code: CliConnectCode): Code {
   switch (code) {
@@ -91,31 +120,39 @@ function createCliBadRequestDetail(errors: CliConnectValidationIssue[]) {
   };
 }
 
-export function createCliConnectError(input: CreateCliConnectErrorInput) {
-  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[input.key];
+export function createCliConnectProblem(input: CreateCliConnectErrorInput) {
+  return new CliConnectProblem(input);
+}
+
+export function createCliConnectError(
+  input: CreateCliConnectErrorInput | CliConnectProblem
+) {
+  const problemInput =
+    input instanceof CliConnectProblem ? input : createCliConnectProblem(input);
+  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[problemInput.key];
   const details: NonNullable<ConstructorParameters<typeof ConnectError>[3]> = [
     createCliErrorDetail(problem),
   ];
 
-  if (typeof input.retryAfterMs === "number") {
+  if (typeof problemInput.retryAfterMs === "number") {
     details.push({
       desc: RetryInfoSchema,
       value: {
-        retryDelay: toRetryDelayMessage(input.retryAfterMs),
+        retryDelay: toRetryDelayMessage(problemInput.retryAfterMs),
       } satisfies MessageInitShape<typeof RetryInfoSchema>,
     });
   }
 
-  if (input.errors && input.errors.length > 0) {
-    details.push(createCliBadRequestDetail(input.errors));
+  if (problemInput.errors && problemInput.errors.length > 0) {
+    details.push(createCliBadRequestDetail([...problemInput.errors]));
   }
 
   return new ConnectError(
-    input.detail ?? problem.title,
+    problemInput.message,
     toCliConnectCode(problem.connectCode),
     undefined,
     details,
-    input.cause
+    problemInput.cause
   );
 }
 

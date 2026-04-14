@@ -190,6 +190,15 @@ repository instead of this monorepo:
 /plugin install onequery@wordbricks
 ```
 
+<!-- The onequery-cli skill currently ships from wordbricks/skills. The
+onequery repository URL does not expose a matching onequery-cli skill. -->
+For skills-compatible agents, install the `onequery-cli` skill from the
+Wordbricks skills repository:
+
+```bash
+npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
+```
+
 For local plugin work, use the plugin bundle from your `wordbricks/skills`
 checkout at `plugins/onequery`.
 

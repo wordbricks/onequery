@@ -21,7 +21,7 @@ import {
 import {
   handleDescribeSourceApi,
   handleExecuteSourceApi,
-} from "./service/source_api";
+} from "./service/source-api";
 
 export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
   return {
