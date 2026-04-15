@@ -85,7 +85,10 @@ fn render_config_output<B, T>(
 
         format!(
             "  - {source} {status} fingerprint={} raw_toml_present={}",
-            display_optional(layer.fingerprint()),
+            layer.fingerprint().map_or_else(
+                || "<none>".to_owned(),
+                |fingerprint| fingerprint.to_string()
+            ),
             layer.raw_toml().is_some()
         )
     }));
@@ -132,7 +135,7 @@ fn render_config_output<B, T>(
                     "path": path,
                     "status": status,
                     "disabledReason": disabled_reason,
-                    "fingerprint": layer.fingerprint(),
+                    "fingerprint": layer.fingerprint().map(|fingerprint| fingerprint.to_string()),
                     "rawTomlPresent": layer.raw_toml().is_some(),
                 })
             }).collect::<Vec<_>>(),

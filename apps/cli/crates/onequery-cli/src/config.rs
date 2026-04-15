@@ -358,7 +358,7 @@ impl ConfigStore {
                 status,
                 disabled_reason = ?disabled_reason,
                 raw_toml_present = layer.raw_toml().is_some(),
-                fingerprint = ?layer.fingerprint(),
+                fingerprint = ?layer.fingerprint().map(|fingerprint| fingerprint.to_string()),
                 "config layer resolved"
             );
         }

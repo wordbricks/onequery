@@ -15,5 +15,5 @@ Values:
 Typed overrides:
   request_timeout_sec: <none>
 Layers:
-  - source=defaults status=enabled fingerprint=b33c4f8ecc64f312dd7ebd9cbf7d62b605e9857db5f53fc233a729c3df604038 raw_toml_present=true
-  - source=user_file path=/tmp/onequery-debug-config/config.toml status=enabled fingerprint=d71ab707e63993891732b4c94b6f983eec218c0929a89cc931fe963bc7da578e raw_toml_present=true
+  - source=defaults status=enabled fingerprint=57842fd3fb1465ecea6a52c6a8d6ceecebd22db3e7c5afb0a029c51f6c8d6363 raw_toml_present=true
+  - source=user_file path=/tmp/onequery-debug-config/config.toml status=enabled fingerprint=35f0fc9a7a1223f4e4437cc7854f173476b7c353eef12fe8f758591b4bb59414 raw_toml_present=true
