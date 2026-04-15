@@ -1,0 +1,13 @@
+{
+  "name": "auto-debug-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "setup": "./setup.sh"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "postgres": "^3.4.5"
+  }
+}

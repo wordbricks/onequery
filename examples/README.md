@@ -26,6 +26,7 @@ local use.
 - [Source API](#source-api)
 - [JSON Output & Scripting](#json-output--scripting)
 - [Backup & Restore](#backup--restore)
+- [Auto-Debug Demo](#auto-debug-demo)
 
 ---
 
@@ -476,3 +477,12 @@ onequery backup --archive-path ./backups/onequery-backup-2024-01-15.tar.gz
 # Restore from a backup archive
 onequery restore ./backups/onequery-backup-2024-01-15.tar.gz
 ```
+
+---
+
+## Auto-Debug Demo
+
+An end-to-end example where an AI agent uses OneQuery to diagnose a database
+error and open a GitHub pull request with the fix — all through a single
+interface. Includes a minimal TODO app, setup scripts, and an agent prompt.
+([full demo](./auto-debug-demo/))

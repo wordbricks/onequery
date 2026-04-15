@@ -7,9 +7,12 @@ use std::process::Stdio;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Deserialize;
 use serde_json::json;
 
 use crate::output::CommandOutput;
+use crate::packaged_runtime::CurrentExecutableLocation;
+use crate::packaged_runtime::classify_current_executable;
 use crate::platform::Terminal;
 
 use super::CommandContext;
@@ -20,6 +23,12 @@ const HOMEBREW_UPGRADE_COMMAND: &str = "brew upgrade wordbricks/tap/onequery";
 const BUN_UPGRADE_COMMAND: &str = "bun install -g @onequery/cli@latest";
 const NPM_UPGRADE_COMMAND: &str = "npm install -g @onequery/cli@latest";
 const OUTPUT_PREVIEW_LINE_COUNT: usize = 12;
+const CLI_PACKAGE_NAME: &str = "@onequery/cli";
+const CLI_PACKAGE_SCOPE_DIR_NAME: &str = "@onequery";
+const CLI_PACKAGE_DIR_NAME: &str = "cli";
+const CLI_LAUNCHER_RELATIVE_PATH: &str = "bin/onequery.js";
+const NODE_MODULES_DIR_NAME: &str = "node_modules";
+const PLATFORM_ALIAS_PACKAGE_PREFIX: &str = "onequery-";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum UpgradeInstaller {
@@ -73,6 +82,89 @@ impl UpgradePlan {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum NodePackageManager {
+    Bun,
+    Npm,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum InstallLayout {
+    Homebrew {
+        launcher_path: PathBuf,
+    },
+    InstallScript {
+        launcher_path: PathBuf,
+    },
+    NodePackage {
+        package_root: PathBuf,
+        manager: NodePackageManager,
+    },
+}
+
+impl InstallLayout {
+    fn detect(current_exe: &Path) -> Option<Self> {
+        let CurrentExecutableLocation::Packaged(packaged_layout) =
+            classify_current_executable(current_exe)
+        else {
+            return None;
+        };
+
+        homebrew_install_layout(packaged_layout.install_root.as_path())
+            .or_else(|| node_package_install_layout(packaged_layout.install_root.as_path()))
+            .or_else(|| install_script_install_layout(packaged_layout.install_root.as_path()))
+    }
+
+    fn upgrade_plan(&self) -> UpgradePlan {
+        match self {
+            Self::Homebrew { .. } => UpgradePlan::new(
+                UpgradeInstaller::Homebrew,
+                HOMEBREW_UPGRADE_COMMAND,
+                "brew",
+                ["upgrade", "wordbricks/tap/onequery"],
+            ),
+            Self::InstallScript { .. } => UpgradePlan::new(
+                UpgradeInstaller::InstallScript,
+                INSTALL_SCRIPT_UPGRADE_COMMAND,
+                "sh",
+                ["-c", "curl -fsSL https://onequery.dev/install.sh | sh"],
+            ),
+            Self::NodePackage { manager, .. } => match manager {
+                NodePackageManager::Bun => UpgradePlan::new(
+                    UpgradeInstaller::Bun,
+                    BUN_UPGRADE_COMMAND,
+                    "bun",
+                    ["install", "-g", "@onequery/cli@latest"],
+                ),
+                NodePackageManager::Npm => UpgradePlan::new(
+                    UpgradeInstaller::Npm,
+                    NPM_UPGRADE_COMMAND,
+                    "npm",
+                    ["install", "-g", "@onequery/cli@latest"],
+                ),
+            },
+        }
+    }
+
+    fn resolve_installed_version(&self) -> Option<String> {
+        match self {
+            Self::Homebrew { launcher_path } | Self::InstallScript { launcher_path } => {
+                probe_installed_version_from_launcher(launcher_path.as_path())
+            }
+            Self::NodePackage { package_root, .. } => {
+                let package_json_path = package_root.join("package.json");
+                read_package_version(package_json_path.as_path())
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageManifest {
+    name: Option<String>,
+    version: Option<String>,
+}
+
 pub(crate) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
@@ -80,17 +172,14 @@ pub(crate) async fn execute<B, T>(
 where
     T: Terminal,
 {
-    let current_exe = std::env::current_exe().map_err(|error| {
-        CliError::new(
-            "failed to resolve current executable",
-            &context.command_line,
-            ErrorStage::Internal,
-            error.to_string(),
-            manual_upgrade_commands(),
-        )
-    })?;
+    let current_exe = runtime.process.current_executable_or_error(
+        "failed to resolve current executable",
+        &context.command_line,
+        ErrorStage::Internal,
+        manual_upgrade_commands(),
+    )?;
 
-    let Some(plan) = detect_upgrade_plan(current_exe.as_path()) else {
+    let Some(layout) = InstallLayout::detect(current_exe) else {
         return Err(CliError::new(
             "unsupported upgrade installation",
             &context.command_line,
@@ -102,6 +191,7 @@ where
             manual_upgrade_commands(),
         ));
     };
+    let plan = layout.upgrade_plan();
 
     runtime.terminal.stderr_line(&format!(
         "Running upgrade via {}...",
@@ -143,93 +233,184 @@ where
         ));
     }
 
-    Ok(render_upgrade_output(plan))
+    let installed_version = layout.resolve_installed_version();
+
+    Ok(render_upgrade_output(plan, installed_version))
 }
 
-fn detect_upgrade_plan(current_exe: &Path) -> Option<UpgradePlan> {
-    if is_homebrew_install(current_exe) {
-        return Some(UpgradePlan::new(
-            UpgradeInstaller::Homebrew,
-            HOMEBREW_UPGRADE_COMMAND,
-            "brew",
-            ["upgrade", "wordbricks/tap/onequery"],
-        ));
+fn homebrew_install_layout(install_root: &Path) -> Option<InstallLayout> {
+    if install_root.file_name()? != OsStr::new("libexec") {
+        return None;
     }
 
-    if is_bun_install(current_exe) {
-        return Some(UpgradePlan::new(
-            UpgradeInstaller::Bun,
-            BUN_UPGRADE_COMMAND,
-            "bun",
-            ["install", "-g", "@onequery/cli@latest"],
-        ));
+    let version_dir = install_root.parent()?;
+    let package_dir = version_dir.parent()?;
+    if package_dir.file_name()? != OsStr::new("onequery") {
+        return None;
     }
 
-    if is_npm_install(current_exe) {
-        return Some(UpgradePlan::new(
-            UpgradeInstaller::Npm,
-            NPM_UPGRADE_COMMAND,
-            "npm",
-            ["install", "-g", "@onequery/cli@latest"],
-        ));
+    let cellar_dir = package_dir.parent()?;
+    if cellar_dir.file_name()? != OsStr::new("Cellar") {
+        return None;
     }
 
-    if is_install_script_install(current_exe) {
-        return Some(UpgradePlan::new(
-            UpgradeInstaller::InstallScript,
-            INSTALL_SCRIPT_UPGRADE_COMMAND,
-            "sh",
-            ["-c", "curl -fsSL https://onequery.dev/install.sh | sh"],
-        ));
+    Some(InstallLayout::Homebrew {
+        launcher_path: cellar_dir.parent()?.join("bin").join("onequery"),
+    })
+}
+
+fn node_package_install_layout(install_root: &Path) -> Option<InstallLayout> {
+    let (package_root, manager) = published_node_package_layout(install_root)?;
+    Some(InstallLayout::NodePackage {
+        package_root,
+        manager,
+    })
+}
+
+fn install_script_install_layout(install_root: &Path) -> Option<InstallLayout> {
+    // Comment: install.sh and published package layouts both embed
+    // vendor/<target>/onequery/onequery, so the install-root check below keeps
+    // this heuristic anchored to the installer-owned shell launcher instead of
+    // guessing from the binary path alone.
+    let launcher_path = install_root.join("bin").join("onequery");
+    if !launcher_path.is_file() || install_root.join("package.json").is_file() {
+        return None;
+    }
+
+    Some(InstallLayout::InstallScript { launcher_path })
+}
+
+fn published_node_package_layout(install_root: &Path) -> Option<(PathBuf, NodePackageManager)> {
+    if !is_published_platform_alias_package_root(install_root) {
+        return None;
+    }
+
+    let node_modules_dir = install_root.parent()?;
+    let bun_cli_package_root = node_modules_dir
+        .join(CLI_PACKAGE_SCOPE_DIR_NAME)
+        .join(CLI_PACKAGE_DIR_NAME);
+    if is_bun_global_node_modules_dir(node_modules_dir)
+        && is_published_cli_wrapper_root(bun_cli_package_root.as_path())
+    {
+        return Some((bun_cli_package_root, NodePackageManager::Bun));
+    }
+
+    let npm_cli_package_root = node_modules_dir.parent()?;
+    if is_published_cli_wrapper_root(npm_cli_package_root) {
+        return Some((npm_cli_package_root.to_path_buf(), NodePackageManager::Npm));
     }
 
     None
 }
 
-fn is_homebrew_install(current_exe: &Path) -> bool {
-    let path = current_exe.to_string_lossy();
-    path.contains("/Cellar/onequery/") || path.contains("\\Cellar\\onequery\\")
-}
-
-fn is_bun_install(current_exe: &Path) -> bool {
-    let path = current_exe.to_string_lossy();
-    path.contains(".bun/install/")
-        || path.contains(".bun\\install\\")
-        || path.contains("\\bun\\install\\")
-}
-
-fn is_npm_install(current_exe: &Path) -> bool {
-    let path = current_exe.to_string_lossy();
-    (path.contains("/node_modules/") || path.contains("\\node_modules\\"))
-        && (path.contains("@onequery/cli") || path.contains("@onequery\\cli"))
-}
-
-fn is_install_script_install(current_exe: &Path) -> bool {
-    let Some(install_root) = install_script_root(current_exe) else {
+fn is_bun_global_node_modules_dir(node_modules_dir: &Path) -> bool {
+    let Some(global_dir) = node_modules_dir.parent() else {
+        return false;
+    };
+    let Some(install_dir) = global_dir.parent() else {
+        return false;
+    };
+    let Some(bun_dir) = install_dir.parent() else {
         return false;
     };
 
-    install_root.join("bin").join("onequery").is_file()
-        && !install_root.join("package.json").is_file()
+    // Comment: Bun global installs live under `.bun/install/global/node_modules`,
+    // so match that published directory contract directly.
+    node_modules_dir.file_name() == Some(OsStr::new(NODE_MODULES_DIR_NAME))
+        && global_dir.file_name() == Some(OsStr::new("global"))
+        && install_dir.file_name() == Some(OsStr::new("install"))
+        && bun_dir.file_name() == Some(OsStr::new(".bun"))
 }
 
-fn install_script_root(current_exe: &Path) -> Option<PathBuf> {
-    let cli_dir = current_exe.parent()?;
-    if cli_dir.file_name()? != OsStr::new("onequery") {
+fn is_published_platform_alias_package_root(package_root: &Path) -> bool {
+    let Some(node_modules_dir) = package_root.parent() else {
+        return false;
+    };
+    let Some(package_dir_name) = package_root.file_name().and_then(OsStr::to_str) else {
+        return false;
+    };
+    if node_modules_dir.file_name() != Some(OsStr::new(NODE_MODULES_DIR_NAME))
+        || !package_dir_name.starts_with(PLATFORM_ALIAS_PACKAGE_PREFIX)
+    {
+        return false;
+    }
+
+    let package_json_path = package_root.join("package.json");
+    let Some(manifest) = read_package_manifest(package_json_path.as_path()) else {
+        return false;
+    };
+
+    // Comment: npm alias installs expose an unscoped folder like
+    // `onequery-darwin-arm64`, but the underlying published package manifest
+    // still names the package `@onequery/cli`.
+    manifest.name.as_deref() == Some(CLI_PACKAGE_NAME)
+}
+
+fn is_published_cli_wrapper_root(package_root: &Path) -> bool {
+    let Some(parent_dir) = package_root.parent() else {
+        return false;
+    };
+    let Some(scope_dir) = parent_dir.file_name() else {
+        return false;
+    };
+    let Some(node_modules_dir) = parent_dir.parent() else {
+        return false;
+    };
+
+    if package_root.file_name() != Some(OsStr::new(CLI_PACKAGE_DIR_NAME))
+        || scope_dir != OsStr::new(CLI_PACKAGE_SCOPE_DIR_NAME)
+        || node_modules_dir.file_name() != Some(OsStr::new(NODE_MODULES_DIR_NAME))
+    {
+        return false;
+    }
+
+    let package_json_path = package_root.join("package.json");
+    let Some(manifest) = read_package_manifest(package_json_path.as_path()) else {
+        return false;
+    };
+
+    manifest.name.as_deref() == Some(CLI_PACKAGE_NAME)
+        && package_root.join(CLI_LAUNCHER_RELATIVE_PATH).is_file()
+}
+
+fn probe_installed_version_from_launcher(launcher_path: &Path) -> Option<String> {
+    let output = ProcessCommand::new(launcher_path)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .ok()?;
+    if !output.status.success() {
         return None;
     }
 
-    let target_dir = cli_dir.parent()?;
-    let vendor_dir = target_dir.parent()?;
-    if vendor_dir.file_name()? != OsStr::new("vendor") {
+    parse_version_output(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn read_package_version(package_json_path: &Path) -> Option<String> {
+    read_package_manifest(package_json_path).and_then(|package| package.version)
+}
+
+fn read_package_manifest(package_json_path: &Path) -> Option<PackageManifest> {
+    let contents = std::fs::read_to_string(package_json_path).ok()?;
+    serde_json::from_str::<PackageManifest>(&contents).ok()
+}
+
+fn parse_version_output(version_output: &str) -> Option<String> {
+    let trimmed = version_output.trim();
+    if trimmed.is_empty() {
         return None;
     }
 
-    // Comment: install.sh and published package layouts both embed
-    // vendor/<target>/onequery/onequery, so the install-root check below keeps
-    // this heuristic anchored to the installer-owned shell launcher instead of
-    // guessing from the binary path alone.
-    vendor_dir.parent().map(Path::to_path_buf)
+    let mut parts = trimmed.split_whitespace();
+    match (parts.next(), parts.next(), parts.next()) {
+        (Some(binary_name), Some(version), None) if binary_name.starts_with("onequery") => {
+            Some(version.to_owned())
+        }
+        (Some(version), None, None) => Some(version.to_owned()),
+        _ => None,
+    }
 }
 
 fn render_command_failure(stdout: &[u8], stderr: &[u8], exit_code: Option<i32>) -> String {
@@ -274,16 +455,21 @@ fn manual_upgrade_commands() -> Vec<String> {
     ]
 }
 
-fn render_upgrade_output(plan: UpgradePlan) -> CommandOutput {
+fn render_upgrade_output(plan: UpgradePlan, installed_version: Option<String>) -> CommandOutput {
+    let mut lines = vec!["Upgrade completed.".to_owned()];
+    match installed_version.as_deref() {
+        Some(version) => lines.push(format!("Version: {version}")),
+        None => lines.push("Version: unavailable".to_owned()),
+    }
+    lines.push(format!("Installer: {}", plan.installer.label()));
+    lines.push(format!("Command: {}", plan.display_command));
+
     CommandOutput::structured(
-        vec![
-            "Upgrade completed.".to_owned(),
-            format!("Installer: {}", plan.installer.label()),
-            format!("Command: {}", plan.display_command),
-        ],
+        lines,
         json!({
             "kind": "upgrade",
             "status": "completed",
+            "version": installed_version,
             "installer": plan.installer.id(),
             "command": plan.display_command,
         }),
@@ -295,83 +481,197 @@ fn render_upgrade_output(plan: UpgradePlan) -> CommandOutput {
 mod tests {
     use std::fs;
     use std::path::Path;
+    use std::path::PathBuf;
 
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
 
     use super::BUN_UPGRADE_COMMAND;
+    use super::CLI_PACKAGE_NAME;
     use super::HOMEBREW_UPGRADE_COMMAND;
     use super::INSTALL_SCRIPT_UPGRADE_COMMAND;
+    use super::InstallLayout;
     use super::NPM_UPGRADE_COMMAND;
+    use super::NodePackageManager;
     use super::OUTPUT_PREVIEW_LINE_COUNT;
     use super::UpgradeInstaller;
     use super::UpgradePlan;
-    use super::detect_upgrade_plan;
+    use super::parse_version_output;
+    use super::read_package_version;
     use super::render_command_failure;
     use super::render_upgrade_output;
 
+    fn write_package_manifest(package_root: &Path, version: &str) {
+        fs::create_dir_all(package_root).expect("failed to create package root");
+        fs::write(
+            package_root.join("package.json"),
+            format!(r#"{{"name":"{CLI_PACKAGE_NAME}","version":"{version}"}}"#),
+        )
+        .expect("failed to write package.json");
+    }
+
+    fn write_cli_wrapper_package(package_root: &Path, version: &str) {
+        write_package_manifest(package_root, version);
+        fs::create_dir_all(package_root.join("bin")).expect("failed to create bin dir");
+        fs::write(
+            package_root.join("bin/onequery.js"),
+            "#!/usr/bin/env node\n",
+        )
+        .expect("failed to write launcher");
+    }
+
+    fn write_packaged_binary(binary_path: &Path) {
+        fs::create_dir_all(binary_path.parent().expect("missing binary parent"))
+            .expect("failed to create vendor layout");
+        fs::write(binary_path, []).expect("failed to create binary");
+    }
+
     #[test]
-    fn detect_upgrade_plan_prefers_homebrew_layouts() {
-        let plan = detect_upgrade_plan(Path::new(
+    fn detect_install_layout_prefers_homebrew_layouts() {
+        let layout = InstallLayout::detect(Path::new(
             "/opt/homebrew/Cellar/onequery/1.2.3/libexec/vendor/aarch64-apple-darwin/onequery/onequery",
         ))
-        .expect("expected homebrew upgrade plan");
+        .expect("expected homebrew install layout");
 
-        assert_eq!(plan.installer, UpgradeInstaller::Homebrew);
-        assert_eq!(plan.display_command, HOMEBREW_UPGRADE_COMMAND);
+        assert_eq!(
+            layout,
+            InstallLayout::Homebrew {
+                launcher_path: PathBuf::from("/opt/homebrew/bin/onequery"),
+            }
+        );
+        assert_eq!(
+            layout.upgrade_plan().display_command,
+            HOMEBREW_UPGRADE_COMMAND
+        );
     }
 
     #[test]
-    fn detect_upgrade_plan_supports_bun_global_installs() {
-        let plan = detect_upgrade_plan(Path::new(
-            "/Users/dev/.bun/install/global/node_modules/@onequery/cli/vendor/aarch64-apple-darwin/onequery/onequery",
-        ))
-        .expect("expected bun upgrade plan");
+    fn detect_install_layout_supports_bun_global_installs() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let node_modules_dir = temp_dir.path().join(".bun/install/global/node_modules");
+        let cli_package_root = node_modules_dir.join("@onequery/cli");
+        let platform_package_root = node_modules_dir.join("onequery-darwin-arm64");
+        let binary_path =
+            platform_package_root.join("vendor/aarch64-apple-darwin/onequery/onequery");
 
-        assert_eq!(plan.installer, UpgradeInstaller::Bun);
-        assert_eq!(plan.display_command, BUN_UPGRADE_COMMAND);
+        write_cli_wrapper_package(cli_package_root.as_path(), "1.2.3");
+        write_package_manifest(platform_package_root.as_path(), "1.2.3-darwin-arm64");
+        write_packaged_binary(binary_path.as_path());
+
+        let layout =
+            InstallLayout::detect(binary_path.as_path()).expect("expected bun install layout");
+
+        assert_eq!(
+            layout,
+            InstallLayout::NodePackage {
+                package_root: cli_package_root,
+                manager: NodePackageManager::Bun,
+            }
+        );
+        assert_eq!(layout.resolve_installed_version(), Some("1.2.3".to_owned()));
+        assert_eq!(layout.upgrade_plan().display_command, BUN_UPGRADE_COMMAND);
     }
 
     #[test]
-    fn detect_upgrade_plan_supports_npm_global_installs() {
-        let plan = detect_upgrade_plan(Path::new(
-            "/usr/local/lib/node_modules/@onequery/cli/vendor/x86_64-apple-darwin/onequery/onequery",
-        ))
-        .expect("expected npm upgrade plan");
+    fn detect_install_layout_supports_npm_global_installs() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let cli_package_root = temp_dir.path().join("lib/node_modules/@onequery/cli");
+        let platform_package_root = cli_package_root.join("node_modules/onequery-darwin-arm64");
+        let binary_path =
+            platform_package_root.join("vendor/x86_64-apple-darwin/onequery/onequery");
 
-        assert_eq!(plan.installer, UpgradeInstaller::Npm);
-        assert_eq!(plan.display_command, NPM_UPGRADE_COMMAND);
+        write_cli_wrapper_package(cli_package_root.as_path(), "1.2.3");
+        write_package_manifest(platform_package_root.as_path(), "1.2.3-darwin-arm64");
+        write_packaged_binary(binary_path.as_path());
+
+        let layout =
+            InstallLayout::detect(binary_path.as_path()).expect("expected npm install layout");
+
+        assert_eq!(
+            layout,
+            InstallLayout::NodePackage {
+                package_root: cli_package_root,
+                manager: NodePackageManager::Npm,
+            }
+        );
+        assert_eq!(layout.resolve_installed_version(), Some("1.2.3".to_owned()));
+        assert_eq!(layout.upgrade_plan().display_command, NPM_UPGRADE_COMMAND);
     }
 
     #[test]
-    fn detect_upgrade_plan_supports_install_script_layouts() {
+    fn detect_install_layout_rejects_wrapper_vendor_layouts() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let cli_package_root = temp_dir.path().join("lib/node_modules/@onequery/cli");
+        let binary_path = cli_package_root.join("vendor/x86_64-apple-darwin/onequery/onequery");
+
+        write_cli_wrapper_package(cli_package_root.as_path(), "1.2.3");
+        write_packaged_binary(binary_path.as_path());
+
+        assert_eq!(InstallLayout::detect(binary_path.as_path()), None);
+    }
+
+    #[test]
+    fn detect_install_layout_supports_install_script_layouts() {
         let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
         let install_root = temp_dir.path();
         let binary_path = install_root.join("vendor/linux-x64/onequery/onequery");
-        fs::create_dir_all(binary_path.parent().expect("missing binary parent"))
-            .expect("failed to create vendor layout");
+        write_packaged_binary(binary_path.as_path());
         fs::create_dir_all(install_root.join("bin")).expect("failed to create bin dir");
-        fs::write(&binary_path, []).expect("failed to create binary");
         fs::write(install_root.join("bin/onequery"), "#!/bin/sh\n")
             .expect("failed to create launcher");
 
-        let plan =
-            detect_upgrade_plan(binary_path.as_path()).expect("expected install.sh upgrade plan");
+        let layout =
+            InstallLayout::detect(binary_path.as_path()).expect("expected install.sh layout");
 
-        assert_eq!(plan.installer, UpgradeInstaller::InstallScript);
-        assert_eq!(plan.display_command, INSTALL_SCRIPT_UPGRADE_COMMAND);
+        assert_eq!(
+            layout,
+            InstallLayout::InstallScript {
+                launcher_path: install_root.join("bin/onequery"),
+            }
+        );
+        assert_eq!(
+            layout.upgrade_plan().display_command,
+            INSTALL_SCRIPT_UPGRADE_COMMAND
+        );
     }
 
     #[test]
     fn render_upgrade_output_snapshot() {
-        let output = render_upgrade_output(UpgradePlan::new(
-            UpgradeInstaller::Bun,
-            BUN_UPGRADE_COMMAND,
-            "bun",
-            ["install", "-g", "@onequery/cli@latest"],
-        ));
+        let output = render_upgrade_output(
+            UpgradePlan::new(
+                UpgradeInstaller::Bun,
+                BUN_UPGRADE_COMMAND,
+                "bun",
+                ["install", "-g", "@onequery/cli@latest"],
+            ),
+            Some("1.2.3".to_owned()),
+        );
 
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn read_package_version_from_package_json() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let package_json = temp_dir.path().join("package.json");
+        fs::write(
+            &package_json,
+            r#"{"name":"@onequery/cli","version":"1.2.3"}"#,
+        )
+        .expect("failed to write package.json");
+
+        assert_eq!(
+            read_package_version(package_json.as_path()),
+            Some("1.2.3".to_owned())
+        );
+    }
+
+    #[test]
+    fn parse_version_output_extracts_cli_version() {
+        assert_eq!(
+            parse_version_output("onequery 1.2.3\n"),
+            Some("1.2.3".to_owned())
+        );
     }
 
     #[test]

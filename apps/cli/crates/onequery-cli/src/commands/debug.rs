@@ -85,7 +85,10 @@ fn render_config_output<B, T>(
 
         format!(
             "  - {source} {status} fingerprint={} raw_toml_present={}",
-            display_optional(layer.fingerprint()),
+            layer.fingerprint().map_or_else(
+                || "<none>".to_owned(),
+                |fingerprint| fingerprint.to_string()
+            ),
             layer.raw_toml().is_some()
         )
     }));
@@ -132,7 +135,7 @@ fn render_config_output<B, T>(
                     "path": path,
                     "status": status,
                     "disabledReason": disabled_reason,
-                    "fingerprint": layer.fingerprint(),
+                    "fingerprint": layer.fingerprint().map(|fingerprint| fingerprint.to_string()),
                     "rawTomlPresent": layer.raw_toml().is_some(),
                 })
             }).collect::<Vec<_>>(),
@@ -252,6 +255,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
+            process: crate::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery debug config".to_owned(),
@@ -299,6 +303,7 @@ mod tests {
             auth_session,
             browser: NoopBrowser,
             terminal: NoopTerminal,
+            process: crate::process_context::ProcessContext::default(),
         };
 
         let output = render_auth_session_output(&runtime);
