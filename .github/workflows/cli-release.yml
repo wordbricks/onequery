@@ -41,9 +41,9 @@ jobs:
           echo "✅  Tag and Cargo.toml agree (${version})"
 
           publish_tag="latest"
-          if [[ "${version}" == *"-alpha."* ]]; then
+          if [[ "${version}" =~ -alpha([.-]|$) ]]; then
             publish_tag="alpha"
-          elif [[ "${version}" == *"-beta."* ]]; then
+          elif [[ "${version}" =~ -beta([.-]|$) ]]; then
             publish_tag="beta"
           elif [[ "${version}" == *"-"* ]]; then
             publish_tag="next"
