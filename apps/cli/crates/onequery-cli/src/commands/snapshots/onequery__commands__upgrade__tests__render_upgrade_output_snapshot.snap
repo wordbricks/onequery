@@ -3,5 +3,6 @@ source: crates/onequery-cli/src/commands/upgrade.rs
 expression: "output.lines.join(\"\\n\")"
 ---
 Upgrade completed.
+Version: 1.2.3
 Installer: Bun
 Command: bun install -g @onequery/cli@latest

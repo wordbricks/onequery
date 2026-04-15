@@ -7,6 +7,7 @@ use std::process::Stdio;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Deserialize;
 use serde_json::json;
 
 use crate::output::CommandOutput;
@@ -71,6 +72,17 @@ impl UpgradePlan {
             args: args.into_iter().map(Into::into).collect(),
         }
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum InstalledVersionProbe {
+    Launcher(PathBuf),
+    PackageJson(PathBuf),
+}
+
+#[derive(Debug, Deserialize)]
+struct PackageVersion {
+    version: String,
 }
 
 pub(crate) async fn execute<B, T>(
@@ -143,7 +155,9 @@ where
         ));
     }
 
-    Ok(render_upgrade_output(plan))
+    let installed_version = resolve_installed_version(current_exe.as_path(), plan.installer);
+
+    Ok(render_upgrade_output(plan, installed_version))
 }
 
 fn detect_upgrade_plan(current_exe: &Path) -> Option<UpgradePlan> {
@@ -232,6 +246,105 @@ fn install_script_root(current_exe: &Path) -> Option<PathBuf> {
     vendor_dir.parent().map(Path::to_path_buf)
 }
 
+fn resolve_installed_version(current_exe: &Path, installer: UpgradeInstaller) -> Option<String> {
+    let probe = detect_installed_version_probe(current_exe, installer)?;
+    match probe {
+        InstalledVersionProbe::Launcher(path) => {
+            probe_installed_version_from_launcher(path.as_path())
+        }
+        InstalledVersionProbe::PackageJson(path) => read_package_version(path.as_path()),
+    }
+}
+
+fn detect_installed_version_probe(
+    current_exe: &Path,
+    installer: UpgradeInstaller,
+) -> Option<InstalledVersionProbe> {
+    match installer {
+        UpgradeInstaller::Homebrew => Some(InstalledVersionProbe::Launcher(
+            homebrew_launcher_path(current_exe)?,
+        )),
+        UpgradeInstaller::InstallScript => Some(InstalledVersionProbe::Launcher(
+            install_script_root(current_exe)?
+                .join("bin")
+                .join("onequery"),
+        )),
+        UpgradeInstaller::Bun | UpgradeInstaller::Npm => Some(InstalledVersionProbe::PackageJson(
+            node_package_root(current_exe)?.join("package.json"),
+        )),
+    }
+}
+
+fn homebrew_launcher_path(current_exe: &Path) -> Option<PathBuf> {
+    let cellar_root = current_exe
+        .ancestors()
+        .find(|path| path.file_name() == Some(OsStr::new("Cellar")))?;
+    Some(cellar_root.parent()?.join("bin").join("onequery"))
+}
+
+fn node_package_root(current_exe: &Path) -> Option<PathBuf> {
+    let cli_dir = current_exe.parent()?;
+    if cli_dir.file_name()? != OsStr::new("onequery") {
+        return None;
+    }
+
+    let target_dir = cli_dir.parent()?;
+    let vendor_dir = target_dir.parent()?;
+    if vendor_dir.file_name()? != OsStr::new("vendor") {
+        return None;
+    }
+
+    let package_root = vendor_dir.parent()?;
+    if package_root.file_name()? != OsStr::new("cli") {
+        return None;
+    }
+
+    let scope_dir = package_root.parent()?;
+    if scope_dir.file_name()? != OsStr::new("@onequery") {
+        return None;
+    }
+
+    Some(package_root.to_path_buf())
+}
+
+fn probe_installed_version_from_launcher(launcher_path: &Path) -> Option<String> {
+    let output = ProcessCommand::new(launcher_path)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    parse_version_output(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn read_package_version(package_json_path: &Path) -> Option<String> {
+    let contents = std::fs::read_to_string(package_json_path).ok()?;
+    serde_json::from_str::<PackageVersion>(&contents)
+        .ok()
+        .map(|package| package.version)
+}
+
+fn parse_version_output(version_output: &str) -> Option<String> {
+    let trimmed = version_output.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let mut parts = trimmed.split_whitespace();
+    match (parts.next(), parts.next(), parts.next()) {
+        (Some(binary_name), Some(version), None) if binary_name.starts_with("onequery") => {
+            Some(version.to_owned())
+        }
+        (Some(version), None, None) => Some(version.to_owned()),
+        _ => None,
+    }
+}
+
 fn render_command_failure(stdout: &[u8], stderr: &[u8], exit_code: Option<i32>) -> String {
     let stderr_text = String::from_utf8_lossy(stderr);
     let stdout_text = String::from_utf8_lossy(stdout);
@@ -274,16 +387,21 @@ fn manual_upgrade_commands() -> Vec<String> {
     ]
 }
 
-fn render_upgrade_output(plan: UpgradePlan) -> CommandOutput {
+fn render_upgrade_output(plan: UpgradePlan, installed_version: Option<String>) -> CommandOutput {
+    let mut lines = vec!["Upgrade completed.".to_owned()];
+    match installed_version.as_deref() {
+        Some(version) => lines.push(format!("Version: {version}")),
+        None => lines.push("Version: unavailable".to_owned()),
+    }
+    lines.push(format!("Installer: {}", plan.installer.label()));
+    lines.push(format!("Command: {}", plan.display_command));
+
     CommandOutput::structured(
-        vec![
-            "Upgrade completed.".to_owned(),
-            format!("Installer: {}", plan.installer.label()),
-            format!("Command: {}", plan.display_command),
-        ],
+        lines,
         json!({
             "kind": "upgrade",
             "status": "completed",
+            "version": installed_version,
             "installer": plan.installer.id(),
             "command": plan.display_command,
         }),
@@ -295,6 +413,7 @@ fn render_upgrade_output(plan: UpgradePlan) -> CommandOutput {
 mod tests {
     use std::fs;
     use std::path::Path;
+    use std::path::PathBuf;
 
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
@@ -302,11 +421,15 @@ mod tests {
     use super::BUN_UPGRADE_COMMAND;
     use super::HOMEBREW_UPGRADE_COMMAND;
     use super::INSTALL_SCRIPT_UPGRADE_COMMAND;
+    use super::InstalledVersionProbe;
     use super::NPM_UPGRADE_COMMAND;
     use super::OUTPUT_PREVIEW_LINE_COUNT;
     use super::UpgradeInstaller;
     use super::UpgradePlan;
+    use super::detect_installed_version_probe;
     use super::detect_upgrade_plan;
+    use super::parse_version_output;
+    use super::read_package_version;
     use super::render_command_failure;
     use super::render_upgrade_output;
 
@@ -364,14 +487,75 @@ mod tests {
 
     #[test]
     fn render_upgrade_output_snapshot() {
-        let output = render_upgrade_output(UpgradePlan::new(
-            UpgradeInstaller::Bun,
-            BUN_UPGRADE_COMMAND,
-            "bun",
-            ["install", "-g", "@onequery/cli@latest"],
-        ));
+        let output = render_upgrade_output(
+            UpgradePlan::new(
+                UpgradeInstaller::Bun,
+                BUN_UPGRADE_COMMAND,
+                "bun",
+                ["install", "-g", "@onequery/cli@latest"],
+            ),
+            Some("1.2.3".to_owned()),
+        );
 
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn detect_installed_version_probe_uses_homebrew_launcher() {
+        let probe = detect_installed_version_probe(
+            Path::new(
+                "/opt/homebrew/Cellar/onequery/1.2.3/libexec/vendor/aarch64-apple-darwin/onequery/onequery",
+            ),
+            UpgradeInstaller::Homebrew,
+        );
+
+        assert_eq!(
+            probe,
+            Some(InstalledVersionProbe::Launcher(PathBuf::from(
+                "/opt/homebrew/bin/onequery",
+            )))
+        );
+    }
+
+    #[test]
+    fn detect_installed_version_probe_uses_package_json_for_node_installs() {
+        let probe = detect_installed_version_probe(
+            Path::new(
+                "/usr/local/lib/node_modules/@onequery/cli/vendor/x86_64-apple-darwin/onequery/onequery",
+            ),
+            UpgradeInstaller::Npm,
+        );
+
+        assert_eq!(
+            probe,
+            Some(InstalledVersionProbe::PackageJson(PathBuf::from(
+                "/usr/local/lib/node_modules/@onequery/cli/package.json",
+            )))
+        );
+    }
+
+    #[test]
+    fn read_package_version_from_package_json() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        let package_json = temp_dir.path().join("package.json");
+        fs::write(
+            &package_json,
+            r#"{"name":"@onequery/cli","version":"1.2.3"}"#,
+        )
+        .expect("failed to write package.json");
+
+        assert_eq!(
+            read_package_version(package_json.as_path()),
+            Some("1.2.3".to_owned())
+        );
+    }
+
+    #[test]
+    fn parse_version_output_extracts_cli_version() {
+        assert_eq!(
+            parse_version_output("onequery 1.2.3\n"),
+            Some("1.2.3".to_owned())
+        );
     }
 
     #[test]
