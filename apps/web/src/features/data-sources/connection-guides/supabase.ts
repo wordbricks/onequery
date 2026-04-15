@@ -11,7 +11,7 @@ export const supabaseGuideContent = {
         title: "Connection string 확인",
         paragraphs: [
           "Supabase Dashboard에서 대상 프로젝트를 연 뒤 `Project Settings > Database`로 이동하세요.",
-          "`Connection string` 또는 `Connection info` 섹션에서 Host, Port, Database, User 정보를 확인할 수 있습니다.",
+          "상단 `Connect` 패널에서 `Session pooler` connection string 또는 `Connection info`를 열고 Host, Port, Database, User 정보를 확인하세요.",
         ],
       },
       {
@@ -40,11 +40,11 @@ GRANT SELECT ON TABLES TO onequery_readonly;`,
       {
         title: "OneQuery에 입력",
         paragraphs: [
-          "OneQuery에서는 Supabase를 선택한 뒤 Supabase connection string 또는 수동 입력 값을 그대로 넣으면 됩니다.",
+          "OneQuery에서는 Supabase를 선택한 뒤 Session pooler connection string 또는 수동 입력 값을 그대로 넣으면 됩니다.",
           "Supabase는 SSL이 필요하므로 이 integration은 내부적으로 PostgreSQL + SSL required 설정으로 저장됩니다.",
         ],
         bullets: [
-          "Host 예시: db.<project-ref>.supabase.co",
+          "권장 Host 예시: aws-0-<region>.pooler.supabase.com (Session pooler)",
           "Port: 5432",
           "Database: postgres",
           "Username 예시: postgres.<project-ref> 또는 읽기 전용 사용자",
@@ -65,7 +65,7 @@ GRANT SELECT ON TABLES TO onequery_readonly;`,
         title: "Find the connection string",
         paragraphs: [
           "Open the target project in the Supabase Dashboard and go to `Project Settings > Database`.",
-          "Use the `Connection string` or `Connection info` section to collect host, port, database, and username.",
+          "Open the `Connect` panel and use the `Session pooler` connection string or `Connection info` section to collect host, port, database, and username.",
         ],
       },
       {
@@ -94,11 +94,11 @@ GRANT SELECT ON TABLES TO onequery_readonly;`,
       {
         title: "Enter it in OneQuery",
         paragraphs: [
-          "Select Supabase in OneQuery, then paste the Supabase connection string or fill the connection details manually.",
+          "Select Supabase in OneQuery, then paste the Session pooler connection string or fill the connection details manually.",
           "This integration is stored internally as PostgreSQL with SSL required, so the runtime path stays identical to Postgres.",
         ],
         bullets: [
-          "Host example: db.<project-ref>.supabase.co",
+          "Recommended host example: aws-0-<region>.pooler.supabase.com (Session pooler)",
           "Port: 5432",
           "Database: postgres",
           "Username example: postgres.<project-ref> or your read-only user",

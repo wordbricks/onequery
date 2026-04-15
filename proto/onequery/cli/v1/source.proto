@@ -50,6 +50,42 @@ message GetSourceResponse {
   ];
 }
 
+message TestSourceRequest {
+  string org_slug = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  string source_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message TestSourceResponse {
+  GetSourceResponse source = 1 [(buf.validate.field).required = true];
+  oneof outcome {
+    option (buf.validate.oneof).required = true;
+
+    TestSourceSupportedOutcome supported = 2;
+    TestSourceUnsupportedOutcome unsupported = 3;
+  }
+}
+
+message TestSourceSupportedOutcome {
+  bool success = 1;
+  string message = 2 [(buf.validate.field).string.min_len = 1];
+  optional string error = 3 [(buf.validate.field).string.min_len = 1];
+  optional uint64 latency_ms = 4;
+}
+
+message TestSourceUnsupportedOutcome {
+  CliSourceTestUnsupportedReason reason = 1 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string message = 2 [(buf.validate.field).string.min_len = 1];
+}
+
 message GetSourceConnectGuideRequest {
   string org_slug = 1 [
     (buf.validate.field).string.min_len = 1,
@@ -420,4 +456,10 @@ enum CliSourceStatus {
   CLI_SOURCE_STATUS_ACTIVE = 1;
   CLI_SOURCE_STATUS_ERROR = 2;
   CLI_SOURCE_STATUS_DISCONNECTED = 3;
+}
+
+enum CliSourceTestUnsupportedReason {
+  CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED = 0;
+  CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH = 1;
+  CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED = 2;
 }

@@ -16,6 +16,7 @@ import {
   runCliConnectSourceEffect,
   runCliListSourcesEffect,
   runCliLoadSourceEffect,
+  runCliTestSourceEffect,
 } from "../../../source/effects";
 import {
   getCliQueryableDatabaseProviderType,
@@ -35,10 +36,15 @@ import {
   createCliConnectSourceValidationError,
   parseConnectSourceCredentials,
 } from "./credentials";
-import { buildGetSourceResponse, toCliContentFormat } from "./response";
+import {
+  buildGetSourceResponse,
+  buildTestSourceResponse,
+  toCliContentFormat,
+} from "./response";
 import type {
   ConnectSourceResponseInit,
   GetSourceConnectGuideResponseInit,
+  TestSourceResponseInit,
 } from "./types";
 
 const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
@@ -139,6 +145,76 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
     });
 
     return Result.ok(buildGetSourceResponse(source.source));
+  });
+
+const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleTestSourceFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.read",
+        request.orgSlug,
+        context
+      )
+    );
+    const source = await runCliLoadSourceEffect({
+      db: access.c.var.storage.db,
+      effect: {
+        kind: "load_source",
+        organizationId: access.authorizedOrg.org.id,
+        sourceKey: request.sourceKey,
+      },
+    });
+
+    if (source.kind === "not_found") {
+      logCliEvent({
+        details: buildCliRequestLogDetails(access.c, {
+          orgSlug: access.authorizedOrg.org.slug,
+          roles: access.authorizedOrg.membershipRoles,
+          sourceKey: request.sourceKey,
+        }),
+        event: "source.test.not_found",
+        level: "warn",
+      });
+
+      return Result.err(
+        createCliConnectSourceNotFoundProblem(
+          access.authorizedOrg.org.slug,
+          request.sourceKey
+        )
+      );
+    }
+
+    const outcome = await runCliTestSourceEffect({
+      db: access.c.var.storage.db,
+      effect: {
+        kind: "test_source",
+        organizationId: access.authorizedOrg.org.id,
+        source: source.source,
+      },
+      masterEncryptionKey: access.c.var.runtime.crypto.masterEncryptionKey,
+    });
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        provider: source.source.provider,
+        roles: access.authorizedOrg.membershipRoles,
+        sourceKey: request.sourceKey,
+        success: outcome.kind === "supported" ? outcome.success : "unsupported",
+      }),
+      event: "source.test.completed",
+      level: outcome.kind === "supported" && !outcome.success ? "warn" : "info",
+    });
+
+    return Result.ok(
+      buildTestSourceResponse({
+        outcome,
+        source: source.source,
+      }) satisfies TestSourceResponseInit
+    );
   });
 
 const handleGetSourceConnectGuideImpl: CliResultServiceMethod<
@@ -253,6 +329,8 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
 export const handleListSources = liftCliServiceMethod(handleListSourcesImpl);
 
 export const handleGetSource = liftCliServiceMethod(handleGetSourceImpl);
+
+export const handleTestSource = liftCliServiceMethod(handleTestSourceImpl);
 
 export const handleGetSourceConnectGuide = liftCliServiceMethod(
   handleGetSourceConnectGuideImpl

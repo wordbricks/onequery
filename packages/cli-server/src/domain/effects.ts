@@ -3,6 +3,7 @@ import type {
   DatabaseCredentials,
   ProviderType,
 } from "@onequery/db/server";
+import type { UnsupportedTestReason } from "@onequery/server/services/data-source-tester";
 
 import type {
   CliQueryExecutionResult,
@@ -51,6 +52,32 @@ export type CliConnectSourceEffectResult =
   | {
       kind: "name_conflict";
       sourceName: string;
+    };
+
+export type CliTestSourceEffect = {
+  kind: "test_source";
+  organizationId: string;
+  source: CliQuerySourceRecord;
+};
+
+export type CliTestSourceEffectResult =
+  | {
+      kind: "supported";
+      success: true;
+      message: string;
+      latencyMs: number;
+    }
+  | {
+      kind: "supported";
+      success: false;
+      message: string;
+      error: string;
+      latencyMs: number;
+    }
+  | {
+      kind: "unsupported";
+      reason: UnsupportedTestReason;
+      message: string;
     };
 
 export type CliLoadCredentialsEffect = {

@@ -1,0 +1,13 @@
+---
+source: crates/onequery-cli/src/commands/source.rs
+assertion_line: 881
+expression: "output.lines.join(\"\\n\")"
+---
+Source: warehouse
+Display Name: Warehouse
+Provider: postgres
+Status: error
+Test: failed
+Message: Connection test failed.
+Error: password authentication failed
+Latency: 123 ms

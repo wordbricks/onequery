@@ -289,6 +289,17 @@ const heroSafeQueryScenarios = [
 const SAFE_QUERY_INITIAL_DELAY_MS = 360;
 const SAFE_QUERY_STEP_DELAY_MS = 520;
 const SAFE_QUERY_RESULT_HOLD_MS = 900;
+const SAFE_QUERY_FULL_CYCLE_MS =
+  SAFE_QUERY_INITIAL_DELAY_MS +
+  heroSafeQueryChecks.length * SAFE_QUERY_STEP_DELAY_MS +
+  SAFE_QUERY_RESULT_HOLD_MS;
+const SAFE_QUERY_TAB_MIN_DWELL_MS = 6500;
+const HERO_TAB_DWELL_MS = {
+  audit: 5000,
+  integrations: 5000,
+  // Keep the hero on safe query long enough to show the full checklist pass.
+  query: Math.max(SAFE_QUERY_TAB_MIN_DWELL_MS, SAFE_QUERY_FULL_CYCLE_MS + 1800),
+} satisfies Record<HeroProductTab, number>;
 
 type SafeQueryAnimationState = {
   cycleIndex: number;
@@ -524,7 +535,7 @@ function HeroDashboardSurface() {
 
   useEffect(() => {
     const tabOrder: HeroProductTab[] = ["integrations", "query", "audit"];
-    const intervalId = window.setInterval(() => {
+    const timeoutId = window.setTimeout(() => {
       setActiveTab((currentTab) => {
         const currentIndex = tabOrder.indexOf(currentTab);
         const nextIndex = (currentIndex + 1) % tabOrder.length;
@@ -532,12 +543,12 @@ function HeroDashboardSurface() {
         const nextTab = tabOrder[nextIndex];
         return nextTab === undefined ? "integrations" : nextTab;
       });
-    }, 5000);
+    }, HERO_TAB_DWELL_MS[activeTab]);
 
     return () => {
-      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [activeTab]);
 
   function renderTabContent() {
     switch (activeTab) {
@@ -1092,7 +1103,7 @@ export function App() {
           className="section utility-grid utility-grid-offset"
           id={LANDING_SECTION_IDS.workflow}
         >
-          <article className="utility-panel utility-panel-code">
+          <article className="utility-panel utility-panel-code workflow-panel-example">
             <p className="eyebrow">Query example</p>
             <TerminalSurface
               title="Query execution"
@@ -1101,7 +1112,7 @@ export function App() {
             />
           </article>
 
-          <article className="utility-panel">
+          <article className="utility-panel workflow-panel-details">
             <p className="eyebrow">Query details</p>
             <h2>Review the result, guardrails, and cost context together.</h2>
             <p>

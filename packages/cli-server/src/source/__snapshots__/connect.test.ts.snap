@@ -88,6 +88,50 @@ Example input:
     "format": "markdown",
     "title": "OneQuery Source Connect Guide",
   },
+  "supabase": {
+    "command": "onequery source connect --source supabase --input '<json>'",
+    "content": "# OneQuery Source Connect Guide
+
+Provider: \`supabase\`
+
+Agent workflow:
+1. If this provider requires a browser or dashboard setup flow, do not just ask the user to hand over the final token or secret. Work through the setup with the user step by step.
+2. First check whether you already have browser capability in the current environment.
+3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
+4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
+
+Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Run: \`onequery source connect --source supabase --input '<json>'\`
+Verify: \`onequery source show <name>\`
+Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
+The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+
+Connect Supabase with the session pooler host, database, and login credentials over the Postgres wire protocol.
+
+Steps:
+1. Open the Supabase Connect panel and retrieve the Session pooler host, database name, username, and password.
+2. Use the Supabase provider with the Postgres connection fields shown below. The CLI maps those fields onto the typed Supabase wire shape directly.
+3. Prefer the Session pooler for OneQuery's persistent backend connection path. Keep SSL enabled and confirm the correct port before building the payload.
+
+Example input:
+\`\`\`json
+{
+  "name": "supabase_prod",
+  "credentials": {
+    "host": "aws-0-us-east-1.pooler.supabase.com",
+    "port": 5432,
+    "database": "postgres",
+    "username": "postgres.project-ref",
+    "password": "supabase-db-password",
+    "sslMode": "require"
+  }
+}
+\`\`\`
+",
+    "description": "Follow these steps to gather credentials and create one supabase org-scoped OneQuery source.",
+    "format": "markdown",
+    "title": "OneQuery Source Connect Guide",
+  },
 }
 `;
 

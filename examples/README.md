@@ -103,10 +103,10 @@ onequery source connect --source supabase \
   --input '{
     "name": "supabase-prod",
     "credentials": {
-      "host": "db.xxxx.supabase.co",
+      "host": "aws-0-us-east-1.pooler.supabase.com",
       "port": 5432,
       "database": "postgres",
-      "username": "postgres",
+      "username": "postgres.xxxx",
       "password": "your-supabase-password"
     }
   }'

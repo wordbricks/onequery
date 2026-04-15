@@ -17,6 +17,7 @@ import {
   handleGetSource,
   handleGetSourceConnectGuide,
   handleListSources,
+  handleTestSource,
 } from "./service/source";
 import {
   handleDescribeSourceApi,
@@ -33,6 +34,7 @@ export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
     getOrganization: handleGetOrganization,
     listSources: handleListSources,
     getSource: handleGetSource,
+    testSource: handleTestSource,
     getSourceConnectGuide: handleGetSourceConnectGuide,
     connectSource: handleConnectSource,
     describeSourceApi: handleDescribeSourceApi,

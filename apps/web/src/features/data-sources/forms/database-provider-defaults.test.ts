@@ -9,15 +9,15 @@ describe("getDatabaseProviderDefaults", () => {
   it("returns the expected supabase defaults", () => {
     expect(getDatabaseProviderDefaults("supabase")).toEqual({
       connectionStringFormat:
-        "postgresql://postgres.[project-ref]:password@db.[project-ref].supabase.co:5432/postgres",
+        "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres",
       connectionStringPlaceholder:
-        "postgresql://postgres.[project-ref]:password@db.[project-ref].supabase.co:5432/postgres",
+        "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres",
       databasePlaceholder: "postgres",
       defaultDatabase: "postgres",
       defaultPort: 5432,
       defaultSslMode: "require",
-      fallbackHost: "localhost",
-      hostPlaceholder: "db.your-project-ref.supabase.co",
+      fallbackHost: "aws-0-[region].pooler.supabase.com",
+      hostPlaceholder: "aws-0-[region].pooler.supabase.com",
       invalidConnectionStringFormat:
         "postgres://user:password@host:port/database",
       isPostgresFamily: true,

@@ -212,6 +212,7 @@ impl Command {
             Self::Org(OrgSubcommand::Use { .. }) => "org use",
             Self::Source(SourceSubcommand::List { .. }) => "source list",
             Self::Source(SourceSubcommand::Show { .. }) => "source show",
+            Self::Source(SourceSubcommand::Test { .. }) => "source test",
             Self::Source(SourceSubcommand::Connect(_)) => "source connect",
             Self::Query(QuerySubcommand::Execute(_)) => "query exec",
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",

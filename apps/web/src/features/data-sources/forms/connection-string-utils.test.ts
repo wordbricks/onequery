@@ -9,7 +9,7 @@ import {
 describe("connection-string-utils", () => {
   it("uses provider-specific placeholders and format hints", () => {
     expect(buildConnectionStringPlaceholder("supabase")).toBe(
-      "postgresql://postgres.[project-ref]:password@db.[project-ref].supabase.co:5432/postgres"
+      "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres"
     );
     expect(buildConnectionStringFormat("mysql")).toBe(
       "mysql://user:password@host:port/database"

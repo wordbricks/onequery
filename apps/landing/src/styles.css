@@ -2051,83 +2051,132 @@ code {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.24);
-  backdrop-filter: blur(6px);
+  background: rgba(10, 10, 10, 0.28);
+  backdrop-filter: blur(12px);
 }
 
 .contact-modal {
   position: relative;
-  width: min(100%, 720px);
-  padding: 44px 40px 46px;
-  border-radius: 4px;
-  background: #ffffff;
-  box-shadow: 0 28px 100px rgba(15, 23, 42, 0.18);
+  width: min(100%, 640px);
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.04)),
+    var(--surface);
+  box-shadow: var(--shadow), var(--shadow-ring);
+}
+
+.contact-modal-header {
+  max-width: 480px;
 }
 
 .contact-modal h2 {
   margin: 0;
-  color: #243b53;
-  text-align: center;
-  font-size: clamp(2rem, 4vw, 3.1rem);
+  color: var(--ink);
+  font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 600;
   letter-spacing: -0.04em;
+  line-height: 1.02;
+}
+
+.contact-modal-copy {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.65;
 }
 
 .contact-modal-form {
   display: grid;
-  gap: 16px;
-  margin-top: 34px;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.contact-modal-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contact-modal-field {
+  display: grid;
+  gap: 8px;
+}
+
+.contact-modal-label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .contact-modal-input,
 .contact-modal-textarea {
-  padding: 16px 14px;
-  border-radius: 2px;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
-  color: #334155;
-  font-size: 16px;
-  line-height: 24px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .contact-modal-textarea {
-  min-height: 168px;
+  min-height: 152px;
+  padding-top: 14px;
+  padding-bottom: 14px;
   resize: vertical;
 }
 
 .contact-modal-actions {
   display: grid;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 16px;
-  margin-top: 10px;
+  margin-top: 6px;
+}
+
+.contact-modal-note {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .contact-modal-submit {
-  min-width: 120px;
-  min-height: 46px;
-  border-radius: 4px;
-  background: #2f73d8;
-  color: #ffffff;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  min-width: 152px;
+  min-height: 44px;
+  border-radius: 10px;
 }
 
 .contact-modal-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.02);
   color: var(--text-soft);
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
 .contact-modal-close:hover {
   color: var(--ink);
+  border-color: var(--line-strong);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .site-footer {
@@ -2214,13 +2263,20 @@ code {
 
 @media (max-width: 860px) {
   .site-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 12px;
     padding-top: 12px;
     padding-bottom: 14px;
   }
 
   .brand-mark {
+    grid-column: 1;
+    grid-row: 1;
     gap: 10px;
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .brand-mark-icon {
@@ -2337,20 +2393,28 @@ code {
     padding-inline: 24px;
   }
 
-  .site-header,
   .site-footer,
-  .hero-actions,
-  .header-actions {
+  .hero-actions {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .site-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
     flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .header-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
   }
 
   .hero-section {
-    padding-top: 104px;
+    gap: 28px;
+    padding-top: 40px;
   }
 
   .utility-grid,
@@ -2389,21 +2453,43 @@ code {
   }
 
   .contact-modal {
-    padding: 40px 24px 30px;
+    padding: 28px 22px 24px;
   }
 }
 
 @media (max-width: 640px) {
   .page-shell {
-    padding: 18px 16px 28px;
+    padding: 14px 16px 28px;
   }
 
   .site-header {
+    row-gap: 10px;
     padding-bottom: 16px;
   }
 
   .page-main {
-    gap: 72px;
+    gap: 64px;
+  }
+
+  .hero-section {
+    gap: 24px;
+    padding-top: 20px;
+  }
+
+  .hero-product-surface {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-product-sidebar {
+    display: none;
+  }
+
+  .hero-product-main {
+    padding: 18px 16px 16px;
+  }
+
+  .workflow-panel-details {
+    order: -1;
   }
 
   .hero-copy h1,
@@ -2437,6 +2523,14 @@ code {
     white-space: normal;
   }
 
+  .hero-actions {
+    width: 100%;
+  }
+
+  .hero-actions .button-primary {
+    width: 100%;
+  }
+
   .hero-safe-query-sidebar {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
@@ -2453,6 +2547,29 @@ code {
 
   .control-plane-column {
     grid-template-columns: 1fr;
+  }
+
+  .control-plane-column-left {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .control-plane-column-right {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .control-plane-member-wrap {
+    justify-self: stretch;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .control-plane-member-label {
+    font-size: 11px;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
   }
 
   .control-plane-node {
@@ -2492,6 +2609,15 @@ code {
   }
 
   .marketing-submit-button {
+    width: 100%;
+  }
+
+  .contact-modal-field-grid,
+  .contact-modal-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-modal-submit {
     width: 100%;
   }
 
