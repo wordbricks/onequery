@@ -10,6 +10,7 @@ import {
   LANDING_SECTION_IDS,
   LANDING_SELF_HOST_DOCS_URL,
 } from "./landing-config";
+import { FooterContactButton, ProductUpdatesSection } from "./marketing-forms";
 
 const querySnippet = `onequery query exec \\
   --source warehouse \\
@@ -1150,6 +1151,8 @@ export function App() {
             </a>
           </div>
         </section>
+
+        <ProductUpdatesSection />
       </main>
 
       <footer className="site-footer">
@@ -1165,6 +1168,7 @@ export function App() {
               {link.label}
             </a>
           ))}
+          <FooterContactButton />
         </div>
       </footer>
     </div>

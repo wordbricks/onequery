@@ -1953,6 +1953,183 @@ code {
   justify-content: flex-end;
 }
 
+.marketing-updates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+  gap: 28px;
+  align-items: end;
+  padding: 28px 32px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.04)),
+    var(--surface);
+  box-shadow: var(--shadow-ring);
+}
+
+.marketing-updates-copy {
+  max-width: 720px;
+}
+
+.marketing-updates-copy p:last-child {
+  margin-top: 18px;
+}
+
+.marketing-updates-form {
+  display: grid;
+  gap: 12px;
+}
+
+.marketing-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.marketing-input,
+.contact-modal-input,
+.contact-modal-textarea {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: #ffffff;
+  color: var(--ink);
+  outline: none;
+}
+
+.marketing-input:focus,
+.contact-modal-input:focus,
+.contact-modal-textarea:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.marketing-input {
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.marketing-submit-button {
+  min-width: 132px;
+}
+
+.marketing-form-feedback {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.marketing-form-feedback-error {
+  color: #b42318;
+}
+
+.marketing-form-feedback-success {
+  color: #0f766e;
+}
+
+.contact-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.contact-link-button:hover {
+  color: var(--ink);
+}
+
+.contact-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(6px);
+}
+
+.contact-modal {
+  position: relative;
+  width: min(100%, 720px);
+  padding: 44px 40px 46px;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 28px 100px rgba(15, 23, 42, 0.18);
+}
+
+.contact-modal h2 {
+  margin: 0;
+  color: #243b53;
+  text-align: center;
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.contact-modal-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 34px;
+}
+
+.contact-modal-input,
+.contact-modal-textarea {
+  padding: 16px 14px;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  color: #334155;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.contact-modal-textarea {
+  min-height: 168px;
+  resize: vertical;
+}
+
+.contact-modal-actions {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.contact-modal-submit {
+  min-width: 120px;
+  min-height: 46px;
+  border-radius: 4px;
+  background: #2f73d8;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.contact-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.contact-modal-close:hover {
+  color: var(--ink);
+}
+
 .site-footer {
   display: flex;
   align-items: center;
@@ -2006,6 +2183,7 @@ code {
   }
 
   .feature-row,
+  .marketing-updates,
   .final-cta {
     grid-template-columns: 1fr;
   }
@@ -2209,6 +2387,10 @@ code {
   .mock-header-badges {
     justify-content: flex-start;
   }
+
+  .contact-modal {
+    padding: 40px 24px 30px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2299,9 +2481,18 @@ code {
   }
 
   .utility-panel,
+  .marketing-updates,
   .final-cta {
     padding-left: 20px;
     padding-right: 20px;
+  }
+
+  .marketing-inline-form {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-submit-button {
+    width: 100%;
   }
 
   .mock-main,
