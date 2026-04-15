@@ -2,6 +2,7 @@ use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::ReadArgs;
+use crate::identifiers::OrgSlug;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
@@ -41,7 +42,7 @@ enum OrgGetTerminalState {
 enum OrgGetEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -60,7 +61,7 @@ enum OrgGetEvent {
 #[derive(Debug)]
 enum OrgGetEffect {
     EnsureAuthenticatedOrg,
-    FetchOrg { org: String, read: ReadArgs },
+    FetchOrg { org: OrgSlug, read: ReadArgs },
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

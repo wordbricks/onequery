@@ -13,7 +13,6 @@ use crate::transport::read_controls::PageInfo;
 use onequery_cli_core::error::CliError;
 
 use super::super::CommandContext;
-use super::super::ResolvedOrgSource;
 
 pub(super) fn render_org_list_output(
     payload: OrgListPayload,
@@ -120,11 +119,7 @@ pub(super) fn current(context: &CommandContext) -> CommandOutput {
     let (org, source, resolved) = match context.resolved_org.as_deref() {
         Some(org_slug) => {
             lines.push(format!("Org: {org_slug}"));
-            let source = match context.resolved_org_source {
-                ResolvedOrgSource::Flag => "--org",
-                ResolvedOrgSource::Config => "config",
-                ResolvedOrgSource::None => "unresolved",
-            };
+            let source = context.resolved_org_source.effective_org_label();
             lines.push(format!("Source: {source}"));
             lines.push("Resolved: yes".to_owned());
             (Some(org_slug.to_owned()), source, true)

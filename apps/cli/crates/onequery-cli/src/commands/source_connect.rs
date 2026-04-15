@@ -2,6 +2,7 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::cli::SourceConnectArgs;
+use crate::identifiers::OrgSlug;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::output::serialize_command_data;
@@ -59,7 +60,7 @@ enum SourceConnectTerminalState {
 enum SourceConnectEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -86,11 +87,11 @@ enum SourceConnectEvent {
 enum SourceConnectEffect {
     EnsureAuthenticatedOrg,
     FetchGuide {
-        org: String,
+        org: OrgSlug,
         source: SourceConnectProvider,
     },
     ConnectSource {
-        org: String,
+        org: OrgSlug,
         source: SourceConnectProvider,
         input: Map<String, Value>,
     },

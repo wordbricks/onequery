@@ -7,7 +7,6 @@ use crate::output::CommandOutput;
 
 use super::CommandContext;
 use super::ResolvedBaseUrlSource;
-use super::ResolvedOrgSource;
 use super::Runtime;
 use super::resolved_base_url;
 
@@ -43,7 +42,7 @@ fn render_config_output<B, T>(
         ),
         format!(
             "Resolved org source: {}",
-            resolved_org_source_label(context.resolved_org_source)
+            context.resolved_org_source.describe()
         ),
         "Values:".to_owned(),
         format!(
@@ -99,7 +98,7 @@ fn render_config_output<B, T>(
             "baseUrl": context.base_url,
             "baseUrlSource": base_url_source.describe(),
             "resolvedOrg": context.resolved_org,
-            "resolvedOrgSource": resolved_org_source_label(context.resolved_org_source),
+            "resolvedOrgSource": context.resolved_org_source.describe(),
             "values": {
                 "activeOrg": runtime.config.data().active_org,
                 "serverUrl": runtime.config.data().server_url,
@@ -195,14 +194,6 @@ fn display_optional_u64(value: Option<u64>) -> String {
     value.map_or_else(|| "<none>".to_owned(), |value| value.to_string())
 }
 
-fn resolved_org_source_label(source: ResolvedOrgSource) -> &'static str {
-    match source {
-        ResolvedOrgSource::Flag => "flag",
-        ResolvedOrgSource::Config => "config",
-        ResolvedOrgSource::None => "none",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -211,6 +202,7 @@ mod tests {
     use insta::assert_snapshot;
     use uuid::Uuid;
 
+    use crate::commands::ResolvedOrgSource;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
     use crate::config::default_base_url;
@@ -220,7 +212,6 @@ mod tests {
 
     use super::CommandContext;
     use super::ResolvedBaseUrlSource;
-    use super::ResolvedOrgSource;
     use super::Runtime;
     use super::render_auth_session_output;
     use super::render_config_output;

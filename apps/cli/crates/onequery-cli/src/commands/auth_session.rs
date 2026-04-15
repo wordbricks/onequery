@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::identifiers::OrgSlug;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
 use crate::presentation::api_failure::present_api_failure_with_context;
@@ -140,9 +141,9 @@ pub(crate) async fn ensure_authenticated<B, T>(
 pub(crate) async fn ensure_authenticated_org<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
-) -> Result<String, CliError> {
+) -> Result<OrgSlug, CliError> {
     ensure_authenticated(context, runtime).await?;
-    super::require_org(context).map(ToOwned::to_owned)
+    super::require_org(context)
 }
 
 fn reduce_auth_session(
@@ -382,7 +383,10 @@ fn build_authenticated_api_client(
         &context.base_url,
         request_timeout,
         token,
-        context.request_id.as_deref(),
+        context
+            .request_id
+            .as_ref()
+            .map(crate::identifiers::RequestId::as_str),
     )
     .map_err(|failure| present_api_client_build_failure(failure, &context.command_line))
 }
@@ -394,7 +398,10 @@ pub(crate) fn build_unauthenticated_api_client(
     UnauthenticatedApiClient::new_with_timeout_and_request_id(
         &context.base_url,
         request_timeout,
-        context.request_id.as_deref(),
+        context
+            .request_id
+            .as_ref()
+            .map(crate::identifiers::RequestId::as_str),
     )
     .map_err(|failure| present_api_client_build_failure(failure, &context.command_line))
 }
@@ -504,7 +511,7 @@ mod tests {
         request_id: &str,
     ) -> CommandContext {
         CommandContext {
-            request_id: Some(request_id.to_owned()),
+            request_id: Some(crate::identifiers::test_request_id(request_id)),
             ..test_context(base_url, command_line)
         }
     }

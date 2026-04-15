@@ -13,16 +13,16 @@ use crate::cli::QueryInputArgs;
 use crate::cli::QuerySubcommand;
 use crate::cli::QueryValidateArgs;
 use crate::cli::ReadArgs;
+use crate::identifiers::OrgSlug;
+use crate::identifiers::SourceKey;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
-use crate::recovery::retry_try_next;
 use crate::transport::query::QueryRequestPayload;
 use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::runner::Transition;
 use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
 
 use self::execute::run_query_workflow;
 use self::validate::run_query_validate_workflow;
@@ -55,14 +55,14 @@ struct CheckingAuthState {
 
 #[derive(Debug)]
 struct PendingQueryRequest {
-    source_key: String,
+    source_key: SourceKey,
     read: ListReadArgs,
     payload: QueryRequestPayload,
 }
 
 #[derive(Debug, Clone)]
 struct LoadingQueryInputState {
-    pub(super) source_key: String,
+    pub(super) source_key: SourceKey,
     pub(super) read: ListReadArgs,
 }
 
@@ -79,8 +79,8 @@ struct WaitingToRetryQueryState {
 
 #[derive(Debug)]
 struct QueryRequest {
-    org: String,
-    source_key: String,
+    org: OrgSlug,
+    source_key: SourceKey,
     read: ListReadArgs,
     payload: QueryRequestPayload,
 }
@@ -92,7 +92,7 @@ pub(super) struct ValidateIdleState {
 
 #[derive(Debug, Clone)]
 pub(super) struct ValidateLoadingQueryInputState {
-    source_key: String,
+    source_key: SourceKey,
     read: ReadArgs,
 }
 
@@ -103,7 +103,7 @@ pub(super) struct ValidateCheckingAuthState {
 
 #[derive(Debug)]
 struct PendingValidateQueryRequest {
-    source_key: String,
+    source_key: SourceKey,
     read: ReadArgs,
     payload: QueryRequestPayload,
 }
@@ -115,8 +115,8 @@ pub(super) struct ValidatingQueryState {
 
 #[derive(Debug)]
 pub(super) struct ValidateQueryRequest {
-    org: String,
-    source_key: String,
+    org: OrgSlug,
+    source_key: SourceKey,
     read: ReadArgs,
     payload: QueryRequestPayload,
 }
@@ -142,7 +142,7 @@ enum QueryTerminalState {
 enum QueryEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -208,7 +208,7 @@ enum QueryValidateFailureOutcome {
 enum QueryValidateEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -299,21 +299,4 @@ fn emit_request_id_if_verbose<B, T>(
             .terminal
             .stderr_line(format!("Request ID: {request_id}").as_str());
     }
-}
-
-pub(super) fn validate_query_source_key(
-    raw_source_key: &str,
-    context: &CommandContext,
-) -> Result<String, CliError> {
-    crate::identifiers::normalize_safe_path_segment(raw_source_key)
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| {
-            CliError::new(
-                "invalid source key",
-                context.command_line.clone(),
-                ErrorStage::ParseCommand,
-                "source key must use only letters, numbers, dots, underscores, or hyphens",
-                retry_try_next(&context.command_line),
-            )
-        })
 }

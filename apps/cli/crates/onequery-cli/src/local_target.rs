@@ -74,10 +74,11 @@ pub(crate) fn managed_gateway_unavailable_error(
         return Ok(None);
     }
 
-    managed_gateway_unavailable_error_with_paths(
+    managed_gateway_unavailable_error_with_probe(
         context,
         stage,
         self_host_runtime_paths(&context.command_line)?,
+        runtime_accepting_connections,
     )
 }
 
@@ -95,14 +96,19 @@ pub(crate) fn managed_gateway_recovery_try_next(
     managed_gateway_recovery_try_next_with_paths(
         context,
         self_host_runtime_paths(&context.command_line)?,
+        runtime_accepting_connections,
     )
 }
 
-fn managed_gateway_unavailable_error_with_paths(
+fn managed_gateway_unavailable_error_with_probe<F>(
     context: &CommandContext,
     stage: ErrorStage,
     paths: SelfHostRuntimePaths,
-) -> Result<Option<CliError>, CliError> {
+    runtime_accepting_connections: F,
+) -> Result<Option<CliError>, CliError>
+where
+    F: Fn(&str, u16) -> bool,
+{
     let Some(target) = managed_gateway_target_for_base_url_with_paths(
         &context.base_url,
         paths,
@@ -119,10 +125,14 @@ fn managed_gateway_unavailable_error_with_paths(
     Ok(Some(gateway_unavailable_error(context, stage, &target)))
 }
 
-fn managed_gateway_recovery_try_next_with_paths(
+fn managed_gateway_recovery_try_next_with_paths<F>(
     context: &CommandContext,
     paths: SelfHostRuntimePaths,
-) -> Result<Option<Vec<String>>, CliError> {
+    runtime_accepting_connections: F,
+) -> Result<Option<Vec<String>>, CliError>
+where
+    F: Fn(&str, u16) -> bool,
+{
     let Some(target) = managed_gateway_target_for_base_url_with_paths(
         &context.base_url,
         paths,
@@ -301,6 +311,7 @@ fn is_loopback_or_localhost_host(host: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::net::TcpListener;
 
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
@@ -323,7 +334,8 @@ mod tests {
     use super::managed_gateway;
     use super::managed_gateway_recovery_try_next_with_paths;
     use super::managed_gateway_unavailable_error;
-    use super::managed_gateway_unavailable_error_with_paths;
+    use super::managed_gateway_unavailable_error_with_probe;
+    use super::runtime_accepting_connections;
 
     fn target_state(
         paths: SelfHostRuntimePaths,
@@ -353,6 +365,22 @@ mod tests {
             resolved_org_source: ResolvedOrgSource::None,
             verbose: false,
         }
+    }
+
+    fn unused_local_port() -> u16 {
+        TcpListener::bind((DEFAULT_SELF_HOST_LISTEN_HOST, 0))
+            .unwrap_or_else(|error| panic!("expected test TCP listener to bind: {error}"))
+            .local_addr()
+            .unwrap_or_else(|error| panic!("expected test TCP listener local addr: {error}"))
+            .port()
+    }
+
+    fn write_public_config(paths: &SelfHostRuntimePaths, port: u16) {
+        fs::write(
+            &paths.config_path,
+            format!("[server]\nlisten_host = \"{DEFAULT_SELF_HOST_LISTEN_HOST}\"\nport = {port}\n"),
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
     }
 
     #[test]
@@ -432,12 +460,20 @@ mod tests {
 
     #[test]
     fn managed_gateway_recovery_try_next_guides_start_without_retry_command() {
+        let paths = test_paths();
+        let port = unused_local_port();
+        let base_url = format!("http://{DEFAULT_SELF_HOST_LISTEN_HOST}:{port}");
+        write_public_config(&paths, port);
+
         let try_next = managed_gateway_recovery_try_next_with_paths(
             &test_context(
-                "http://127.0.0.1:5656",
+                &base_url,
                 "onequery query exec --source warehouse --sql \"select 1\"",
             ),
-            test_paths(),
+            paths,
+            // Comment: test guidance should not depend on whether a developer already has a local
+            // gateway or some unrelated process listening on a well-known port.
+            |_, _| false,
         )
         .unwrap_or_else(|error| panic!("expected gateway recovery lookup to succeed: {error}"))
         .expect("expected gateway recovery guidance for local target");
@@ -472,10 +508,11 @@ mod tests {
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
-        let error = managed_gateway_unavailable_error_with_paths(
+        let error = managed_gateway_unavailable_error_with_probe(
             &test_context("http://127.0.0.1:5656", "onequery auth login"),
             ErrorStage::Auth,
             paths,
+            runtime_accepting_connections,
         )
         .expect_err("expected invalid self-host config to fail");
 

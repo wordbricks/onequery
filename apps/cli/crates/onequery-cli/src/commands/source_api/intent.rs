@@ -396,7 +396,7 @@ mod tests {
 
     fn api_args() -> ApiArgs {
         ApiArgs {
-            source: "github-prod".to_owned(),
+            source: crate::identifiers::test_source_key("github-prod"),
             op: None,
             target: None,
             method: None,

@@ -5,6 +5,7 @@ use tokio::time::sleep;
 
 use crate::cli::ListReadArgs;
 use crate::cli::OrgSubcommand;
+use crate::identifiers::OrgSlug;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
@@ -44,7 +45,7 @@ pub(super) enum OrgMode {
     },
     Current,
     Use {
-        next_org: String,
+        next_org: OrgSlug,
         configured_active_org: Option<String>,
         dry_run: bool,
     },
@@ -56,7 +57,7 @@ pub(super) enum OrgLoadRequest {
         read: ListReadArgs,
     },
     Use {
-        next_org: String,
+        next_org: OrgSlug,
         configured_active_org: Option<String>,
         dry_run: bool,
     },
@@ -107,7 +108,7 @@ pub(super) enum OrgEvent {
     },
     OrgRetryDelayElapsed,
     ActiveOrgPersisted {
-        org: String,
+        org: OrgSlug,
     },
     ActiveOrgPersistFailed {
         error: CliError,
@@ -125,7 +126,7 @@ pub(super) enum OrgEffect {
         delay_ms: u64,
     },
     PersistActiveOrg {
-        org: String,
+        org: OrgSlug,
     },
 }
 
@@ -179,7 +180,7 @@ fn build_mode<B, T>(
         }
         OrgSubcommand::Current => OrgMode::Current,
         OrgSubcommand::Use { org_slug, dry_run } => OrgMode::Use {
-            next_org: normalize_org_slug(org_slug, context)?.to_owned(),
+            next_org: org_slug.clone(),
             configured_active_org: runtime
                 .config
                 .data()
@@ -545,7 +546,7 @@ where
         OrgEffect::PersistActiveOrg { org } => {
             match runtime
                 .config
-                .set_active_org(Some(org.clone()), &context.command_line)
+                .set_active_org(Some(org.to_string()), &context.command_line)
             {
                 Ok(()) => OrgEvent::ActiveOrgPersisted { org },
                 Err(error) => OrgEvent::ActiveOrgPersistFailed { error },
@@ -600,19 +601,4 @@ impl WorkflowLabel for OrgEffect {
             Self::PersistActiveOrg { .. } => "PersistActiveOrg",
         }
     }
-}
-
-pub(super) fn normalize_org_slug<'a>(
-    raw_org: &'a str,
-    context: &CommandContext,
-) -> Result<&'a str, CliError> {
-    crate::identifiers::normalize_org_slug(raw_org).ok_or_else(|| {
-        CliError::new(
-            "invalid org",
-            context.command_line.clone(),
-            ErrorStage::ResolveOrg,
-            "org must be a slug like acme-west",
-            vec!["onequery org use <org_slug>".to_owned()],
-        )
-    })
 }

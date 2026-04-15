@@ -37,7 +37,6 @@ use super::input::query_validate_failure_outcome;
 use super::input::with_effective_query_timeout;
 use super::presentation::render_query_validation_output;
 use super::read_controls_from_read_args;
-use super::validate_query_source_key;
 use crate::output::TerminalOutput;
 
 pub(super) async fn run_query_validate_workflow<B, T>(
@@ -93,10 +92,6 @@ fn reduce_validate_idle(
                 read,
                 input,
             } = state.args;
-            let source = match validate_query_source_key(source.as_str(), context) {
-                Ok(source) => source,
-                Err(error) => return Transition::done(validate_failed_state(error)),
-            };
             Transition::continue_with_effect(
                 QueryValidateState::LoadingQueryInput(ValidateLoadingQueryInputState {
                     source_key: source,

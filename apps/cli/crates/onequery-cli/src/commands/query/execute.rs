@@ -44,7 +44,6 @@ use super::input::load_query_request_payload;
 use super::input::with_effective_query_timeout;
 use super::presentation::render_query_output;
 use super::read_controls_from_list_args;
-use super::validate_query_source_key;
 use crate::output::TerminalOutput;
 
 pub(super) async fn run_query_workflow<B, T>(
@@ -99,10 +98,6 @@ pub(super) fn reduce_idle(
                 read,
                 input,
             } = state.args;
-            let source = match validate_query_source_key(source.as_str(), context) {
-                Ok(source) => source,
-                Err(error) => return Transition::done(failed_state(error)),
-            };
             Transition::continue_with_effect(
                 QueryState::LoadingQueryInput(LoadingQueryInputState {
                     source_key: source,

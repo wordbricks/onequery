@@ -1,3 +1,5 @@
+use std::num::NonZeroU64;
+
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
@@ -7,6 +9,8 @@ use onequery_cli_core::error::ErrorStage;
 use onequery_config::parse_cli_overrides;
 
 use crate::config::RawCliConfigOverrides;
+use crate::identifiers::OrgSlug;
+use crate::identifiers::RequestId;
 use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
 use crate::output::TerminalOutput;
@@ -20,7 +24,9 @@ use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
 use super::args::SourceSubcommand;
-use super::args::parse_positive_u64;
+use super::args::parse_non_zero_u64;
+use super::args::parse_org_slug;
+use super::args::parse_request_id;
 use super::args::parse_trimmed_non_empty;
 
 const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
@@ -72,9 +78,9 @@ struct GlobalArgs {
         global = true,
         long = "org",
         value_name = "ORG_SLUG",
-        value_parser = parse_trimmed_non_empty
+        value_parser = parse_org_slug
     )]
-    org_override: Option<String>,
+    org_override: Option<OrgSlug>,
     /// Apply a raw config override for this invocation using `key=value`.
     #[arg(global = true, long = "config", short = 'c', value_name = "KEY=VALUE")]
     config_overrides: Vec<String>,
@@ -83,17 +89,17 @@ struct GlobalArgs {
         global = true,
         long = "request-id",
         value_name = "REQUEST_ID",
-        value_parser = parse_trimmed_non_empty
+        value_parser = parse_request_id
     )]
-    request_id: Option<String>,
+    request_id: Option<RequestId>,
     /// Override the request timeout in seconds for this invocation.
     #[arg(
         global = true,
         long = "timeout",
         value_name = "SECONDS",
-        value_parser = parse_positive_u64
+        value_parser = parse_non_zero_u64
     )]
-    timeout_sec: Option<u64>,
+    timeout_sec: Option<NonZeroU64>,
     /// Choose text or JSON output.
     #[arg(global = true, long, value_enum)]
     output: Option<RequestedOutputMode>,
@@ -126,7 +132,7 @@ impl GlobalArgs {
             org: self.org_override,
             raw_config_overrides,
             request_id: self.request_id,
-            timeout_sec: self.timeout_sec,
+            timeout_sec: self.timeout_sec.map(NonZeroU64::get),
             output_mode: resolve_output_mode(self.output, stdout_is_tty),
             verbose: self.verbose,
         })
@@ -142,9 +148,9 @@ pub(crate) struct Invocation {
 
 #[derive(Debug, Clone)]
 pub(crate) struct GlobalOptions {
-    pub org: Option<String>,
+    pub org: Option<OrgSlug>,
     pub raw_config_overrides: RawCliConfigOverrides,
-    pub request_id: Option<String>,
+    pub request_id: Option<RequestId>,
     pub timeout_sec: Option<u64>,
     pub output_mode: EffectiveOutputMode,
     pub verbose: bool,

@@ -1,3 +1,197 @@
+use std::fmt;
+
+use http::HeaderValue;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct OrgSlug(String);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct OrgSlugParseError;
+
+impl OrgSlug {
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for OrgSlug {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for OrgSlug {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for OrgSlugParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("org must be a slug like acme-west")
+    }
+}
+
+impl TryFrom<&str> for OrgSlug {
+    type Error = OrgSlugParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        normalize_org_slug(value)
+            .map(|normalized| Self(normalized.to_owned()))
+            .ok_or(OrgSlugParseError)
+    }
+}
+
+impl TryFrom<String> for OrgSlug {
+    type Error = OrgSlugParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl From<OrgSlug> for String {
+    fn from(value: OrgSlug) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct SourceKey(String);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct SourceKeyParseError;
+
+impl SourceKey {
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for SourceKey {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for SourceKey {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for SourceKeyParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .write_str("source key must use only letters, numbers, dots, underscores, or hyphens")
+    }
+}
+
+impl TryFrom<&str> for SourceKey {
+    type Error = SourceKeyParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        normalize_safe_path_segment(value)
+            .map(|normalized| Self(normalized.to_owned()))
+            .ok_or(SourceKeyParseError)
+    }
+}
+
+impl TryFrom<String> for SourceKey {
+    type Error = SourceKeyParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl From<SourceKey> for String {
+    fn from(value: SourceKey) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct RequestId(String);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct RequestIdParseError;
+
+impl RequestId {
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for RequestId {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for RequestId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for RequestIdParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("request ID must use visible ASCII characters only")
+    }
+}
+
+impl TryFrom<&str> for RequestId {
+    type Error = RequestIdParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let normalized = value.trim();
+        if normalized.is_empty() {
+            return Err(RequestIdParseError);
+        }
+
+        HeaderValue::from_str(normalized).map_err(|_| RequestIdParseError)?;
+        // Comment: `HeaderValue` accepts tabs, but the CLI contract and its
+        // user-facing guidance both promise request IDs made of visible ASCII only.
+        if !normalized.bytes().all(|byte| matches!(byte, b'!'..=b'~')) {
+            return Err(RequestIdParseError);
+        }
+        Ok(Self(normalized.to_owned()))
+    }
+}
+
+impl TryFrom<String> for RequestId {
+    type Error = RequestIdParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl From<RequestId> for String {
+    fn from(value: RequestId) -> Self {
+        value.0
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn test_org_slug(value: &str) -> OrgSlug {
+    OrgSlug::try_from(value)
+        .unwrap_or_else(|error| panic!("expected valid org slug `{value}`: {error}"))
+}
+
+#[cfg(test)]
+pub(crate) fn test_request_id(value: &str) -> RequestId {
+    RequestId::try_from(value)
+        .unwrap_or_else(|error| panic!("expected valid request ID `{value}`: {error}"))
+}
+
+#[cfg(test)]
+pub(crate) fn test_source_key(value: &str) -> SourceKey {
+    SourceKey::try_from(value)
+        .unwrap_or_else(|error| panic!("expected valid source key `{value}`: {error}"))
+}
+
 pub(crate) fn normalize_org_slug(raw: &str) -> Option<&str> {
     let normalized = raw.trim();
     if normalized.is_empty() || !is_org_slug(normalized) {
@@ -78,6 +272,9 @@ fn is_org_slug(value: &str) -> bool {
 mod tests {
     use pretty_assertions::assert_eq;
 
+    use super::OrgSlug;
+    use super::RequestId;
+    use super::SourceKey;
     use super::is_public_id_format;
     use super::normalize_org_slug;
     use super::normalize_safe_path_segment;
@@ -127,6 +324,33 @@ mod tests {
                 normalize_safe_path_segment("ACME-13#draft"),
             ],
             [None, None, None, None]
+        );
+    }
+
+    #[test]
+    fn org_slug_type_parses_valid_slug() {
+        assert_eq!(
+            OrgSlug::try_from(" acme-west "),
+            Ok(OrgSlug("acme-west".to_owned()))
+        );
+    }
+
+    #[test]
+    fn source_key_type_rejects_unsafe_path_segments() {
+        assert_eq!(
+            SourceKey::try_from("warehouse/main").map_err(|error| error.to_string()),
+            Err(
+                "source key must use only letters, numbers, dots, underscores, or hyphens"
+                    .to_owned()
+            )
+        );
+    }
+
+    #[test]
+    fn request_id_type_rejects_control_characters() {
+        assert_eq!(
+            RequestId::try_from("req\t123").map_err(|error| error.to_string()),
+            Err("request ID must use visible ASCII characters only".to_owned())
         );
     }
 

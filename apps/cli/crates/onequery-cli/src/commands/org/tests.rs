@@ -7,6 +7,7 @@ use serde_json::json;
 use crate::cli::ListReadArgs;
 use crate::cli::ReadArgs;
 use crate::config::default_base_url;
+use crate::identifiers::test_org_slug as org_slug;
 use crate::transport::org::OrgDetails;
 use crate::transport::org::OrgListPayload;
 use crate::transport::org::OrgSummary;
@@ -30,7 +31,6 @@ use super::workflow::OrgEvent;
 use super::workflow::OrgLoadRequest;
 use super::workflow::OrgState;
 use super::workflow::OrgTerminalState;
-use super::workflow::normalize_org_slug;
 use super::workflow::reduce;
 
 #[test]
@@ -206,7 +206,7 @@ fn org_use_dry_run_completes_after_validation_without_persisting() {
     let transition = reduce(
         OrgState::LoadingOrgs {
             request: OrgLoadRequest::Use {
-                next_org: "globex".to_owned(),
+                next_org: org_slug("globex"),
                 configured_active_org: Some("acme".to_owned()),
                 dry_run: true,
             },
@@ -393,28 +393,4 @@ fn org_list_output_snapshot_empty_state() {
     with_command_snapshot_path(|| {
         assert_snapshot!(output.lines.join("\n"));
     });
-}
-
-#[test]
-fn normalize_org_slug_rejects_whitespace() {
-    let context = CommandContext {
-        command_line: "onequery org use \"acme west\"".to_owned(),
-        base_url: default_base_url(),
-        request_id: None,
-        resolved_org: None,
-        resolved_org_source: ResolvedOrgSource::None,
-        verbose: false,
-    };
-
-    let Err(error) = normalize_org_slug("acme west", &context) else {
-        panic!("expected invalid org slug");
-    };
-
-    assert_eq!(
-        (error.title.clone(), error.why.clone()),
-        (
-            "invalid org".to_owned(),
-            "org must be a slug like acme-west".to_owned()
-        )
-    );
 }

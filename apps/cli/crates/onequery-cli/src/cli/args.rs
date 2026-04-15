@@ -1,9 +1,16 @@
+use std::fmt::Display;
+use std::num::NonZeroU32;
+use std::num::NonZeroU64;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use clap::Args;
 use clap::Subcommand;
 use clap::ValueHint;
 
+use crate::identifiers::OrgSlug;
+use crate::identifiers::RequestId;
+use crate::identifiers::SourceKey;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
 pub(super) fn parse_trimmed_non_empty(raw: &str) -> Result<String, String> {
@@ -15,37 +22,45 @@ pub(super) fn parse_trimmed_non_empty(raw: &str) -> Result<String, String> {
     Ok(trimmed.to_owned())
 }
 
-pub(super) fn parse_positive_usize(raw: &str) -> Result<usize, String> {
-    let value = raw
-        .parse::<usize>()
-        .map_err(|error| format!("expected a positive integer: {error}"))?;
-    if value == 0 {
-        return Err("value must be greater than zero".to_owned());
-    }
-
-    Ok(value)
+fn parse_non_zero<T>(raw: &str) -> Result<T, String>
+where
+    T: std::str::FromStr,
+    T::Err: Display,
+{
+    raw.parse::<T>()
+        .map_err(|error| format!("expected a positive integer: {error}"))
 }
 
-pub(super) fn parse_positive_u64(raw: &str) -> Result<u64, String> {
-    let value = raw
-        .parse::<u64>()
-        .map_err(|error| format!("expected a positive integer: {error}"))?;
-    if value == 0 {
-        return Err("value must be greater than zero".to_owned());
-    }
-
-    Ok(value)
+fn parse_identifier<T>(raw: &str) -> Result<T, String>
+where
+    T: for<'a> TryFrom<&'a str>,
+    for<'a> <T as TryFrom<&'a str>>::Error: Display,
+{
+    T::try_from(raw).map_err(|error| error.to_string())
 }
 
-pub(super) fn parse_positive_u32(raw: &str) -> Result<u32, String> {
-    let value = raw
-        .parse::<u32>()
-        .map_err(|error| format!("expected a positive integer: {error}"))?;
-    if value == 0 {
-        return Err("value must be greater than zero".to_owned());
-    }
+pub(super) fn parse_non_zero_usize(raw: &str) -> Result<NonZeroUsize, String> {
+    parse_non_zero(raw)
+}
 
-    Ok(value)
+pub(super) fn parse_non_zero_u64(raw: &str) -> Result<NonZeroU64, String> {
+    parse_non_zero(raw)
+}
+
+pub(super) fn parse_non_zero_u32(raw: &str) -> Result<NonZeroU32, String> {
+    parse_non_zero(raw)
+}
+
+pub(super) fn parse_org_slug(raw: &str) -> Result<OrgSlug, String> {
+    parse_identifier(raw)
+}
+
+pub(super) fn parse_source_key(raw: &str) -> Result<SourceKey, String> {
+    parse_identifier(raw)
+}
+
+pub(super) fn parse_request_id(raw: &str) -> Result<RequestId, String> {
+    parse_identifier(raw)
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -123,8 +138,8 @@ pub(crate) enum OrgSubcommand {
     /// Persist the selected org as the active default.
     Use {
         /// Persist this org slug as the active org.
-        #[arg(value_name = "ORG_SLUG", value_parser = parse_trimmed_non_empty)]
-        org_slug: String,
+        #[arg(value_name = "ORG_SLUG", value_parser = parse_org_slug)]
+        org_slug: OrgSlug,
         /// Validate the selection without updating local config.
         #[arg(long)]
         dry_run: bool,
@@ -141,8 +156,8 @@ pub(crate) enum SourceSubcommand {
     /// Show one source by key.
     Show {
         /// Look up this source key.
-        #[arg(value_name = "SOURCE_KEY", value_parser = parse_trimmed_non_empty)]
-        source_key: String,
+        #[arg(value_name = "SOURCE_KEY", value_parser = parse_source_key)]
+        source_key: SourceKey,
         #[command(flatten, next_help_heading = "Read Controls")]
         read: ReadArgs,
     },
@@ -183,9 +198,9 @@ pub(crate) struct PaginationArgs {
     #[arg(
         long = "page-size",
         value_name = "PAGE_SIZE",
-        value_parser = parse_positive_usize
+        value_parser = parse_non_zero_usize
     )]
-    pub page_size: Option<usize>,
+    pub page_size: Option<NonZeroUsize>,
     /// Resume listing from this pagination cursor.
     #[arg(long, value_parser = parse_trimmed_non_empty)]
     pub cursor: Option<String>,
@@ -220,34 +235,34 @@ pub(crate) struct QueryResultWindowArgs {
     #[arg(
         long = "max-rows",
         value_name = "MAX_ROWS",
-        value_parser = parse_positive_usize
+        value_parser = parse_non_zero_usize
     )]
     #[arg(conflicts_with = "input")]
-    pub max_rows: Option<usize>,
+    pub max_rows: Option<NonZeroUsize>,
     /// Cap the total response payload size in bytes.
     #[arg(
         long = "max-bytes",
         value_name = "MAX_BYTES",
-        value_parser = parse_positive_usize
+        value_parser = parse_non_zero_usize
     )]
     #[arg(conflicts_with = "input")]
-    pub max_bytes: Option<usize>,
+    pub max_bytes: Option<NonZeroUsize>,
     /// Truncate individual cell values to this many characters.
     #[arg(
         long = "cell-max-chars",
         value_name = "CELL_MAX_CHARS",
-        value_parser = parse_positive_usize
+        value_parser = parse_non_zero_usize
     )]
     #[arg(conflicts_with = "input")]
-    pub cell_max_chars: Option<usize>,
+    pub cell_max_chars: Option<NonZeroUsize>,
     /// Override the query execution timeout in milliseconds.
     #[arg(
         long = "timeout-ms",
         value_name = "MILLISECONDS",
-        value_parser = parse_positive_u64
+        value_parser = parse_non_zero_u64
     )]
     #[arg(conflicts_with = "input")]
-    pub timeout_ms: Option<u64>,
+    pub timeout_ms: Option<NonZeroU64>,
 }
 
 #[derive(Debug, Clone, Args, Default, Eq, PartialEq)]
@@ -288,8 +303,8 @@ impl QueryInputArgs {
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct QueryExecuteArgs {
     /// Execute the query against this source key.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_trimmed_non_empty)]
-    pub source: String,
+    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
+    pub source: SourceKey,
     #[command(flatten)]
     pub read: ListReadArgs,
     #[command(flatten, next_help_heading = "Query Input")]
@@ -299,8 +314,8 @@ pub(crate) struct QueryExecuteArgs {
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct QueryValidateArgs {
     /// Validate the query against this source key.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_trimmed_non_empty)]
-    pub source: String,
+    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
+    pub source: SourceKey,
     #[command(flatten, next_help_heading = "Read Controls")]
     pub read: ReadArgs,
     #[command(flatten, next_help_heading = "Query Input")]
@@ -332,8 +347,8 @@ onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct ApiArgs {
     /// Describe or execute this connected source API.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_trimmed_non_empty)]
-    pub source: String,
+    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
+    pub source: SourceKey,
     /// Override the inferred source API operation.
     #[arg(long, value_name = "OPERATION", value_parser = parse_trimmed_non_empty)]
     pub op: Option<String>,
@@ -369,9 +384,9 @@ pub(crate) struct ApiArgs {
     #[arg(
         long,
         value_name = "N",
-        value_parser = parse_positive_u32
+        value_parser = parse_non_zero_u32
     )]
-    pub max_pages: Option<u32>,
+    pub max_pages: Option<NonZeroU32>,
     /// Include status and allowed response headers in text output.
     #[arg(short = 'i', long = "include")]
     pub include: bool,
