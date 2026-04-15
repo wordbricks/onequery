@@ -2,8 +2,25 @@
   "name": "@onequery/openclaw-plugin",
   "version": "0.0.0",
   "private": false,
+  "description": "OneQuery OpenClaw plugin",
+  "keywords": [
+    "onequery",
+    "openclaw",
+    "plugin"
+  ],
+  "homepage": "https://github.com/wordbricks/onequery/tree/main/packages/openclaw-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/wordbricks/onequery/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wordbricks/onequery.git",
+    "directory": "packages/openclaw-plugin"
+  },
   "files": [
-    "src",
+    "src/index.ts",
+    "src/openclaw.d.ts",
     "README.md",
     "openclaw.plugin.json",
     "skills",
@@ -17,6 +34,9 @@
       "bun": "./src/index.ts",
       "default": "./src/index.ts"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",

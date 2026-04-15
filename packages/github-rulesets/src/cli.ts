@@ -259,6 +259,7 @@ async function loadRulesetSpecs(): Promise<RulesetSpec[]> {
   const files = [
     resolve(RULESET_DIR, "main.json"),
     resolve(RULESET_DIR, "cli-release-tags.json"),
+    resolve(RULESET_DIR, "openclaw-plugin-release-tags.json"),
   ];
 
   return files.map((path) => readJsonFile<RulesetSpec>(path));

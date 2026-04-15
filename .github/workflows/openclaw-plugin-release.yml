@@ -1,0 +1,243 @@
+name: OpenClaw Plugin Release
+
+on:
+  push:
+    tags:
+      - "openclaw-plugin-v*.*.*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  tag-check:
+    runs-on: ubuntu-latest
+    outputs:
+      package_name: ${{ steps.validate.outputs.package_name }}
+      publish_tag: ${{ steps.validate.outputs.publish_tag }}
+      release_title: ${{ steps.validate.outputs.release_title }}
+      version: ${{ steps.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Validate tag matches OpenClaw plugin release version
+        id: validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Tag validation"
+
+          [[ "${GITHUB_REF_TYPE}" == "tag" ]] \
+            || { echo "❌  Not a tag push"; exit 1; }
+          [[ "${GITHUB_REF_NAME}" =~ ^openclaw-plugin-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] \
+            || { echo "❌  Tag '${GITHUB_REF_NAME}' does not match openclaw-plugin-v<semver>"; exit 1; }
+
+          version="${GITHUB_REF_NAME#openclaw-plugin-v}"
+          package_name="$(node -p "require('./packages/openclaw-plugin/package.json').name")"
+          package_version="$(node -p "require('./packages/openclaw-plugin/package.json').version")"
+          manifest_version="$(node -e "const fs = require('node:fs'); const manifest = JSON.parse(fs.readFileSync('./packages/openclaw-plugin/openclaw.plugin.json', 'utf8')); process.stdout.write(manifest.version)")"
+
+          [[ "${version}" == "${package_version}" ]] \
+            || { echo "❌  Tag ${version} ≠ package.json ${package_version}"; exit 1; }
+          [[ "${version}" == "${manifest_version}" ]] \
+            || { echo "❌  Tag ${version} ≠ openclaw.plugin.json ${manifest_version}"; exit 1; }
+
+          # COMMENT: npm installs community plugins with --ignore-scripts, so
+          # the tagged release commit must already contain the final manifest
+          # and package version with no postinstall rewrite step.
+          echo "✅  Tag, package.json, and openclaw.plugin.json agree (${version})"
+
+          publish_tag="latest"
+          if [[ "${version}" =~ -alpha([.-]|$) ]]; then
+            publish_tag="alpha"
+          elif [[ "${version}" =~ -beta([.-]|$) ]]; then
+            publish_tag="beta"
+          elif [[ "${version}" == *"-"* ]]; then
+            publish_tag="next"
+          fi
+
+          {
+            echo "package_name=${package_name}"
+            echo "publish_tag=${publish_tag}"
+            echo "release_title=${package_name} v${version}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
+  package:
+    needs: tag-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Stage npm tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist/npm-publish
+          # COMMENT: OpenClaw falls back to npm install --ignore-scripts for
+          # community plugins, so publish the raw package contents exactly as
+          # they appear in git and avoid any build-only release indirection.
+          npm pack ./packages/openclaw-plugin --pack-destination dist/npm-publish
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: openclaw-plugin-npm-publish-tarballs
+          path: dist/npm-publish/*.tgz
+          if-no-files-found: error
+
+  release:
+    needs: [tag-check, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate release notes from tag commit message
+        id: release_notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # COMMENT: For annotated tags GITHUB_SHA can point at the tag object,
+          # so peel to the tagged commit and keep reruns deterministic.
+          commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          notes_path="${RUNNER_TEMP}/release-notes.md"
+
+          git log -1 --format=%B "${commit}" > "${notes_path}"
+          echo >> "${notes_path}"
+
+          {
+            echo "path=${notes_path}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: openclaw-plugin-npm-publish-tarballs
+          path: dist/npm-publish
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IS_PRERELEASE: ${{ contains(needs.tag-check.outputs.version, '-') }}
+          RELEASE_NOTES_PATH: ${{ steps.release_notes.outputs.path }}
+          RELEASE_TITLE: ${{ needs.tag-check.outputs.release_title }}
+          TAG_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          release_assets=(dist/npm-publish/*.tgz)
+          [[ ${#release_assets[@]} -gt 0 ]] || {
+            echo "No release assets were staged"
+            exit 1
+          }
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            edit_args=(gh release edit "${TAG_NAME}" --title "${RELEASE_TITLE}" --notes-file "${RELEASE_NOTES_PATH}")
+            if [[ "${IS_PRERELEASE}" == "true" ]]; then
+              edit_args+=(--prerelease)
+            else
+              edit_args+=(--latest)
+            fi
+
+            echo "+ ${edit_args[*]}"
+            "${edit_args[@]}"
+
+            upload_args=(gh release upload "${TAG_NAME}" "${release_assets[@]}" --clobber)
+            echo "+ ${upload_args[*]}"
+            "${upload_args[@]}"
+            exit 0
+          fi
+
+          create_args=(gh release create "${TAG_NAME}" "${release_assets[@]}" --verify-tag --title "${RELEASE_TITLE}" --notes-file "${RELEASE_NOTES_PATH}")
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            create_args+=(--prerelease)
+          else
+            create_args+=(--latest)
+          fi
+
+          echo "+ ${create_args[*]}"
+          "${create_args[@]}"
+
+  publish-npm:
+    needs: [tag-check, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PACKAGE_NAME: ${{ needs.tag-check.outputs.package_name }}
+      PUBLISH_TAG: ${{ needs.tag-check.outputs.publish_tag }}
+      REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: openclaw-plugin-npm-publish-tarballs
+          path: dist/npm-publish
+
+      - name: Publish tarball to npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          tarballs=(dist/npm-publish/*.tgz)
+          [[ ${#tarballs[@]} -eq 1 ]] || {
+            echo "Expected exactly one tarball, found ${#tarballs[@]}"
+            exit 1
+          }
+
+          # COMMENT: npm provenance currently rejects publishes sourced from
+          # private GitHub repositories, so keep the CLI's conditional behavior.
+          publish_args=(--access public)
+          if [[ "${REPOSITORY_PRIVATE}" != "true" ]]; then
+            publish_args=(--provenance --access public)
+          fi
+
+          publish_cmd=(npm publish "${tarballs[0]}" "${publish_args[@]}")
+          if [[ -n "${PUBLISH_TAG}" ]]; then
+            publish_cmd+=(--tag "${PUBLISH_TAG}")
+          fi
+
+          echo "Publishing ${PACKAGE_NAME} from ${tarballs[0]}"
+          echo "+ ${publish_cmd[*]}"
+
+          set +e
+          publish_output="$("${publish_cmd[@]}" 2>&1)"
+          publish_status=$?
+          set -e
+
+          echo "${publish_output}"
+          if [[ ${publish_status} -eq 0 ]]; then
+            exit 0
+          fi
+
+          if grep -qiE "previously published|cannot publish over|version already exists" <<< "${publish_output}"; then
+            echo "Skipping already-published package version for ${PACKAGE_NAME}"
+            exit 0
+          fi
+
+          exit "${publish_status}"
