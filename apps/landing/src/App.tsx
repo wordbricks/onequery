@@ -918,7 +918,6 @@ function TerminalSurface({
 
       <div className="terminal-surface-footer">
         <span>{footer}</span>
-        <span className="terminal-cursor" aria-hidden="true" />
       </div>
     </div>
   );
@@ -962,16 +961,20 @@ export function App() {
         </nav>
 
         <div className="header-actions">
-          <a href={LANDING_CLI_SOURCE_URL} target="_blank" rel="noreferrer">
-            Source
-          </a>
           <a
-            className="button button-primary"
+            className="header-github-link"
             href={LANDING_REPOSITORY_URL}
             target="_blank"
             rel="noreferrer"
+            aria-label="Open OneQuery GitHub repository"
           >
-            GitHub
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="header-github-link-icon"
+            >
+              <path d={brandIcons.github} fill="currentColor" />
+            </svg>
           </a>
         </div>
       </header>
@@ -1116,8 +1119,8 @@ export function App() {
               Self-host or connect to an existing server
             </p>
             <h2>
-              Bring OneQuery into your own environment and keep the control
-              plane close to the data.
+              Deploy OneQuery in your environment for secure, controllable, and
+              fully visible data operations.
             </h2>
             <p>
               OneQuery is an open-source platform for unified data querying.
