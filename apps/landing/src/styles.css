@@ -633,14 +633,14 @@ code {
 
 .hero-product-focus {
   display: grid;
-  grid-template-rows: auto 196px;
+  grid-template-rows: auto 232px;
   gap: 14px;
   padding: 18px 0 0;
   border-top: 1px solid var(--line);
 }
 
 .hero-product-panel-body {
-  height: 196px;
+  height: 232px;
   overflow: hidden;
 }
 
@@ -677,29 +677,154 @@ code {
   border-top: 0;
 }
 
-.hero-product-query {
+.hero-safe-query {
   display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.9fr);
+  gap: 24px;
   min-height: 100%;
+  padding: 8px 0 2px;
+}
+
+.hero-safe-query-preview,
+.hero-safe-query-result {
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+
+.hero-safe-query-preview {
+  display: grid;
   align-content: start;
-  gap: 6px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  gap: 18px;
+  min-height: 100%;
+  padding: 22px 24px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
-.hero-product-query-meta {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
+.hero-safe-query-preview-line {
+  color: rgba(10, 10, 10, 0.74);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: hero-item-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.hero-product-query code {
+.hero-safe-query-preview-line-primary {
+  margin-top: 6px;
   color: var(--ink);
+  font-size: 17px;
+}
+
+.hero-safe-query-sidebar {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 20px;
+  padding-top: 10px;
+}
+
+.hero-safe-query-checklist {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.hero-safe-query-check {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: rgba(10, 10, 10, 0.82);
   font-size: 12px;
-  line-height: 1.6;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   opacity: 0;
   transform: translateY(6px);
   animation: hero-item-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.hero-safe-query-check-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: #fff;
+  color: transparent;
+  font-size: 18px;
+  line-height: 1;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.hero-safe-query-check[data-status="success"] .hero-safe-query-check-box {
+  border-color: rgba(10, 10, 10, 0.72);
+  color: var(--ink);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.06);
+  transform: scale(1.04);
+}
+
+.hero-safe-query-check[data-status="failure"] .hero-safe-query-check-box {
+  border-color: rgba(10, 10, 10, 0.72);
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 12px 22px rgba(10, 10, 10, 0.12);
+  transform: scale(1.04);
+}
+
+.hero-safe-query-check[data-status="pending"] {
+  color: var(--text-soft);
+}
+
+.hero-safe-query-result-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero-safe-query-result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 144px;
+  min-height: 76px;
+  padding: 0 24px;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.hero-safe-query-result[data-result="pending"] {
+  color: rgba(10, 10, 10, 0.56);
+}
+
+.hero-safe-query-result[data-result="pass"] {
+  border-color: rgba(10, 10, 10, 0.72);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.07);
+  transform: translateY(-1px);
+}
+
+.hero-safe-query-result[data-result="blocked"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 18px 34px rgba(10, 10, 10, 0.16);
+  transform: translateY(-1px);
 }
 
 .hero-product-audit-item {
@@ -735,26 +860,37 @@ code {
 }
 
 .hero-product-row:nth-child(1),
-.hero-product-query code:nth-child(1),
 .hero-product-audit-item:nth-child(1) {
   animation-delay: 60ms;
 }
 
 .hero-product-row:nth-child(2),
-.hero-product-query code:nth-child(2),
 .hero-product-audit-item:nth-child(2) {
   animation-delay: 110ms;
 }
 
 .hero-product-row:nth-child(3),
-.hero-product-query code:nth-child(3),
 .hero-product-audit-item:nth-child(3) {
   animation-delay: 160ms;
 }
 
-.hero-product-row:nth-child(4),
-.hero-product-query code:nth-child(4) {
+.hero-product-row:nth-child(4) {
   animation-delay: 210ms;
+}
+
+.hero-safe-query-preview-line:nth-child(1),
+.hero-safe-query-check:nth-child(1) {
+  animation-delay: 60ms;
+}
+
+.hero-safe-query-preview-line:nth-child(2),
+.hero-safe-query-check:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.hero-safe-query-preview-line:nth-child(3),
+.hero-safe-query-check:nth-child(3) {
+  animation-delay: 180ms;
 }
 
 .hero-section .hero-product-surface {
@@ -1874,6 +2010,23 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .hero-safe-query {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .hero-safe-query-sidebar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: none;
+    align-items: end;
+    gap: 16px;
+    padding-top: 0;
+  }
+
+  .hero-safe-query-result-wrap {
+    justify-content: flex-start;
+  }
+
   .control-plane-diagram {
     grid-template-columns: 1fr;
     grid-template-rows: none;
@@ -2047,6 +2200,20 @@ code {
     white-space: normal;
   }
 
+  .hero-safe-query-sidebar {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    align-items: stretch;
+  }
+
+  .hero-safe-query-result-wrap {
+    justify-content: stretch;
+  }
+
+  .hero-safe-query-result {
+    width: 100%;
+  }
+
   .control-plane-column {
     grid-template-columns: 1fr;
   }
@@ -2139,8 +2306,21 @@ code {
   .mock-timeline-marker,
   .terminal-cursor,
   .tui-step-active .tui-step-dot,
-  .control-plane-capability-dot {
+  .control-plane-capability-dot,
+  .hero-safe-query-preview-line,
+  .hero-safe-query-check {
     animation: none;
+  }
+
+  .hero-safe-query-preview-line,
+  .hero-safe-query-check {
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero-safe-query-check-box,
+  .hero-safe-query-result {
+    transition: none;
   }
 
   .tui-stage {

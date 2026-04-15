@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
   LANDING_CLI_SOURCE_URL,
@@ -264,6 +264,121 @@ type TuiEntry = {
 };
 
 type HeroProductTab = "integrations" | "query" | "audit";
+type SafeQueryCheckId = "nonDestructive" | "budgetLimit" | "accessPermission";
+type SafeQueryCheckStatus = "pending" | "success" | "failure";
+type SafeQueryResult = "pending" | "pass" | "blocked";
+
+const heroSafeQueryChecks = [
+  { id: "nonDestructive", label: "Non-destructive" },
+  { id: "budgetLimit", label: "budget limit" },
+  { id: "accessPermission", label: "access permission" },
+] satisfies Array<{ id: SafeQueryCheckId; label: string }>;
+
+const heroSafeQueryScenarios = [
+  { result: "pass" },
+  { result: "blocked", failingStepId: "budgetLimit" },
+] satisfies Array<
+  | { result: "pass"; failingStepId?: undefined }
+  | {
+      result: "blocked";
+      failingStepId: SafeQueryCheckId;
+    }
+>;
+
+const SAFE_QUERY_INITIAL_DELAY_MS = 360;
+const SAFE_QUERY_STEP_DELAY_MS = 520;
+const SAFE_QUERY_RESULT_HOLD_MS = 900;
+
+type SafeQueryAnimationState = {
+  cycleIndex: number;
+  statuses: Record<SafeQueryCheckId, SafeQueryCheckStatus>;
+  result: SafeQueryResult;
+};
+
+type SafeQueryAnimationAction = { type: "advance" } | { type: "restart" };
+
+function createSafeQueryStatuses(): Record<
+  SafeQueryCheckId,
+  SafeQueryCheckStatus
+> {
+  return {
+    nonDestructive: "pending",
+    budgetLimit: "pending",
+    accessPermission: "pending",
+  };
+}
+
+const initialSafeQueryAnimationState: SafeQueryAnimationState = {
+  cycleIndex: 0,
+  statuses: createSafeQueryStatuses(),
+  result: "pending",
+};
+
+function safeQueryAnimationReducer(
+  state: SafeQueryAnimationState,
+  action: SafeQueryAnimationAction
+): SafeQueryAnimationState {
+  switch (action.type) {
+    case "advance": {
+      if (state.result !== "pending") {
+        return state;
+      }
+
+      const scenario =
+        heroSafeQueryScenarios[
+          state.cycleIndex % heroSafeQueryScenarios.length
+        ];
+
+      if (scenario === undefined) {
+        return state;
+      }
+      const nextCheck = heroSafeQueryChecks.find(
+        (check) => state.statuses[check.id] === "pending"
+      );
+
+      if (nextCheck === undefined) {
+        return state;
+      }
+
+      const nextStatus =
+        scenario.result === "blocked" && scenario.failingStepId === nextCheck.id
+          ? "failure"
+          : "success";
+      const nextStatuses = {
+        ...state.statuses,
+        [nextCheck.id]: nextStatus,
+      };
+
+      if (nextStatus === "failure") {
+        return {
+          ...state,
+          statuses: nextStatuses,
+          result: "blocked",
+        };
+      }
+
+      const hasPendingChecks = heroSafeQueryChecks.some(
+        (check) => nextStatuses[check.id] === "pending"
+      );
+
+      return {
+        ...state,
+        statuses: nextStatuses,
+        result: hasPendingChecks ? "pending" : "pass",
+      };
+    }
+
+    case "restart":
+      return {
+        cycleIndex: state.cycleIndex + 1,
+        statuses: createSafeQueryStatuses(),
+        result: "pending",
+      };
+
+    default:
+      return state;
+  }
+}
 
 function TuiSurface({
   tags,
@@ -308,6 +423,89 @@ function TuiSurface({
           </div>
 
           <div className="tui-window-footer">{footer}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SafeQueryPanel() {
+  const [state, dispatch] = useReducer(
+    safeQueryAnimationReducer,
+    initialSafeQueryAnimationState
+  );
+
+  // Safe-query feedback loops through explicit reducer transitions so the
+  // mock stays deterministic across pass and blocked scenarios.
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => {
+        if (state.result === "pending") {
+          dispatch({ type: "advance" });
+          return;
+        }
+
+        dispatch({ type: "restart" });
+      },
+      state.result === "pending" &&
+        heroSafeQueryChecks.every(
+          (check) => state.statuses[check.id] === "pending"
+        )
+        ? SAFE_QUERY_INITIAL_DELAY_MS
+        : state.result === "pending"
+          ? SAFE_QUERY_STEP_DELAY_MS
+          : SAFE_QUERY_RESULT_HOLD_MS
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [state]);
+
+  return (
+    <div
+      className="hero-safe-query"
+      data-result={state.result}
+      aria-label="Safe querying checks"
+    >
+      <div className="hero-safe-query-preview">
+        <span className="hero-safe-query-preview-line hero-safe-query-preview-line-primary">
+          query
+        </span>
+        <span className="hero-safe-query-preview-line">content</span>
+        <span className="hero-safe-query-preview-line">content</span>
+      </div>
+
+      <div className="hero-safe-query-sidebar">
+        <div className="hero-safe-query-checklist" aria-live="polite">
+          {heroSafeQueryChecks.map((check) => {
+            const status = state.statuses[check.id];
+            const indicator =
+              status === "success" ? "✓" : status === "failure" ? "×" : "";
+
+            return (
+              <div
+                key={check.id}
+                className="hero-safe-query-check"
+                data-status={status}
+              >
+                <span className="hero-safe-query-check-box" aria-hidden="true">
+                  {indicator}
+                </span>
+                <span>{check.label}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hero-safe-query-result-wrap">
+          <div className="hero-safe-query-result" data-result={state.result}>
+            {state.result === "blocked"
+              ? "BLOCKED"
+              : state.result === "pass"
+                ? "PASS"
+                : "CHECKING"}
+          </div>
         </div>
       </div>
     </div>
@@ -368,21 +566,7 @@ function HeroDashboardSurface() {
           </div>
         );
       case "query":
-        return (
-          <>
-            <div className="hero-product-query">
-              <code>select source_key, sum(cost_usd)</code>
-              <code>from agent_runs</code>
-              <code>where occurred_at &gt; now() - interval '30 days'</code>
-              <code>group by 1 order by 2 desc limit 5</code>
-            </div>
-            <div className="hero-product-query-meta">
-              <span>read-only</span>
-              <span>single statement</span>
-              <span>$4.2k budget remaining</span>
-            </div>
-          </>
-        );
+        return <SafeQueryPanel />;
       case "audit":
         return (
           <div className="hero-product-audit">
