@@ -27,12 +27,15 @@ use crate::config::default_base_url;
 use crate::config::normalize_server_url;
 use crate::config::workspace_dev_base_url_for_debug_build;
 use crate::credentials::AuthSessionStore;
+use crate::identifiers::OrgSlug;
+use crate::identifiers::RequestId;
 use crate::output::CommandOutput;
 use crate::platform::BrowserLauncher;
 use crate::platform::PlatformAdapters;
 use crate::platform::StderrTerminal;
 use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
+use crate::recovery::missing_org_try_next;
 use crate::transport::query::QueryResultWindow;
 use crate::transport::read_controls::ReadRequestControls;
 use onequery_cli_core::error::CliError;
@@ -45,6 +48,24 @@ pub(crate) enum ResolvedOrgSource {
     Flag,
     Config,
     None,
+}
+
+impl ResolvedOrgSource {
+    pub(crate) fn describe(self) -> &'static str {
+        match self {
+            Self::Flag => "flag",
+            Self::Config => "config",
+            Self::None => "none",
+        }
+    }
+
+    pub(crate) fn effective_org_label(self) -> &'static str {
+        match self {
+            Self::Flag => "--org",
+            Self::Config => "config",
+            Self::None => "unresolved",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -76,7 +97,7 @@ pub(crate) struct ResolvedBaseUrl {
 pub(crate) struct CommandContext {
     pub command_line: String,
     pub base_url: String,
-    pub request_id: Option<String>,
+    pub request_id: Option<RequestId>,
     pub resolved_org: Option<String>,
     pub resolved_org_source: ResolvedOrgSource,
     pub verbose: bool,
@@ -119,13 +140,7 @@ pub(crate) fn resolve_context<B, T>(
     runtime: &Runtime<B, T>,
 ) -> Result<CommandContext, CliError> {
     let base_url = resolved_base_url(&runtime.config, &invocation.raw_command)?;
-    let org_from_flag = invocation
-        .global
-        .org
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned);
+    let org_from_flag = invocation.global.org.as_ref().map(ToString::to_string);
     let org_from_config = runtime
         .config
         .data()
@@ -298,14 +313,14 @@ pub(crate) fn with_command_snapshot_path(test: impl FnOnce()) {
     settings.bind(test);
 }
 
-pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
+pub(crate) fn require_org(context: &CommandContext) -> Result<OrgSlug, CliError> {
     match context.resolved_org.as_deref() {
-        Some(org) => crate::identifiers::normalize_org_slug(org).ok_or_else(|| {
+        Some(org) => OrgSlug::try_from(org).map_err(|error| {
             CliError::new(
                 "invalid org",
                 context.command_line.clone(),
                 ErrorStage::ResolveOrg,
-                "org must be a slug like acme-west",
+                error.to_string(),
                 vec!["onequery org use <org_slug>".to_owned()],
             )
         }),
@@ -314,10 +329,7 @@ pub(crate) fn require_org(context: &CommandContext) -> Result<&str, CliError> {
             context.command_line.clone(),
             ErrorStage::ResolveOrg,
             "no org was passed with --org and no active org is stored in config.toml.",
-            vec![
-                "onequery org list".to_owned(),
-                "onequery org use <org>".to_owned(),
-            ],
+            missing_org_try_next(),
         )),
     }
 }
@@ -328,7 +340,7 @@ pub(crate) fn read_controls_from_read_args(_read: &ReadArgs) -> ReadRequestContr
 
 pub(crate) fn read_controls_from_list_args(read: &ListReadArgs) -> ReadRequestControls {
     ReadRequestControls {
-        page_size: read.pagination.page_size,
+        page_size: read.pagination.page_size.map(std::num::NonZeroUsize::get),
         cursor: read.pagination.cursor().map(ToOwned::to_owned),
         page_all: read.pagination.page_all,
     }
@@ -336,9 +348,9 @@ pub(crate) fn read_controls_from_list_args(read: &ListReadArgs) -> ReadRequestCo
 
 pub(crate) fn query_result_window_from_args(args: &QueryResultWindowArgs) -> QueryResultWindow {
     QueryResultWindow {
-        max_rows: args.max_rows,
-        max_bytes: args.max_bytes,
-        cell_max_chars: args.cell_max_chars,
-        timeout_ms: args.timeout_ms,
+        max_rows: args.max_rows.map(std::num::NonZeroUsize::get),
+        max_bytes: args.max_bytes.map(std::num::NonZeroUsize::get),
+        cell_max_chars: args.cell_max_chars.map(std::num::NonZeroUsize::get),
+        timeout_ms: args.timeout_ms.map(std::num::NonZeroU64::get),
     }
 }

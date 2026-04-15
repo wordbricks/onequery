@@ -6,6 +6,8 @@ use tokio::time::sleep;
 use crate::cli::QueryExecuteArgs;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::query;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::retry::classify_retry_directive;
@@ -42,7 +44,6 @@ use super::input::load_query_request_payload;
 use super::input::with_effective_query_timeout;
 use super::presentation::render_query_output;
 use super::read_controls_from_list_args;
-use super::validate_query_source_key;
 use crate::output::TerminalOutput;
 
 pub(super) async fn run_query_workflow<B, T>(
@@ -97,10 +98,6 @@ pub(super) fn reduce_idle(
                 read,
                 input,
             } = state.args;
-            let source = match validate_query_source_key(source.as_str(), context) {
-                Ok(source) => source,
-                Err(error) => return Transition::done(failed_state(error)),
-            };
             Transition::continue_with_effect(
                 QueryState::LoadingQueryInput(LoadingQueryInputState {
                     source_key: source,
@@ -414,8 +411,8 @@ where
                             title: "query failed",
                             transport_why_prefix: "failed to reach query endpoint",
                             decode_why_prefix: "failed to decode query response",
-                            fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                            fallback_try_next: retry_try_next(&context.command_line),
+                            unauthorized_try_next: Some(auth_login_try_next()),
                         },
                     ),
                 },

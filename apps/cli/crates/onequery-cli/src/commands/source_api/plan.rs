@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use buffa::MessageField;
 use serde_json::Value;
 
@@ -168,7 +170,7 @@ pub(super) async fn build_plan(
             draft,
             execution: SourceApiExecutionOptions {
                 paginate: args.paginate,
-                max_pages: args.max_pages,
+                max_pages: args.max_pages.map(NonZeroU32::get),
             },
             render: SourceApiRenderOptions {
                 include: args.include,
@@ -239,17 +241,6 @@ fn validate_pagination(
             context,
             "source API pagination flag requires `--paginate`",
             "`--max-pages` only applies when `--paginate` is enabled",
-            source_key,
-        ));
-    }
-
-    if let Some(max_pages) = args.max_pages
-        && max_pages == 0
-    {
-        return Err(source_api_parse_error(
-            context,
-            "source API page limit is invalid",
-            "`--max-pages` must be greater than 0",
             source_key,
         ));
     }
@@ -543,6 +534,8 @@ fn normalized_method_override(value: Option<&str>) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU32;
+
     use buffa::MessageField;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
@@ -571,6 +564,10 @@ mod tests {
     use super::parse_headers;
     use super::validate_pagination;
 
+    fn nz_u32(value: u32) -> NonZeroU32 {
+        NonZeroU32::new(value).unwrap_or_else(|| panic!("expected non-zero u32: {value}"))
+    }
+
     #[test]
     fn validate_pagination_rejects_slurp_without_paginate() {
         let error = validate_pagination(
@@ -597,7 +594,7 @@ mod tests {
     fn validate_pagination_rejects_max_pages_without_paginate() {
         let error = validate_pagination(
             &ApiArgs {
-                max_pages: Some(2),
+                max_pages: Some(nz_u32(2)),
                 ..api_args()
             },
             &operation(
@@ -613,26 +610,6 @@ mod tests {
             error.why,
             "`--max-pages` only applies when `--paginate` is enabled"
         );
-    }
-
-    #[test]
-    fn validate_pagination_rejects_zero_max_pages() {
-        let error = validate_pagination(
-            &ApiArgs {
-                paginate: true,
-                max_pages: Some(0),
-                ..api_args()
-            },
-            &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
-            &context(),
-            "github-prod",
-        )
-        .expect_err("expected zero `--max-pages` to fail");
-
-        assert_eq!(error.stage, ErrorStage::ParseCommand);
-        assert_eq!(error.why, "`--max-pages` must be greater than 0");
     }
 
     #[test]
@@ -657,7 +634,7 @@ mod tests {
         validate_pagination(
             &ApiArgs {
                 paginate: true,
-                max_pages: Some(3),
+                max_pages: Some(nz_u32(3)),
                 ..api_args()
             },
             &operation(
@@ -917,7 +894,7 @@ mod tests {
 
     fn api_args() -> ApiArgs {
         ApiArgs {
-            source: "github-prod".to_owned(),
+            source: crate::identifiers::test_source_key("github-prod"),
             op: Some("fetch".to_owned()),
             target: Some("/pulls".to_owned()),
             method: None,

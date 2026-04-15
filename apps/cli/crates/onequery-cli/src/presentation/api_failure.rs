@@ -4,6 +4,7 @@ use onequery_cli_core::error::ErrorStage;
 
 use crate::commands::CommandContext;
 use crate::local_target::managed_gateway_unavailable_error;
+use crate::recovery::auth_reset_try_next;
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::cli_problem_code_string;
 use crate::transport::client::ApiClientBuildFailure;
@@ -117,10 +118,7 @@ pub(crate) fn present_api_client_build_failure(
             command.to_owned(),
             ErrorStage::Auth,
             message,
-            vec![
-                "onequery auth logout".to_owned(),
-                "onequery auth login".to_owned(),
-            ],
+            auth_reset_try_next(),
         ),
         ApiClientBuildFailure::RequestId { message } => CliError::new(
             "invalid request ID",
@@ -158,6 +156,8 @@ mod tests {
 
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
+    use crate::recovery::auth_login_then_retry_try_next;
+    use crate::recovery::auth_login_try_next;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
     use crate::transport::api_failure::ApiValidationIssue;
@@ -358,7 +358,7 @@ mod tests {
                 transport_why_prefix: "failed to reach query endpoint",
                 decode_why_prefix: "failed to decode query response",
                 fallback_try_next: vec!["retry onequery query exec".to_owned()],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 
@@ -403,7 +403,7 @@ mod tests {
                 fallback_try_next: vec![
                     "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 
@@ -559,7 +559,7 @@ mod tests {
                 fallback_try_next: vec![
                     "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 
@@ -604,7 +604,7 @@ mod tests {
                 fallback_try_next: vec![
                     "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 
@@ -630,11 +630,8 @@ mod tests {
                 title: "org list failed",
                 transport_why_prefix: "failed to reach org list endpoint",
                 decode_why_prefix: "failed to decode org list response",
-                fallback_try_next: vec![
-                    "run onequery auth login".to_owned(),
-                    "retry onequery org list".to_owned(),
-                ],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                fallback_try_next: auth_login_then_retry_try_next("onequery org list"),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 
@@ -664,7 +661,7 @@ mod tests {
                     "onequery source list".to_owned(),
                     "retry onequery source show warehouse".to_owned(),
                 ],
-                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
         );
 

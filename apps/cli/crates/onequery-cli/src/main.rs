@@ -9,6 +9,7 @@ mod output_metadata;
 mod path_utils;
 mod platform;
 mod presentation;
+mod recovery;
 mod startup;
 #[cfg(test)]
 mod test_support;
@@ -21,7 +22,10 @@ use std::io::Write;
 
 use commands::Runtime;
 
-#[tokio::main]
+// Comment: the CLI does not need a work-stealing runtime; an explicit current-thread executor
+// keeps the async model deliberate while still supporting spawned background tasks and
+// `spawn_blocking` for isolated blocking work.
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let argv: Vec<std::ffi::OsString> = std::env::args_os().collect();
     let stdout_is_tty = std::io::stdout().is_terminal();

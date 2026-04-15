@@ -1,6 +1,14 @@
+use super::CommandContext;
+use super::Runtime;
+use super::auth_session::authenticated_api_client;
+use super::auth_session::ensure_authenticated_org;
+use super::read_controls_from_list_args;
+use super::read_controls_from_read_args;
 use crate::cli::ListReadArgs;
 use crate::cli::ReadArgs;
 use crate::cli::SourceSubcommand;
+use crate::identifiers::OrgSlug;
+use crate::identifiers::SourceKey;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::output::append_padded_cell;
@@ -8,6 +16,9 @@ use crate::output::pretty_json_lines;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_then_retry_try_next;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::command_then_retry_try_next;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::source;
 use crate::transport::source::SourceListPayload;
@@ -20,19 +31,16 @@ use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
 use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-
-use super::CommandContext;
-use super::Runtime;
-use super::auth_session::authenticated_api_client;
-use super::auth_session::ensure_authenticated_org;
-use super::read_controls_from_list_args;
-use super::read_controls_from_read_args;
 
 #[derive(Debug)]
 enum SourceMode {
-    List { read: ListReadArgs },
-    Show { source_key: String, read: ReadArgs },
+    List {
+        read: ListReadArgs,
+    },
+    Show {
+        source_key: SourceKey,
+        read: ReadArgs,
+    },
 }
 
 #[derive(Debug)]
@@ -54,7 +62,7 @@ enum SourceTerminalState {
 enum SourceEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -83,12 +91,12 @@ enum SourceEvent {
 enum SourceEffect {
     EnsureAuthenticatedOrg,
     FetchSourceList {
-        org: String,
+        org: OrgSlug,
         read: ListReadArgs,
     },
     FetchSource {
-        org: String,
-        source_key: String,
+        org: OrgSlug,
+        source_key: SourceKey,
         read: ReadArgs,
     },
 }
@@ -155,31 +163,12 @@ fn reduce(
                     },
                     SourceEffect::EnsureAuthenticatedOrg,
                 ),
-                SourceMode::Show { source_key, read } => {
-                    let Some(source_key) =
-                        crate::identifiers::normalize_safe_path_segment(source_key.as_str())
-                    else {
-                        return Transition::done(SourceTerminalState::Failed {
-                            error: CliError::new(
-                                "invalid source key",
-                                context.command_line.clone(),
-                                ErrorStage::ParseCommand,
-                                "source key must use only letters, numbers, dots, underscores, or hyphens",
-                                vec!["retry onequery source show <source_key>".to_owned()],
-                            ),
-                        });
-                    };
-
-                    Transition::continue_with_effect(
-                        SourceState::CheckingAuth {
-                            mode: SourceMode::Show {
-                                source_key: source_key.to_owned(),
-                                read,
-                            },
-                        },
-                        SourceEffect::EnsureAuthenticatedOrg,
-                    )
-                }
+                SourceMode::Show { source_key, read } => Transition::continue_with_effect(
+                    SourceState::CheckingAuth {
+                        mode: SourceMode::Show { source_key, read },
+                    },
+                    SourceEffect::EnsureAuthenticatedOrg,
+                ),
             },
             SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
@@ -347,11 +336,10 @@ async fn execute_effect<B, T>(
                                 title: "source list failed",
                                 transport_why_prefix: "failed to reach source list endpoint",
                                 decode_why_prefix: "failed to decode source list response",
-                                fallback_try_next: vec![
-                                    "run onequery auth login".to_owned(),
-                                    format!("retry {}", context.command_line),
-                                ],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: auth_login_then_retry_try_next(
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         outcome,
@@ -399,11 +387,11 @@ async fn execute_effect<B, T>(
                                 title: "source show failed",
                                 transport_why_prefix: "failed to reach source show endpoint",
                                 decode_why_prefix: "failed to decode source show response",
-                                fallback_try_next: vec![
-                                    "onequery source list".to_owned(),
-                                    format!("retry {}", context.command_line),
-                                ],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: command_then_retry_try_next(
+                                    "onequery source list",
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         outcome,
@@ -633,7 +621,6 @@ mod tests {
 
     use super::SourceEvent;
     use super::SourceFailureOutcome;
-    use super::SourceMode;
     use super::SourceState;
     use super::SourceTerminalState;
     use crate::transport::source::SourceSummary;
@@ -743,44 +730,6 @@ mod tests {
                 terminal_state: SourceTerminalState::NeedsReauth { error },
             } => assert_eq!(error.stage, ErrorStage::Auth),
             other => panic!("expected needs-reauth terminal transition, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn source_show_rejects_unsafe_source_keys_before_authentication() {
-        let context = CommandContext {
-            command_line: "onequery source show warehouse/main".to_owned(),
-            base_url: default_base_url(),
-            request_id: None,
-            resolved_org: Some("acme".to_owned()),
-            resolved_org_source: ResolvedOrgSource::Config,
-            verbose: false,
-        };
-
-        let transition = reduce(
-            SourceState::Idle {
-                mode: SourceMode::Show {
-                    source_key: "warehouse/main".to_owned(),
-                    read: ReadArgs::default(),
-                },
-            },
-            SourceEvent::Start,
-            &context,
-        );
-
-        match transition.into_progress() {
-            TransitionProgress::Done {
-                terminal_state: SourceTerminalState::Failed { error },
-            } => assert_eq!(
-                (error.title.clone(), error.stage, error.why.clone()),
-                (
-                    "invalid source key".to_owned(),
-                    ErrorStage::ParseCommand,
-                    "source key must use only letters, numbers, dots, underscores, or hyphens"
-                        .to_owned(),
-                )
-            ),
-            other => panic!("expected invalid source key failure, got {other:?}"),
         }
     }
 }

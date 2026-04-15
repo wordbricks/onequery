@@ -1,4 +1,6 @@
 use std::ffi::OsString;
+use std::num::NonZeroU32;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use clap::CommandFactory;
@@ -7,6 +9,9 @@ use onequery_cli_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
+use crate::identifiers::test_org_slug;
+use crate::identifiers::test_request_id;
+use crate::identifiers::test_source_key;
 use crate::output::EffectiveOutputMode;
 use crate::output::RequestedOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
@@ -56,6 +61,14 @@ fn rendered_display(args: &[&str]) -> String {
 
 fn parse_error(args: &[&str]) -> CliError {
     super::parse::parse_invocation_from(&argv(args)).expect_err("expected parse error")
+}
+
+fn nz_usize(value: usize) -> NonZeroUsize {
+    NonZeroUsize::new(value).unwrap_or_else(|| panic!("expected non-zero usize: {value}"))
+}
+
+fn nz_u32(value: u32) -> NonZeroU32 {
+    NonZeroU32::new(value).unwrap_or_else(|| panic!("expected non-zero u32: {value}"))
 }
 
 #[test]
@@ -306,7 +319,7 @@ fn parse_invocation_accepts_org_get_read_controls() {
             other => panic!("expected org get subcommand, got {other:?}"),
         },
         (
-            Some("acme".to_owned()),
+            Some(test_org_slug("acme")),
             ReadArgs {
                 fields: Some("slug,capabilities".to_owned()),
             }
@@ -353,7 +366,7 @@ fn parse_invocation_accepts_request_id_and_timeout_transport_controls() {
             invocation.global.timeout_sec,
             invocation.command.command_path(),
         ),
-        (Some("req_cli_123".to_owned()), Some(45), "org list")
+        (Some(test_request_id("req_cli_123")), Some(45), "org list")
     );
 }
 
@@ -426,7 +439,7 @@ fn parse_invocation_accepts_api_describe_surface() {
             other => panic!("expected api command, got {other:?}"),
         },
         ApiArgs {
-            source: "sentry-prod".to_owned(),
+            source: test_source_key("sentry-prod"),
             op: None,
             target: None,
             method: None,
@@ -484,7 +497,7 @@ fn parse_invocation_accepts_api_execute_flags() {
             other => panic!("expected api command, got {other:?}"),
         },
         ApiArgs {
-            source: "github-prod".to_owned(),
+            source: test_source_key("github-prod"),
             op: Some("fetch-api".to_owned()),
             target: Some("/repos/acme/widgets/pulls/1".to_owned()),
             method: Some("patch".to_owned()),
@@ -497,7 +510,7 @@ fn parse_invocation_accepts_api_execute_flags() {
             input: Some("payload.json".to_owned()),
             paginate: true,
             slurp: true,
-            max_pages: Some(4),
+            max_pages: Some(nz_u32(4)),
             include: true,
             silent: true,
             jq: Some(".items[0]".to_owned()),
@@ -603,19 +616,24 @@ fn parse_invocation_accepts_list_read_controls() {
         "--page-all",
     ]);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Source(super::SourceSubcommand::List { read: ListReadArgs {
-            read: ReadArgs {
-                fields: Some(fields),
-            },
-            pagination: PaginationArgs {
-                page_size: Some(25),
-                cursor: Some(cursor),
-                page_all: true,
-            },
-        } }) if fields == "sources.name,sources.status" && cursor == "cursor_123"
-    ));
+    match invocation.command {
+        Command::Source(super::SourceSubcommand::List { read }) => {
+            assert_eq!(
+                read,
+                ListReadArgs {
+                    read: ReadArgs {
+                        fields: Some("sources.name,sources.status".to_owned()),
+                    },
+                    pagination: PaginationArgs {
+                        page_size: Some(nz_usize(25)),
+                        cursor: Some("cursor_123".to_owned()),
+                        page_all: true,
+                    },
+                }
+            );
+        }
+        other => panic!("expected source list subcommand, got {other:?}"),
+    }
 }
 
 #[test]
@@ -662,36 +680,85 @@ fn parse_invocation_accepts_query_result_window_args() {
         "256",
     ]);
 
-    assert!(matches!(
-        invocation.command,
-        Command::Query(QuerySubcommand::Execute(super::QueryExecuteArgs {
-            source,
-            read: ListReadArgs {
-                read: ReadArgs {
-                    fields: Some(fields),
-                },
-                pagination: PaginationArgs {
-                    page_size: Some(10),
-                    cursor: None,
-                    page_all: false,
-                },
-            },
-            input: QueryInputArgs {
-                input: None,
-                sql: Some(sql),
-                file: None,
-                stdin: false,
-                result_window: QueryResultWindowArgs {
-                    max_rows: Some(500),
-                    max_bytes: Some(4096),
-                    cell_max_chars: Some(256),
-                    timeout_ms: None,
-                },
-            },
-        })) if source == "warehouse"
-            && fields == "rows"
-            && sql == "select 1"
-    ));
+    match invocation.command {
+        Command::Query(QuerySubcommand::Execute(args)) => {
+            assert_eq!(
+                args,
+                super::QueryExecuteArgs {
+                    source: test_source_key("warehouse"),
+                    read: ListReadArgs {
+                        read: ReadArgs {
+                            fields: Some("rows".to_owned()),
+                        },
+                        pagination: PaginationArgs {
+                            page_size: Some(nz_usize(10)),
+                            cursor: None,
+                            page_all: false,
+                        },
+                    },
+                    input: QueryInputArgs {
+                        input: None,
+                        sql: Some("select 1".to_owned()),
+                        file: None,
+                        stdin: false,
+                        result_window: QueryResultWindowArgs {
+                            max_rows: Some(nz_usize(500)),
+                            max_bytes: Some(nz_usize(4096)),
+                            cell_max_chars: Some(nz_usize(256)),
+                            timeout_ms: None,
+                        },
+                    },
+                }
+            );
+        }
+        other => panic!("expected query exec subcommand, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_invocation_rejects_zero_numeric_flags_at_parse_boundary() {
+    for (args, flag) in [
+        (
+            &["onequery", "--timeout", "0", "org", "list"][..],
+            "--timeout",
+        ),
+        (
+            &["onequery", "source", "list", "--page-size", "0"][..],
+            "--page-size",
+        ),
+        (
+            &[
+                "onequery",
+                "query",
+                "exec",
+                "--source",
+                "warehouse",
+                "--sql",
+                "select 1",
+                "--max-rows",
+                "0",
+            ][..],
+            "--max-rows",
+        ),
+        (
+            &[
+                "onequery",
+                "api",
+                "--source",
+                "github-prod",
+                "--paginate",
+                "--max-pages",
+                "0",
+            ][..],
+            "--max-pages",
+        ),
+    ] {
+        let error = parse_error(args);
+
+        assert_eq!(error.title, "invalid command");
+        assert!(error.why.contains(flag));
+        assert!(error.why.contains("positive integer"));
+    }
 }
 
 #[test]
@@ -727,7 +794,7 @@ fn parse_invocation_accepts_explicit_query_validate_subcommand() {
                     timeout_ms: None,
                 },
             },
-        })) if source == "warehouse"
+        })) if source == test_source_key("warehouse")
             && fields == "request,source"
             && input == &PathBuf::from("query.json")
     ));
@@ -775,14 +842,14 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
             Case::OrgUseArgument => assert!(matches!(
                 invocation.command,
                 Command::Org(super::OrgSubcommand::Use { org_slug, dry_run })
-                    if org_slug == "query" && !dry_run
+                    if org_slug == test_org_slug("query") && !dry_run
             )),
             Case::SourceFlagValue => assert!(matches!(
                 invocation.command,
                 Command::Query(QuerySubcommand::Execute(super::QueryExecuteArgs {
                     source,
                     ..
-                })) if source == "query"
+                })) if source == test_source_key("query")
             )),
         }
     }

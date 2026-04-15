@@ -13,7 +13,6 @@ use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
 use super::super::CommandContext;
-use super::super::ResolvedOrgSource;
 
 pub(super) fn render_login_output(
     completion: &LoginCompletion,
@@ -47,11 +46,7 @@ pub(super) fn render_whoami_output(
         lines.push(format!("Effective Org: {org_slug}"));
         lines.push(format!(
             "Effective Org Source: {}",
-            match context.resolved_org_source {
-                ResolvedOrgSource::Flag => "--org",
-                ResolvedOrgSource::Config => "config",
-                ResolvedOrgSource::None => "unresolved",
-            }
+            context.resolved_org_source.effective_org_label()
         ));
     } else if let Some(active_org) = &identity.active_org {
         lines.push(format!("Effective Org: {active_org}"));
@@ -64,11 +59,7 @@ pub(super) fn render_whoami_output(
     let (effective_org, effective_org_source) = match context.resolved_org.as_deref() {
         Some(org_slug) => (
             Some(org_slug.to_owned()),
-            match context.resolved_org_source {
-                ResolvedOrgSource::Flag => "--org",
-                ResolvedOrgSource::Config => "config",
-                ResolvedOrgSource::None => "unresolved",
-            },
+            context.resolved_org_source.effective_org_label(),
         ),
         None => (
             identity.active_org.clone(),

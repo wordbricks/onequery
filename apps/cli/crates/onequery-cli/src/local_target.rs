@@ -74,18 +74,41 @@ pub(crate) fn managed_gateway_unavailable_error(
         return Ok(None);
     }
 
-    managed_gateway_unavailable_error_with_paths(
+    managed_gateway_unavailable_error_with_probe(
         context,
         stage,
         self_host_runtime_paths(&context.command_line)?,
+        runtime_accepting_connections,
     )
 }
 
-fn managed_gateway_unavailable_error_with_paths(
+pub(crate) fn managed_gateway_recovery_try_next(
+    context: &CommandContext,
+) -> Result<Option<Vec<String>>, CliError> {
+    let target_url = match Url::parse(&context.base_url) {
+        Ok(target_url) => target_url,
+        Err(_) => return Ok(None),
+    };
+    if !target_host_is_loopback(&target_url) {
+        return Ok(None);
+    }
+
+    managed_gateway_recovery_try_next_with_paths(
+        context,
+        self_host_runtime_paths(&context.command_line)?,
+        runtime_accepting_connections,
+    )
+}
+
+fn managed_gateway_unavailable_error_with_probe<F>(
     context: &CommandContext,
     stage: ErrorStage,
     paths: SelfHostRuntimePaths,
-) -> Result<Option<CliError>, CliError> {
+    runtime_accepting_connections: F,
+) -> Result<Option<CliError>, CliError>
+where
+    F: Fn(&str, u16) -> bool,
+{
     let Some(target) = managed_gateway_target_for_base_url_with_paths(
         &context.base_url,
         paths,
@@ -102,21 +125,36 @@ fn managed_gateway_unavailable_error_with_paths(
     Ok(Some(gateway_unavailable_error(context, stage, &target)))
 }
 
+fn managed_gateway_recovery_try_next_with_paths<F>(
+    context: &CommandContext,
+    paths: SelfHostRuntimePaths,
+    runtime_accepting_connections: F,
+) -> Result<Option<Vec<String>>, CliError>
+where
+    F: Fn(&str, u16) -> bool,
+{
+    let Some(target) = managed_gateway_target_for_base_url_with_paths(
+        &context.base_url,
+        paths,
+        &context.command_line,
+    )?
+    else {
+        return Ok(None);
+    };
+
+    if runtime_accepting_connections(&target.listen_host, target.port) {
+        return Ok(None);
+    }
+
+    Ok(Some(managed_gateway_try_next(&target, None)))
+}
+
 fn gateway_unavailable_error(
     context: &CommandContext,
     stage: ErrorStage,
     target: &ManagedGatewayTarget,
 ) -> CliError {
     let probe_host = runtime_probe_host(&target.listen_host);
-    let mut try_next = vec![
-        GATEWAY_START_COMMAND.to_owned(),
-        GATEWAY_STATUS_COMMAND.to_owned(),
-    ];
-    if target.log_path.is_file() {
-        try_next.push(GATEWAY_LOGS_COMMAND.to_owned());
-    }
-    try_next.push(format!("retry {}", context.command_line));
-
     CliError::new(
         "self-host gateway is not running",
         context.command_line.clone(),
@@ -125,9 +163,26 @@ fn gateway_unavailable_error(
             "{} is configured as the CLI server, but no process is accepting connections on {probe_host}:{}",
             context.base_url, target.port
         ),
-        try_next,
+        managed_gateway_try_next(target, Some(context.command_line.as_str())),
     )
     .with_code(Some("self_host_gateway_unavailable".to_owned()))
+}
+
+fn managed_gateway_try_next(
+    target: &ManagedGatewayTarget,
+    retry_command: Option<&str>,
+) -> Vec<String> {
+    let mut try_next = vec![
+        GATEWAY_START_COMMAND.to_owned(),
+        GATEWAY_STATUS_COMMAND.to_owned(),
+    ];
+    if target.log_path.is_file() {
+        try_next.push(GATEWAY_LOGS_COMMAND.to_owned());
+    }
+    if let Some(retry_command) = retry_command {
+        try_next.push(format!("retry {retry_command}"));
+    }
+    try_next
 }
 
 fn managed_gateway_target_for_base_url_with_paths(
@@ -152,8 +207,9 @@ fn load_self_host_target_state(
     command_line: &str,
 ) -> Result<SelfHostTargetState, CliError> {
     let config = if paths.config_path.is_file() {
-        // Comment: self-host config load failures are authoritative for loopback targets. The
-        // localhost gateway hint is additive only after a valid managed-gateway config exists.
+        // Comment: keep self-host config loading strict here so transport-path callers can surface
+        // invalid managed-gateway config directly. Callers using gateway probing only as additive
+        // recovery guidance should downgrade these errors at their boundary.
         SelfHostTargetConfig::Loaded(load_self_host_public_config_with_paths(
             &paths,
             command_line,
@@ -256,6 +312,7 @@ fn is_loopback_or_localhost_host(host: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::net::TcpListener;
 
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
@@ -276,8 +333,10 @@ mod tests {
     use super::SelfHostTargetState;
     use super::gateway_unavailable_error;
     use super::managed_gateway;
+    use super::managed_gateway_recovery_try_next_with_paths;
     use super::managed_gateway_unavailable_error;
-    use super::managed_gateway_unavailable_error_with_paths;
+    use super::managed_gateway_unavailable_error_with_probe;
+    use super::runtime_accepting_connections;
 
     fn target_state(
         paths: SelfHostRuntimePaths,
@@ -307,6 +366,22 @@ mod tests {
             resolved_org_source: ResolvedOrgSource::None,
             verbose: false,
         }
+    }
+
+    fn unused_local_port() -> u16 {
+        TcpListener::bind((DEFAULT_SELF_HOST_LISTEN_HOST, 0))
+            .unwrap_or_else(|error| panic!("expected test TCP listener to bind: {error}"))
+            .local_addr()
+            .unwrap_or_else(|error| panic!("expected test TCP listener local addr: {error}"))
+            .port()
+    }
+
+    fn write_public_config(paths: &SelfHostRuntimePaths, port: u16) {
+        fs::write(
+            &paths.config_path,
+            format!("[server]\nlisten_host = \"{DEFAULT_SELF_HOST_LISTEN_HOST}\"\nport = {port}\n"),
+        )
+        .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
     }
 
     #[test]
@@ -385,6 +460,35 @@ mod tests {
     }
 
     #[test]
+    fn managed_gateway_recovery_try_next_guides_start_without_retry_command() {
+        let paths = test_paths();
+        let port = unused_local_port();
+        let base_url = format!("http://{DEFAULT_SELF_HOST_LISTEN_HOST}:{port}");
+        write_public_config(&paths, port);
+
+        let try_next = managed_gateway_recovery_try_next_with_paths(
+            &test_context(
+                &base_url,
+                "onequery query exec --source warehouse --sql \"select 1\"",
+            ),
+            paths,
+            // Comment: test guidance should not depend on whether a developer already has a local
+            // gateway or some unrelated process listening on a well-known port.
+            |_, _| false,
+        )
+        .unwrap_or_else(|error| panic!("expected gateway recovery lookup to succeed: {error}"))
+        .expect("expected gateway recovery guidance for local target");
+
+        assert_eq!(
+            try_next,
+            vec![
+                "onequery gateway start".to_owned(),
+                "onequery gateway status".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
     fn managed_gateway_unavailable_error_skips_non_gateway_targets() {
         let error = managed_gateway_unavailable_error(
             &test_context("https://onequery.example.com", "onequery auth login"),
@@ -405,10 +509,11 @@ mod tests {
         )
         .unwrap_or_else(|error| panic!("expected config write to succeed: {error}"));
 
-        let error = managed_gateway_unavailable_error_with_paths(
+        let error = managed_gateway_unavailable_error_with_probe(
             &test_context("http://127.0.0.1:5656", "onequery auth login"),
             ErrorStage::Auth,
             paths,
+            runtime_accepting_connections,
         )
         .expect_err("expected invalid self-host config to fail");
 

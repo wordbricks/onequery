@@ -1,8 +1,12 @@
 use std::time::Duration;
 
+use crate::identifiers::OrgSlug;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::missing_auth_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::auth;
 use crate::transport::auth::LoginCompletion;
 use crate::transport::client::AuthenticatedApiClient;
@@ -41,7 +45,7 @@ enum AuthSessionState {
 #[derive(Debug)]
 enum AuthSessionEvent {
     Start,
-    CurrentSessionMissing,
+    CurrentSessionMissing { try_next: Vec<String> },
     CurrentSessionFound { access_token: String },
     SessionRefreshed { completion: LoginCompletion },
     SessionRefreshFailed { error: CliError },
@@ -77,7 +81,7 @@ impl WorkflowLabel for AuthSessionEvent {
     fn workflow_label(&self) -> &'static str {
         match self {
             Self::Start => "Start",
-            Self::CurrentSessionMissing => "CurrentSessionMissing",
+            Self::CurrentSessionMissing { .. } => "CurrentSessionMissing",
             Self::CurrentSessionFound { .. } => "CurrentSessionFound",
             Self::SessionRefreshed { .. } => "SessionRefreshed",
             Self::SessionRefreshFailed { .. } => "SessionRefreshFailed",
@@ -135,9 +139,9 @@ pub(crate) async fn ensure_authenticated<B, T>(
 pub(crate) async fn ensure_authenticated_org<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
-) -> Result<String, CliError> {
+) -> Result<OrgSlug, CliError> {
     ensure_authenticated(context, runtime).await?;
-    super::require_org(context).map(ToOwned::to_owned)
+    super::require_org(context)
 }
 
 fn reduce_auth_session(
@@ -151,7 +155,7 @@ fn reduce_auth_session(
                 AuthSessionState::CheckingStoredSession,
                 AuthSessionEffect::InspectCurrent,
             ),
-            AuthSessionEvent::CurrentSessionMissing
+            AuthSessionEvent::CurrentSessionMissing { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionRefreshed { .. }
             | AuthSessionEvent::SessionRefreshFailed { .. }
@@ -167,18 +171,9 @@ fn reduce_auth_session(
             }
         },
         AuthSessionState::CheckingStoredSession => match event {
-            AuthSessionEvent::CurrentSessionMissing => {
+            AuthSessionEvent::CurrentSessionMissing { try_next } => {
                 Transition::done(AuthSessionTerminalState::Failed {
-                    error: CliError::new(
-                        "not logged in",
-                        context.command_line.clone(),
-                        ErrorStage::Auth,
-                        "no OneQuery token was found in the environment or local auth store.",
-                        vec![
-                            "onequery auth login".to_owned(),
-                            "onequery auth import --input <path|->".to_owned(),
-                        ],
-                    ),
+                    error: not_logged_in_error(context, try_next),
                 })
             }
             AuthSessionEvent::CurrentSessionFound { access_token } => {
@@ -210,7 +205,7 @@ fn reduce_auth_session(
                 Transition::done(AuthSessionTerminalState::Failed { error })
             }
             AuthSessionEvent::Start
-            | AuthSessionEvent::CurrentSessionMissing
+            | AuthSessionEvent::CurrentSessionMissing { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionPersisted
             | AuthSessionEvent::SessionPersistFailed { .. } => {
@@ -231,7 +226,7 @@ fn reduce_auth_session(
                 Transition::done(AuthSessionTerminalState::Failed { error })
             }
             AuthSessionEvent::Start
-            | AuthSessionEvent::CurrentSessionMissing
+            | AuthSessionEvent::CurrentSessionMissing { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionRefreshed { .. }
             | AuthSessionEvent::SessionRefreshFailed { .. } => {
@@ -256,7 +251,9 @@ async fn execute_auth_session_effect<B, T>(
         AuthSessionEffect::InspectCurrent => {
             match runtime.auth_session.access_token().map(str::to_owned) {
                 Some(access_token) => AuthSessionEvent::CurrentSessionFound { access_token },
-                None => AuthSessionEvent::CurrentSessionMissing,
+                None => AuthSessionEvent::CurrentSessionMissing {
+                    try_next: missing_auth_try_next(context),
+                },
             }
         }
         AuthSessionEffect::RefreshRemote { access_token } => {
@@ -282,8 +279,8 @@ async fn execute_auth_session_effect<B, T>(
                             title: "auth session refresh failed",
                             transport_why_prefix: "failed to reach auth session refresh endpoint",
                             decode_why_prefix: "failed to decode auth session refresh response",
-                            fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                            fallback_try_next: retry_try_next(&context.command_line),
+                            unauthorized_try_next: Some(auth_login_try_next()),
                         },
                     ),
                 },
@@ -304,7 +301,7 @@ pub(crate) fn authenticated_api_client<B, T>(
     runtime: &Runtime<B, T>,
 ) -> Result<AuthenticatedApiClient, CliError> {
     let Some(access_token) = runtime.auth_session.access_token() else {
-        return Err(missing_stored_session_error(context));
+        return Err(not_logged_in_error(context, missing_auth_try_next(context)));
     };
 
     build_authenticated_api_client(
@@ -320,7 +317,7 @@ pub(crate) fn authenticated_api_client_with_timeout<B, T>(
     request_timeout: Duration,
 ) -> Result<AuthenticatedApiClient, CliError> {
     let Some(access_token) = runtime.auth_session.access_token() else {
-        return Err(missing_stored_session_error(context));
+        return Err(not_logged_in_error(context, missing_auth_try_next(context)));
     };
 
     build_authenticated_api_client(context, request_timeout, access_token)
@@ -371,7 +368,10 @@ fn build_authenticated_api_client(
         &context.base_url,
         request_timeout,
         token,
-        context.request_id.as_deref(),
+        context
+            .request_id
+            .as_ref()
+            .map(crate::identifiers::RequestId::as_str),
     )
     .map_err(|failure| present_api_client_build_failure(failure, &context.command_line))
 }
@@ -383,21 +383,21 @@ pub(crate) fn build_unauthenticated_api_client(
     UnauthenticatedApiClient::new_with_timeout_and_request_id(
         &context.base_url,
         request_timeout,
-        context.request_id.as_deref(),
+        context
+            .request_id
+            .as_ref()
+            .map(crate::identifiers::RequestId::as_str),
     )
     .map_err(|failure| present_api_client_build_failure(failure, &context.command_line))
 }
 
-fn missing_stored_session_error(context: &CommandContext) -> CliError {
+fn not_logged_in_error(context: &CommandContext, try_next: Vec<String>) -> CliError {
     CliError::new(
         "not logged in",
         context.command_line.clone(),
         ErrorStage::Auth,
         "no OneQuery token was found in the environment or local auth store.",
-        vec![
-            "onequery auth login".to_owned(),
-            "onequery auth import --input <path|->".to_owned(),
-        ],
+        try_next,
     )
 }
 
@@ -434,7 +434,6 @@ mod tests {
     use crate::commands::with_command_snapshot_path;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
-    use crate::config::default_base_url;
     use crate::credentials::AuthSessionStore;
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
@@ -497,7 +496,7 @@ mod tests {
         request_id: &str,
     ) -> CommandContext {
         CommandContext {
-            request_id: Some(request_id.to_owned()),
+            request_id: Some(crate::identifiers::test_request_id(request_id)),
             ..test_context(base_url, command_line)
         }
     }
@@ -528,7 +527,7 @@ mod tests {
 
     #[tokio::test]
     async fn ensure_authenticated_fails_when_no_token_is_stored() {
-        let base_url = default_base_url();
+        let base_url = "https://onequery.example.com".to_owned();
         let context = test_context(base_url.clone(), "onequery org list");
         let mut runtime = test_runtime(auth_session_store_for_test(None));
 
@@ -561,7 +560,7 @@ mod tests {
     async fn ensure_authenticated_org_reports_login_guidance_before_org_selection_when_logged_out()
     {
         let context = test_context(
-            default_base_url(),
+            "https://onequery.example.com".to_owned(),
             "onequery query exec --source warehouse --sql \"select 1\"",
         );
         let mut runtime = test_runtime(auth_session_store_for_test(None));
@@ -596,7 +595,10 @@ Try:
 
     #[test]
     fn authenticated_api_client_fails_when_no_token_is_stored() {
-        let context = test_context(default_base_url(), "onequery org list");
+        let context = test_context(
+            "https://onequery.example.com".to_owned(),
+            "onequery org list",
+        );
         let runtime = test_runtime(auth_session_store_for_test(None));
 
         let error = authenticated_api_client(&context, &runtime)

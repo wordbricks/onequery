@@ -11,6 +11,8 @@ use crate::cli::QueryExecuteArgs;
 use crate::cli::QueryInputArgs;
 use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
+use crate::identifiers::test_org_slug as org_slug;
+use crate::identifiers::test_source_key as source_key;
 use crate::transport::query::QueryCanonicalRequest;
 use crate::transport::query::QueryColumn;
 use crate::transport::query::QueryRequestPayload;
@@ -52,7 +54,6 @@ use super::input::with_effective_query_timeout;
 use super::presentation::render_query_output;
 use super::presentation::render_query_validation_output;
 use super::validate::reduce_validating_query;
-use super::validate_query_source_key;
 
 fn sample_context() -> CommandContext {
     CommandContext {
@@ -238,7 +239,7 @@ fn start_loads_local_sql_input_before_authentication() {
     let transition = reduce_idle(
         IdleState {
             args: QueryExecuteArgs {
-                source: "warehouse".to_owned(),
+                source: source_key("warehouse"),
                 read: ListReadArgs {
                     read: ReadArgs::default(),
                     pagination: PaginationArgs::default(),
@@ -258,25 +259,7 @@ fn start_loads_local_sql_input_before_authentication() {
             } => (source_key, input),
             other => panic!("expected SQL input loading transition, got {other:?}"),
         },
-        ("warehouse".to_owned(), sample_query_input(),)
-    );
-}
-
-#[test]
-fn validate_query_source_key_rejects_unsafe_path_segments() {
-    let context = sample_context();
-
-    let Err(error) = validate_query_source_key("warehouse/main", &context) else {
-        panic!("expected invalid source key");
-    };
-
-    assert_eq!(
-        (error.title.clone(), error.stage, error.why.clone()),
-        (
-            "invalid source key".to_owned(),
-            ErrorStage::ParseCommand,
-            "source key must use only letters, numbers, dots, underscores, or hyphens".to_owned(),
-        )
+        (source_key("warehouse"), sample_query_input(),)
     );
 }
 
@@ -286,7 +269,7 @@ fn loading_sql_input_defers_org_resolution_until_authenticated_org_is_resolved()
 
     let transition = reduce_loading_query_input(
         LoadingQueryInputState {
-            source_key: "warehouse".to_owned(),
+            source_key: source_key("warehouse"),
             read: ListReadArgs::default(),
         },
         QueryEvent::RequestLoaded {
@@ -308,7 +291,7 @@ fn loading_sql_input_defers_org_resolution_until_authenticated_org_is_resolved()
             other => panic!("expected auth-check transition, got {other:?}"),
         },
         (
-            "warehouse".to_owned(),
+            source_key("warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
         )
@@ -322,13 +305,13 @@ fn authenticated_query_transition_materializes_scoped_request_after_authenticati
     let transition = reduce_checking_auth(
         CheckingAuthState {
             request: Rc::new(super::PendingQueryRequest {
-                source_key: "warehouse".to_owned(),
+                source_key: source_key("warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
         },
         QueryEvent::Authenticated {
-            org: "acme".to_owned(),
+            org: org_slug("acme"),
         },
         &context,
     );
@@ -356,12 +339,12 @@ fn authenticated_query_transition_materializes_scoped_request_after_authenticati
             other => panic!("expected execute transition, got {other:?}"),
         },
         (
-            "acme".to_owned(),
-            "warehouse".to_owned(),
+            org_slug("acme"),
+            source_key("warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
-            "acme".to_owned(),
-            "warehouse".to_owned(),
+            org_slug("acme"),
+            source_key("warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
             1,
@@ -383,8 +366,8 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
     let transition = reduce_executing_query(
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
-                org: "acme".to_owned(),
-                source_key: "warehouse".to_owned(),
+                org: org_slug("acme"),
+                source_key: source_key("warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -425,8 +408,8 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
             other => panic!("expected waiting-to-retry continue transition, got {other:?}"),
         },
         (
-            "acme".to_owned(),
-            "warehouse".to_owned(),
+            org_slug("acme"),
+            source_key("warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
             2,
@@ -450,8 +433,8 @@ fn retryable_query_failure_exhausts_after_max_attempts() {
     let transition = reduce_executing_query(
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
-                org: "acme".to_owned(),
-                source_key: "warehouse".to_owned(),
+                org: org_slug("acme"),
+                source_key: source_key("warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -488,8 +471,8 @@ fn unauthorized_query_failure_transitions_to_explicit_reauth_terminal_state() {
     let transition = reduce_executing_query(
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
-                org: "acme".to_owned(),
-                source_key: "warehouse".to_owned(),
+                org: org_slug("acme"),
+                source_key: source_key("warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -523,8 +506,8 @@ fn validate_unauthorized_failure_transitions_to_explicit_reauth_terminal_state()
     let transition = reduce_validating_query(
         ValidatingQueryState {
             request: Rc::new(ValidateQueryRequest {
-                org: "acme".to_owned(),
-                source_key: "warehouse".to_owned(),
+                org: org_slug("acme"),
+                source_key: source_key("warehouse"),
                 read: ReadArgs::default(),
                 payload: sample_query_payload(),
             }),

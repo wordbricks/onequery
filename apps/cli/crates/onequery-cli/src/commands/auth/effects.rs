@@ -14,6 +14,9 @@ use crate::path_utils::resolve_user_path_for_cli;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_then_retry_try_next;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::auth;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::org;
@@ -274,10 +277,7 @@ where
                             title: "org list failed",
                             transport_why_prefix: "failed to reach org list endpoint",
                             decode_why_prefix: "failed to decode org list response",
-                            fallback_try_next: vec![
-                                "run onequery auth login".to_owned(),
-                                "retry onequery org list".to_owned(),
-                            ],
+                            fallback_try_next: auth_login_then_retry_try_next("onequery org list"),
                             unauthorized_try_next: None,
                         },
                     ),
@@ -322,10 +322,9 @@ where
                             title: "whoami failed",
                             transport_why_prefix: "failed to reach whoami endpoint",
                             decode_why_prefix: "failed to decode whoami response",
-                            fallback_try_next: vec![
-                                "run onequery auth login".to_owned(),
-                                format!("retry {}", context.command_line),
-                            ],
+                            fallback_try_next: auth_login_then_retry_try_next(
+                                &context.command_line,
+                            ),
                             unauthorized_try_next: None,
                         },
                     ),
@@ -364,7 +363,7 @@ async fn execute_start_login_session<B, T>(
                     title: "login start failed",
                     transport_why_prefix: "failed to reach login start endpoint",
                     decode_why_prefix: "failed to decode login start response",
-                    fallback_try_next: vec![format!("retry {}", context.command_line)],
+                    fallback_try_next: retry_try_next(&context.command_line),
                     unauthorized_try_next: None,
                 },
             ),
@@ -446,7 +445,7 @@ where
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "browser authorization was denied before token exchange completed",
-                vec!["run onequery auth login again".to_owned()],
+                auth_login_try_next(),
             ),
         },
         Ok(login_poll::LoginPollTerminalState::Expired) => AuthEvent::LoginCompletionFailed {
@@ -455,7 +454,7 @@ where
                 context.command_line.clone(),
                 ErrorStage::Auth,
                 "browser authorization session expired before token exchange completed",
-                vec!["run onequery auth login again".to_owned()],
+                auth_login_try_next(),
             ),
         },
         Ok(login_poll::LoginPollTerminalState::TimedOut { expires_in_sec }) => {
@@ -465,7 +464,7 @@ where
                     context.command_line.clone(),
                     ErrorStage::Auth,
                     format!("did not receive authorization after {expires_in_sec} seconds"),
-                    vec!["run onequery auth login again".to_owned()],
+                    auth_login_try_next(),
                 ),
             }
         }
@@ -479,7 +478,7 @@ where
                         title: "login poll failed",
                         transport_why_prefix: "failed to poll login session",
                         decode_why_prefix: "failed to decode login poll response",
-                        fallback_try_next: vec!["run onequery auth login again".to_owned()],
+                        fallback_try_next: auth_login_try_next(),
                         unauthorized_try_next: None,
                     },
                 ),
@@ -534,7 +533,7 @@ async fn execute_resolve_login_identity<B, T>(
                     title: "login identity lookup failed",
                     transport_why_prefix: "failed to reach whoami endpoint after device authorization",
                     decode_why_prefix: "failed to decode whoami response after device authorization",
-                    fallback_try_next: vec!["run onequery auth login again".to_owned()],
+                    fallback_try_next: auth_login_try_next(),
                     unauthorized_try_next: None,
                 },
             ),

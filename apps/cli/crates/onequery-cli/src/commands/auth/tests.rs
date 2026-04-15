@@ -25,6 +25,8 @@ use crate::config::ConfigStore;
 use crate::config::default_base_url;
 use crate::credentials::AuthSessionStore;
 use crate::credentials::ImportedAuthSession;
+use crate::output::EffectiveOutputMode;
+use crate::output::render_error;
 use crate::platform::BrowserLaunchError;
 use crate::platform::BrowserLauncher;
 use crate::platform::Terminal;
@@ -81,6 +83,29 @@ fn select_single_org_slug_returns_none_when_multiple_orgs_are_available() {
     ];
 
     assert_eq!(select_single_org_slug(&orgs), None);
+}
+
+#[test]
+fn login_denied_error_snapshot_uses_canonical_retry_command() {
+    let error = CliError::new(
+        "login denied",
+        "onequery auth login",
+        ErrorStage::Auth,
+        "browser authorization was denied before token exchange completed",
+        vec!["onequery auth login".to_owned()],
+    );
+
+    assert_snapshot!(
+        render_error(&error, EffectiveOutputMode::Text),
+        @r#"
+Error: login denied
+Command: onequery auth login
+Stage: auth
+Why: browser authorization was denied before token exchange completed
+Try:
+  - onequery auth login
+"#
+    );
 }
 
 #[test]
@@ -748,7 +773,7 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
             "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization was denied before token exchange completed".to_owned(),
-            vec!["run onequery auth login again".to_owned()],
+            vec!["onequery auth login".to_owned()],
         )
     );
 }
@@ -846,7 +871,7 @@ async fn auth_workflow_login_device_denial_stops_after_poll_login_effect() {
                         "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization was denied before token exchange completed",
-                        vec!["run onequery auth login again".to_owned()],
+                        vec!["onequery auth login".to_owned()],
                     ),
                 },
             ),
@@ -878,7 +903,7 @@ async fn auth_workflow_login_device_denial_stops_after_poll_login_effect() {
             "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization was denied before token exchange completed".to_owned(),
-            vec!["run onequery auth login again".to_owned()],
+            vec!["onequery auth login".to_owned()],
             None,
             None,
             Vec::new(),
@@ -911,7 +936,7 @@ async fn auth_workflow_login_expired_session_stops_after_poll_login_effect() {
                         "onequery auth login",
                         ErrorStage::Auth,
                         "browser authorization session expired before token exchange completed",
-                        vec!["run onequery auth login again".to_owned()],
+                        vec!["onequery auth login".to_owned()],
                     ),
                 },
             ),
@@ -943,7 +968,7 @@ async fn auth_workflow_login_expired_session_stops_after_poll_login_effect() {
             "onequery auth login".to_owned(),
             ErrorStage::Auth,
             "browser authorization session expired before token exchange completed".to_owned(),
-            vec!["run onequery auth login again".to_owned()],
+            vec!["onequery auth login".to_owned()],
             None,
             None,
             Vec::new(),

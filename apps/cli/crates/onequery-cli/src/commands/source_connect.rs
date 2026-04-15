@@ -2,11 +2,15 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::cli::SourceConnectArgs;
+use crate::identifiers::OrgSlug;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::command_then_retry_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::source_connect;
 use crate::transport::source_connect::SourceConnectGuide;
 use crate::transport::source_connect::SourceConnectResult;
@@ -56,7 +60,7 @@ enum SourceConnectTerminalState {
 enum SourceConnectEvent {
     Start,
     Authenticated {
-        org: String,
+        org: OrgSlug,
     },
     AuthFailed {
         error: CliError,
@@ -83,11 +87,11 @@ enum SourceConnectEvent {
 enum SourceConnectEffect {
     EnsureAuthenticatedOrg,
     FetchGuide {
-        org: String,
+        org: OrgSlug,
         source: SourceConnectProvider,
     },
     ConnectSource {
-        org: String,
+        org: OrgSlug,
         source: SourceConnectProvider,
         input: Map<String, Value>,
     },
@@ -310,8 +314,8 @@ async fn execute_effect<B, T>(
                                 title: "source connect failed",
                                 transport_why_prefix: "failed to reach source connect guide endpoint",
                                 decode_why_prefix: "failed to decode source connect guide response",
-                                fallback_try_next: vec![format!("retry {}", context.command_line)],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: retry_try_next(&context.command_line),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         outcome,
@@ -346,11 +350,11 @@ async fn execute_effect<B, T>(
                                 title: "source connect failed",
                                 transport_why_prefix: "failed to reach source connect endpoint",
                                 decode_why_prefix: "failed to decode source connect response",
-                                fallback_try_next: vec![
-                                    format!("onequery source connect --source {}", source),
-                                    format!("retry {}", context.command_line),
-                                ],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: command_then_retry_try_next(
+                                    format!("onequery source connect --source {source}"),
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         outcome,
