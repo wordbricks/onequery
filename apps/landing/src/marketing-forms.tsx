@@ -143,7 +143,7 @@ export function FooterContactButton() {
   );
 }
 
-function ContactModal({ onClose }: { onClose(): void }) {
+function ContactModal({ onClose }: { onClose: () => void }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [form, setForm] = useState<ContactState>(emptyContactState);
   const [isPending, setIsPending] = useState(false);
