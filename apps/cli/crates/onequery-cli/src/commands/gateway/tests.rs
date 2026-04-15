@@ -8,13 +8,14 @@ use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 use uuid::Uuid;
 
+use crate::packaged_runtime::packaged_cli_relative_path;
+use crate::packaged_runtime::packaged_server_relative_path;
+use crate::packaged_runtime::runtime_root_env_var;
+
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootSource;
-use super::launch::packaged_cli_relative_path;
-use super::launch::packaged_server_relative_path;
 use super::launch::resolve_runtime_bundle_root_from_components;
-use super::launch::runtime_root_env_var;
 use super::render::render_gateway_logs_output;
 use super::render::render_gateway_output;
 use super::render::render_gateway_start_output;

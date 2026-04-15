@@ -252,6 +252,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
+            process: crate::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery debug config".to_owned(),
@@ -299,6 +300,7 @@ mod tests {
             auth_session,
             browser: NoopBrowser,
             terminal: NoopTerminal,
+            process: crate::process_context::ProcessContext::default(),
         };
 
         let output = render_auth_session_output(&runtime);

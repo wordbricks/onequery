@@ -387,6 +387,7 @@ async fn logout_clears_stored_credentials_and_active_org_selection() {
         ),
         browser: NoopBrowser,
         terminal: NoopTerminal,
+        process: crate::process_context::ProcessContext::default(),
     };
 
     let logout_context = auth_context("onequery auth logout");
@@ -444,6 +445,7 @@ async fn auth_import_persists_auth_session_from_file_payload() {
         ),
         browser: NoopBrowser,
         terminal: NoopTerminal,
+        process: crate::process_context::ProcessContext::default(),
     };
 
     let output = super::execute(
@@ -537,6 +539,7 @@ async fn auth_import_dry_run_validates_payload_without_persisting_session() {
         ),
         browser: NoopBrowser,
         terminal: NoopTerminal,
+        process: crate::process_context::ProcessContext::default(),
     };
 
     let output = super::execute(
@@ -611,6 +614,7 @@ async fn login_after_logout_marks_the_next_identity_for_org_bootstrap() {
         ),
         browser: NoopBrowser,
         terminal: NoopTerminal,
+        process: crate::process_context::ProcessContext::default(),
     };
 
     let logout_context = auth_context("onequery auth logout");
@@ -723,6 +727,7 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
         auth_session: AuthSessionStore::with_file_access_token_for_test(credentials_path, None),
         browser: NoopBrowser,
         terminal: NoopTerminal,
+        process: crate::process_context::ProcessContext::default(),
     };
     let context = CommandContext {
         command_line: "onequery auth login".to_owned(),
