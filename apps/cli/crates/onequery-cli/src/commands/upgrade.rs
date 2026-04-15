@@ -11,7 +11,8 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::output::CommandOutput;
-use crate::packaged_runtime::resolve_packaged_executable_layout;
+use crate::packaged_runtime::CurrentExecutableLocation;
+use crate::packaged_runtime::classify_current_executable;
 use crate::platform::Terminal;
 
 use super::CommandContext;
@@ -97,7 +98,11 @@ enum InstallLayout {
 
 impl InstallLayout {
     fn detect(current_exe: &Path) -> Option<Self> {
-        let packaged_layout = resolve_packaged_executable_layout(current_exe)?;
+        let CurrentExecutableLocation::Packaged(packaged_layout) =
+            classify_current_executable(current_exe)
+        else {
+            return None;
+        };
 
         homebrew_install_layout(packaged_layout.install_root.as_path())
             .or_else(|| node_package_install_layout(packaged_layout.install_root.as_path()))

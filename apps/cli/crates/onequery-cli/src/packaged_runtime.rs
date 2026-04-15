@@ -17,6 +17,13 @@ pub(crate) struct PackagedExecutableLayout {
     pub(crate) runtime_root: PathBuf,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum CurrentExecutableLocation {
+    Packaged(PackagedExecutableLayout),
+    CargoTargetOutput,
+    Other,
+}
+
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct RuntimeBundleSpec {
@@ -91,9 +98,19 @@ pub(crate) fn runtime_root_env_var() -> &'static str {
     runtime_bundle_spec().runtime_root_env_var.as_str()
 }
 
-pub(crate) fn resolve_packaged_executable_layout(
-    current_executable: &Path,
-) -> Option<PackagedExecutableLayout> {
+pub(crate) fn classify_current_executable(current_executable: &Path) -> CurrentExecutableLocation {
+    if let Some(layout) = packaged_executable_layout(current_executable) {
+        return CurrentExecutableLocation::Packaged(layout);
+    }
+
+    if cargo_target_profile_dir(current_executable).is_some() {
+        return CurrentExecutableLocation::CargoTargetOutput;
+    }
+
+    CurrentExecutableLocation::Other
+}
+
+fn packaged_executable_layout(current_executable: &Path) -> Option<PackagedExecutableLayout> {
     let cli_dir = current_executable.parent()?;
     let cli_relative_path = Path::new(packaged_cli_relative_path());
     let mut runtime_root = cli_dir;
@@ -116,18 +133,30 @@ pub(crate) fn resolve_packaged_executable_layout(
     })
 }
 
-pub(crate) fn current_executable_is_cargo_build_output(current_executable: &Path) -> bool {
-    let Some(build_profile_dir) = current_executable.parent() else {
-        return false;
-    };
-    let Some(target_dir) = build_profile_dir.parent() else {
-        return false;
-    };
+fn cargo_target_profile_dir(current_executable: &Path) -> Option<&Path> {
+    let profile_dir = current_executable.parent()?;
+    let profile_name = profile_dir.file_name()?;
+    if is_non_profile_target_dir(profile_name) {
+        return None;
+    }
 
+    let parent_dir = profile_dir.parent()?;
+    if parent_dir.file_name() == Some(OsStr::new("target")) {
+        return Some(profile_dir);
+    }
+
+    if parent_dir.parent()?.file_name() == Some(OsStr::new("target")) {
+        return Some(profile_dir);
+    }
+
+    None
+}
+
+fn is_non_profile_target_dir(dir_name: &OsStr) -> bool {
     matches!(
-        build_profile_dir.file_name(),
-        Some(name) if name == OsStr::new("debug") || name == OsStr::new("release")
-    ) && target_dir.file_name() == Some(OsStr::new("target"))
+        dir_name.to_str(),
+        Some("build" | "deps" | "doc" | "examples" | "incremental" | ".fingerprint" | "tmp")
+    )
 }
 
 fn runtime_bundle_spec() -> &'static RuntimeBundleSpec {
@@ -144,17 +173,17 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
+    use super::CurrentExecutableLocation;
     use super::PackagedExecutableLayout;
-    use super::current_executable_is_cargo_build_output;
-    use super::resolve_packaged_executable_layout;
+    use super::classify_current_executable;
 
     #[test]
-    fn resolve_packaged_executable_layout_reads_install_and_runtime_roots() {
+    fn classify_current_executable_reads_packaged_install_and_runtime_roots() {
         assert_eq!(
-            resolve_packaged_executable_layout(Path::new(
+            classify_current_executable(Path::new(
                 "/tmp/install/vendor/x86_64-unknown-linux-musl/onequery/onequery",
             )),
-            Some(PackagedExecutableLayout {
+            CurrentExecutableLocation::Packaged(PackagedExecutableLayout {
                 install_root: PathBuf::from("/tmp/install"),
                 runtime_root: PathBuf::from("/tmp/install/vendor/x86_64-unknown-linux-musl"),
             })
@@ -162,28 +191,62 @@ mod tests {
     }
 
     #[test]
-    fn resolve_packaged_executable_layout_rejects_non_vendor_layouts() {
+    fn classify_current_executable_rejects_non_vendor_layouts() {
         assert_eq!(
-            resolve_packaged_executable_layout(Path::new(
+            classify_current_executable(Path::new(
                 "/tmp/install/not-vendor/x86_64-unknown-linux-musl/onequery/onequery",
             )),
-            None
+            CurrentExecutableLocation::Other
         );
     }
 
     #[test]
-    fn current_executable_is_cargo_build_output_recognizes_target_profiles() {
+    fn classify_current_executable_recognizes_root_target_profiles() {
         assert_eq!(
-            current_executable_is_cargo_build_output(Path::new(
-                "/tmp/project/target/debug/onequery"
-            )),
-            true
+            classify_current_executable(Path::new("/tmp/project/target/debug/onequery")),
+            CurrentExecutableLocation::CargoTargetOutput
         );
         assert_eq!(
-            current_executable_is_cargo_build_output(Path::new(
-                "/tmp/project/vendor/x86_64-unknown-linux-musl/onequery/onequery",
+            classify_current_executable(Path::new("/tmp/project/target/ci-release/onequery")),
+            CurrentExecutableLocation::CargoTargetOutput
+        );
+    }
+
+    #[test]
+    fn classify_current_executable_recognizes_target_triple_profiles() {
+        assert_eq!(
+            classify_current_executable(Path::new(
+                "/tmp/project/target/aarch64-apple-darwin/debug/onequery"
             )),
-            false
+            CurrentExecutableLocation::CargoTargetOutput
+        );
+        assert_eq!(
+            classify_current_executable(Path::new(
+                "/tmp/project/target/x86_64-unknown-linux-musl/ci-release/onequery"
+            )),
+            CurrentExecutableLocation::CargoTargetOutput
+        );
+    }
+
+    #[test]
+    fn classify_current_executable_rejects_non_profile_target_subdirectories() {
+        assert_eq!(
+            classify_current_executable(Path::new("/tmp/project/target/deps/onequery")),
+            CurrentExecutableLocation::Other
+        );
+        assert_eq!(
+            classify_current_executable(Path::new(
+                "/tmp/project/target/x86_64-unknown-linux-musl/examples/onequery",
+            )),
+            CurrentExecutableLocation::Other
+        );
+    }
+
+    #[test]
+    fn classify_current_executable_rejects_unrecognized_paths() {
+        assert_eq!(
+            classify_current_executable(Path::new("/tmp/project/bin/onequery")),
+            CurrentExecutableLocation::Other
         );
     }
 }

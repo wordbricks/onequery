@@ -14,8 +14,9 @@ use crate::packaged_runtime::runtime_root_env_var;
 
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::launch::RuntimeBundleRoot;
+use super::launch::RuntimeBundleRootLocator;
 use super::launch::RuntimeBundleRootSource;
-use super::launch::resolve_runtime_bundle_root_from_components;
+use super::launch::resolve_runtime_bundle_root_from_locator;
 use super::render::render_gateway_logs_output;
 use super::render::render_gateway_output;
 use super::render::render_gateway_start_output;
@@ -132,18 +133,13 @@ fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
 }
 
 #[test]
-fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
-    let current_executable = PathBuf::from(format!(
-        "/tmp/vendor/x86_64-unknown-linux-musl/{}/onequery",
-        packaged_cli_relative_path()
-    ));
+fn resolve_runtime_bundle_root_from_locator_accepts_runtime_root_override() {
     let runtime_root_override = Path::new("/tmp/staged-runtime");
-    let resolved = resolve_runtime_bundle_root_from_components(
-        Some(runtime_root_override),
-        current_executable.as_path(),
+    let resolved = resolve_runtime_bundle_root_from_locator(
+        RuntimeBundleRootLocator::EnvironmentOverride(runtime_root_override),
         "onequery gateway",
     )
-    .expect("expected runtime root override to win");
+    .expect("expected runtime root override to resolve");
 
     assert_eq!(
         resolved,
@@ -155,14 +151,13 @@ fn resolve_runtime_bundle_root_from_components_prefers_runtime_root_override() {
 }
 
 #[test]
-fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_override() {
+fn resolve_runtime_bundle_root_from_locator_uses_packaged_executable_layout() {
     let current_executable = PathBuf::from(format!(
         "/tmp/vendor/x86_64-unknown-linux-musl/{}/onequery",
         packaged_cli_relative_path()
     ));
-    let resolved = resolve_runtime_bundle_root_from_components(
-        None,
-        current_executable.as_path(),
+    let resolved = resolve_runtime_bundle_root_from_locator(
+        RuntimeBundleRootLocator::CurrentExecutable(current_executable.as_path()),
         "onequery gateway",
     )
     .expect("expected packaged executable layout to resolve");
@@ -177,10 +172,11 @@ fn resolve_runtime_bundle_root_from_components_uses_packaged_executable_without_
 }
 
 #[test]
-fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
-    let error = resolve_runtime_bundle_root_from_components(
-        None,
-        Path::new("/tmp/project/target/debug/onequery"),
+fn resolve_runtime_bundle_root_from_locator_reports_cargo_output_guidance() {
+    let error = resolve_runtime_bundle_root_from_locator(
+        RuntimeBundleRootLocator::CurrentExecutable(Path::new(
+            "/tmp/project/target/aarch64-apple-darwin/ci-release/onequery",
+        )),
         "onequery gateway",
     )
     .expect_err("expected Cargo output guidance");
@@ -192,7 +188,7 @@ fn resolve_runtime_bundle_root_from_components_reports_cargo_output_guidance() {
     assert_eq!(
         error.why.as_str(),
         format!(
-            "current executable /tmp/project/target/debug/onequery was launched from Cargo output; set {} to a staged self-host runtime bundle root",
+            "current executable /tmp/project/target/aarch64-apple-darwin/ci-release/onequery was launched from Cargo output; set {} to a staged self-host runtime bundle root",
             runtime_root_env_var()
         )
     );

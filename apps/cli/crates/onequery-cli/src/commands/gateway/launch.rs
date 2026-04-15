@@ -7,13 +7,13 @@ use onequery_cli_core::error::ErrorStage;
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
 use super::state::GatewayRuntimeState;
-use crate::packaged_runtime::current_executable_is_cargo_build_output;
+use crate::packaged_runtime::CurrentExecutableLocation;
+use crate::packaged_runtime::classify_current_executable;
 use crate::packaged_runtime::packaged_cli_relative_path;
 use crate::packaged_runtime::packaged_migrations_relative_path;
 use crate::packaged_runtime::packaged_server_relative_path;
 use crate::packaged_runtime::packaged_web_dist_relative_path;
 use crate::packaged_runtime::packaged_web_required_file;
-use crate::packaged_runtime::resolve_packaged_executable_layout;
 use crate::packaged_runtime::runtime_root_env_var;
 use crate::process_context::ProcessContext;
 
@@ -35,6 +35,12 @@ pub(super) enum RuntimeBundleRootSource {
 pub(super) struct RuntimeBundleRoot {
     pub(super) path: PathBuf,
     pub(super) source: RuntimeBundleRootSource,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) enum RuntimeBundleRootLocator<'a> {
+    EnvironmentOverride(&'a Path),
+    CurrentExecutable(&'a Path),
 }
 
 pub(super) fn resolve_launch_plan(
@@ -97,94 +103,77 @@ fn resolve_runtime_bundle_root(
     command_line: &str,
 ) -> Result<RuntimeBundleRoot, CliError> {
     let runtime_root_override = std::env::var_os(runtime_root_env_var()).map(PathBuf::from);
-    if let Some(bundle_root) =
-        resolve_runtime_bundle_root_override(runtime_root_override.as_deref(), command_line)?
-    {
-        return Ok(bundle_root);
-    }
-
-    let current_executable = process.current_executable_or_error(
-        "failed to resolve self-host runtime bundle",
-        command_line,
-        ErrorStage::LoadConfig,
-        vec![retry_with_runtime_root(command_line)],
-    )?;
-    resolve_runtime_bundle_root_from_components(None, current_executable, command_line)
-}
-
-pub(super) fn resolve_runtime_bundle_root_from_components(
-    runtime_root_override: Option<&Path>,
-    current_executable: &Path,
-    command_line: &str,
-) -> Result<RuntimeBundleRoot, CliError> {
-    if let Some(bundle_root) =
-        resolve_runtime_bundle_root_override(runtime_root_override, command_line)?
-    {
-        return Ok(bundle_root);
-    }
-
-    if let Some(bundle_root) =
-        resolve_packaged_executable_layout(current_executable).map(|layout| layout.runtime_root)
-    {
-        return Ok(RuntimeBundleRoot {
-            path: bundle_root,
-            source: RuntimeBundleRootSource::PackagedExecutable,
-        });
-    }
-
-    if current_executable_is_cargo_build_output(current_executable) {
-        return Err(CliError::new(
+    let locator = if let Some(runtime_root_override) = runtime_root_override.as_deref() {
+        RuntimeBundleRootLocator::EnvironmentOverride(runtime_root_override)
+    } else {
+        let current_executable = process.current_executable_or_error(
             "failed to resolve self-host runtime bundle",
             command_line,
             ErrorStage::LoadConfig,
-            format!(
-                "current executable {} was launched from Cargo output; set {} to a staged self-host runtime bundle root",
-                current_executable.display(),
-                runtime_root_env_var()
-            ),
             vec![retry_with_runtime_root(command_line)],
-        ));
-    }
-
-    Err(CliError::new(
-        "failed to resolve self-host runtime bundle",
-        command_line,
-        ErrorStage::LoadConfig,
-        format!(
-            "expected {} to live under vendor/<target>/{}, or set {}=<bundle-root>",
-            current_executable.display(),
-            packaged_cli_relative_path(),
-            runtime_root_env_var()
-        ),
-        vec![retry_with_runtime_root(command_line)],
-    ))
-}
-
-fn resolve_runtime_bundle_root_override(
-    runtime_root_override: Option<&Path>,
-    command_line: &str,
-) -> Result<Option<RuntimeBundleRoot>, CliError> {
-    let Some(runtime_root_override) = runtime_root_override else {
-        return Ok(None);
+        )?;
+        RuntimeBundleRootLocator::CurrentExecutable(current_executable)
     };
 
-    if runtime_root_override.as_os_str().is_empty() {
-        return Err(CliError::new(
-            "failed to resolve self-host runtime bundle",
-            command_line,
-            ErrorStage::LoadConfig,
-            format!("{} was set but empty", runtime_root_env_var()),
-            vec![retry_with_runtime_root(command_line)],
-        ));
-    }
+    resolve_runtime_bundle_root_from_locator(locator, command_line)
+}
 
-    // Comment: local Cargo builds live under `target/{debug,release}`, so
-    // local development must be able to point the launcher at a staged
-    // runtime bundle explicitly instead of assuming packaged layout.
-    Ok(Some(RuntimeBundleRoot {
-        path: runtime_root_override.to_path_buf(),
-        source: RuntimeBundleRootSource::EnvironmentOverride,
-    }))
+pub(super) fn resolve_runtime_bundle_root_from_locator(
+    locator: RuntimeBundleRootLocator<'_>,
+    command_line: &str,
+) -> Result<RuntimeBundleRoot, CliError> {
+    match locator {
+        RuntimeBundleRootLocator::EnvironmentOverride(runtime_root_override) => {
+            if runtime_root_override.as_os_str().is_empty() {
+                return Err(CliError::new(
+                    "failed to resolve self-host runtime bundle",
+                    command_line,
+                    ErrorStage::LoadConfig,
+                    format!("{} was set but empty", runtime_root_env_var()),
+                    vec![retry_with_runtime_root(command_line)],
+                ));
+            }
+
+            // Comment: local Cargo builds live under `target/<triple>/<profile>` as well as
+            // `target/<profile>`, so development needs an explicit staged bundle root instead
+            // of guessing from an unbundled executable path.
+            Ok(RuntimeBundleRoot {
+                path: runtime_root_override.to_path_buf(),
+                source: RuntimeBundleRootSource::EnvironmentOverride,
+            })
+        }
+        RuntimeBundleRootLocator::CurrentExecutable(current_executable) => {
+            match classify_current_executable(current_executable) {
+                CurrentExecutableLocation::Packaged(layout) => Ok(RuntimeBundleRoot {
+                    path: layout.runtime_root,
+                    source: RuntimeBundleRootSource::PackagedExecutable,
+                }),
+                CurrentExecutableLocation::CargoTargetOutput => Err(CliError::new(
+                    "failed to resolve self-host runtime bundle",
+                    command_line,
+                    ErrorStage::LoadConfig,
+                    format!(
+                        "current executable {} was launched from Cargo output; set {} to a staged self-host runtime bundle root",
+                        current_executable.display(),
+                        runtime_root_env_var()
+                    ),
+                    vec![retry_with_runtime_root(command_line)],
+                )),
+                CurrentExecutableLocation::Other => Err(CliError::new(
+                    "failed to resolve self-host runtime bundle",
+                    command_line,
+                    ErrorStage::LoadConfig,
+                    format!(
+                        "expected {} to live under vendor/<target>/{}, or set {}=<bundle-root>",
+                        current_executable.display(),
+                        packaged_cli_relative_path(),
+                        runtime_root_env_var()
+                    ),
+                    vec![retry_with_runtime_root(command_line)],
+                )),
+            }
+        }
+    }
 }
 
 fn incomplete_runtime_bundle_error(
