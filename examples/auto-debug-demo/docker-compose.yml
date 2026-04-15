@@ -1,0 +1,19 @@
+services:
+  demo-db:
+    image: postgres:16
+    ports:
+      - "5480:5432"
+    environment:
+      POSTGRES_DB: demo_app
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo_secret
+    volumes:
+      - demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo_app"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  demo_data:
