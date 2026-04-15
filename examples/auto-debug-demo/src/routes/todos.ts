@@ -4,15 +4,23 @@ import { sql } from "../db.js";
 
 const app = new Hono();
 
+type DemoContext = {
+  req: {
+    json(): Promise<{ title: string }>;
+    param(name: string): string;
+  };
+  json(body: unknown, status?: number): Response;
+};
+
 // GET /todos — list all todos
-app.get("/todos", async (c) => {
+app.get("/todos", async (c: DemoContext) => {
   const rows = await sql`SELECT * FROM todos ORDER BY created_at DESC`;
   return c.json(rows);
 });
 
 // POST /todos — create a todo
-app.post("/todos", async (c) => {
-  const { title } = await c.req.json<{ title: string }>();
+app.post("/todos", async (c: DemoContext) => {
+  const { title } = await c.req.json();
   const rows = await sql`
     INSERT INTO todos (title) VALUES (${title}) RETURNING *
   `;
@@ -20,7 +28,7 @@ app.post("/todos", async (c) => {
 });
 
 // PATCH /todos/:id — mark a todo as completed
-app.patch("/todos/:id", async (c) => {
+app.patch("/todos/:id", async (c: DemoContext) => {
   const id = c.req.param("id");
   try {
     // BUG: The column is called "completed" (boolean), not "completed_at".
@@ -40,13 +48,13 @@ app.patch("/todos/:id", async (c) => {
 });
 
 // DELETE /todos/:id — delete a todo
-app.delete("/todos/:id", async (c) => {
+app.delete("/todos/:id", async (c: DemoContext) => {
   const id = c.req.param("id");
   await sql`DELETE FROM todos WHERE id = ${id}`;
   return c.json({ deleted: true });
 });
 
 // GET /health — health check
-app.get("/health", (c) => c.json({ status: "ok" }));
+app.get("/health", (c: DemoContext) => c.json({ status: "ok" }));
 
 export { app as todosApp };

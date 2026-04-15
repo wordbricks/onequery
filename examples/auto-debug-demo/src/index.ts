@@ -8,5 +8,5 @@ app.route("/", todosApp);
 
 export default {
   port: 3456,
-  fetch: app.fetch,
+  fetch: (request: Request) => app.fetch(request),
 };
