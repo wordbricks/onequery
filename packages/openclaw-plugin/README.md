@@ -6,7 +6,14 @@ instead of registering a separate wrapper tool surface.
 
 ## Install
 
-From this repository:
+From npm:
+
+```bash
+openclaw plugins install @onequery/openclaw-plugin
+openclaw plugins enable onequery
+```
+
+From a checkout of this repository:
 
 ```bash
 openclaw plugins install -l ./packages/openclaw-plugin

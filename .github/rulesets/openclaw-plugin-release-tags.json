@@ -1,0 +1,32 @@
+{
+  "name": "Protect OpenClaw plugin release tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/openclaw-plugin-v*"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [
+    {
+      "actor_type": "Team",
+      "actor_slug": "onequery-maintainers",
+      "bypass_mode": "always"
+    }
+  ],
+  "rules": [
+    {
+      "type": "creation"
+    },
+    {
+      "type": "update",
+      "parameters": {
+        "update_allows_fetch_and_merge": false
+      }
+    },
+    {
+      "type": "deletion"
+    }
+  ]
+}
