@@ -1,31 +1,18 @@
 use std::collections::HashMap;
-use std::fmt::Write;
 
 use serde_json::Value as JsonValue;
-use sha2::Digest;
-use sha2::Sha256;
 use toml::Value as TomlValue;
 
 use crate::state::ConfigLayerMetadata;
 
-pub fn config_fingerprint(raw_toml: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(raw_toml.as_bytes());
-    format!("{:x}", hasher.finalize())
+pub fn config_fingerprint(raw_toml: &str) -> blake3::Hash {
+    blake3::hash(raw_toml.as_bytes())
 }
 
-pub fn version_for_toml(value: &TomlValue) -> String {
+pub fn version_for_toml(value: &TomlValue) -> blake3::Hash {
     let canonical = canonical_json_from_toml(value);
-    let serialized = canonical.to_string().into_bytes();
-    let mut hasher = Sha256::new();
-    hasher.update(serialized);
-    let hash = hasher.finalize();
-    let mut fingerprint = String::with_capacity("sha256:".len() + hash.len() * 2);
-    fingerprint.push_str("sha256:");
-    for byte in hash {
-        let _ = write!(fingerprint, "{byte:02x}");
-    }
-    fingerprint
+    let serialized = canonical.to_string();
+    blake3::hash(serialized.as_bytes())
 }
 
 pub(crate) fn record_origins(
@@ -100,7 +87,7 @@ mod tests {
     fn config_fingerprint_hashes_raw_toml_bytes() {
         assert_eq!(
             config_fingerprint("active_org = \"acme\"\n"),
-            "76fdee3b74aafdba536765bfde10b7970db9739b68cef122865261af8ed39149"
+            blake3::hash(b"active_org = \"acme\"\n")
         );
     }
 
@@ -134,7 +121,7 @@ request_timeout_sec = 60
         )
         .expect("expected TOML parse to succeed");
         let metadata =
-            ConfigLayerMetadata::new(ConfigLayerSource::Defaults, Some("defaults".to_owned()));
+            ConfigLayerMetadata::new(ConfigLayerSource::Defaults, Some(blake3::hash(b"defaults")));
         let mut origins = HashMap::new();
         let mut path = Vec::new();
 
@@ -144,7 +131,7 @@ request_timeout_sec = 60
             origins.get("api.request_timeout_sec"),
             Some(&ConfigLayerMetadata::new(
                 ConfigLayerSource::Defaults,
-                Some("defaults".to_owned()),
+                Some(blake3::hash(b"defaults")),
             ))
         );
     }

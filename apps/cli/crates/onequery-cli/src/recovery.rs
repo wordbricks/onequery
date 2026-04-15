@@ -112,10 +112,7 @@ fn retry_step(retry_command: &str) -> String {
 fn best_effort_managed_gateway_recovery_try_next(
     gateway_recovery: Result<Option<Vec<String>>, CliError>,
 ) -> Option<Vec<String>> {
-    match gateway_recovery {
-        Ok(try_next) => try_next,
-        Err(_) => None,
-    }
+    gateway_recovery.unwrap_or_default()
 }
 
 fn build_missing_auth_try_next(managed_gateway_layer: Option<Vec<String>>) -> Vec<String> {

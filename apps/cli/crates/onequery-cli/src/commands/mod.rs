@@ -35,6 +35,7 @@ use crate::platform::PlatformAdapters;
 use crate::platform::StderrTerminal;
 use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
+use crate::process_context::ProcessContext;
 use crate::recovery::missing_org_try_next;
 use crate::transport::query::QueryResultWindow;
 use crate::transport::read_controls::ReadRequestControls;
@@ -109,6 +110,7 @@ pub(crate) struct Runtime<B = SystemBrowserLauncher, T = StderrTerminal> {
     pub auth_session: AuthSessionStore,
     pub browser: B,
     pub terminal: T,
+    pub process: ProcessContext,
 }
 
 impl Runtime<SystemBrowserLauncher, StderrTerminal> {
@@ -131,6 +133,7 @@ impl Runtime<SystemBrowserLauncher, StderrTerminal> {
             auth_session,
             browser: platform.browser,
             terminal: platform.terminal,
+            process: ProcessContext::capture(),
         })
     }
 }

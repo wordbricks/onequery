@@ -5,10 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+blake3 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_path_to_error = { workspace = true }
 serde_json = { workspace = true }
-sha2 = { workspace = true }
 toml = { workspace = true }
 toml_edit = { workspace = true }
 

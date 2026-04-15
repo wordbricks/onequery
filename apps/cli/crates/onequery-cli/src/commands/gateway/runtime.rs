@@ -15,6 +15,7 @@ use crate::config::self_host::write_self_host_launch_config;
 use crate::local_target::runtime_accepting_connections;
 use crate::local_target::runtime_probe_host;
 use crate::output::CommandOutput;
+use crate::process_context::ProcessContext;
 
 use super::super::is_process_running;
 use super::CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP;
@@ -74,11 +75,12 @@ pub(super) fn read_log_preview(path: &Path, command_line: &str) -> Result<LogPre
 
 pub(super) fn run_gateway_foreground(
     state: &GatewayRuntimeState,
+    process: &ProcessContext,
     command_line: &str,
     retry_command: &str,
 ) -> Result<CommandOutput, CliError> {
     let (launch_plan, runtime_command) =
-        prepare_runtime_launch(state, command_line, retry_command)?;
+        prepare_runtime_launch(state, process, command_line, retry_command)?;
     let mut child = ProcessCommand::new(&runtime_command);
     child.arg(&launch_plan.runtime_entry_path);
     child.arg(&launch_plan.launch_config_path);
@@ -136,6 +138,7 @@ pub(super) fn run_gateway_foreground(
 
 pub(super) fn run_gateway_background(
     state: &GatewayRuntimeState,
+    process: &ProcessContext,
     command_line: &str,
     retry_command: &str,
 ) -> Result<CommandOutput, CliError> {
@@ -146,7 +149,7 @@ pub(super) fn run_gateway_background(
         )
     })?;
     let (launch_plan, runtime_command) =
-        prepare_runtime_launch(state, command_line, retry_command)?;
+        prepare_runtime_launch(state, process, command_line, retry_command)?;
     let mut child = ProcessCommand::new(&runtime_command);
     child.arg(&launch_plan.runtime_entry_path);
     child.arg(&launch_plan.launch_config_path);
@@ -195,11 +198,12 @@ pub(super) fn run_gateway_background(
 
 fn prepare_runtime_launch(
     state: &GatewayRuntimeState,
+    process: &ProcessContext,
     command_line: &str,
     retry_command: &str,
 ) -> Result<(GatewayLaunchPlan, OsString), CliError> {
     ensure_runtime_not_running(state, command_line)?;
-    let mut launch_plan = resolve_launch_plan(state, command_line)?;
+    let mut launch_plan = resolve_launch_plan(state, process, command_line)?;
     let runtime_command = resolve_runtime_command();
     ensure_runtime_command_support(
         &runtime_command,

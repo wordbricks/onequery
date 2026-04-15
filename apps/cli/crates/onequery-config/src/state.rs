@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use blake3::Hash;
 use toml::Value as TomlValue;
 
 use crate::fingerprint::record_origins;
@@ -28,11 +29,11 @@ pub enum ConfigLayerStatus {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ConfigLayerMetadata {
     source: ConfigLayerSource,
-    fingerprint: Option<String>,
+    fingerprint: Option<Hash>,
 }
 
 impl ConfigLayerMetadata {
-    pub fn new(source: ConfigLayerSource, fingerprint: Option<String>) -> Self {
+    pub fn new(source: ConfigLayerSource, fingerprint: Option<Hash>) -> Self {
         Self {
             source,
             fingerprint,
@@ -43,8 +44,8 @@ impl ConfigLayerMetadata {
         &self.source
     }
 
-    pub fn fingerprint(&self) -> Option<&str> {
-        self.fingerprint.as_deref()
+    pub fn fingerprint(&self) -> Option<Hash> {
+        self.fingerprint
     }
 }
 
@@ -54,7 +55,7 @@ pub struct ConfigLayer {
     status: ConfigLayerStatus,
     config: TomlValue,
     raw_toml: Option<String>,
-    fingerprint: Option<String>,
+    fingerprint: Option<Hash>,
 }
 
 impl ConfigLayer {
@@ -62,7 +63,7 @@ impl ConfigLayer {
         source: ConfigLayerSource,
         config: TomlValue,
         raw_toml: Option<String>,
-        fingerprint: Option<String>,
+        fingerprint: Option<Hash>,
     ) -> Self {
         Self {
             source,
@@ -105,12 +106,12 @@ impl ConfigLayer {
         self.raw_toml.as_deref()
     }
 
-    pub fn fingerprint(&self) -> Option<&str> {
-        self.fingerprint.as_deref()
+    pub fn fingerprint(&self) -> Option<Hash> {
+        self.fingerprint
     }
 
     pub fn metadata(&self) -> ConfigLayerMetadata {
-        ConfigLayerMetadata::new(self.source.clone(), self.fingerprint.clone())
+        ConfigLayerMetadata::new(self.source.clone(), self.fingerprint)
     }
 
     pub fn is_disabled(&self) -> bool {
@@ -189,6 +190,7 @@ impl ConfigLayerStack {
 mod tests {
     use std::path::PathBuf;
 
+    use blake3::Hash;
     use pretty_assertions::assert_eq;
     use toml::Value as TomlValue;
 
@@ -202,6 +204,10 @@ mod tests {
         TomlValue::Table(toml::map::Map::new())
     }
 
+    fn sample_fingerprint(label: &str) -> Hash {
+        blake3::hash(label.as_bytes())
+    }
+
     #[test]
     fn enabled_layer_preserves_metadata() {
         let layer = ConfigLayer::enabled(
@@ -210,7 +216,7 @@ mod tests {
             },
             toml::from_str("active_org = \"acme\"\n").expect("expected TOML parse to succeed"),
             Some("active_org = \"acme\"\n".to_owned()),
-            Some("abc123".to_owned()),
+            Some(sample_fingerprint("abc123")),
         );
 
         assert_eq!(
@@ -223,7 +229,7 @@ mod tests {
                 config: toml::from_str("active_org = \"acme\"\n")
                     .expect("expected TOML parse to succeed"),
                 raw_toml: Some("active_org = \"acme\"\n".to_owned()),
-                fingerprint: Some("abc123".to_owned()),
+                fingerprint: Some(sample_fingerprint("abc123")),
             }
         );
     }
@@ -274,7 +280,7 @@ request_timeout_sec = 60
                 )
                 .expect("expected TOML parse to succeed"),
                 None,
-                Some("defaults".to_owned()),
+                Some(sample_fingerprint("defaults")),
             ),
             ConfigLayer::disabled(
                 ConfigLayerSource::UserFile {
@@ -319,7 +325,7 @@ active = "acme"
                 )
                 .expect("expected TOML parse to succeed"),
                 None,
-                Some("defaults".to_owned()),
+                Some(sample_fingerprint("defaults")),
             ),
             ConfigLayer::enabled(
                 ConfigLayerSource::UserFile {
@@ -333,7 +339,7 @@ request_timeout_sec = 15
                 )
                 .expect("expected TOML parse to succeed"),
                 None,
-                Some("user".to_owned()),
+                Some(sample_fingerprint("user")),
             ),
         ]);
 
@@ -343,14 +349,14 @@ request_timeout_sec = 15
                 ConfigLayerSource::UserFile {
                     path: PathBuf::from("/tmp/onequery/config.toml"),
                 },
-                Some("user".to_owned()),
+                Some(sample_fingerprint("user")),
             ))
         );
         assert_eq!(
             stack.origin_for_path("org.active"),
             Some(ConfigLayerMetadata::new(
                 ConfigLayerSource::Defaults,
-                Some("defaults".to_owned()),
+                Some(sample_fingerprint("defaults")),
             ))
         );
     }

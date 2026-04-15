@@ -40,7 +40,7 @@ const BACKGROUND_GATEWAY_RETRY_COMMAND: &str = "onequery gateway start";
 pub(super) async fn execute<B, T>(
     command: GatewayCommand,
     context: &CommandContext,
-    _runtime: &mut Runtime<B, T>,
+    runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
     ensure_self_host_runtime_supported(&context.command_line)?;
 
@@ -52,6 +52,7 @@ pub(super) async fn execute<B, T>(
             )?;
             run_gateway_foreground(
                 &state,
+                &runtime.process,
                 &context.command_line,
                 FOREGROUND_GATEWAY_RETRY_COMMAND,
             )
@@ -63,6 +64,7 @@ pub(super) async fn execute<B, T>(
             )?;
             run_gateway_background(
                 &state,
+                &runtime.process,
                 &context.command_line,
                 BACKGROUND_GATEWAY_RETRY_COMMAND,
             )

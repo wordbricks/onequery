@@ -9,25 +9,25 @@ name = "onequery"
 path = "src/main.rs"
 
 [dependencies]
-base64 = "0.22"
-buffa = { version = "0.3.0", features = ["json"] }
-buffa-types = { version = "0.3.0", features = ["json"] }
-chrono = { version = "0.4", features = ["serde"] }
+base64 = { workspace = true }
+buffa = { workspace = true, features = ["json"] }
+buffa-types = { workspace = true, features = ["json"] }
+chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
-connectrpc = { version = "0.3.2", features = ["client", "client-tls"] }
+connectrpc = { workspace = true, features = ["client", "client-tls"] }
 dirs = { workspace = true }
-flate2 = "1.1.5"
-getrandom = "0.3"
-http = "1"
-http-body = "1"
-jaq-core = "3.0.0"
-jaq-json = { version = "2.0.0", features = ["serde"] }
-jaq-std = "3.0.0"
-libc = "0.2.177"
+flate2 = { workspace = true }
+getrandom = { workspace = true }
+http = { workspace = true }
+http-body = { workspace = true }
+jaq-core = { workspace = true }
+jaq-json = { workspace = true, features = ["serde"] }
+jaq-std = { workspace = true }
+libc = { workspace = true }
 path-absolutize = { workspace = true }
-regress = "0.10"
+regress = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-tar = "0.4"
+tar = { workspace = true }
 tabled = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
@@ -48,12 +48,12 @@ ureq = { workspace = true, features = ["json", "rustls"] }
 url = { workspace = true }
 webbrowser = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-webpki-roots = "1"
+webpki-roots = { workspace = true }
 onequery-cli-core = { workspace = true }
 onequery-config = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = [
+windows-sys = { workspace = true, features = [
   "Win32_Foundation",
   "Win32_System_Threading",
 ] }
@@ -63,9 +63,9 @@ pretty_assertions = { workspace = true }
 insta = { workspace = true }
 
 [build-dependencies]
-buffa = { version = "0.3.0", features = ["json"] }
-buffa-codegen = "0.3.0"
-connectrpc-codegen = "0.3.2"
+buffa = { workspace = true, features = ["json"] }
+buffa-codegen = { workspace = true }
+connectrpc-codegen = { workspace = true }
 
 [lints]
 workspace = true
