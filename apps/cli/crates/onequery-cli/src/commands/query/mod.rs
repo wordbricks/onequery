@@ -15,6 +15,7 @@ use crate::cli::QueryValidateArgs;
 use crate::cli::ReadArgs;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
+use crate::recovery::retry_try_next;
 use crate::transport::query::QueryRequestPayload;
 use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
@@ -312,7 +313,7 @@ pub(super) fn validate_query_source_key(
                 context.command_line.clone(),
                 ErrorStage::ParseCommand,
                 "source key must use only letters, numbers, dots, underscores, or hyphens",
-                vec![format!("retry {}", context.command_line)],
+                retry_try_next(&context.command_line),
             )
         })
 }

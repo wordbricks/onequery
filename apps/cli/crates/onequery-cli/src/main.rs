@@ -9,6 +9,7 @@ mod output_metadata;
 mod path_utils;
 mod platform;
 mod presentation;
+mod recovery;
 mod startup;
 #[cfg(test)]
 mod test_support;

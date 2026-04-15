@@ -6,6 +6,8 @@ use tokio::time::sleep;
 use crate::cli::QueryExecuteArgs;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::query;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::retry::classify_retry_directive;
@@ -414,8 +416,8 @@ where
                             title: "query failed",
                             transport_why_prefix: "failed to reach query endpoint",
                             decode_why_prefix: "failed to decode query response",
-                            fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                            fallback_try_next: retry_try_next(&context.command_line),
+                            unauthorized_try_next: Some(auth_login_try_next()),
                         },
                     ),
                 },

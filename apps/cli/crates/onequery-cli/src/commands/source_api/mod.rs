@@ -15,6 +15,8 @@ use crate::cli::ApiArgs;
 use crate::output::CommandOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::command_then_retry_try_next;
 use crate::transport::source_api;
 use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiHeader;
@@ -55,7 +57,7 @@ pub(super) async fn execute<B, T>(
                         transport_why_prefix: "failed to reach source API service",
                         decode_why_prefix: "failed to decode source API descriptor",
                         fallback_try_next: vec![format!("onequery api --source {}", args.source)],
-                        unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                        unauthorized_try_next: Some(auth_login_try_next()),
                     },
                 )
             })?;
@@ -270,11 +272,11 @@ fn present_source_api_preview_failure(
             title: "source API preview failed",
             transport_why_prefix: "failed to reach source API service",
             decode_why_prefix: "failed to decode source API preview",
-            fallback_try_next: vec![
+            fallback_try_next: command_then_retry_try_next(
                 format!("onequery api --source {}", args.source),
-                format!("retry {}", context.command_line),
-            ],
-            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                &context.command_line,
+            ),
+            unauthorized_try_next: Some(auth_login_try_next()),
         },
     )
 }
@@ -292,11 +294,11 @@ fn present_source_api_execute_failure(
             title: "source API execution failed",
             transport_why_prefix: "failed to reach source API service",
             decode_why_prefix: "failed to decode source API response",
-            fallback_try_next: vec![
+            fallback_try_next: command_then_retry_try_next(
                 format!("onequery api --source {}", args.source),
-                format!("retry {}", context.command_line),
-            ],
-            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                &context.command_line,
+            ),
+            unauthorized_try_next: Some(auth_login_try_next()),
         },
     )
 }

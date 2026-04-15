@@ -81,6 +81,23 @@ pub(crate) fn managed_gateway_unavailable_error(
     )
 }
 
+pub(crate) fn managed_gateway_recovery_try_next(
+    context: &CommandContext,
+) -> Result<Option<Vec<String>>, CliError> {
+    let target_url = match Url::parse(&context.base_url) {
+        Ok(target_url) => target_url,
+        Err(_) => return Ok(None),
+    };
+    if !target_host_is_loopback(&target_url) {
+        return Ok(None);
+    }
+
+    managed_gateway_recovery_try_next_with_paths(
+        context,
+        self_host_runtime_paths(&context.command_line)?,
+    )
+}
+
 fn managed_gateway_unavailable_error_with_paths(
     context: &CommandContext,
     stage: ErrorStage,
@@ -102,21 +119,32 @@ fn managed_gateway_unavailable_error_with_paths(
     Ok(Some(gateway_unavailable_error(context, stage, &target)))
 }
 
+fn managed_gateway_recovery_try_next_with_paths(
+    context: &CommandContext,
+    paths: SelfHostRuntimePaths,
+) -> Result<Option<Vec<String>>, CliError> {
+    let Some(target) = managed_gateway_target_for_base_url_with_paths(
+        &context.base_url,
+        paths,
+        &context.command_line,
+    )?
+    else {
+        return Ok(None);
+    };
+
+    if runtime_accepting_connections(&target.listen_host, target.port) {
+        return Ok(None);
+    }
+
+    Ok(Some(managed_gateway_try_next(&target, None)))
+}
+
 fn gateway_unavailable_error(
     context: &CommandContext,
     stage: ErrorStage,
     target: &ManagedGatewayTarget,
 ) -> CliError {
     let probe_host = runtime_probe_host(&target.listen_host);
-    let mut try_next = vec![
-        GATEWAY_START_COMMAND.to_owned(),
-        GATEWAY_STATUS_COMMAND.to_owned(),
-    ];
-    if target.log_path.is_file() {
-        try_next.push(GATEWAY_LOGS_COMMAND.to_owned());
-    }
-    try_next.push(format!("retry {}", context.command_line));
-
     CliError::new(
         "self-host gateway is not running",
         context.command_line.clone(),
@@ -125,9 +153,26 @@ fn gateway_unavailable_error(
             "{} is configured as the CLI server, but no process is accepting connections on {probe_host}:{}",
             context.base_url, target.port
         ),
-        try_next,
+        managed_gateway_try_next(target, Some(context.command_line.as_str())),
     )
     .with_code(Some("self_host_gateway_unavailable".to_owned()))
+}
+
+fn managed_gateway_try_next(
+    target: &ManagedGatewayTarget,
+    retry_command: Option<&str>,
+) -> Vec<String> {
+    let mut try_next = vec![
+        GATEWAY_START_COMMAND.to_owned(),
+        GATEWAY_STATUS_COMMAND.to_owned(),
+    ];
+    if target.log_path.is_file() {
+        try_next.push(GATEWAY_LOGS_COMMAND.to_owned());
+    }
+    if let Some(retry_command) = retry_command {
+        try_next.push(format!("retry {retry_command}"));
+    }
+    try_next
 }
 
 fn managed_gateway_target_for_base_url_with_paths(
@@ -276,6 +321,7 @@ mod tests {
     use super::SelfHostTargetState;
     use super::gateway_unavailable_error;
     use super::managed_gateway;
+    use super::managed_gateway_recovery_try_next_with_paths;
     use super::managed_gateway_unavailable_error;
     use super::managed_gateway_unavailable_error_with_paths;
 
@@ -382,6 +428,27 @@ mod tests {
         );
 
         assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+    }
+
+    #[test]
+    fn managed_gateway_recovery_try_next_guides_start_without_retry_command() {
+        let try_next = managed_gateway_recovery_try_next_with_paths(
+            &test_context(
+                "http://127.0.0.1:5656",
+                "onequery query exec --source warehouse --sql \"select 1\"",
+            ),
+            test_paths(),
+        )
+        .unwrap_or_else(|error| panic!("expected gateway recovery lookup to succeed: {error}"))
+        .expect("expected gateway recovery guidance for local target");
+
+        assert_eq!(
+            try_next,
+            vec![
+                "onequery gateway start".to_owned(),
+                "onequery gateway status".to_owned(),
+            ]
+        );
     }
 
     #[test]

@@ -8,6 +8,8 @@ use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_try_next;
+use crate::recovery::retry_try_next;
 use crate::transport::auth;
 use crate::transport::auth::RefreshedAuthSession;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -200,8 +202,8 @@ async fn execute_effect<B, T>(
                             title: "auth session refresh failed",
                             transport_why_prefix: "failed to reach auth session refresh endpoint",
                             decode_why_prefix: "failed to decode auth session refresh response",
-                            fallback_try_next: vec![format!("retry {}", context.command_line)],
-                            unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                            fallback_try_next: retry_try_next(&context.command_line),
+                            unauthorized_try_next: Some(auth_login_try_next()),
                         },
                     ),
                 },
@@ -588,7 +590,7 @@ mod tests {
         let mut runtime = test_runtime(AuthSessionStore::with_file_access_token_for_test(
             auth_path, None,
         ));
-        let context = test_context(default_base_url());
+        let context = test_context("https://onequery.example.com".to_owned());
 
         let error = execute(&AuthSessionSubcommand::Refresh, &context, &mut runtime)
             .await

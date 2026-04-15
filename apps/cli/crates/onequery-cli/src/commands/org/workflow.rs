@@ -9,6 +9,8 @@ use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_then_retry_try_next;
+use crate::recovery::auth_login_try_next;
 use crate::transport::org;
 use crate::transport::org::OrgListPayload;
 use crate::transport::read_controls::ReadRequestControls;
@@ -519,11 +521,10 @@ where
                                 title: "org list failed",
                                 transport_why_prefix: "failed to reach org list endpoint",
                                 decode_why_prefix: "failed to decode org list response",
-                                fallback_try_next: vec![
-                                    "run onequery auth login".to_owned(),
-                                    format!("retry {}", context.command_line),
-                                ],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: auth_login_then_retry_try_next(
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         retry,

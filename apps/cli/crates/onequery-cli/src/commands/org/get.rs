@@ -6,6 +6,8 @@ use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
+use crate::recovery::auth_login_then_retry_try_next;
+use crate::recovery::auth_login_try_next;
 use crate::transport::org;
 use crate::transport::org::OrgDetails;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -232,11 +234,10 @@ async fn execute_effect<B, T>(
                                 title: "org get failed",
                                 transport_why_prefix: "failed to reach org read endpoint",
                                 decode_why_prefix: "failed to decode org read response",
-                                fallback_try_next: vec![
-                                    "run onequery auth login".to_owned(),
-                                    format!("retry {}", context.command_line),
-                                ],
-                                unauthorized_try_next: Some(vec!["onequery auth login".to_owned()]),
+                                fallback_try_next: auth_login_then_retry_try_next(
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
                             },
                         ),
                         outcome,
