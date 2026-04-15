@@ -310,14 +310,15 @@ fn reduce(
             }
         },
         SourceState::LoadingTest => match event {
-            SourceEvent::SourceTested { payload, request_id } => {
-                match render_source_test_output(payload) {
-                    Ok(output) => Transition::done(SourceTerminalState::Completed {
-                        output: TerminalOutput::new(output.with_request_id(request_id)),
-                    }),
-                    Err(error) => Transition::done(SourceTerminalState::Failed { error }),
-                }
-            }
+            SourceEvent::SourceTested {
+                payload,
+                request_id,
+            } => match render_source_test_output(payload) {
+                Ok(output) => Transition::done(SourceTerminalState::Completed {
+                    output: TerminalOutput::new(output.with_request_id(request_id)),
+                }),
+                Err(error) => Transition::done(SourceTerminalState::Failed { error }),
+            },
             SourceEvent::SourceTestFailed { error, outcome } => match outcome {
                 SourceFailureOutcome::NeedsReauth => {
                     Transition::done(SourceTerminalState::NeedsReauth { error })
@@ -704,7 +705,10 @@ fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput
             "Provider: {}",
             payload.source.provider.as_deref().unwrap_or("-")
         ),
-        format!("Status: {}", payload.source.status.as_deref().unwrap_or("-")),
+        format!(
+            "Status: {}",
+            payload.source.status.as_deref().unwrap_or("-")
+        ),
     ];
 
     if let Some(display_name) = &payload.source.display_name {
@@ -714,7 +718,10 @@ fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput
     match payload.outcome.kind.as_str() {
         "supported" => {
             let passed = payload.outcome.success.unwrap_or(false);
-            lines.push(format!("Test: {}", if passed { "passed" } else { "failed" }));
+            lines.push(format!(
+                "Test: {}",
+                if passed { "passed" } else { "failed" }
+            ));
             lines.push(format!("Message: {}", payload.outcome.message));
             if let Some(error) = &payload.outcome.error {
                 lines.push(format!("Error: {error}"));
