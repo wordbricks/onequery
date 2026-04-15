@@ -6,7 +6,7 @@ on:
       - "openclaw-plugin-v*.*.*"
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
