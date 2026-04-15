@@ -46,7 +46,6 @@ enum AuthSessionState {
 enum AuthSessionEvent {
     Start,
     CurrentSessionMissing { try_next: Vec<String> },
-    CurrentSessionInspectionFailed { error: CliError },
     CurrentSessionFound { access_token: String },
     SessionRefreshed { completion: LoginCompletion },
     SessionRefreshFailed { error: CliError },
@@ -83,7 +82,6 @@ impl WorkflowLabel for AuthSessionEvent {
         match self {
             Self::Start => "Start",
             Self::CurrentSessionMissing { .. } => "CurrentSessionMissing",
-            Self::CurrentSessionInspectionFailed { .. } => "CurrentSessionInspectionFailed",
             Self::CurrentSessionFound { .. } => "CurrentSessionFound",
             Self::SessionRefreshed { .. } => "SessionRefreshed",
             Self::SessionRefreshFailed { .. } => "SessionRefreshFailed",
@@ -158,7 +156,6 @@ fn reduce_auth_session(
                 AuthSessionEffect::InspectCurrent,
             ),
             AuthSessionEvent::CurrentSessionMissing { .. }
-            | AuthSessionEvent::CurrentSessionInspectionFailed { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionRefreshed { .. }
             | AuthSessionEvent::SessionRefreshFailed { .. }
@@ -178,9 +175,6 @@ fn reduce_auth_session(
                 Transition::done(AuthSessionTerminalState::Failed {
                     error: not_logged_in_error(context, try_next),
                 })
-            }
-            AuthSessionEvent::CurrentSessionInspectionFailed { error } => {
-                Transition::done(AuthSessionTerminalState::Failed { error })
             }
             AuthSessionEvent::CurrentSessionFound { access_token } => {
                 Transition::continue_with_effect(
@@ -212,7 +206,6 @@ fn reduce_auth_session(
             }
             AuthSessionEvent::Start
             | AuthSessionEvent::CurrentSessionMissing { .. }
-            | AuthSessionEvent::CurrentSessionInspectionFailed { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionPersisted
             | AuthSessionEvent::SessionPersistFailed { .. } => {
@@ -234,7 +227,6 @@ fn reduce_auth_session(
             }
             AuthSessionEvent::Start
             | AuthSessionEvent::CurrentSessionMissing { .. }
-            | AuthSessionEvent::CurrentSessionInspectionFailed { .. }
             | AuthSessionEvent::CurrentSessionFound { .. }
             | AuthSessionEvent::SessionRefreshed { .. }
             | AuthSessionEvent::SessionRefreshFailed { .. } => {
@@ -259,9 +251,8 @@ async fn execute_auth_session_effect<B, T>(
         AuthSessionEffect::InspectCurrent => {
             match runtime.auth_session.access_token().map(str::to_owned) {
                 Some(access_token) => AuthSessionEvent::CurrentSessionFound { access_token },
-                None => match missing_auth_try_next(context) {
-                    Ok(try_next) => AuthSessionEvent::CurrentSessionMissing { try_next },
-                    Err(error) => AuthSessionEvent::CurrentSessionInspectionFailed { error },
+                None => AuthSessionEvent::CurrentSessionMissing {
+                    try_next: missing_auth_try_next(context),
                 },
             }
         }
@@ -310,10 +301,7 @@ pub(crate) fn authenticated_api_client<B, T>(
     runtime: &Runtime<B, T>,
 ) -> Result<AuthenticatedApiClient, CliError> {
     let Some(access_token) = runtime.auth_session.access_token() else {
-        return Err(not_logged_in_error(
-            context,
-            missing_auth_try_next(context)?,
-        ));
+        return Err(not_logged_in_error(context, missing_auth_try_next(context)));
     };
 
     build_authenticated_api_client(
@@ -329,10 +317,7 @@ pub(crate) fn authenticated_api_client_with_timeout<B, T>(
     request_timeout: Duration,
 ) -> Result<AuthenticatedApiClient, CliError> {
     let Some(access_token) = runtime.auth_session.access_token() else {
-        return Err(not_logged_in_error(
-            context,
-            missing_auth_try_next(context)?,
-        ));
+        return Err(not_logged_in_error(context, missing_auth_try_next(context)));
     };
 
     build_authenticated_api_client(context, request_timeout, access_token)

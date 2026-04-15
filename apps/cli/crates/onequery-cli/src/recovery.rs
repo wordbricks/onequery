@@ -40,17 +40,14 @@ enum AuthRecovery {
     ResetSession,
 }
 
-fn auth_recovery_try_next(
-    context: &CommandContext,
-    recovery: AuthRecovery,
-) -> Result<Vec<String>, CliError> {
+fn auth_recovery_try_next(context: &CommandContext, recovery: AuthRecovery) -> Vec<String> {
     if recovery == AuthRecovery::MissingSession {
-        return Ok(build_missing_auth_try_next(
-            managed_gateway_recovery_try_next(context)?,
+        return build_missing_auth_try_next(best_effort_managed_gateway_recovery_try_next(
+            managed_gateway_recovery_try_next(context),
         ));
     }
 
-    Ok(auth_recovery_steps(recovery))
+    auth_recovery_steps(recovery)
 }
 
 pub(crate) fn auth_login_try_next() -> Vec<String> {
@@ -78,7 +75,7 @@ pub(crate) fn command_then_retry_try_next(
     plan.into_steps()
 }
 
-pub(crate) fn missing_auth_try_next(context: &CommandContext) -> Result<Vec<String>, CliError> {
+pub(crate) fn missing_auth_try_next(context: &CommandContext) -> Vec<String> {
     auth_recovery_try_next(context, AuthRecovery::MissingSession)
 }
 
@@ -112,6 +109,15 @@ fn retry_step(retry_command: &str) -> String {
     format!("retry {retry_command}")
 }
 
+fn best_effort_managed_gateway_recovery_try_next(
+    gateway_recovery: Result<Option<Vec<String>>, CliError>,
+) -> Option<Vec<String>> {
+    match gateway_recovery {
+        Ok(try_next) => try_next,
+        Err(_) => None,
+    }
+}
+
 fn build_missing_auth_try_next(managed_gateway_layer: Option<Vec<String>>) -> Vec<String> {
     let mut plan = TryNextPlan::default();
     if let Some(managed_gateway_layer) = managed_gateway_layer {
@@ -134,6 +140,7 @@ mod tests {
     use super::auth_login_then_retry_try_next;
     use super::auth_login_try_next;
     use super::auth_reset_try_next;
+    use super::best_effort_managed_gateway_recovery_try_next;
     use super::build_missing_auth_try_next;
     use super::missing_org_try_next;
     use super::retry_try_next;
@@ -161,6 +168,38 @@ Why: no OneQuery token was found in the environment or local auth store.
 Try:
   - onequery gateway start
   - onequery gateway status
+  - onequery auth login
+  - onequery auth import --input <path|->
+"#
+        );
+    }
+
+    #[test]
+    fn rendered_missing_auth_error_falls_back_to_auth_commands_when_gateway_probe_fails() {
+        let error = CliError::new(
+            "not logged in",
+            "onequery query exec --source warehouse --sql \"select 1\"",
+            ErrorStage::Auth,
+            "no OneQuery token was found in the environment or local auth store.",
+            build_missing_auth_try_next(best_effort_managed_gateway_recovery_try_next(Err(
+                CliError::new(
+                    "failed to parse self-host config",
+                    "onequery query exec --source warehouse --sql \"select 1\"",
+                    ErrorStage::LoadConfig,
+                    "invalid self-host config",
+                    vec!["remove or fix config/self-host/config.toml".to_owned()],
+                ),
+            ))),
+        );
+
+        assert_snapshot!(
+            render_error(&error, EffectiveOutputMode::Text),
+            @r#"
+Error: not logged in
+Command: onequery query exec --source warehouse --sql "select 1"
+Stage: auth
+Why: no OneQuery token was found in the environment or local auth store.
+Try:
   - onequery auth login
   - onequery auth import --input <path|->
 "#

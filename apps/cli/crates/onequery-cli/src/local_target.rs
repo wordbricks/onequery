@@ -207,8 +207,9 @@ fn load_self_host_target_state(
     command_line: &str,
 ) -> Result<SelfHostTargetState, CliError> {
     let config = if paths.config_path.is_file() {
-        // Comment: self-host config load failures are authoritative for loopback targets. The
-        // localhost gateway hint is additive only after a valid managed-gateway config exists.
+        // Comment: keep self-host config loading strict here so transport-path callers can surface
+        // invalid managed-gateway config directly. Callers using gateway probing only as additive
+        // recovery guidance should downgrade these errors at their boundary.
         SelfHostTargetConfig::Loaded(load_self_host_public_config_with_paths(
             &paths,
             command_line,
