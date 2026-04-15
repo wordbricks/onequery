@@ -1,6 +1,6 @@
 {
   "name": "@onequery/openclaw-plugin",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "private": false,
   "description": "OneQuery OpenClaw plugin",
   "keywords": [
