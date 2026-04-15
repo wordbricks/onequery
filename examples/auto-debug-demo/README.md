@@ -169,6 +169,7 @@ creating a branch, pushing a fix, opening a PR) went through `onequery`.
 - [Docker](https://docs.docker.com/get-docker/) for the demo PostgreSQL
 - [Bun](https://bun.sh/) for the demo app
 - A GitHub Personal Access Token with `repo` scope
+- No local PostgreSQL client is required; `setup.sh` runs `psql` inside the `demo-db` container.
 
 > **Warning:** Never commit your `GITHUB_TOKEN`. Use environment variables.
 
@@ -179,7 +180,7 @@ creating a branch, pushing a fix, opening a PR) went through `onequery`.
 export GITHUB_TOKEN="ghp_your_token_here"
 export GITHUB_REPO="your-org/todo-app"
 
-# 2. Set up the environment (DB, app, OneQuery sources)
+# 2. Set up the environment (DB, schema, seed data, app, OneQuery sources)
 ./setup.sh
 ```
 
