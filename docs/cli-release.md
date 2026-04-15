@@ -14,6 +14,17 @@ Release flow for the `onequery` CLI:
 - Linux npm platform tarballs are staged from musl artifacts for the broadest runtime compatibility.
 - Additional GNU Linux tarballs are attached to GitHub releases for direct download, but they are not published to npm.
 - Windows npm tarballs are built on GitHub-hosted Windows runners and now include the bundled self-host runtime.
+- Lint workflow changes locally with the repo-pinned tool version: `mise exec -- actionlint`.
+
+## OpenClaw Plugin Release
+
+Release flow for `@onequery/openclaw-plugin`:
+
+- Keep `packages/openclaw-plugin/package.json` and `packages/openclaw-plugin/openclaw.plugin.json` on the same version.
+- Push a tag like `openclaw-plugin-v0.1.0` or `openclaw-plugin-v0.1.0-alpha.1`.
+- The `openclaw-plugin-release` workflow validates `openclaw-plugin-v<version>` against both metadata files, packs the plugin tarball with `npm pack`, creates a GitHub release from the tagged commit message, and publishes the tarball to npm.
+- Prerelease tags publish to npm with the same channel mapping as the CLI flow: `alpha`, `beta`, or `next`.
+- The published package is intended to satisfy OpenClaw's standard community plugin install path: `openclaw plugins install @onequery/openclaw-plugin`.
 
 ## Homebrew Tap Automation
 

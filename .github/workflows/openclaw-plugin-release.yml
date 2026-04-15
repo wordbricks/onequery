@@ -61,10 +61,12 @@ jobs:
             publish_tag="next"
           fi
 
-          echo "package_name=${package_name}" >> "$GITHUB_OUTPUT"
-          echo "publish_tag=${publish_tag}" >> "$GITHUB_OUTPUT"
-          echo "release_title=${package_name} v${version}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          {
+            echo "package_name=${package_name}"
+            echo "publish_tag=${publish_tag}"
+            echo "release_title=${package_name} v${version}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
           echo "::endgroup::"
 
   package:
@@ -117,7 +119,9 @@ jobs:
           git log -1 --format=%B "${commit}" > "${notes_path}"
           echo >> "${notes_path}"
 
-          echo "path=${notes_path}" >> "$GITHUB_OUTPUT"
+          {
+            echo "path=${notes_path}"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v8
         with:
