@@ -1,6 +1,11 @@
 import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { encryptCredentialsObject } from "@onequery/server/services/crypto/credential-encryption";
+import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
+import {
+  serializeDataSourceTestOutcome,
+  testDataSource,
+} from "@onequery/server/services/data-source-tester";
 
 import type {
   CliConnectSourceEffect,
@@ -9,6 +14,8 @@ import type {
   CliListSourcesEffectResult,
   CliLoadSourceEffect,
   CliLoadSourceEffectResult,
+  CliTestSourceEffect,
+  CliTestSourceEffectResult,
 } from "../domain/effects";
 import { createCliQuerySourceRecord, createCliSourceRecord } from "./model";
 
@@ -125,5 +132,88 @@ export async function runCliConnectSourceEffect(input: {
   return {
     kind: "connected",
     source,
+  };
+}
+
+export async function runCliTestSourceEffect(input: {
+  db: Database;
+  effect: CliTestSourceEffect;
+  masterEncryptionKey: Uint8Array;
+}): Promise<CliTestSourceEffectResult> {
+  const preparedCredentials = await prepareDataSourceCredentials({
+    dataSource: {
+      credentialsEncrypted: input.effect.source.credentialsEncrypted,
+      credentialsIv: input.effect.source.credentialsIv,
+      id: input.effect.source.id,
+      name: input.effect.source.name,
+      provider: input.effect.source.provider,
+    },
+    masterEncryptionKey: input.masterEncryptionKey,
+  });
+
+  if (preparedCredentials.isErr()) {
+    const latencyMs = 0;
+    const now = new Date();
+    const { dataSources } = getDatabaseSchema(input.db);
+
+    // Comment: source test treats credential decode/provider mismatches as an
+    // explicit failed test result so CLI callers can script against one stable
+    // response shape instead of branching on transport vs. domain failures.
+    await input.db
+      .update(dataSources)
+      .set({
+        errorMessage: preparedCredentials.error.message,
+        lastUsedAt: now,
+        status: "error",
+        updatedAt: now,
+      })
+      .where(eq(dataSources.id, input.effect.source.id));
+
+    return {
+      kind: "supported",
+      success: false,
+      message: "Connection test failed.",
+      error: preparedCredentials.error.message,
+      latencyMs,
+    };
+  }
+
+  const outcome = await testDataSource(preparedCredentials.value.credentials, {
+    db: input.db,
+    organizationId: input.effect.organizationId,
+  });
+  const serialized = serializeDataSourceTestOutcome(outcome);
+
+  if (serialized.kind === "unsupported") {
+    return serialized;
+  }
+
+  const now = new Date();
+  const { dataSources } = getDatabaseSchema(input.db);
+  await input.db
+    .update(dataSources)
+    .set({
+      errorMessage: serialized.result.success ? null : serialized.result.error,
+      lastUsedAt: now,
+      status: serialized.result.success ? "active" : "error",
+      updatedAt: now,
+    })
+    .where(eq(dataSources.id, input.effect.source.id));
+
+  if (serialized.result.success) {
+    return {
+      kind: "supported",
+      success: true,
+      message: serialized.result.message,
+      latencyMs: serialized.result.latencyMs,
+    };
+  }
+
+  return {
+    kind: "supported",
+    success: false,
+    message: serialized.result.message,
+    error: serialized.result.error,
+    latencyMs: serialized.result.latencyMs,
   };
 }

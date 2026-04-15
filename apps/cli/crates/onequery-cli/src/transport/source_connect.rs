@@ -958,7 +958,7 @@ mod tests {
         let credentials = connect_source_credentials_from_json(
             SourceConnectProvider::Supabase,
             json!({
-                "host": "db.project-ref.supabase.co",
+                "host": "aws-0-us-east-1.pooler.supabase.com",
                 "port": 5432,
                 "database": "postgres",
                 "username": "postgres.project-ref",
@@ -973,7 +973,7 @@ mod tests {
             panic!("expected supabase credentials kind");
         };
 
-        assert_eq!(postgres.host, "db.project-ref.supabase.co");
+        assert_eq!(postgres.host, "aws-0-us-east-1.pooler.supabase.com");
         assert_eq!(postgres.port, Some(5432));
         assert_eq!(
             postgres.ssl_mode,

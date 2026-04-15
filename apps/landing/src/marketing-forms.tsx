@@ -194,52 +194,75 @@ function ContactModal({ onClose }: { onClose: () => void }) {
           ×
         </button>
 
-        <h2 id="contact-modal-title">Contact us</h2>
+        <div className="contact-modal-header">
+          <p className="eyebrow">Start a conversation</p>
+          <h2 id="contact-modal-title">Contact OneQuery</h2>
+          <p className="contact-modal-copy">
+            Tell us what you are trying to ship. We can help with self-hosting,
+            integrations, and rollout questions.
+          </p>
+        </div>
 
         <form className="contact-modal-form" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Name"
-            className="contact-modal-input"
-            value={form.name}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                name: event.currentTarget.value,
-              }))
-            }
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            className="contact-modal-input"
-            value={form.email}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                email: event.currentTarget.value,
-              }))
-            }
-          />
-          <textarea
-            placeholder="Message"
-            className="contact-modal-textarea"
-            value={form.message}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                message: event.currentTarget.value,
-              }))
-            }
-          />
+          <div className="contact-modal-field-grid">
+            <label className="contact-modal-field">
+              <span className="contact-modal-label">Name</span>
+              <input
+                type="text"
+                placeholder="Jane Doe"
+                className="contact-modal-input"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    name: event.currentTarget.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="contact-modal-field">
+              <span className="contact-modal-label">Email</span>
+              <input
+                type="email"
+                placeholder="you@company.com"
+                className="contact-modal-input"
+                value={form.email}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    email: event.currentTarget.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <label className="contact-modal-field">
+            <span className="contact-modal-label">Message</span>
+            <textarea
+              placeholder="Share your use case, timeline, or the integration you need."
+              className="contact-modal-textarea"
+              value={form.message}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  message: event.currentTarget.value,
+                }))
+              }
+            />
+          </label>
 
           <div className="contact-modal-actions">
+            <p className="contact-modal-note">
+              We use this only to follow up on your request.
+            </p>
             <button
               type="submit"
-              className="button contact-modal-submit"
+              className="button button-primary contact-modal-submit"
               disabled={isPending}
             >
-              {isPending ? "Sending..." : "Send"}
+              {isPending ? "Sending..." : "Send message"}
             </button>
             {errorMessage ? (
               <p className="marketing-form-feedback marketing-form-feedback-error">

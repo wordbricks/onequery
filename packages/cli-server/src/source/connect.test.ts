@@ -9,6 +9,7 @@ describe("source connect guide", () => {
   it("renders canonical source connect guides", () => {
     expect({
       postgres: buildCliSourceConnectGuide("postgres"),
+      supabase: buildCliSourceConnectGuide("supabase"),
       posthog: buildCliSourceConnectGuide("posthog"),
     }).toMatchSnapshot();
   });

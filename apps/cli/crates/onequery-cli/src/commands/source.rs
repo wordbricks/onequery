@@ -23,6 +23,7 @@ use crate::transport::read_controls::PageInfo;
 use crate::transport::source;
 use crate::transport::source::SourceListPayload;
 use crate::transport::source::SourceSummary;
+use crate::transport::source::SourceTestPayload;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -41,6 +42,9 @@ enum SourceMode {
         source_key: SourceKey,
         read: ReadArgs,
     },
+    Test {
+        source_key: SourceKey,
+    },
 }
 
 #[derive(Debug)]
@@ -49,6 +53,7 @@ enum SourceState {
     CheckingAuth { mode: SourceMode },
     LoadingList,
     LoadingShow,
+    LoadingTest,
 }
 
 #[derive(Debug)]
@@ -81,7 +86,15 @@ enum SourceEvent {
         source: SourceSummary,
         request_id: Option<String>,
     },
+    SourceTested {
+        payload: SourceTestPayload,
+        request_id: Option<String>,
+    },
     SourceLoadFailed {
+        error: CliError,
+        outcome: SourceFailureOutcome,
+    },
+    SourceTestFailed {
         error: CliError,
         outcome: SourceFailureOutcome,
     },
@@ -98,6 +111,10 @@ enum SourceEffect {
         org: OrgSlug,
         source_key: SourceKey,
         read: ReadArgs,
+    },
+    FetchSourceTest {
+        org: OrgSlug,
+        source_key: SourceKey,
     },
 }
 
@@ -121,6 +138,9 @@ pub(super) async fn execute<B, T>(
         SourceSubcommand::Show { source_key, read } => SourceMode::Show {
             source_key: source_key.clone(),
             read: read.clone(),
+        },
+        SourceSubcommand::Test { source_key } => SourceMode::Test {
+            source_key: source_key.clone(),
         },
         SourceSubcommand::Connect(_) => unreachable!("source connect is delegated"),
     };
@@ -169,13 +189,21 @@ fn reduce(
                     },
                     SourceEffect::EnsureAuthenticatedOrg,
                 ),
+                SourceMode::Test { source_key } => Transition::continue_with_effect(
+                    SourceState::CheckingAuth {
+                        mode: SourceMode::Test { source_key },
+                    },
+                    SourceEffect::EnsureAuthenticatedOrg,
+                ),
             },
             SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceListLoaded { .. }
             | SourceEvent::SourceListLoadFailed { .. }
             | SourceEvent::SourceLoaded { .. }
-            | SourceEvent::SourceLoadFailed { .. } => {
+            | SourceEvent::SourceTested { .. }
+            | SourceEvent::SourceLoadFailed { .. }
+            | SourceEvent::SourceTestFailed { .. } => {
                 Transition::done(SourceTerminalState::Failed {
                     error: unexpected_transition_error(context, SourceState::Idle { mode }, event),
                 })
@@ -195,6 +223,10 @@ fn reduce(
                         read,
                     },
                 ),
+                SourceMode::Test { source_key } => Transition::continue_with_effect(
+                    SourceState::LoadingTest,
+                    SourceEffect::FetchSourceTest { org, source_key },
+                ),
             },
             SourceEvent::AuthFailed { error } => {
                 Transition::done(SourceTerminalState::Failed { error })
@@ -203,7 +235,9 @@ fn reduce(
             | SourceEvent::SourceListLoaded { .. }
             | SourceEvent::SourceListLoadFailed { .. }
             | SourceEvent::SourceLoaded { .. }
-            | SourceEvent::SourceLoadFailed { .. } => {
+            | SourceEvent::SourceTested { .. }
+            | SourceEvent::SourceLoadFailed { .. }
+            | SourceEvent::SourceTestFailed { .. } => {
                 Transition::done(SourceTerminalState::Failed {
                     error: unexpected_transition_error(
                         context,
@@ -236,7 +270,9 @@ fn reduce(
             | SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceLoaded { .. }
-            | SourceEvent::SourceLoadFailed { .. } => {
+            | SourceEvent::SourceTested { .. }
+            | SourceEvent::SourceLoadFailed { .. }
+            | SourceEvent::SourceTestFailed { .. } => {
                 Transition::done(SourceTerminalState::Failed {
                     error: unexpected_transition_error(context, SourceState::LoadingList, event),
                 })
@@ -265,9 +301,40 @@ fn reduce(
             | SourceEvent::Authenticated { .. }
             | SourceEvent::AuthFailed { .. }
             | SourceEvent::SourceListLoaded { .. }
-            | SourceEvent::SourceListLoadFailed { .. } => {
+            | SourceEvent::SourceListLoadFailed { .. }
+            | SourceEvent::SourceTested { .. }
+            | SourceEvent::SourceTestFailed { .. } => {
                 Transition::done(SourceTerminalState::Failed {
                     error: unexpected_transition_error(context, SourceState::LoadingShow, event),
+                })
+            }
+        },
+        SourceState::LoadingTest => match event {
+            SourceEvent::SourceTested { payload, request_id } => {
+                match render_source_test_output(payload) {
+                    Ok(output) => Transition::done(SourceTerminalState::Completed {
+                        output: TerminalOutput::new(output.with_request_id(request_id)),
+                    }),
+                    Err(error) => Transition::done(SourceTerminalState::Failed { error }),
+                }
+            }
+            SourceEvent::SourceTestFailed { error, outcome } => match outcome {
+                SourceFailureOutcome::NeedsReauth => {
+                    Transition::done(SourceTerminalState::NeedsReauth { error })
+                }
+                SourceFailureOutcome::Failed => {
+                    Transition::done(SourceTerminalState::Failed { error })
+                }
+            },
+            SourceEvent::Start
+            | SourceEvent::Authenticated { .. }
+            | SourceEvent::AuthFailed { .. }
+            | SourceEvent::SourceListLoaded { .. }
+            | SourceEvent::SourceListLoadFailed { .. }
+            | SourceEvent::SourceLoaded { .. }
+            | SourceEvent::SourceLoadFailed { .. } => {
+                Transition::done(SourceTerminalState::Failed {
+                    error: unexpected_transition_error(context, SourceState::LoadingTest, event),
                 })
             }
         },
@@ -399,6 +466,46 @@ async fn execute_effect<B, T>(
                 }
             }
         }
+        SourceEffect::FetchSourceTest { org, source_key } => {
+            let client = match authenticated_api_client(context, runtime) {
+                Ok(client) => client,
+                Err(error) => {
+                    return SourceEvent::SourceTestFailed {
+                        error,
+                        outcome: SourceFailureOutcome::Failed,
+                    };
+                }
+            };
+
+            match source::test_source(&client, org.as_str(), source_key.as_str()).await {
+                Ok(response) => SourceEvent::SourceTested {
+                    payload: response.payload,
+                    request_id: response.request_id,
+                },
+                Err(failure) => {
+                    let outcome = source_failure_outcome(&failure);
+
+                    SourceEvent::SourceTestFailed {
+                        error: present_api_failure_with_context(
+                            failure,
+                            context,
+                            ApiErrorPresentation {
+                                command: &context.command_line,
+                                title: "source test failed",
+                                transport_why_prefix: "failed to reach source test endpoint",
+                                decode_why_prefix: "failed to decode source test response",
+                                fallback_try_next: command_then_retry_try_next(
+                                    "onequery source list",
+                                    &context.command_line,
+                                ),
+                                unauthorized_try_next: Some(auth_login_try_next()),
+                            },
+                        ),
+                        outcome,
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -419,6 +526,7 @@ impl WorkflowLabel for SourceState {
             Self::CheckingAuth { .. } => "CheckingAuth",
             Self::LoadingList => "LoadingList",
             Self::LoadingShow => "LoadingShow",
+            Self::LoadingTest => "LoadingTest",
         }
     }
 }
@@ -443,6 +551,8 @@ impl WorkflowLabel for SourceEvent {
             Self::SourceListLoadFailed { .. } => "SourceListLoadFailed",
             Self::SourceLoaded { .. } => "SourceLoaded",
             Self::SourceLoadFailed { .. } => "SourceLoadFailed",
+            Self::SourceTested { .. } => "SourceTested",
+            Self::SourceTestFailed { .. } => "SourceTestFailed",
         }
     }
 }
@@ -453,6 +563,7 @@ impl WorkflowLabel for SourceEffect {
             Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
             Self::FetchSourceList { .. } => "FetchSourceList",
             Self::FetchSource { .. } => "FetchSource",
+            Self::FetchSourceTest { .. } => "FetchSourceTest",
         }
     }
 }
@@ -586,6 +697,50 @@ fn render_source_show_output(
     }))
 }
 
+fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput, CliError> {
+    let mut lines = vec![
+        format!("Source: {}", payload.source.name.as_deref().unwrap_or("-")),
+        format!(
+            "Provider: {}",
+            payload.source.provider.as_deref().unwrap_or("-")
+        ),
+        format!("Status: {}", payload.source.status.as_deref().unwrap_or("-")),
+    ];
+
+    if let Some(display_name) = &payload.source.display_name {
+        lines.insert(1, format!("Display Name: {display_name}"));
+    }
+
+    match payload.outcome.kind.as_str() {
+        "supported" => {
+            let passed = payload.outcome.success.unwrap_or(false);
+            lines.push(format!("Test: {}", if passed { "passed" } else { "failed" }));
+            lines.push(format!("Message: {}", payload.outcome.message));
+            if let Some(error) = &payload.outcome.error {
+                lines.push(format!("Error: {error}"));
+            }
+            if let Some(latency_ms) = payload.outcome.latency_ms {
+                lines.push(format!("Latency: {latency_ms} ms"));
+            }
+        }
+        "unsupported" => {
+            lines.push("Test: unsupported".to_owned());
+            lines.push(format!("Message: {}", payload.outcome.message));
+            if let Some(reason) = &payload.outcome.reason {
+                lines.push(format!("Reason: {reason}"));
+            }
+        }
+        _ => {
+            lines.push("Test: unknown".to_owned());
+            lines.push(format!("Message: {}", payload.outcome.message));
+        }
+    }
+
+    Ok(CommandOutput::try_deferred(lines, move || {
+        serialize_command_data(&payload, "onequery source test")
+    }))
+}
+
 fn append_page_lines(lines: &mut Vec<String>, page: &PageInfo, force_render: bool) {
     if !force_render && !page.has_more {
         return;
@@ -617,6 +772,8 @@ mod tests {
     use crate::config::default_base_url;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceListPayload;
+    use crate::transport::source::SourceTestOutcome;
+    use crate::transport::source::SourceTestPayload;
     use crate::workflows::runner::TransitionProgress;
 
     use super::SourceEvent;
@@ -628,6 +785,7 @@ mod tests {
     use super::reduce;
     use super::render_source_list_output;
     use super::render_source_show_output;
+    use super::render_source_test_output;
 
     #[test]
     fn render_source_list_output_includes_required_columns() {
@@ -695,6 +853,66 @@ mod tests {
                 "Provider: github".to_owned(),
                 "Status: active".to_owned(),
                 "Query (v1): no".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn render_source_test_output_includes_supported_failure_details() {
+        let output = render_source_test_output(SourceTestPayload {
+            source: SourceSummary {
+                name: Some("warehouse".to_owned()),
+                display_name: Some("Warehouse".to_owned()),
+                provider: Some("postgres".to_owned()),
+                queryable: Some(true),
+                status: Some("error".to_owned()),
+            },
+            outcome: SourceTestOutcome {
+                kind: "supported".to_owned(),
+                message: "Connection test failed.".to_owned(),
+                success: Some(false),
+                error: Some("password authentication failed".to_owned()),
+                latency_ms: Some(123),
+                reason: None,
+            },
+        })
+        .expect("expected source test output");
+
+        assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn render_source_test_output_includes_unsupported_reason() {
+        let output = render_source_test_output(SourceTestPayload {
+            source: SourceSummary {
+                name: Some("github_prod".to_owned()),
+                display_name: None,
+                provider: Some("github".to_owned()),
+                queryable: Some(false),
+                status: Some("active".to_owned()),
+            },
+            outcome: SourceTestOutcome {
+                kind: "unsupported".to_owned(),
+                message:
+                    "Testing is not supported for OAuth-based providers. They are tested during the authorization flow."
+                        .to_owned(),
+                success: None,
+                error: None,
+                latency_ms: None,
+                reason: Some("oauth".to_owned()),
+            },
+        })
+        .expect("expected unsupported source test output");
+
+        assert_eq!(
+            output.lines,
+            vec![
+                "Source: github_prod".to_owned(),
+                "Provider: github".to_owned(),
+                "Status: active".to_owned(),
+                "Test: unsupported".to_owned(),
+                "Message: Testing is not supported for OAuth-based providers. They are tested during the authorization flow.".to_owned(),
+                "Reason: oauth".to_owned(),
             ]
         );
     }

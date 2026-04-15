@@ -161,6 +161,12 @@ pub(crate) enum SourceSubcommand {
         #[command(flatten, next_help_heading = "Read Controls")]
         read: ReadArgs,
     },
+    /// Test one source connection by key.
+    Test {
+        /// Test this source key.
+        #[arg(value_name = "SOURCE_KEY", value_parser = parse_source_key)]
+        source_key: SourceKey,
+    },
     /// Show instructions or create a new source connection.
     Connect(SourceConnectArgs),
 }

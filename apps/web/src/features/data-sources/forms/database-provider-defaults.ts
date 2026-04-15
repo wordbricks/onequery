@@ -4,7 +4,7 @@ const LOCALHOST_DATABASE_HOST = "localhost";
 const POSTGRES_CONNECTION_FORMAT =
   "postgres://user:password@host:port/database";
 const SUPABASE_CONNECTION_PLACEHOLDER =
-  "postgresql://postgres.[project-ref]:password@db.[project-ref].supabase.co:5432/postgres";
+  "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres";
 const MYSQL_CONNECTION_FORMAT = "mysql://user:password@host:port/database";
 
 export type DatabaseProviderType = Extract<
@@ -66,8 +66,8 @@ const DATABASE_PROVIDER_DEFAULTS = {
     defaultDatabase: "postgres",
     defaultPort: 5432,
     defaultSslMode: "require",
-    fallbackHost: LOCALHOST_DATABASE_HOST,
-    hostPlaceholder: "db.your-project-ref.supabase.co",
+    fallbackHost: "aws-0-[region].pooler.supabase.com",
+    hostPlaceholder: "aws-0-[region].pooler.supabase.com",
     invalidConnectionStringFormat: POSTGRES_CONNECTION_FORMAT,
     isPostgresFamily: true,
     namePlaceholder: "My Supabase",

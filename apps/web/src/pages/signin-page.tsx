@@ -282,16 +282,16 @@ export function SignInPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-14 items-center justify-between px-6">
+      <header className="flex h-14 items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background font-bold">
             V
           </div>
-          <span className="font-semibold text-lg">OneQuery</span>
+          <span className="font-semibold text-base sm:text-lg">OneQuery</span>
         </Link>
         <ThemeToggle />
       </header>
-      <main className="flex flex-1 items-center justify-center p-6">
+      <main className="flex flex-1 items-start justify-center px-4 pb-10 pt-12 sm:items-center sm:px-6 sm:py-6">
         <Card className="w-full max-w-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">

@@ -37,16 +37,16 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
   {
     provider: "supabase",
     summary:
-      "Connect Supabase with the project database host, database, and login credentials over the Postgres wire protocol.",
+      "Connect Supabase with the session pooler host, database, and login credentials over the Postgres wire protocol.",
     steps: [
-      "Open the Supabase project settings and retrieve the direct Postgres connection host, database name, username, and password.",
+      "Open the Supabase Connect panel and retrieve the Session pooler host, database name, username, and password.",
       "Use the Supabase provider with the Postgres connection fields shown below. The CLI maps those fields onto the typed Supabase wire shape directly.",
-      "Keep SSL enabled for the project database connection and confirm the correct port before building the payload.",
+      "Prefer the Session pooler for OneQuery's persistent backend connection path. Keep SSL enabled and confirm the correct port before building the payload.",
     ],
     exampleInput: {
       name: "supabase_prod",
       credentials: {
-        host: "db.project-ref.supabase.co",
+        host: "aws-0-us-east-1.pooler.supabase.com",
         port: 5432,
         database: "postgres",
         username: "postgres.project-ref",

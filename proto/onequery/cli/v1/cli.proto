@@ -21,6 +21,7 @@ service CliService {
   rpc GetSourceConnectGuide(GetSourceConnectGuideRequest) returns (GetSourceConnectGuideResponse);
   rpc ConnectSource(ConnectSourceRequest) returns (ConnectSourceResponse);
   rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc TestSource(TestSourceRequest) returns (TestSourceResponse);
   rpc ValidateQuery(ValidateQueryRequest) returns (ValidateQueryResponse);
   rpc ExecuteQuery(ExecuteQueryRequest) returns (ExecuteQueryResponse);
 }

@@ -1,3 +1,4 @@
+use buffa::EnumValue;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -39,6 +40,28 @@ pub(crate) struct SourceListPayload {
     #[serde(default)]
     pub(crate) sources: Vec<SourceSummary>,
     pub(crate) page: PageInfo,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SourceTestPayload {
+    pub(crate) source: SourceSummary,
+    pub(crate) outcome: SourceTestOutcome,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SourceTestOutcome {
+    pub(crate) kind: String,
+    pub(crate) message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) success: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) latency_ms: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) reason: Option<String>,
 }
 
 pub(crate) async fn list_sources_with_controls(
@@ -151,6 +174,73 @@ pub(crate) async fn get_source_by_key_with_controls(
     })
 }
 
+pub(crate) async fn test_source(
+    client: &AuthenticatedApiClient,
+    org: &str,
+    source_key: &str,
+) -> Result<ApiSuccess<SourceTestPayload>, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
+    let response = match client
+        .cli()
+        .test_source(types::TestSourceRequest {
+            org_slug,
+            source_key,
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
+        }
+    };
+
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
+    let source = payload.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source test response missing source",
+            request_id.clone(),
+        )
+    })?;
+    let outcome = payload.outcome.ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source test response missing outcome",
+            request_id.clone(),
+        )
+    })?;
+
+    let outcome = match outcome {
+        types::test_source_response::Outcome::Supported(supported) => SourceTestOutcome {
+            kind: "supported".to_owned(),
+            message: supported.message,
+            success: Some(supported.success),
+            error: supported.error,
+            latency_ms: supported.latency_ms,
+            reason: None,
+        },
+        types::test_source_response::Outcome::Unsupported(unsupported) => SourceTestOutcome {
+            kind: "unsupported".to_owned(),
+            message: unsupported.message,
+            success: None,
+            error: None,
+            latency_ms: None,
+            reason: Some(source_test_unsupported_reason_to_str(unsupported.reason)),
+        },
+    };
+
+    Ok(ApiSuccess {
+        payload: SourceTestPayload {
+            source: source_summary_from_generated(source),
+            outcome,
+        },
+        request_id,
+    })
+}
+
 pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
     SourceSummary {
         name: Some(summary.name),
@@ -158,6 +248,25 @@ pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -
         provider: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
         status: Some(source_status_to_str(summary.status)),
+    }
+}
+
+fn source_test_unsupported_reason_to_str(
+    value: EnumValue<types::CliSourceTestUnsupportedReason>,
+) -> String {
+    match value.as_known() {
+        Some(types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
+            "oauth".to_owned()
+        }
+        Some(
+            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
+        ) => "not_implemented".to_owned(),
+        Some(
+            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED,
+        )
+        | None => {
+            "unknown".to_owned()
+        }
     }
 }
 

@@ -659,6 +659,17 @@ fn parse_invocation_accepts_source_connect_input() {
 }
 
 #[test]
+fn parse_invocation_accepts_source_test_key() {
+    let invocation = parse_invocation(&["onequery", "source", "test", "warehouse"]);
+
+    assert!(matches!(
+        invocation.command,
+        Command::Source(super::SourceSubcommand::Test { source_key })
+            if source_key == test_source_key("warehouse")
+    ));
+}
+
+#[test]
 fn parse_invocation_accepts_query_result_window_args() {
     let invocation = parse_invocation(&[
         "onequery",
