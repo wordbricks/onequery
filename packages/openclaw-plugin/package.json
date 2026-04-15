@@ -23,12 +23,6 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "openclaw": "2026.4.10"
-  },
-  "devDependencies": {
-    "vitest": "catalog:"
-  },
   "openclaw": {
     "extensions": [
       "./src/index.ts"
