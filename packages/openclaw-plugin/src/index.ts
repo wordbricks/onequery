@@ -1,3 +1,4 @@
+// @ts-expect-error -- openclaw SDK types are resolved at build time by the host
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 
 export default definePluginEntry({
