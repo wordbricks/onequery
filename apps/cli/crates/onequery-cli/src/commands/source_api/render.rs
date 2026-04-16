@@ -45,7 +45,7 @@ pub(super) fn render_descriptor_output(
         .unwrap_or_default();
     let source_provider = source
         .and_then(|value| value.provider)
-        .map(|value| source_provider_to_str(value))
+        .map(source_provider_to_str)
         .unwrap_or_else(|| "unspecified".to_owned());
 
     let mut lines = vec![format!("Source: {} ({})", source_key, source_provider)];
