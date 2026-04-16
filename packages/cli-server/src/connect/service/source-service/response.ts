@@ -6,7 +6,8 @@ import {
 } from "../../gen/onequery/cli/v1/source_pb";
 import { toCliSourceProvider } from "../source-provider";
 import type {
-  BuildGetSourceResponseInput,
+  BuildCliSourceInput,
+  CliSourceInit,
   GetSourceResponseInit,
   TestSourceResponseInit,
 } from "./types";
@@ -18,7 +19,7 @@ export function toCliContentFormat(value: "markdown") {
   }
 }
 
-function toCliSourceStatus(value: BuildGetSourceResponseInput["status"]) {
+function toCliSourceStatus(value: BuildCliSourceInput["status"]) {
   switch (value) {
     case "active":
       return CliSourceStatus.ACTIVE;
@@ -29,11 +30,9 @@ function toCliSourceStatus(value: BuildGetSourceResponseInput["status"]) {
   }
 }
 
-export function buildGetSourceResponse(
-  source: BuildGetSourceResponseInput
-): GetSourceResponseInit {
-  const response: GetSourceResponseInit = {
-    name: source.sourceKey,
+export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
+  const response: CliSourceInit = {
+    sourceKey: source.sourceKey,
     provider: toCliSourceProvider(source.provider),
     queryable:
       getCliQueryableDatabaseProviderType(source.provider, source.status) !==
@@ -48,6 +47,14 @@ export function buildGetSourceResponse(
   return response;
 }
 
+export function buildGetSourceResponse(
+  source: BuildCliSourceInput
+): GetSourceResponseInit {
+  return {
+    source: buildCliSource(source),
+  };
+}
+
 function toCliSourceTestUnsupportedReason(value: "oauth" | "not_implemented") {
   switch (value) {
     case "oauth":
@@ -58,7 +65,7 @@ function toCliSourceTestUnsupportedReason(value: "oauth" | "not_implemented") {
 }
 
 export function buildTestSourceResponse(input: {
-  source: BuildGetSourceResponseInput;
+  source: BuildCliSourceInput;
   outcome:
     | {
         kind: "supported";
@@ -74,7 +81,7 @@ export function buildTestSourceResponse(input: {
       };
 }): TestSourceResponseInit {
   const response: TestSourceResponseInit = {
-    source: buildGetSourceResponse(input.source),
+    source: buildCliSource(input.source),
   };
 
   if (input.outcome.kind === "supported") {

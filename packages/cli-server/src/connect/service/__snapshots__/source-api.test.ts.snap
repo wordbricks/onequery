@@ -135,8 +135,8 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "selector": "/issues",
       "source": {
         "displayName": "GitHub Prod",
-        "key": "github-prod",
         "provider": "github",
+        "sourceKey": "github-prod",
       },
       "status": 200,
     },
@@ -210,8 +210,8 @@ exports[`source api connect service > converts protobuf JSON draft bodies into c
     ],
     "source": {
       "displayName": "GitHub Prod",
-      "key": "github-prod",
       "provider": "github",
+      "sourceKey": "github-prod",
     },
   },
   "draft": {
@@ -325,8 +325,8 @@ exports[`source api connect service > describes the source API through the Conne
     ],
     "source": {
       "displayName": "GitHub Prod",
-      "key": "github-prod",
       "provider": "github",
+      "sourceKey": "github-prod",
     },
   },
 }
@@ -432,8 +432,8 @@ exports[`source api connect service > executes source API requests through the C
       "selector": "/issues",
       "source": {
         "displayName": "GitHub Prod",
-        "key": "github-prod",
         "provider": "github",
+        "sourceKey": "github-prod",
       },
       "status": 200,
     },
@@ -480,8 +480,8 @@ exports[`source api connect service > preserves JSON source API response bodies 
     "selector": "/issues",
     "source": {
       "displayName": "GitHub Prod",
-      "key": "github-prod",
       "provider": "github",
+      "sourceKey": "github-prod",
     },
     "status": 200,
   },
@@ -555,8 +555,8 @@ exports[`source api connect service > previews source API execution through the 
       ],
       "source": {
         "displayName": "GitHub Prod",
-        "key": "github-prod",
         "provider": "github",
+        "sourceKey": "github-prod",
       },
     },
     "draft": {

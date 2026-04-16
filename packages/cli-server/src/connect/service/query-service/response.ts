@@ -4,7 +4,7 @@ import {
   sanitizeUndefinedableCliRemoteText,
 } from "../../../transport/sanitization";
 import { CliQueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
-import { buildGetSourceResponse } from "../source-service/response";
+import { buildCliSource } from "../source-service/response";
 import type {
   ExecuteQueryColumnMessage,
   ExecuteQueryPayload,
@@ -28,7 +28,7 @@ export function buildQueryValidateResponse(response: {
     cellMaxChars: number;
     timeoutMs: number;
   };
-  source: Parameters<typeof buildGetSourceResponse>[0];
+  source: Parameters<typeof buildCliSource>[0];
   truncated: boolean;
 }): ValidateQueryResponseInit {
   return {
@@ -47,7 +47,7 @@ export function buildQueryValidateResponse(response: {
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
       timeoutMs: response.declaredResultWindow.timeoutMs,
     },
-    source: buildGetSourceResponse(response.source),
+    source: buildCliSource(response.source),
     truncated: response.truncated,
   };
 }
@@ -57,11 +57,11 @@ export function buildQueryExecuteResponse(response: {
   elapsedMs: number;
   rowCount: number;
   rows: readonly (readonly string[])[];
-  source: Parameters<typeof buildGetSourceResponse>[0];
+  source: Parameters<typeof buildCliSource>[0];
   truncated: boolean;
 }): ExecuteQueryPayload {
   return {
-    source: buildGetSourceResponse(response.source),
+    source: buildCliSource(response.source),
     rowCount: BigInt(response.rowCount),
     elapsedMs: BigInt(response.elapsedMs),
     columns: response.columns.map(buildCliQueryColumn),

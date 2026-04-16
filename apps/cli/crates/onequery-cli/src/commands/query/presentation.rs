@@ -26,7 +26,7 @@ pub(super) fn render_query_output(
     let source = result
         .source
         .as_ref()
-        .and_then(|source| source.name.as_deref())
+        .and_then(|source| source.source_key.as_deref())
         .unwrap_or("-");
     let provider = result
         .source
@@ -78,7 +78,7 @@ pub(super) fn render_query_validation_output(
     let source_name = result
         .source
         .as_ref()
-        .and_then(|source| source.name.as_deref())
+        .and_then(|source| source.source_key.as_deref())
         .unwrap_or("-");
     let provider = result
         .source

@@ -339,7 +339,7 @@ function logResolvedSourceApiExecution(
       orgSlug: input.access.authorizedOrg.org.slug,
       provider: input.result.source.provider,
       roles: input.access.authorizedOrg.membershipRoles,
-      sourceKey: input.result.source.key,
+      sourceKey: input.result.source.sourceKey,
       status: input.result.status,
     }),
     event: "source_api.execute.resolved",

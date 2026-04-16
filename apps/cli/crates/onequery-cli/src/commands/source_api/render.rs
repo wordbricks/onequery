@@ -42,7 +42,7 @@ pub(super) fn render_descriptor_output(
 
     let mut lines = vec![format!(
         "Source: {} ({})",
-        descriptor.source.key,
+        descriptor.source.source_key,
         source_provider_to_str(descriptor.source.provider)
     )];
     if let Some(display_name) = descriptor.source.display_name.as_deref() {
@@ -695,7 +695,7 @@ fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_
     let mut object = serde_json::Map::new();
     object.insert(
         "key".to_owned(),
-        serde_json::Value::String(source.key.clone()),
+        serde_json::Value::String(source.source_key.clone()),
     );
     object.insert(
         "provider".to_owned(),
@@ -1507,7 +1507,7 @@ mod tests {
     fn json_response(body: SourceApiResponseBody) -> SourceApiExecutionPage {
         SourceApiExecutionPage {
             source: MessageField::some(SourceApiSource {
-                key: "github-prod".to_owned(),
+                source_key: "github-prod".to_owned(),
                 provider:
                     crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
                         .into(),

@@ -353,7 +353,7 @@ mod tests {
     fn descriptor_with_operation(operation_name: &str) -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: MessageField::some(SourceApiSource {
-                key: "github-prod".to_owned(),
+                source_key: "github-prod".to_owned(),
                 provider:
                     crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
                         .into(),

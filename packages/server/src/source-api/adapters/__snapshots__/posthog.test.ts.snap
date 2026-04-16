@@ -57,8 +57,8 @@ exports[`posthog source api adapter > describes the run_query operation 1`] = `
   ],
   "source": {
     "displayName": "PostHog Prod",
-    "key": "posthog-prod",
     "provider": "posthog",
+    "sourceKey": "posthog-prod",
   },
 }
 `;
@@ -81,8 +81,8 @@ exports[`posthog source api adapter > executes PostHog requests with upstream st
   "operation": "run_query",
   "source": {
     "displayName": "PostHog Prod",
-    "key": "posthog-prod",
     "provider": "posthog",
+    "sourceKey": "posthog-prod",
   },
   "status": 200,
 }

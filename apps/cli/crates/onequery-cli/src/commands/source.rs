@@ -586,12 +586,12 @@ fn render_source_list_output(
         ));
     }
 
-    let name_width = sources
+    let source_key_width = sources
         .iter()
-        .map(|source| source.name.as_deref().unwrap_or("-").len())
+        .map(|source| source.source_key.as_deref().unwrap_or("-").len())
         .max()
         .unwrap_or(4)
-        .max("NAME".len());
+        .max("SOURCE KEY".len());
     let provider_width = sources
         .iter()
         .map(|source| source.provider.as_deref().unwrap_or("-").len())
@@ -606,10 +606,10 @@ fn render_source_list_output(
         .unwrap_or(6)
         .max("STATUS".len());
 
-    let row_capacity = name_width + provider_width + query_width + status_width + 6;
+    let row_capacity = source_key_width + provider_width + query_width + status_width + 6;
     let mut lines = Vec::with_capacity(sources.len() + 1);
     let mut header = String::with_capacity(row_capacity);
-    append_padded_cell(&mut header, "NAME", name_width);
+    append_padded_cell(&mut header, "SOURCE KEY", source_key_width);
     header.push_str("  ");
     append_padded_cell(&mut header, "PROVIDER", provider_width);
     header.push_str("  ");
@@ -620,7 +620,11 @@ fn render_source_list_output(
 
     for source in sources {
         let mut row = String::with_capacity(row_capacity);
-        append_padded_cell(&mut row, source.name.as_deref().unwrap_or("-"), name_width);
+        append_padded_cell(
+            &mut row,
+            source.source_key.as_deref().unwrap_or("-"),
+            source_key_width,
+        );
         row.push_str("  ");
         append_padded_cell(
             &mut row,
@@ -669,7 +673,7 @@ fn render_source_show_output(
     }
 
     let mut lines = vec![
-        format!("Source: {}", source.name.as_deref().unwrap_or("-")),
+        format!("Source: {}", source.source_key.as_deref().unwrap_or("-")),
         format!("Provider: {}", source.provider.as_deref().unwrap_or("-")),
         format!("Status: {}", source.status.as_deref().unwrap_or("-")),
         format!(
@@ -689,7 +693,7 @@ fn render_source_show_output(
     if source.queryable.unwrap_or(false) {
         lines.push(format!(
             "Sample query: onequery query exec --source {} --sql \"select 1\"",
-            source.name.as_deref().unwrap_or("<source>")
+            source.source_key.as_deref().unwrap_or("<source>")
         ));
     }
 
@@ -700,7 +704,10 @@ fn render_source_show_output(
 
 fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput, CliError> {
     let mut lines = vec![
-        format!("Source: {}", payload.source.name.as_deref().unwrap_or("-")),
+        format!(
+            "Source: {}",
+            payload.source.source_key.as_deref().unwrap_or("-")
+        ),
         format!(
             "Provider: {}",
             payload.source.provider.as_deref().unwrap_or("-")
@@ -800,14 +807,14 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        name: Some("warehouse".to_owned()),
+                        source_key: Some("warehouse".to_owned()),
                         display_name: None,
                         provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
-                        name: Some("github_main".to_owned()),
+                        source_key: Some("github_main".to_owned()),
                         display_name: None,
                         provider: Some("github".to_owned()),
                         queryable: Some(false),
@@ -829,7 +836,7 @@ mod tests {
     #[test]
     fn render_source_show_output_includes_sample_query_when_queryable() {
         let source = SourceSummary {
-            name: Some("warehouse".to_owned()),
+            source_key: Some("warehouse".to_owned()),
             display_name: Some("Warehouse".to_owned()),
             provider: Some("postgres".to_owned()),
             queryable: Some(true),
@@ -844,7 +851,7 @@ mod tests {
     #[test]
     fn render_source_show_output_omits_sample_query_when_not_queryable() {
         let source = SourceSummary {
-            name: Some("github_main".to_owned()),
+            source_key: Some("github_main".to_owned()),
             display_name: None,
             provider: Some("github".to_owned()),
             queryable: Some(false),
@@ -868,7 +875,7 @@ mod tests {
     fn render_source_test_output_includes_supported_failure_details() {
         let output = render_source_test_output(SourceTestPayload {
             source: SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
                 provider: Some("postgres".to_owned()),
                 queryable: Some(true),
@@ -892,7 +899,7 @@ mod tests {
     fn render_source_test_output_includes_unsupported_reason() {
         let output = render_source_test_output(SourceTestPayload {
             source: SourceSummary {
-                name: Some("github_prod".to_owned()),
+                source_key: Some("github_prod".to_owned()),
                 display_name: None,
                 provider: Some("github".to_owned()),
                 queryable: Some(false),

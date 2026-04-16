@@ -147,7 +147,7 @@ message ExecuteSourceApiResponse {
 }
 
 message CliSourceApiSource {
-  string key = 1 [
+  string source_key = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];

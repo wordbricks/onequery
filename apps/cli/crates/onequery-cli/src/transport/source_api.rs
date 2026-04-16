@@ -461,7 +461,7 @@ mod tests {
         let error = source_api_descriptor(
             &types::DescribeSourceApiResponse {
                 source: buffa::MessageField::some(types::CliSourceApiSource {
-                    key: "github-prod".to_owned(),
+                    source_key: "github-prod".to_owned(),
                     provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
                     ..Default::default()
                 }),

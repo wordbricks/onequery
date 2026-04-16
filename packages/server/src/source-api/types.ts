@@ -34,7 +34,7 @@ export type SourceApiActorContext = {
 };
 
 export type SourceApiSource = {
-  key: string;
+  sourceKey: string;
   provider: ProviderType;
   displayName?: string | null;
 };

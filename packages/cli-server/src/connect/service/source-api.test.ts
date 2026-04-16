@@ -135,7 +135,7 @@ const descriptor = {
   ],
   source: {
     displayName: "GitHub Prod",
-    key: "github-prod",
+    sourceKey: "github-prod",
     provider: "github",
   },
 } as const;
@@ -213,7 +213,7 @@ const executionResponse = {
   selector: "/issues",
   source: {
     displayName: "GitHub Prod",
-    key: "github-prod",
+    sourceKey: "github-prod",
     provider: "github",
   },
   status: 200,

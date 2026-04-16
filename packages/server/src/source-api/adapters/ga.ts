@@ -96,7 +96,7 @@ export const googleAnalyticsSourceApiAdapter: SourceApiAdapter = {
       ],
       source: {
         displayName: source.displayName,
-        key: source.sourceKey,
+        sourceKey: source.sourceKey,
         provider: source.provider,
       },
     };
@@ -346,7 +346,7 @@ function buildGoogleAnalyticsExecutionResponse(input: {
     operation: input.operation,
     source: {
       displayName: input.source.displayName,
-      key: input.source.sourceKey,
+      sourceKey: input.source.sourceKey,
       provider: input.source.provider,
     },
     status: input.response.status,

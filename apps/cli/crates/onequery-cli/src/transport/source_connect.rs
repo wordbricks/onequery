@@ -215,8 +215,8 @@ pub(crate) async fn connect_source(
 ) -> Result<ApiSuccess<SourceConnectResult>, ApiFailure> {
     let org_slug: String =
         crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
-    let name = input
-        .remove("name")
+    let source_key = input
+        .remove("sourceKey")
         .and_then(|value| match value {
             Value::String(value) if !value.trim().is_empty() => Some(value),
             _ => None,
@@ -224,7 +224,7 @@ pub(crate) async fn connect_source(
         .ok_or_else(|| {
             conversion_failure(
                 ErrorStage::ResolveSource,
-                "source connect input must include non-empty string field `name`",
+                "source connect input must include non-empty string field `sourceKey`",
             )
         })?;
     let credentials = input.remove("credentials").ok_or_else(|| {
@@ -239,7 +239,7 @@ pub(crate) async fn connect_source(
         .cli()
         .connect_source(types::ConnectSourceRequest {
             org_slug,
-            name,
+            source_key,
             credentials: MessageField::some(credentials),
             ..Default::default()
         })
@@ -867,7 +867,7 @@ mod tests {
     fn source_connect_result_deserializes_canonical_shape() {
         let payload = json!({
             "source": {
-                "name": "warehouse",
+                "sourceKey": "warehouse",
                 "provider": "postgres",
                 "queryable": true,
                 "status": "active"
@@ -881,7 +881,7 @@ mod tests {
             parsed,
             SourceConnectResult {
                 source: SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),

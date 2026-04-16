@@ -24,7 +24,7 @@ use crate::transport::read_controls::SinglePageReadControls;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SourceSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) name: Option<String>,
+    pub(crate) source_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -167,9 +167,16 @@ pub(crate) async fn get_source_by_key_with_controls(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
+    let source = payload.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source get response missing source",
+            request_id.clone(),
+        )
+    })?;
 
     Ok(ApiSuccess {
-        payload: source_summary_from_generated(payload),
+        payload: source_summary_from_generated(source),
         request_id,
     })
 }
@@ -241,9 +248,9 @@ pub(crate) async fn test_source(
     })
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
+pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> SourceSummary {
     SourceSummary {
-        name: Some(summary.name),
+        source_key: Some(summary.source_key),
         display_name: summary.display_name,
         provider: Some(source_provider_to_str(summary.provider)),
         queryable: Some(summary.queryable),
@@ -285,13 +292,13 @@ mod tests {
         let payload = json!({
             "sources": [
                 {
-                    "name": "warehouse",
+                    "sourceKey": "warehouse",
                     "provider": "postgres",
                     "queryable": true,
                     "status": "active"
                 },
                 {
-                    "name": "github_main",
+                    "sourceKey": "github_main",
                     "provider": "github",
                     "queryable": false,
                     "status": "active"
@@ -311,14 +318,14 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        name: Some("warehouse".to_owned()),
+                        source_key: Some("warehouse".to_owned()),
                         display_name: None,
                         provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
-                        name: Some("github_main".to_owned()),
+                        source_key: Some("github_main".to_owned()),
                         display_name: None,
                         provider: Some("github".to_owned()),
                         queryable: Some(false),
@@ -337,7 +344,7 @@ mod tests {
     #[test]
     fn source_summary_deserializes_provider_field_into_provider() {
         let payload = json!({
-            "name": "warehouse",
+            "sourceKey": "warehouse",
             "displayName": "Warehouse",
             "provider": "mysql",
             "queryable": true,
@@ -349,7 +356,7 @@ mod tests {
         assert_eq!(
             parsed,
             SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
                 provider: Some("mysql".to_owned()),
                 queryable: Some(true),

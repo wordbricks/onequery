@@ -88,9 +88,9 @@ pub(super) async fn build_plan(
                 "unsupported source API operation",
                 format!(
                     "operation `{operation_name}` is not described for source `{}`",
-                    descriptor.source.key
+                    descriptor.source.source_key
                 ),
-                descriptor.source.key.as_str(),
+                descriptor.source.source_key.as_str(),
             )
         })?;
 
@@ -98,18 +98,38 @@ pub(super) async fn build_plan(
         operation,
         selector.as_deref(),
         context,
-        descriptor.source.key.as_str(),
+        descriptor.source.source_key.as_str(),
     )?;
-    validate_pagination(args, operation, context, descriptor.source.key.as_str())?;
-    validate_method(args, operation, context, descriptor.source.key.as_str())?;
-    validate_field_flags(args, operation, context, descriptor.source.key.as_str())?;
-    validate_input(args, operation, context, descriptor.source.key.as_str())?;
+    validate_pagination(
+        args,
+        operation,
+        context,
+        descriptor.source.source_key.as_str(),
+    )?;
+    validate_method(
+        args,
+        operation,
+        context,
+        descriptor.source.source_key.as_str(),
+    )?;
+    validate_field_flags(
+        args,
+        operation,
+        context,
+        descriptor.source.source_key.as_str(),
+    )?;
+    validate_input(
+        args,
+        operation,
+        context,
+        descriptor.source.source_key.as_str(),
+    )?;
 
     let headers = parse_headers(
         &args.headers,
         operation,
         context,
-        descriptor.source.key.as_str(),
+        descriptor.source.source_key.as_str(),
     )?;
 
     let mut reader = SourceApiInputReader::default();
@@ -123,7 +143,7 @@ pub(super) async fn build_plan(
         operation.name.as_str(),
         &mut reader,
         context,
-        descriptor.source.key.as_str(),
+        descriptor.source.source_key.as_str(),
     )
     .await?;
     let field_patch = field_patch
@@ -133,7 +153,7 @@ pub(super) async fn build_plan(
                     context,
                     "invalid source API field patch",
                     format!("source API field patch must be valid JSON object data: {error}"),
-                    descriptor.source.key.as_str(),
+                    descriptor.source.source_key.as_str(),
                 )
             })
         })
@@ -143,7 +163,7 @@ pub(super) async fn build_plan(
         operation,
         &mut reader,
         context,
-        descriptor.source.key.as_str(),
+        descriptor.source.source_key.as_str(),
     )
     .await?;
 
@@ -915,7 +935,7 @@ mod tests {
     fn descriptor_with_operation(operation: SourceApiOperation) -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
-                key: "github-prod".to_owned(),
+                source_key: "github-prod".to_owned(),
                 provider:
                     crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
                         .into(),

@@ -92,7 +92,7 @@ fn render_query_output_snapshot() {
     let output = render_query_output(
         QueryResult {
             source: Some(SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: None,
                 provider: Some("postgres".to_owned()),
                 queryable: Some(true),
@@ -151,7 +151,7 @@ fn render_query_validation_output_snapshot() {
                 timeout_ms: Some(2500),
             }),
             source: Some(SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
                 provider: Some("postgres".to_owned()),
                 queryable: Some(true),
@@ -198,7 +198,7 @@ fn render_query_output_renders_no_columns() {
     let output = render_query_output(
         QueryResult {
             source: Some(SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: None,
                 provider: Some("postgres".to_owned()),
                 queryable: Some(true),

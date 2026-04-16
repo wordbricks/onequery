@@ -37,6 +37,7 @@ import {
   parseConnectSourceCredentials,
 } from "./credentials";
 import {
+  buildCliSource,
   buildGetSourceResponse,
   buildTestSourceResponse,
   toCliContentFormat,
@@ -81,7 +82,7 @@ const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
     });
 
     return Result.ok({
-      sources: page.items.map(buildGetSourceResponse),
+      sources: page.items.map(buildCliSource),
       page: buildCliPage(page.page),
     });
   });
@@ -292,7 +293,7 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
       effect: {
         credentials: parsedCredentials.data,
         kind: "connect_source",
-        name: request.name,
+        name: request.sourceKey,
         organizationId: access.authorizedOrg.org.id,
         provider,
       },
@@ -322,7 +323,7 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
 
     return Result.ok({
       nextCommand: response.nextCommand,
-      source: buildGetSourceResponse(response.source),
+      source: buildCliSource(response.source),
     } satisfies ConnectSourceResponseInit);
   });
 

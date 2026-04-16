@@ -48,7 +48,7 @@ export function createHandleDescribeSourceApi(
           orgSlug: access.authorizedOrg.org.slug,
           provider: descriptor.source.provider,
           roles: access.authorizedOrg.membershipRoles,
-          sourceKey: descriptor.source.key,
+          sourceKey: descriptor.source.sourceKey,
         }),
         event: "source_api.describe.resolved",
         level: "info",

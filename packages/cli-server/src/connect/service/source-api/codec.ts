@@ -266,7 +266,7 @@ function buildCliSourceApiResponseBody(
 function buildCliSourceApiSource(value: SourceApiSource) {
   return {
     displayName: value.displayName ?? undefined,
-    key: value.key,
+    sourceKey: value.sourceKey,
     provider: toCliSourceProvider(value.provider),
   };
 }

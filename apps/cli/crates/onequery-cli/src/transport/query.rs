@@ -435,7 +435,7 @@ mod tests {
     fn query_result_deserializes_canonical_shape() {
         let payload = json!({
             "source": {
-                "name": "warehouse",
+                "sourceKey": "warehouse",
                 "provider": "postgres",
                 "queryable": true,
                 "status": "active"
@@ -461,7 +461,7 @@ mod tests {
             parsed,
             QueryResult {
                 source: Some(SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),
@@ -507,7 +507,7 @@ mod tests {
                 "timeoutMs": 2500
             },
             "source": {
-                "name": "warehouse",
+                "sourceKey": "warehouse",
                 "provider": "postgres",
                 "queryable": true,
                 "status": "active"
@@ -546,7 +546,7 @@ mod tests {
                     timeout_ms: Some(2500),
                 }),
                 source: Some(SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),
@@ -643,8 +643,8 @@ mod tests {
     fn query_result_from_generated_maps_execute_response() {
         let result = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
-                source: buffa::MessageField::some(super::types::GetSourceResponse {
-                    name: "warehouse".to_owned(),
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
                     status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
@@ -685,7 +685,7 @@ mod tests {
             result,
             QueryResult {
                 source: Some(SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),
@@ -751,8 +751,8 @@ mod tests {
                         ..Default::default()
                     },
                 ),
-                source: buffa::MessageField::some(super::types::GetSourceResponse {
-                    name: "warehouse".to_owned(),
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
                     status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
@@ -793,7 +793,7 @@ mod tests {
                     timeout_ms: Some(2_500),
                 }),
                 source: Some(SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),
@@ -840,8 +840,8 @@ mod tests {
     fn query_result_from_generated_requires_page_metadata() {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
-                source: buffa::MessageField::some(super::types::GetSourceResponse {
-                    name: "warehouse".to_owned(),
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: "warehouse".to_owned(),
                     provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
                     queryable: true,
                     status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),

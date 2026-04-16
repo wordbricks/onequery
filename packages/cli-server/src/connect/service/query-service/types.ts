@@ -13,7 +13,7 @@ import {
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../../gen/onequery/cli/v1/query_pb";
-import { GetSourceResponseSchema } from "../../gen/onequery/cli/v1/source_pb";
+import { CliSourceSchema } from "../../gen/onequery/cli/v1/source_pb";
 import type { CliHonoContext } from "../types";
 
 type CliQueryRequest = {
@@ -49,9 +49,7 @@ export type ValidateQueryResponseInit = MessageInitShape<
 export type ExecuteQueryResponseInit = MessageInitShape<
   typeof ExecuteQueryResponseSchema
 >;
-export type GetSourceResponseInit = MessageInitShape<
-  typeof GetSourceResponseSchema
->;
+export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
 
 export type ExecuteQueryColumnMessage = {
   name?: string;
@@ -63,7 +61,7 @@ export type ExecuteQueryRowMessage = {
 };
 
 export type ExecuteQueryPayload = {
-  source?: GetSourceResponseInit;
+  source?: CliSourceInit;
   rowCount?: bigint;
   elapsedMs?: bigint;
   columns?: ExecuteQueryColumnMessage[];
