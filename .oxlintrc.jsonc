@@ -217,6 +217,8 @@
     "**/.opencode",
     "**/.turbo",
     "**/bun.lock",
+    // Standalone examples are intentionally outside the main workspace graph.
+    "examples/**",
     "packages/cli-contract/openapi/generated/cli.openapi.json",
     "**/routeTree.gen.ts",
     "packages/ui/src/components/ui",

@@ -66,6 +66,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "vitest": "catalog:"
+    "vitest": "catalog:testing"
   }
 }

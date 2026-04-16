@@ -19,8 +19,8 @@
     "@onequery/self-host-runtime": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
+    "@vitejs/plugin-react": "catalog:tooling",
+    "vite": "catalog:tooling",
+    "vitest": "catalog:testing"
   }
 }

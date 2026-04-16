@@ -51,7 +51,6 @@
     "@onequery/config": "workspace:*",
     "@onequery/contracts": "workspace:*",
     "@onequery/db": "workspace:*",
-    "@types/pg": "8.16.0",
     "better-auth": "catalog:",
     "better-result": "catalog:",
     "hono": "catalog:",
@@ -59,11 +58,13 @@
     "hono-rate-limiter": "catalog:",
     "jose": "6.2.1",
     "mongodb": "6.12.0",
-    "mysql2": "3.20.0",
+    "mysql2": "catalog:",
     "nodemailer": "7.0.5",
-    "pg": "8.17.1",
+    "pg": "catalog:",
     "unstorage": "catalog:",
     "zod": "catalog:"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/pg": "catalog:"
+  }
 }
