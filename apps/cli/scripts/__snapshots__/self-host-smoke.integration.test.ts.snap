@@ -1,0 +1,330 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CLI self-host smoke > bootstraps a fresh self-host runtime and serves Connect-backed CLI RPCs through the packaged gateway path 1`] = `
+{
+  "bootstrap": {
+    "bootstrap": {
+      "organizationId": "<generated>",
+      "organizationSlug": "owner-org",
+    },
+  },
+  "bootstrapState": {
+    "isBootstrapped": false,
+    "needsBootstrap": true,
+  },
+  "connectSource": {
+    "nextCommand": "onequery source show Warehouse",
+    "source": {
+      "provider": "POSTGRES",
+      "queryable": true,
+      "sourceKey": "Warehouse",
+      "status": "ACTIVE",
+    },
+  },
+  "getOrganization": {
+    "capabilities": [
+      "ORG_LIST",
+      "ORG_READ",
+      "SOURCE_CONNECT",
+      "SOURCE_LIST",
+      "SOURCE_READ",
+      "SOURCE_API_DESCRIBE",
+      "SOURCE_API_EXECUTE",
+      "QUERY_EXECUTE",
+    ],
+    "name": "Owner Org",
+    "roles": [
+      "owner",
+    ],
+    "slug": "owner-org",
+  },
+  "getSession": {
+    "activeOrgSlug": "",
+    "authMode": "BROWSER_SESSION",
+    "expiresAt": "<timestamp>",
+    "issuedAt": "<timestamp>",
+    "user": {
+      "displayName": "Owner",
+      "email": "owner@example.com",
+      "id": "<redacted>",
+    },
+  },
+  "getSource": {
+    "source": {
+      "provider": "POSTGRES",
+      "queryable": true,
+      "sourceKey": "Warehouse",
+      "status": "ACTIVE",
+    },
+  },
+  "getSourceConnectGuide": {
+    "command": "onequery source connect --source postgres --input '<json>'",
+    "content": "# OneQuery Source Connect Guide
+
+Provider: \`postgres\`
+
+Agent workflow:
+1. If this provider requires a browser or dashboard setup flow, do not just ask the user to hand over the final token or secret. Work through the setup with the user step by step.
+2. First check whether you already have browser capability in the current environment.
+3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
+4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
+
+Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
+Run: \`onequery source connect --source postgres --input '<json>'\`
+Verify: \`onequery source show <source_key>\`
+Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
+The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
+
+Connect a Postgres database with a direct host, database, and login.
+
+Steps:
+1. Retrieve the Postgres host, database name, username, and password from the database deployment or secret manager.
+2. Confirm the correct port and SSL mode for this environment before sending the payload.
+
+Example input:
+\`\`\`json
+{
+  "sourceKey": "warehouse",
+  "credentials": {
+    "host": "db.example.com",
+    "port": 5432,
+    "database": "app",
+    "username": "onequery",
+    "password": "secret",
+    "sslMode": "prefer"
+  }
+}
+\`\`\`
+",
+    "description": "Follow these steps to gather credentials and create one postgres org-scoped OneQuery source.",
+    "format": "MARKDOWN",
+    "title": "OneQuery Source Connect Guide",
+  },
+  "listOrganizations": {
+    "organizations": [
+      {
+        "name": "Owner Org",
+        "slug": "owner-org",
+      },
+    ],
+    "page": {
+      "returnedCount": "1",
+    },
+  },
+  "listSources": {
+    "page": {
+      "returnedCount": "1",
+    },
+    "sources": [
+      {
+        "provider": "POSTGRES",
+        "queryable": true,
+        "sourceKey": "Warehouse",
+        "status": "ACTIVE",
+      },
+    ],
+  },
+  "validateQuery": {
+    "declaredResultWindow": {
+      "cellMaxChars": 256,
+      "maxBytes": 4096,
+      "maxRows": 100,
+      "timeoutMs": 1000,
+    },
+    "normalizedSql": "SELECT 1 LIMIT 1000",
+    "request": {
+      "cellMaxChars": 256,
+      "maxBytes": 4096,
+      "maxRows": 100,
+      "parameters": [],
+      "sql": "SELECT 1 LIMIT 1000",
+      "timeoutMs": 1000,
+    },
+    "source": {
+      "provider": "POSTGRES",
+      "queryable": true,
+      "sourceKey": "Warehouse",
+      "status": "ACTIVE",
+    },
+    "truncated": true,
+  },
+}
+`;
+
+exports[`CLI self-host smoke > runs the packaged CLI against the self-host Connect API 1`] = `
+{
+  "authSessionRefresh": {
+    "command": "auth session refresh",
+    "data": {
+      "accessTokenRedacted": true,
+      "activeOrgSlug": "owner-org",
+      "authMode": "bearer_token",
+      "expiresAt": "<timestamp>",
+      "issuedAt": "<timestamp>",
+      "user": {
+        "displayName": "Owner",
+        "email": "owner@example.com",
+        "id": "<redacted>",
+      },
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "orgGet": {
+    "command": "org get",
+    "data": {
+      "capabilities": [
+        "org.list",
+        "org.read",
+        "source.connect",
+        "source.list",
+        "source.read",
+        "source_api.describe",
+        "source_api.execute",
+        "query.execute",
+      ],
+      "name": "Owner Org",
+      "roles": [
+        "owner",
+      ],
+      "slug": "owner-org",
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "queryValidate": {
+    "command": "query validate",
+    "data": {
+      "declaredResultWindow": {
+        "cellMaxChars": 0,
+        "maxBytes": 0,
+        "maxRows": 0,
+        "timeoutMs": 60000,
+      },
+      "normalizedSql": "SELECT 1 LIMIT 1000",
+      "request": {
+        "cellMaxChars": 0,
+        "maxBytes": 0,
+        "maxRows": 0,
+        "sql": "SELECT 1 LIMIT 1000",
+        "timeoutMs": 60000,
+      },
+      "source": {
+        "provider": "postgres",
+        "queryable": true,
+        "sourceKey": "warehouse-cli",
+        "status": "active",
+      },
+      "truncated": true,
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "sourceConnect": {
+    "command": "source connect",
+    "data": {
+      "nextCommand": "onequery source show warehouse-cli",
+      "source": {
+        "provider": "postgres",
+        "queryable": true,
+        "sourceKey": "warehouse-cli",
+        "status": "active",
+      },
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "sourceGuide": {
+    "command": "source connect",
+    "data": {
+      "command": "onequery source connect --source github --input '<json>'",
+      "content": "# OneQuery Source Connect Guide
+
+Provider: \`github\`
+
+Agent workflow:
+1. If this provider requires a browser or dashboard setup flow, do not just ask the user to hand over the final token or secret. Work through the setup with the user step by step.
+2. First check whether you already have browser capability in the current environment.
+3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
+4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
+
+Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
+Run: \`onequery source connect --source github --input '<json>'\`
+Verify: \`onequery source show <source_key>\`
+Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
+The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
+
+Connect GitHub with a fine-grained personal access token and optional repository or installation scoping.
+
+Steps:
+1. Open \`https://github.com/settings/personal-access-tokens/new\` and create a fine-grained personal access token.
+2. Choose the correct resource owner, set \`Repository access\` to \`Only select repositories\`, and select the repositories OneQuery should query.
+3. Under repository permissions, set \`Contents\`, \`Issues\`, and \`Pull requests\` to \`Read-only\`. GitHub also requires \`Metadata: Read-only\`.
+4. Copy the token immediately and use it as \`credentials.accessToken\`. If the token belongs to a GitHub App installation, also include \`installationId\`; optionally restrict the OneQuery connection further with \`repositories\`.
+
+Example input:
+\`\`\`json
+{
+  "sourceKey": "github_main",
+  "credentials": {
+    "accessToken": "github_pat_or_installation_token",
+    "repositories": [
+      "octocat/Hello-World"
+    ]
+  }
+}
+\`\`\`
+",
+      "description": "Follow these steps to gather credentials and create one github org-scoped OneQuery source.",
+      "format": "markdown",
+      "title": "OneQuery Source Connect Guide",
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "sourceList": {
+    "command": "source list",
+    "data": {
+      "page": {
+        "nextCursor": null,
+        "returnedCount": 1,
+      },
+      "sources": [
+        {
+          "provider": "postgres",
+          "queryable": true,
+          "sourceKey": "warehouse-cli",
+          "status": "active",
+        },
+      ],
+    },
+    "ok": true,
+    "page": {
+      "nextCursor": null,
+      "returnedCount": 1,
+    },
+    "warnings": [],
+  },
+  "sourceShow": {
+    "command": "source show",
+    "data": {
+      "provider": "postgres",
+      "queryable": true,
+      "sourceKey": "warehouse-cli",
+      "status": "active",
+    },
+    "ok": true,
+    "warnings": [],
+  },
+  "whoami": {
+    "command": "auth whoami",
+    "data": {
+      "user": {
+        "email": "owner@example.com",
+      },
+    },
+    "ok": true,
+    "warnings": [],
+  },
+}
+`;

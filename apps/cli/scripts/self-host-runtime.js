@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   chmodSync,
   copyFileSync,
@@ -66,17 +67,17 @@ export function createBundledRuntimeEnv(stagingRoot, env = {}) {
 }
 
 export function buildCliBinary() {
-  const result = Bun.spawnSync(
-    ["cargo", "build", "--manifest-path", cliManifestPath, "--bin", "onequery"],
+  const result = spawnSync(
+    "cargo",
+    ["build", "--manifest-path", cliManifestPath, "--bin", "onequery"],
     {
       cwd: workspaceRootDir,
-      stderr: "inherit",
-      stdout: "inherit",
+      stdio: "inherit",
     }
   );
 
-  if (result.exitCode !== 0) {
-    process.exit(result.exitCode);
+  if ((result.status ?? 1) !== 0) {
+    process.exit(result.status ?? 1);
   }
 
   const binaryPath = resolveCargoBinaryPath();
@@ -90,9 +91,9 @@ export function buildCliBinary() {
 function buildServerBundleArtifacts({ outdir, targetTriple }) {
   // Comment: local smoke should exercise the same packaging wrapper as release
   // staging so both paths keep using the same Rolldown server bundle.
-  const result = Bun.spawnSync(
+  const result = spawnSync(
+    process.execPath,
     [
-      process.execPath,
       join(cliRootDir, "scripts", "build-server-bundle.js"),
       "--target-triple",
       targetTriple,
@@ -101,13 +102,12 @@ function buildServerBundleArtifacts({ outdir, targetTriple }) {
     ],
     {
       cwd: workspaceRootDir,
-      stderr: "inherit",
-      stdout: "inherit",
+      stdio: "inherit",
     }
   );
 
-  if (result.exitCode !== 0) {
-    process.exit(result.exitCode);
+  if ((result.status ?? 1) !== 0) {
+    process.exit(result.status ?? 1);
   }
 }
 

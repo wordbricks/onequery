@@ -35,8 +35,12 @@
         "onequery": "bin/onequery.js",
       },
       "devDependencies": {
+        "@bufbuild/protobuf": "catalog:",
+        "@connectrpc/connect": "catalog:",
+        "@connectrpc/connect-node": "catalog:",
         "@onequery/base": "workspace:*",
         "rolldown": "1.0.0-rc.11",
+        "vitest": "catalog:testing",
       },
     },
     "apps/connector": {
