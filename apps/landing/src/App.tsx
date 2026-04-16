@@ -1,6 +1,12 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
+  trackInstallCommandCopied,
+  trackInstallMethodSelected,
+  trackLandingCtaClick,
+  trackPageView,
+} from "./analytics";
+import {
   LANDING_CLI_SOURCE_URL,
   LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
   LANDING_INSTALL_COMMANDS,
@@ -191,6 +197,7 @@ function DownloadCommand() {
   async function handleCopy(label: string, command: string) {
     try {
       await navigator.clipboard.writeText(command);
+      trackInstallCommandCopied(label);
       setCopiedLabel(label);
 
       if (resetTimerRef.current !== null) {
@@ -225,7 +232,10 @@ function DownloadCommand() {
               aria-selected={isSelected}
               aria-controls="install-command-panel"
               className={`install-tab ${isSelected ? "install-tab-active" : ""}`}
-              onClick={() => setSelectedMethodLabel(method.label)}
+              onClick={() => {
+                trackInstallMethodSelected(method.label);
+                setSelectedMethodLabel(method.label);
+              }}
             >
               {method.label}
             </button>
@@ -947,6 +957,10 @@ function renderMockSurface(kind: MockSurfaceKind) {
 }
 
 export function App() {
+  useEffect(() => {
+    trackPageView();
+  }, []);
+
   return (
     <div className="page-shell">
       <header className="site-header">
@@ -966,7 +980,17 @@ export function App() {
 
         <nav className="site-nav" aria-label="Primary">
           {navigationItems.map((item) => (
-            <a key={item.label} href={item.href}>
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={() =>
+                trackLandingCtaClick(
+                  "nav_section_link",
+                  "header_nav",
+                  item.href
+                )
+              }
+            >
               {item.label}
             </a>
           ))}
@@ -979,6 +1003,13 @@ export function App() {
             target="_blank"
             rel="noreferrer"
             aria-label="Open OneQuery GitHub repository"
+            onClick={() =>
+              trackLandingCtaClick(
+                "header_github_repository",
+                "header",
+                LANDING_REPOSITORY_URL
+              )
+            }
           >
             <svg
               aria-hidden="true"
@@ -1006,6 +1037,13 @@ export function App() {
               <a
                 className="button button-primary"
                 href={`#${LANDING_SECTION_IDS.install}`}
+                onClick={() =>
+                  trackLandingCtaClick(
+                    "hero_get_started",
+                    "hero",
+                    `#${LANDING_SECTION_IDS.install}`
+                  )
+                }
               >
                 Get started
               </a>
@@ -1014,6 +1052,13 @@ export function App() {
                 href={LANDING_REPOSITORY_URL}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() =>
+                  trackLandingCtaClick(
+                    "hero_browse_repository",
+                    "hero",
+                    LANDING_REPOSITORY_URL
+                  )
+                }
               >
                 Browse repository
               </a>
@@ -1149,6 +1194,13 @@ export function App() {
               href={LANDING_INSTALL_SCRIPT_URL}
               target="_blank"
               rel="noreferrer"
+              onClick={() =>
+                trackLandingCtaClick(
+                  "final_install_now",
+                  "final_cta",
+                  LANDING_INSTALL_SCRIPT_URL
+                )
+              }
             >
               Install now
             </a>
@@ -1157,6 +1209,13 @@ export function App() {
               href={LANDING_SELF_HOST_DOCS_URL}
               target="_blank"
               rel="noreferrer"
+              onClick={() =>
+                trackLandingCtaClick(
+                  "final_read_self_host_docs",
+                  "final_cta",
+                  LANDING_SELF_HOST_DOCS_URL
+                )
+              }
             >
               Read self-host docs
             </a>
@@ -1175,6 +1234,13 @@ export function App() {
               href={link.href}
               target="_blank"
               rel="noreferrer"
+              onClick={() =>
+                trackLandingCtaClick(
+                  `footer_${link.label.toLowerCase()}`,
+                  "footer",
+                  link.href
+                )
+              }
             >
               {link.label}
             </a>

@@ -19,6 +19,6 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "vitest": "catalog:"
+    "vitest": "catalog:testing"
   }
 }
