@@ -1,0 +1,28 @@
+{
+  "name": "@onequery/landing-video",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Landing page video generator",
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "build": "remotion bundle src/index.ts",
+    "render": "bun run render:video",
+    "render:video": "remotion render src/index.ts OpenClawDemoVideo out/openclaw-demo-video.mp4",
+    "render:still": "remotion still src/index.ts OpenClawDemo out/openclaw-demo.png",
+    "typecheck": "tsgo --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@remotion/google-fonts": "4.0.448",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "remotion": "4.0.448"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.448",
+    "@remotion/tailwind-v4": "4.0.448",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:tooling"
+  }
+}
