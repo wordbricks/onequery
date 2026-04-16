@@ -40,6 +40,25 @@ Set it with:
 bunx wrangler secret put LANDING_SLACK_WEBHOOK_URL
 ```
 
+## Google Analytics 4
+
+Client-side GA4 tracking defaults to the repo-configured OneQuery measurement
+ID `G-TVPWK9V4TE`.
+
+Optional build environment variable:
+
+- `VITE_GA_MEASUREMENT_ID`
+
+Use it only when you need to override the default:
+
+```bash
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX bun run landing:build
+```
+
+Tracked landing events include the initial page view, primary CTA clicks,
+install command interactions, product-updates signups, and contact-form lead
+submissions. Form field values are not sent to GA4.
+
 ## Local Dev
 
 Run the SPA and Worker separately:
