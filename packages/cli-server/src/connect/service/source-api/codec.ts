@@ -43,12 +43,19 @@ export function resolveSourceApiExecuteCommand(
 ): CliServiceResult<SourceApiExecuteCommand> {
   switch (input.case) {
     case "start":
+      if (!input.value.target) {
+        return cliServiceErr({
+          detail: "source API request missing target payload",
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+
       if (input.value.draft) {
         return Result.ok({
           draft: input.value.draft,
           kind: "start",
           mode: input.value.mode,
-          target: buildSourceApiTarget(input.value.draft),
+          target: buildSourceApiTarget(input.value.target),
         });
       }
 
@@ -57,10 +64,17 @@ export function resolveSourceApiExecuteCommand(
         key: "SOURCE_REQUEST_INVALID",
       });
     case "resume":
+      if (!input.value.target) {
+        return cliServiceErr({
+          detail: "source API request missing target payload",
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+
       return Result.ok({
         continuationToken: input.value.continuationToken,
         kind: "resume",
-        target: buildSourceApiTarget(input.value),
+        target: buildSourceApiTarget(input.value.target),
       });
     case undefined:
       return cliServiceErr({
@@ -91,6 +105,7 @@ export function buildSourceApiDraft(
 ): SourceApiDraft {
   return {
     body: buildSourceApiRequestBody(request.body),
+    descriptorVersion: request.descriptorVersion,
     fieldPatch: request.fieldPatch,
     headers: request.headers.map(copySourceApiHeader),
     methodOverride: request.methodOverride,
@@ -171,9 +186,8 @@ function buildCliSourceApiPreview(
     method: value.method,
     operation: value.operation,
     paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
-    provider: toCliSourceProvider(value.provider),
+    source: buildCliSourceApiSource(value.source),
     selector: value.selector,
-    sourceKey: value.sourceKey,
     url: value.url,
   };
 }
@@ -198,7 +212,7 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
     examples: value.examples.map(buildCliSourceApiExample),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
-      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+      allowedRequestHeaderNames: [...value.headerPolicy.allowedRequestHeaders],
     },
     kind: toCliSourceApiOperationKind(value.kind),
     methodPolicy: {
@@ -217,12 +231,12 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
 function buildCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
   return {
     acceptsInput: value.acceptsInput,
+    allowsRawFields: value.allowsRawFields,
+    allowsTypedFields: value.allowsTypedFields,
     inputMode: toCliSourceApiInputMode(value.inputMode),
     mergePatches: value.mergePatches,
     supportsArrayPaths: value.supportsArrayPaths,
     supportsNestedPaths: value.supportsNestedPaths,
-    supportsRawFields: value.allowsRawFields,
-    supportsTypedFields: value.allowsTypedFields,
   };
 }
 

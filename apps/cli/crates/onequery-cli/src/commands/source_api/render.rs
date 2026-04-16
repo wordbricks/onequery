@@ -543,14 +543,7 @@ fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value
 fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> serde_json::Value {
     let mut object = serde_json::Map::new();
     if include_business_metadata {
-        object.insert(
-            "sourceKey".to_owned(),
-            serde_json::Value::String(preview.source_key.clone()),
-        );
-        object.insert(
-            "provider".to_owned(),
-            serde_json::Value::String(source_provider_to_str(preview.provider)),
-        );
+        object.insert("source".to_owned(), source_json(&preview.source));
     }
     object.insert(
         "operation".to_owned(),
@@ -738,8 +731,8 @@ fn method_policy_json(
 
 fn field_policy_json(policy: &SourceApiFieldPolicy) -> serde_json::Value {
     serde_json::json!({
-        "supportsRawFields": policy.supports_raw_fields,
-        "supportsTypedFields": policy.supports_typed_fields,
+        "allowsRawFields": policy.allows_raw_fields,
+        "allowsTypedFields": policy.allows_typed_fields,
         "supportsNestedPaths": policy.supports_nested_paths,
         "supportsArrayPaths": policy.supports_array_paths,
         "acceptsInput": policy.accepts_input,
@@ -752,12 +745,12 @@ fn header_policy_json(
     policy: &crate::transport::source_api::SourceApiHeaderPolicy,
 ) -> serde_json::Value {
     let mut object = serde_json::Map::new();
-    if !policy.allowed_names.is_empty() {
+    if !policy.allowed_request_header_names.is_empty() {
         object.insert(
-            "allowedNames".to_owned(),
+            "allowedRequestHeaderNames".to_owned(),
             serde_json::Value::Array(
                 policy
-                    .allowed_names
+                    .allowed_request_header_names
                     .iter()
                     .cloned()
                     .map(serde_json::Value::String)
@@ -824,10 +817,10 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     }
 
     let field_modes = [
-        operation.field_policy.supports_raw_fields.then_some("raw"),
+        operation.field_policy.allows_raw_fields.then_some("raw"),
         operation
             .field_policy
-            .supports_typed_fields
+            .allows_typed_fields
             .then_some("typed"),
     ]
     .into_iter()
@@ -836,10 +829,10 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     if !field_modes.is_empty() {
         lines.push(format!("  fields: {}", field_modes.join(", ")));
     }
-    if !operation.header_policy.allowed_names.is_empty() {
+    if !operation.header_policy.allowed_request_header_names.is_empty() {
         lines.push(format!(
             "  headers: {}",
-            operation.header_policy.allowed_names.join(", ")
+            operation.header_policy.allowed_request_header_names.join(", ")
         ));
     }
     let field_examples = field_format_examples(&operation.field_policy);
@@ -1005,10 +998,10 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
 
 fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
     let mut examples = Vec::new();
-    if policy.supports_raw_fields {
+    if policy.allows_raw_fields {
         examples.push("-f KEY=VALUE");
     }
-    if policy.supports_typed_fields {
+    if policy.allows_typed_fields {
         examples.push("-F KEY=VALUE");
     }
     if policy.supports_nested_paths {
@@ -1526,9 +1519,14 @@ mod tests {
 
     fn source_api_preview(pagination_policy: SourceApiPaginationPolicy) -> SourceApiPreview {
         SourceApiPreview {
-            source_key: "github-prod".to_owned(),
-            provider: crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
-                .into(),
+            source: MessageField::some(SourceApiSource {
+                source_key: "github-prod".to_owned(),
+                provider:
+                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                        .into(),
+                display_name: Some("GitHub Prod".to_owned()),
+                ..Default::default()
+            }),
             operation: "fetch".to_owned(),
             kind: SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
             method: Some("GET".to_owned()),

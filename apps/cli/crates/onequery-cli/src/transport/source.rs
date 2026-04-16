@@ -306,8 +306,7 @@ mod tests {
             ],
             "page": {
                 "nextCursor": null,
-                "returned": 2,
-                "hasMore": false
+                "returnedCount": 2
             }
         });
 
@@ -334,8 +333,7 @@ mod tests {
                 ],
                 page: PageInfo {
                     next_cursor: None,
-                    returned: 2,
-                    has_more: false,
+                    returned_count: 2,
                 },
             }
         );

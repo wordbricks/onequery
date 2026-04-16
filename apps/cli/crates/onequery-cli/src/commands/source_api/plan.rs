@@ -168,9 +168,8 @@ pub(super) async fn build_plan(
     .await?;
 
     let draft = SourceApiDraft {
-        org_slug: String::new(),
-        source_key: String::new(),
         operation: operation.name.clone(),
+        descriptor_version: Some(descriptor.descriptor_version.clone()),
         selector,
         method_override: normalized_method_override(args.method.as_deref()),
         headers,
@@ -335,7 +334,7 @@ fn validate_field_flags(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
-    if !args.raw_fields.is_empty() && !operation.field_policy.supports_raw_fields {
+    if !args.raw_fields.is_empty() && !operation.field_policy.allows_raw_fields {
         return Err(source_api_parse_error(
             context,
             "raw field patches are not supported",
@@ -347,7 +346,7 @@ fn validate_field_flags(
         ));
     }
 
-    if !args.fields.is_empty() && !operation.field_policy.supports_typed_fields {
+    if !args.fields.is_empty() && !operation.field_policy.allows_typed_fields {
         return Err(source_api_parse_error(
             context,
             "typed field patches are not supported",
@@ -393,9 +392,9 @@ fn parse_headers(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<Vec<SourceApiHeader>, CliError> {
-    let allowed_names = operation
+    let allowed_header_names = operation
         .header_policy
-        .allowed_names
+        .allowed_request_header_names
         .iter()
         .map(|value| value.to_ascii_lowercase())
         .collect::<Vec<_>>();
@@ -422,7 +421,7 @@ fn parse_headers(
                 ));
             }
 
-            if allowed_names.is_empty() {
+            if allowed_header_names.is_empty() {
                 return Err(source_api_parse_error(
                     context,
                     "source API headers are not supported",
@@ -434,7 +433,7 @@ fn parse_headers(
                 ));
             }
 
-            if !allowed_names
+            if !allowed_header_names
                 .iter()
                 .any(|candidate| candidate == &name.to_ascii_lowercase())
             {
@@ -686,7 +685,7 @@ mod tests {
             &["accept: application/json".to_owned()],
             &SourceApiOperation {
                 header_policy: MessageField::some(SourceApiHeaderPolicy {
-                    allowed_names: vec!["Accept".to_owned()],
+                    allowed_request_header_names: vec!["Accept".to_owned()],
                     ..Default::default()
                 }),
                 ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
@@ -741,7 +740,7 @@ mod tests {
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    supports_typed_fields: true,
+                    allows_typed_fields: true,
                     supports_nested_paths: false,
                     supports_array_paths: false,
                     ..SourceApiFieldPolicy::default()
@@ -771,7 +770,7 @@ mod tests {
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    supports_typed_fields: true,
+                    allows_typed_fields: true,
                     supports_nested_paths: true,
                     supports_array_paths: false,
                     ..SourceApiFieldPolicy::default()
@@ -853,7 +852,7 @@ mod tests {
                 &descriptor_with_operation(SourceApiOperation {
                     selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
-                        supports_typed_fields: true,
+                        allows_typed_fields: true,
                         supports_nested_paths: true,
                         supports_array_paths: true,
                         ..SourceApiFieldPolicy::default()

@@ -117,8 +117,7 @@ fn render_query_output_snapshot() {
             truncated: Some(false),
             page: PageInfo {
                 next_cursor: None,
-                returned: 2,
-                has_more: false,
+                returned_count: 2,
             },
             output_metadata: None,
         },
@@ -211,8 +210,7 @@ fn render_query_output_renders_no_columns() {
             truncated: Some(false),
             page: PageInfo {
                 next_cursor: None,
-                returned: 0,
-                has_more: false,
+                returned_count: 0,
             },
             output_metadata: None,
         },

@@ -98,7 +98,7 @@ message GetSourceConnectGuideRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  CliSourceProvider source = 2 [
+  CliSourceProvider provider = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];

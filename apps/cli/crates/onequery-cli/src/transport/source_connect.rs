@@ -187,7 +187,7 @@ pub(crate) async fn load_source_connect_guide(
         .cli()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
             org_slug,
-            source: types::CliSourceProvider::from(source).into(),
+            provider: types::CliSourceProvider::from(source).into(),
             ..Default::default()
         })
         .await

@@ -229,7 +229,7 @@ const handleGetSourceConnectGuideImpl: CliResultServiceMethod<
         context
       )
     );
-    const provider = yield* fromCliSourceProvider(request.source);
+    const provider = yield* fromCliSourceProvider(request.provider);
     const guide = buildCliSourceConnectGuide(provider);
 
     logCliEvent({

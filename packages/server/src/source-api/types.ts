@@ -232,8 +232,7 @@ export type UnboundPreparedSourceApi =
   | UnboundPreparedStructuredSourceApi;
 
 export type SourceApiPreview = {
-  sourceKey: string;
-  provider: ProviderType;
+  source: SourceApiSource;
   operation: string;
   selector?: string;
   kind: SourceApiOperationKind;

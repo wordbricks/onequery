@@ -30,6 +30,7 @@ pub(crate) type SourceApiHeaderPolicy = types::CliSourceApiHeaderPolicy;
 pub(crate) type SourceApiOperation = types::CliSourceApiOperation;
 pub(crate) type SourceApiDescriptor = types::DescribeSourceApiResponse;
 pub(crate) type SourceApiDraft = types::SourceApiDraft;
+pub(crate) type SourceApiTarget = types::SourceApiTarget;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
 pub(crate) type SourceApiPreview = types::SourceApiPreview;
 pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
@@ -111,9 +112,12 @@ pub(crate) async fn execute_source_api(
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Start(Box::new(
                 types::StartSourceApiExecution {
-                    draft: MessageField::some(source_api_draft_with_context(
-                        org, source_key, draft,
+                    target: MessageField::some(source_api_target(
+                        org,
+                        source_key,
+                        ErrorStage::ExecuteQuery,
                     )?),
+                    draft: MessageField::some(draft.clone()),
                     mode: if preview_only {
                         types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
                     } else {
@@ -148,15 +152,16 @@ pub(crate) async fn resume_source_api(
     source_key: &str,
     continuation_token: &str,
 ) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Resume(Box::new(
                 types::ResumeSourceApiExecution {
-                    org_slug,
-                    source_key,
+                    target: MessageField::some(source_api_target(
+                        org,
+                        source_key,
+                        ErrorStage::ExecuteQuery,
+                    )?),
                     continuation_token: try_into_value(
                         continuation_token,
                         ErrorStage::ExecuteQuery,
@@ -317,15 +322,16 @@ fn normalize_renderable_json_number(number: serde_json::Number) -> JsonValue {
     JsonValue::Number(number)
 }
 
-fn source_api_draft_with_context(
+fn source_api_target(
     org: &str,
     source_key: &str,
-    draft: &SourceApiDraft,
-) -> Result<types::SourceApiDraft, ApiFailure> {
-    let mut draft = draft.clone();
-    draft.org_slug = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    draft.source_key = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    Ok(draft)
+    stage: ErrorStage,
+) -> Result<SourceApiTarget, ApiFailure> {
+    Ok(SourceApiTarget {
+        org_slug: try_into_value(org, stage)?,
+        source_key: try_into_value(source_key, stage)?,
+        ..Default::default()
+    })
 }
 
 fn validate_source_api_descriptor(
@@ -398,6 +404,14 @@ fn validate_execute_source_api_result(
         return Err(decode_failure(
             ErrorStage::ExecuteQuery,
             "source API execution response missing preview",
+            request_id,
+        ));
+    }
+
+    if !value.preview.source.is_set() {
+        return Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API execution response missing preview source metadata",
             request_id,
         ));
     }
@@ -479,12 +493,12 @@ mod tests {
                         types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
                             .into(),
                     field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
-                        supports_raw_fields: true,
-                        supports_typed_fields: true,
+                        allows_raw_fields: true,
+                        allows_typed_fields: true,
                         ..Default::default()
                     }),
                     header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
-                        allowed_names: vec!["accept".to_owned()],
+                        allowed_request_header_names: vec!["accept".to_owned()],
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -510,8 +524,11 @@ mod tests {
         let error = execute_source_api_result(
             &types::ExecuteSourceApiResponse {
                 preview: buffa::MessageField::some(types::SourceApiPreview {
-                    source_key: "github-prod".to_owned(),
-                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
+                    source: buffa::MessageField::some(types::CliSourceApiSource {
+                        source_key: "github-prod".to_owned(),
+                        provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
+                        ..Default::default()
+                    }),
                     operation: "fetch".to_owned(),
                     kind:
                         types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST

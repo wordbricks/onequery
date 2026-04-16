@@ -150,7 +150,7 @@ pub(crate) async fn execute_read_only_query_with_controls(
 
     let request_id = response.request_id.clone();
     let mut aggregated = response.payload;
-    let mut total_returned = aggregated.page.returned;
+    let mut total_returned = aggregated.page.returned_count;
     let mut next_cursor = aggregated.page.next_cursor.clone();
 
     while let Some(cursor) = next_cursor {
@@ -163,7 +163,7 @@ pub(crate) async fn execute_read_only_query_with_controls(
             request_timeout,
         )
         .await?;
-        total_returned += next_response.payload.page.returned;
+        total_returned += next_response.payload.page.returned_count;
         if let Some(rows) = &mut aggregated.rows
             && let Some(next_rows) = next_response.payload.rows
         {
@@ -469,8 +469,7 @@ mod tests {
             "truncated": false,
             "page": {
                 "nextCursor": null,
-                "returned": 1,
-                "hasMore": false
+                "returnedCount": 1
             }
         });
 
@@ -497,8 +496,7 @@ mod tests {
                 truncated: Some(false),
                 page: PageInfo {
                     next_cursor: None,
-                    returned: 1,
-                    has_more: false,
+                    returned_count: 1,
                 },
                 output_metadata: None,
             }
@@ -685,8 +683,7 @@ mod tests {
                 }],
                 truncated: false,
                 page: buffa::MessageField::some(super::types::CliPage {
-                    returned: 1,
-                    has_more: false,
+                    returned_count: 1,
                     ..Default::default()
                 }),
                 sanitization: buffa::MessageField::some(super::types::CliSanitization {
@@ -721,8 +718,7 @@ mod tests {
                 truncated: Some(false),
                 page: PageInfo {
                     next_cursor: None,
-                    returned: 1,
-                    has_more: false,
+                    returned_count: 1,
                 },
                 output_metadata: Some(SanitizationMetadata {
                     profile: "strict".to_owned(),
@@ -889,8 +885,7 @@ mod tests {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
                 page: buffa::MessageField::some(super::types::CliPage {
-                    returned: 1,
-                    has_more: false,
+                    returned_count: 1,
                     ..Default::default()
                 }),
                 row_count: 1,

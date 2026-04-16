@@ -178,9 +178,12 @@ const sourceApiPreview = {
   method: "POST",
   operation: "fetch",
   paginationPolicy: "none",
-  provider: "github",
   selector: "/issues",
-  sourceKey: "github-prod",
+  source: {
+    displayName: "GitHub Prod",
+    provider: "github",
+    sourceKey: "github-prod",
+  },
   url: "https://api.github.com/issues",
 } as const;
 
@@ -288,8 +291,10 @@ function createResumeExecuteSourceApiRequest(
       case: "resume",
       value: {
         continuationToken: input.continuationToken ?? "continuation_1",
-        orgSlug: input.orgSlug ?? "acme",
-        sourceKey: input.sourceKey ?? "github-prod",
+        target: {
+          orgSlug: input.orgSlug ?? "acme",
+          sourceKey: input.sourceKey ?? "github-prod",
+        },
       },
     },
   });
@@ -369,9 +374,13 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
           operation: preview.operation,
           paginationPolicy:
             CliSourceApiPaginationPolicy[preview.paginationPolicy],
-          provider: summarizeCliSourceProvider(preview.provider),
+          source: preview.source
+            ? {
+                ...preview.source,
+                provider: summarizeCliSourceProvider(preview.source.provider),
+              }
+            : null,
           selector: preview.selector ?? null,
-          sourceKey: preview.sourceKey,
           url: preview.url ?? null,
         }
       : null,
@@ -430,11 +439,16 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
+          target: {
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
           draft: {
             body: {
               case: "textBody",
               value: "body text",
             },
+            descriptorVersion: "github-v1",
             fieldPatch: {
               perPage: 50,
             },
@@ -446,9 +460,7 @@ describe("source api connect service", () => {
             ],
             methodOverride: "POST",
             operation: "fetch",
-            orgSlug: "acme",
             selector: "/issues",
-            sourceKey: "github-prod",
           },
           mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
         },
@@ -481,6 +493,10 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
+          target: {
+            orgSlug: "acme",
+            sourceKey: "github-prod",
+          },
           draft: {
             body: {
               case: "jsonBody",
@@ -491,9 +507,8 @@ describe("source api connect service", () => {
                 limit: 25,
               }),
             },
+            descriptorVersion: "github-v1",
             operation: "fetch",
-            orgSlug: "acme",
-            sourceKey: "github-prod",
           },
           mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
         },
@@ -516,11 +531,14 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
-          draft: {
-            operation: "fetch",
+          target: {
             orgSlug: "acme",
-            selector: "/issues",
             sourceKey: "github-prod",
+          },
+          draft: {
+            descriptorVersion: "github-v1",
+            operation: "fetch",
+            selector: "/issues",
           },
           mode: CliSourceApiExecuteMode.EXECUTE,
         },
@@ -566,10 +584,13 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
-          draft: {
-            operation: "fetch",
+          target: {
             orgSlug: "acme",
             sourceKey: "github-prod",
+          },
+          draft: {
+            descriptorVersion: "github-v1",
+            operation: "fetch",
           },
           mode: CliSourceApiExecuteMode.EXECUTE,
         },
@@ -739,10 +760,13 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
-          draft: {
-            operation: "fetch",
+          target: {
             orgSlug: "acme",
             sourceKey: "github-prod",
+          },
+          draft: {
+            descriptorVersion: "github-v1",
+            operation: "fetch",
           },
           mode: CliSourceApiExecuteMode.EXECUTE,
         },
@@ -774,10 +798,13 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
-          draft: {
-            operation: "fetch",
+          target: {
             orgSlug: "acme",
             sourceKey: "github-prod",
+          },
+          draft: {
+            descriptorVersion: "github-v1",
+            operation: "fetch",
           },
           mode: CliSourceApiExecuteMode.EXECUTE,
         },

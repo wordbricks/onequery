@@ -1,4 +1,5 @@
 [tools]
+"aqua:bufbuild/buf" = "1.67.0"
 "aqua:casey/just" = "1.48.1"
 "aqua:orhun/git-cliff" = "2.12.0"
 "aqua:rhysd/actionlint" = "1.7.11"

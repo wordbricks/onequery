@@ -26,7 +26,7 @@ message DescribeSourceApiResponse {
   repeated string notes = 6;
 }
 
-message SourceApiDraft {
+message SourceApiTarget {
   string org_slug = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -35,81 +35,72 @@ message SourceApiDraft {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  string operation = 3 [
+}
+
+message SourceApiDraft {
+  string operation = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string selector = 4 [(buf.validate.field).string.min_len = 1];
-  optional string method_override = 5 [
+  optional string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
+  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
+  optional string method_override = 4 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
-  repeated CliSourceApiHeader headers = 6;
-  optional google.protobuf.Struct field_patch = 7;
+  repeated CliSourceApiHeader headers = 5;
+  optional google.protobuf.Struct field_patch = 6;
   oneof body {
-    google.protobuf.Value json_body = 8;
-    string text_body = 9;
-    bytes binary_body = 10;
+    google.protobuf.Value json_body = 7;
+    string text_body = 8;
+    bytes binary_body = 9;
   }
 }
 
 message SourceApiPreview {
-  string source_key = 1 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
-  CliSourceProvider provider = 2 [
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
-  string operation = 3 [
+  CliSourceApiSource source = 1 [(buf.validate.field).required = true];
+  string operation = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string selector = 4 [(buf.validate.field).string.min_len = 1];
-  CliSourceApiOperationKind kind = 5 [
+  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
+  CliSourceApiOperationKind kind = 4 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  optional string method = 6 [
+  optional string method = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
-  optional string host = 7 [(buf.validate.field).string.min_len = 1];
-  optional string url = 8 [(buf.validate.field).string.min_len = 1];
-  repeated string header_names = 9 [
+  optional string host = 6 [(buf.validate.field).string.min_len = 1];
+  optional string url = 7 [(buf.validate.field).string.min_len = 1];
+  repeated string header_names = 8 [
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
   ];
-  CliSourceApiBodyKind body_kind = 10 [
+  CliSourceApiBodyKind body_kind = 9 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  repeated string body_paths = 11 [(buf.validate.field).repeated.items.string.min_len = 1];
-  CliSourceApiPaginationPolicy pagination_policy = 12 [
+  repeated string body_paths = 10 [(buf.validate.field).repeated.items.string.min_len = 1];
+  CliSourceApiPaginationPolicy pagination_policy = 11 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
 }
 
 message StartSourceApiExecution {
-  SourceApiDraft draft = 1 [(buf.validate.field).required = true];
-  CliSourceApiExecuteMode mode = 2 [
+  SourceApiTarget target = 1 [(buf.validate.field).required = true];
+  SourceApiDraft draft = 2 [(buf.validate.field).required = true];
+  CliSourceApiExecuteMode mode = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
 }
 
 message ResumeSourceApiExecution {
-  string org_slug = 1 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-  ];
-  string source_key = 2 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
-  string continuation_token = 3 [(buf.validate.field).string.min_len = 1];
+  SourceApiTarget target = 1 [(buf.validate.field).required = true];
+  string continuation_token = 2 [(buf.validate.field).string.min_len = 1];
 }
 
 message ExecuteSourceApiRequest {
@@ -197,8 +188,8 @@ message CliSourceApiMethodPolicy {
 }
 
 message CliSourceApiFieldPolicy {
-  bool supports_raw_fields = 1;
-  bool supports_typed_fields = 2;
+  bool allows_raw_fields = 1;
+  bool allows_typed_fields = 2;
   bool supports_nested_paths = 3;
   bool supports_array_paths = 4;
   bool accepts_input = 5;
@@ -214,7 +205,7 @@ enum CliSourceApiInputMode {
 }
 
 message CliSourceApiHeaderPolicy {
-  repeated string allowed_names = 1 [
+  repeated string allowed_request_header_names = 1 [
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
   ];

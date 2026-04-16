@@ -198,18 +198,21 @@ fn render_table(result: &QueryResult) -> Vec<String> {
 }
 
 fn append_page_lines(lines: &mut Vec<String>, page: &PageInfo, force_render: bool) {
-    if !force_render && !page.has_more {
+    if !force_render && !page.has_next_page() {
         return;
     }
 
     lines.push(String::new());
-    if page.has_more {
-        lines.push(format!("Page: {} returned, more available", page.returned));
+    if page.has_next_page() {
+        lines.push(format!(
+            "Page: {} returned, more available",
+            page.returned_count
+        ));
         if let Some(next_cursor) = &page.next_cursor {
             lines.push(format!("Next cursor: {next_cursor}"));
         }
         return;
     }
 
-    lines.push(format!("Page: {} returned", page.returned));
+    lines.push(format!("Page: {} returned", page.returned_count));
 }

@@ -625,7 +625,7 @@ describe("CLI self-host smoke", () => {
       expect(organizationsResponse.payload).toMatchObject({
         organizations: [{ slug: "owner-org" }],
         page: {
-          returned: "1",
+          returnedCount: "1",
         },
       });
 
@@ -649,7 +649,7 @@ describe("CLI self-host smoke", () => {
         baseUrl,
         body: {
           orgSlug: "owner-org",
-          source: "CLI_SOURCE_PROVIDER_POSTGRES",
+          provider: "CLI_SOURCE_PROVIDER_POSTGRES",
         },
         cookieHeader,
         method: "GetSourceConnectGuide",
@@ -710,7 +710,7 @@ describe("CLI self-host smoke", () => {
           },
         ],
         page: {
-          returned: "1",
+          returnedCount: "1",
         },
       });
 

@@ -33,16 +33,18 @@ pub(crate) struct SinglePageReadControls {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PageInfo {
     pub(crate) next_cursor: Option<String>,
-    pub(crate) returned: usize,
-    pub(crate) has_more: bool,
+    pub(crate) returned_count: usize,
 }
 
 impl PageInfo {
-    pub(crate) fn aggregated(returned: usize) -> Self {
+    pub(crate) fn aggregated(returned_count: usize) -> Self {
         Self {
             next_cursor: None,
-            returned,
-            has_more: false,
+            returned_count,
         }
+    }
+
+    pub(crate) fn has_next_page(&self) -> bool {
+        self.next_cursor.is_some()
     }
 }
