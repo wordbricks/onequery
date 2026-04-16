@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
 import {
+  trackContactFormSubmitted,
+  trackContactModalOpened,
+  trackProductUpdatesSignup,
+} from "./analytics";
+import {
   getFirstLeadCaptureError,
   validateContactForm,
   validateProductUpdatesForm,
@@ -43,6 +48,7 @@ export function ProductUpdatesSection() {
     setIsPending(true);
     try {
       await submitProductUpdates(result.value);
+      trackProductUpdatesSignup();
       setForm({ email: "" });
       setSuccessMessage(`We’ll send product updates to ${result.value.email}.`);
     } catch (error) {
@@ -134,7 +140,10 @@ export function FooterContactButton() {
       <button
         type="button"
         className="contact-link-button"
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          trackContactModalOpened();
+          setIsOpen(true);
+        }}
       >
         Contact
       </button>
@@ -161,6 +170,7 @@ function ContactModal({ onClose }: { onClose: () => void }) {
     setIsPending(true);
     try {
       await submitContactForm(result.value);
+      trackContactFormSubmitted();
       setForm(emptyContactState);
       onClose();
     } catch (error) {
