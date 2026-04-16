@@ -21,6 +21,6 @@
     "smol-toml": "1.6.1"
   },
   "devDependencies": {
-    "vitest": "catalog:"
+    "vitest": "catalog:testing"
   }
 }
