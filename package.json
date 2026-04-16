@@ -9,6 +9,7 @@
     "catalog": {
       "@bufbuild/protobuf": "2.11.0",
       "@connectrpc/connect": "2.1.1",
+      "@connectrpc/connect-node": "2.1.1",
       "@hono/node-server": "1.19.13",
       "@hono/zod-validator": "0.7.6",
       "@tabler/icons-react": "3.36.1",

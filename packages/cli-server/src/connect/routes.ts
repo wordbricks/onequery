@@ -1,8 +1,8 @@
 import type { ConnectRouter } from "@connectrpc/connect";
 
 import { CliService } from "./gen/onequery/cli/v1/cli_pb";
-import { createCliService } from "./service";
+import { cliService } from "./service";
 
 export function registerCliConnectRoutes(router: ConnectRouter) {
-  router.service(CliService, createCliService());
+  router.service(CliService, cliService);
 }

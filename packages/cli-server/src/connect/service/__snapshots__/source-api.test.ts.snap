@@ -114,9 +114,12 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "method": "POST",
       "operation": "fetch",
       "paginationPolicy": "NONE",
-      "provider": "github",
       "selector": "/issues",
-      "sourceKey": "github-prod",
+      "source": {
+        "displayName": "GitHub Prod",
+        "provider": "github",
+        "sourceKey": "github-prod",
+      },
       "url": "https://api.github.com/issues",
     },
     "result": {
@@ -224,11 +227,12 @@ exports[`source api connect service > converts protobuf JSON draft bodies into c
         "limit": 25,
       },
     },
+    "descriptorVersion": "github-v1",
     "fieldPatch": undefined,
     "headers": [],
-    "methodOverride": undefined,
+    "methodOverride": "",
     "operation": "fetch",
-    "selector": undefined,
+    "selector": "",
   },
   "source": {
     "credentials": {
@@ -296,15 +300,15 @@ exports[`source api connect service > describes the source API through the Conne
         "examples": [],
         "fieldPolicy": {
           "acceptsInput": false,
+          "allowsRawFields": false,
+          "allowsTypedFields": false,
           "inputMode": 1,
           "mergePatches": false,
           "supportsArrayPaths": false,
           "supportsNestedPaths": false,
-          "supportsRawFields": false,
-          "supportsTypedFields": false,
         },
         "headerPolicy": {
-          "allowedNames": [
+          "allowedRequestHeaderNames": [
             "accept",
           ],
         },
@@ -399,7 +403,7 @@ exports[`source api connect service > executes source API requests through the C
     },
   },
   "response": {
-    "continuationToken": null,
+    "continuationToken": "",
     "preview": {
       "bodyKind": "TEXT",
       "bodyPaths": [],
@@ -411,9 +415,12 @@ exports[`source api connect service > executes source API requests through the C
       "method": "POST",
       "operation": "fetch",
       "paginationPolicy": "NONE",
-      "provider": "github",
       "selector": "/issues",
-      "sourceKey": "github-prod",
+      "source": {
+        "displayName": "GitHub Prod",
+        "provider": "github",
+        "sourceKey": "github-prod",
+      },
       "url": "https://api.github.com/issues",
     },
     "result": {
@@ -443,7 +450,7 @@ exports[`source api connect service > executes source API requests through the C
 
 exports[`source api connect service > preserves JSON source API response bodies through the Connect handler 1`] = `
 {
-  "continuationToken": null,
+  "continuationToken": "",
   "preview": {
     "bodyKind": "TEXT",
     "bodyPaths": [],
@@ -455,9 +462,12 @@ exports[`source api connect service > preserves JSON source API response bodies 
     "method": "POST",
     "operation": "fetch",
     "paginationPolicy": "NONE",
-    "provider": "github",
     "selector": "/issues",
-    "sourceKey": "github-prod",
+    "source": {
+      "displayName": "GitHub Prod",
+      "provider": "github",
+      "sourceKey": "github-prod",
+    },
     "url": "https://api.github.com/issues",
   },
   "result": {
@@ -564,6 +574,7 @@ exports[`source api connect service > previews source API execution through the 
         "kind": "text",
         "value": "body text",
       },
+      "descriptorVersion": "github-v1",
       "fieldPatch": {
         "perPage": 50,
       },
@@ -597,7 +608,7 @@ exports[`source api connect service > previews source API execution through the 
     },
   },
   "response": {
-    "continuationToken": null,
+    "continuationToken": "",
     "preview": {
       "bodyKind": "TEXT",
       "bodyPaths": [],
@@ -609,9 +620,12 @@ exports[`source api connect service > previews source API execution through the 
       "method": "POST",
       "operation": "fetch",
       "paginationPolicy": "NONE",
-      "provider": "github",
       "selector": "/issues",
-      "sourceKey": "github-prod",
+      "source": {
+        "displayName": "GitHub Prod",
+        "provider": "github",
+        "sourceKey": "github-prod",
+      },
       "url": "https://api.github.com/issues",
     },
     "result": null,

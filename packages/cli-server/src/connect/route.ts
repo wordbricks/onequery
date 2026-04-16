@@ -1,28 +1,11 @@
-import { ConnectError } from "@connectrpc/connect";
-import type { Interceptor } from "@connectrpc/connect";
-import { createValidateInterceptor } from "@connectrpc/validate";
-import { honoConnectMiddleware } from "@onequery/hono-connect";
+import { createContextValues } from "@connectrpc/connect";
+import type { ContextValues } from "@connectrpc/connect";
+import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 
 import { createCliApp } from "../app";
 import type { CreateCliAppOptions } from "../app";
-import {
-  cliConnectRequestContextKey,
-  createCliConnectContextValues,
-} from "./context";
-import { withCliRequestId } from "./error";
-import { registerCliConnectRoutes } from "./routes";
-
-const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
-  try {
-    return await next(request);
-  } catch (reason) {
-    const requestContext = request.contextValues.get(
-      cliConnectRequestContextKey
-    );
-    const requestId = requestContext?.requestId ?? "unknown";
-    throw withCliRequestId(ConnectError.from(reason), requestId);
-  }
-};
+import { createCliConnectContextValues } from "./context";
+import { createCliConnectHandler, listCliConnectRequestPaths } from "./node";
 
 export interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;
@@ -30,21 +13,34 @@ export interface CreateCliRouteOptions extends CreateCliAppOptions {
 
 export function createCliRoute(input: CreateCliRouteOptions) {
   const app = createCliApp(input);
+  const contextValuesByRequest = new WeakMap<object, ContextValues>();
+  const connectHandler = createCliConnectHandler({
+    contextValues(request) {
+      return contextValuesByRequest.get(request) ?? createContextValues();
+    },
+    requestPathPrefix: input.requestPathPrefix,
+  });
 
-  app.use(
-    "*",
-    honoConnectMiddleware({
-      connect: true,
-      grpc: false,
-      grpcWeb: false,
-      contextValues: createCliConnectContextValues,
-      interceptors: [cliRequestIdInterceptor, createValidateInterceptor()],
-      // Comment: the outer runtime app owns the `/api/cli` mount, so pass the
-      // prefix explicitly instead of inferring it from Hono's full request path.
-      requestPathPrefix: input.requestPathPrefix,
-      routes: registerCliConnectRoutes,
-    })
-  );
+  for (const requestPath of listCliConnectRequestPaths()) {
+    app.all(requestPath, async (c) => {
+      const request = c.env.incoming;
+
+      // Comment: connectNodeAdapter creates ContextValues from the raw Node
+      // request, so bridge the active Hono context through a per-request map.
+      contextValuesByRequest.set(request, createCliConnectContextValues(c));
+
+      try {
+        // Comment: the outer runtime app owns the `/api/cli` mount, so keep
+        // the Connect request path prefix explicit instead of inferring it from
+        // the child Hono app.
+        connectHandler(request, c.env.outgoing);
+      } finally {
+        contextValuesByRequest.delete(request);
+      }
+
+      return RESPONSE_ALREADY_SENT;
+    });
+  }
 
   return app;
 }

@@ -24,22 +24,20 @@ import {
   handleExecuteSourceApi,
 } from "./service/source-api";
 
-export function createCliService(): Partial<ServiceImpl<typeof CliService>> {
-  return {
-    getSession: handleGetSession,
-    refreshSession: handleRefreshSession,
-    startDeviceAuthorization: handleStartDeviceAuthorization,
-    pollDeviceAuthorization: handlePollDeviceAuthorization,
-    listOrganizations: handleListOrganizations,
-    getOrganization: handleGetOrganization,
-    listSources: handleListSources,
-    getSource: handleGetSource,
-    testSource: handleTestSource,
-    getSourceConnectGuide: handleGetSourceConnectGuide,
-    connectSource: handleConnectSource,
-    describeSourceApi: handleDescribeSourceApi,
-    executeSourceApi: handleExecuteSourceApi,
-    validateQuery: handleValidateQuery,
-    executeQuery: handleExecuteQuery,
-  };
-}
+export const cliService: ServiceImpl<typeof CliService> = {
+  getSession: handleGetSession,
+  refreshSession: handleRefreshSession,
+  startDeviceAuthorization: handleStartDeviceAuthorization,
+  pollDeviceAuthorization: handlePollDeviceAuthorization,
+  listOrganizations: handleListOrganizations,
+  getOrganization: handleGetOrganization,
+  listSources: handleListSources,
+  getSource: handleGetSource,
+  testSource: handleTestSource,
+  getSourceConnectGuide: handleGetSourceConnectGuide,
+  connectSource: handleConnectSource,
+  describeSourceApi: handleDescribeSourceApi,
+  executeSourceApi: handleExecuteSourceApi,
+  validateQuery: handleValidateQuery,
+  executeQuery: handleExecuteQuery,
+};

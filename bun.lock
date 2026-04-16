@@ -130,19 +130,17 @@
         "@bufbuild/protobuf": "catalog:",
         "@bufbuild/protovalidate": "1.1.1",
         "@connectrpc/connect": "catalog:",
+        "@connectrpc/connect-node": "catalog:",
         "@connectrpc/validate": "0.2.0",
+        "@hono/node-server": "catalog:",
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/db": "workspace:*",
-        "@onequery/hono-connect": "workspace:*",
         "@onequery/server": "workspace:*",
         "better-result": "catalog:",
         "hono": "catalog:",
         "hono-problem-details": "catalog:",
         "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@hono/node-server": "catalog:",
       },
     },
     "packages/codecs": {
@@ -214,7 +212,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@connectrpc/connect": "catalog:",
-        "@connectrpc/connect-node": "2.1.1",
+        "@connectrpc/connect-node": "catalog:",
         "@hono/node-server": "catalog:",
         "hono": "catalog:",
       },
@@ -316,6 +314,7 @@
   "catalog": {
     "@bufbuild/protobuf": "2.11.0",
     "@connectrpc/connect": "2.1.1",
+    "@connectrpc/connect-node": "2.1.1",
     "@hono/node-server": "1.19.13",
     "@hono/zod-validator": "0.7.6",
     "@tabler/icons-react": "3.36.1",
