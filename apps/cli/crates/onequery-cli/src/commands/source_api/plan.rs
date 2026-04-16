@@ -92,8 +92,7 @@ pub(super) async fn build_plan(
                 context,
                 "unsupported source API operation",
                 format!(
-                    "operation `{operation_name}` is not described for source `{}`",
-                    source_key
+                    "operation `{operation_name}` is not described for source `{source_key}`"
                 ),
                 source_key,
             )

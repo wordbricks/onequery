@@ -45,7 +45,7 @@ pub(super) fn render_descriptor_output(
         .unwrap_or_default();
     let source_provider = source
         .and_then(|value| value.provider)
-        .map(|value| source_provider_to_str(value).to_owned())
+        .map(|value| source_provider_to_str(value))
         .unwrap_or_else(|| "unspecified".to_owned());
 
     let mut lines = vec![format!("Source: {} ({})", source_key, source_provider)];
@@ -718,7 +718,7 @@ fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_
     if let Some(provider) = source.provider {
         object.insert(
             "provider".to_owned(),
-            serde_json::Value::String(source_provider_to_str(provider).to_owned()),
+            serde_json::Value::String(source_provider_to_str(provider)),
         );
     }
     if let Some(display_name) = source.display_name.as_ref() {
