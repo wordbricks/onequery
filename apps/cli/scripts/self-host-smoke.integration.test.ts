@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import type { JsonObject } from "@bufbuild/protobuf";
 import type { CallOptions, Client } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
@@ -21,6 +22,7 @@ import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/
 import { CliService } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
 import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
 import { OrgCapability } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
+import { QueryParameterType } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/query_pb.js";
 import {
   SourceConnectSslMode,
   SourceProvider,
@@ -37,7 +39,6 @@ import {
 const STARTUP_TIMEOUT_MS = 120_000;
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 type CliConnectClient = Client<typeof CliService>;
-type JsonRecord = Record<string, unknown>;
 
 let stagedBundleRootPromise: Promise<string> | null = null;
 
@@ -201,8 +202,8 @@ async function callCliConnectRpc<T>(input: {
   responseHeaders: Headers;
   responseTrailers: Headers;
 }> {
-  let responseHeaders: Headers | null = null;
-  let responseTrailers: Headers | null = null;
+  let responseHeaders = new Headers();
+  let responseTrailers = new Headers();
   const payload = await input.call({
     headers: {
       ...(input.cookieHeader ? { cookie: input.cookieHeader } : {}),
@@ -217,8 +218,8 @@ async function callCliConnectRpc<T>(input: {
   });
 
   const responseRequestId =
-    responseHeaders?.get("x-request-id") ??
-    responseTrailers?.get("x-request-id") ??
+    responseHeaders.get("x-request-id") ??
+    responseTrailers.get("x-request-id") ??
     null;
   // Comment: the Connect client path does not reliably surface custom
   // response metadata for this gateway setup, even though the server logs and
@@ -230,8 +231,8 @@ async function callCliConnectRpc<T>(input: {
 
   return {
     payload,
-    responseHeaders: responseHeaders ?? new Headers(),
-    responseTrailers: responseTrailers ?? new Headers(),
+    responseHeaders,
+    responseTrailers,
   };
 }
 
@@ -252,10 +253,21 @@ async function refreshCliAccessToken(input: {
   return refreshResponse.payload.accessToken;
 }
 
+function requirePresent<T>(
+  value: T | null | undefined,
+  message: string
+): NonNullable<T> {
+  if (value === null || value === undefined) {
+    throw new Error(message);
+  }
+
+  return value;
+}
+
 function summarizeCliPage(value: {
   nextCursor: string;
   returnedCount: bigint;
-}): JsonRecord {
+}): JsonObject {
   return {
     ...(value.nextCursor ? { nextCursor: value.nextCursor } : {}),
     returnedCount: value.returnedCount.toString(),
@@ -268,7 +280,7 @@ function summarizeCliSource(value: {
   queryable: boolean;
   sourceKey: string;
   status: SourceStatus;
-}): JsonRecord {
+}): JsonObject {
   return {
     ...(value.displayName ? { displayName: value.displayName } : {}),
     provider: SourceProvider[value.provider],
@@ -278,17 +290,34 @@ function summarizeCliSource(value: {
   };
 }
 
+function summarizeCliQueryParameter(value: {
+  type: QueryParameterType;
+  value: string;
+}): JsonObject {
+  return {
+    type: QueryParameterType[value.type],
+    value: value.value,
+  };
+}
+
 function summarizeGetSessionResponse(
   value: Awaited<ReturnType<CliConnectClient["getSession"]>>
-): JsonRecord {
+): JsonObject {
+  // Comment: generated protobuf submessages are optional in TypeScript even
+  // when this smoke path treats them as required success invariants.
+  const user = requirePresent(
+    value.user,
+    "GetSessionResponse.user must be present for a successful session lookup"
+  );
+
   return {
     activeOrgSlug: value.activeOrgSlug,
     authMode: AuthMode[value.authMode],
     expiresAt: value.expiresAt ? "<timestamp>" : null,
     issuedAt: value.issuedAt ? "<timestamp>" : null,
     user: {
-      displayName: value.user.displayName,
-      email: value.user.email,
+      displayName: user.displayName,
+      email: user.email,
       id: "<redacted>",
     },
   };
@@ -296,19 +325,24 @@ function summarizeGetSessionResponse(
 
 function summarizeListOrganizationsResponse(
   value: Awaited<ReturnType<CliConnectClient["listOrganizations"]>>
-): JsonRecord {
+): JsonObject {
+  const page = requirePresent(
+    value.page,
+    "ListOrganizationsResponse.page must be present for smoke snapshots"
+  );
+
   return {
     organizations: value.organizations.map((organization) => ({
       name: organization.name,
       slug: organization.slug,
     })),
-    page: summarizeCliPage(value.page),
+    page: summarizeCliPage(page),
   };
 }
 
 function summarizeGetOrganizationResponse(
   value: Awaited<ReturnType<CliConnectClient["getOrganization"]>>
-): JsonRecord {
+): JsonObject {
   return {
     capabilities: value.capabilities.map(
       (capability) => OrgCapability[capability]
@@ -321,7 +355,7 @@ function summarizeGetOrganizationResponse(
 
 function summarizeGetSourceConnectGuideResponse(
   value: Awaited<ReturnType<CliConnectClient["getSourceConnectGuide"]>>
-): JsonRecord {
+): JsonObject {
   return {
     command: value.command,
     content: value.content,
@@ -333,50 +367,80 @@ function summarizeGetSourceConnectGuideResponse(
 
 function summarizeConnectSourceResponse(
   value: Awaited<ReturnType<CliConnectClient["connectSource"]>>
-): JsonRecord {
+): JsonObject {
+  const source = requirePresent(
+    value.source,
+    "ConnectSourceResponse.source must be present for a successful source connect"
+  );
+
   return {
     nextCommand: value.nextCommand,
-    source: summarizeCliSource(value.source),
+    source: summarizeCliSource(source),
   };
 }
 
 function summarizeListSourcesResponse(
   value: Awaited<ReturnType<CliConnectClient["listSources"]>>
-): JsonRecord {
+): JsonObject {
+  const page = requirePresent(
+    value.page,
+    "ListSourcesResponse.page must be present for smoke snapshots"
+  );
+
   return {
-    page: summarizeCliPage(value.page),
+    page: summarizeCliPage(page),
     sources: value.sources.map((source) => summarizeCliSource(source)),
   };
 }
 
 function summarizeGetSourceResponse(
   value: Awaited<ReturnType<CliConnectClient["getSource"]>>
-): JsonRecord {
+): JsonObject {
+  const source = requirePresent(
+    value.source,
+    "GetSourceResponse.source must be present for a successful source lookup"
+  );
+
   return {
-    source: summarizeCliSource(value.source),
+    source: summarizeCliSource(source),
   };
 }
 
 function summarizeValidateQueryResponse(
   value: Awaited<ReturnType<CliConnectClient["validateQuery"]>>
-): JsonRecord {
+): JsonObject {
+  const declaredResultWindow = requirePresent(
+    value.declaredResultWindow,
+    "ValidateQueryResponse.declaredResultWindow must be present for successful validation"
+  );
+  const request = requirePresent(
+    value.request,
+    "ValidateQueryResponse.request must be present for successful validation"
+  );
+  const source = requirePresent(
+    value.source,
+    "ValidateQueryResponse.source must be present for successful validation"
+  );
+
   return {
     declaredResultWindow: {
-      cellMaxChars: value.declaredResultWindow.cellMaxChars,
-      maxBytes: value.declaredResultWindow.maxBytes,
-      maxRows: value.declaredResultWindow.maxRows,
-      timeoutMs: value.declaredResultWindow.timeoutMs,
+      cellMaxChars: declaredResultWindow.cellMaxChars,
+      maxBytes: declaredResultWindow.maxBytes,
+      maxRows: declaredResultWindow.maxRows,
+      timeoutMs: declaredResultWindow.timeoutMs,
     },
     normalizedSql: value.normalizedSql,
     request: {
-      cellMaxChars: value.request.cellMaxChars,
-      maxBytes: value.request.maxBytes,
-      maxRows: value.request.maxRows,
-      parameters: [...value.request.parameters],
-      sql: value.request.sql,
-      timeoutMs: value.request.timeoutMs,
+      cellMaxChars: request.cellMaxChars,
+      maxBytes: request.maxBytes,
+      maxRows: request.maxRows,
+      parameters: request.parameters.map((parameter) =>
+        summarizeCliQueryParameter(parameter)
+      ),
+      sql: request.sql,
+      timeoutMs: request.timeoutMs,
     },
-    source: summarizeCliSource(value.source),
+    source: summarizeCliSource(source),
     truncated: value.truncated,
   };
 }
