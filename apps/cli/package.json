@@ -36,7 +36,7 @@
     "@connectrpc/connect": "catalog:",
     "@connectrpc/connect-node": "catalog:",
     "@onequery/base": "workspace:*",
-    "rolldown": "1.0.0-rc.11",
+    "rolldown": "1.0.0-rc.15",
     "vitest": "catalog:testing"
   }
 }
