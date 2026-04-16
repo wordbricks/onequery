@@ -91,9 +91,7 @@ pub(super) async fn build_plan(
             source_api_parse_error(
                 context,
                 "unsupported source API operation",
-                format!(
-                    "operation `{operation_name}` is not described for source `{source_key}`"
-                ),
+                format!("operation `{operation_name}` is not described for source `{source_key}`"),
                 source_key,
             )
         })?;
@@ -587,9 +585,7 @@ mod tests {
                 slurp: true,
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -609,9 +605,7 @@ mod tests {
                 max_pages: Some(nz_u32(2)),
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -649,9 +643,7 @@ mod tests {
                 max_pages: Some(nz_u32(3)),
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -731,9 +723,7 @@ mod tests {
                 ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
-                selector_kind: Some(
-                    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
-                ),
+                selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
                     allows_typed_fields: Some(true),
                     supports_nested_paths: Some(false),
@@ -763,9 +753,7 @@ mod tests {
                 ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
-                selector_kind: Some(
-                    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
-                ),
+                selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
                     allows_typed_fields: Some(true),
                     supports_nested_paths: Some(true),
@@ -938,8 +926,7 @@ mod tests {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
                 provider: Some(
-                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB
-                        .into(),
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
                 ),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()

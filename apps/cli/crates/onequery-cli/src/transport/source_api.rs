@@ -494,8 +494,7 @@ mod tests {
                         types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH.into(),
                     ),
                     pagination_policy: Some(
-                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE
-                            .into(),
+                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
                     ),
                     field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
                         allows_raw_fields: Some(true),
@@ -539,12 +538,9 @@ mod tests {
                         types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                             .into(),
                     ),
-                    body_kind: Some(
-                        types::SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE.into(),
-                    ),
+                    body_kind: Some(types::SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE.into()),
                     pagination_policy: Some(
-                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE
-                            .into(),
+                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
                     ),
                     ..Default::default()
                 }),
@@ -579,9 +575,7 @@ mod tests {
             "http_request"
         );
         assert_eq!(
-            source_api_body_kind_label(
-                types::SourceApiBodyKind::SOURCE_API_BODY_KIND_TEXT.into(),
-            ),
+            source_api_body_kind_label(types::SourceApiBodyKind::SOURCE_API_BODY_KIND_TEXT.into(),),
             "text"
         );
         assert_eq!(

@@ -279,12 +279,8 @@ fn source_test_unsupported_reason_to_str(
         Some(
             types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
         ) => "not_implemented".to_owned(),
-        Some(
-            types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED,
-        )
-        | None => {
-            "unknown".to_owned()
-        }
+        Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED)
+        | None => "unknown".to_owned(),
     }
 }
 

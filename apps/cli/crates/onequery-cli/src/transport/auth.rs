@@ -393,9 +393,7 @@ fn timestamp_to_datetime(
 
 fn auth_mode_from_generated(mode: Option<buffa::EnumValue<types::AuthMode>>) -> Option<String> {
     match mode.and_then(|mode| mode.as_known()) {
-        Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION) => {
-            Some("browser_session".to_owned())
-        }
+        Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION) => Some("browser_session".to_owned()),
         Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
         Some(types::AuthMode::AUTH_MODE_UNSPECIFIED) | None => None,
     }
@@ -440,15 +438,9 @@ mod tests {
     fn auth_mode_from_generated_maps_known_values_to_legacy_strings() {
         assert_eq!(
             [
-                auth_mode_from_generated(Some(
-                    types::AuthMode::AUTH_MODE_BROWSER_SESSION.into(),
-                )),
-                auth_mode_from_generated(Some(
-                    types::AuthMode::AUTH_MODE_BEARER_TOKEN.into(),
-                )),
-                auth_mode_from_generated(Some(
-                    types::AuthMode::AUTH_MODE_UNSPECIFIED.into(),
-                )),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION.into(),)),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into(),)),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_UNSPECIFIED.into(),)),
                 auth_mode_from_generated(None),
             ],
             [

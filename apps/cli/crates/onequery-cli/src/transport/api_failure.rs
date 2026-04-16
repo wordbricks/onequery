@@ -295,16 +295,12 @@ fn cli_problem_stage_to_error_stage(
 ) -> Option<ErrorStage> {
     match stage.as_known() {
         Some(types::ProblemStage::PROBLEM_STAGE_AUTH) => Some(ErrorStage::Auth),
-        Some(types::ProblemStage::PROBLEM_STAGE_EXECUTE_QUERY) => {
-            Some(ErrorStage::ExecuteQuery)
-        }
+        Some(types::ProblemStage::PROBLEM_STAGE_EXECUTE_QUERY) => Some(ErrorStage::ExecuteQuery),
         Some(types::ProblemStage::PROBLEM_STAGE_READ_QUERY_INPUT) => {
             Some(ErrorStage::ReadQueryInput)
         }
         Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_ORG) => Some(ErrorStage::ResolveOrg),
-        Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_SOURCE) => {
-            Some(ErrorStage::ResolveSource)
-        }
+        Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_SOURCE) => Some(ErrorStage::ResolveSource),
         Some(types::ProblemStage::PROBLEM_STAGE_UNSPECIFIED) | None => None,
     }
 }
@@ -420,9 +416,7 @@ mod tests {
         error.details.push(error_detail(
             "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
             &generated::types::CliErrorDetail {
-                code: Some(
-                    generated::types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
-                ),
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED.into()),
                 stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
                 title: Some("Login Rate Limited".to_owned()),
                 hint: Some("wait briefly, then retry `onequery auth login`".to_owned()),

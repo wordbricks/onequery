@@ -360,8 +360,7 @@ mod tests {
             source: MessageField::some(SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
                 provider: Some(
-                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB
-                        .into(),
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
                 ),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()

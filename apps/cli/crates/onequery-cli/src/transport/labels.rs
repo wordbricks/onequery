@@ -165,9 +165,7 @@ mod tests {
                 org_capability_to_str(
                     types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
                 ),
-                org_capability_to_str(
-                    types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE.into(),
-                ),
+                org_capability_to_str(types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE.into(),),
             ],
             [
                 "org.list".to_owned(),
@@ -182,9 +180,7 @@ mod tests {
     fn query_logical_type_to_str_maps_known_values() {
         assert_eq!(
             Some("json".to_owned()),
-            query_logical_type_to_str(
-                types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON.into(),
-            )
+            query_logical_type_to_str(types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON.into(),)
         );
     }
 

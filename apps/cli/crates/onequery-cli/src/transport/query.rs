@@ -641,16 +641,14 @@ mod tests {
                 parameters: vec![
                     super::types::CliQueryParameter {
                         r#type: Some(
-                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING
-                                .into(),
+                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING.into(),
                         ),
                         value: Some("acme".to_owned()),
                         ..Default::default()
                     },
                     super::types::CliQueryParameter {
                         r#type: Some(
-                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL
-                                .into(),
+                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
                         ),
                         value: None,
                         ..Default::default()
@@ -671,9 +669,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(
-                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
-                    ),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
                     queryable: Some(true),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
@@ -756,8 +752,7 @@ mod tests {
                         },
                         super::types::CliQueryParameter {
                             r#type: Some(
-                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL
-                                    .into(),
+                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
                             ),
                             value: None,
                             ..Default::default()
@@ -781,9 +776,7 @@ mod tests {
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(
-                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
-                    ),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
                     queryable: Some(true),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
@@ -872,9 +865,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(
-                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
-                    ),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
                     queryable: Some(true),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
