@@ -42,12 +42,12 @@ message CliSource {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliSourceProvider provider = 3 [
+  SourceProvider provider = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   bool queryable = 4;
-  CliSourceStatus status = 5 [
+  SourceStatus status = 5 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -92,7 +92,7 @@ message TestSourceSupportedOutcome {
 }
 
 message TestSourceUnsupportedOutcome {
-  CliSourceTestUnsupportedReason reason = 1 [
+  SourceTestUnsupportedReason reason = 1 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -104,7 +104,7 @@ message GetSourceConnectGuideRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  CliSourceProvider provider = 2 [
+  SourceProvider provider = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -113,7 +113,7 @@ message GetSourceConnectGuideRequest {
 message GetSourceConnectGuideResponse {
   string title = 1 [(buf.validate.field).string.min_len = 1];
   string description = 2 [(buf.validate.field).string.min_len = 1];
-  CliContentFormat format = 3 [
+  ContentFormat format = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -173,7 +173,7 @@ message ConnectSourcePostgresCredentials {
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
-  CliSourceConnectSslMode ssl_mode = 5 [
+  SourceConnectSslMode ssl_mode = 5 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -200,7 +200,7 @@ message ConnectSourceMySqlCredentials {
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
-  CliSourceConnectSslMode ssl_mode = 5 [
+  SourceConnectSslMode ssl_mode = 5 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -339,7 +339,7 @@ message ConnectSourceAmplitudeCredentials {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliSourceConnectAmplitudeRegion region = 2 [
+  SourceConnectAmplitudeRegion region = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -354,7 +354,7 @@ message ConnectSourceMixpanelCredentials {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliSourceConnectMixpanelRegion region = 2 [
+  SourceConnectMixpanelRegion region = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -474,53 +474,53 @@ message ConnectSourceResponse {
   string next_command = 2 [(buf.validate.field).string.min_len = 1];
 }
 
-enum CliSourceProvider {
-  CLI_SOURCE_PROVIDER_UNSPECIFIED = 0;
-  CLI_SOURCE_PROVIDER_POSTGRES = 1;
-  CLI_SOURCE_PROVIDER_SUPABASE = 2;
-  CLI_SOURCE_PROVIDER_MYSQL = 3;
-  CLI_SOURCE_PROVIDER_MONGODB = 4;
-  CLI_SOURCE_PROVIDER_BIGQUERY = 5;
-  CLI_SOURCE_PROVIDER_LAMINAR = 6;
-  CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
-  CLI_SOURCE_PROVIDER_GA = 8;
-  CLI_SOURCE_PROVIDER_AMPLITUDE = 9;
-  CLI_SOURCE_PROVIDER_MIXPANEL = 10;
-  CLI_SOURCE_PROVIDER_POSTHOG = 11;
-  CLI_SOURCE_PROVIDER_SENTRY = 12;
-  CLI_SOURCE_PROVIDER_GITHUB = 13;
-  CLI_SOURCE_PROVIDER_LINEAR = 14;
+enum SourceProvider {
+  SOURCE_PROVIDER_UNSPECIFIED = 0;
+  SOURCE_PROVIDER_POSTGRES = 1;
+  SOURCE_PROVIDER_SUPABASE = 2;
+  SOURCE_PROVIDER_MYSQL = 3;
+  SOURCE_PROVIDER_MONGODB = 4;
+  SOURCE_PROVIDER_BIGQUERY = 5;
+  SOURCE_PROVIDER_LAMINAR = 6;
+  SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
+  SOURCE_PROVIDER_GA = 8;
+  SOURCE_PROVIDER_AMPLITUDE = 9;
+  SOURCE_PROVIDER_MIXPANEL = 10;
+  SOURCE_PROVIDER_POSTHOG = 11;
+  SOURCE_PROVIDER_SENTRY = 12;
+  SOURCE_PROVIDER_GITHUB = 13;
+  SOURCE_PROVIDER_LINEAR = 14;
 }
 
-enum CliSourceConnectSslMode {
-  CLI_SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0;
-  CLI_SOURCE_CONNECT_SSL_MODE_DISABLE = 1;
-  CLI_SOURCE_CONNECT_SSL_MODE_PREFER = 2;
-  CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE = 3;
+enum SourceConnectSslMode {
+  SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0;
+  SOURCE_CONNECT_SSL_MODE_DISABLE = 1;
+  SOURCE_CONNECT_SSL_MODE_PREFER = 2;
+  SOURCE_CONNECT_SSL_MODE_REQUIRE = 3;
 }
 
-enum CliSourceConnectAmplitudeRegion {
-  CLI_SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0;
-  CLI_SOURCE_CONNECT_AMPLITUDE_REGION_US = 1;
-  CLI_SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2;
+enum SourceConnectAmplitudeRegion {
+  SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0;
+  SOURCE_CONNECT_AMPLITUDE_REGION_US = 1;
+  SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2;
 }
 
-enum CliSourceConnectMixpanelRegion {
-  CLI_SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0;
-  CLI_SOURCE_CONNECT_MIXPANEL_REGION_US = 1;
-  CLI_SOURCE_CONNECT_MIXPANEL_REGION_EU = 2;
-  CLI_SOURCE_CONNECT_MIXPANEL_REGION_IN = 3;
+enum SourceConnectMixpanelRegion {
+  SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0;
+  SOURCE_CONNECT_MIXPANEL_REGION_US = 1;
+  SOURCE_CONNECT_MIXPANEL_REGION_EU = 2;
+  SOURCE_CONNECT_MIXPANEL_REGION_IN = 3;
 }
 
-enum CliSourceStatus {
-  CLI_SOURCE_STATUS_UNSPECIFIED = 0;
-  CLI_SOURCE_STATUS_ACTIVE = 1;
-  CLI_SOURCE_STATUS_ERROR = 2;
-  CLI_SOURCE_STATUS_DISCONNECTED = 3;
+enum SourceStatus {
+  SOURCE_STATUS_UNSPECIFIED = 0;
+  SOURCE_STATUS_ACTIVE = 1;
+  SOURCE_STATUS_ERROR = 2;
+  SOURCE_STATUS_DISCONNECTED = 3;
 }
 
-enum CliSourceTestUnsupportedReason {
-  CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED = 0;
-  CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH = 1;
-  CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED = 2;
+enum SourceTestUnsupportedReason {
+  SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED = 0;
+  SOURCE_TEST_UNSUPPORTED_REASON_OAUTH = 1;
+  SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED = 2;
 }

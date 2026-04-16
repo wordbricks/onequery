@@ -11,14 +11,14 @@ import type {
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
-import type { CliContentFormat, CliPage } from "./common_pb.js";
+import type { CliPage, ContentFormat } from "./common_pb.js";
 import { file_onequery_cli_v1_common } from "./common_pb.js";
 
 /**
  * Describes the file onequery/cli/v1/source.proto.
  */
 export const file_onequery_cli_v1_source: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEifgoSTGlzdFNvdXJjZXNSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBIYCgVsaW1pdBgCIAEoDUIJukgGKgQYZCgBEhcKBmN1cnNvchgDIAEoCUIHukgEcgIQASJyChNMaXN0U291cmNlc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlEi4KBHBhZ2UYAiABKAsyGC5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZUIGukgDyAEBIp0BChBHZXRTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJCKVAgoJQ2xpU291cmNlElIKCnNvdXJjZV9rZXkYASABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEiEKDGRpc3BsYXlfbmFtZRgCIAEoCUILukgIcgYQATICXFMSQAoIcHJvdmlkZXIYAyABKA4yIi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlUHJvdmlkZXJCCrpIB4IBBBABIAASEQoJcXVlcnlhYmxlGAQgASgIEjwKBnN0YXR1cxgFIAEoDjIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VTdGF0dXNCCrpIB4IBBBABIAAifgoRR2V0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAYgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBSgQIARAGUgRuYW1lUgxkaXNwbGF5X25hbWVSCHByb3ZpZGVyUglxdWVyeWFibGVSBnN0YXR1cyKeAQoRVGVzdFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIuIBChJUZXN0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEkAKCXN1cHBvcnRlZBgCIAEoCzIrLm9uZXF1ZXJ5LmNsaS52MS5UZXN0U291cmNlU3VwcG9ydGVkT3V0Y29tZUgAEkQKC3Vuc3VwcG9ydGVkGAMgASgLMi0ub25lcXVlcnkuY2xpLnYxLlRlc3RTb3VyY2VVbnN1cHBvcnRlZE91dGNvbWVIAEIQCgdvdXRjb21lEgW6SAIIASJ3ChpUZXN0U291cmNlU3VwcG9ydGVkT3V0Y29tZRIPCgdzdWNjZXNzGAEgASgIEhgKB21lc3NhZ2UYAiABKAlCB7pIBHICEAESGgoFZXJyb3IYAyABKAlCC7pICHIGEAEyAlxTEhIKCmxhdGVuY3lfbXMYBCABKAQihQEKHFRlc3RTb3VyY2VVbnN1cHBvcnRlZE91dGNvbWUSSwoGcmVhc29uGAEgASgOMi8ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVRlc3RVbnN1cHBvcnRlZFJlYXNvbkIKukgHggEEEAEgABIYCgdtZXNzYWdlGAIgASgJQge6SARyAhABIpcBChxHZXRTb3VyY2VDb25uZWN0R3VpZGVSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJACghwcm92aWRlchgCIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VQcm92aWRlckIKukgHggEEEAEgACLIAQodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USFgoFdGl0bGUYASABKAlCB7pIBHICEAESHAoLZGVzY3JpcHRpb24YAiABKAlCB7pIBHICEAESPQoGZm9ybWF0GAMgASgOMiEub25lcXVlcnkuY2xpLnYxLkNsaUNvbnRlbnRGb3JtYXRCCrpIB4IBBBABIAASGAoHY29udGVudBgEIAEoCUIHukgEcgIQARIYCgdjb21tYW5kGAUgASgJQge6SARyAhABIvcBChRDb25uZWN0U291cmNlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSUgoKc291cmNlX2tleRgDIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQSRgoLY3JlZGVudGlhbHMYBCABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzQga6SAPIAQFKBAgCEANSBnNvdXJjZSKMCAoYQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzEkUKCHBvc3RncmVzGAEgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzSAASRQoIc3VwYWJhc2UYAiABKAsyMS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZVBvc3RncmVzQ3JlZGVudGlhbHNIABI/CgVteXNxbBgDIAEoCzIuLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFsc0gAEkMKB21vbmdvZGIYBCABKAsyMC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFsc0gAEkUKCGJpZ3F1ZXJ5GAUgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VCaWdRdWVyeUNyZWRlbnRpYWxzSAASQwoHbGFtaW5hchgGIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTGFtaW5hckNyZWRlbnRpYWxzSAASWwoUYXdzX2F0aGVuYV9jb25uZWN0b3IYByABKAsyOy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUF3c0F0aGVuYUNvbm5lY3RvckNyZWRlbnRpYWxzSAASRgoCZ2EYCCABKAsyOC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc0NyZWRlbnRpYWxzSAASRwoJYW1wbGl0dWRlGAkgASgLMjIub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VBbXBsaXR1ZGVDcmVkZW50aWFsc0gAEkUKCG1peHBhbmVsGAogASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VNaXhwYW5lbENyZWRlbnRpYWxzSAASQwoHcG9zdGhvZxgLIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlUG9zdEhvZ0NyZWRlbnRpYWxzSAASQQoGc2VudHJ5GAwgASgLMi8ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VTZW50cnlDcmVkZW50aWFsc0gAEkEKBmdpdGh1YhgNIAEoCzIvLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR2l0SHViQ3JlZGVudGlhbHNIABJBCgZsaW5lYXIYDiABKAsyLy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUxpbmVhckNyZWRlbnRpYWxzSABCDQoEa2luZBIFukgCCAEi/QEKIENvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzEh0KCGRhdGFiYXNlGAEgASgJQgu6SAhyBhABMgJcUxIZCgRob3N0GAIgASgJQgu6SAhyBhABMgJcUxIdCghwYXNzd29yZBgDIAEoCUILukgIcgYQATICXFMSGQoEcG9ydBgEIAEoDUILukgIKgYY//8DKAESRgoIc3NsX21vZGUYBSABKA4yKC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdFNzbE1vZGVCCrpIB4IBBBABIAASHQoIdXNlcm5hbWUYBiABKAlCC7pICHIGEAEyAlxTIvoBCh1Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFscxIdCghkYXRhYmFzZRgBIAEoCUILukgIcgYQATICXFMSGQoEaG9zdBgCIAEoCUILukgIcgYQATICXFMSHQoIcGFzc3dvcmQYAyABKAlCC7pICHIGEAEyAlxTEhkKBHBvcnQYBCABKA1CC7pICCoGGP//AygBEkYKCHNzbF9tb2RlGAUgASgOMigub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RTc2xNb2RlQgq6SAeCAQQQASAAEh0KCHVzZXJuYW1lGAYgASgJQgu6SAhyBhABMgJcUyKeAQofQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFscxI3ChFjb25uZWN0aW9uX3N0cmluZxgBIAEoCUIcukgZchcQATITXm1vbmdvZGIoXCtzcnYpPzovLxIdCghkYXRhYmFzZRgCIAEoCUILukgIcgYQATICXFMSIwoJZGF0YWJhc2VzGAMgAygJQhC6SA2SAQoiCHIGEAEyAlxTIrEBCiZDb25uZWN0U291cmNlU2VydmljZUFjY291bnRDcmVkZW50aWFscxIfCgpwcm9qZWN0X2lkGAEgASgJQgu6SAhyBhABMgJcUxIfCgxjbGllbnRfZW1haWwYAiABKAlCCbpIBnIEEAFgARIgCgtwcml2YXRlX2tleRgDIAEoCUILukgIcgYQATICXFMSIwoOcHJpdmF0ZV9rZXlfaWQYBCABKAlCC7pICHIGEAEyAlxTIpMBCiNDb25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFscxIhCgxhY2Nlc3NfdG9rZW4YASABKAlCC7pICHIGEAEyAlxTEiIKDXJlZnJlc2hfdG9rZW4YAiABKAlCC7pICHIGEAEyAlxTEiUKCmV4cGlyZXNfYXQYAyABKARCEbpIDsgBATIJGP////////8PItYBCiBDb25uZWN0U291cmNlQmlnUXVlcnlDcmVkZW50aWFscxJHCgVvYXV0aBgBIAEoCzI2Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlQmlnUXVlcnlPQXV0aENyZWRlbnRpYWxzSAASWgoPc2VydmljZV9hY2NvdW50GAIgASgLMj8ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VCaWdRdWVyeVNlcnZpY2VBY2NvdW50Q3JlZGVudGlhbHNIAEINCgRhdXRoEgW6SAIIASKbAQolQ29ubmVjdFNvdXJjZUJpZ1F1ZXJ5T0F1dGhDcmVkZW50aWFscxIfCgpwcm9qZWN0X2lkGAEgASgJQgu6SAhyBhABMgJcUxJRCgtjcmVkZW50aWFscxgCIAEoCzI0Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFsc0IGukgDyAEBIqsBCi5Db25uZWN0U291cmNlQmlnUXVlcnlTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzEh8KCnByb2plY3RfaWQYASABKAlCC7pICHIGEAEyAlxTElgKD3NlcnZpY2VfYWNjb3VudBgCIAEoCzI3Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlU2VydmljZUFjY291bnRDcmVkZW50aWFsc0IGukgDyAEBIl8KH0Nvbm5lY3RTb3VyY2VMYW1pbmFyQ3JlZGVudGlhbHMSHgoMYXBpX2Jhc2VfdXJsGAEgASgJQgi6SAVyA4gBARIcCgdhcGlfa2V5GAIgASgJQgu6SAhyBhABMgJcUyLGAQoqQ29ubmVjdFNvdXJjZUF3c0F0aGVuYUNvbm5lY3RvckNyZWRlbnRpYWxzEiEKDGNvbm5lY3Rvcl9pZBgBIAEoCUILukgIcgYQATICXFMSHQoIZGF0YWJhc2UYAiABKAlCC7pICHIGEAEyAlxTEhkKCG1heF9yb3dzGAMgASgNQge6SAQqAigBEhsKCnRpbWVvdXRfbXMYBCABKA1CB7pIBCoCKAESHgoJd29ya2dyb3VwGAUgASgJQgu6SAhyBhABMgJcUyLrAQonQ29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc0NyZWRlbnRpYWxzEk4KBW9hdXRoGAEgASgLMj0ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NPQXV0aENyZWRlbnRpYWxzSAASYQoPc2VydmljZV9hY2NvdW50GAIgASgLMkYub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEiowEKLENvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NPQXV0aENyZWRlbnRpYWxzEiAKC3Byb3BlcnR5X2lkGAEgASgJQgu6SAhyBhABMgJcUxJRCgtjcmVkZW50aWFscxgCIAEoCzI0Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFsc0IGukgDyAEBIrMBCjVDb25uZWN0U291cmNlR29vZ2xlQW5hbHl0aWNzU2VydmljZUFjY291bnRDcmVkZW50aWFscxIgCgtwcm9wZXJ0eV9pZBgBIAEoCUILukgIcgYQATICXFMSWAoPc2VydmljZV9hY2NvdW50GAIgASgLMjcub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzQga6SAPIAQEisAEKIUNvbm5lY3RTb3VyY2VBbXBsaXR1ZGVDcmVkZW50aWFscxIcCgdhcGlfa2V5GAEgASgJQgu6SAhyBhABMgJcUxJMCgZyZWdpb24YAiABKA4yMC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQ29ubmVjdEFtcGxpdHVkZVJlZ2lvbkIKukgHggEEEAEgABIfCgpzZWNyZXRfa2V5GAMgASgJQgu6SAhyBhABMgJcUyLvAQogQ29ubmVjdFNvdXJjZU1peHBhbmVsQ3JlZGVudGlhbHMSHwoKcHJvamVjdF9pZBgBIAEoCUILukgIcgYQATICXFMSSwoGcmVnaW9uGAIgASgOMi8ub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUNvbm5lY3RNaXhwYW5lbFJlZ2lvbkIKukgHggEEEAEgABIbCgZzZWNyZXQYAyABKAlCC7pICHIGEAEyAlxTEh0KCHVzZXJuYW1lGAQgASgJQgu6SAhyBhABMgJcUxIhCgx3b3Jrc3BhY2VfaWQYBSABKAlCC7pICHIGEAEyAlxTIocBCh9Db25uZWN0U291cmNlUG9zdEhvZ0NyZWRlbnRpYWxzEhwKCGhvc3RfdXJsGAEgASgJQgq6SAdyBRABiAEBEiUKEHBlcnNvbmFsX2FwaV9rZXkYAiABKAlCC7pICHIGEAEyAlxTEh8KCnByb2plY3RfaWQYAyABKAlCC7pICHIGEAEyAlxTIqwBCh5Db25uZWN0U291cmNlU2VudHJ5Q3JlZGVudGlhbHMSHgoMYXBpX2Jhc2VfdXJsGAEgASgJQgi6SAVyA4gBARIfCgphdXRoX3Rva2VuGAIgASgJQgu6SAhyBhABMgJcUxImChFvcmdhbml6YXRpb25fc2x1ZxgDIAEoCUILukgIcgYQATICXFMSIQoMcHJvamVjdF9zbHVnGAQgASgJQgu6SAhyBhABMgJcUyKRAQoeQ29ubmVjdFNvdXJjZUdpdEh1YkNyZWRlbnRpYWxzEiEKDGFjY2Vzc190b2tlbhgBIAEoCUILukgIcgYQATICXFMSJAoPaW5zdGFsbGF0aW9uX2lkGAIgASgJQgu6SAhyBhABMgJcUxImCgxyZXBvc2l0b3JpZXMYAyADKAlCELpIDZIBCiIIcgYQATICXFMiwAEKHkNvbm5lY3RTb3VyY2VMaW5lYXJDcmVkZW50aWFscxJICgdhcGlfa2V5GAEgASgLMjUub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJBcGlLZXlDcmVkZW50aWFsc0gAEkUKBW9hdXRoGAIgASgLMjQub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJPQXV0aENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEiRAokQ29ubmVjdFNvdXJjZUxpbmVhckFwaUtleUNyZWRlbnRpYWxzEhwKB2FwaV9rZXkYASABKAlCC7pICHIGEAEyAlxTIsgCCiNDb25uZWN0U291cmNlTGluZWFyT0F1dGhDcmVkZW50aWFscxIhCgxhY2Nlc3NfdG9rZW4YASABKAlCC7pICHIGEAEyAlxTEiAKC2FwcF91c2VyX2lkGAIgASgJQgu6SAhyBhABMgJcUxIfCgpleHBpcmVzX2F0GAMgASgJQgu6SAhyBhABMgJcUxIrChZsaW5lYXJfb3JnYW5pemF0aW9uX2lkGAQgASgJQgu6SAhyBhABMgJcUxItChhsaW5lYXJfb3JnYW5pemF0aW9uX25hbWUYBSABKAlCC7pICHIGEAEyAlxTEiIKDXJlZnJlc2hfdG9rZW4YBiABKAlCC7pICHIGEAEyAlxTEhoKBXNjb3BlGAcgASgJQgu6SAhyBhABMgJcUxIfCgp0b2tlbl90eXBlGAggASgJQgu6SAhyBhABMgJcUyJqChVDb25uZWN0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEh0KDG5leHRfY29tbWFuZBgCIAEoCUIHukgEcgIQASqPBAoRQ2xpU291cmNlUHJvdmlkZXISIwofQ0xJX1NPVVJDRV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEdSRVMQARIgChxDTElfU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISHQoZQ0xJX1NPVVJDRV9QUk9WSURFUl9NWVNRTBADEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfTU9OR09EQhAEEiAKHENMSV9TT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIfChtDTElfU09VUkNFX1BST1ZJREVSX0xBTUlOQVIQBhIsCihDTElfU09VUkNFX1BST1ZJREVSX0FXU19BVEhFTkFfQ09OTkVDVE9SEAcSGgoWQ0xJX1NPVVJDRV9QUk9WSURFUl9HQRAIEiEKHUNMSV9TT1VSQ0VfUFJPVklERVJfQU1QTElUVURFEAkSIAocQ0xJX1NPVVJDRV9QUk9WSURFUl9NSVhQQU5FTBAKEh8KG0NMSV9TT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEh4KGkNMSV9TT1VSQ0VfUFJPVklERVJfU0VOVFJZEAwSHgoaQ0xJX1NPVVJDRV9QUk9WSURFUl9HSVRIVUIQDRIeChpDTElfU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKsABChdDbGlTb3VyY2VDb25uZWN0U3NsTW9kZRIrCidDTElfU09VUkNFX0NPTk5FQ1RfU1NMX01PREVfVU5TUEVDSUZJRUQQABInCiNDTElfU09VUkNFX0NPTk5FQ1RfU1NMX01PREVfRElTQUJMRRABEiYKIkNMSV9TT1VSQ0VfQ09OTkVDVF9TU0xfTU9ERV9QUkVGRVIQAhInCiNDTElfU09VUkNFX0NPTk5FQ1RfU1NMX01PREVfUkVRVUlSRRADKq4BCh9DbGlTb3VyY2VDb25uZWN0QW1wbGl0dWRlUmVnaW9uEjMKL0NMSV9TT1VSQ0VfQ09OTkVDVF9BTVBMSVRVREVfUkVHSU9OX1VOU1BFQ0lGSUVEEAASKgomQ0xJX1NPVVJDRV9DT05ORUNUX0FNUExJVFVERV9SRUdJT05fVVMQARIqCiZDTElfU09VUkNFX0NPTk5FQ1RfQU1QTElUVURFX1JFR0lPTl9FVRACKtUBCh5DbGlTb3VyY2VDb25uZWN0TWl4cGFuZWxSZWdpb24SMgouQ0xJX1NPVVJDRV9DT05ORUNUX01JWFBBTkVMX1JFR0lPTl9VTlNQRUNJRklFRBAAEikKJUNMSV9TT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fVVMQARIpCiVDTElfU09VUkNFX0NPTk5FQ1RfTUlYUEFORUxfUkVHSU9OX0VVEAISKQolQ0xJX1NPVVJDRV9DT05ORUNUX01JWFBBTkVMX1JFR0lPTl9JThADKpMBCg9DbGlTb3VyY2VTdGF0dXMSIQodQ0xJX1NPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIcChhDTElfU09VUkNFX1NUQVRVU19BQ1RJVkUQARIbChdDTElfU09VUkNFX1NUQVRVU19FUlJPUhACEiIKHkNMSV9TT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADKroBCh5DbGlTb3VyY2VUZXN0VW5zdXBwb3J0ZWRSZWFzb24SMgouQ0xJX1NPVVJDRV9URVNUX1VOU1VQUE9SVEVEX1JFQVNPTl9VTlNQRUNJRklFRBAAEiwKKENMSV9TT1VSQ0VfVEVTVF9VTlNVUFBPUlRFRF9SRUFTT05fT0FVVEgQARI2CjJDTElfU09VUkNFX1RFU1RfVU5TVVBQT1JURURfUkVBU09OX05PVF9JTVBMRU1FTlRFRBACYghlZGl0aW9uc3DoBw",
+  "ChxvbmVxdWVyeS9jbGkvdjEvc291cmNlLnByb3RvEg9vbmVxdWVyeS5jbGkudjEifgoSTGlzdFNvdXJjZXNSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBIYCgVsaW1pdBgCIAEoDUIJukgGKgQYZCgBEhcKBmN1cnNvchgDIAEoCUIHukgEcgIQASJyChNMaXN0U291cmNlc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlEi4KBHBhZ2UYAiABKAsyGC5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZUIGukgDyAEBIp0BChBHZXRTb3VyY2VSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJCKPAgoJQ2xpU291cmNlElIKCnNvdXJjZV9rZXkYASABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEiEKDGRpc3BsYXlfbmFtZRgCIAEoCUILukgIcgYQATICXFMSPQoIcHJvdmlkZXIYAyABKA4yHy5vbmVxdWVyeS5jbGkudjEuU291cmNlUHJvdmlkZXJCCrpIB4IBBBABIAASEQoJcXVlcnlhYmxlGAQgASgIEjkKBnN0YXR1cxgFIAEoDjIdLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VTdGF0dXNCCrpIB4IBBBABIAAifgoRR2V0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAYgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBSgQIARAGUgRuYW1lUgxkaXNwbGF5X25hbWVSCHByb3ZpZGVyUglxdWVyeWFibGVSBnN0YXR1cyKeAQoRVGVzdFNvdXJjZVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIuIBChJUZXN0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEkAKCXN1cHBvcnRlZBgCIAEoCzIrLm9uZXF1ZXJ5LmNsaS52MS5UZXN0U291cmNlU3VwcG9ydGVkT3V0Y29tZUgAEkQKC3Vuc3VwcG9ydGVkGAMgASgLMi0ub25lcXVlcnkuY2xpLnYxLlRlc3RTb3VyY2VVbnN1cHBvcnRlZE91dGNvbWVIAEIQCgdvdXRjb21lEgW6SAIIASJ3ChpUZXN0U291cmNlU3VwcG9ydGVkT3V0Y29tZRIPCgdzdWNjZXNzGAEgASgIEhgKB21lc3NhZ2UYAiABKAlCB7pIBHICEAESGgoFZXJyb3IYAyABKAlCC7pICHIGEAEyAlxTEhIKCmxhdGVuY3lfbXMYBCABKAQiggEKHFRlc3RTb3VyY2VVbnN1cHBvcnRlZE91dGNvbWUSSAoGcmVhc29uGAEgASgOMiwub25lcXVlcnkuY2xpLnYxLlNvdXJjZVRlc3RVbnN1cHBvcnRlZFJlYXNvbkIKukgHggEEEAEgABIYCgdtZXNzYWdlGAIgASgJQge6SARyAhABIpQBChxHZXRTb3VyY2VDb25uZWN0R3VpZGVSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBI9Cghwcm92aWRlchgCIAEoDjIfLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VQcm92aWRlckIKukgHggEEEAEgACLFAQodR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2USFgoFdGl0bGUYASABKAlCB7pIBHICEAESHAoLZGVzY3JpcHRpb24YAiABKAlCB7pIBHICEAESOgoGZm9ybWF0GAMgASgOMh4ub25lcXVlcnkuY2xpLnYxLkNvbnRlbnRGb3JtYXRCCrpIB4IBBBABIAASGAoHY29udGVudBgEIAEoCUIHukgEcgIQARIYCgdjb21tYW5kGAUgASgJQge6SARyAhABIvcBChRDb25uZWN0U291cmNlUmVxdWVzdBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSUgoKc291cmNlX2tleRgDIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQSRgoLY3JlZGVudGlhbHMYBCABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzQga6SAPIAQFKBAgCEANSBnNvdXJjZSKMCAoYQ29ubmVjdFNvdXJjZUNyZWRlbnRpYWxzEkUKCHBvc3RncmVzGAEgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzSAASRQoIc3VwYWJhc2UYAiABKAsyMS5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZVBvc3RncmVzQ3JlZGVudGlhbHNIABI/CgVteXNxbBgDIAEoCzIuLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFsc0gAEkMKB21vbmdvZGIYBCABKAsyMC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFsc0gAEkUKCGJpZ3F1ZXJ5GAUgASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VCaWdRdWVyeUNyZWRlbnRpYWxzSAASQwoHbGFtaW5hchgGIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlTGFtaW5hckNyZWRlbnRpYWxzSAASWwoUYXdzX2F0aGVuYV9jb25uZWN0b3IYByABKAsyOy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUF3c0F0aGVuYUNvbm5lY3RvckNyZWRlbnRpYWxzSAASRgoCZ2EYCCABKAsyOC5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc0NyZWRlbnRpYWxzSAASRwoJYW1wbGl0dWRlGAkgASgLMjIub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VBbXBsaXR1ZGVDcmVkZW50aWFsc0gAEkUKCG1peHBhbmVsGAogASgLMjEub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VNaXhwYW5lbENyZWRlbnRpYWxzSAASQwoHcG9zdGhvZxgLIAEoCzIwLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlUG9zdEhvZ0NyZWRlbnRpYWxzSAASQQoGc2VudHJ5GAwgASgLMi8ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VTZW50cnlDcmVkZW50aWFsc0gAEkEKBmdpdGh1YhgNIAEoCzIvLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR2l0SHViQ3JlZGVudGlhbHNIABJBCgZsaW5lYXIYDiABKAsyLy5vbmVxdWVyeS5jbGkudjEuQ29ubmVjdFNvdXJjZUxpbmVhckNyZWRlbnRpYWxzSABCDQoEa2luZBIFukgCCAEi+gEKIENvbm5lY3RTb3VyY2VQb3N0Z3Jlc0NyZWRlbnRpYWxzEh0KCGRhdGFiYXNlGAEgASgJQgu6SAhyBhABMgJcUxIZCgRob3N0GAIgASgJQgu6SAhyBhABMgJcUxIdCghwYXNzd29yZBgDIAEoCUILukgIcgYQATICXFMSGQoEcG9ydBgEIAEoDUILukgIKgYY//8DKAESQwoIc3NsX21vZGUYBSABKA4yJS5vbmVxdWVyeS5jbGkudjEuU291cmNlQ29ubmVjdFNzbE1vZGVCCrpIB4IBBBABIAASHQoIdXNlcm5hbWUYBiABKAlCC7pICHIGEAEyAlxTIvcBCh1Db25uZWN0U291cmNlTXlTcWxDcmVkZW50aWFscxIdCghkYXRhYmFzZRgBIAEoCUILukgIcgYQATICXFMSGQoEaG9zdBgCIAEoCUILukgIcgYQATICXFMSHQoIcGFzc3dvcmQYAyABKAlCC7pICHIGEAEyAlxTEhkKBHBvcnQYBCABKA1CC7pICCoGGP//AygBEkMKCHNzbF9tb2RlGAUgASgOMiUub25lcXVlcnkuY2xpLnYxLlNvdXJjZUNvbm5lY3RTc2xNb2RlQgq6SAeCAQQQASAAEh0KCHVzZXJuYW1lGAYgASgJQgu6SAhyBhABMgJcUyKeAQofQ29ubmVjdFNvdXJjZU1vbmdvRGJDcmVkZW50aWFscxI3ChFjb25uZWN0aW9uX3N0cmluZxgBIAEoCUIcukgZchcQATITXm1vbmdvZGIoXCtzcnYpPzovLxIdCghkYXRhYmFzZRgCIAEoCUILukgIcgYQATICXFMSIwoJZGF0YWJhc2VzGAMgAygJQhC6SA2SAQoiCHIGEAEyAlxTIrEBCiZDb25uZWN0U291cmNlU2VydmljZUFjY291bnRDcmVkZW50aWFscxIfCgpwcm9qZWN0X2lkGAEgASgJQgu6SAhyBhABMgJcUxIfCgxjbGllbnRfZW1haWwYAiABKAlCCbpIBnIEEAFgARIgCgtwcml2YXRlX2tleRgDIAEoCUILukgIcgYQATICXFMSIwoOcHJpdmF0ZV9rZXlfaWQYBCABKAlCC7pICHIGEAEyAlxTIpMBCiNDb25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFscxIhCgxhY2Nlc3NfdG9rZW4YASABKAlCC7pICHIGEAEyAlxTEiIKDXJlZnJlc2hfdG9rZW4YAiABKAlCC7pICHIGEAEyAlxTEiUKCmV4cGlyZXNfYXQYAyABKARCEbpIDsgBATIJGP////////8PItYBCiBDb25uZWN0U291cmNlQmlnUXVlcnlDcmVkZW50aWFscxJHCgVvYXV0aBgBIAEoCzI2Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlQmlnUXVlcnlPQXV0aENyZWRlbnRpYWxzSAASWgoPc2VydmljZV9hY2NvdW50GAIgASgLMj8ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VCaWdRdWVyeVNlcnZpY2VBY2NvdW50Q3JlZGVudGlhbHNIAEINCgRhdXRoEgW6SAIIASKbAQolQ29ubmVjdFNvdXJjZUJpZ1F1ZXJ5T0F1dGhDcmVkZW50aWFscxIfCgpwcm9qZWN0X2lkGAEgASgJQgu6SAhyBhABMgJcUxJRCgtjcmVkZW50aWFscxgCIAEoCzI0Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFsc0IGukgDyAEBIqsBCi5Db25uZWN0U291cmNlQmlnUXVlcnlTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzEh8KCnByb2plY3RfaWQYASABKAlCC7pICHIGEAEyAlxTElgKD3NlcnZpY2VfYWNjb3VudBgCIAEoCzI3Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlU2VydmljZUFjY291bnRDcmVkZW50aWFsc0IGukgDyAEBIl8KH0Nvbm5lY3RTb3VyY2VMYW1pbmFyQ3JlZGVudGlhbHMSHgoMYXBpX2Jhc2VfdXJsGAEgASgJQgi6SAVyA4gBARIcCgdhcGlfa2V5GAIgASgJQgu6SAhyBhABMgJcUyLGAQoqQ29ubmVjdFNvdXJjZUF3c0F0aGVuYUNvbm5lY3RvckNyZWRlbnRpYWxzEiEKDGNvbm5lY3Rvcl9pZBgBIAEoCUILukgIcgYQATICXFMSHQoIZGF0YWJhc2UYAiABKAlCC7pICHIGEAEyAlxTEhkKCG1heF9yb3dzGAMgASgNQge6SAQqAigBEhsKCnRpbWVvdXRfbXMYBCABKA1CB7pIBCoCKAESHgoJd29ya2dyb3VwGAUgASgJQgu6SAhyBhABMgJcUyLrAQonQ29ubmVjdFNvdXJjZUdvb2dsZUFuYWx5dGljc0NyZWRlbnRpYWxzEk4KBW9hdXRoGAEgASgLMj0ub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NPQXV0aENyZWRlbnRpYWxzSAASYQoPc2VydmljZV9hY2NvdW50GAIgASgLMkYub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEiowEKLENvbm5lY3RTb3VyY2VHb29nbGVBbmFseXRpY3NPQXV0aENyZWRlbnRpYWxzEiAKC3Byb3BlcnR5X2lkGAEgASgJQgu6SAhyBhABMgJcUxJRCgtjcmVkZW50aWFscxgCIAEoCzI0Lm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlR29vZ2xlT0F1dGhDcmVkZW50aWFsc0IGukgDyAEBIrMBCjVDb25uZWN0U291cmNlR29vZ2xlQW5hbHl0aWNzU2VydmljZUFjY291bnRDcmVkZW50aWFscxIgCgtwcm9wZXJ0eV9pZBgBIAEoCUILukgIcgYQATICXFMSWAoPc2VydmljZV9hY2NvdW50GAIgASgLMjcub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VTZXJ2aWNlQWNjb3VudENyZWRlbnRpYWxzQga6SAPIAQEirQEKIUNvbm5lY3RTb3VyY2VBbXBsaXR1ZGVDcmVkZW50aWFscxIcCgdhcGlfa2V5GAEgASgJQgu6SAhyBhABMgJcUxJJCgZyZWdpb24YAiABKA4yLS5vbmVxdWVyeS5jbGkudjEuU291cmNlQ29ubmVjdEFtcGxpdHVkZVJlZ2lvbkIKukgHggEEEAEgABIfCgpzZWNyZXRfa2V5GAMgASgJQgu6SAhyBhABMgJcUyLsAQogQ29ubmVjdFNvdXJjZU1peHBhbmVsQ3JlZGVudGlhbHMSHwoKcHJvamVjdF9pZBgBIAEoCUILukgIcgYQATICXFMSSAoGcmVnaW9uGAIgASgOMiwub25lcXVlcnkuY2xpLnYxLlNvdXJjZUNvbm5lY3RNaXhwYW5lbFJlZ2lvbkIKukgHggEEEAEgABIbCgZzZWNyZXQYAyABKAlCC7pICHIGEAEyAlxTEh0KCHVzZXJuYW1lGAQgASgJQgu6SAhyBhABMgJcUxIhCgx3b3Jrc3BhY2VfaWQYBSABKAlCC7pICHIGEAEyAlxTIocBCh9Db25uZWN0U291cmNlUG9zdEhvZ0NyZWRlbnRpYWxzEhwKCGhvc3RfdXJsGAEgASgJQgq6SAdyBRABiAEBEiUKEHBlcnNvbmFsX2FwaV9rZXkYAiABKAlCC7pICHIGEAEyAlxTEh8KCnByb2plY3RfaWQYAyABKAlCC7pICHIGEAEyAlxTIqwBCh5Db25uZWN0U291cmNlU2VudHJ5Q3JlZGVudGlhbHMSHgoMYXBpX2Jhc2VfdXJsGAEgASgJQgi6SAVyA4gBARIfCgphdXRoX3Rva2VuGAIgASgJQgu6SAhyBhABMgJcUxImChFvcmdhbml6YXRpb25fc2x1ZxgDIAEoCUILukgIcgYQATICXFMSIQoMcHJvamVjdF9zbHVnGAQgASgJQgu6SAhyBhABMgJcUyKRAQoeQ29ubmVjdFNvdXJjZUdpdEh1YkNyZWRlbnRpYWxzEiEKDGFjY2Vzc190b2tlbhgBIAEoCUILukgIcgYQATICXFMSJAoPaW5zdGFsbGF0aW9uX2lkGAIgASgJQgu6SAhyBhABMgJcUxImCgxyZXBvc2l0b3JpZXMYAyADKAlCELpIDZIBCiIIcgYQATICXFMiwAEKHkNvbm5lY3RTb3VyY2VMaW5lYXJDcmVkZW50aWFscxJICgdhcGlfa2V5GAEgASgLMjUub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJBcGlLZXlDcmVkZW50aWFsc0gAEkUKBW9hdXRoGAIgASgLMjQub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VMaW5lYXJPQXV0aENyZWRlbnRpYWxzSABCDQoEYXV0aBIFukgCCAEiRAokQ29ubmVjdFNvdXJjZUxpbmVhckFwaUtleUNyZWRlbnRpYWxzEhwKB2FwaV9rZXkYASABKAlCC7pICHIGEAEyAlxTIsgCCiNDb25uZWN0U291cmNlTGluZWFyT0F1dGhDcmVkZW50aWFscxIhCgxhY2Nlc3NfdG9rZW4YASABKAlCC7pICHIGEAEyAlxTEiAKC2FwcF91c2VyX2lkGAIgASgJQgu6SAhyBhABMgJcUxIfCgpleHBpcmVzX2F0GAMgASgJQgu6SAhyBhABMgJcUxIrChZsaW5lYXJfb3JnYW5pemF0aW9uX2lkGAQgASgJQgu6SAhyBhABMgJcUxItChhsaW5lYXJfb3JnYW5pemF0aW9uX25hbWUYBSABKAlCC7pICHIGEAEyAlxTEiIKDXJlZnJlc2hfdG9rZW4YBiABKAlCC7pICHIGEAEyAlxTEhoKBXNjb3BlGAcgASgJQgu6SAhyBhABMgJcUxIfCgp0b2tlbl90eXBlGAggASgJQgu6SAhyBhABMgJcUyJqChVDb25uZWN0U291cmNlUmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEh0KDG5leHRfY29tbWFuZBgCIAEoCUIHukgEcgIQASrQAwoOU291cmNlUHJvdmlkZXISHwobU09VUkNFX1BST1ZJREVSX1VOU1BFQ0lGSUVEEAASHAoYU09VUkNFX1BST1ZJREVSX1BPU1RHUkVTEAESHAoYU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISGQoVU09VUkNFX1BST1ZJREVSX01ZU1FMEAMSGwoXU09VUkNFX1BST1ZJREVSX01PTkdPREIQBBIcChhTT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIbChdTT1VSQ0VfUFJPVklERVJfTEFNSU5BUhAGEigKJFNPVVJDRV9QUk9WSURFUl9BV1NfQVRIRU5BX0NPTk5FQ1RPUhAHEhYKElNPVVJDRV9QUk9WSURFUl9HQRAIEh0KGVNPVVJDRV9QUk9WSURFUl9BTVBMSVRVREUQCRIcChhTT1VSQ0VfUFJPVklERVJfTUlYUEFORUwQChIbChdTT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEhoKFlNPVVJDRV9QUk9WSURFUl9TRU5UUlkQDBIaChZTT1VSQ0VfUFJPVklERVJfR0lUSFVCEA0SGgoWU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKq0BChRTb3VyY2VDb25uZWN0U3NsTW9kZRInCiNTT1VSQ0VfQ09OTkVDVF9TU0xfTU9ERV9VTlNQRUNJRklFRBAAEiMKH1NPVVJDRV9DT05ORUNUX1NTTF9NT0RFX0RJU0FCTEUQARIiCh5TT1VSQ0VfQ09OTkVDVF9TU0xfTU9ERV9QUkVGRVIQAhIjCh9TT1VSQ0VfQ09OTkVDVF9TU0xfTU9ERV9SRVFVSVJFEAMqnwEKHFNvdXJjZUNvbm5lY3RBbXBsaXR1ZGVSZWdpb24SLworU09VUkNFX0NPTk5FQ1RfQU1QTElUVURFX1JFR0lPTl9VTlNQRUNJRklFRBAAEiYKIlNPVVJDRV9DT05ORUNUX0FNUExJVFVERV9SRUdJT05fVVMQARImCiJTT1VSQ0VfQ09OTkVDVF9BTVBMSVRVREVfUkVHSU9OX0VVEAIqwgEKG1NvdXJjZUNvbm5lY3RNaXhwYW5lbFJlZ2lvbhIuCipTT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fVU5TUEVDSUZJRUQQABIlCiFTT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fVVMQARIlCiFTT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fRVUQAhIlCiFTT1VSQ0VfQ09OTkVDVF9NSVhQQU5FTF9SRUdJT05fSU4QAyqAAQoMU291cmNlU3RhdHVzEh0KGVNPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIYChRTT1VSQ0VfU1RBVFVTX0FDVElWRRABEhcKE1NPVVJDRV9TVEFUVVNfRVJST1IQAhIeChpTT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADKqsBChtTb3VyY2VUZXN0VW5zdXBwb3J0ZWRSZWFzb24SLgoqU09VUkNFX1RFU1RfVU5TVVBQT1JURURfUkVBU09OX1VOU1BFQ0lGSUVEEAASKAokU09VUkNFX1RFU1RfVU5TVVBQT1JURURfUkVBU09OX09BVVRIEAESMgouU09VUkNFX1RFU1RfVU5TVVBQT1JURURfUkVBU09OX05PVF9JTVBMRU1FTlRFRBACYghlZGl0aW9uc3DoBw",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -110,9 +110,9 @@ export type CliSource = Message<"onequery.cli.v1.CliSource"> & {
   displayName: string;
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceProvider provider = 3;
+   * @generated from field: onequery.cli.v1.SourceProvider provider = 3;
    */
-  provider: CliSourceProvider;
+  provider: SourceProvider;
 
   /**
    * @generated from field: bool queryable = 4;
@@ -120,9 +120,9 @@ export type CliSource = Message<"onequery.cli.v1.CliSource"> & {
   queryable: boolean;
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceStatus status = 5;
+   * @generated from field: onequery.cli.v1.SourceStatus status = 5;
    */
-  status: CliSourceStatus;
+  status: SourceStatus;
 };
 
 /**
@@ -250,9 +250,9 @@ export const TestSourceSupportedOutcomeSchema: GenMessage<TestSourceSupportedOut
 export type TestSourceUnsupportedOutcome =
   Message<"onequery.cli.v1.TestSourceUnsupportedOutcome"> & {
     /**
-     * @generated from field: onequery.cli.v1.CliSourceTestUnsupportedReason reason = 1;
+     * @generated from field: onequery.cli.v1.SourceTestUnsupportedReason reason = 1;
      */
-    reason: CliSourceTestUnsupportedReason;
+    reason: SourceTestUnsupportedReason;
 
     /**
      * @generated from field: string message = 2;
@@ -278,9 +278,9 @@ export type GetSourceConnectGuideRequest =
     orgSlug: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceProvider provider = 2;
+     * @generated from field: onequery.cli.v1.SourceProvider provider = 2;
      */
-    provider: CliSourceProvider;
+    provider: SourceProvider;
   };
 
 /**
@@ -306,9 +306,9 @@ export type GetSourceConnectGuideResponse =
     description: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliContentFormat format = 3;
+     * @generated from field: onequery.cli.v1.ContentFormat format = 3;
      */
-    format: CliContentFormat;
+    format: ContentFormat;
 
     /**
      * @generated from field: string content = 4;
@@ -499,9 +499,9 @@ export type ConnectSourcePostgresCredentials =
     port: number;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectSslMode ssl_mode = 5;
+     * @generated from field: onequery.cli.v1.SourceConnectSslMode ssl_mode = 5;
      */
-    sslMode: CliSourceConnectSslMode;
+    sslMode: SourceConnectSslMode;
 
     /**
      * @generated from field: string username = 6;
@@ -542,9 +542,9 @@ export type ConnectSourceMySqlCredentials =
     port: number;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectSslMode ssl_mode = 5;
+     * @generated from field: onequery.cli.v1.SourceConnectSslMode ssl_mode = 5;
      */
-    sslMode: CliSourceConnectSslMode;
+    sslMode: SourceConnectSslMode;
 
     /**
      * @generated from field: string username = 6;
@@ -878,9 +878,9 @@ export type ConnectSourceAmplitudeCredentials =
     apiKey: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectAmplitudeRegion region = 2;
+     * @generated from field: onequery.cli.v1.SourceConnectAmplitudeRegion region = 2;
      */
-    region: CliSourceConnectAmplitudeRegion;
+    region: SourceConnectAmplitudeRegion;
 
     /**
      * @generated from field: string secret_key = 3;
@@ -906,9 +906,9 @@ export type ConnectSourceMixpanelCredentials =
     projectId: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceConnectMixpanelRegion region = 2;
+     * @generated from field: onequery.cli.v1.SourceConnectMixpanelRegion region = 2;
      */
-    region: CliSourceConnectMixpanelRegion;
+    region: SourceConnectMixpanelRegion;
 
     /**
      * @generated from field: string secret = 3;
@@ -1150,232 +1150,234 @@ export const ConnectSourceResponseSchema: GenMessage<ConnectSourceResponse> /*@_
   messageDesc(file_onequery_cli_v1_source, 34);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceProvider
+ * @generated from enum onequery.cli.v1.SourceProvider
  */
-export enum CliSourceProvider {
+export enum SourceProvider {
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_PROVIDER_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_POSTGRES = 1;
+   * @generated from enum value: SOURCE_PROVIDER_POSTGRES = 1;
    */
   POSTGRES = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_SUPABASE = 2;
+   * @generated from enum value: SOURCE_PROVIDER_SUPABASE = 2;
    */
   SUPABASE = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_MYSQL = 3;
+   * @generated from enum value: SOURCE_PROVIDER_MYSQL = 3;
    */
   MYSQL = 3,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_MONGODB = 4;
+   * @generated from enum value: SOURCE_PROVIDER_MONGODB = 4;
    */
   MONGODB = 4,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_BIGQUERY = 5;
+   * @generated from enum value: SOURCE_PROVIDER_BIGQUERY = 5;
    */
   BIGQUERY = 5,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_LAMINAR = 6;
+   * @generated from enum value: SOURCE_PROVIDER_LAMINAR = 6;
    */
   LAMINAR = 6,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
+   * @generated from enum value: SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
    */
   AWS_ATHENA_CONNECTOR = 7,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_GA = 8;
+   * @generated from enum value: SOURCE_PROVIDER_GA = 8;
    */
   GA = 8,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_AMPLITUDE = 9;
+   * @generated from enum value: SOURCE_PROVIDER_AMPLITUDE = 9;
    */
   AMPLITUDE = 9,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_MIXPANEL = 10;
+   * @generated from enum value: SOURCE_PROVIDER_MIXPANEL = 10;
    */
   MIXPANEL = 10,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_POSTHOG = 11;
+   * @generated from enum value: SOURCE_PROVIDER_POSTHOG = 11;
    */
   POSTHOG = 11,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_SENTRY = 12;
+   * @generated from enum value: SOURCE_PROVIDER_SENTRY = 12;
    */
   SENTRY = 12,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_GITHUB = 13;
+   * @generated from enum value: SOURCE_PROVIDER_GITHUB = 13;
    */
   GITHUB = 13,
 
   /**
-   * @generated from enum value: CLI_SOURCE_PROVIDER_LINEAR = 14;
+   * @generated from enum value: SOURCE_PROVIDER_LINEAR = 14;
    */
   LINEAR = 14,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceProvider.
+ * Describes the enum onequery.cli.v1.SourceProvider.
  */
-export const CliSourceProviderSchema: GenEnum<CliSourceProvider> /*@__PURE__*/ =
+export const SourceProviderSchema: GenEnum<SourceProvider> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 0);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceConnectSslMode
+ * @generated from enum onequery.cli.v1.SourceConnectSslMode
  */
-export enum CliSourceConnectSslMode {
+export enum SourceConnectSslMode {
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_DISABLE = 1;
+   * @generated from enum value: SOURCE_CONNECT_SSL_MODE_DISABLE = 1;
    */
   DISABLE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_PREFER = 2;
+   * @generated from enum value: SOURCE_CONNECT_SSL_MODE_PREFER = 2;
    */
   PREFER = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE = 3;
+   * @generated from enum value: SOURCE_CONNECT_SSL_MODE_REQUIRE = 3;
    */
   REQUIRE = 3,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceConnectSslMode.
+ * Describes the enum onequery.cli.v1.SourceConnectSslMode.
  */
-export const CliSourceConnectSslModeSchema: GenEnum<CliSourceConnectSslMode> /*@__PURE__*/ =
+export const SourceConnectSslModeSchema: GenEnum<SourceConnectSslMode> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 1);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceConnectAmplitudeRegion
+ * @generated from enum onequery.cli.v1.SourceConnectAmplitudeRegion
  */
-export enum CliSourceConnectAmplitudeRegion {
+export enum SourceConnectAmplitudeRegion {
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_US = 1;
+   * @generated from enum value: SOURCE_CONNECT_AMPLITUDE_REGION_US = 1;
    */
   US = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2;
+   * @generated from enum value: SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2;
    */
   EU = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceConnectAmplitudeRegion.
+ * Describes the enum onequery.cli.v1.SourceConnectAmplitudeRegion.
  */
-export const CliSourceConnectAmplitudeRegionSchema: GenEnum<CliSourceConnectAmplitudeRegion> /*@__PURE__*/ =
+export const SourceConnectAmplitudeRegionSchema: GenEnum<SourceConnectAmplitudeRegion> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 2);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceConnectMixpanelRegion
+ * @generated from enum onequery.cli.v1.SourceConnectMixpanelRegion
  */
-export enum CliSourceConnectMixpanelRegion {
+export enum SourceConnectMixpanelRegion {
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_US = 1;
+   * @generated from enum value: SOURCE_CONNECT_MIXPANEL_REGION_US = 1;
    */
   US = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_EU = 2;
+   * @generated from enum value: SOURCE_CONNECT_MIXPANEL_REGION_EU = 2;
    */
   EU = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_CONNECT_MIXPANEL_REGION_IN = 3;
+   * @generated from enum value: SOURCE_CONNECT_MIXPANEL_REGION_IN = 3;
    */
   IN = 3,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceConnectMixpanelRegion.
+ * Describes the enum onequery.cli.v1.SourceConnectMixpanelRegion.
  */
-export const CliSourceConnectMixpanelRegionSchema: GenEnum<CliSourceConnectMixpanelRegion> /*@__PURE__*/ =
+export const SourceConnectMixpanelRegionSchema: GenEnum<SourceConnectMixpanelRegion> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 3);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceStatus
+ * @generated from enum onequery.cli.v1.SourceStatus
  */
-export enum CliSourceStatus {
+export enum SourceStatus {
   /**
-   * @generated from enum value: CLI_SOURCE_STATUS_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_STATUS_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_STATUS_ACTIVE = 1;
+   * @generated from enum value: SOURCE_STATUS_ACTIVE = 1;
    */
   ACTIVE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_STATUS_ERROR = 2;
+   * @generated from enum value: SOURCE_STATUS_ERROR = 2;
    */
   ERROR = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_STATUS_DISCONNECTED = 3;
+   * @generated from enum value: SOURCE_STATUS_DISCONNECTED = 3;
    */
   DISCONNECTED = 3,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceStatus.
+ * Describes the enum onequery.cli.v1.SourceStatus.
  */
-export const CliSourceStatusSchema: GenEnum<CliSourceStatus> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source, 4);
+export const SourceStatusSchema: GenEnum<SourceStatus> /*@__PURE__*/ = enumDesc(
+  file_onequery_cli_v1_source,
+  4
+);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceTestUnsupportedReason
+ * @generated from enum onequery.cli.v1.SourceTestUnsupportedReason
  */
-export enum CliSourceTestUnsupportedReason {
+export enum SourceTestUnsupportedReason {
   /**
-   * @generated from enum value: CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH = 1;
+   * @generated from enum value: SOURCE_TEST_UNSUPPORTED_REASON_OAUTH = 1;
    */
   OAUTH = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED = 2;
+   * @generated from enum value: SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED = 2;
    */
   NOT_IMPLEMENTED = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceTestUnsupportedReason.
+ * Describes the enum onequery.cli.v1.SourceTestUnsupportedReason.
  */
-export const CliSourceTestUnsupportedReasonSchema: GenEnum<CliSourceTestUnsupportedReason> /*@__PURE__*/ =
+export const SourceTestUnsupportedReasonSchema: GenEnum<SourceTestUnsupportedReason> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source, 5);

@@ -186,8 +186,8 @@ fn validate_selector(
         source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into())),
         selector,
     ) {
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE, None) => Ok(()),
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE, Some(_)) => {
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, None) => Ok(()),
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, Some(_)) => {
             Err(source_api_parse_error(
                 context,
                 "source API selector is not allowed",
@@ -196,13 +196,13 @@ fn validate_selector(
             ))
         }
         (
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
             Some(_),
         ) => Ok(()),
         (
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
             None,
         ) => Err(source_api_parse_error(
             context,
@@ -210,7 +210,7 @@ fn validate_selector(
             format!("operation `{operation_name}` requires a selector"),
             source_key,
         )),
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED, _) => unreachable!(),
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED, _) => unreachable!(),
     }
 }
 
@@ -244,7 +244,7 @@ fn validate_pagination(
     }
 
     if source_api_pagination_policy_or_none(operation.pagination_policy.unwrap_or_else(|| 0.into()))
-        == SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
+        == SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
     {
         return Ok(());
     }
@@ -269,7 +269,7 @@ fn validate_method(
     };
 
     if source_api_operation_kind_or_http_request(operation.kind.unwrap_or_else(|| 0.into()))
-        != SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+        != SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
     {
         return Err(source_api_parse_error(
             context,
@@ -360,7 +360,7 @@ fn validate_input(
             field_policy
                 .and_then(|policy| policy.input_mode)
                 .unwrap_or_else(|| 0.into()),
-        ) != SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE
+        ) != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
     {
         return Ok(());
     }
@@ -463,13 +463,13 @@ async fn load_request_body(
             .and_then(|policy| policy.input_mode)
             .unwrap_or_else(|| 0.into()),
     ) {
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE => Err(source_api_parse_error(
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE => Err(source_api_parse_error(
             context,
             "source API request input is not supported",
             format!("operation `{operation_name}` does not accept `--input`"),
             source_key,
         )),
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT => {
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT => {
             let raw_input = reader
                 .read_text(
                     input_path,
@@ -504,7 +504,7 @@ async fn load_request_body(
             })?;
             Ok(Some(SourceApiRequestBody::JsonBody(Box::new(value))))
         }
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY => {
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY => {
             let raw_input = reader
                 .read_bytes(
                     input_path,
@@ -534,7 +534,7 @@ async fn load_request_body(
                 Err(_) => Ok(Some(SourceApiRequestBody::BinaryBody(raw_input))),
             }
         }
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
     }
 }
 
@@ -589,7 +589,7 @@ mod tests {
                 ..api_args()
             },
             &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             &context(),
             "github-prod",
@@ -611,7 +611,7 @@ mod tests {
                 ..api_args()
             },
             &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             &context(),
             "github-prod",
@@ -632,7 +632,7 @@ mod tests {
                 paginate: true,
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE),
             &context(),
             "github-prod",
         )
@@ -651,7 +651,7 @@ mod tests {
                 ..api_args()
             },
             &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             &context(),
             "github-prod",
@@ -663,7 +663,7 @@ mod tests {
     fn parse_headers_rejects_headers_when_operation_disallows_them() {
         let error = parse_headers(
             &["Accept: application/json".to_owned()],
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE),
             &context(),
             "github-prod",
         )
@@ -682,7 +682,7 @@ mod tests {
                     allowed_request_header_names: vec!["Accept".to_owned()],
                     ..Default::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             },
             &context(),
             "github-prod",
@@ -709,10 +709,10 @@ mod tests {
             &descriptor_with_operation(SourceApiOperation {
                 field_policy: MessageField::some(SourceApiFieldPolicy {
                     accepts_input: Some(false),
-                    input_mode: Some(SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE.into()),
+                    input_mode: Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE.into()),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -733,7 +733,7 @@ mod tests {
             },
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: Some(
-                    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                 ),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
                     allows_typed_fields: Some(true),
@@ -741,7 +741,7 @@ mod tests {
                     supports_array_paths: Some(false),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -765,7 +765,7 @@ mod tests {
             },
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: Some(
-                    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                 ),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
                     allows_typed_fields: Some(true),
@@ -773,7 +773,7 @@ mod tests {
                     supports_array_paths: Some(false),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -804,16 +804,16 @@ mod tests {
                 },
                 &descriptor_with_operation(SourceApiOperation {
                     selector_kind: Some(
-                        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                     ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
                         accepts_input: Some(true),
                         input_mode: Some(
-                            SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT.into(),
+                            SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT.into(),
                         ),
                         ..SourceApiFieldPolicy::default()
                     }),
-                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                    ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
                 }),
                 &context(),
             )
@@ -852,7 +852,7 @@ mod tests {
                 },
                 &descriptor_with_operation(SourceApiOperation {
                     selector_kind: Some(
-                        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                     ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
                         allows_typed_fields: Some(true),
@@ -860,7 +860,7 @@ mod tests {
                         supports_array_paths: Some(true),
                         ..SourceApiFieldPolicy::default()
                     }),
-                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                    ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
                 }),
                 &context(),
             )
@@ -899,10 +899,10 @@ mod tests {
     fn operation(pagination_policy: SourceApiPaginationPolicy) -> SourceApiOperation {
         SourceApiOperation {
             name: Some("fetch".to_owned()),
-            kind: Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
+            kind: Some(SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
             summary: None,
             description: None,
-            selector_kind: Some(SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into()),
+            selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH.into()),
             selector_label: None,
             method_policy: MessageField::some(SourceApiMethodPolicy::default()),
             field_policy: MessageField::some(SourceApiFieldPolicy::default()),
@@ -939,7 +939,7 @@ mod tests {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
                 provider: Some(
-                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB
                         .into(),
                 ),
                 display_name: Some("GitHub".to_owned()),

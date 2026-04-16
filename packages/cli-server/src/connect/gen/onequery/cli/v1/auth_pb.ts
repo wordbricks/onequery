@@ -18,7 +18,7 @@ import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js
  * Describes the file onequery/cli/v1/auth.proto.
  */
 export const file_onequery_cli_v1_auth: GenFile /*@__PURE__*/ = fileDesc(
-  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIhMKEUdldFNlc3Npb25SZXF1ZXN0IqICChJHZXRTZXNzaW9uUmVzcG9uc2USOwoJYXV0aF9tb2RlGAEgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlQgq6SAeCAQQQASAAEjIKBHVzZXIYAiABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXJCBrpIA8gBARI8Cg9hY3RpdmVfb3JnX3NsdWcYAyABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEi0KCWlzc3VlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiFwoVUmVmcmVzaFNlc3Npb25SZXF1ZXN0IskCChZSZWZyZXNoU2Vzc2lvblJlc3BvbnNlEiEKDGFjY2Vzc190b2tlbhgBIAEoCUILukgIcgYQATICXFMSOwoJYXV0aF9tb2RlGAIgASgOMhwub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhNb2RlQgq6SAeCAQQQASAAEjIKBHVzZXIYAyABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXJCBrpIA8gBARI8Cg9hY3RpdmVfb3JnX3NsdWcYBCABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiIQofU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdCKhAgogU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USFgoFc3RhdGUYASABKAlCB7pIBHICEAESHAoLZGV2aWNlX2NvZGUYAiABKAlCB7pIBHICEAESGgoJdXNlcl9jb2RlGAMgASgJQge6SARyAhABEiQKEHZlcmlmaWNhdGlvbl91cmwYBCABKAlCCrpIB3IFEAGIAQESLQoZdmVyaWZpY2F0aW9uX2NvbXBsZXRlX3VybBgFIAEoCUIKukgHcgUQAYgBARIeCg1wb2xsX2FmdGVyX21zGAYgASgNQge6SAQqAigBEjYKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQEiPgoeUG9sbERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0EhwKC2RldmljZV9jb2RlGAEgASgJQge6SARyAhABIr8BCh9Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEkEKB3BlbmRpbmcYASABKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb25IABJHCgphdXRob3JpemVkGAIgASgLMjEub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uSABCEAoHb3V0Y29tZRIFukgCCAEiWwoLQ2xpQXV0aFVzZXISEwoCaWQYASABKAlCB7pIBHICEAESGAoFZW1haWwYAiABKAlCCbpIBnIEEAFgARIdCgxkaXNwbGF5X25hbWUYAyABKAlCB7pIBHICEAEiVwodQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb24SFgoFc3RhdGUYASABKAlCB7pIBHICEAESHgoNcG9sbF9hZnRlcl9tcxgCIAEoDUIHukgEKgIoASLrAgogQ2xpQXV0aG9yaXplZERldmljZUF1dGhvcml6YXRpb24SFgoFc3RhdGUYASABKAlCB7pIBHICEAESIQoMYWNjZXNzX3Rva2VuGAIgASgJQgu6SAhyBhABMgJcUxI7CglhdXRoX21vZGUYAyABKA4yHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aE1vZGVCCrpIB4IBBBABIAASMgoEdXNlchgEIAEoCzIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoVXNlckIGukgDyAEBEjwKD2FjdGl2ZV9vcmdfc2x1ZxgFIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSLQoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCpvCgtDbGlBdXRoTW9kZRIdChlDTElfQVVUSF9NT0RFX1VOU1BFQ0lGSUVEEAASIQodQ0xJX0FVVEhfTU9ERV9CUk9XU0VSX1NFU1NJT04QARIeChpDTElfQVVUSF9NT0RFX0JFQVJFUl9UT0tFThACYghlZGl0aW9uc3DoBw",
+  "ChpvbmVxdWVyeS9jbGkvdjEvYXV0aC5wcm90bxIPb25lcXVlcnkuY2xpLnYxIhMKEUdldFNlc3Npb25SZXF1ZXN0Ip8CChJHZXRTZXNzaW9uUmVzcG9uc2USOAoJYXV0aF9tb2RlGAEgASgOMhkub25lcXVlcnkuY2xpLnYxLkF1dGhNb2RlQgq6SAeCAQQQASAAEjIKBHVzZXIYAiABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXJCBrpIA8gBARI8Cg9hY3RpdmVfb3JnX3NsdWcYAyABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEi0KCWlzc3VlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiFwoVUmVmcmVzaFNlc3Npb25SZXF1ZXN0IsYCChZSZWZyZXNoU2Vzc2lvblJlc3BvbnNlEiEKDGFjY2Vzc190b2tlbhgBIAEoCUILukgIcgYQATICXFMSOAoJYXV0aF9tb2RlGAIgASgOMhkub25lcXVlcnkuY2xpLnYxLkF1dGhNb2RlQgq6SAeCAQQQASAAEjIKBHVzZXIYAyABKAsyHC5vbmVxdWVyeS5jbGkudjEuQ2xpQXV0aFVzZXJCBrpIA8gBARI8Cg9hY3RpdmVfb3JnX3NsdWcYBCABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokEi0KCWlzc3VlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiIQofU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdCKhAgogU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USFgoFc3RhdGUYASABKAlCB7pIBHICEAESHAoLZGV2aWNlX2NvZGUYAiABKAlCB7pIBHICEAESGgoJdXNlcl9jb2RlGAMgASgJQge6SARyAhABEiQKEHZlcmlmaWNhdGlvbl91cmwYBCABKAlCCrpIB3IFEAGIAQESLQoZdmVyaWZpY2F0aW9uX2NvbXBsZXRlX3VybBgFIAEoCUIKukgHcgUQAYgBARIeCg1wb2xsX2FmdGVyX21zGAYgASgNQge6SAQqAigBEjYKCmV4cGlyZXNfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQEiPgoeUG9sbERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0EhwKC2RldmljZV9jb2RlGAEgASgJQge6SARyAhABIr8BCh9Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEkEKB3BlbmRpbmcYASABKAsyLi5vbmVxdWVyeS5jbGkudjEuQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb25IABJHCgphdXRob3JpemVkGAIgASgLMjEub25lcXVlcnkuY2xpLnYxLkNsaUF1dGhvcml6ZWREZXZpY2VBdXRob3JpemF0aW9uSABCEAoHb3V0Y29tZRIFukgCCAEiWwoLQ2xpQXV0aFVzZXISEwoCaWQYASABKAlCB7pIBHICEAESGAoFZW1haWwYAiABKAlCCbpIBnIEEAFgARIdCgxkaXNwbGF5X25hbWUYAyABKAlCB7pIBHICEAEiVwodQ2xpUGVuZGluZ0RldmljZUF1dGhvcml6YXRpb24SFgoFc3RhdGUYASABKAlCB7pIBHICEAESHgoNcG9sbF9hZnRlcl9tcxgCIAEoDUIHukgEKgIoASLoAgogQ2xpQXV0aG9yaXplZERldmljZUF1dGhvcml6YXRpb24SFgoFc3RhdGUYASABKAlCB7pIBHICEAESIQoMYWNjZXNzX3Rva2VuGAIgASgJQgu6SAhyBhABMgJcUxI4CglhdXRoX21vZGUYAyABKA4yGS5vbmVxdWVyeS5jbGkudjEuQXV0aE1vZGVCCrpIB4IBBBABIAASMgoEdXNlchgEIAEoCzIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlBdXRoVXNlckIGukgDyAEBEjwKD2FjdGl2ZV9vcmdfc2x1ZxgFIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSLQoJaXNzdWVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCpgCghBdXRoTW9kZRIZChVBVVRIX01PREVfVU5TUEVDSUZJRUQQABIdChlBVVRIX01PREVfQlJPV1NFUl9TRVNTSU9OEAESGgoWQVVUSF9NT0RFX0JFQVJFUl9UT0tFThACYghlZGl0aW9uc3DoBw",
   [file_buf_validate_validate, file_google_protobuf_timestamp]
 );
 
@@ -41,9 +41,9 @@ export const GetSessionRequestSchema: GenMessage<GetSessionRequest> /*@__PURE__*
 export type GetSessionResponse =
   Message<"onequery.cli.v1.GetSessionResponse"> & {
     /**
-     * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 1;
+     * @generated from field: onequery.cli.v1.AuthMode auth_mode = 1;
      */
-    authMode: CliAuthMode;
+    authMode: AuthMode;
 
     /**
      * @generated from field: onequery.cli.v1.CliAuthUser user = 2;
@@ -97,9 +97,9 @@ export type RefreshSessionResponse =
     accessToken: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 2;
+     * @generated from field: onequery.cli.v1.AuthMode auth_mode = 2;
      */
-    authMode: CliAuthMode;
+    authMode: AuthMode;
 
     /**
      * @generated from field: onequery.cli.v1.CliAuthUser user = 3;
@@ -307,9 +307,9 @@ export type CliAuthorizedDeviceAuthorization =
     accessToken: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliAuthMode auth_mode = 3;
+     * @generated from field: onequery.cli.v1.AuthMode auth_mode = 3;
      */
-    authMode: CliAuthMode;
+    authMode: AuthMode;
 
     /**
      * @generated from field: onequery.cli.v1.CliAuthUser user = 4;
@@ -340,29 +340,29 @@ export const CliAuthorizedDeviceAuthorizationSchema: GenMessage<CliAuthorizedDev
   messageDesc(file_onequery_cli_v1_auth, 10);
 
 /**
- * @generated from enum onequery.cli.v1.CliAuthMode
+ * @generated from enum onequery.cli.v1.AuthMode
  */
-export enum CliAuthMode {
+export enum AuthMode {
   /**
-   * @generated from enum value: CLI_AUTH_MODE_UNSPECIFIED = 0;
+   * @generated from enum value: AUTH_MODE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_AUTH_MODE_BROWSER_SESSION = 1;
+   * @generated from enum value: AUTH_MODE_BROWSER_SESSION = 1;
    */
   BROWSER_SESSION = 1,
 
   /**
-   * @generated from enum value: CLI_AUTH_MODE_BEARER_TOKEN = 2;
+   * @generated from enum value: AUTH_MODE_BEARER_TOKEN = 2;
    */
   BEARER_TOKEN = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliAuthMode.
+ * Describes the enum onequery.cli.v1.AuthMode.
  */
-export const CliAuthModeSchema: GenEnum<CliAuthMode> /*@__PURE__*/ = enumDesc(
+export const AuthModeSchema: GenEnum<AuthMode> /*@__PURE__*/ = enumDesc(
   file_onequery_cli_v1_auth,
   0
 );

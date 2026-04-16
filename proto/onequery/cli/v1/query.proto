@@ -93,7 +93,7 @@ message CliQueryCanonicalRequest {
 }
 
 message CliQueryParameter {
-  CliQueryParameterType type = 1 [
+  QueryParameterType type = 1 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -121,7 +121,7 @@ message CliDeclaredQueryResultWindow {
 
 message CliQueryColumn {
   string name = 1 [(buf.validate.field).string.min_len = 1];
-  CliQueryLogicalType logical_type = 2 [
+  QueryLogicalType logical_type = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -131,21 +131,21 @@ message CliQueryRow {
   repeated string values = 1;
 }
 
-enum CliQueryParameterType {
-  CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
-  CLI_QUERY_PARAMETER_TYPE_STRING = 1;
-  CLI_QUERY_PARAMETER_TYPE_NUMBER = 2;
-  CLI_QUERY_PARAMETER_TYPE_BOOLEAN = 3;
-  CLI_QUERY_PARAMETER_TYPE_NULL = 4;
+enum QueryParameterType {
+  QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
+  QUERY_PARAMETER_TYPE_STRING = 1;
+  QUERY_PARAMETER_TYPE_NUMBER = 2;
+  QUERY_PARAMETER_TYPE_BOOLEAN = 3;
+  QUERY_PARAMETER_TYPE_NULL = 4;
 }
 
-enum CliQueryLogicalType {
-  CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
-  CLI_QUERY_LOGICAL_TYPE_STRING = 1;
-  CLI_QUERY_LOGICAL_TYPE_NUMBER = 2;
-  CLI_QUERY_LOGICAL_TYPE_BOOLEAN = 3;
-  CLI_QUERY_LOGICAL_TYPE_BIGINT = 4;
-  CLI_QUERY_LOGICAL_TYPE_DATETIME = 5;
-  CLI_QUERY_LOGICAL_TYPE_ARRAY = 6;
-  CLI_QUERY_LOGICAL_TYPE_JSON = 7;
+enum QueryLogicalType {
+  QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
+  QUERY_LOGICAL_TYPE_STRING = 1;
+  QUERY_LOGICAL_TYPE_NUMBER = 2;
+  QUERY_LOGICAL_TYPE_BOOLEAN = 3;
+  QUERY_LOGICAL_TYPE_BIGINT = 4;
+  QUERY_LOGICAL_TYPE_DATETIME = 5;
+  QUERY_LOGICAL_TYPE_ARRAY = 6;
+  QUERY_LOGICAL_TYPE_JSON = 7;
 }

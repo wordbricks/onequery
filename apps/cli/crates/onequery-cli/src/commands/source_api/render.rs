@@ -1088,12 +1088,12 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
     let kind =
         match source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into()))
         {
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => return None,
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE => return None,
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
                 source_api_selector_kind_label(operation.selector_kind.unwrap_or_else(|| 0.into()))
             }
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
         };
 
     Some(match operation.selector_label.as_deref() {
@@ -1147,7 +1147,7 @@ mod tests {
     #[test]
     fn render_dry_run_output_serializes_preview_shape() {
         let output = render_dry_run_output(
-            &source_api_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &source_api_preview(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE),
             false,
         )
         .expect("expected dry-run preview to render");
@@ -1182,7 +1182,7 @@ mod tests {
     fn render_dry_run_output_serializes_verbose_preview_shape() {
         let output = render_dry_run_output(
             &source_api_preview(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
+                SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
             ),
             true,
         )
@@ -1195,8 +1195,11 @@ mod tests {
             ))
             .expect("expected raw JSON output"),
             json!({
-                "sourceKey": "github-prod",
-                "provider": "github",
+                "source": {
+                    "key": "github-prod",
+                    "provider": "github",
+                    "displayName": "GitHub Prod",
+                },
                 "operation": "fetch",
                 "kind": "http_request",
                 "method": "GET",
@@ -1487,8 +1490,11 @@ mod tests {
             .expect("expected raw JSON output"),
             json!({
                 "preview": {
-                    "sourceKey": "github-prod",
-                    "provider": "github",
+                    "source": {
+                        "key": "github-prod",
+                        "provider": "github",
+                        "displayName": "GitHub Prod",
+                    },
                     "operation": "fetch",
                     "kind": "http_request",
                     "method": "GET",
@@ -1529,40 +1535,43 @@ mod tests {
         assert_snapshot!(
             render_output(output, EffectiveOutputMode::Text),
             @r#"
-            {
-              "body": {
-                "items": [
-                  1,
-                  2
-                ]
-              },
-              "contentType": "application/json",
-              "operation": "fetch",
-              "preview": {
-                "bodyKind": "json",
-                "bodyPaths": [
-                  "params"
-                ],
-                "headerNames": [
-                  "accept"
-                ],
-                "host": "api.github.com",
-                "kind": "http_request",
-                "method": "GET",
-                "operation": "fetch",
-                "paginationPolicy": "none",
-                "provider": "github",
-                "selector": "/pulls",
-                "sourceKey": "github-prod",
-                "url": "https://api.github.com/pulls"
-              },
-              "source": {
-                "key": "github-prod",
-                "provider": "github"
-              },
-              "status": 200
-            }
-            "#
+        {
+          "body": {
+            "items": [
+              1,
+              2
+            ]
+          },
+          "contentType": "application/json",
+          "operation": "fetch",
+          "preview": {
+            "bodyKind": "json",
+            "bodyPaths": [
+              "params"
+            ],
+            "headerNames": [
+              "accept"
+            ],
+            "host": "api.github.com",
+            "kind": "http_request",
+            "method": "GET",
+            "operation": "fetch",
+            "paginationPolicy": "none",
+            "selector": "/pulls",
+            "source": {
+              "displayName": "GitHub Prod",
+              "key": "github-prod",
+              "provider": "github"
+            },
+            "url": "https://api.github.com/pulls"
+          },
+          "source": {
+            "key": "github-prod",
+            "provider": "github"
+          },
+          "status": 200
+        }
+        "#
         );
     }
 
@@ -1608,7 +1617,7 @@ mod tests {
             source: SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
                 provider: Some(
-                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB
                         .into(),
                 ),
                 display_name: None,
@@ -1629,20 +1638,20 @@ mod tests {
             source: MessageField::some(SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
                 provider: Some(
-                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB
                         .into(),
                 ),
                 display_name: Some("GitHub Prod".to_owned()),
                 ..Default::default()
             }),
             operation: Some("fetch".to_owned()),
-            kind: Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
+            kind: Some(SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
             method: Some("GET".to_owned()),
             selector: Some("/pulls".to_owned()),
             url: Some("https://api.github.com/pulls".to_owned()),
             host: Some("api.github.com".to_owned()),
             header_names: vec!["accept".to_owned()],
-            body_kind: Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON.into()),
+            body_kind: Some(SourceApiBodyKind::SOURCE_API_BODY_KIND_JSON.into()),
             body_paths: vec!["params".to_owned()],
             pagination_policy: Some(pagination_policy.into()),
             ..Default::default()
@@ -1666,7 +1675,7 @@ mod tests {
     }
 
     fn execute_preview() -> SourceApiPreview {
-        source_api_preview(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+        source_api_preview(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
     }
 
     fn render_options() -> SourceApiRenderOptions {

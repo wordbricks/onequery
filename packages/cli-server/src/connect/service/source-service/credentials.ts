@@ -2,9 +2,9 @@ import type { Credentials } from "@onequery/db/server";
 import { Result } from "better-result";
 
 import {
-  CliSourceConnectAmplitudeRegion,
-  CliSourceConnectMixpanelRegion,
-  CliSourceConnectSslMode,
+  SourceConnectAmplitudeRegion,
+  SourceConnectMixpanelRegion,
+  SourceConnectSslMode,
 } from "../../gen/onequery/cli/v1/source_pb";
 import type {
   ConnectSourceCredentials,
@@ -197,7 +197,7 @@ function postgresCredentialsFromMessage(input: {
   host: string;
   password: string;
   port?: number;
-  sslMode?: CliSourceConnectSslMode;
+  sslMode?: SourceConnectSslMode;
   username: string;
 }) {
   const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
@@ -217,7 +217,7 @@ function mySqlCredentialsFromMessage(input: {
   host: string;
   password: string;
   port?: number;
-  sslMode?: CliSourceConnectSslMode;
+  sslMode?: SourceConnectSslMode;
   username: string;
 }) {
   const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
@@ -476,47 +476,47 @@ function numberFromUInt64(
 }
 
 function sslModeFromMessage(
-  value: CliSourceConnectSslMode | undefined
+  value: SourceConnectSslMode | undefined
 ): "disable" | "prefer" | "require" | undefined {
   switch (value) {
     case undefined:
-    case CliSourceConnectSslMode.UNSPECIFIED:
+    case SourceConnectSslMode.UNSPECIFIED:
       return undefined;
-    case CliSourceConnectSslMode.DISABLE:
+    case SourceConnectSslMode.DISABLE:
       return "disable";
-    case CliSourceConnectSslMode.PREFER:
+    case SourceConnectSslMode.PREFER:
       return "prefer";
-    case CliSourceConnectSslMode.REQUIRE:
+    case SourceConnectSslMode.REQUIRE:
       return "require";
   }
 }
 
 function amplitudeRegionFromMessage(
-  value: CliSourceConnectAmplitudeRegion | undefined
+  value: SourceConnectAmplitudeRegion | undefined
 ): "us" | "eu" | undefined {
   switch (value) {
     case undefined:
-    case CliSourceConnectAmplitudeRegion.UNSPECIFIED:
+    case SourceConnectAmplitudeRegion.UNSPECIFIED:
       return undefined;
-    case CliSourceConnectAmplitudeRegion.US:
+    case SourceConnectAmplitudeRegion.US:
       return "us";
-    case CliSourceConnectAmplitudeRegion.EU:
+    case SourceConnectAmplitudeRegion.EU:
       return "eu";
   }
 }
 
 function mixpanelRegionFromMessage(
-  value: CliSourceConnectMixpanelRegion | undefined
+  value: SourceConnectMixpanelRegion | undefined
 ): "us" | "eu" | "in" | undefined {
   switch (value) {
     case undefined:
-    case CliSourceConnectMixpanelRegion.UNSPECIFIED:
+    case SourceConnectMixpanelRegion.UNSPECIFIED:
       return undefined;
-    case CliSourceConnectMixpanelRegion.US:
+    case SourceConnectMixpanelRegion.US:
       return "us";
-    case CliSourceConnectMixpanelRegion.EU:
+    case SourceConnectMixpanelRegion.EU:
       return "eu";
-    case CliSourceConnectMixpanelRegion.IN:
+    case SourceConnectMixpanelRegion.IN:
       return "in";
   }
 }

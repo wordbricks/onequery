@@ -50,14 +50,14 @@ macro_rules! optional_generated_label {
 
 generated_label!(
     content_format_to_str,
-    types::CliContentFormat,
-    types::CliContentFormat::CLI_CONTENT_FORMAT_UNSPECIFIED,
+    types::ContentFormat,
+    types::ContentFormat::CONTENT_FORMAT_UNSPECIFIED,
     {
-        types::CliContentFormat::CLI_CONTENT_FORMAT_MARKDOWN => "markdown",
+        types::ContentFormat::CONTENT_FORMAT_MARKDOWN => "markdown",
     }
 );
 
-pub(crate) fn source_provider_to_str(value: EnumValue<types::CliSourceProvider>) -> String {
+pub(crate) fn source_provider_to_str(value: EnumValue<types::SourceProvider>) -> String {
     match value
         .as_known()
         .and_then(|provider| SourceConnectProvider::try_from(provider).ok())
@@ -69,43 +69,43 @@ pub(crate) fn source_provider_to_str(value: EnumValue<types::CliSourceProvider>)
 
 generated_label!(
     source_status_to_str,
-    types::CliSourceStatus,
-    types::CliSourceStatus::CLI_SOURCE_STATUS_UNSPECIFIED,
+    types::SourceStatus,
+    types::SourceStatus::SOURCE_STATUS_UNSPECIFIED,
     {
-        types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE => "active",
-        types::CliSourceStatus::CLI_SOURCE_STATUS_ERROR => "error",
-        types::CliSourceStatus::CLI_SOURCE_STATUS_DISCONNECTED => "disconnected",
+        types::SourceStatus::SOURCE_STATUS_ACTIVE => "active",
+        types::SourceStatus::SOURCE_STATUS_ERROR => "error",
+        types::SourceStatus::SOURCE_STATUS_DISCONNECTED => "disconnected",
     }
 );
 
 generated_label!(
     org_capability_to_str,
-    types::CliOrgCapability,
-    types::CliOrgCapability::CLI_ORG_CAPABILITY_UNSPECIFIED,
+    types::OrgCapability,
+    types::OrgCapability::ORG_CAPABILITY_UNSPECIFIED,
     {
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST => "org.list",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ => "org.read",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_CONNECT => "source.connect",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_LIST => "source.list",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_READ => "source.read",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE => "query.execute",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE => "source_api.describe",
-        types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE => "source_api.execute",
+        types::OrgCapability::ORG_CAPABILITY_ORG_LIST => "org.list",
+        types::OrgCapability::ORG_CAPABILITY_ORG_READ => "org.read",
+        types::OrgCapability::ORG_CAPABILITY_SOURCE_CONNECT => "source.connect",
+        types::OrgCapability::ORG_CAPABILITY_SOURCE_LIST => "source.list",
+        types::OrgCapability::ORG_CAPABILITY_SOURCE_READ => "source.read",
+        types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE => "query.execute",
+        types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE => "source_api.describe",
+        types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE => "source_api.execute",
     }
 );
 
 optional_generated_label!(
     query_logical_type_to_str,
-    types::CliQueryLogicalType,
-    types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED,
+    types::QueryLogicalType,
+    types::QueryLogicalType::QUERY_LOGICAL_TYPE_UNSPECIFIED,
     {
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_STRING => "string",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER => "number",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BOOLEAN => "boolean",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_BIGINT => "bigint",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_DATETIME => "datetime",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_ARRAY => "array",
-        types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON => "json",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_STRING => "string",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_NUMBER => "number",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_BOOLEAN => "boolean",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_BIGINT => "bigint",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_DATETIME => "datetime",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_ARRAY => "array",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON => "json",
     }
 );
 
@@ -132,7 +132,7 @@ mod tests {
             SourceConnectProvider::supported()
                 .iter()
                 .copied()
-                .map(types::CliSourceProvider::from)
+                .map(types::SourceProvider::from)
                 .map(|provider| source_provider_to_str(provider.into()))
                 .collect::<Vec<_>>()
         );
@@ -142,9 +142,9 @@ mod tests {
     fn source_status_to_str_maps_known_values() {
         assert_eq!(
             [
-                source_status_to_str(types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
-                source_status_to_str(types::CliSourceStatus::CLI_SOURCE_STATUS_ERROR.into()),
-                source_status_to_str(types::CliSourceStatus::CLI_SOURCE_STATUS_DISCONNECTED.into(),),
+                source_status_to_str(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                source_status_to_str(types::SourceStatus::SOURCE_STATUS_ERROR.into()),
+                source_status_to_str(types::SourceStatus::SOURCE_STATUS_DISCONNECTED.into(),),
             ],
             [
                 "active".to_owned(),
@@ -158,15 +158,15 @@ mod tests {
     fn org_capability_to_str_maps_known_values() {
         assert_eq!(
             [
-                org_capability_to_str(types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into()),
+                org_capability_to_str(types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into()),
                 org_capability_to_str(
-                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                    types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
                 ),
                 org_capability_to_str(
-                    types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
+                    types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
                 ),
                 org_capability_to_str(
-                    types::CliOrgCapability::CLI_ORG_CAPABILITY_QUERY_EXECUTE.into(),
+                    types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE.into(),
                 ),
             ],
             [
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(
             Some("json".to_owned()),
             query_logical_type_to_str(
-                types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_JSON.into(),
+                types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON.into(),
             )
         );
     }
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn content_format_to_str_maps_markdown() {
         assert_eq!(
-            content_format_to_str(types::CliContentFormat::CLI_CONTENT_FORMAT_MARKDOWN.into()),
+            content_format_to_str(types::ContentFormat::CONTENT_FORMAT_MARKDOWN.into()),
             "markdown"
         );
     }

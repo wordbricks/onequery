@@ -20,7 +20,7 @@ import { file_onequery_cli_v1_source } from "./source_pb.js";
  * Describes the file onequery/cli/v1/query.proto.
  */
 export const file_onequery_cli_v1_query: GenFile /*@__PURE__*/ = fileDesc(
-  "ChtvbmVxdWVyeS9jbGkvdjEvcXVlcnkucHJvdG8SD29uZXF1ZXJ5LmNsaS52MSLaAQoUVmFsaWRhdGVRdWVyeVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjcKBXF1ZXJ5GAMgASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5UmVxdWVzdEIGukgDyAEBIpoCChVWYWxpZGF0ZVF1ZXJ5UmVzcG9uc2USQgoHcmVxdWVzdBgBIAEoCzIpLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeUNhbm9uaWNhbFJlcXVlc3RCBrpIA8gBARIfCg5ub3JtYWxpemVkX3NxbBgCIAEoCUIHukgEcgIQARJVChZkZWNsYXJlZF9yZXN1bHRfd2luZG93GAMgASgLMi0ub25lcXVlcnkuY2xpLnYxLkNsaURlY2xhcmVkUXVlcnlSZXN1bHRXaW5kb3dCBrpIA8gBARIyCgZzb3VyY2UYBCABKAsyGi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQga6SAPIAQESEQoJdHJ1bmNhdGVkGAUgASgIIowCChNFeGVjdXRlUXVlcnlSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJBIYCgVsaW1pdBgDIAEoDUIJukgGKgQYZCgBEhcKBmN1cnNvchgEIAEoCUIHukgEcgIQARI3CgVxdWVyeRgFIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVJlcXVlc3RCBrpIA8gBASLKAgoURXhlY3V0ZVF1ZXJ5UmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEhEKCXJvd19jb3VudBgCIAEoBBISCgplbGFwc2VkX21zGAMgASgEEjAKB2NvbHVtbnMYBCADKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlDb2x1bW4SKgoEcm93cxgFIAMoCzIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVJvdxIRCgl0cnVuY2F0ZWQYBiABKAgSLgoEcGFnZRgHIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlQga6SAPIAQESNgoMc2FuaXRpemF0aW9uGAggASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVNhbml0aXphdGlvbiLxAQoPQ2xpUXVlcnlSZXF1ZXN0EhgKA3NxbBgBIAEoCUILukgIcgYQATICXFMSQAoKcGFyYW1ldGVycxgCIAMoCzIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVBhcmFtZXRlckIIukgFkgECEAASHAoIbWF4X3Jvd3MYAyABKA1CCrpIByoFGOgHKAESHwoJbWF4X2J5dGVzGAQgASgNQgy6SAkqBxiAgIACKAESIgoOY2VsbF9tYXhfY2hhcnMYBSABKA1CCrpIByoFGMA+KAESHwoKdGltZW91dF9tcxgGIAEoDUILukgIKgYYwKkHKAEivQEKGENsaVF1ZXJ5Q2Fub25pY2FsUmVxdWVzdBIYCgNzcWwYASABKAlCC7pICHIGEAEyAlxTEjYKCnBhcmFtZXRlcnMYAiADKAsyIi5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlQYXJhbWV0ZXISEAoIbWF4X3Jvd3MYAyABKA0SEQoJbWF4X2J5dGVzGAQgASgNEhYKDmNlbGxfbWF4X2NoYXJzGAUgASgNEhIKCnRpbWVvdXRfbXMYBiABKA0iZAoRQ2xpUXVlcnlQYXJhbWV0ZXISQAoEdHlwZRgBIAEoDjImLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVBhcmFtZXRlclR5cGVCCrpIB4IBBBABIAASDQoFdmFsdWUYAiABKAkiogEKHENsaURlY2xhcmVkUXVlcnlSZXN1bHRXaW5kb3cSHAoIbWF4X3Jvd3MYASABKA1CCrpIByoFGOgHKAESHwoJbWF4X2J5dGVzGAIgASgNQgy6SAkqBxiAgIACKAESIgoOY2VsbF9tYXhfY2hhcnMYAyABKA1CCrpIByoFGMA+KAESHwoKdGltZW91dF9tcxgEIAEoDUILukgIKgYYwKkHKAEibwoOQ2xpUXVlcnlDb2x1bW4SFQoEbmFtZRgBIAEoCUIHukgEcgIQARJGCgxsb2dpY2FsX3R5cGUYAiABKA4yJC5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlMb2dpY2FsVHlwZUIKukgHggEEEAEgACIdCgtDbGlRdWVyeVJvdxIOCgZ2YWx1ZXMYASADKAkq1AEKFUNsaVF1ZXJ5UGFyYW1ldGVyVHlwZRIoCiRDTElfUVVFUllfUEFSQU1FVEVSX1RZUEVfVU5TUEVDSUZJRUQQABIjCh9DTElfUVVFUllfUEFSQU1FVEVSX1RZUEVfU1RSSU5HEAESIwofQ0xJX1FVRVJZX1BBUkFNRVRFUl9UWVBFX05VTUJFUhACEiQKIENMSV9RVUVSWV9QQVJBTUVURVJfVFlQRV9CT09MRUFOEAMSIQodQ0xJX1FVRVJZX1BBUkFNRVRFUl9UWVBFX05VTEwQBCqyAgoTQ2xpUXVlcnlMb2dpY2FsVHlwZRImCiJDTElfUVVFUllfTE9HSUNBTF9UWVBFX1VOU1BFQ0lGSUVEEAASIQodQ0xJX1FVRVJZX0xPR0lDQUxfVFlQRV9TVFJJTkcQARIhCh1DTElfUVVFUllfTE9HSUNBTF9UWVBFX05VTUJFUhACEiIKHkNMSV9RVUVSWV9MT0dJQ0FMX1RZUEVfQk9PTEVBThADEiEKHUNMSV9RVUVSWV9MT0dJQ0FMX1RZUEVfQklHSU5UEAQSIwofQ0xJX1FVRVJZX0xPR0lDQUxfVFlQRV9EQVRFVElNRRAFEiAKHENMSV9RVUVSWV9MT0dJQ0FMX1RZUEVfQVJSQVkQBhIfChtDTElfUVVFUllfTE9HSUNBTF9UWVBFX0pTT04QB2IIZWRpdGlvbnNw6Ac",
+  "ChtvbmVxdWVyeS9jbGkvdjEvcXVlcnkucHJvdG8SD29uZXF1ZXJ5LmNsaS52MSLaAQoUVmFsaWRhdGVRdWVyeVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjcKBXF1ZXJ5GAMgASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5UmVxdWVzdEIGukgDyAEBIpoCChVWYWxpZGF0ZVF1ZXJ5UmVzcG9uc2USQgoHcmVxdWVzdBgBIAEoCzIpLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeUNhbm9uaWNhbFJlcXVlc3RCBrpIA8gBARIfCg5ub3JtYWxpemVkX3NxbBgCIAEoCUIHukgEcgIQARJVChZkZWNsYXJlZF9yZXN1bHRfd2luZG93GAMgASgLMi0ub25lcXVlcnkuY2xpLnYxLkNsaURlY2xhcmVkUXVlcnlSZXN1bHRXaW5kb3dCBrpIA8gBARIyCgZzb3VyY2UYBCABKAsyGi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQga6SAPIAQESEQoJdHJ1bmNhdGVkGAUgASgIIowCChNFeGVjdXRlUXVlcnlSZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJSCgpzb3VyY2Vfa2V5GAIgASgJQj66SDtyORABMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJBIYCgVsaW1pdBgDIAEoDUIJukgGKgQYZCgBEhcKBmN1cnNvchgEIAEoCUIHukgEcgIQARI3CgVxdWVyeRgFIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVJlcXVlc3RCBrpIA8gBASLKAgoURXhlY3V0ZVF1ZXJ5UmVzcG9uc2USMgoGc291cmNlGAEgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEhEKCXJvd19jb3VudBgCIAEoBBISCgplbGFwc2VkX21zGAMgASgEEjAKB2NvbHVtbnMYBCADKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlDb2x1bW4SKgoEcm93cxgFIAMoCzIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVJvdxIRCgl0cnVuY2F0ZWQYBiABKAgSLgoEcGFnZRgHIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlQga6SAPIAQESNgoMc2FuaXRpemF0aW9uGAggASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVNhbml0aXphdGlvbiLxAQoPQ2xpUXVlcnlSZXF1ZXN0EhgKA3NxbBgBIAEoCUILukgIcgYQATICXFMSQAoKcGFyYW1ldGVycxgCIAMoCzIiLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVBhcmFtZXRlckIIukgFkgECEAASHAoIbWF4X3Jvd3MYAyABKA1CCrpIByoFGOgHKAESHwoJbWF4X2J5dGVzGAQgASgNQgy6SAkqBxiAgIACKAESIgoOY2VsbF9tYXhfY2hhcnMYBSABKA1CCrpIByoFGMA+KAESHwoKdGltZW91dF9tcxgGIAEoDUILukgIKgYYwKkHKAEivQEKGENsaVF1ZXJ5Q2Fub25pY2FsUmVxdWVzdBIYCgNzcWwYASABKAlCC7pICHIGEAEyAlxTEjYKCnBhcmFtZXRlcnMYAiADKAsyIi5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlQYXJhbWV0ZXISEAoIbWF4X3Jvd3MYAyABKA0SEQoJbWF4X2J5dGVzGAQgASgNEhYKDmNlbGxfbWF4X2NoYXJzGAUgASgNEhIKCnRpbWVvdXRfbXMYBiABKA0iYQoRQ2xpUXVlcnlQYXJhbWV0ZXISPQoEdHlwZRgBIAEoDjIjLm9uZXF1ZXJ5LmNsaS52MS5RdWVyeVBhcmFtZXRlclR5cGVCCrpIB4IBBBABIAASDQoFdmFsdWUYAiABKAkiogEKHENsaURlY2xhcmVkUXVlcnlSZXN1bHRXaW5kb3cSHAoIbWF4X3Jvd3MYASABKA1CCrpIByoFGOgHKAESHwoJbWF4X2J5dGVzGAIgASgNQgy6SAkqBxiAgIACKAESIgoOY2VsbF9tYXhfY2hhcnMYAyABKA1CCrpIByoFGMA+KAESHwoKdGltZW91dF9tcxgEIAEoDUILukgIKgYYwKkHKAEibAoOQ2xpUXVlcnlDb2x1bW4SFQoEbmFtZRgBIAEoCUIHukgEcgIQARJDCgxsb2dpY2FsX3R5cGUYAiABKA4yIS5vbmVxdWVyeS5jbGkudjEuUXVlcnlMb2dpY2FsVHlwZUIKukgHggEEEAEgACIdCgtDbGlRdWVyeVJvdxIOCgZ2YWx1ZXMYASADKAkqvQEKElF1ZXJ5UGFyYW1ldGVyVHlwZRIkCiBRVUVSWV9QQVJBTUVURVJfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1FVRVJZX1BBUkFNRVRFUl9UWVBFX1NUUklORxABEh8KG1FVRVJZX1BBUkFNRVRFUl9UWVBFX05VTUJFUhACEiAKHFFVRVJZX1BBUkFNRVRFUl9UWVBFX0JPT0xFQU4QAxIdChlRVUVSWV9QQVJBTUVURVJfVFlQRV9OVUxMEAQqjwIKEFF1ZXJ5TG9naWNhbFR5cGUSIgoeUVVFUllfTE9HSUNBTF9UWVBFX1VOU1BFQ0lGSUVEEAASHQoZUVVFUllfTE9HSUNBTF9UWVBFX1NUUklORxABEh0KGVFVRVJZX0xPR0lDQUxfVFlQRV9OVU1CRVIQAhIeChpRVUVSWV9MT0dJQ0FMX1RZUEVfQk9PTEVBThADEh0KGVFVRVJZX0xPR0lDQUxfVFlQRV9CSUdJTlQQBBIfChtRVUVSWV9MT0dJQ0FMX1RZUEVfREFURVRJTUUQBRIcChhRVUVSWV9MT0dJQ0FMX1RZUEVfQVJSQVkQBhIbChdRVUVSWV9MT0dJQ0FMX1RZUEVfSlNPThAHYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_onequery_cli_v1_common,
@@ -278,9 +278,9 @@ export const CliQueryCanonicalRequestSchema: GenMessage<CliQueryCanonicalRequest
  */
 export type CliQueryParameter = Message<"onequery.cli.v1.CliQueryParameter"> & {
   /**
-   * @generated from field: onequery.cli.v1.CliQueryParameterType type = 1;
+   * @generated from field: onequery.cli.v1.QueryParameterType type = 1;
    */
-  type: CliQueryParameterType;
+  type: QueryParameterType;
 
   /**
    * @generated from field: string value = 2;
@@ -338,9 +338,9 @@ export type CliQueryColumn = Message<"onequery.cli.v1.CliQueryColumn"> & {
   name: string;
 
   /**
-   * @generated from field: onequery.cli.v1.CliQueryLogicalType logical_type = 2;
+   * @generated from field: onequery.cli.v1.QueryLogicalType logical_type = 2;
    */
-  logicalType: CliQueryLogicalType;
+  logicalType: QueryLogicalType;
 };
 
 /**
@@ -368,88 +368,88 @@ export const CliQueryRowSchema: GenMessage<CliQueryRow> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_query, 9);
 
 /**
- * @generated from enum onequery.cli.v1.CliQueryParameterType
+ * @generated from enum onequery.cli.v1.QueryParameterType
  */
-export enum CliQueryParameterType {
+export enum QueryParameterType {
   /**
-   * @generated from enum value: CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_QUERY_PARAMETER_TYPE_STRING = 1;
+   * @generated from enum value: QUERY_PARAMETER_TYPE_STRING = 1;
    */
   STRING = 1,
 
   /**
-   * @generated from enum value: CLI_QUERY_PARAMETER_TYPE_NUMBER = 2;
+   * @generated from enum value: QUERY_PARAMETER_TYPE_NUMBER = 2;
    */
   NUMBER = 2,
 
   /**
-   * @generated from enum value: CLI_QUERY_PARAMETER_TYPE_BOOLEAN = 3;
+   * @generated from enum value: QUERY_PARAMETER_TYPE_BOOLEAN = 3;
    */
   BOOLEAN = 3,
 
   /**
-   * @generated from enum value: CLI_QUERY_PARAMETER_TYPE_NULL = 4;
+   * @generated from enum value: QUERY_PARAMETER_TYPE_NULL = 4;
    */
   NULL = 4,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliQueryParameterType.
+ * Describes the enum onequery.cli.v1.QueryParameterType.
  */
-export const CliQueryParameterTypeSchema: GenEnum<CliQueryParameterType> /*@__PURE__*/ =
+export const QueryParameterTypeSchema: GenEnum<QueryParameterType> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_query, 0);
 
 /**
- * @generated from enum onequery.cli.v1.CliQueryLogicalType
+ * @generated from enum onequery.cli.v1.QueryLogicalType
  */
-export enum CliQueryLogicalType {
+export enum QueryLogicalType {
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_STRING = 1;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_STRING = 1;
    */
   STRING = 1,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_NUMBER = 2;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_NUMBER = 2;
    */
   NUMBER = 2,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_BOOLEAN = 3;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_BOOLEAN = 3;
    */
   BOOLEAN = 3,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_BIGINT = 4;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_BIGINT = 4;
    */
   BIGINT = 4,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_DATETIME = 5;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_DATETIME = 5;
    */
   DATETIME = 5,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_ARRAY = 6;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_ARRAY = 6;
    */
   ARRAY = 6,
 
   /**
-   * @generated from enum value: CLI_QUERY_LOGICAL_TYPE_JSON = 7;
+   * @generated from enum value: QUERY_LOGICAL_TYPE_JSON = 7;
    */
   JSON = 7,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliQueryLogicalType.
+ * Describes the enum onequery.cli.v1.QueryLogicalType.
  */
-export const CliQueryLogicalTypeSchema: GenEnum<CliQueryLogicalType> /*@__PURE__*/ =
+export const QueryLogicalTypeSchema: GenEnum<QueryLogicalType> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_query, 1);

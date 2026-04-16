@@ -9,7 +9,7 @@ export type SourceApiSelectorKind = "none" | "path" | "identifier";
 
 export type SourceApiPaginationPolicy = "none" | "continuation_token";
 
-export type SourceApiBodyKind = "none" | "json" | "text" | "binary";
+export type SourceApiBodyFormat = "none" | "json" | "text" | "binary";
 
 export type ConnectedSourceRecord = {
   id: string;
@@ -168,7 +168,7 @@ type SourceApiPreparedBase = {
   selectorTemplate?: string;
   host?: string;
   headerNames: readonly string[];
-  bodyKind: SourceApiBodyKind;
+  bodyKind: SourceApiBodyFormat;
   bodyPaths: readonly string[];
   preparedBinding: string;
   descriptorVersion?: string;
@@ -240,7 +240,7 @@ export type SourceApiPreview = {
   host?: string;
   url?: string;
   headerNames: readonly string[];
-  bodyKind: SourceApiBodyKind;
+  bodyKind: SourceApiBodyFormat;
   bodyPaths: readonly string[];
   paginationPolicy: SourceApiPaginationPolicy;
 };

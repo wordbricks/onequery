@@ -13,14 +13,14 @@ import type { Value } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
-import type { CliSourceProvider } from "./source_pb.js";
+import type { SourceProvider } from "./source_pb.js";
 import { file_onequery_cli_v1_source } from "./source_pb.js";
 
 /**
  * Describes the file onequery/cli/v1/source_api.proto.
  */
 export const file_onequery_cli_v1_source_api: GenFile /*@__PURE__*/ = fileDesc(
-  "CiBvbmVxdWVyeS9jbGkvdjEvc291cmNlX2FwaS5wcm90bxIPb25lcXVlcnkuY2xpLnYxIqUBChhEZXNjcmliZVNvdXJjZUFwaVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIrcCChlEZXNjcmliZVNvdXJjZUFwaVJlc3BvbnNlEjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARIjChJkZXNjcmlwdG9yX3ZlcnNpb24YAiABKAlCB7pIBHICEAESJwoWZGVmYXVsdF9wYXRoX29wZXJhdGlvbhgDIAEoCUIHukgEcgIQARI6CgpvcGVyYXRpb25zGAQgAygLMiYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbhI2CghleGFtcGxlcxgFIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlEhsKBW5vdGVzGAYgAygJQgy6SAmSAQYiBHICEAEinAEKD1NvdXJjZUFwaVRhcmdldBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSUgoKc291cmNlX2tleRgCIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQi8AIKDlNvdXJjZUFwaURyYWZ0Ei0KCW9wZXJhdGlvbhgBIAEoCUIaukgXchUQATIRXlthLXpdW2EtejAtOV9dKiQSIwoSZGVzY3JpcHRvcl92ZXJzaW9uGAIgASgJQge6SARyAhABEhkKCHNlbGVjdG9yGAMgASgJQge6SARyAhABEioKD21ldGhvZF9vdmVycmlkZRgEIAEoCUIRukgOcgwQATIIXltBLVpdKyQSNAoHaGVhZGVycxgFIAMoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlIZWFkZXISLAoLZmllbGRfcGF0Y2gYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EisKCWpzb25fYm9keRgHIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5WYWx1ZUgAEhMKCXRleHRfYm9keRgIIAEoCUgAEhUKC2JpbmFyeV9ib2R5GAkgASgMSABCBgoEYm9keSKiBAoQU291cmNlQXBpUHJldmlldxI7CgZzb3VyY2UYASABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpU291cmNlQga6SAPIAQESLQoJb3BlcmF0aW9uGAIgASgJQhq6SBdyFRABMhFeW2Etel1bYS16MC05X10qJBIZCghzZWxlY3RvchgDIAEoCUIHukgEcgIQARJECgRraW5kGAQgASgOMioub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbktpbmRCCrpIB4IBBBABIAASIQoGbWV0aG9kGAUgASgJQhG6SA5yDBABMgheW0EtWl0rJBIVCgRob3N0GAYgASgJQge6SARyAhABEhQKA3VybBgHIAEoCUIHukgEcgIQARIzCgxoZWFkZXJfbmFtZXMYCCADKAlCHbpIGpIBFyIVchMQATIPXltBLVphLXowLTktXSskEkQKCWJvZHlfa2luZBgJIAEoDjIlLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlCb2R5S2luZEIKukgHggEEEAEgABIgCgpib2R5X3BhdGhzGAogAygJQgy6SAmSAQYiBHICEAESVAoRcGFnaW5hdGlvbl9wb2xpY3kYCyABKA4yLS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUIKukgHggEEEAEgACLPAQoXU3RhcnRTb3VyY2VBcGlFeGVjdXRpb24SOAoGdGFyZ2V0GAEgASgLMiAub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVRhcmdldEIGukgDyAEBEjYKBWRyYWZ0GAIgASgLMh8ub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaURyYWZ0Qga6SAPIAQESQgoEbW9kZRgDIAEoDjIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGVjdXRlTW9kZUIKukgHggEEEAEgACJ5ChhSZXN1bWVTb3VyY2VBcGlFeGVjdXRpb24SOAoGdGFyZ2V0GAEgASgLMiAub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVRhcmdldEIGukgDyAEBEiMKEmNvbnRpbnVhdGlvbl90b2tlbhgCIAEoCUIHukgEcgIQASKhAQoXRXhlY3V0ZVNvdXJjZUFwaVJlcXVlc3QSOQoFc3RhcnQYASABKAsyKC5vbmVxdWVyeS5jbGkudjEuU3RhcnRTb3VyY2VBcGlFeGVjdXRpb25IABI7CgZyZXN1bWUYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuUmVzdW1lU291cmNlQXBpRXhlY3V0aW9uSABCDgoFaW5wdXQSBbpIAggBIvYCChhTb3VyY2VBcGlFeGVjdXRpb25SZXN1bHQSOwoGc291cmNlGAEgASgLMiMub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaVNvdXJjZUIGukgDyAEBEi0KCW9wZXJhdGlvbhgCIAEoCUIaukgXchUQATIRXlthLXpdW2EtejAtOV9dKiQSGQoIc2VsZWN0b3IYAyABKAlCB7pIBHICEAESGgoGc3RhdHVzGAQgASgNQgq6SAcqBRjXBChkEjQKB2hlYWRlcnMYBSADKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyEh0KDGNvbnRlbnRfdHlwZRgGIAEoCUIHukgEcgIQARImCgRqc29uGAcgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlSAASDgoEdGV4dBgIIAEoCUgAEhAKBmJpbmFyeRgJIAEoDEgAQgYKBGJvZHlKBAgKEAtSCnJlcXVlc3RfaWQitgEKGEV4ZWN1dGVTb3VyY2VBcGlSZXNwb25zZRI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBARI5CgZyZXN1bHQYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0EiMKEmNvbnRpbnVhdGlvbl90b2tlbhgDIAEoCUIHukgEcgIQASLNAQoSQ2xpU291cmNlQXBpU291cmNlElIKCnNvdXJjZV9rZXkYASABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEkAKCHByb3ZpZGVyGAIgASgOMiIub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZVByb3ZpZGVyQgq6SAeCAQQQASAAEiEKDGRpc3BsYXlfbmFtZRgDIAEoCUILukgIcgYQATICXFMitQUKFUNsaVNvdXJjZUFwaU9wZXJhdGlvbhIoCgRuYW1lGAEgASgJQhq6SBdyFRABMhFeW2Etel1bYS16MC05X10qJBJECgRraW5kGAIgASgOMioub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbktpbmRCCrpIB4IBBBABIAASGAoHc3VtbWFyeRgDIAEoCUIHukgEcgIQARIcCgtkZXNjcmlwdGlvbhgEIAEoCUIHukgEcgIQARJMCg1zZWxlY3Rvcl9raW5kGAUgASgOMikub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaVNlbGVjdG9yS2luZEIKukgHggEEEAEgABIfCg5zZWxlY3Rvcl9sYWJlbBgGIAEoCUIHukgEcgIQARJICg1tZXRob2RfcG9saWN5GAcgASgLMikub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU1ldGhvZFBvbGljeUIGukgDyAEBEkYKDGZpZWxkX3BvbGljeRgIIAEoCzIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlGaWVsZFBvbGljeUIGukgDyAEBEkgKDWhlYWRlcl9wb2xpY3kYCSABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5Qga6SAPIAQESVAoRcGFnaW5hdGlvbl9wb2xpY3kYCiABKA4yLS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUIKukgHggEEEAEgABI2CghleGFtcGxlcxgLIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlEhsKBW5vdGVzGAwgAygJQgy6SAmSAQYiBHICEAEidgoYQ2xpU291cmNlQXBpTWV0aG9kUG9saWN5EikKDmRlZmF1bHRfbWV0aG9kGAEgASgJQhG6SA5yDBABMgheW0EtWl0rJBIvCg9hbGxvd2VkX21ldGhvZHMYAiADKAlCFrpIE5IBECIOcgwQATIIXltBLVpdKyQihAIKF0NsaVNvdXJjZUFwaUZpZWxkUG9saWN5EhkKEWFsbG93c19yYXdfZmllbGRzGAEgASgIEhsKE2FsbG93c190eXBlZF9maWVsZHMYAiABKAgSHQoVc3VwcG9ydHNfbmVzdGVkX3BhdGhzGAMgASgIEhwKFHN1cHBvcnRzX2FycmF5X3BhdGhzGAQgASgIEhUKDWFjY2VwdHNfaW5wdXQYBSABKAgSRgoKaW5wdXRfbW9kZRgGIAEoDjImLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlJbnB1dE1vZGVCCrpIB4IBBBABIAASFQoNbWVyZ2VfcGF0Y2hlcxgHIAEoCCJfChhDbGlTb3VyY2VBcGlIZWFkZXJQb2xpY3kSQwocYWxsb3dlZF9yZXF1ZXN0X2hlYWRlcl9uYW1lcxgBIAMoCUIdukgakgEXIhVyExABMg9eW0EtWmEtejAtOS1dKyQiZQoTQ2xpU291cmNlQXBpRXhhbXBsZRIWCgVsYWJlbBgBIAEoCUIHukgEcgIQARIcCgtkZXNjcmlwdGlvbhgCIAEoCUIHukgEcgIQARIYCgdjb21tYW5kGAMgASgJQge6SARyAhABIksKEkNsaVNvdXJjZUFwaUhlYWRlchImCgRuYW1lGAEgASgJQhi6SBVyExABMg9eW0EtWmEtejAtOS1dKyQSDQoFdmFsdWUYAiABKAkqwAEKFUNsaVNvdXJjZUFwaUlucHV0TW9kZRIpCiVDTElfU09VUkNFX0FQSV9JTlBVVF9NT0RFX1VOU1BFQ0lGSUVEEAASIgoeQ0xJX1NPVVJDRV9BUElfSU5QVVRfTU9ERV9OT05FEAESLAooQ0xJX1NPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX09CSkVDVBACEioKJkNMSV9TT1VSQ0VfQVBJX0lOUFVUX01PREVfUkVRVUVTVF9CT0RZEAMqsAEKGUNsaVNvdXJjZUFwaU9wZXJhdGlvbktpbmQSLQopQ0xJX1NPVVJDRV9BUElfT1BFUkFUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIuCipDTElfU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9IVFRQX1JFUVVFU1QQARI0CjBDTElfU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9TVFJVQ1RVUkVEX1JFUVVFU1QQAirDAQoYQ2xpU291cmNlQXBpU2VsZWN0b3JLaW5kEiwKKENMSV9TT1VSQ0VfQVBJX1NFTEVDVE9SX0tJTkRfVU5TUEVDSUZJRUQQABIlCiFDTElfU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX05PTkUQARIlCiFDTElfU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX1BBVEgQAhIrCidDTElfU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX0lERU5USUZJRVIQAyq0AQocQ2xpU291cmNlQXBpUGFnaW5hdGlvblBvbGljeRIwCixDTElfU09VUkNFX0FQSV9QQUdJTkFUSU9OX1BPTElDWV9VTlNQRUNJRklFRBAAEikKJUNMSV9TT1VSQ0VfQVBJX1BBR0lOQVRJT05fUE9MSUNZX05PTkUQARI3CjNDTElfU09VUkNFX0FQSV9QQUdJTkFUSU9OX1BPTElDWV9DT05USU5VQVRJT05fVE9LRU4QAiqdAQoXQ2xpU291cmNlQXBpRXhlY3V0ZU1vZGUSKwonQ0xJX1NPVVJDRV9BUElfRVhFQ1VURV9NT0RFX1VOU1BFQ0lGSUVEEAASJwojQ0xJX1NPVVJDRV9BUElfRVhFQ1VURV9NT0RFX0VYRUNVVEUQARIsCihDTElfU09VUkNFX0FQSV9FWEVDVVRFX01PREVfUFJFVklFV19PTkxZEAIqzgEKFENsaVNvdXJjZUFwaUJvZHlLaW5kEigKJENMSV9TT1VSQ0VfQVBJX0JPRFlfS0lORF9VTlNQRUNJRklFRBAAEiEKHUNMSV9TT1VSQ0VfQVBJX0JPRFlfS0lORF9OT05FEAESIQodQ0xJX1NPVVJDRV9BUElfQk9EWV9LSU5EX0pTT04QAhIhCh1DTElfU09VUkNFX0FQSV9CT0RZX0tJTkRfVEVYVBADEiMKH0NMSV9TT1VSQ0VfQVBJX0JPRFlfS0lORF9CSU5BUlkQBGIIZWRpdGlvbnNw6Ac",
+  "CiBvbmVxdWVyeS9jbGkvdjEvc291cmNlX2FwaS5wcm90bxIPb25lcXVlcnkuY2xpLnYxIqUBChhEZXNjcmliZVNvdXJjZUFwaVJlcXVlc3QSNQoIb3JnX3NsdWcYASABKAlCI7pIIHIeEAEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElIKCnNvdXJjZV9rZXkYAiABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIrcCChlEZXNjcmliZVNvdXJjZUFwaVJlc3BvbnNlEjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARIjChJkZXNjcmlwdG9yX3ZlcnNpb24YAiABKAlCB7pIBHICEAESJwoWZGVmYXVsdF9wYXRoX29wZXJhdGlvbhgDIAEoCUIHukgEcgIQARI6CgpvcGVyYXRpb25zGAQgAygLMiYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbhI2CghleGFtcGxlcxgFIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlEhsKBW5vdGVzGAYgAygJQgy6SAmSAQYiBHICEAEinAEKD1NvdXJjZUFwaVRhcmdldBI1Cghvcmdfc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSUgoKc291cmNlX2tleRgCIAEoCUI+ukg7cjkQATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQi8AIKDlNvdXJjZUFwaURyYWZ0Ei0KCW9wZXJhdGlvbhgBIAEoCUIaukgXchUQATIRXlthLXpdW2EtejAtOV9dKiQSIwoSZGVzY3JpcHRvcl92ZXJzaW9uGAIgASgJQge6SARyAhABEhkKCHNlbGVjdG9yGAMgASgJQge6SARyAhABEioKD21ldGhvZF9vdmVycmlkZRgEIAEoCUIRukgOcgwQATIIXltBLVpdKyQSNAoHaGVhZGVycxgFIAMoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlIZWFkZXISLAoLZmllbGRfcGF0Y2gYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EisKCWpzb25fYm9keRgHIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5WYWx1ZUgAEhMKCXRleHRfYm9keRgIIAEoCUgAEhUKC2JpbmFyeV9ib2R5GAkgASgMSABCBgoEYm9keSKZBAoQU291cmNlQXBpUHJldmlldxI7CgZzb3VyY2UYASABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpU291cmNlQga6SAPIAQESLQoJb3BlcmF0aW9uGAIgASgJQhq6SBdyFRABMhFeW2Etel1bYS16MC05X10qJBIZCghzZWxlY3RvchgDIAEoCUIHukgEcgIQARJBCgRraW5kGAQgASgOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaU9wZXJhdGlvbktpbmRCCrpIB4IBBBABIAASIQoGbWV0aG9kGAUgASgJQhG6SA5yDBABMgheW0EtWl0rJBIVCgRob3N0GAYgASgJQge6SARyAhABEhQKA3VybBgHIAEoCUIHukgEcgIQARIzCgxoZWFkZXJfbmFtZXMYCCADKAlCHbpIGpIBFyIVchMQATIPXltBLVphLXowLTktXSskEkEKCWJvZHlfa2luZBgJIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlCb2R5S2luZEIKukgHggEEEAEgABIgCgpib2R5X3BhdGhzGAogAygJQgy6SAmSAQYiBHICEAESUQoRcGFnaW5hdGlvbl9wb2xpY3kYCyABKA4yKi5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUIKukgHggEEEAEgACLMAQoXU3RhcnRTb3VyY2VBcGlFeGVjdXRpb24SOAoGdGFyZ2V0GAEgASgLMiAub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVRhcmdldEIGukgDyAEBEjYKBWRyYWZ0GAIgASgLMh8ub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaURyYWZ0Qga6SAPIAQESPwoEbW9kZRgDIAEoDjIlLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlFeGVjdXRlTW9kZUIKukgHggEEEAEgACJ5ChhSZXN1bWVTb3VyY2VBcGlFeGVjdXRpb24SOAoGdGFyZ2V0GAEgASgLMiAub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVRhcmdldEIGukgDyAEBEiMKEmNvbnRpbnVhdGlvbl90b2tlbhgCIAEoCUIHukgEcgIQASKhAQoXRXhlY3V0ZVNvdXJjZUFwaVJlcXVlc3QSOQoFc3RhcnQYASABKAsyKC5vbmVxdWVyeS5jbGkudjEuU3RhcnRTb3VyY2VBcGlFeGVjdXRpb25IABI7CgZyZXN1bWUYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuUmVzdW1lU291cmNlQXBpRXhlY3V0aW9uSABCDgoFaW5wdXQSBbpIAggBIvYCChhTb3VyY2VBcGlFeGVjdXRpb25SZXN1bHQSOwoGc291cmNlGAEgASgLMiMub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaVNvdXJjZUIGukgDyAEBEi0KCW9wZXJhdGlvbhgCIAEoCUIaukgXchUQATIRXlthLXpdW2EtejAtOV9dKiQSGQoIc2VsZWN0b3IYAyABKAlCB7pIBHICEAESGgoGc3RhdHVzGAQgASgNQgq6SAcqBRjXBChkEjQKB2hlYWRlcnMYBSADKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyEh0KDGNvbnRlbnRfdHlwZRgGIAEoCUIHukgEcgIQARImCgRqc29uGAcgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlSAASDgoEdGV4dBgIIAEoCUgAEhAKBmJpbmFyeRgJIAEoDEgAQgYKBGJvZHlKBAgKEAtSCnJlcXVlc3RfaWQitgEKGEV4ZWN1dGVTb3VyY2VBcGlSZXNwb25zZRI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBARI5CgZyZXN1bHQYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0EiMKEmNvbnRpbnVhdGlvbl90b2tlbhgDIAEoCUIHukgEcgIQASLKAQoSQ2xpU291cmNlQXBpU291cmNlElIKCnNvdXJjZV9rZXkYASABKAlCPrpIO3I5EAEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEj0KCHByb3ZpZGVyGAIgASgOMh8ub25lcXVlcnkuY2xpLnYxLlNvdXJjZVByb3ZpZGVyQgq6SAeCAQQQASAAEiEKDGRpc3BsYXlfbmFtZRgDIAEoCUILukgIcgYQATICXFMirAUKFUNsaVNvdXJjZUFwaU9wZXJhdGlvbhIoCgRuYW1lGAEgASgJQhq6SBdyFRABMhFeW2Etel1bYS16MC05X10qJBJBCgRraW5kGAIgASgOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaU9wZXJhdGlvbktpbmRCCrpIB4IBBBABIAASGAoHc3VtbWFyeRgDIAEoCUIHukgEcgIQARIcCgtkZXNjcmlwdGlvbhgEIAEoCUIHukgEcgIQARJJCg1zZWxlY3Rvcl9raW5kGAUgASgOMiYub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVNlbGVjdG9yS2luZEIKukgHggEEEAEgABIfCg5zZWxlY3Rvcl9sYWJlbBgGIAEoCUIHukgEcgIQARJICg1tZXRob2RfcG9saWN5GAcgASgLMikub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU1ldGhvZFBvbGljeUIGukgDyAEBEkYKDGZpZWxkX3BvbGljeRgIIAEoCzIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlGaWVsZFBvbGljeUIGukgDyAEBEkgKDWhlYWRlcl9wb2xpY3kYCSABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5Qga6SAPIAQESUQoRcGFnaW5hdGlvbl9wb2xpY3kYCiABKA4yKi5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUIKukgHggEEEAEgABI2CghleGFtcGxlcxgLIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlEhsKBW5vdGVzGAwgAygJQgy6SAmSAQYiBHICEAEidgoYQ2xpU291cmNlQXBpTWV0aG9kUG9saWN5EikKDmRlZmF1bHRfbWV0aG9kGAEgASgJQhG6SA5yDBABMgheW0EtWl0rJBIvCg9hbGxvd2VkX21ldGhvZHMYAiADKAlCFrpIE5IBECIOcgwQATIIXltBLVpdKyQigQIKF0NsaVNvdXJjZUFwaUZpZWxkUG9saWN5EhkKEWFsbG93c19yYXdfZmllbGRzGAEgASgIEhsKE2FsbG93c190eXBlZF9maWVsZHMYAiABKAgSHQoVc3VwcG9ydHNfbmVzdGVkX3BhdGhzGAMgASgIEhwKFHN1cHBvcnRzX2FycmF5X3BhdGhzGAQgASgIEhUKDWFjY2VwdHNfaW5wdXQYBSABKAgSQwoKaW5wdXRfbW9kZRgGIAEoDjIjLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlJbnB1dE1vZGVCCrpIB4IBBBABIAASFQoNbWVyZ2VfcGF0Y2hlcxgHIAEoCCJfChhDbGlTb3VyY2VBcGlIZWFkZXJQb2xpY3kSQwocYWxsb3dlZF9yZXF1ZXN0X2hlYWRlcl9uYW1lcxgBIAMoCUIdukgakgEXIhVyExABMg9eW0EtWmEtejAtOS1dKyQiZQoTQ2xpU291cmNlQXBpRXhhbXBsZRIWCgVsYWJlbBgBIAEoCUIHukgEcgIQARIcCgtkZXNjcmlwdGlvbhgCIAEoCUIHukgEcgIQARIYCgdjb21tYW5kGAMgASgJQge6SARyAhABIksKEkNsaVNvdXJjZUFwaUhlYWRlchImCgRuYW1lGAEgASgJQhi6SBVyExABMg9eW0EtWmEtejAtOS1dKyQSDQoFdmFsdWUYAiABKAkqrQEKElNvdXJjZUFwaUlucHV0TW9kZRIlCiFTT1VSQ0VfQVBJX0lOUFVUX01PREVfVU5TUEVDSUZJRUQQABIeChpTT1VSQ0VfQVBJX0lOUFVUX01PREVfTk9ORRABEigKJFNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX09CSkVDVBACEiYKIlNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX0JPRFkQAyqhAQoWU291cmNlQXBpT3BlcmF0aW9uS2luZBIpCiVTT1VSQ0VfQVBJX09QRVJBVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASKgomU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9IVFRQX1JFUVVFU1QQARIwCixTT1VSQ0VfQVBJX09QRVJBVElPTl9LSU5EX1NUUlVDVFVSRURfUkVRVUVTVBACKrABChVTb3VyY2VBcGlTZWxlY3RvcktpbmQSKAokU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX1VOU1BFQ0lGSUVEEAASIQodU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX05PTkUQARIhCh1TT1VSQ0VfQVBJX1NFTEVDVE9SX0tJTkRfUEFUSBACEicKI1NPVVJDRV9BUElfU0VMRUNUT1JfS0lORF9JREVOVElGSUVSEAMqpQEKGVNvdXJjZUFwaVBhZ2luYXRpb25Qb2xpY3kSLAooU09VUkNFX0FQSV9QQUdJTkFUSU9OX1BPTElDWV9VTlNQRUNJRklFRBAAEiUKIVNPVVJDRV9BUElfUEFHSU5BVElPTl9QT0xJQ1lfTk9ORRABEjMKL1NPVVJDRV9BUElfUEFHSU5BVElPTl9QT0xJQ1lfQ09OVElOVUFUSU9OX1RPS0VOEAIqjgEKFFNvdXJjZUFwaUV4ZWN1dGVNb2RlEicKI1NPVVJDRV9BUElfRVhFQ1VURV9NT0RFX1VOU1BFQ0lGSUVEEAASIwofU09VUkNFX0FQSV9FWEVDVVRFX01PREVfRVhFQ1VURRABEigKJFNPVVJDRV9BUElfRVhFQ1VURV9NT0RFX1BSRVZJRVdfT05MWRACKrcBChFTb3VyY2VBcGlCb2R5S2luZBIkCiBTT1VSQ0VfQVBJX0JPRFlfS0lORF9VTlNQRUNJRklFRBAAEh0KGVNPVVJDRV9BUElfQk9EWV9LSU5EX05PTkUQARIdChlTT1VSQ0VfQVBJX0JPRFlfS0lORF9KU09OEAISHQoZU09VUkNFX0FQSV9CT0RZX0tJTkRfVEVYVBADEh8KG1NPVVJDRV9BUElfQk9EWV9LSU5EX0JJTkFSWRAEYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_google_protobuf_struct,
@@ -205,9 +205,9 @@ export type SourceApiPreview = Message<"onequery.cli.v1.SourceApiPreview"> & {
   selector: string;
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceApiOperationKind kind = 4;
+   * @generated from field: onequery.cli.v1.SourceApiOperationKind kind = 4;
    */
-  kind: CliSourceApiOperationKind;
+  kind: SourceApiOperationKind;
 
   /**
    * @generated from field: string method = 5;
@@ -230,9 +230,9 @@ export type SourceApiPreview = Message<"onequery.cli.v1.SourceApiPreview"> & {
   headerNames: string[];
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceApiBodyKind body_kind = 9;
+   * @generated from field: onequery.cli.v1.SourceApiBodyKind body_kind = 9;
    */
-  bodyKind: CliSourceApiBodyKind;
+  bodyKind: SourceApiBodyKind;
 
   /**
    * @generated from field: repeated string body_paths = 10;
@@ -240,9 +240,9 @@ export type SourceApiPreview = Message<"onequery.cli.v1.SourceApiPreview"> & {
   bodyPaths: string[];
 
   /**
-   * @generated from field: onequery.cli.v1.CliSourceApiPaginationPolicy pagination_policy = 11;
+   * @generated from field: onequery.cli.v1.SourceApiPaginationPolicy pagination_policy = 11;
    */
-  paginationPolicy: CliSourceApiPaginationPolicy;
+  paginationPolicy: SourceApiPaginationPolicy;
 };
 
 /**
@@ -268,9 +268,9 @@ export type StartSourceApiExecution =
     draft?: SourceApiDraft;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceApiExecuteMode mode = 3;
+     * @generated from field: onequery.cli.v1.SourceApiExecuteMode mode = 3;
      */
-    mode: CliSourceApiExecuteMode;
+    mode: SourceApiExecuteMode;
   };
 
 /**
@@ -445,9 +445,9 @@ export type CliSourceApiSource =
     sourceKey: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceProvider provider = 2;
+     * @generated from field: onequery.cli.v1.SourceProvider provider = 2;
      */
-    provider: CliSourceProvider;
+    provider: SourceProvider;
 
     /**
      * @generated from field: string display_name = 3;
@@ -473,9 +473,9 @@ export type CliSourceApiOperation =
     name: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceApiOperationKind kind = 2;
+     * @generated from field: onequery.cli.v1.SourceApiOperationKind kind = 2;
      */
-    kind: CliSourceApiOperationKind;
+    kind: SourceApiOperationKind;
 
     /**
      * @generated from field: string summary = 3;
@@ -488,9 +488,9 @@ export type CliSourceApiOperation =
     description: string;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceApiSelectorKind selector_kind = 5;
+     * @generated from field: onequery.cli.v1.SourceApiSelectorKind selector_kind = 5;
      */
-    selectorKind: CliSourceApiSelectorKind;
+    selectorKind: SourceApiSelectorKind;
 
     /**
      * @generated from field: string selector_label = 6;
@@ -513,9 +513,9 @@ export type CliSourceApiOperation =
     headerPolicy?: CliSourceApiHeaderPolicy;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceApiPaginationPolicy pagination_policy = 10;
+     * @generated from field: onequery.cli.v1.SourceApiPaginationPolicy pagination_policy = 10;
      */
-    paginationPolicy: CliSourceApiPaginationPolicy;
+    paginationPolicy: SourceApiPaginationPolicy;
 
     /**
      * @generated from field: repeated onequery.cli.v1.CliSourceApiExample examples = 11;
@@ -589,9 +589,9 @@ export type CliSourceApiFieldPolicy =
     acceptsInput: boolean;
 
     /**
-     * @generated from field: onequery.cli.v1.CliSourceApiInputMode input_mode = 6;
+     * @generated from field: onequery.cli.v1.SourceApiInputMode input_mode = 6;
      */
-    inputMode: CliSourceApiInputMode;
+    inputMode: SourceApiInputMode;
 
     /**
      * @generated from field: bool merge_patches = 7;
@@ -676,177 +676,177 @@ export const CliSourceApiHeaderSchema: GenMessage<CliSourceApiHeader> /*@__PURE_
   messageDesc(file_onequery_cli_v1_source_api, 16);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiInputMode
+ * @generated from enum onequery.cli.v1.SourceApiInputMode
  */
-export enum CliSourceApiInputMode {
+export enum SourceApiInputMode {
   /**
-   * @generated from enum value: CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_INPUT_MODE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_INPUT_MODE_NONE = 1;
+   * @generated from enum value: SOURCE_API_INPUT_MODE_NONE = 1;
    */
   NONE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT = 2;
+   * @generated from enum value: SOURCE_API_INPUT_MODE_REQUEST_OBJECT = 2;
    */
   REQUEST_OBJECT = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
+   * @generated from enum value: SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
    */
   REQUEST_BODY = 3,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiInputMode.
+ * Describes the enum onequery.cli.v1.SourceApiInputMode.
  */
-export const CliSourceApiInputModeSchema: GenEnum<CliSourceApiInputMode> /*@__PURE__*/ =
+export const SourceApiInputModeSchema: GenEnum<SourceApiInputMode> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 0);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiOperationKind
+ * @generated from enum onequery.cli.v1.SourceApiOperationKind
  */
-export enum CliSourceApiOperationKind {
+export enum SourceApiOperationKind {
   /**
-   * @generated from enum value: CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_OPERATION_KIND_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST = 1;
+   * @generated from enum value: SOURCE_API_OPERATION_KIND_HTTP_REQUEST = 1;
    */
   HTTP_REQUEST = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST = 2;
+   * @generated from enum value: SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST = 2;
    */
   STRUCTURED_REQUEST = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiOperationKind.
+ * Describes the enum onequery.cli.v1.SourceApiOperationKind.
  */
-export const CliSourceApiOperationKindSchema: GenEnum<CliSourceApiOperationKind> /*@__PURE__*/ =
+export const SourceApiOperationKindSchema: GenEnum<SourceApiOperationKind> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 1);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiSelectorKind
+ * @generated from enum onequery.cli.v1.SourceApiSelectorKind
  */
-export enum CliSourceApiSelectorKind {
+export enum SourceApiSelectorKind {
   /**
-   * @generated from enum value: CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_SELECTOR_KIND_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_SELECTOR_KIND_NONE = 1;
+   * @generated from enum value: SOURCE_API_SELECTOR_KIND_NONE = 1;
    */
   NONE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_SELECTOR_KIND_PATH = 2;
+   * @generated from enum value: SOURCE_API_SELECTOR_KIND_PATH = 2;
    */
   PATH = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER = 3;
+   * @generated from enum value: SOURCE_API_SELECTOR_KIND_IDENTIFIER = 3;
    */
   IDENTIFIER = 3,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiSelectorKind.
+ * Describes the enum onequery.cli.v1.SourceApiSelectorKind.
  */
-export const CliSourceApiSelectorKindSchema: GenEnum<CliSourceApiSelectorKind> /*@__PURE__*/ =
+export const SourceApiSelectorKindSchema: GenEnum<SourceApiSelectorKind> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 2);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiPaginationPolicy
+ * @generated from enum onequery.cli.v1.SourceApiPaginationPolicy
  */
-export enum CliSourceApiPaginationPolicy {
+export enum SourceApiPaginationPolicy {
   /**
-   * @generated from enum value: CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_PAGINATION_POLICY_NONE = 1;
+   * @generated from enum value: SOURCE_API_PAGINATION_POLICY_NONE = 1;
    */
   NONE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
+   * @generated from enum value: SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
    */
   CONTINUATION_TOKEN = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiPaginationPolicy.
+ * Describes the enum onequery.cli.v1.SourceApiPaginationPolicy.
  */
-export const CliSourceApiPaginationPolicySchema: GenEnum<CliSourceApiPaginationPolicy> /*@__PURE__*/ =
+export const SourceApiPaginationPolicySchema: GenEnum<SourceApiPaginationPolicy> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 3);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiExecuteMode
+ * @generated from enum onequery.cli.v1.SourceApiExecuteMode
  */
-export enum CliSourceApiExecuteMode {
+export enum SourceApiExecuteMode {
   /**
-   * @generated from enum value: CLI_SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
+   * @generated from enum value: SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
    */
   EXECUTE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
+   * @generated from enum value: SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
    */
   PREVIEW_ONLY = 2,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiExecuteMode.
+ * Describes the enum onequery.cli.v1.SourceApiExecuteMode.
  */
-export const CliSourceApiExecuteModeSchema: GenEnum<CliSourceApiExecuteMode> /*@__PURE__*/ =
+export const SourceApiExecuteModeSchema: GenEnum<SourceApiExecuteMode> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 4);
 
 /**
- * @generated from enum onequery.cli.v1.CliSourceApiBodyKind
+ * @generated from enum onequery.cli.v1.SourceApiBodyKind
  */
-export enum CliSourceApiBodyKind {
+export enum SourceApiBodyKind {
   /**
-   * @generated from enum value: CLI_SOURCE_API_BODY_KIND_UNSPECIFIED = 0;
+   * @generated from enum value: SOURCE_API_BODY_KIND_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_BODY_KIND_NONE = 1;
+   * @generated from enum value: SOURCE_API_BODY_KIND_NONE = 1;
    */
   NONE = 1,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_BODY_KIND_JSON = 2;
+   * @generated from enum value: SOURCE_API_BODY_KIND_JSON = 2;
    */
   JSON = 2,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_BODY_KIND_TEXT = 3;
+   * @generated from enum value: SOURCE_API_BODY_KIND_TEXT = 3;
    */
   TEXT = 3,
 
   /**
-   * @generated from enum value: CLI_SOURCE_API_BODY_KIND_BINARY = 4;
+   * @generated from enum value: SOURCE_API_BODY_KIND_BINARY = 4;
    */
   BINARY = 4,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliSourceApiBodyKind.
+ * Describes the enum onequery.cli.v1.SourceApiBodyKind.
  */
-export const CliSourceApiBodyKindSchema: GenEnum<CliSourceApiBodyKind> /*@__PURE__*/ =
+export const SourceApiBodyKindSchema: GenEnum<SourceApiBodyKind> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_source_api, 5);

@@ -77,7 +77,7 @@ macro_rules! query_parameter_types {
             }
         }
 
-        impl From<QueryRequestParameterType> for types::CliQueryParameterType {
+        impl From<QueryRequestParameterType> for types::QueryParameterType {
             fn from(value: QueryRequestParameterType) -> Self {
                 match value {
                     $(
@@ -106,19 +106,19 @@ macro_rules! query_parameter_types {
             }
 
             pub(crate) fn from_generated(
-                value: Option<EnumValue<types::CliQueryParameterType>>,
+                value: Option<EnumValue<types::QueryParameterType>>,
             ) -> Self {
                 match value {
                     Some(value) => match value.as_known() {
                         $(
-                            Some(types::CliQueryParameterType::$generated) => Self::$variant,
+                            Some(types::QueryParameterType::$generated) => Self::$variant,
                         )+
-                        Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED)
+                        Some(types::QueryParameterType::QUERY_PARAMETER_TYPE_UNSPECIFIED)
                         | None => Self::Unknown(value.to_string()),
                     },
                     None => Self::Unknown(
                         EnumValue::from(
-                            types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED,
+                            types::QueryParameterType::QUERY_PARAMETER_TYPE_UNSPECIFIED,
                         )
                         .to_string(),
                     ),
@@ -167,19 +167,19 @@ macro_rules! query_parameter_types {
 query_parameter_types! {
     String => {
         label: "string",
-        generated: CLI_QUERY_PARAMETER_TYPE_STRING,
+        generated: QUERY_PARAMETER_TYPE_STRING,
     },
     Number => {
         label: "number",
-        generated: CLI_QUERY_PARAMETER_TYPE_NUMBER,
+        generated: QUERY_PARAMETER_TYPE_NUMBER,
     },
     Boolean => {
         label: "boolean",
-        generated: CLI_QUERY_PARAMETER_TYPE_BOOLEAN,
+        generated: QUERY_PARAMETER_TYPE_BOOLEAN,
     },
     Null => {
         label: "null",
-        generated: CLI_QUERY_PARAMETER_TYPE_NULL,
+        generated: QUERY_PARAMETER_TYPE_NULL,
     },
 }
 
@@ -203,7 +203,7 @@ pub(crate) fn query_request_parameter_to_generated(
     parameter: QueryRequestParameter,
 ) -> types::CliQueryParameter {
     types::CliQueryParameter {
-        r#type: Some(types::CliQueryParameterType::from(parameter.parameter_type).into()),
+        r#type: Some(types::QueryParameterType::from(parameter.parameter_type).into()),
         value: parameter.value,
         ..Default::default()
     }
@@ -267,7 +267,7 @@ mod tests {
     fn query_request_parameter_to_generated_maps_known_surface() {
         assert_eq!(
             types::CliQueryParameter {
-                r#type: Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN.into(),),
+                r#type: Some(types::QueryParameterType::QUERY_PARAMETER_TYPE_BOOLEAN.into(),),
                 value: Some("true".to_owned()),
                 ..Default::default()
             },
@@ -288,10 +288,10 @@ mod tests {
                 QueryCanonicalParameterType::Null,
             ],
             [
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING,
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NUMBER,
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN,
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL,
+                types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING,
+                types::QueryParameterType::QUERY_PARAMETER_TYPE_NUMBER,
+                types::QueryParameterType::QUERY_PARAMETER_TYPE_BOOLEAN,
+                types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL,
             ]
             .into_iter()
             .map(|value| Some(value.into()))
@@ -303,9 +303,9 @@ mod tests {
     #[test]
     fn query_canonical_parameter_type_preserves_unknown_generated_values() {
         assert_eq!(
-            QueryCanonicalParameterType::Unknown("CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
+            QueryCanonicalParameterType::Unknown("QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
             QueryCanonicalParameterType::from_generated(Some(
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED.into(),
+                types::QueryParameterType::QUERY_PARAMETER_TYPE_UNSPECIFIED.into(),
             ))
         );
     }
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn query_canonical_parameter_type_preserves_missing_generated_values_as_unspecified() {
         assert_eq!(
-            QueryCanonicalParameterType::Unknown("CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
+            QueryCanonicalParameterType::Unknown("QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
             QueryCanonicalParameterType::from_generated(None)
         );
     }

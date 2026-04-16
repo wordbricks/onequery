@@ -187,7 +187,7 @@ pub(crate) async fn load_source_connect_guide(
         .cli()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
             org_slug: Some(org_slug),
-            provider: Some(types::CliSourceProvider::from(source).into()),
+            provider: Some(types::SourceProvider::from(source).into()),
             ..Default::default()
         })
         .await
@@ -656,17 +656,17 @@ fn source_connect_input_failure(message: impl Into<String>) -> ApiFailure {
 
 fn ssl_mode_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectSslMode>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectSslMode>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("disable") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_DISABLE.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_DISABLE.into(),
         )),
         Some("prefer") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_PREFER.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_PREFER.into(),
         )),
         Some("require") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_REQUIRE.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.sslMode must be one of `disable`, `prefer`, `require`; got `{other}`"
@@ -676,14 +676,14 @@ fn ssl_mode_from_input(
 
 fn amplitude_region_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectAmplitudeRegion>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectAmplitudeRegion>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("us") => Ok(Some(
-            types::CliSourceConnectAmplitudeRegion::CLI_SOURCE_CONNECT_AMPLITUDE_REGION_US.into(),
+            types::SourceConnectAmplitudeRegion::SOURCE_CONNECT_AMPLITUDE_REGION_US.into(),
         )),
         Some("eu") => Ok(Some(
-            types::CliSourceConnectAmplitudeRegion::CLI_SOURCE_CONNECT_AMPLITUDE_REGION_EU.into(),
+            types::SourceConnectAmplitudeRegion::SOURCE_CONNECT_AMPLITUDE_REGION_EU.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.region must be one of `us`, `eu`; got `{other}`"
@@ -693,17 +693,17 @@ fn amplitude_region_from_input(
 
 fn mixpanel_region_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectMixpanelRegion>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectMixpanelRegion>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("us") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_US.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_US.into(),
         )),
         Some("eu") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_EU.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_EU.into(),
         )),
         Some("in") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_IN.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_IN.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.region must be one of `us`, `eu`, `in`; got `{other}`"
@@ -1019,7 +1019,7 @@ mod tests {
         assert_eq!(postgres.port, Some(5432));
         assert_eq!(
             postgres.ssl_mode,
-            Some(types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE.into())
+            Some(types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_REQUIRE.into())
         );
     }
 }

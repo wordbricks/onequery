@@ -270,17 +270,17 @@ pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> Source
 }
 
 fn source_test_unsupported_reason_to_str(
-    value: EnumValue<types::CliSourceTestUnsupportedReason>,
+    value: EnumValue<types::SourceTestUnsupportedReason>,
 ) -> String {
     match value.as_known() {
-        Some(types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
+        Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
             "oauth".to_owned()
         }
         Some(
-            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
+            types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
         ) => "not_implemented".to_owned(),
         Some(
-            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED,
+            types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED,
         )
         | None => {
             "unknown".to_owned()

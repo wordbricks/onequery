@@ -587,7 +587,7 @@ mod tests {
                 ApiFailure::Problem(ApiProblem {
                     title: "Query Execution Unavailable".to_owned(),
                     detail: "query execution is temporarily unavailable".to_owned(),
-                    code: types::CliProblemCode::CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE,
+                    code: types::ProblemCode::PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE,
                     retryable: true,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
@@ -599,7 +599,7 @@ mod tests {
                 ApiFailure::Problem(ApiProblem {
                     title: "Invalid Request".to_owned(),
                     detail: "query request is invalid".to_owned(),
-                    code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
+                    code: types::ProblemCode::PROBLEM_CODE_INVALID_REQUEST,
                     retryable: false,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
@@ -641,7 +641,7 @@ mod tests {
                 parameters: vec![
                     super::types::CliQueryParameter {
                         r#type: Some(
-                            super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
+                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING
                                 .into(),
                         ),
                         value: Some("acme".to_owned()),
@@ -649,7 +649,7 @@ mod tests {
                     },
                     super::types::CliQueryParameter {
                         r#type: Some(
-                            super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
+                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL
                                 .into(),
                         ),
                         value: None,
@@ -672,10 +672,10 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(
-                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
                     ),
                     queryable: Some(true),
-                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
                 row_count: Some(1),
@@ -683,7 +683,7 @@ mod tests {
                 columns: vec![super::types::CliQueryColumn {
                     name: Some("value".to_owned()),
                     logical_type: Some(
-                        super::types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER.into(),
+                        super::types::QueryLogicalType::QUERY_LOGICAL_TYPE_NUMBER.into(),
                     ),
                     ..Default::default()
                 }],
@@ -748,7 +748,7 @@ mod tests {
                     parameters: vec![
                         super::types::CliQueryParameter {
                             r#type: Some(
-                                super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
+                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING
                                     .into(),
                             ),
                             value: Some("acme".to_owned()),
@@ -756,7 +756,7 @@ mod tests {
                         },
                         super::types::CliQueryParameter {
                             r#type: Some(
-                                super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
+                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL
                                     .into(),
                             ),
                             value: None,
@@ -782,10 +782,10 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(
-                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
                     ),
                     queryable: Some(true),
-                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
                 truncated: Some(false),
@@ -873,10 +873,10 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(
-                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                        super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into(),
                     ),
                     queryable: Some(true),
-                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
                 row_count: Some(1),

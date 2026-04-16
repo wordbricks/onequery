@@ -595,7 +595,7 @@ describe("CLI self-host smoke", () => {
       expect(useResponse.payload).toMatchObject({
         content: expect.any(String),
         description: expect.any(String),
-        format: "CLI_CONTENT_FORMAT_MARKDOWN",
+        format: "CONTENT_FORMAT_MARKDOWN",
         source: "CLI_USE_SOURCE_GITHUB",
         title: expect.any(String),
       });
@@ -607,7 +607,7 @@ describe("CLI self-host smoke", () => {
         requestId: "req_cli_session_123",
       });
       expect(sessionResponse.payload).toMatchObject({
-        authMode: "CLI_AUTH_MODE_BROWSER_SESSION",
+        authMode: "AUTH_MODE_BROWSER_SESSION",
         user: {
           email: "owner@example.com",
         },
@@ -639,9 +639,7 @@ describe("CLI self-host smoke", () => {
         requestId: "req_cli_org_123",
       });
       expect(organizationResponse.payload).toMatchObject({
-        capabilities: expect.arrayContaining([
-          "CLI_ORG_CAPABILITY_SOURCE_CONNECT",
-        ]),
+        capabilities: expect.arrayContaining(["ORG_CAPABILITY_SOURCE_CONNECT"]),
         slug: "owner-org",
       });
 
@@ -649,7 +647,7 @@ describe("CLI self-host smoke", () => {
         baseUrl,
         body: {
           orgSlug: "owner-org",
-          provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          provider: "SOURCE_PROVIDER_POSTGRES",
         },
         cookieHeader,
         method: "GetSourceConnectGuide",
@@ -686,9 +684,9 @@ describe("CLI self-host smoke", () => {
         nextCommand: "onequery source show Warehouse",
         source: {
           name: "Warehouse",
-          provider: "CLI_SOURCE_PROVIDER_POSTGRES",
+          provider: "SOURCE_PROVIDER_POSTGRES",
           queryable: true,
-          status: "CLI_SOURCE_STATUS_ACTIVE",
+          status: "SOURCE_STATUS_ACTIVE",
         },
       });
 
@@ -706,7 +704,7 @@ describe("CLI self-host smoke", () => {
         sources: [
           {
             name: "Warehouse",
-            status: "CLI_SOURCE_STATUS_ACTIVE",
+            status: "SOURCE_STATUS_ACTIVE",
           },
         ],
         page: {

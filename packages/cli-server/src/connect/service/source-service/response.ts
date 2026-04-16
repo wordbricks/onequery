@@ -1,8 +1,8 @@
 import { getCliQueryableDatabaseProviderType } from "../../../source/model";
-import { CliContentFormat } from "../../gen/onequery/cli/v1/common_pb";
+import { ContentFormat } from "../../gen/onequery/cli/v1/common_pb";
 import {
-  CliSourceStatus,
-  CliSourceTestUnsupportedReason,
+  SourceStatus,
+  SourceTestUnsupportedReason,
 } from "../../gen/onequery/cli/v1/source_pb";
 import { toCliSourceProvider } from "../source-provider";
 import type {
@@ -15,18 +15,18 @@ import type {
 export function toCliContentFormat(value: "markdown") {
   switch (value) {
     case "markdown":
-      return CliContentFormat.MARKDOWN;
+      return ContentFormat.MARKDOWN;
   }
 }
 
 function toCliSourceStatus(value: BuildCliSourceInput["status"]) {
   switch (value) {
     case "active":
-      return CliSourceStatus.ACTIVE;
+      return SourceStatus.ACTIVE;
     case "error":
-      return CliSourceStatus.ERROR;
+      return SourceStatus.ERROR;
     case "disconnected":
-      return CliSourceStatus.DISCONNECTED;
+      return SourceStatus.DISCONNECTED;
   }
 }
 
@@ -58,9 +58,9 @@ export function buildGetSourceResponse(
 function toCliSourceTestUnsupportedReason(value: "oauth" | "not_implemented") {
   switch (value) {
     case "oauth":
-      return CliSourceTestUnsupportedReason.OAUTH;
+      return SourceTestUnsupportedReason.OAUTH;
     case "not_implemented":
-      return CliSourceTestUnsupportedReason.NOT_IMPLEMENTED;
+      return SourceTestUnsupportedReason.NOT_IMPLEMENTED;
   }
 }
 

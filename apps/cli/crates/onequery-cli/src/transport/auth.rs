@@ -167,8 +167,8 @@ fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
     let payload = match problem.code {
-        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
-        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
+        types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
+        types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
         _ => return Err(ApiFailure::Problem(problem)),
     };
 
@@ -391,13 +391,13 @@ fn timestamp_to_datetime(
         .and_then(|nanos| chrono::DateTime::from_timestamp(timestamp.seconds, nanos))
 }
 
-fn auth_mode_from_generated(mode: Option<buffa::EnumValue<types::CliAuthMode>>) -> Option<String> {
+fn auth_mode_from_generated(mode: Option<buffa::EnumValue<types::AuthMode>>) -> Option<String> {
     match mode.and_then(|mode| mode.as_known()) {
-        Some(types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION) => {
+        Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION) => {
             Some("browser_session".to_owned())
         }
-        Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
-        Some(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED) | None => None,
+        Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
+        Some(types::AuthMode::AUTH_MODE_UNSPECIFIED) | None => None,
     }
 }
 
@@ -441,13 +441,13 @@ mod tests {
         assert_eq!(
             [
                 auth_mode_from_generated(Some(
-                    types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION.into(),
+                    types::AuthMode::AUTH_MODE_BROWSER_SESSION.into(),
                 )),
                 auth_mode_from_generated(Some(
-                    types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+                    types::AuthMode::AUTH_MODE_BEARER_TOKEN.into(),
                 )),
                 auth_mode_from_generated(Some(
-                    types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED.into(),
+                    types::AuthMode::AUTH_MODE_UNSPECIFIED.into(),
                 )),
                 auth_mode_from_generated(None),
             ],
@@ -552,7 +552,7 @@ mod tests {
         let denied = interpret_login_poll_problem(ApiProblem {
             title: "Login Denied".to_owned(),
             detail: "device authorization was denied".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
@@ -564,7 +564,7 @@ mod tests {
         let expired = interpret_login_poll_problem(ApiProblem {
             title: "Login Session Expired".to_owned(),
             detail: "device authorization session expired".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
@@ -592,7 +592,7 @@ mod tests {
     #[test]
     fn whoami_from_generated_maps_session_response() {
         let response = types::GetSessionResponse {
-            auth_mode: Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into()),
+            auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
             user: buffa::MessageField::some(types::CliAuthUser {
                 id: Some("user-1".to_owned()),
                 email: Some("alice@example.com".to_owned()),
@@ -626,7 +626,7 @@ mod tests {
     fn refreshed_auth_session_from_generated_maps_refresh_response() {
         let response = types::RefreshSessionResponse {
             access_token: Some("session-token-refreshed".to_owned()),
-            auth_mode: Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into()),
+            auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
             user: buffa::MessageField::some(types::CliAuthUser {
                 id: Some("user-1".to_owned()),
                 email: Some("alice@example.com".to_owned()),
@@ -664,7 +664,7 @@ mod tests {
         let failure = interpret_login_poll_problem(ApiProblem {
             title: "Login Rate Limited".to_owned(),
             detail: "polling is temporarily rate limited".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
             retryable: true,
             retry_after_ms: Some(10_000),
             stage: ErrorStage::Auth,
@@ -679,7 +679,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Login Rate Limited".to_owned(),
                 detail: "polling is temporarily rate limited".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
+                code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
                 retryable: true,
                 retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,

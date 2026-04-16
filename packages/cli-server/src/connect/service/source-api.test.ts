@@ -13,10 +13,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cliConnectRequestContextKey } from "../context";
 import { createCliConnectProblem } from "../error";
 import {
-  CliSourceApiBodyKind,
-  CliSourceApiExecuteMode,
-  CliSourceApiOperationKind,
-  CliSourceApiPaginationPolicy,
+  SourceApiBodyKind,
+  SourceApiExecuteMode,
+  SourceApiOperationKind,
+  SourceApiPaginationPolicy,
   DescribeSourceApiRequestSchema,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequestSchema,
@@ -26,14 +26,14 @@ import type {
   DescribeSourceApiResponse,
   ExecuteSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
-import { CliSourceProvider } from "../gen/onequery/cli/v1/source_pb";
+import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
 } from "./source-api";
 
-function summarizeCliSourceProvider(provider: CliSourceProvider): string {
-  return CliSourceProvider[provider].toLowerCase();
+function summarizeCliSourceProvider(provider: SourceProvider): string {
+  return SourceProvider[provider].toLowerCase();
 }
 
 expect.addSnapshotSerializer({
@@ -327,9 +327,8 @@ function summarizeDescribeSourceApiResponse(
     notes: response.notes,
     operations: response.operations.map((operation) => ({
       ...operation,
-      kind: CliSourceApiOperationKind[operation.kind],
-      paginationPolicy:
-        CliSourceApiPaginationPolicy[operation.paginationPolicy],
+      kind: SourceApiOperationKind[operation.kind],
+      paginationPolicy: SourceApiPaginationPolicy[operation.paginationPolicy],
     })),
     source: response.source
       ? {
@@ -365,15 +364,14 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
     continuationToken: response.continuationToken ?? null,
     preview: preview
       ? {
-          bodyKind: CliSourceApiBodyKind[preview.bodyKind],
+          bodyKind: SourceApiBodyKind[preview.bodyKind],
           bodyPaths: preview.bodyPaths,
           headerNames: preview.headerNames,
           host: preview.host ?? null,
-          kind: CliSourceApiOperationKind[preview.kind],
+          kind: SourceApiOperationKind[preview.kind],
           method: preview.method ?? null,
           operation: preview.operation,
-          paginationPolicy:
-            CliSourceApiPaginationPolicy[preview.paginationPolicy],
+          paginationPolicy: SourceApiPaginationPolicy[preview.paginationPolicy],
           source: preview.source
             ? {
                 ...preview.source,
@@ -462,7 +460,7 @@ describe("source api connect service", () => {
             operation: "fetch",
             selector: "/issues",
           },
-          mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
+          mode: SourceApiExecuteMode.PREVIEW_ONLY,
         },
       },
     });
@@ -510,7 +508,7 @@ describe("source api connect service", () => {
             descriptorVersion: "github-v1",
             operation: "fetch",
           },
-          mode: CliSourceApiExecuteMode.PREVIEW_ONLY,
+          mode: SourceApiExecuteMode.PREVIEW_ONLY,
         },
       },
     });
@@ -540,7 +538,7 @@ describe("source api connect service", () => {
             operation: "fetch",
             selector: "/issues",
           },
-          mode: CliSourceApiExecuteMode.EXECUTE,
+          mode: SourceApiExecuteMode.EXECUTE,
         },
       },
     });
@@ -592,7 +590,7 @@ describe("source api connect service", () => {
             descriptorVersion: "github-v1",
             operation: "fetch",
           },
-          mode: CliSourceApiExecuteMode.EXECUTE,
+          mode: SourceApiExecuteMode.EXECUTE,
         },
       },
     });
@@ -768,7 +766,7 @@ describe("source api connect service", () => {
             descriptorVersion: "github-v1",
             operation: "fetch",
           },
-          mode: CliSourceApiExecuteMode.EXECUTE,
+          mode: SourceApiExecuteMode.EXECUTE,
         },
       },
     });
@@ -806,7 +804,7 @@ describe("source api connect service", () => {
             descriptorVersion: "github-v1",
             operation: "fetch",
           },
-          mode: CliSourceApiExecuteMode.EXECUTE,
+          mode: SourceApiExecuteMode.EXECUTE,
         },
       },
     });
@@ -837,7 +835,7 @@ describe("source api connect service", () => {
       input: {
         case: "start",
         value: {
-          mode: CliSourceApiExecuteMode.EXECUTE,
+          mode: SourceApiExecuteMode.EXECUTE,
         },
       },
     });

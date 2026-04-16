@@ -3,7 +3,7 @@ import {
   sanitizeCliRemoteText,
   sanitizeUndefinedableCliRemoteText,
 } from "../../../transport/sanitization";
-import { CliQueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
+import { QueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
 import { buildCliSource } from "../source-service/response";
 import type {
   ExecuteQueryColumnMessage,
@@ -121,19 +121,19 @@ function buildCliQueryRow(row: readonly string[]): ExecuteQueryRowMessage {
 function toCliQueryLogicalType(value: string) {
   switch (value) {
     case "string":
-      return CliQueryLogicalType.STRING;
+      return QueryLogicalType.STRING;
     case "number":
-      return CliQueryLogicalType.NUMBER;
+      return QueryLogicalType.NUMBER;
     case "boolean":
-      return CliQueryLogicalType.BOOLEAN;
+      return QueryLogicalType.BOOLEAN;
     case "bigint":
-      return CliQueryLogicalType.BIGINT;
+      return QueryLogicalType.BIGINT;
     case "datetime":
-      return CliQueryLogicalType.DATETIME;
+      return QueryLogicalType.DATETIME;
     case "array":
-      return CliQueryLogicalType.ARRAY;
+      return QueryLogicalType.ARRAY;
     case "json":
-      return CliQueryLogicalType.JSON;
+      return QueryLogicalType.JSON;
     default:
       return undefined;
   }

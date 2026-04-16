@@ -71,7 +71,7 @@ macro_rules! source_connect_providers {
             }
         }
 
-        impl From<SourceConnectProvider> for types::CliSourceProvider {
+        impl From<SourceConnectProvider> for types::SourceProvider {
             fn from(value: SourceConnectProvider) -> Self {
                 match value {
                     $(
@@ -81,15 +81,15 @@ macro_rules! source_connect_providers {
             }
         }
 
-        impl TryFrom<types::CliSourceProvider> for SourceConnectProvider {
+        impl TryFrom<types::SourceProvider> for SourceConnectProvider {
             type Error = ();
 
-            fn try_from(value: types::CliSourceProvider) -> Result<Self, Self::Error> {
+            fn try_from(value: types::SourceProvider) -> Result<Self, Self::Error> {
                 match value {
                     $(
-                        types::CliSourceProvider::$generated => Ok(Self::$variant),
+                        types::SourceProvider::$generated => Ok(Self::$variant),
                     )+
-                    types::CliSourceProvider::CLI_SOURCE_PROVIDER_UNSPECIFIED => Err(()),
+                    types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED => Err(()),
                 }
             }
         }
@@ -107,59 +107,59 @@ macro_rules! source_connect_providers {
 source_connect_providers! {
     Postgres => {
         label: "postgres",
-        generated: CLI_SOURCE_PROVIDER_POSTGRES,
+        generated: SOURCE_PROVIDER_POSTGRES,
     },
     Supabase => {
         label: "supabase",
-        generated: CLI_SOURCE_PROVIDER_SUPABASE,
+        generated: SOURCE_PROVIDER_SUPABASE,
     },
     Mysql => {
         label: "mysql",
-        generated: CLI_SOURCE_PROVIDER_MYSQL,
+        generated: SOURCE_PROVIDER_MYSQL,
     },
     Mongodb => {
         label: "mongodb",
-        generated: CLI_SOURCE_PROVIDER_MONGODB,
+        generated: SOURCE_PROVIDER_MONGODB,
     },
     Bigquery => {
         label: "bigquery",
-        generated: CLI_SOURCE_PROVIDER_BIGQUERY,
+        generated: SOURCE_PROVIDER_BIGQUERY,
     },
     Laminar => {
         label: "laminar",
-        generated: CLI_SOURCE_PROVIDER_LAMINAR,
+        generated: SOURCE_PROVIDER_LAMINAR,
     },
     AwsAthenaConnector => {
         label: "aws_athena_connector",
-        generated: CLI_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR,
+        generated: SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR,
     },
     Ga => {
         label: "ga",
-        generated: CLI_SOURCE_PROVIDER_GA,
+        generated: SOURCE_PROVIDER_GA,
     },
     Amplitude => {
         label: "amplitude",
-        generated: CLI_SOURCE_PROVIDER_AMPLITUDE,
+        generated: SOURCE_PROVIDER_AMPLITUDE,
     },
     Mixpanel => {
         label: "mixpanel",
-        generated: CLI_SOURCE_PROVIDER_MIXPANEL,
+        generated: SOURCE_PROVIDER_MIXPANEL,
     },
     Posthog => {
         label: "posthog",
-        generated: CLI_SOURCE_PROVIDER_POSTHOG,
+        generated: SOURCE_PROVIDER_POSTHOG,
     },
     Sentry => {
         label: "sentry",
-        generated: CLI_SOURCE_PROVIDER_SENTRY,
+        generated: SOURCE_PROVIDER_SENTRY,
     },
     Github => {
         label: "github",
-        generated: CLI_SOURCE_PROVIDER_GITHUB,
+        generated: SOURCE_PROVIDER_GITHUB,
     },
     Linear => {
         label: "linear",
-        generated: CLI_SOURCE_PROVIDER_LINEAR,
+        generated: SOURCE_PROVIDER_LINEAR,
     },
 }
 
@@ -197,7 +197,7 @@ mod tests {
             SourceConnectProvider::supported()
                 .iter()
                 .copied()
-                .map(types::CliSourceProvider::from)
+                .map(types::SourceProvider::from)
                 .map(SourceConnectProvider::try_from)
                 .collect::<Result<Vec<_>, _>>()
                 .expect("supported providers should convert from generated values")

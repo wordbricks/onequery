@@ -8,7 +8,7 @@ import "google/protobuf/timestamp.proto";
 message GetSessionRequest {}
 
 message GetSessionResponse {
-  CliAuthMode auth_mode = 1 [
+  AuthMode auth_mode = 1 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -28,7 +28,7 @@ message RefreshSessionResponse {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliAuthMode auth_mode = 2 [
+  AuthMode auth_mode = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -92,7 +92,7 @@ message CliAuthorizedDeviceAuthorization {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliAuthMode auth_mode = 3 [
+  AuthMode auth_mode = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -105,8 +105,8 @@ message CliAuthorizedDeviceAuthorization {
   google.protobuf.Timestamp expires_at = 7;
 }
 
-enum CliAuthMode {
-  CLI_AUTH_MODE_UNSPECIFIED = 0;
-  CLI_AUTH_MODE_BROWSER_SESSION = 1;
-  CLI_AUTH_MODE_BEARER_TOKEN = 2;
+enum AuthMode {
+  AUTH_MODE_UNSPECIFIED = 0;
+  AUTH_MODE_BROWSER_SESSION = 1;
+  AUTH_MODE_BEARER_TOKEN = 2;
 }

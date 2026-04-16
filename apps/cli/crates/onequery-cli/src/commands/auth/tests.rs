@@ -696,8 +696,8 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
 
         let cli_error_detail = base64::engine::general_purpose::STANDARD_NO_PAD.encode(
             generated::types::CliErrorDetail {
-                code: Some(generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED.into()),
-                stage: Some(generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into()),
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
                 title: Some("Login Denied".to_owned()),
                 hint: Some("run `onequery auth login` again".to_owned()),
                 retryable: Some(false),

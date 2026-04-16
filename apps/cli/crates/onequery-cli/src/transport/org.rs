@@ -212,10 +212,10 @@ mod tests {
             name: Some("Acme".to_owned()),
             roles: vec!["member".to_owned(), "admin".to_owned()],
             capabilities: vec![
-                types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into(),
-                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
-                types::CliOrgCapability::CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
-                types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_READ.into(),
+                types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into(),
+                types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
+                types::OrgCapability::ORG_CAPABILITY_ORG_READ.into(),
             ],
             ..Default::default()
         });

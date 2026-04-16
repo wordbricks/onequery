@@ -64,7 +64,7 @@ message SourceApiPreview {
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   string selector = 3 [(buf.validate.field).string.min_len = 1];
-  CliSourceApiOperationKind kind = 4 [
+  SourceApiOperationKind kind = 4 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -78,12 +78,12 @@ message SourceApiPreview {
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
   ];
-  CliSourceApiBodyKind body_kind = 9 [
+  SourceApiBodyKind body_kind = 9 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   repeated string body_paths = 10 [(buf.validate.field).repeated.items.string.min_len = 1];
-  CliSourceApiPaginationPolicy pagination_policy = 11 [
+  SourceApiPaginationPolicy pagination_policy = 11 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -92,7 +92,7 @@ message SourceApiPreview {
 message StartSourceApiExecution {
   SourceApiTarget target = 1 [(buf.validate.field).required = true];
   SourceApiDraft draft = 2 [(buf.validate.field).required = true];
-  CliSourceApiExecuteMode mode = 3 [
+  SourceApiExecuteMode mode = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -145,7 +145,7 @@ message CliSourceApiSource {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  CliSourceProvider provider = 2 [
+  SourceProvider provider = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -160,13 +160,13 @@ message CliSourceApiOperation {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  CliSourceApiOperationKind kind = 2 [
+  SourceApiOperationKind kind = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   string summary = 3 [(buf.validate.field).string.min_len = 1];
   string description = 4 [(buf.validate.field).string.min_len = 1];
-  CliSourceApiSelectorKind selector_kind = 5 [
+  SourceApiSelectorKind selector_kind = 5 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -174,7 +174,7 @@ message CliSourceApiOperation {
   CliSourceApiMethodPolicy method_policy = 7 [(buf.validate.field).required = true];
   CliSourceApiFieldPolicy field_policy = 8 [(buf.validate.field).required = true];
   CliSourceApiHeaderPolicy header_policy = 9 [(buf.validate.field).required = true];
-  CliSourceApiPaginationPolicy pagination_policy = 10 [
+  SourceApiPaginationPolicy pagination_policy = 10 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -199,18 +199,18 @@ message CliSourceApiFieldPolicy {
   bool supports_nested_paths = 3;
   bool supports_array_paths = 4;
   bool accepts_input = 5;
-  CliSourceApiInputMode input_mode = 6 [
+  SourceApiInputMode input_mode = 6 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   bool merge_patches = 7;
 }
 
-enum CliSourceApiInputMode {
-  CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED = 0;
-  CLI_SOURCE_API_INPUT_MODE_NONE = 1;
-  CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT = 2;
-  CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
+enum SourceApiInputMode {
+  SOURCE_API_INPUT_MODE_UNSPECIFIED = 0;
+  SOURCE_API_INPUT_MODE_NONE = 1;
+  SOURCE_API_INPUT_MODE_REQUEST_OBJECT = 2;
+  SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
 }
 
 message CliSourceApiHeaderPolicy {
@@ -234,35 +234,35 @@ message CliSourceApiHeader {
   string value = 2;
 }
 
-enum CliSourceApiOperationKind {
-  CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED = 0;
-  CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST = 1;
-  CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST = 2;
+enum SourceApiOperationKind {
+  SOURCE_API_OPERATION_KIND_UNSPECIFIED = 0;
+  SOURCE_API_OPERATION_KIND_HTTP_REQUEST = 1;
+  SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST = 2;
 }
 
-enum CliSourceApiSelectorKind {
-  CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED = 0;
-  CLI_SOURCE_API_SELECTOR_KIND_NONE = 1;
-  CLI_SOURCE_API_SELECTOR_KIND_PATH = 2;
-  CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER = 3;
+enum SourceApiSelectorKind {
+  SOURCE_API_SELECTOR_KIND_UNSPECIFIED = 0;
+  SOURCE_API_SELECTOR_KIND_NONE = 1;
+  SOURCE_API_SELECTOR_KIND_PATH = 2;
+  SOURCE_API_SELECTOR_KIND_IDENTIFIER = 3;
 }
 
-enum CliSourceApiPaginationPolicy {
-  CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
-  CLI_SOURCE_API_PAGINATION_POLICY_NONE = 1;
-  CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
+enum SourceApiPaginationPolicy {
+  SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
+  SOURCE_API_PAGINATION_POLICY_NONE = 1;
+  SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
 }
 
-enum CliSourceApiExecuteMode {
-  CLI_SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
-  CLI_SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
-  CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
+enum SourceApiExecuteMode {
+  SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
+  SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
+  SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
 }
 
-enum CliSourceApiBodyKind {
-  CLI_SOURCE_API_BODY_KIND_UNSPECIFIED = 0;
-  CLI_SOURCE_API_BODY_KIND_NONE = 1;
-  CLI_SOURCE_API_BODY_KIND_JSON = 2;
-  CLI_SOURCE_API_BODY_KIND_TEXT = 3;
-  CLI_SOURCE_API_BODY_KIND_BINARY = 4;
+enum SourceApiBodyKind {
+  SOURCE_API_BODY_KIND_UNSPECIFIED = 0;
+  SOURCE_API_BODY_KIND_NONE = 1;
+  SOURCE_API_BODY_KIND_JSON = 2;
+  SOURCE_API_BODY_KIND_TEXT = 3;
+  SOURCE_API_BODY_KIND_BINARY = 4;
 }

@@ -9,7 +9,7 @@ import type {
   runCliQueryExecutionWorkflow,
 } from "../../../query/workflow";
 import {
-  CliQueryLogicalType,
+  QueryLogicalType,
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../../gen/onequery/cli/v1/query_pb";
@@ -53,7 +53,7 @@ export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
 
 export type ExecuteQueryColumnMessage = {
   name?: string;
-  logicalType?: CliQueryLogicalType;
+  logicalType?: QueryLogicalType;
 };
 
 export type ExecuteQueryRowMessage = {

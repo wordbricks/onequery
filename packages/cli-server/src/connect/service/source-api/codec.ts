@@ -2,7 +2,7 @@ import { fromJson, toJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
-  SourceApiBodyKind,
+  SourceApiBodyFormat,
   SourceApiDescriptor,
   SourceApiExecutionResult,
   SourceApiFieldPolicy,
@@ -17,12 +17,12 @@ import type {
 import { Result } from "better-result";
 
 import {
-  CliSourceApiBodyKind,
-  CliSourceApiExecuteMode,
-  CliSourceApiInputMode,
-  CliSourceApiOperationKind,
-  CliSourceApiPaginationPolicy,
-  CliSourceApiSelectorKind,
+  SourceApiBodyKind,
+  SourceApiExecuteMode,
+  SourceApiInputMode,
+  SourceApiOperationKind,
+  SourceApiPaginationPolicy,
+  SourceApiSelectorKind,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { SourceApiDraft as CliSourceApiDraft } from "../../gen/onequery/cli/v1/source_api_pb";
 import { cliServiceErr } from "../result";
@@ -95,9 +95,9 @@ function buildSourceApiTarget(input: {
 }
 
 export function isCliSourceApiPreviewOnlyMode(
-  value: CliSourceApiExecuteMode
+  value: SourceApiExecuteMode
 ): boolean {
-  return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
+  return value === SourceApiExecuteMode.PREVIEW_ONLY;
 }
 
 export function buildSourceApiDraft(
@@ -288,60 +288,58 @@ function buildCliSourceApiSource(value: SourceApiSource) {
 function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
   switch (value) {
     case "none":
-      return CliSourceApiInputMode.NONE;
+      return SourceApiInputMode.NONE;
     case "request_object":
-      return CliSourceApiInputMode.REQUEST_OBJECT;
+      return SourceApiInputMode.REQUEST_OBJECT;
     case "request_body":
-      return CliSourceApiInputMode.REQUEST_BODY;
+      return SourceApiInputMode.REQUEST_BODY;
   }
 }
 
 function toCliSourceApiOperationKind(
   value: SourceApiOperation["kind"]
-): CliSourceApiOperationKind {
+): SourceApiOperationKind {
   switch (value) {
     case "http_request":
-      return CliSourceApiOperationKind.HTTP_REQUEST;
+      return SourceApiOperationKind.HTTP_REQUEST;
     case "structured_request":
-      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+      return SourceApiOperationKind.STRUCTURED_REQUEST;
   }
 }
 
-function toCliSourceApiBodyKind(
-  value: SourceApiBodyKind
-): CliSourceApiBodyKind {
+function toCliSourceApiBodyKind(value: SourceApiBodyFormat): SourceApiBodyKind {
   switch (value) {
     case "none":
-      return CliSourceApiBodyKind.NONE;
+      return SourceApiBodyKind.NONE;
     case "json":
-      return CliSourceApiBodyKind.JSON;
+      return SourceApiBodyKind.JSON;
     case "text":
-      return CliSourceApiBodyKind.TEXT;
+      return SourceApiBodyKind.TEXT;
     case "binary":
-      return CliSourceApiBodyKind.BINARY;
+      return SourceApiBodyKind.BINARY;
   }
 }
 
 function toCliSourceApiPaginationPolicy(
   value: SourceApiOperation["paginationPolicy"]
-): CliSourceApiPaginationPolicy {
+): SourceApiPaginationPolicy {
   switch (value) {
     case "none":
-      return CliSourceApiPaginationPolicy.NONE;
+      return SourceApiPaginationPolicy.NONE;
     case "continuation_token":
-      return CliSourceApiPaginationPolicy.CONTINUATION_TOKEN;
+      return SourceApiPaginationPolicy.CONTINUATION_TOKEN;
   }
 }
 
 function toCliSourceApiSelectorKind(
   value: SourceApiOperation["selectorKind"]
-): CliSourceApiSelectorKind {
+): SourceApiSelectorKind {
   switch (value) {
     case "none":
-      return CliSourceApiSelectorKind.NONE;
+      return SourceApiSelectorKind.NONE;
     case "path":
-      return CliSourceApiSelectorKind.PATH;
+      return SourceApiSelectorKind.PATH;
     case "identifier":
-      return CliSourceApiSelectorKind.IDENTIFIER;
+      return SourceApiSelectorKind.IDENTIFIER;
   }
 }

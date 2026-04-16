@@ -18,7 +18,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/org.proto.
  */
 export const file_onequery_cli_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiTQoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0EhgKBWxpbWl0GAEgASgNQgm6SAYqBBhkKAESFwoGY3Vyc29yGAIgASgJQge6SARyAhABIosBChlMaXN0T3JnYW5pemF0aW9uc1Jlc3BvbnNlEj4KDW9yZ2FuaXphdGlvbnMYASADKAsyJy5vbmVxdWVyeS5jbGkudjEuQ2xpT3JnYW5pemF0aW9uU3VtbWFyeRIuCgRwYWdlGAIgASgLMhgub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VCBrpIA8gBASJPChZHZXRPcmdhbml6YXRpb25SZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJCLKAQoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USMQoEc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSFQoEbmFtZRgCIAEoCUIHukgEcgIQARIbCgVyb2xlcxgDIAMoCUIMukgJkgEGIgRyAhABEkgKDGNhcGFiaWxpdGllcxgEIAMoDjIhLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdDYXBhYmlsaXR5Qg+6SAySAQkiB4IBBBABIAAiYgoWQ2xpT3JnYW5pemF0aW9uU3VtbWFyeRIxCgRzbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBIVCgRuYW1lGAIgASgJQge6SARyAhABKuQCChBDbGlPcmdDYXBhYmlsaXR5EiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9VTlNQRUNJRklFRBAAEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfTElTVBABEh8KG0NMSV9PUkdfQ0FQQUJJTElUWV9PUkdfUkVBRBACEiUKIUNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQ09OTkVDVBADEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfTElTVBAEEiIKHkNMSV9PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfUkVBRBAFEiQKIENMSV9PUkdfQ0FQQUJJTElUWV9RVUVSWV9FWEVDVVRFEAYSKgomQ0xJX09SR19DQVBBQklMSVRZX1NPVVJDRV9BUElfREVTQ1JJQkUQBxIpCiVDTElfT1JHX0NBUEFCSUxJVFlfU09VUkNFX0FQSV9FWEVDVVRFEAhiCGVkaXRpb25zcOgH",
+  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiTQoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0EhgKBWxpbWl0GAEgASgNQgm6SAYqBBhkKAESFwoGY3Vyc29yGAIgASgJQge6SARyAhABIosBChlMaXN0T3JnYW5pemF0aW9uc1Jlc3BvbnNlEj4KDW9yZ2FuaXphdGlvbnMYASADKAsyJy5vbmVxdWVyeS5jbGkudjEuQ2xpT3JnYW5pemF0aW9uU3VtbWFyeRIuCgRwYWdlGAIgASgLMhgub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VCBrpIA8gBASJPChZHZXRPcmdhbml6YXRpb25SZXF1ZXN0EjUKCG9yZ19zbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJCLHAQoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USMQoEc2x1ZxgBIAEoCUIjukggch4QATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSFQoEbmFtZRgCIAEoCUIHukgEcgIQARIbCgVyb2xlcxgDIAMoCUIMukgJkgEGIgRyAhABEkUKDGNhcGFiaWxpdGllcxgEIAMoDjIeLm9uZXF1ZXJ5LmNsaS52MS5PcmdDYXBhYmlsaXR5Qg+6SAySAQkiB4IBBBABIAAiYgoWQ2xpT3JnYW5pemF0aW9uU3VtbWFyeRIxCgRzbHVnGAEgASgJQiO6SCByHhABMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBIVCgRuYW1lGAIgASgJQge6SARyAhABKr0CCg1PcmdDYXBhYmlsaXR5Eh4KGk9SR19DQVBBQklMSVRZX1VOU1BFQ0lGSUVEEAASGwoXT1JHX0NBUEFCSUxJVFlfT1JHX0xJU1QQARIbChdPUkdfQ0FQQUJJTElUWV9PUkdfUkVBRBACEiEKHU9SR19DQVBBQklMSVRZX1NPVVJDRV9DT05ORUNUEAMSHgoaT1JHX0NBUEFCSUxJVFlfU09VUkNFX0xJU1QQBBIeChpPUkdfQ0FQQUJJTElUWV9TT1VSQ0VfUkVBRBAFEiAKHE9SR19DQVBBQklMSVRZX1FVRVJZX0VYRUNVVEUQBhImCiJPUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQVBJX0RFU0NSSUJFEAcSJQohT1JHX0NBUEFCSUxJVFlfU09VUkNFX0FQSV9FWEVDVVRFEAhiCGVkaXRpb25zcOgH",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -107,9 +107,9 @@ export type GetOrganizationResponse =
     roles: string[];
 
     /**
-     * @generated from field: repeated onequery.cli.v1.CliOrgCapability capabilities = 4;
+     * @generated from field: repeated onequery.cli.v1.OrgCapability capabilities = 4;
      */
-    capabilities: CliOrgCapability[];
+    capabilities: OrgCapability[];
   };
 
 /**
@@ -143,57 +143,57 @@ export const CliOrganizationSummarySchema: GenMessage<CliOrganizationSummary> /*
   messageDesc(file_onequery_cli_v1_org, 4);
 
 /**
- * @generated from enum onequery.cli.v1.CliOrgCapability
+ * @generated from enum onequery.cli.v1.OrgCapability
  */
-export enum CliOrgCapability {
+export enum OrgCapability {
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_UNSPECIFIED = 0;
+   * @generated from enum value: ORG_CAPABILITY_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_ORG_LIST = 1;
+   * @generated from enum value: ORG_CAPABILITY_ORG_LIST = 1;
    */
   ORG_LIST = 1,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_ORG_READ = 2;
+   * @generated from enum value: ORG_CAPABILITY_ORG_READ = 2;
    */
   ORG_READ = 2,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_SOURCE_CONNECT = 3;
+   * @generated from enum value: ORG_CAPABILITY_SOURCE_CONNECT = 3;
    */
   SOURCE_CONNECT = 3,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_SOURCE_LIST = 4;
+   * @generated from enum value: ORG_CAPABILITY_SOURCE_LIST = 4;
    */
   SOURCE_LIST = 4,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_SOURCE_READ = 5;
+   * @generated from enum value: ORG_CAPABILITY_SOURCE_READ = 5;
    */
   SOURCE_READ = 5,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_QUERY_EXECUTE = 6;
+   * @generated from enum value: ORG_CAPABILITY_QUERY_EXECUTE = 6;
    */
   QUERY_EXECUTE = 6,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE = 7;
+   * @generated from enum value: ORG_CAPABILITY_SOURCE_API_DESCRIBE = 7;
    */
   SOURCE_API_DESCRIBE = 7,
 
   /**
-   * @generated from enum value: CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE = 8;
+   * @generated from enum value: ORG_CAPABILITY_SOURCE_API_EXECUTE = 8;
    */
   SOURCE_API_EXECUTE = 8,
 }
 
 /**
- * Describes the enum onequery.cli.v1.CliOrgCapability.
+ * Describes the enum onequery.cli.v1.OrgCapability.
  */
-export const CliOrgCapabilitySchema: GenEnum<CliOrgCapability> /*@__PURE__*/ =
+export const OrgCapabilitySchema: GenEnum<OrgCapability> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_org, 0);

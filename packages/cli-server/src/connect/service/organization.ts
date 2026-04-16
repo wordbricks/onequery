@@ -6,7 +6,7 @@ import { runCliListVisibleOrgs } from "../../organization/effects";
 import { paginateItems } from "../../read-controls-policy";
 import { requireCliConnectRequestContext } from "../context";
 import {
-  CliOrgCapability,
+  OrgCapability,
   GetOrganizationResponseSchema,
 } from "../gen/onequery/cli/v1/org_pb";
 import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
@@ -22,21 +22,21 @@ function toCliOrgCapability(
 ) {
   switch (value) {
     case "org.list":
-      return CliOrgCapability.ORG_LIST;
+      return OrgCapability.ORG_LIST;
     case "org.read":
-      return CliOrgCapability.ORG_READ;
+      return OrgCapability.ORG_READ;
     case "source.connect":
-      return CliOrgCapability.SOURCE_CONNECT;
+      return OrgCapability.SOURCE_CONNECT;
     case "source.list":
-      return CliOrgCapability.SOURCE_LIST;
+      return OrgCapability.SOURCE_LIST;
     case "source.read":
-      return CliOrgCapability.SOURCE_READ;
+      return OrgCapability.SOURCE_READ;
     case "source_api.describe":
-      return CliOrgCapability.SOURCE_API_DESCRIBE;
+      return OrgCapability.SOURCE_API_DESCRIBE;
     case "source_api.execute":
-      return CliOrgCapability.SOURCE_API_EXECUTE;
+      return OrgCapability.SOURCE_API_EXECUTE;
     case "query.execute":
-      return CliOrgCapability.QUERY_EXECUTE;
+      return OrgCapability.QUERY_EXECUTE;
   }
 }
 

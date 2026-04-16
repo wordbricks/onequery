@@ -13,7 +13,7 @@ pub(crate) fn refresh_session_response_body(
 ) -> Vec<u8> {
     types::RefreshSessionResponse {
         access_token: Some(access_token.to_owned()),
-        auth_mode: Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into()),
+        auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
         user: MessageField::some(types::CliAuthUser {
             id: Some("user-1".to_owned()),
             email: Some("alice@example.com".to_owned()),
