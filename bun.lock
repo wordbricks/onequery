@@ -207,20 +207,6 @@
         "vitest": "catalog:testing",
       },
     },
-    "packages/hono-connect": {
-      "name": "@onequery/hono-connect",
-      "version": "0.0.0",
-      "dependencies": {
-        "@connectrpc/connect": "catalog:",
-        "@connectrpc/connect-node": "catalog:",
-        "@hono/node-server": "catalog:",
-        "hono": "catalog:",
-      },
-      "devDependencies": {
-        "@bufbuild/protobuf": "catalog:",
-        "vitest": "catalog:testing",
-      },
-    },
     "packages/openclaw-plugin": {
       "name": "@onequery/openclaw-plugin",
       "version": "0.0.0",
@@ -978,8 +964,6 @@
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
 
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
-
-    "@onequery/hono-connect": ["@onequery/hono-connect@workspace:packages/hono-connect"],
 
     "@onequery/landing": ["@onequery/landing@workspace:apps/landing"],
 

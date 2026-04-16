@@ -2,7 +2,7 @@ import { createTestRuntimeConfig } from "@onequery/server/routes/test-env";
 import type { ServerStorage } from "@onequery/server/storage";
 import { describe, expect, it } from "vitest";
 
-import { createCliRoute } from "./route";
+import { createCliRoute } from "./hono";
 
 describe("cli connect hono routing", () => {
   it("registers the Connect methods as concrete Hono routes", () => {

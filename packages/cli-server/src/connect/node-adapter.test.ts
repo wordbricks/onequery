@@ -2,7 +2,7 @@ import { MethodOptions_IdempotencyLevel } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 
 import { CliService } from "./gen/onequery/cli/v1/cli_pb";
-import { listCliConnectMountedRequestPaths } from "./node";
+import { listCliConnectMountedRequestPaths } from "./node-adapter";
 
 describe("cli connect node integration", () => {
   it("builds the mounted request paths explicitly", () => {

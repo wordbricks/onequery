@@ -4,7 +4,7 @@ import {
   sanitizeUndefinedableCliRemoteText,
 } from "../../../transport/sanitization";
 import { QueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
-import { buildCliSource } from "../source-service/response";
+import { buildCliSource } from "../source/response";
 import type {
   ExecuteQueryColumnMessage,
   ExecuteQueryPayload,

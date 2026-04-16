@@ -6,7 +6,7 @@ import { createValidateInterceptor } from "@connectrpc/validate";
 
 import { cliConnectRequestContextKey } from "./context";
 import { withCliRequestId } from "./error";
-import { registerCliConnectRoutes } from "./routes";
+import { registerCliConnectRoutes } from "./rpc";
 
 const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
   try {

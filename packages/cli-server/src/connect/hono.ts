@@ -5,7 +5,10 @@ import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 import { createCliApp } from "../app";
 import type { CreateCliAppOptions } from "../app";
 import { createCliConnectContextValues } from "./context";
-import { createCliConnectHandler, listCliConnectRequestPaths } from "./node";
+import {
+  createCliConnectHandler,
+  listCliConnectRequestPaths,
+} from "./node-adapter";
 
 export interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;

@@ -1,4 +1,4 @@
-import type { ServiceImpl } from "@connectrpc/connect";
+import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
 
 import { CliService } from "./gen/onequery/cli/v1/cli_pb";
 import {
@@ -24,7 +24,9 @@ import {
   handleExecuteSourceApi,
 } from "./service/source-api";
 
-export const cliService: ServiceImpl<typeof CliService> = {
+// Comment: keep the published Connect surface in one module so the Node
+// adapter, Hono bridge, and tests all derive from the same registration logic.
+const cliConnectImplementation: ServiceImpl<typeof CliService> = {
   getSession: handleGetSession,
   refreshSession: handleRefreshSession,
   startDeviceAuthorization: handleStartDeviceAuthorization,
@@ -41,3 +43,7 @@ export const cliService: ServiceImpl<typeof CliService> = {
   validateQuery: handleValidateQuery,
   executeQuery: handleExecuteQuery,
 };
+
+export function registerCliConnectRoutes(router: ConnectRouter) {
+  router.service(CliService, cliConnectImplementation);
+}

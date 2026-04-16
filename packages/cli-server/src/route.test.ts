@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createCliRoute as createCliRouteFromConnectRoute } from "./connect/route";
+import { createCliRoute as createCliRouteFromConnectRoute } from "./connect/hono";
 import { createCliRoute as createCliRouteFromRoot } from "./index";
 import { createCliRoute as createCliRouteFromRouteModule } from "./route";
 
