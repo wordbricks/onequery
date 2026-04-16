@@ -10,7 +10,7 @@ import {
 } from "./analytics";
 
 describe("landing analytics", () => {
-  const originalCreateElement = document.createElement.bind(document);
+  const originalHeadAppend = document.head.append.bind(document.head);
 
   beforeEach(() => {
     vi.stubEnv("VITE_GA_MEASUREMENT_ID", "G-TEST1234");
@@ -20,16 +20,15 @@ describe("landing analytics", () => {
     window.dataLayer = [];
     window.gtag = undefined;
     window.history.replaceState({}, "", "/");
-    document.createElement = ((
-      tagName: string,
-      options?: ElementCreationOptions
-    ) => {
-      const element = originalCreateElement(tagName, options);
-      if (tagName === "script" && element instanceof HTMLScriptElement) {
-        element.type = "text/plain";
+    document.head.append = ((...nodes: (Node | string)[]) => {
+      for (const node of nodes) {
+        if (node instanceof HTMLScriptElement) {
+          node.type = "text/plain";
+        }
       }
-      return element;
-    }) as typeof document.createElement;
+
+      return originalHeadAppend(...nodes);
+    }) as typeof document.head.append;
   });
 
   afterEach(() => {
@@ -38,7 +37,7 @@ describe("landing analytics", () => {
     document.head.innerHTML = "";
     window.dataLayer = [];
     window.gtag = undefined;
-    document.createElement = originalCreateElement;
+    document.head.append = originalHeadAppend;
   });
 
   it("injects and configures the GA4 tag once", () => {
