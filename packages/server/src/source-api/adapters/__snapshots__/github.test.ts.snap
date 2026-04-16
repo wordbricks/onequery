@@ -99,8 +99,8 @@ exports[`github source api adapter > describes the canonical fetch operation 1`]
   ],
   "source": {
     "displayName": "GitHub Prod",
-    "key": "github-prod",
     "provider": "github",
+    "sourceKey": "github-prod",
   },
 }
 `;
@@ -128,8 +128,8 @@ exports[`github source api adapter > executes GitHub requests with upstream stat
   "selector": "/issues",
   "source": {
     "displayName": "GitHub Prod",
-    "key": "github-prod",
     "provider": "github",
+    "sourceKey": "github-prod",
   },
   "status": 201,
 }
@@ -160,8 +160,8 @@ exports[`github source api adapter > normalizes missing GitHub response content 
   "selector": "/issues",
   "source": {
     "displayName": "GitHub Prod",
-    "key": "github-prod",
     "provider": "github",
+    "sourceKey": "github-prod",
   },
   "status": 200,
 }

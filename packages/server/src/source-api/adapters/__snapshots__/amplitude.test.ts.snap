@@ -62,8 +62,8 @@ exports[`amplitude source api adapter > describes the canonical fetch operation 
   ],
   "source": {
     "displayName": "Amplitude Prod",
-    "key": "amplitude-prod",
     "provider": "amplitude",
+    "sourceKey": "amplitude-prod",
   },
 }
 `;
@@ -87,8 +87,8 @@ exports[`amplitude source api adapter > executes Amplitude requests with upstrea
   "selector": "/2/events/segmentation",
   "source": {
     "displayName": "Amplitude Prod",
-    "key": "amplitude-prod",
     "provider": "amplitude",
+    "sourceKey": "amplitude-prod",
   },
   "status": 200,
 }

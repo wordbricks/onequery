@@ -5,13 +5,16 @@ use std::time::Duration;
 use connectrpc::client::ClientConfig;
 use connectrpc::client::HttpClient as ConnectHttpClient;
 use connectrpc::rustls;
+use http::HeaderMap;
 use http::header::AUTHORIZATION;
 use http::header::HeaderValue;
+use http::header::USER_AGENT;
 use url::Url;
 
 use crate::transport::generated::Client as GeneratedCliClient;
 
 const CLI_BASE_PATH: &str = "/api/cli";
+const CLI_USER_AGENT: &str = concat!("onequery-cli/", env!("CARGO_PKG_VERSION"));
 const REQUEST_ID_HEADER: &str = "x-request-id";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -133,15 +136,6 @@ fn build_client<State>(
                 message: "auth token must not be empty".to_owned(),
             });
         }
-
-        // Comment: connect-rust silently drops invalid default headers, so
-        // validate shared auth/request metadata before building the client.
-        let bearer = format!("Bearer {trimmed_token}");
-        HeaderValue::from_str(&bearer).map_err(|header_error| {
-            ApiClientBuildFailure::AuthToken {
-                message: header_error.to_string(),
-            }
-        })?;
         auth_token = Some(trimmed_token.to_owned());
     }
 
@@ -149,13 +143,6 @@ fn build_client<State>(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned);
-    if let Some(request_id) = request_id.as_deref() {
-        HeaderValue::from_str(request_id).map_err(|header_error| {
-            ApiClientBuildFailure::RequestId {
-                message: header_error.to_string(),
-            }
-        })?;
-    }
 
     let cli_base_url = cli_base_url(&base_url);
     let cli = GeneratedCliClient::new(
@@ -183,23 +170,29 @@ fn connect_config(
     auth_token: Option<&str>,
     request_id: Option<&str>,
 ) -> Result<ClientConfig, ApiClientBuildFailure> {
-    let mut config = ClientConfig::new(base_url.parse::<http::Uri>().map_err(|error| {
-        ApiClientBuildFailure::BaseUrl {
-            base_url: base_url.to_owned(),
-            message: error.to_string(),
-        }
-    })?)
-    .default_timeout(request_timeout);
+    // Comment: connect-rust's `default_header()` helper silently ignores invalid
+    // name/value pairs, so build a typed header map here and fail deterministically.
+    let mut default_headers = HeaderMap::new();
+    default_headers.insert(USER_AGENT, HeaderValue::from_static(CLI_USER_AGENT));
 
     if let Some(token) = auth_token {
-        config = config.default_header(AUTHORIZATION.as_str(), format!("Bearer {token}"));
+        default_headers.insert(AUTHORIZATION, authorization_header_value(token)?);
     }
 
     if let Some(request_id) = request_id {
-        config = config.default_header(REQUEST_ID_HEADER, request_id);
+        default_headers.insert(REQUEST_ID_HEADER, request_id_header_value(request_id)?);
     }
 
-    Ok(config)
+    Ok(
+        ClientConfig::new(base_url.parse::<http::Uri>().map_err(|error| {
+            ApiClientBuildFailure::BaseUrl {
+                base_url: base_url.to_owned(),
+                message: error.to_string(),
+            }
+        })?)
+        .default_timeout(request_timeout)
+        .default_headers(default_headers),
+    )
 }
 
 fn connect_transport_for_base_url(
@@ -226,6 +219,20 @@ fn default_tls_config() -> Arc<rustls::ClientConfig> {
     )
 }
 
+fn authorization_header_value(token: &str) -> Result<HeaderValue, ApiClientBuildFailure> {
+    HeaderValue::from_str(format!("Bearer {token}").as_str()).map_err(|header_error| {
+        ApiClientBuildFailure::AuthToken {
+            message: header_error.to_string(),
+        }
+    })
+}
+
+fn request_id_header_value(request_id: &str) -> Result<HeaderValue, ApiClientBuildFailure> {
+    HeaderValue::from_str(request_id).map_err(|header_error| ApiClientBuildFailure::RequestId {
+        message: header_error.to_string(),
+    })
+}
+
 fn cli_base_url(base_url: &Url) -> String {
     format!("{}{CLI_BASE_PATH}", base_url.as_str().trim_end_matches('/'))
 }
@@ -235,9 +242,11 @@ mod tests {
     use std::time::Duration;
 
     use http::header::AUTHORIZATION;
+    use http::header::USER_AGENT;
     use pretty_assertions::assert_eq;
 
     use super::ApiClientBuildFailure;
+    use super::CLI_USER_AGENT;
     use super::UnauthenticatedApiClient;
     use super::cli_base_url;
     use super::connect_config;
@@ -272,6 +281,25 @@ mod tests {
                 .get(AUTHORIZATION)
                 .and_then(|value| value.to_str().ok()),
             Some("Bearer pat_123")
+        );
+    }
+
+    #[test]
+    fn connect_config_attaches_cli_user_agent_header() {
+        let config = connect_config(
+            "http://example.test/api/cli",
+            Duration::from_secs(5),
+            None,
+            None,
+        )
+        .expect("expected connect config");
+
+        assert_eq!(
+            config
+                .default_headers
+                .get(USER_AGENT)
+                .and_then(|value| value.to_str().ok()),
+            Some(CLI_USER_AGENT)
         );
     }
 

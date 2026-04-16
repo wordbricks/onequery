@@ -23,7 +23,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Confirm the correct port and SSL mode for this environment before sending the payload.",
     ],
     exampleInput: {
-      name: "warehouse",
+      sourceKey: "warehouse",
       credentials: {
         host: "db.example.com",
         port: 5432,
@@ -44,7 +44,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Prefer the Session pooler for OneQuery's persistent backend connection path. Keep SSL enabled and confirm the correct port before building the payload.",
     ],
     exampleInput: {
-      name: "supabase_prod",
+      sourceKey: "supabase_prod",
       credentials: {
         host: "aws-0-us-east-1.pooler.supabase.com",
         port: 5432,
@@ -64,7 +64,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Confirm the port and SSL requirement before building the payload.",
     ],
     exampleInput: {
-      name: "mysql_prod",
+      sourceKey: "mysql_prod",
       credentials: {
         host: "mysql.example.com",
         port: 3306,
@@ -84,7 +84,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "If the deployment spans multiple databases, include `databases`; otherwise provide one `database`.",
     ],
     exampleInput: {
-      name: "mongo_analytics",
+      sourceKey: "mongo_analytics",
       credentials: {
         connectionString: "mongodb+srv://user:password@cluster.example.com",
         database: "analytics",
@@ -103,7 +103,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "If you use OAuth instead, provide `accessToken`, `refreshToken`, and `expiresAt` with the `https://www.googleapis.com/auth/bigquery.readonly` scope.",
     ],
     exampleInput: {
-      name: "bigquery_prod",
+      sourceKey: "bigquery_prod",
       credentials: {
         projectId: "analytics-project",
         serviceAccount: {
@@ -124,7 +124,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Only include `apiBaseUrl` when the account uses a non-default Laminar API host.",
     ],
     exampleInput: {
-      name: "laminar_main",
+      sourceKey: "laminar_main",
       credentials: {
         apiKey: "laminar_api_key",
       },
@@ -139,7 +139,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Retrieve the Athena database name and optional workgroup override for the queries you want to run.",
     ],
     exampleInput: {
-      name: "athena_main",
+      sourceKey: "athena_main",
       credentials: {
         connectorId: "connector_01HXYZ",
         database: "analytics",
@@ -159,7 +159,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "If you use OAuth instead, provide `accessToken`, `refreshToken`, and `expiresAt` with the `https://www.googleapis.com/auth/analytics.readonly` scope.",
     ],
     exampleInput: {
-      name: "ga_marketing",
+      sourceKey: "ga_marketing",
       credentials: {
         propertyId: "123456789",
         serviceAccount: {
@@ -182,7 +182,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Set `region` to `eu` only for Amplitude EU projects; otherwise use `us`.",
     ],
     exampleInput: {
-      name: "amplitude_product",
+      sourceKey: "amplitude_product",
       credentials: {
         apiKey: "amplitude_api_key",
         secretKey: "amplitude_secret",
@@ -201,7 +201,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Leave `workspaceId` unset unless you already know your Mixpanel setup requires a specific workspace or data view override.",
     ],
     exampleInput: {
-      name: "mixpanel_growth",
+      sourceKey: "mixpanel_growth",
       credentials: {
         projectId: "12345",
         username: "service-account",
@@ -222,7 +222,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Use the canonical host URL without a trailing slash when possible; the server still normalizes extra trailing slashes.",
     ],
     exampleInput: {
-      name: "posthog_main",
+      sourceKey: "posthog_main",
       credentials: {
         hostUrl: "https://us.posthog.com",
         personalApiKey: "phx_personal_key",
@@ -243,7 +243,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Leave `credentials.apiBaseUrl` empty for Sentry Cloud. Set it only for self-hosted Sentry, using the canonical API root such as `https://sentry.example.com/api/0`.",
     ],
     exampleInput: {
-      name: "sentry_main",
+      sourceKey: "sentry_main",
       credentials: {
         authToken: "sntrys_...",
         organizationSlug: "your-org-slug",
@@ -262,7 +262,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "Copy the token immediately and use it as `credentials.accessToken`. If the token belongs to a GitHub App installation, also include `installationId`; optionally restrict the OneQuery connection further with `repositories`.",
     ],
     exampleInput: {
-      name: "github_main",
+      sourceKey: "github_main",
       credentials: {
         accessToken: "github_pat_or_installation_token",
         repositories: ["octocat/Hello-World"],
@@ -278,7 +278,7 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       "If you use OAuth, keep the refresh metadata so the server can keep the connection valid over time.",
     ],
     exampleInput: {
-      name: "linear_main",
+      sourceKey: "linear_main",
       credentials: {
         apiKey: "lin_api_key",
       },
@@ -336,11 +336,11 @@ function buildSourceConnectContent(
     "3. If browser capability is missing, install `agent-browser` with `npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser`, then follow that skill to open a browser and continue the setup with the user.",
     "4. Only use the final credential value when you are ready to build the JSON input and run the connect command.",
     "",
-    "Use a CLI-safe `name` such as `warehouse` or `github_main`.",
+    "Use a CLI-safe `sourceKey` such as `warehouse` or `github_main`.",
     `Run: \`${buildCliSourceConnectCommand(provider.provider)}\``,
-    "Verify: `onequery source show <name>`",
+    "Verify: `onequery source show <source_key>`",
     "Do not include `organizationId` or `organizationSlug`; the CLI injects org context automatically.",
-    'The JSON input shape is always `{ "name": string, "credentials": { ...provider-specific fields... } }`.',
+    'The JSON input shape is always `{ "sourceKey": string, "credentials": { ...provider-specific fields... } }`.',
     "",
     provider.summary,
     "",

@@ -72,7 +72,7 @@ mod tests {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
             title: "Not Logged In".to_owned(),
             detail: "stored credentials are no longer authorized".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+            code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,

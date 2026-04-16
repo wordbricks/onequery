@@ -17,8 +17,7 @@ export type CliPaginatedReadControls = CliFieldsReadControls & {
 
 export type CliPage = {
   nextCursor: string | null;
-  returned: number;
-  hasMore: boolean;
+  returnedCount: number;
 };
 
 class ReadControlsParseError extends TaggedError("ReadControlsParseError")<{
@@ -101,9 +100,8 @@ export function paginateItems<T>(
   return {
     items: pageItems,
     page: {
-      hasMore,
       nextCursor: hasMore ? encodePageCursor(nextOffset) : null,
-      returned: pageItems.length,
+      returnedCount: pageItems.length,
     } satisfies CliPage,
   };
 }

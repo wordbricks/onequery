@@ -66,9 +66,8 @@ describe("read controls policy", () => {
     expect(page).toEqual({
       items: ["c", "d"],
       page: {
-        hasMore: false,
         nextCursor: null,
-        returned: 2,
+        returnedCount: 2,
       },
     });
   });

@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -22,7 +22,7 @@ message ValidateQueryResponse {
   CliQueryCanonicalRequest request = 1 [(buf.validate.field).required = true];
   string normalized_sql = 2 [(buf.validate.field).string.min_len = 1];
   CliDeclaredQueryResultWindow declared_result_window = 3 [(buf.validate.field).required = true];
-  GetSourceResponse source = 4 [(buf.validate.field).required = true];
+  CliSource source = 4 [(buf.validate.field).required = true];
   bool truncated = 5;
 }
 
@@ -35,23 +35,23 @@ message ExecuteQueryRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  optional uint32 limit = 3 [
+  uint32 limit = 3 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 100
   ];
-  optional string cursor = 4 [(buf.validate.field).string.min_len = 1];
+  string cursor = 4 [(buf.validate.field).string.min_len = 1];
   CliQueryRequest query = 5 [(buf.validate.field).required = true];
 }
 
 message ExecuteQueryResponse {
-  GetSourceResponse source = 1 [(buf.validate.field).required = true];
+  CliSource source = 1 [(buf.validate.field).required = true];
   uint64 row_count = 2;
   uint64 elapsed_ms = 3;
   repeated CliQueryColumn columns = 4;
   repeated CliQueryRow rows = 5;
   bool truncated = 6;
   CliPage page = 7 [(buf.validate.field).required = true];
-  optional CliSanitization sanitization = 8;
+  CliSanitization sanitization = 8;
 }
 
 message CliQueryRequest {
@@ -59,20 +59,22 @@ message CliQueryRequest {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
+  // Comment: query parameters are intentionally disabled for the CLI surface
+  // until placeholder binding semantics are designed end-to-end.
   repeated CliQueryParameter parameters = 2 [(buf.validate.field).repeated.max_items = 0];
-  optional uint32 max_rows = 3 [
+  uint32 max_rows = 3 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 1000
   ];
-  optional uint32 max_bytes = 4 [
+  uint32 max_bytes = 4 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 4194304
   ];
-  optional uint32 cell_max_chars = 5 [
+  uint32 cell_max_chars = 5 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 8000
   ];
-  optional uint32 timeout_ms = 6 [
+  uint32 timeout_ms = 6 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 120000
   ];
@@ -84,51 +86,66 @@ message CliQueryCanonicalRequest {
     (buf.validate.field).string.pattern = "\\S"
   ];
   repeated CliQueryParameter parameters = 2;
-  optional uint32 max_rows = 3;
-  optional uint32 max_bytes = 4;
-  optional uint32 cell_max_chars = 5;
-  optional uint32 timeout_ms = 6;
+  uint32 max_rows = 3;
+  uint32 max_bytes = 4;
+  uint32 cell_max_chars = 5;
+  uint32 timeout_ms = 6;
 }
 
 message CliQueryParameter {
-  CliQueryParameterType type = 1 [
+  QueryParameterType type = 1 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  optional string value = 2;
+  string value = 2;
 }
 
 message CliDeclaredQueryResultWindow {
-  optional uint32 max_rows = 1;
-  optional uint32 max_bytes = 2;
-  optional uint32 cell_max_chars = 3;
-  optional uint32 timeout_ms = 4;
+  uint32 max_rows = 1 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 1000
+  ];
+  uint32 max_bytes = 2 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 4194304
+  ];
+  uint32 cell_max_chars = 3 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 8000
+  ];
+  uint32 timeout_ms = 4 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 120000
+  ];
 }
 
 message CliQueryColumn {
-  string name = 1;
-  optional CliQueryLogicalType logical_type = 2;
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  QueryLogicalType logical_type = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
 message CliQueryRow {
   repeated string values = 1;
 }
 
-enum CliQueryParameterType {
-  CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
-  CLI_QUERY_PARAMETER_TYPE_STRING = 1;
-  CLI_QUERY_PARAMETER_TYPE_NUMBER = 2;
-  CLI_QUERY_PARAMETER_TYPE_BOOLEAN = 3;
-  CLI_QUERY_PARAMETER_TYPE_NULL = 4;
+enum QueryParameterType {
+  QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
+  QUERY_PARAMETER_TYPE_STRING = 1;
+  QUERY_PARAMETER_TYPE_NUMBER = 2;
+  QUERY_PARAMETER_TYPE_BOOLEAN = 3;
+  QUERY_PARAMETER_TYPE_NULL = 4;
 }
 
-enum CliQueryLogicalType {
-  CLI_QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
-  CLI_QUERY_LOGICAL_TYPE_STRING = 1;
-  CLI_QUERY_LOGICAL_TYPE_NUMBER = 2;
-  CLI_QUERY_LOGICAL_TYPE_BOOLEAN = 3;
-  CLI_QUERY_LOGICAL_TYPE_BIGINT = 4;
-  CLI_QUERY_LOGICAL_TYPE_DATETIME = 5;
-  CLI_QUERY_LOGICAL_TYPE_ARRAY = 6;
-  CLI_QUERY_LOGICAL_TYPE_JSON = 7;
+enum QueryLogicalType {
+  QUERY_LOGICAL_TYPE_UNSPECIFIED = 0;
+  QUERY_LOGICAL_TYPE_STRING = 1;
+  QUERY_LOGICAL_TYPE_NUMBER = 2;
+  QUERY_LOGICAL_TYPE_BOOLEAN = 3;
+  QUERY_LOGICAL_TYPE_BIGINT = 4;
+  QUERY_LOGICAL_TYPE_DATETIME = 5;
+  QUERY_LOGICAL_TYPE_ARRAY = 6;
+  QUERY_LOGICAL_TYPE_JSON = 7;
 }

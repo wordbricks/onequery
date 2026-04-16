@@ -73,6 +73,10 @@ export function createSourceApiPreview(
   prepared: PreparedSourceApi
 ): SourceApiPreview {
   return {
+    source: {
+      sourceKey: prepared.sourceKey,
+      provider: prepared.provider,
+    },
     bodyKind: prepared.bodyKind,
     bodyPaths: [...prepared.bodyPaths],
     headerNames: [...prepared.headerNames],
@@ -81,9 +85,7 @@ export function createSourceApiPreview(
     method: prepared.method,
     operation: prepared.operation,
     paginationPolicy: prepared.paginationPolicy,
-    provider: prepared.provider,
     selector: prepared.selector,
-    sourceKey: prepared.sourceKey,
     url: prepared.kind === "http_request" ? prepared.url : undefined,
   };
 }

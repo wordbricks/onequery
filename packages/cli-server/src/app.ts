@@ -1,5 +1,5 @@
+import type { Http2Bindings, HttpBindings } from "@hono/node-server";
 import type { Database } from "@onequery/db/server";
-import type { HonoNodeBindings } from "@onequery/hono-connect";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
@@ -16,6 +16,8 @@ import {
   logCliEvent,
   toCliErrorMessage,
 } from "./observability";
+
+export type HonoNodeBindings = HttpBindings | Http2Bindings;
 
 export type CliRouteEnv<
   Variables extends Record<string, unknown> = Record<string, never>,

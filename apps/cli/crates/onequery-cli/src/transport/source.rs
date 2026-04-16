@@ -24,7 +24,7 @@ use crate::transport::read_controls::SinglePageReadControls;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SourceSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) name: Option<String>,
+    pub(crate) source_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,7 +107,7 @@ async fn fetch_source_page(
     let response = match client
         .cli()
         .list_sources(types::ListSourcesRequest {
-            org_slug,
+            org_slug: Some(org_slug),
             limit,
             cursor,
             ..Default::default()
@@ -153,8 +153,8 @@ pub(crate) async fn get_source_by_key_with_controls(
     let response = match client
         .cli()
         .get_source(types::GetSourceRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -167,9 +167,16 @@ pub(crate) async fn get_source_by_key_with_controls(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
+    let source = payload.source.into_option().ok_or_else(|| {
+        decode_failure(
+            ErrorStage::ResolveSource,
+            "source get response missing source",
+            request_id.clone(),
+        )
+    })?;
 
     Ok(ApiSuccess {
-        payload: source_summary_from_generated(payload),
+        payload: source_summary_from_generated(source),
         request_id,
     })
 }
@@ -184,8 +191,8 @@ pub(crate) async fn test_source(
     let response = match client
         .cli()
         .test_source(types::TestSourceRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -216,19 +223,21 @@ pub(crate) async fn test_source(
     let outcome = match outcome {
         types::test_source_response::Outcome::Supported(supported) => SourceTestOutcome {
             kind: "supported".to_owned(),
-            message: supported.message,
-            success: Some(supported.success),
+            message: supported.message.unwrap_or_default(),
+            success: supported.success,
             error: supported.error,
             latency_ms: supported.latency_ms,
             reason: None,
         },
         types::test_source_response::Outcome::Unsupported(unsupported) => SourceTestOutcome {
             kind: "unsupported".to_owned(),
-            message: unsupported.message,
+            message: unsupported.message.unwrap_or_default(),
             success: None,
             error: None,
             latency_ms: None,
-            reason: Some(source_test_unsupported_reason_to_str(unsupported.reason)),
+            reason: unsupported
+                .reason
+                .map(source_test_unsupported_reason_to_str),
         },
     };
 
@@ -241,32 +250,37 @@ pub(crate) async fn test_source(
     })
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::GetSourceResponse) -> SourceSummary {
+pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> SourceSummary {
+    let types::CliSource {
+        source_key,
+        display_name,
+        provider,
+        queryable,
+        status,
+        ..
+    } = summary;
+
     SourceSummary {
-        name: Some(summary.name),
-        display_name: summary.display_name,
-        provider: Some(source_provider_to_str(summary.provider)),
-        queryable: Some(summary.queryable),
-        status: Some(source_status_to_str(summary.status)),
+        source_key,
+        display_name,
+        provider: provider.map(source_provider_to_str),
+        queryable,
+        status: status.map(source_status_to_str),
     }
 }
 
 fn source_test_unsupported_reason_to_str(
-    value: EnumValue<types::CliSourceTestUnsupportedReason>,
+    value: EnumValue<types::SourceTestUnsupportedReason>,
 ) -> String {
     match value.as_known() {
-        Some(types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
+        Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
             "oauth".to_owned()
         }
         Some(
-            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
+            types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
         ) => "not_implemented".to_owned(),
-        Some(
-            types::CliSourceTestUnsupportedReason::CLI_SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED,
-        )
-        | None => {
-            "unknown".to_owned()
-        }
+        Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED)
+        | None => "unknown".to_owned(),
     }
 }
 
@@ -285,13 +299,13 @@ mod tests {
         let payload = json!({
             "sources": [
                 {
-                    "name": "warehouse",
+                    "sourceKey": "warehouse",
                     "provider": "postgres",
                     "queryable": true,
                     "status": "active"
                 },
                 {
-                    "name": "github_main",
+                    "sourceKey": "github_main",
                     "provider": "github",
                     "queryable": false,
                     "status": "active"
@@ -299,8 +313,7 @@ mod tests {
             ],
             "page": {
                 "nextCursor": null,
-                "returned": 2,
-                "hasMore": false
+                "returnedCount": 2
             }
         });
 
@@ -311,14 +324,14 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        name: Some("warehouse".to_owned()),
+                        source_key: Some("warehouse".to_owned()),
                         display_name: None,
                         provider: Some("postgres".to_owned()),
                         queryable: Some(true),
                         status: Some("active".to_owned()),
                     },
                     SourceSummary {
-                        name: Some("github_main".to_owned()),
+                        source_key: Some("github_main".to_owned()),
                         display_name: None,
                         provider: Some("github".to_owned()),
                         queryable: Some(false),
@@ -327,8 +340,7 @@ mod tests {
                 ],
                 page: PageInfo {
                     next_cursor: None,
-                    returned: 2,
-                    has_more: false,
+                    returned_count: 2,
                 },
             }
         );
@@ -337,7 +349,7 @@ mod tests {
     #[test]
     fn source_summary_deserializes_provider_field_into_provider() {
         let payload = json!({
-            "name": "warehouse",
+            "sourceKey": "warehouse",
             "displayName": "Warehouse",
             "provider": "mysql",
             "queryable": true,
@@ -349,7 +361,7 @@ mod tests {
         assert_eq!(
             parsed,
             SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: Some("Warehouse".to_owned()),
                 provider: Some("mysql".to_owned()),
                 queryable: Some(true),

@@ -18,7 +18,7 @@ function createAdapter(
         notes: [],
         operations: [],
         source: {
-          key: "source",
+          sourceKey: "source",
           provider,
         },
       };
@@ -30,7 +30,7 @@ function createAdapter(
         headers: [],
         operation: "noop",
         source: {
-          key: "source",
+          sourceKey: "source",
           provider,
         },
         status: 200,

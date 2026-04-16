@@ -62,8 +62,8 @@ exports[`sentry source api adapter > describes the canonical fetch operation 1`]
   ],
   "source": {
     "displayName": "Sentry Prod",
-    "key": "sentry-prod",
     "provider": "sentry",
+    "sourceKey": "sentry-prod",
   },
 }
 `;
@@ -89,8 +89,8 @@ exports[`sentry source api adapter > executes Sentry requests with upstream stat
   "selector": "/organizations/{organizationSlug}/issues/",
   "source": {
     "displayName": "Sentry Prod",
-    "key": "sentry-prod",
     "provider": "sentry",
+    "sourceKey": "sentry-prod",
   },
   "status": 200,
 }

@@ -31,7 +31,7 @@ const descriptor = {
   notes: [],
   operations: [],
   source: {
-    key: "github-prod",
+    sourceKey: "github-prod",
     provider: "github",
   },
 } as const;

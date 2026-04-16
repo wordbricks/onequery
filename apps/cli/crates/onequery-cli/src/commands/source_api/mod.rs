@@ -5,9 +5,6 @@ mod intent;
 mod plan;
 mod render;
 
-use std::time::Duration;
-
-use buffa::MessageField;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
@@ -26,7 +23,7 @@ use crate::transport::source_api::SourceApiSource;
 
 use super::CommandContext;
 use super::Runtime;
-use super::auth_session::authenticated_api_client_with_timeout;
+use super::auth_session::authenticated_api_client;
 use super::auth_session::ensure_authenticated_org;
 use plan::PlannedCommand;
 use plan::SourceApiExecutionOptions;
@@ -40,9 +37,7 @@ pub(super) async fn execute<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
     let org_slug = ensure_authenticated_org(context, runtime).await?;
-
-    let request_timeout = Duration::from_secs(runtime.config.data().request_timeout_sec);
-    let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;
+    let client = authenticated_api_client(context, runtime)?;
 
     let descriptor_response =
         source_api::describe_source_api(&client, org_slug.as_str(), args.source.as_str())
@@ -127,7 +122,7 @@ struct PreviewedSourceApiExecution {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 struct SourceApiExecutionPage {
-    source: MessageField<SourceApiSource>,
+    source: SourceApiSource,
     operation: String,
     selector: Option<String>,
     status: u32,
@@ -205,15 +200,51 @@ async fn execute_source_api_pages(
     };
     let mut request_id = first_response.request_id.clone();
     let mut continuation_token = first_response.payload.continuation_token.clone();
+    let Some(first_source) = first_page.source.into_option() else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include source metadata",
+            source_key,
+        ));
+    };
+    let Some(first_operation_name) = first_page.operation else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include an operation name",
+            source_key,
+        ));
+    };
+    let Some(first_status) = first_page.status else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include an HTTP status",
+            source_key,
+        ));
+    };
+    let Some(first_content_type) = first_page.content_type else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include a content type",
+            source_key,
+        ));
+    };
     let mut pages = vec![SourceApiExecutionPage {
         body: first_page.body,
-        content_type: first_page.content_type,
+        content_type: first_content_type,
         continuation_token: first_response.payload.continuation_token,
         headers: first_page.headers,
-        operation: first_page.operation,
+        operation: first_operation_name,
         selector: first_page.selector,
-        source: first_page.source,
-        status: first_page.status,
+        source: first_source,
+        status: first_status,
     }];
 
     while execution.paginate && (pages.len() as u32) < max_pages {
@@ -240,15 +271,51 @@ async fn execute_source_api_pages(
                 source_key,
             ));
         };
+        let Some(source) = page.source.into_option() else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include source metadata",
+                source_key,
+            ));
+        };
+        let Some(operation_name) = page.operation else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include an operation name",
+                source_key,
+            ));
+        };
+        let Some(status) = page.status else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include an HTTP status",
+                source_key,
+            ));
+        };
+        let Some(content_type) = page.content_type else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include a content type",
+                source_key,
+            ));
+        };
         pages.push(SourceApiExecutionPage {
             body: page.body,
-            content_type: page.content_type,
+            content_type,
             continuation_token: response.payload.continuation_token,
             headers: page.headers,
-            operation: page.operation,
+            operation: operation_name,
             selector: page.selector,
-            source: page.source,
-            status: page.status,
+            source,
+            status,
         });
     }
 

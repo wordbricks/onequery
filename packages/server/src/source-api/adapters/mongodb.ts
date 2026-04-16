@@ -190,7 +190,7 @@ export function createMongoDbSourceApiAdapter(
         ],
         source: {
           displayName: source.displayName,
-          key: source.sourceKey,
+          sourceKey: source.sourceKey,
           provider: source.provider,
         },
       };
@@ -560,7 +560,7 @@ function buildMongoDbExecutionResponse(input: {
     selector: input.selector,
     source: {
       displayName: input.source.displayName,
-      key: input.source.sourceKey,
+      sourceKey: input.source.sourceKey,
       provider: input.source.provider,
     },
     status: input.response.status,

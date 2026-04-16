@@ -362,8 +362,7 @@ fn org_list_output_snapshot() {
             ],
             page: PageInfo {
                 next_cursor: None,
-                returned: 2,
-                has_more: false,
+                returned_count: 2,
             },
         },
         &ListReadArgs::default(),
@@ -382,8 +381,7 @@ fn org_list_output_snapshot_empty_state() {
             organizations: Vec::new(),
             page: PageInfo {
                 next_cursor: None,
-                returned: 0,
-                has_more: false,
+                returned_count: 0,
             },
         },
         &ListReadArgs::default(),

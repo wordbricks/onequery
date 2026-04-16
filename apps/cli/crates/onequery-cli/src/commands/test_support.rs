@@ -12,12 +12,12 @@ pub(crate) fn refresh_session_response_body(
     expires_at_seconds: i64,
 ) -> Vec<u8> {
     types::RefreshSessionResponse {
-        access_token: access_token.to_owned(),
-        auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+        access_token: Some(access_token.to_owned()),
+        auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
         user: MessageField::some(types::CliAuthUser {
-            id: "user-1".to_owned(),
-            email: "alice@example.com".to_owned(),
-            display_name: "Alice".to_owned(),
+            id: Some("user-1".to_owned()),
+            email: Some("alice@example.com".to_owned()),
+            display_name: Some("Alice".to_owned()),
             ..Default::default()
         }),
         active_org_slug: active_org_slug.map(ToOwned::to_owned),

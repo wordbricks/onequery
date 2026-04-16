@@ -29,7 +29,7 @@ import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
 import { requireCliConnectRequestContext } from "../context";
 import {
-  CliAuthMode,
+  AuthMode,
   CliAuthorizedDeviceAuthorizationSchema,
   GetSessionResponseSchema,
   PollDeviceAuthorizationResponseSchema,
@@ -65,9 +65,9 @@ function timestampFromIsoString(value: string) {
 function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
   switch (value) {
     case "browser_session":
-      return CliAuthMode.BROWSER_SESSION;
+      return AuthMode.BROWSER_SESSION;
     case "bearer_token":
-      return CliAuthMode.BEARER_TOKEN;
+      return AuthMode.BEARER_TOKEN;
   }
 }
 

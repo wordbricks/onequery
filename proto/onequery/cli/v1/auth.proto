@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -8,17 +8,17 @@ import "google/protobuf/timestamp.proto";
 message GetSessionRequest {}
 
 message GetSessionResponse {
-  CliAuthMode auth_mode = 1 [
+  AuthMode auth_mode = 1 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 2 [(buf.validate.field).required = true];
-  optional string active_org_slug = 3 [
+  string active_org_slug = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 4;
-  optional google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp issued_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
 }
 
 message RefreshSessionRequest {}
@@ -28,17 +28,17 @@ message RefreshSessionResponse {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliAuthMode auth_mode = 2 [
+  AuthMode auth_mode = 2 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 3 [(buf.validate.field).required = true];
-  optional string active_org_slug = 4 [
+  string active_org_slug = 4 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 5;
-  optional google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp issued_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
 }
 
 message StartDeviceAuthorizationRequest {}
@@ -92,21 +92,21 @@ message CliAuthorizedDeviceAuthorization {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  CliAuthMode auth_mode = 3 [
+  AuthMode auth_mode = 3 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 4 [(buf.validate.field).required = true];
-  optional string active_org_slug = 5 [
+  string active_org_slug = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 6;
-  optional google.protobuf.Timestamp expires_at = 7;
+  google.protobuf.Timestamp issued_at = 6;
+  google.protobuf.Timestamp expires_at = 7;
 }
 
-enum CliAuthMode {
-  CLI_AUTH_MODE_UNSPECIFIED = 0;
-  CLI_AUTH_MODE_BROWSER_SESSION = 1;
-  CLI_AUTH_MODE_BEARER_TOKEN = 2;
+enum AuthMode {
+  AUTH_MODE_UNSPECIFIED = 0;
+  AUTH_MODE_BROWSER_SESSION = 1;
+  AUTH_MODE_BEARER_TOKEN = 2;
 }

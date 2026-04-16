@@ -2,7 +2,7 @@ import { fromJson, toJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
-  SourceApiBodyKind,
+  SourceApiBodyFormat,
   SourceApiDescriptor,
   SourceApiExecutionResult,
   SourceApiFieldPolicy,
@@ -17,12 +17,12 @@ import type {
 import { Result } from "better-result";
 
 import {
-  CliSourceApiBodyKind,
-  CliSourceApiExecuteMode,
-  CliSourceApiInputMode,
-  CliSourceApiOperationKind,
-  CliSourceApiPaginationPolicy,
-  CliSourceApiSelectorKind,
+  SourceApiBodyKind,
+  SourceApiExecuteMode,
+  SourceApiInputMode,
+  SourceApiOperationKind,
+  SourceApiPaginationPolicy,
+  SourceApiSelectorKind,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { SourceApiDraft as CliSourceApiDraft } from "../../gen/onequery/cli/v1/source_api_pb";
 import { cliServiceErr } from "../result";
@@ -43,12 +43,19 @@ export function resolveSourceApiExecuteCommand(
 ): CliServiceResult<SourceApiExecuteCommand> {
   switch (input.case) {
     case "start":
+      if (!input.value.target) {
+        return cliServiceErr({
+          detail: "source API request missing target payload",
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+
       if (input.value.draft) {
         return Result.ok({
           draft: input.value.draft,
           kind: "start",
           mode: input.value.mode,
-          target: buildSourceApiTarget(input.value.draft),
+          target: buildSourceApiTarget(input.value.target),
         });
       }
 
@@ -57,10 +64,17 @@ export function resolveSourceApiExecuteCommand(
         key: "SOURCE_REQUEST_INVALID",
       });
     case "resume":
+      if (!input.value.target) {
+        return cliServiceErr({
+          detail: "source API request missing target payload",
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+
       return Result.ok({
         continuationToken: input.value.continuationToken,
         kind: "resume",
-        target: buildSourceApiTarget(input.value),
+        target: buildSourceApiTarget(input.value.target),
       });
     case undefined:
       return cliServiceErr({
@@ -81,9 +95,9 @@ function buildSourceApiTarget(input: {
 }
 
 export function isCliSourceApiPreviewOnlyMode(
-  value: CliSourceApiExecuteMode
+  value: SourceApiExecuteMode
 ): boolean {
-  return value === CliSourceApiExecuteMode.PREVIEW_ONLY;
+  return value === SourceApiExecuteMode.PREVIEW_ONLY;
 }
 
 export function buildSourceApiDraft(
@@ -91,6 +105,7 @@ export function buildSourceApiDraft(
 ): SourceApiDraft {
   return {
     body: buildSourceApiRequestBody(request.body),
+    descriptorVersion: request.descriptorVersion,
     fieldPatch: request.fieldPatch,
     headers: request.headers.map(copySourceApiHeader),
     methodOverride: request.methodOverride,
@@ -171,9 +186,8 @@ function buildCliSourceApiPreview(
     method: value.method,
     operation: value.operation,
     paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
-    provider: toCliSourceProvider(value.provider),
+    source: buildCliSourceApiSource(value.source),
     selector: value.selector,
-    sourceKey: value.sourceKey,
     url: value.url,
   };
 }
@@ -198,7 +212,7 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
     examples: value.examples.map(buildCliSourceApiExample),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
-      allowedNames: [...value.headerPolicy.allowedRequestHeaders],
+      allowedRequestHeaderNames: [...value.headerPolicy.allowedRequestHeaders],
     },
     kind: toCliSourceApiOperationKind(value.kind),
     methodPolicy: {
@@ -217,12 +231,12 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
 function buildCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
   return {
     acceptsInput: value.acceptsInput,
+    allowsRawFields: value.allowsRawFields,
+    allowsTypedFields: value.allowsTypedFields,
     inputMode: toCliSourceApiInputMode(value.inputMode),
     mergePatches: value.mergePatches,
     supportsArrayPaths: value.supportsArrayPaths,
     supportsNestedPaths: value.supportsNestedPaths,
-    supportsRawFields: value.allowsRawFields,
-    supportsTypedFields: value.allowsTypedFields,
   };
 }
 
@@ -266,7 +280,7 @@ function buildCliSourceApiResponseBody(
 function buildCliSourceApiSource(value: SourceApiSource) {
   return {
     displayName: value.displayName ?? undefined,
-    key: value.key,
+    sourceKey: value.sourceKey,
     provider: toCliSourceProvider(value.provider),
   };
 }
@@ -274,60 +288,58 @@ function buildCliSourceApiSource(value: SourceApiSource) {
 function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
   switch (value) {
     case "none":
-      return CliSourceApiInputMode.NONE;
+      return SourceApiInputMode.NONE;
     case "request_object":
-      return CliSourceApiInputMode.REQUEST_OBJECT;
+      return SourceApiInputMode.REQUEST_OBJECT;
     case "request_body":
-      return CliSourceApiInputMode.REQUEST_BODY;
+      return SourceApiInputMode.REQUEST_BODY;
   }
 }
 
 function toCliSourceApiOperationKind(
   value: SourceApiOperation["kind"]
-): CliSourceApiOperationKind {
+): SourceApiOperationKind {
   switch (value) {
     case "http_request":
-      return CliSourceApiOperationKind.HTTP_REQUEST;
+      return SourceApiOperationKind.HTTP_REQUEST;
     case "structured_request":
-      return CliSourceApiOperationKind.STRUCTURED_REQUEST;
+      return SourceApiOperationKind.STRUCTURED_REQUEST;
   }
 }
 
-function toCliSourceApiBodyKind(
-  value: SourceApiBodyKind
-): CliSourceApiBodyKind {
+function toCliSourceApiBodyKind(value: SourceApiBodyFormat): SourceApiBodyKind {
   switch (value) {
     case "none":
-      return CliSourceApiBodyKind.NONE;
+      return SourceApiBodyKind.NONE;
     case "json":
-      return CliSourceApiBodyKind.JSON;
+      return SourceApiBodyKind.JSON;
     case "text":
-      return CliSourceApiBodyKind.TEXT;
+      return SourceApiBodyKind.TEXT;
     case "binary":
-      return CliSourceApiBodyKind.BINARY;
+      return SourceApiBodyKind.BINARY;
   }
 }
 
 function toCliSourceApiPaginationPolicy(
   value: SourceApiOperation["paginationPolicy"]
-): CliSourceApiPaginationPolicy {
+): SourceApiPaginationPolicy {
   switch (value) {
     case "none":
-      return CliSourceApiPaginationPolicy.NONE;
+      return SourceApiPaginationPolicy.NONE;
     case "continuation_token":
-      return CliSourceApiPaginationPolicy.CONTINUATION_TOKEN;
+      return SourceApiPaginationPolicy.CONTINUATION_TOKEN;
   }
 }
 
 function toCliSourceApiSelectorKind(
   value: SourceApiOperation["selectorKind"]
-): CliSourceApiSelectorKind {
+): SourceApiSelectorKind {
   switch (value) {
     case "none":
-      return CliSourceApiSelectorKind.NONE;
+      return SourceApiSelectorKind.NONE;
     case "path":
-      return CliSourceApiSelectorKind.PATH;
+      return SourceApiSelectorKind.PATH;
     case "identifier":
-      return CliSourceApiSelectorKind.IDENTIFIER;
+      return SourceApiSelectorKind.IDENTIFIER;
   }
 }

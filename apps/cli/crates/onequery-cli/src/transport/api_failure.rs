@@ -42,7 +42,7 @@ impl ApiFailure {
 pub(crate) struct ApiProblem {
     pub(crate) title: String,
     pub(crate) detail: String,
-    pub(crate) code: types::CliProblemCode,
+    pub(crate) code: types::ProblemCode,
     pub(crate) retryable: bool,
     pub(crate) retry_after_ms: Option<u64>,
     pub(crate) stage: ErrorStage,
@@ -53,7 +53,7 @@ pub(crate) struct ApiProblem {
 
 impl ApiProblem {
     pub(crate) fn is_auth_error(&self) -> bool {
-        self.code == types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN
+        self.code == types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN
     }
 }
 
@@ -96,7 +96,7 @@ pub(crate) fn conversion_failure(stage: ErrorStage, message: impl Into<String>) 
     ApiFailure::Problem(ApiProblem {
         title: "Invalid Request".to_owned(),
         detail: message.into(),
-        code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
+        code: types::ProblemCode::PROBLEM_CODE_INVALID_REQUEST,
         retryable: false,
         retry_after_ms: None,
         stage,
@@ -163,9 +163,9 @@ pub(crate) fn sanitization_metadata_from_generated(
     sanitization: Option<types::CliSanitization>,
 ) -> Option<SanitizationMetadata> {
     sanitization.map(|sanitization| SanitizationMetadata {
-        profile: sanitization.profile,
+        profile: sanitization.profile.unwrap_or_default(),
         sanitized_paths: sanitization.sanitized_paths.into_iter().collect(),
-        raw_available: sanitization.raw_available,
+        raw_available: sanitization.raw_available.unwrap_or_default(),
     })
 }
 
@@ -226,20 +226,24 @@ fn parse_connect_problem_details(
         return Ok(None);
     };
 
-    let title = non_empty(Some(cli_error.title))
+    let title = non_empty(cli_error.title)
         .ok_or_else(|| "server returned CliErrorDetail without title".to_owned())?;
     let detail = non_empty(error.message.clone())
         .ok_or_else(|| "server returned CliErrorDetail without an error message".to_owned())?;
-    let code = known_cli_problem_code(cli_error.code)
-        .ok_or_else(|| "server returned invalid CliProblemCode".to_owned())?;
-    let stage = cli_problem_stage_to_error_stage(cli_error.stage)
-        .ok_or_else(|| "server returned invalid CliProblemStage".to_owned())?;
+    let code = cli_error
+        .code
+        .and_then(known_cli_problem_code)
+        .ok_or_else(|| "server returned invalid ProblemCode".to_owned())?;
+    let stage = cli_error
+        .stage
+        .and_then(cli_problem_stage_to_error_stage)
+        .ok_or_else(|| "server returned invalid ProblemStage".to_owned())?;
 
     Ok(Some(ApiProblem {
         title,
         detail,
         code,
-        retryable: cli_error.retryable,
+        retryable: cli_error.retryable.unwrap_or_default(),
         retry_after_ms: parsed.retry_after_ms,
         stage,
         hint: non_empty(cli_error.hint),
@@ -270,38 +274,34 @@ fn duration_to_ms(duration: buffa_types::google::protobuf::Duration) -> Option<u
     millis_from_seconds.checked_add(millis_from_nanos)
 }
 
-pub(crate) fn cli_problem_code_string(code: types::CliProblemCode) -> String {
+pub(crate) fn cli_problem_code_string(code: types::ProblemCode) -> String {
     code.proto_name()
-        .strip_prefix("CLI_PROBLEM_CODE_")
+        .strip_prefix("PROBLEM_CODE_")
         .map(str::to_ascii_lowercase)
         .unwrap_or_else(|| panic!("expected known CLI problem code: {code:?}"))
 }
 
 fn known_cli_problem_code(
-    code: buffa::EnumValue<types::CliProblemCode>,
-) -> Option<types::CliProblemCode> {
+    code: buffa::EnumValue<types::ProblemCode>,
+) -> Option<types::ProblemCode> {
     match code.as_known() {
-        Some(types::CliProblemCode::CLI_PROBLEM_CODE_UNSPECIFIED) | None => None,
+        Some(types::ProblemCode::PROBLEM_CODE_UNSPECIFIED) | None => None,
         Some(code) => Some(code),
     }
 }
 
 fn cli_problem_stage_to_error_stage(
-    stage: buffa::EnumValue<types::CliProblemStage>,
+    stage: buffa::EnumValue<types::ProblemStage>,
 ) -> Option<ErrorStage> {
     match stage.as_known() {
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH) => Some(ErrorStage::Auth),
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_EXECUTE_QUERY) => {
-            Some(ErrorStage::ExecuteQuery)
-        }
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_READ_QUERY_INPUT) => {
+        Some(types::ProblemStage::PROBLEM_STAGE_AUTH) => Some(ErrorStage::Auth),
+        Some(types::ProblemStage::PROBLEM_STAGE_EXECUTE_QUERY) => Some(ErrorStage::ExecuteQuery),
+        Some(types::ProblemStage::PROBLEM_STAGE_READ_QUERY_INPUT) => {
             Some(ErrorStage::ReadQueryInput)
         }
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_ORG) => Some(ErrorStage::ResolveOrg),
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_RESOLVE_SOURCE) => {
-            Some(ErrorStage::ResolveSource)
-        }
-        Some(types::CliProblemStage::CLI_PROBLEM_STAGE_UNSPECIFIED) | None => None,
+        Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_ORG) => Some(ErrorStage::ResolveOrg),
+        Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_SOURCE) => Some(ErrorStage::ResolveSource),
+        Some(types::ProblemStage::PROBLEM_STAGE_UNSPECIFIED) | None => None,
     }
 }
 
@@ -416,11 +416,11 @@ mod tests {
         error.details.push(error_detail(
             "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
             &generated::types::CliErrorDetail {
-                code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
-                stage: generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into(),
-                title: "Login Rate Limited".to_owned(),
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
+                title: Some("Login Rate Limited".to_owned()),
                 hint: Some("wait briefly, then retry `onequery auth login`".to_owned()),
-                retryable: true,
+                retryable: Some(true),
                 request_id: Some("req_problem".to_owned()),
                 ..Default::default()
             },
@@ -453,7 +453,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Login Rate Limited".to_owned(),
                 detail: "polling is rate limited".to_owned(),
-                code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
+                code: generated::types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
                 retryable: true,
                 retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,
@@ -551,7 +551,7 @@ mod tests {
     fn cli_problem_code_string_projects_known_codes() {
         assert_eq!(
             cli_problem_code_string(
-                generated::types::CliProblemCode::CLI_PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE
+                generated::types::ProblemCode::PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE
             ),
             "query_execution_unavailable"
         );

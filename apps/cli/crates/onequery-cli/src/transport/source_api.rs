@@ -15,12 +15,12 @@ use crate::transport::generated::types;
 pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
 pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
 
-pub(crate) type SourceApiInputMode = types::CliSourceApiInputMode;
-pub(crate) type SourceApiOperationKind = types::CliSourceApiOperationKind;
-pub(crate) type SourceApiSelectorKind = types::CliSourceApiSelectorKind;
-pub(crate) type SourceApiPaginationPolicy = types::CliSourceApiPaginationPolicy;
-pub(crate) type SourceApiBodyKind = types::CliSourceApiBodyKind;
-pub(crate) type SourceApiProvider = types::CliSourceProvider;
+pub(crate) type SourceApiInputMode = types::SourceApiInputMode;
+pub(crate) type SourceApiOperationKind = types::SourceApiOperationKind;
+pub(crate) type SourceApiSelectorKind = types::SourceApiSelectorKind;
+pub(crate) type SourceApiPaginationPolicy = types::SourceApiPaginationPolicy;
+pub(crate) type SourceApiBodyKind = types::SourceApiBodyKind;
+pub(crate) type SourceApiProvider = types::SourceProvider;
 pub(crate) type SourceApiSource = types::CliSourceApiSource;
 pub(crate) type SourceApiHeader = types::CliSourceApiHeader;
 pub(crate) type SourceApiExample = types::CliSourceApiExample;
@@ -30,6 +30,7 @@ pub(crate) type SourceApiHeaderPolicy = types::CliSourceApiHeaderPolicy;
 pub(crate) type SourceApiOperation = types::CliSourceApiOperation;
 pub(crate) type SourceApiDescriptor = types::DescribeSourceApiResponse;
 pub(crate) type SourceApiDraft = types::SourceApiDraft;
+pub(crate) type SourceApiTarget = types::SourceApiTarget;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
 pub(crate) type SourceApiPreview = types::SourceApiPreview;
 pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
@@ -78,8 +79,8 @@ pub(crate) async fn describe_source_api(
     let response = match client
         .cli()
         .describe_source_api(types::DescribeSourceApiRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -111,15 +112,20 @@ pub(crate) async fn execute_source_api(
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Start(Box::new(
                 types::StartSourceApiExecution {
-                    draft: MessageField::some(source_api_draft_with_context(
-                        org, source_key, draft,
+                    target: MessageField::some(source_api_target(
+                        org,
+                        source_key,
+                        ErrorStage::ExecuteQuery,
                     )?),
-                    mode: if preview_only {
-                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
-                    } else {
-                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_EXECUTE
-                    }
-                    .into(),
+                    draft: MessageField::some(draft.clone()),
+                    mode: Some(
+                        if preview_only {
+                            types::SourceApiExecuteMode::SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
+                        } else {
+                            types::SourceApiExecuteMode::SOURCE_API_EXECUTE_MODE_EXECUTE
+                        }
+                        .into(),
+                    ),
                     ..Default::default()
                 },
             ))),
@@ -148,19 +154,20 @@ pub(crate) async fn resume_source_api(
     source_key: &str,
     continuation_token: &str,
 ) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
             input: Some(types::execute_source_api_request::Input::Resume(Box::new(
                 types::ResumeSourceApiExecution {
-                    org_slug,
-                    source_key,
-                    continuation_token: try_into_value(
+                    target: MessageField::some(source_api_target(
+                        org,
+                        source_key,
+                        ErrorStage::ExecuteQuery,
+                    )?),
+                    continuation_token: Some(try_into_value(
                         continuation_token,
                         ErrorStage::ExecuteQuery,
-                    )?,
+                    )?),
                     ..Default::default()
                 },
             ))),
@@ -187,11 +194,11 @@ source_api_enum_surface!(
     source_api_operation_kind_or_http_request,
     source_api_operation_kind_label,
     SourceApiOperationKind,
-    SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST,
-    SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_UNSPECIFIED,
+    SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST,
+    SourceApiOperationKind::SOURCE_API_OPERATION_KIND_UNSPECIFIED,
     {
-        SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST => "http_request",
-        SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST => "structured_request",
+        SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST => "http_request",
+        SourceApiOperationKind::SOURCE_API_OPERATION_KIND_STRUCTURED_REQUEST => "structured_request",
     }
 );
 
@@ -199,12 +206,12 @@ source_api_enum_surface!(
     source_api_selector_kind_or_none,
     source_api_selector_kind_label,
     SourceApiSelectorKind,
-    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE,
-    SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED,
+    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE,
+    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED,
     {
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => "none",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH => "path",
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
+        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE => "none",
+        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH => "path",
+        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER => "identifier",
     }
 );
 
@@ -212,11 +219,11 @@ source_api_enum_surface!(
     source_api_pagination_policy_or_none,
     source_api_pagination_policy_label,
     SourceApiPaginationPolicy,
-    SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE,
-    SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_UNSPECIFIED,
+    SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE,
+    SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_UNSPECIFIED,
     {
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE => "none",
-        SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN => "continuation_token",
+        SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE => "none",
+        SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN => "continuation_token",
     }
 );
 
@@ -224,13 +231,13 @@ source_api_enum_surface!(
     source_api_body_kind_or_none,
     source_api_body_kind_label,
     SourceApiBodyKind,
-    SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE,
-    SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_UNSPECIFIED,
+    SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE,
+    SourceApiBodyKind::SOURCE_API_BODY_KIND_UNSPECIFIED,
     {
-        SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE => "none",
-        SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON => "json",
-        SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT => "text",
-        SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_BINARY => "binary",
+        SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE => "none",
+        SourceApiBodyKind::SOURCE_API_BODY_KIND_JSON => "json",
+        SourceApiBodyKind::SOURCE_API_BODY_KIND_TEXT => "text",
+        SourceApiBodyKind::SOURCE_API_BODY_KIND_BINARY => "binary",
     }
 );
 
@@ -238,12 +245,12 @@ source_api_enum_surface!(
     source_api_input_mode_or_none,
     source_api_input_mode_label,
     SourceApiInputMode,
-    SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE,
-    SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED,
+    SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE,
+    SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED,
     {
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE => "none",
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT => "request object",
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY => "request body",
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE => "none",
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT => "request object",
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY => "request body",
     }
 );
 
@@ -317,15 +324,16 @@ fn normalize_renderable_json_number(number: serde_json::Number) -> JsonValue {
     JsonValue::Number(number)
 }
 
-fn source_api_draft_with_context(
+fn source_api_target(
     org: &str,
     source_key: &str,
-    draft: &SourceApiDraft,
-) -> Result<types::SourceApiDraft, ApiFailure> {
-    let mut draft = draft.clone();
-    draft.org_slug = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    draft.source_key = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    Ok(draft)
+    stage: ErrorStage,
+) -> Result<SourceApiTarget, ApiFailure> {
+    Ok(SourceApiTarget {
+        org_slug: Some(try_into_value(org, stage)?),
+        source_key: Some(try_into_value(source_key, stage)?),
+        ..Default::default()
+    })
 }
 
 fn validate_source_api_descriptor(
@@ -351,23 +359,23 @@ fn validate_source_api_operation(
     value: &SourceApiOperation,
     request_id: Option<String>,
 ) -> Result<(), ApiFailure> {
-    let operation_name = value.name.clone();
+    let operation_name = value.name.as_deref().unwrap_or("<unnamed>");
 
     validate_required_operation_message(
         value.method_policy.is_set(),
-        &operation_name,
+        operation_name,
         "method policy",
         request_id.clone(),
     )?;
     validate_required_operation_message(
         value.field_policy.is_set(),
-        &operation_name,
+        operation_name,
         "field policy",
         request_id.clone(),
     )?;
     validate_required_operation_message(
         value.header_policy.is_set(),
-        &operation_name,
+        operation_name,
         "header policy",
         request_id,
     )
@@ -398,6 +406,14 @@ fn validate_execute_source_api_result(
         return Err(decode_failure(
             ErrorStage::ExecuteQuery,
             "source API execution response missing preview",
+            request_id,
+        ));
+    }
+
+    if !value.preview.source.is_set() {
+        return Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API execution response missing preview source metadata",
             request_id,
         ));
     }
@@ -461,30 +477,32 @@ mod tests {
         let error = source_api_descriptor(
             &types::DescribeSourceApiResponse {
                 source: buffa::MessageField::some(types::CliSourceApiSource {
-                    key: "github-prod".to_owned(),
-                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
+                    source_key: Some("github-prod".to_owned()),
+                    provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
                     ..Default::default()
                 }),
-                descriptor_version: "github.v1".to_owned(),
+                descriptor_version: Some("github.v1".to_owned()),
                 operations: vec![types::CliSourceApiOperation {
-                    name: "fetch".to_owned(),
-                    kind:
-                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                    name: Some("fetch".to_owned()),
+                    kind: Some(
+                        types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                             .into(),
-                    summary: "Fetch a resource".to_owned(),
-                    description: "Fetches a GitHub resource.".to_owned(),
-                    selector_kind:
-                        types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into(),
-                    pagination_policy:
-                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
-                            .into(),
+                    ),
+                    summary: Some("Fetch a resource".to_owned()),
+                    description: Some("Fetches a GitHub resource.".to_owned()),
+                    selector_kind: Some(
+                        types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH.into(),
+                    ),
+                    pagination_policy: Some(
+                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
+                    ),
                     field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
-                        supports_raw_fields: true,
-                        supports_typed_fields: true,
+                        allows_raw_fields: Some(true),
+                        allows_typed_fields: Some(true),
                         ..Default::default()
                     }),
                     header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
-                        allowed_names: vec!["accept".to_owned()],
+                        allowed_request_header_names: vec!["accept".to_owned()],
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -510,22 +528,26 @@ mod tests {
         let error = execute_source_api_result(
             &types::ExecuteSourceApiResponse {
                 preview: buffa::MessageField::some(types::SourceApiPreview {
-                    source_key: "github-prod".to_owned(),
-                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
-                    operation: "fetch".to_owned(),
-                    kind:
-                        types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                    source: buffa::MessageField::some(types::CliSourceApiSource {
+                        source_key: Some("github-prod".to_owned()),
+                        provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
+                        ..Default::default()
+                    }),
+                    operation: Some("fetch".to_owned()),
+                    kind: Some(
+                        types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                             .into(),
-                    body_kind: types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE.into(),
-                    pagination_policy:
-                        types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
-                            .into(),
+                    ),
+                    body_kind: Some(types::SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE.into()),
+                    pagination_policy: Some(
+                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
+                    ),
                     ..Default::default()
                 }),
                 result: buffa::MessageField::some(types::SourceApiExecutionResult {
-                    operation: "fetch".to_owned(),
-                    status: 200,
-                    content_type: "application/json".to_owned(),
+                    operation: Some("fetch".to_owned()),
+                    status: Some(200),
+                    content_type: Some("application/json".to_owned()),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -548,40 +570,38 @@ mod tests {
     fn source_api_enum_helpers_keep_cli_labels_stable() {
         assert_eq!(
             source_api_operation_kind_label(
-                types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
+                types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
             ),
             "http_request"
         );
         assert_eq!(
-            source_api_body_kind_label(
-                types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_TEXT.into(),
-            ),
+            source_api_body_kind_label(types::SourceApiBodyKind::SOURCE_API_BODY_KIND_TEXT.into(),),
             "text"
         );
         assert_eq!(
             source_api_pagination_policy_label(
-                types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
+                types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
                     .into(),
             ),
             "continuation_token"
         );
         assert_eq!(
             source_api_input_mode_label(
-                types::CliSourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY.into(),
+                types::SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY.into(),
             ),
             "request body"
         );
         assert_eq!(
             source_api_selector_kind_label(
-                types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER.into(),
+                types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER.into(),
             ),
             "identifier"
         );
         assert_eq!(
             source_api_selector_kind_or_none(
-                types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED.into(),
+                types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED.into(),
             ),
-            types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE
+            types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE
         );
     }
 

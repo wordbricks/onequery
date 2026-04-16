@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -6,11 +6,11 @@ import "buf/validate/validate.proto";
 import "onequery/cli/v1/common.proto";
 
 message ListOrganizationsRequest {
-  optional uint32 limit = 1 [
+  uint32 limit = 1 [
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 100
   ];
-  optional string cursor = 2 [(buf.validate.field).string.min_len = 1];
+  string cursor = 2 [(buf.validate.field).string.min_len = 1];
 }
 
 message ListOrganizationsResponse {
@@ -32,7 +32,10 @@ message GetOrganizationResponse {
   ];
   string name = 2 [(buf.validate.field).string.min_len = 1];
   repeated string roles = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
-  repeated CliOrgCapability capabilities = 4;
+  repeated OrgCapability capabilities = 4 [
+    (buf.validate.field).repeated.items.enum.not_in = 0,
+    (buf.validate.field).repeated.items.enum.defined_only = true
+  ];
 }
 
 message CliOrganizationSummary {
@@ -43,14 +46,14 @@ message CliOrganizationSummary {
   string name = 2 [(buf.validate.field).string.min_len = 1];
 }
 
-enum CliOrgCapability {
-  CLI_ORG_CAPABILITY_UNSPECIFIED = 0;
-  CLI_ORG_CAPABILITY_ORG_LIST = 1;
-  CLI_ORG_CAPABILITY_ORG_READ = 2;
-  CLI_ORG_CAPABILITY_SOURCE_CONNECT = 3;
-  CLI_ORG_CAPABILITY_SOURCE_LIST = 4;
-  CLI_ORG_CAPABILITY_SOURCE_READ = 5;
-  CLI_ORG_CAPABILITY_QUERY_EXECUTE = 6;
-  CLI_ORG_CAPABILITY_SOURCE_API_DESCRIBE = 7;
-  CLI_ORG_CAPABILITY_SOURCE_API_EXECUTE = 8;
+enum OrgCapability {
+  ORG_CAPABILITY_UNSPECIFIED = 0;
+  ORG_CAPABILITY_ORG_LIST = 1;
+  ORG_CAPABILITY_ORG_READ = 2;
+  ORG_CAPABILITY_SOURCE_CONNECT = 3;
+  ORG_CAPABILITY_SOURCE_LIST = 4;
+  ORG_CAPABILITY_SOURCE_READ = 5;
+  ORG_CAPABILITY_QUERY_EXECUTE = 6;
+  ORG_CAPABILITY_SOURCE_API_DESCRIBE = 7;
+  ORG_CAPABILITY_SOURCE_API_EXECUTE = 8;
 }

@@ -181,7 +181,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       ],
       source: {
         displayName: source.displayName,
-        key: source.sourceKey,
+        sourceKey: source.sourceKey,
         provider: source.provider,
       },
     };
@@ -214,7 +214,7 @@ export const githubSourceApiAdapter: SourceApiAdapter = {
       selector: prepared.selector,
       source: {
         displayName: source.displayName,
-        key: source.sourceKey,
+        sourceKey: source.sourceKey,
         provider: source.provider,
       },
       status: response.status,
