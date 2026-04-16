@@ -4,8 +4,8 @@
   "private": false,
   "type": "module",
   "scripts": {
-    "dev": "bunx --bun vite",
-    "build": "bunx --bun vite build",
+    "dev": "vite",
+    "build": "vite build",
     "preview": "bun run --cwd ../../packages/self-host-runtime serve",
     "test": "vitest run",
     "test:watch": "vitest",
