@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use buffa::MessageField;
+use connectrpc::client::CallOptions;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -129,9 +132,17 @@ pub(crate) async fn execute_read_only_query_with_controls(
     source_key: &str,
     payload: &QueryRequestPayload,
     controls: &ReadRequestControls,
+    request_timeout: Duration,
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
-    let response =
-        fetch_query_page(client, org, source_key, payload, controls.single_page()).await?;
+    let response = fetch_query_page(
+        client,
+        org,
+        source_key,
+        payload,
+        controls.single_page(),
+        request_timeout,
+    )
+    .await?;
 
     if !controls.page_all {
         return Ok(response);
@@ -149,6 +160,7 @@ pub(crate) async fn execute_read_only_query_with_controls(
             source_key,
             payload,
             controls.with_cursor(Some(cursor)),
+            request_timeout,
         )
         .await?;
         total_returned += next_response.payload.page.returned;
@@ -173,6 +185,7 @@ async fn fetch_query_page(
     source_key: &str,
     payload: &QueryRequestPayload,
     controls: SinglePageReadControls,
+    request_timeout: Duration,
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
@@ -182,14 +195,17 @@ async fn fetch_query_page(
     let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
-        .execute_query(types::ExecuteQueryRequest {
-            org_slug,
-            source_key,
-            limit,
-            cursor,
-            query: MessageField::some(query),
-            ..Default::default()
-        })
+        .execute_query_with_options(
+            types::ExecuteQueryRequest {
+                org_slug,
+                source_key,
+                limit,
+                cursor,
+                query: MessageField::some(query),
+                ..Default::default()
+            },
+            CallOptions::default().with_timeout(request_timeout),
+        )
         .await
     {
         Ok(response) => response,
@@ -212,18 +228,22 @@ pub(crate) async fn validate_read_only_query_with_controls(
     source_key: &str,
     payload: &QueryRequestPayload,
     _controls: &ReadRequestControls,
+    request_timeout: Duration,
 ) -> Result<ApiSuccess<QueryValidationResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ReadQueryInput)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
-        .validate_query(types::ValidateQueryRequest {
-            org_slug,
-            source_key,
-            query: MessageField::some(query),
-            ..Default::default()
-        })
+        .validate_query_with_options(
+            types::ValidateQueryRequest {
+                org_slug,
+                source_key,
+                query: MessageField::some(query),
+                ..Default::default()
+            },
+            CallOptions::default().with_timeout(request_timeout),
+        )
         .await
     {
         Ok(response) => response,

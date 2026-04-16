@@ -28,7 +28,7 @@ use self::execute::run_query_workflow;
 use self::validate::run_query_validate_workflow;
 use super::CommandContext;
 use super::Runtime;
-use super::auth_session::authenticated_api_client_with_timeout;
+use super::auth_session::authenticated_api_client;
 use super::auth_session::ensure_authenticated_org;
 use super::query_result_window_from_args;
 use super::read_controls_from_list_args;

@@ -5,8 +5,6 @@ mod intent;
 mod plan;
 mod render;
 
-use std::time::Duration;
-
 use buffa::MessageField;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -26,7 +24,7 @@ use crate::transport::source_api::SourceApiSource;
 
 use super::CommandContext;
 use super::Runtime;
-use super::auth_session::authenticated_api_client_with_timeout;
+use super::auth_session::authenticated_api_client;
 use super::auth_session::ensure_authenticated_org;
 use plan::PlannedCommand;
 use plan::SourceApiExecutionOptions;
@@ -40,9 +38,7 @@ pub(super) async fn execute<B, T>(
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
     let org_slug = ensure_authenticated_org(context, runtime).await?;
-
-    let request_timeout = Duration::from_secs(runtime.config.data().request_timeout_sec);
-    let client = authenticated_api_client_with_timeout(context, runtime, request_timeout)?;
+    let client = authenticated_api_client(context, runtime)?;
 
     let descriptor_response =
         source_api::describe_source_api(&client, org_slug.as_str(), args.source.as_str())
