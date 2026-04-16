@@ -107,7 +107,7 @@ async fn fetch_source_page(
     let response = match client
         .cli()
         .list_sources(types::ListSourcesRequest {
-            org_slug,
+            org_slug: Some(org_slug),
             limit,
             cursor,
             ..Default::default()
@@ -153,8 +153,8 @@ pub(crate) async fn get_source_by_key_with_controls(
     let response = match client
         .cli()
         .get_source(types::GetSourceRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -191,8 +191,8 @@ pub(crate) async fn test_source(
     let response = match client
         .cli()
         .test_source(types::TestSourceRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -223,19 +223,21 @@ pub(crate) async fn test_source(
     let outcome = match outcome {
         types::test_source_response::Outcome::Supported(supported) => SourceTestOutcome {
             kind: "supported".to_owned(),
-            message: supported.message,
-            success: Some(supported.success),
+            message: supported.message.unwrap_or_default(),
+            success: supported.success,
             error: supported.error,
             latency_ms: supported.latency_ms,
             reason: None,
         },
         types::test_source_response::Outcome::Unsupported(unsupported) => SourceTestOutcome {
             kind: "unsupported".to_owned(),
-            message: unsupported.message,
+            message: unsupported.message.unwrap_or_default(),
             success: None,
             error: None,
             latency_ms: None,
-            reason: Some(source_test_unsupported_reason_to_str(unsupported.reason)),
+            reason: unsupported
+                .reason
+                .map(source_test_unsupported_reason_to_str),
         },
     };
 
@@ -249,12 +251,21 @@ pub(crate) async fn test_source(
 }
 
 pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> SourceSummary {
+    let types::CliSource {
+        source_key,
+        display_name,
+        provider,
+        queryable,
+        status,
+        ..
+    } = summary;
+
     SourceSummary {
-        source_key: Some(summary.source_key),
-        display_name: summary.display_name,
-        provider: Some(source_provider_to_str(summary.provider)),
-        queryable: Some(summary.queryable),
-        status: Some(source_status_to_str(summary.status)),
+        source_key,
+        display_name,
+        provider: provider.map(source_provider_to_str),
+        queryable,
+        status: status.map(source_status_to_str),
     }
 }
 

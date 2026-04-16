@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -6,13 +6,13 @@ import "buf/validate/validate.proto";
 import "google/rpc/error_details.proto";
 
 message CliPage {
-  optional string next_cursor = 1 [(buf.validate.field).string.min_len = 1];
+  string next_cursor = 1 [(buf.validate.field).string.min_len = 1];
   uint64 returned_count = 2;
 }
 
 message CliSanitization {
   string profile = 1 [(buf.validate.field).string.min_len = 1];
-  repeated string sanitized_paths = 2;
+  repeated string sanitized_paths = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
   bool raw_available = 3;
 }
 
@@ -66,9 +66,9 @@ message CliErrorDetail {
     not_in: [0]
   }];
   string title = 3 [(buf.validate.field).string.min_len = 1];
-  optional string hint = 4 [(buf.validate.field).string.min_len = 1];
+  string hint = 4 [(buf.validate.field).string.min_len = 1];
   bool retryable = 5;
-  optional string request_id = 6 [(buf.validate.field).string.min_len = 1];
+  string request_id = 6 [(buf.validate.field).string.min_len = 1];
 }
 
 // Comment: this message exists to keep generated Connect error-detail schemas

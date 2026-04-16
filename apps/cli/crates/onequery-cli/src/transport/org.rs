@@ -47,7 +47,7 @@ pub(crate) async fn get_org_with_controls(
     let response = match client
         .cli()
         .get_organization(types::GetOrganizationRequest {
-            org_slug,
+            org_slug: Some(org_slug),
             ..Default::default()
         })
         .await
@@ -148,19 +148,26 @@ pub(crate) struct OrgListPayload {
 
 fn org_summary_from_generated(summary: types::CliOrganizationSummary) -> OrgSummary {
     OrgSummary {
-        slug: Some(summary.slug),
-        name: Some(summary.name),
+        slug: summary.slug,
+        name: summary.name,
     }
 }
 
 fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDetails {
+    let types::GetOrganizationResponse {
+        slug,
+        name,
+        roles,
+        capabilities,
+        ..
+    } = details;
+
     OrgDetails {
-        slug: Some(details.slug),
-        name: Some(details.name),
-        roles: Some(details.roles),
+        slug,
+        name,
+        roles: Some(roles),
         capabilities: Some(
-            details
-                .capabilities
+            capabilities
                 .into_iter()
                 .map(org_capability_to_str)
                 .collect(),
@@ -184,8 +191,8 @@ mod tests {
     #[test]
     fn org_summary_from_generated_maps_list_payload() {
         let summary = org_summary_from_generated(types::CliOrganizationSummary {
-            slug: "acme".to_owned(),
-            name: "Acme".to_owned(),
+            slug: Some("acme".to_owned()),
+            name: Some("Acme".to_owned()),
             ..Default::default()
         });
 
@@ -201,8 +208,8 @@ mod tests {
     #[test]
     fn org_details_from_generated_maps_capabilities() {
         let details = org_details_from_generated(types::GetOrganizationResponse {
-            slug: "acme".to_owned(),
-            name: "Acme".to_owned(),
+            slug: Some("acme".to_owned()),
+            name: Some("Acme".to_owned()),
             roles: vec!["member".to_owned(), "admin".to_owned()],
             capabilities: vec![
                 types::CliOrgCapability::CLI_ORG_CAPABILITY_ORG_LIST.into(),

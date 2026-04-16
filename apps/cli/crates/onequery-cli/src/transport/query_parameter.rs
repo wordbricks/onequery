@@ -105,13 +105,23 @@ macro_rules! query_parameter_types {
                 }
             }
 
-            pub(crate) fn from_generated(value: EnumValue<types::CliQueryParameterType>) -> Self {
-                match value.as_known() {
-                    $(
-                        Some(types::CliQueryParameterType::$generated) => Self::$variant,
-                    )+
-                    Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED)
-                    | None => Self::Unknown(value.to_string()),
+            pub(crate) fn from_generated(
+                value: Option<EnumValue<types::CliQueryParameterType>>,
+            ) -> Self {
+                match value {
+                    Some(value) => match value.as_known() {
+                        $(
+                            Some(types::CliQueryParameterType::$generated) => Self::$variant,
+                        )+
+                        Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED)
+                        | None => Self::Unknown(value.to_string()),
+                    },
+                    None => Self::Unknown(
+                        EnumValue::from(
+                            types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED,
+                        )
+                        .to_string(),
+                    ),
                 }
             }
 
@@ -193,7 +203,7 @@ pub(crate) fn query_request_parameter_to_generated(
     parameter: QueryRequestParameter,
 ) -> types::CliQueryParameter {
     types::CliQueryParameter {
-        r#type: types::CliQueryParameterType::from(parameter.parameter_type).into(),
+        r#type: Some(types::CliQueryParameterType::from(parameter.parameter_type).into()),
         value: parameter.value,
         ..Default::default()
     }
@@ -257,7 +267,7 @@ mod tests {
     fn query_request_parameter_to_generated_maps_known_surface() {
         assert_eq!(
             types::CliQueryParameter {
-                r#type: types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN.into(),
+                r#type: Some(types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_BOOLEAN.into(),),
                 value: Some("true".to_owned()),
                 ..Default::default()
             },
@@ -284,7 +294,7 @@ mod tests {
                 types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL,
             ]
             .into_iter()
-            .map(Into::into)
+            .map(|value| Some(value.into()))
             .map(QueryCanonicalParameterType::from_generated)
             .collect::<Vec<_>>()
         );
@@ -294,9 +304,17 @@ mod tests {
     fn query_canonical_parameter_type_preserves_unknown_generated_values() {
         assert_eq!(
             QueryCanonicalParameterType::Unknown("CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
-            QueryCanonicalParameterType::from_generated(
-                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED.into()
-            )
+            QueryCanonicalParameterType::from_generated(Some(
+                types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED.into(),
+            ))
+        );
+    }
+
+    #[test]
+    fn query_canonical_parameter_type_preserves_missing_generated_values_as_unspecified() {
+        assert_eq!(
+            QueryCanonicalParameterType::Unknown("CLI_QUERY_PARAMETER_TYPE_UNSPECIFIED".to_owned()),
+            QueryCanonicalParameterType::from_generated(None)
         );
     }
 

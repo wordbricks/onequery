@@ -8,7 +8,10 @@ use crate::transport::read_controls::PageInfo;
 pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
     PageInfo {
         next_cursor: page.next_cursor,
-        returned_count: usize::try_from(page.returned_count).unwrap_or(usize::MAX),
+        returned_count: page
+            .returned_count
+            .map(|count| usize::try_from(count).unwrap_or(usize::MAX))
+            .unwrap_or_default(),
     }
 }
 

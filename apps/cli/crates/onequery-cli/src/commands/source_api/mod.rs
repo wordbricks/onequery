@@ -5,7 +5,6 @@ mod intent;
 mod plan;
 mod render;
 
-use buffa::MessageField;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 
@@ -123,7 +122,7 @@ struct PreviewedSourceApiExecution {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 struct SourceApiExecutionPage {
-    source: MessageField<SourceApiSource>,
+    source: SourceApiSource,
     operation: String,
     selector: Option<String>,
     status: u32,
@@ -201,15 +200,51 @@ async fn execute_source_api_pages(
     };
     let mut request_id = first_response.request_id.clone();
     let mut continuation_token = first_response.payload.continuation_token.clone();
+    let Some(first_source) = first_page.source.into_option() else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include source metadata",
+            source_key,
+        ));
+    };
+    let Some(first_operation_name) = first_page.operation else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include an operation name",
+            source_key,
+        ));
+    };
+    let Some(first_status) = first_page.status else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include an HTTP status",
+            source_key,
+        ));
+    };
+    let Some(first_content_type) = first_page.content_type else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            "source API execution response did not include a content type",
+            source_key,
+        ));
+    };
     let mut pages = vec![SourceApiExecutionPage {
         body: first_page.body,
-        content_type: first_page.content_type,
+        content_type: first_content_type,
         continuation_token: first_response.payload.continuation_token,
         headers: first_page.headers,
-        operation: first_page.operation,
+        operation: first_operation_name,
         selector: first_page.selector,
-        source: first_page.source,
-        status: first_page.status,
+        source: first_source,
+        status: first_status,
     }];
 
     while execution.paginate && (pages.len() as u32) < max_pages {
@@ -236,15 +271,51 @@ async fn execute_source_api_pages(
                 source_key,
             ));
         };
+        let Some(source) = page.source.into_option() else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include source metadata",
+                source_key,
+            ));
+        };
+        let Some(operation_name) = page.operation else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include an operation name",
+                source_key,
+            ));
+        };
+        let Some(status) = page.status else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include an HTTP status",
+                source_key,
+            ));
+        };
+        let Some(content_type) = page.content_type else {
+            return Err(source_api_error(
+                context,
+                "invalid source API execution response",
+                ErrorStage::ExecuteQuery,
+                "source API resume response did not include a content type",
+                source_key,
+            ));
+        };
         pages.push(SourceApiExecutionPage {
             body: page.body,
-            content_type: page.content_type,
+            content_type,
             continuation_token: response.payload.continuation_token,
             headers: page.headers,
-            operation: page.operation,
+            operation: operation_name,
             selector: page.selector,
-            source: page.source,
-            status: page.status,
+            source,
+            status,
         });
     }
 

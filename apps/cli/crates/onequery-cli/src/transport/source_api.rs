@@ -79,8 +79,8 @@ pub(crate) async fn describe_source_api(
     let response = match client
         .cli()
         .describe_source_api(types::DescribeSourceApiRequest {
-            org_slug,
-            source_key,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             ..Default::default()
         })
         .await
@@ -118,12 +118,14 @@ pub(crate) async fn execute_source_api(
                         ErrorStage::ExecuteQuery,
                     )?),
                     draft: MessageField::some(draft.clone()),
-                    mode: if preview_only {
-                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
-                    } else {
-                        types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_EXECUTE
-                    }
-                    .into(),
+                    mode: Some(
+                        if preview_only {
+                            types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
+                        } else {
+                            types::CliSourceApiExecuteMode::CLI_SOURCE_API_EXECUTE_MODE_EXECUTE
+                        }
+                        .into(),
+                    ),
                     ..Default::default()
                 },
             ))),
@@ -162,10 +164,10 @@ pub(crate) async fn resume_source_api(
                         source_key,
                         ErrorStage::ExecuteQuery,
                     )?),
-                    continuation_token: try_into_value(
+                    continuation_token: Some(try_into_value(
                         continuation_token,
                         ErrorStage::ExecuteQuery,
-                    )?,
+                    )?),
                     ..Default::default()
                 },
             ))),
@@ -328,8 +330,8 @@ fn source_api_target(
     stage: ErrorStage,
 ) -> Result<SourceApiTarget, ApiFailure> {
     Ok(SourceApiTarget {
-        org_slug: try_into_value(org, stage)?,
-        source_key: try_into_value(source_key, stage)?,
+        org_slug: Some(try_into_value(org, stage)?),
+        source_key: Some(try_into_value(source_key, stage)?),
         ..Default::default()
     })
 }
@@ -357,23 +359,23 @@ fn validate_source_api_operation(
     value: &SourceApiOperation,
     request_id: Option<String>,
 ) -> Result<(), ApiFailure> {
-    let operation_name = value.name.clone();
+    let operation_name = value.name.as_deref().unwrap_or("<unnamed>");
 
     validate_required_operation_message(
         value.method_policy.is_set(),
-        &operation_name,
+        operation_name,
         "method policy",
         request_id.clone(),
     )?;
     validate_required_operation_message(
         value.field_policy.is_set(),
-        &operation_name,
+        operation_name,
         "field policy",
         request_id.clone(),
     )?;
     validate_required_operation_message(
         value.header_policy.is_set(),
-        &operation_name,
+        operation_name,
         "header policy",
         request_id,
     )
@@ -475,26 +477,29 @@ mod tests {
         let error = source_api_descriptor(
             &types::DescribeSourceApiResponse {
                 source: buffa::MessageField::some(types::CliSourceApiSource {
-                    source_key: "github-prod".to_owned(),
-                    provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
+                    source_key: Some("github-prod".to_owned()),
+                    provider: Some(types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into()),
                     ..Default::default()
                 }),
-                descriptor_version: "github.v1".to_owned(),
+                descriptor_version: Some("github.v1".to_owned()),
                 operations: vec![types::CliSourceApiOperation {
-                    name: "fetch".to_owned(),
-                    kind:
+                    name: Some("fetch".to_owned()),
+                    kind: Some(
                         types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                             .into(),
-                    summary: "Fetch a resource".to_owned(),
-                    description: "Fetches a GitHub resource.".to_owned(),
-                    selector_kind:
+                    ),
+                    summary: Some("Fetch a resource".to_owned()),
+                    description: Some("Fetches a GitHub resource.".to_owned()),
+                    selector_kind: Some(
                         types::CliSourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into(),
-                    pagination_policy:
+                    ),
+                    pagination_policy: Some(
                         types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
                             .into(),
+                    ),
                     field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
-                        allows_raw_fields: true,
-                        allows_typed_fields: true,
+                        allows_raw_fields: Some(true),
+                        allows_typed_fields: Some(true),
                         ..Default::default()
                     }),
                     header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
@@ -525,24 +530,28 @@ mod tests {
             &types::ExecuteSourceApiResponse {
                 preview: buffa::MessageField::some(types::SourceApiPreview {
                     source: buffa::MessageField::some(types::CliSourceApiSource {
-                        source_key: "github-prod".to_owned(),
-                        provider: types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into(),
+                        source_key: Some("github-prod".to_owned()),
+                        provider: Some(types::CliSourceProvider::CLI_SOURCE_PROVIDER_GITHUB.into()),
                         ..Default::default()
                     }),
-                    operation: "fetch".to_owned(),
-                    kind:
+                    operation: Some("fetch".to_owned()),
+                    kind: Some(
                         types::CliSourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                             .into(),
-                    body_kind: types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE.into(),
-                    pagination_policy:
+                    ),
+                    body_kind: Some(
+                        types::CliSourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_NONE.into(),
+                    ),
+                    pagination_policy: Some(
                         types::CliSourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE
                             .into(),
+                    ),
                     ..Default::default()
                 }),
                 result: buffa::MessageField::some(types::SourceApiExecutionResult {
-                    operation: "fetch".to_owned(),
-                    status: 200,
-                    content_type: "application/json".to_owned(),
+                    operation: Some("fetch".to_owned()),
+                    status: Some(200),
+                    content_type: Some("application/json".to_owned()),
                     ..Default::default()
                 }),
                 ..Default::default()

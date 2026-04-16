@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -20,10 +20,10 @@ message DescribeSourceApiRequest {
 message DescribeSourceApiResponse {
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
   string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
-  optional string default_path_operation = 3 [(buf.validate.field).string.min_len = 1];
+  string default_path_operation = 3 [(buf.validate.field).string.min_len = 1];
   repeated CliSourceApiOperation operations = 4;
   repeated CliSourceApiExample examples = 5;
-  repeated string notes = 6;
+  repeated string notes = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 }
 
 message SourceApiTarget {
@@ -42,14 +42,14 @@ message SourceApiDraft {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
-  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
-  optional string method_override = 4 [
+  string descriptor_version = 2 [(buf.validate.field).string.min_len = 1];
+  string selector = 3 [(buf.validate.field).string.min_len = 1];
+  string method_override = 4 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
   repeated CliSourceApiHeader headers = 5;
-  optional google.protobuf.Struct field_patch = 6;
+  google.protobuf.Struct field_patch = 6;
   oneof body {
     google.protobuf.Value json_body = 7;
     string text_body = 8;
@@ -63,17 +63,17 @@ message SourceApiPreview {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
+  string selector = 3 [(buf.validate.field).string.min_len = 1];
   CliSourceApiOperationKind kind = 4 [
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  optional string method = 5 [
+  string method = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
-  optional string host = 6 [(buf.validate.field).string.min_len = 1];
-  optional string url = 7 [(buf.validate.field).string.min_len = 1];
+  string host = 6 [(buf.validate.field).string.min_len = 1];
+  string url = 7 [(buf.validate.field).string.min_len = 1];
   repeated string header_names = 8 [
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
@@ -118,8 +118,11 @@ message SourceApiExecutionResult {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
-  optional string selector = 3 [(buf.validate.field).string.min_len = 1];
-  uint32 status = 4;
+  string selector = 3 [(buf.validate.field).string.min_len = 1];
+  uint32 status = 4 [
+    (buf.validate.field).uint32.gte = 100,
+    (buf.validate.field).uint32.lte = 599
+  ];
   repeated CliSourceApiHeader headers = 5;
   string content_type = 6 [(buf.validate.field).string.min_len = 1];
   oneof body {
@@ -128,13 +131,13 @@ message SourceApiExecutionResult {
     bytes binary = 9;
   }
   reserved 10;
-  reserved "request_id";
+  reserved request_id;
 }
 
 message ExecuteSourceApiResponse {
   SourceApiPreview preview = 1 [(buf.validate.field).required = true];
   SourceApiExecutionResult result = 2;
-  optional string continuation_token = 3 [(buf.validate.field).string.min_len = 1];
+  string continuation_token = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiSource {
@@ -146,7 +149,10 @@ message CliSourceApiSource {
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  optional string display_name = 3 [(buf.validate.field).string.min_len = 1];
+  string display_name = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
 }
 
 message CliSourceApiOperation {
@@ -164,7 +170,7 @@ message CliSourceApiOperation {
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  optional string selector_label = 6 [(buf.validate.field).string.min_len = 1];
+  string selector_label = 6 [(buf.validate.field).string.min_len = 1];
   CliSourceApiMethodPolicy method_policy = 7 [(buf.validate.field).required = true];
   CliSourceApiFieldPolicy field_policy = 8 [(buf.validate.field).required = true];
   CliSourceApiHeaderPolicy header_policy = 9 [(buf.validate.field).required = true];
@@ -177,7 +183,7 @@ message CliSourceApiOperation {
 }
 
 message CliSourceApiMethodPolicy {
-  optional string default_method = 1 [
+  string default_method = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
@@ -193,7 +199,10 @@ message CliSourceApiFieldPolicy {
   bool supports_nested_paths = 3;
   bool supports_array_paths = 4;
   bool accepts_input = 5;
-  CliSourceApiInputMode input_mode = 6;
+  CliSourceApiInputMode input_mode = 6 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
   bool merge_patches = 7;
 }
 
@@ -213,12 +222,15 @@ message CliSourceApiHeaderPolicy {
 
 message CliSourceApiExample {
   string label = 1 [(buf.validate.field).string.min_len = 1];
-  optional string description = 2 [(buf.validate.field).string.min_len = 1];
+  string description = 2 [(buf.validate.field).string.min_len = 1];
   string command = 3 [(buf.validate.field).string.min_len = 1];
 }
 
 message CliSourceApiHeader {
-  string name = 1 [(buf.validate.field).string.min_len = 1];
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9-]+$"
+  ];
   string value = 2;
 }
 

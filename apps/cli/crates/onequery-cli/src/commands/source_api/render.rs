@@ -39,19 +39,22 @@ pub(super) fn render_descriptor_output(
     descriptor: SourceApiDescriptor,
 ) -> Result<CommandOutput, CliError> {
     let data = descriptor_json(&descriptor)?;
+    let source = descriptor.source.as_option();
+    let source_key = source
+        .and_then(|value| value.source_key.as_deref())
+        .unwrap_or_default();
+    let source_provider = source
+        .and_then(|value| value.provider)
+        .map(|value| source_provider_to_str(value).to_owned())
+        .unwrap_or_else(|| "unspecified".to_owned());
 
-    let mut lines = vec![format!(
-        "Source: {} ({})",
-        descriptor.source.source_key,
-        source_provider_to_str(descriptor.source.provider)
-    )];
-    if let Some(display_name) = descriptor.source.display_name.as_deref() {
+    let mut lines = vec![format!("Source: {} ({})", source_key, source_provider)];
+    if let Some(display_name) = source.and_then(|value| value.display_name.as_deref()) {
         lines.push(format!("Display name: {display_name}"));
     }
-    lines.push(format!(
-        "Descriptor version: {}",
-        descriptor.descriptor_version
-    ));
+    if let Some(descriptor_version) = descriptor.descriptor_version.as_deref() {
+        lines.push(format!("Descriptor version: {descriptor_version}"));
+    }
     if let Some(default_path_operation) = descriptor.default_path_operation.as_deref() {
         lines.push(format!("Default path operation: {default_path_operation}"));
     }
@@ -148,14 +151,18 @@ fn serialize_dry_run_preview(
     }
 
     let mut object = serde_json::Map::new();
-    object.insert(
-        "operation".to_owned(),
-        serde_json::Value::String(preview.operation.clone()),
-    );
-    object.insert(
-        "kind".to_owned(),
-        serde_json::Value::String(source_api_operation_kind_label(preview.kind).to_owned()),
-    );
+    if let Some(operation) = preview.operation.as_ref() {
+        object.insert(
+            "operation".to_owned(),
+            serde_json::Value::String(operation.clone()),
+        );
+    }
+    if let Some(kind) = preview.kind {
+        object.insert(
+            "kind".to_owned(),
+            serde_json::Value::String(source_api_operation_kind_label(kind).to_owned()),
+        );
+    }
     if let Some(method) = preview.method.as_ref() {
         object.insert(
             "method".to_owned(),
@@ -168,10 +175,12 @@ fn serialize_dry_run_preview(
             serde_json::Value::String(selector.clone()),
         );
     }
-    object.insert(
-        "bodyKind".to_owned(),
-        serde_json::Value::String(source_api_body_kind_label(preview.body_kind).to_owned()),
-    );
+    if let Some(body_kind) = preview.body_kind {
+        object.insert(
+            "bodyKind".to_owned(),
+            serde_json::Value::String(source_api_body_kind_label(body_kind).to_owned()),
+        );
+    }
 
     Ok(serde_json::Value::Object(object))
 }
@@ -224,8 +233,8 @@ fn json_headers(headers: &[SourceApiHeader]) -> serde_json::Value {
     let mut object = serde_json::Map::new();
     for header in headers {
         object.insert(
-            header.name.clone(),
-            serde_json::Value::String(header.value.clone()),
+            header.name.clone().unwrap_or_default(),
+            serde_json::Value::String(header.value.clone().unwrap_or_default()),
         );
     }
     serde_json::Value::Object(object)
@@ -495,11 +504,15 @@ fn transport_json_value(value: serde_json::Value) -> Result<ProtoJsonValue, CliE
 
 fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value, CliError> {
     let mut object = serde_json::Map::new();
-    object.insert("source".to_owned(), source_json(&descriptor.source));
-    object.insert(
-        "descriptorVersion".to_owned(),
-        serde_json::Value::String(descriptor.descriptor_version.clone()),
-    );
+    if let Some(source) = descriptor.source.as_option() {
+        object.insert("source".to_owned(), source_json(source));
+    }
+    if let Some(descriptor_version) = descriptor.descriptor_version.as_ref() {
+        object.insert(
+            "descriptorVersion".to_owned(),
+            serde_json::Value::String(descriptor_version.clone()),
+        );
+    }
     if let Some(default_path_operation) = descriptor.default_path_operation.as_ref() {
         object.insert(
             "defaultPathOperation".to_owned(),
@@ -542,17 +555,21 @@ fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value
 
 fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> serde_json::Value {
     let mut object = serde_json::Map::new();
-    if include_business_metadata {
-        object.insert("source".to_owned(), source_json(&preview.source));
+    if include_business_metadata && let Some(source) = preview.source.as_option() {
+        object.insert("source".to_owned(), source_json(source));
     }
-    object.insert(
-        "operation".to_owned(),
-        serde_json::Value::String(preview.operation.clone()),
-    );
-    object.insert(
-        "kind".to_owned(),
-        serde_json::Value::String(source_api_operation_kind_label(preview.kind).to_owned()),
-    );
+    if let Some(operation) = preview.operation.as_ref() {
+        object.insert(
+            "operation".to_owned(),
+            serde_json::Value::String(operation.clone()),
+        );
+    }
+    if let Some(kind) = preview.kind {
+        object.insert(
+            "kind".to_owned(),
+            serde_json::Value::String(source_api_operation_kind_label(kind).to_owned()),
+        );
+    }
     if let Some(method) = preview.method.as_ref() {
         object.insert(
             "method".to_owned(),
@@ -586,10 +603,12 @@ fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> 
             );
         }
     }
-    object.insert(
-        "bodyKind".to_owned(),
-        serde_json::Value::String(source_api_body_kind_label(preview.body_kind).to_owned()),
-    );
+    if let Some(body_kind) = preview.body_kind {
+        object.insert(
+            "bodyKind".to_owned(),
+            serde_json::Value::String(source_api_body_kind_label(body_kind).to_owned()),
+        );
+    }
     if include_business_metadata && !preview.body_paths.is_empty() {
         object.insert(
             "bodyPaths".to_owned(),
@@ -603,11 +622,11 @@ fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> 
             ),
         );
     }
-    if include_business_metadata {
+    if include_business_metadata && let Some(pagination_policy) = preview.pagination_policy {
         object.insert(
             "paginationPolicy".to_owned(),
             serde_json::Value::String(
-                source_api_pagination_policy_label(preview.pagination_policy).to_owned(),
+                source_api_pagination_policy_label(pagination_policy).to_owned(),
             ),
         );
     }
@@ -616,52 +635,56 @@ fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> 
 
 fn operation_json(operation: &SourceApiOperation) -> Result<serde_json::Value, CliError> {
     let mut object = serde_json::Map::new();
-    object.insert(
-        "name".to_owned(),
-        serde_json::Value::String(operation.name.clone()),
-    );
-    object.insert(
-        "kind".to_owned(),
-        serde_json::Value::String(source_api_operation_kind_label(operation.kind).to_owned()),
-    );
-    object.insert(
-        "summary".to_owned(),
-        serde_json::Value::String(operation.summary.clone()),
-    );
-    object.insert(
-        "description".to_owned(),
-        serde_json::Value::String(operation.description.clone()),
-    );
-    object.insert(
-        "selectorKind".to_owned(),
-        serde_json::Value::String(
-            source_api_selector_kind_label(operation.selector_kind).to_owned(),
-        ),
-    );
+    if let Some(name) = operation.name.as_ref() {
+        object.insert("name".to_owned(), serde_json::Value::String(name.clone()));
+    }
+    if let Some(kind) = operation.kind {
+        object.insert(
+            "kind".to_owned(),
+            serde_json::Value::String(source_api_operation_kind_label(kind).to_owned()),
+        );
+    }
+    if let Some(summary) = operation.summary.as_ref() {
+        object.insert(
+            "summary".to_owned(),
+            serde_json::Value::String(summary.clone()),
+        );
+    }
+    if let Some(description) = operation.description.as_ref() {
+        object.insert(
+            "description".to_owned(),
+            serde_json::Value::String(description.clone()),
+        );
+    }
+    if let Some(selector_kind) = operation.selector_kind {
+        object.insert(
+            "selectorKind".to_owned(),
+            serde_json::Value::String(source_api_selector_kind_label(selector_kind).to_owned()),
+        );
+    }
     if let Some(selector_label) = operation.selector_label.as_ref() {
         object.insert(
             "selectorLabel".to_owned(),
             serde_json::Value::String(selector_label.clone()),
         );
     }
-    object.insert(
-        "methodPolicy".to_owned(),
-        method_policy_json(&operation.method_policy),
-    );
-    object.insert(
-        "fieldPolicy".to_owned(),
-        field_policy_json(&operation.field_policy),
-    );
-    object.insert(
-        "headerPolicy".to_owned(),
-        header_policy_json(&operation.header_policy),
-    );
-    object.insert(
-        "paginationPolicy".to_owned(),
-        serde_json::Value::String(
-            source_api_pagination_policy_label(operation.pagination_policy).to_owned(),
-        ),
-    );
+    if let Some(method_policy) = operation.method_policy.as_option() {
+        object.insert("methodPolicy".to_owned(), method_policy_json(method_policy));
+    }
+    if let Some(field_policy) = operation.field_policy.as_option() {
+        object.insert("fieldPolicy".to_owned(), field_policy_json(field_policy));
+    }
+    if let Some(header_policy) = operation.header_policy.as_option() {
+        object.insert("headerPolicy".to_owned(), header_policy_json(header_policy));
+    }
+    if let Some(pagination_policy) = operation.pagination_policy {
+        object.insert(
+            "paginationPolicy".to_owned(),
+            serde_json::Value::String(
+                source_api_pagination_policy_label(pagination_policy).to_owned(),
+            ),
+        );
+    }
     if !operation.examples.is_empty() {
         object.insert(
             "examples".to_owned(),
@@ -686,14 +709,18 @@ fn operation_json(operation: &SourceApiOperation) -> Result<serde_json::Value, C
 
 fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_json::Value {
     let mut object = serde_json::Map::new();
-    object.insert(
-        "key".to_owned(),
-        serde_json::Value::String(source.source_key.clone()),
-    );
-    object.insert(
-        "provider".to_owned(),
-        serde_json::Value::String(source_provider_to_str(source.provider)),
-    );
+    if let Some(source_key) = source.source_key.as_ref() {
+        object.insert(
+            "key".to_owned(),
+            serde_json::Value::String(source_key.clone()),
+        );
+    }
+    if let Some(provider) = source.provider {
+        object.insert(
+            "provider".to_owned(),
+            serde_json::Value::String(source_provider_to_str(provider).to_owned()),
+        );
+    }
     if let Some(display_name) = source.display_name.as_ref() {
         object.insert(
             "displayName".to_owned(),
@@ -730,15 +757,50 @@ fn method_policy_json(
 }
 
 fn field_policy_json(policy: &SourceApiFieldPolicy) -> serde_json::Value {
-    serde_json::json!({
-        "allowsRawFields": policy.allows_raw_fields,
-        "allowsTypedFields": policy.allows_typed_fields,
-        "supportsNestedPaths": policy.supports_nested_paths,
-        "supportsArrayPaths": policy.supports_array_paths,
-        "acceptsInput": policy.accepts_input,
-        "inputMode": source_api_input_mode_label(policy.input_mode),
-        "mergePatches": policy.merge_patches,
-    })
+    let mut object = serde_json::Map::new();
+    if let Some(allows_raw_fields) = policy.allows_raw_fields {
+        object.insert(
+            "allowsRawFields".to_owned(),
+            serde_json::Value::Bool(allows_raw_fields),
+        );
+    }
+    if let Some(allows_typed_fields) = policy.allows_typed_fields {
+        object.insert(
+            "allowsTypedFields".to_owned(),
+            serde_json::Value::Bool(allows_typed_fields),
+        );
+    }
+    if let Some(supports_nested_paths) = policy.supports_nested_paths {
+        object.insert(
+            "supportsNestedPaths".to_owned(),
+            serde_json::Value::Bool(supports_nested_paths),
+        );
+    }
+    if let Some(supports_array_paths) = policy.supports_array_paths {
+        object.insert(
+            "supportsArrayPaths".to_owned(),
+            serde_json::Value::Bool(supports_array_paths),
+        );
+    }
+    if let Some(accepts_input) = policy.accepts_input {
+        object.insert(
+            "acceptsInput".to_owned(),
+            serde_json::Value::Bool(accepts_input),
+        );
+    }
+    if let Some(input_mode) = policy.input_mode {
+        object.insert(
+            "inputMode".to_owned(),
+            serde_json::Value::String(source_api_input_mode_label(input_mode).to_owned()),
+        );
+    }
+    if let Some(merge_patches) = policy.merge_patches {
+        object.insert(
+            "mergePatches".to_owned(),
+            serde_json::Value::Bool(merge_patches),
+        );
+    }
+    serde_json::Value::Object(object)
 }
 
 fn header_policy_json(
@@ -763,20 +825,21 @@ fn header_policy_json(
 
 fn example_json(example: &crate::transport::source_api::SourceApiExample) -> serde_json::Value {
     let mut object = serde_json::Map::new();
-    object.insert(
-        "label".to_owned(),
-        serde_json::Value::String(example.label.clone()),
-    );
+    if let Some(label) = example.label.as_ref() {
+        object.insert("label".to_owned(), serde_json::Value::String(label.clone()));
+    }
     if let Some(description) = example.description.as_ref() {
         object.insert(
             "description".to_owned(),
             serde_json::Value::String(description.clone()),
         );
     }
-    object.insert(
-        "command".to_owned(),
-        serde_json::Value::String(example.command.clone()),
-    );
+    if let Some(command) = example.command.as_ref() {
+        object.insert(
+            "command".to_owned(),
+            serde_json::Value::String(command.clone()),
+        );
+    }
     serde_json::Value::Object(object)
 }
 
@@ -791,36 +854,45 @@ fn source_api_render_error(why: impl Into<String>, try_next: Vec<String>) -> Cli
 }
 
 fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
-    let mut lines = vec![operation.name.clone()];
-    lines.push(format!(
-        "  kind: {}",
-        source_api_operation_kind_label(operation.kind)
-    ));
+    let mut lines = vec![operation.name.clone().unwrap_or_default()];
+    if let Some(kind) = operation.kind {
+        lines.push(format!("  kind: {}", source_api_operation_kind_label(kind)));
+    }
     lines.push(format!(
         "  selector: {}",
         selector_summary(operation).unwrap_or_else(|| "none".to_owned())
     ));
 
-    if !operation.summary.trim().is_empty() {
-        lines.push(format!("  summary: {}", operation.summary));
+    if let Some(summary) = operation.summary.as_deref()
+        && !summary.trim().is_empty()
+    {
+        lines.push(format!("  summary: {summary}"));
     }
-    if !operation.description.trim().is_empty() {
-        lines.push(format!("  description: {}", operation.description));
+    if let Some(description) = operation.description.as_deref()
+        && !description.trim().is_empty()
+    {
+        lines.push(format!("  description: {description}"));
     }
-    if !operation.method_policy.allowed_methods.is_empty() {
-        lines.push(format!(
-            "  methods: {}",
-            operation.method_policy.allowed_methods.join(", ")
-        ));
-    } else if let Some(default_method) = operation.method_policy.default_method.as_deref() {
-        lines.push(format!("  method: {default_method}"));
+    if let Some(method_policy) = operation.method_policy.as_option() {
+        if !method_policy.allowed_methods.is_empty() {
+            lines.push(format!(
+                "  methods: {}",
+                method_policy.allowed_methods.join(", ")
+            ));
+        } else if let Some(default_method) = method_policy.default_method.as_deref() {
+            lines.push(format!("  method: {default_method}"));
+        }
     }
 
+    let field_policy = operation.field_policy.as_option();
     let field_modes = [
-        operation.field_policy.allows_raw_fields.then_some("raw"),
-        operation
-            .field_policy
-            .allows_typed_fields
+        field_policy
+            .and_then(|policy| policy.allows_raw_fields)
+            .unwrap_or(false)
+            .then_some("raw"),
+        field_policy
+            .and_then(|policy| policy.allows_typed_fields)
+            .unwrap_or(false)
             .then_some("typed"),
     ]
     .into_iter()
@@ -829,24 +901,36 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     if !field_modes.is_empty() {
         lines.push(format!("  fields: {}", field_modes.join(", ")));
     }
-    if !operation.header_policy.allowed_request_header_names.is_empty() {
+    if let Some(header_policy) = operation.header_policy.as_option()
+        && !header_policy.allowed_request_header_names.is_empty()
+    {
         lines.push(format!(
             "  headers: {}",
-            operation.header_policy.allowed_request_header_names.join(", ")
+            header_policy.allowed_request_header_names.join(", ")
         ));
     }
-    let field_examples = field_format_examples(&operation.field_policy);
+    let field_examples = field_policy.map(field_format_examples).unwrap_or_default();
     if !field_examples.is_empty() {
         lines.push(format!("  field syntax: {}", field_examples.join(", ")));
     }
     lines.push(format!(
         "  input: {}",
-        source_api_input_mode_label(operation.field_policy.input_mode)
+        source_api_input_mode_label(
+            field_policy
+                .and_then(|policy| policy.input_mode)
+                .unwrap_or_else(|| 0.into()),
+        )
     ));
-    if operation.field_policy.accepts_input {
+    if field_policy
+        .and_then(|policy| policy.accepts_input)
+        .unwrap_or(false)
+    {
         lines.push(format!(
             "  field patch merge: {}",
-            if operation.field_policy.merge_patches {
+            if field_policy
+                .and_then(|policy| policy.merge_patches)
+                .unwrap_or(false)
+            {
                 "merge over input"
             } else {
                 "stay separate from input"
@@ -867,9 +951,14 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
 }
 
 fn render_example_lines(example: &crate::transport::source_api::SourceApiExample) -> Vec<String> {
-    let mut lines = vec![format!("$ {}", example.command)];
-    if !example.label.trim().is_empty() {
-        lines.push(format!("  label: {}", example.label));
+    let mut lines = vec![format!(
+        "$ {}",
+        example.command.as_deref().unwrap_or_default()
+    )];
+    if let Some(label) = example.label.as_deref()
+        && !label.trim().is_empty()
+    {
+        lines.push(format!("  label: {label}"));
     }
     if let Some(description) = example.description.as_deref()
         && !description.trim().is_empty()
@@ -887,7 +976,11 @@ fn render_response_lines(
     if render.include {
         lines.push(status_line(response.status));
         for header in &response.headers {
-            lines.push(format!("{}: {}", header.name, header.value));
+            lines.push(format!(
+                "{}: {}",
+                header.name.as_deref().unwrap_or_default(),
+                header.value.as_deref().unwrap_or_default()
+            ));
         }
     }
 
@@ -931,7 +1024,11 @@ fn render_response_text_stdout(
         rendered.push('\n');
 
         for header in &response.headers {
-            rendered.push_str(&format!("{}: {}", header.name, header.value));
+            rendered.push_str(&format!(
+                "{}: {}",
+                header.name.as_deref().unwrap_or_default(),
+                header.value.as_deref().unwrap_or_default()
+            ));
             rendered.push('\n');
         }
 
@@ -959,7 +1056,14 @@ fn render_response_stdout_bytes(
         rendered.push(b'\n');
 
         for header in &response.headers {
-            rendered.extend_from_slice(format!("{}: {}", header.name, header.value).as_bytes());
+            rendered.extend_from_slice(
+                format!(
+                    "{}: {}",
+                    header.name.as_deref().unwrap_or_default(),
+                    header.value.as_deref().unwrap_or_default()
+                )
+                .as_bytes(),
+            );
             rendered.push(b'\n');
         }
 
@@ -981,14 +1085,16 @@ fn binary_tty_render_error() -> CliError {
 }
 
 fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
-    let kind = match source_api_selector_kind_or_none(operation.selector_kind) {
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => return None,
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-        | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
-            source_api_selector_kind_label(operation.selector_kind)
-        }
-        SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
-    };
+    let kind =
+        match source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into()))
+        {
+            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE => return None,
+            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
+                source_api_selector_kind_label(operation.selector_kind.unwrap_or_else(|| 0.into()))
+            }
+            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
+        };
 
     Some(match operation.selector_label.as_deref() {
         Some(label) if !label.trim().is_empty() => format!("{kind} ({label})"),
@@ -998,16 +1104,16 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
 
 fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
     let mut examples = Vec::new();
-    if policy.allows_raw_fields {
+    if policy.allows_raw_fields.unwrap_or(false) {
         examples.push("-f KEY=VALUE");
     }
-    if policy.allows_typed_fields {
+    if policy.allows_typed_fields.unwrap_or(false) {
         examples.push("-F KEY=VALUE");
     }
-    if policy.supports_nested_paths {
+    if policy.supports_nested_paths.unwrap_or(false) {
         examples.push("key[subkey]=value");
     }
-    if policy.supports_array_paths {
+    if policy.supports_array_paths.unwrap_or(false) {
         examples.push("key[]=value");
     }
     examples
@@ -1274,13 +1380,13 @@ mod tests {
         let mut response = json_response(text_body("plain text\nnext line"));
         response.headers = vec![
             SourceApiHeader {
-                name: "content-type".to_owned(),
-                value: "text/plain".to_owned(),
+                name: Some("content-type".to_owned()),
+                value: Some("text/plain".to_owned()),
                 ..Default::default()
             },
             SourceApiHeader {
-                name: "x-request-id".to_owned(),
-                value: "rq_upstream_123".to_owned(),
+                name: Some("x-request-id".to_owned()),
+                value: Some("rq_upstream_123".to_owned()),
                 ..Default::default()
             },
         ];
@@ -1309,8 +1415,8 @@ mod tests {
     fn render_execute_output_suppresses_body_when_silent_but_keeps_included_metadata() {
         let mut response = json_response(json_body(json!({"items": [1, 2]})));
         response.headers = vec![SourceApiHeader {
-            name: "content-type".to_owned(),
-            value: "application/json".to_owned(),
+            name: Some("content-type".to_owned()),
+            value: Some("application/json".to_owned()),
             ..Default::default()
         }];
 
@@ -1336,8 +1442,8 @@ mod tests {
     fn render_execute_output_omits_body_in_json_mode_when_silent() {
         let mut response = json_response(json_body(json!({"items": [1, 2]})));
         response.headers = vec![SourceApiHeader {
-            name: "content-type".to_owned(),
-            value: "application/json".to_owned(),
+            name: Some("content-type".to_owned()),
+            value: Some("application/json".to_owned()),
             ..Default::default()
         }];
 
@@ -1499,14 +1605,15 @@ mod tests {
 
     fn json_response(body: SourceApiResponseBody) -> SourceApiExecutionPage {
         SourceApiExecutionPage {
-            source: MessageField::some(SourceApiSource {
-                source_key: "github-prod".to_owned(),
-                provider:
+            source: SourceApiSource {
+                source_key: Some("github-prod".to_owned()),
+                provider: Some(
                     crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
                         .into(),
+                ),
                 display_name: None,
                 ..Default::default()
-            }),
+            },
             operation: "fetch".to_owned(),
             selector: None,
             status: 200,
@@ -1520,23 +1627,24 @@ mod tests {
     fn source_api_preview(pagination_policy: SourceApiPaginationPolicy) -> SourceApiPreview {
         SourceApiPreview {
             source: MessageField::some(SourceApiSource {
-                source_key: "github-prod".to_owned(),
-                provider:
+                source_key: Some("github-prod".to_owned()),
+                provider: Some(
                     crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
                         .into(),
+                ),
                 display_name: Some("GitHub Prod".to_owned()),
                 ..Default::default()
             }),
-            operation: "fetch".to_owned(),
-            kind: SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
+            operation: Some("fetch".to_owned()),
+            kind: Some(SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
             method: Some("GET".to_owned()),
             selector: Some("/pulls".to_owned()),
             url: Some("https://api.github.com/pulls".to_owned()),
             host: Some("api.github.com".to_owned()),
             header_names: vec!["accept".to_owned()],
-            body_kind: SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON.into(),
+            body_kind: Some(SourceApiBodyKind::CLI_SOURCE_API_BODY_KIND_JSON.into()),
             body_paths: vec!["params".to_owned()],
-            pagination_policy: pagination_policy.into(),
+            pagination_policy: Some(pagination_policy.into()),
             ..Default::default()
         }
     }

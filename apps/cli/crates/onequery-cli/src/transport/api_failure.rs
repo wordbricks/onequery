@@ -163,9 +163,9 @@ pub(crate) fn sanitization_metadata_from_generated(
     sanitization: Option<types::CliSanitization>,
 ) -> Option<SanitizationMetadata> {
     sanitization.map(|sanitization| SanitizationMetadata {
-        profile: sanitization.profile,
+        profile: sanitization.profile.unwrap_or_default(),
         sanitized_paths: sanitization.sanitized_paths.into_iter().collect(),
-        raw_available: sanitization.raw_available,
+        raw_available: sanitization.raw_available.unwrap_or_default(),
     })
 }
 
@@ -226,20 +226,24 @@ fn parse_connect_problem_details(
         return Ok(None);
     };
 
-    let title = non_empty(Some(cli_error.title))
+    let title = non_empty(cli_error.title)
         .ok_or_else(|| "server returned CliErrorDetail without title".to_owned())?;
     let detail = non_empty(error.message.clone())
         .ok_or_else(|| "server returned CliErrorDetail without an error message".to_owned())?;
-    let code = known_cli_problem_code(cli_error.code)
+    let code = cli_error
+        .code
+        .and_then(known_cli_problem_code)
         .ok_or_else(|| "server returned invalid CliProblemCode".to_owned())?;
-    let stage = cli_problem_stage_to_error_stage(cli_error.stage)
+    let stage = cli_error
+        .stage
+        .and_then(cli_problem_stage_to_error_stage)
         .ok_or_else(|| "server returned invalid CliProblemStage".to_owned())?;
 
     Ok(Some(ApiProblem {
         title,
         detail,
         code,
-        retryable: cli_error.retryable,
+        retryable: cli_error.retryable.unwrap_or_default(),
         retry_after_ms: parsed.retry_after_ms,
         stage,
         hint: non_empty(cli_error.hint),
@@ -416,11 +420,13 @@ mod tests {
         error.details.push(error_detail(
             "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
             &generated::types::CliErrorDetail {
-                code: generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
-                stage: generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into(),
-                title: "Login Rate Limited".to_owned(),
+                code: Some(
+                    generated::types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED.into(),
+                ),
+                stage: Some(generated::types::CliProblemStage::CLI_PROBLEM_STAGE_AUTH.into()),
+                title: Some("Login Rate Limited".to_owned()),
                 hint: Some("wait briefly, then retry `onequery auth login`".to_owned()),
-                retryable: true,
+                retryable: Some(true),
                 request_id: Some("req_problem".to_owned()),
                 ..Default::default()
             },

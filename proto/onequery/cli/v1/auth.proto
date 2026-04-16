@@ -1,4 +1,4 @@
-syntax = "proto3";
+edition = "2023";
 
 package onequery.cli.v1;
 
@@ -13,12 +13,12 @@ message GetSessionResponse {
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 2 [(buf.validate.field).required = true];
-  optional string active_org_slug = 3 [
+  string active_org_slug = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 4;
-  optional google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp issued_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
 }
 
 message RefreshSessionRequest {}
@@ -33,12 +33,12 @@ message RefreshSessionResponse {
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 3 [(buf.validate.field).required = true];
-  optional string active_org_slug = 4 [
+  string active_org_slug = 4 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 5;
-  optional google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp issued_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
 }
 
 message StartDeviceAuthorizationRequest {}
@@ -97,12 +97,12 @@ message CliAuthorizedDeviceAuthorization {
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 4 [(buf.validate.field).required = true];
-  optional string active_org_slug = 5 [
+  string active_org_slug = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  optional google.protobuf.Timestamp issued_at = 6;
-  optional google.protobuf.Timestamp expires_at = 7;
+  google.protobuf.Timestamp issued_at = 6;
+  google.protobuf.Timestamp expires_at = 7;
 }
 
 enum CliAuthMode {

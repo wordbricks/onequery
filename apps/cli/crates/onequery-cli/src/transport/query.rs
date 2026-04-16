@@ -197,8 +197,8 @@ async fn fetch_query_page(
         .cli()
         .execute_query_with_options(
             types::ExecuteQueryRequest {
-                org_slug,
-                source_key,
+                org_slug: Some(org_slug),
+                source_key: Some(source_key),
                 limit,
                 cursor,
                 query: MessageField::some(query),
@@ -237,8 +237,8 @@ pub(crate) async fn validate_read_only_query_with_controls(
         .cli()
         .validate_query_with_options(
             types::ValidateQueryRequest {
-                org_slug,
-                source_key,
+                org_slug: Some(org_slug),
+                source_key: Some(source_key),
                 query: MessageField::some(query),
                 ..Default::default()
             },
@@ -264,7 +264,10 @@ fn query_request_from_payload(
     payload: &QueryRequestPayload,
 ) -> Result<types::CliQueryRequest, ApiFailure> {
     Ok(types::CliQueryRequest {
-        sql: try_into_value(payload.sql.as_str(), ErrorStage::ReadQueryInput)?,
+        sql: Some(try_into_value(
+            payload.sql.as_str(),
+            ErrorStage::ReadQueryInput,
+        )?),
         parameters: payload
             .parameters
             .clone()
@@ -302,8 +305,10 @@ fn query_result_from_generated(
     Ok(QueryResult {
         output_metadata: sanitization_metadata_from_generated(result.sanitization.into_option()),
         source: Some(source_summary_from_generated(source)),
-        row_count: usize::try_from(result.row_count).ok(),
-        elapsed_ms: Some(result.elapsed_ms),
+        row_count: result
+            .row_count
+            .and_then(|value| usize::try_from(value).ok()),
+        elapsed_ms: result.elapsed_ms,
         columns: Some(
             result
                 .columns
@@ -315,7 +320,7 @@ fn query_result_from_generated(
                 .collect(),
         ),
         rows: Some(result.rows.into_iter().map(|row| row.values).collect()),
-        truncated: Some(result.truncated),
+        truncated: result.truncated,
         page: page_info_from_generated(page),
     })
 }
@@ -348,10 +353,10 @@ fn query_validation_from_generated(
 
     Ok(QueryValidationResult {
         request: Some(query_canonical_request_from_generated(request)),
-        normalized_sql: Some(result.normalized_sql),
+        normalized_sql: result.normalized_sql,
         declared_result_window: Some(query_result_window_from_generated(declared_result_window)),
         source: Some(source_summary_from_generated(source)),
-        truncated: Some(result.truncated),
+        truncated: result.truncated,
     })
 }
 
@@ -359,7 +364,7 @@ fn query_canonical_request_from_generated(
     request: types::CliQueryCanonicalRequest,
 ) -> QueryCanonicalRequest {
     QueryCanonicalRequest {
-        sql: Some(request.sql),
+        sql: request.sql,
         parameters: (!request.parameters.is_empty()).then(|| {
             request
                 .parameters
@@ -424,8 +429,8 @@ fn optional_timeout_ms(value: Option<u64>, stage: ErrorStage) -> Result<Option<u
         .transpose()
 }
 
-fn non_empty(value: String) -> Option<String> {
-    (!value.is_empty()).then_some(value)
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.is_empty())
 }
 
 #[cfg(test)]
@@ -632,18 +637,21 @@ mod tests {
         assert_eq!(
             request,
             super::types::CliQueryRequest {
-                sql: "select 42".to_owned(),
+                sql: Some("select 42".to_owned()),
                 parameters: vec![
                     super::types::CliQueryParameter {
-                        r#type:
+                        r#type: Some(
                             super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
                                 .into(),
+                        ),
                         value: Some("acme".to_owned()),
                         ..Default::default()
                     },
                     super::types::CliQueryParameter {
-                        r#type: super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
-                            .into(),
+                        r#type: Some(
+                            super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
+                                .into(),
+                        ),
                         value: None,
                         ..Default::default()
                     },
@@ -662,16 +670,18 @@ mod tests {
         let result = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
-                    source_key: "warehouse".to_owned(),
-                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
-                    queryable: true,
-                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(
+                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    ),
+                    queryable: Some(true),
+                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
-                row_count: 1,
-                elapsed_ms: 25,
+                row_count: Some(1),
+                elapsed_ms: Some(25),
                 columns: vec![super::types::CliQueryColumn {
-                    name: "value".to_owned(),
+                    name: Some("value".to_owned()),
                     logical_type: Some(
                         super::types::CliQueryLogicalType::CLI_QUERY_LOGICAL_TYPE_NUMBER.into(),
                     ),
@@ -681,15 +691,15 @@ mod tests {
                     values: vec!["42".to_owned()],
                     ..Default::default()
                 }],
-                truncated: false,
+                truncated: Some(false),
                 page: buffa::MessageField::some(super::types::CliPage {
-                    returned_count: 1,
+                    returned_count: Some(1),
                     ..Default::default()
                 }),
                 sanitization: buffa::MessageField::some(super::types::CliSanitization {
-                    profile: "strict".to_owned(),
+                    profile: Some("strict".to_owned()),
                     sanitized_paths: vec!["rows[0][0]".to_owned()],
-                    raw_available: false,
+                    raw_available: Some(false),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -734,19 +744,21 @@ mod tests {
         let validation = super::query_validation_from_generated(
             super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
-                    sql: "SELECT 1".to_owned(),
+                    sql: Some("SELECT 1".to_owned()),
                     parameters: vec![
                         super::types::CliQueryParameter {
-                            r#type:
+                            r#type: Some(
                                 super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_STRING
                                     .into(),
+                            ),
                             value: Some("acme".to_owned()),
                             ..Default::default()
                         },
                         super::types::CliQueryParameter {
-                            r#type:
+                            r#type: Some(
                                 super::types::CliQueryParameterType::CLI_QUERY_PARAMETER_TYPE_NULL
                                     .into(),
+                            ),
                             value: None,
                             ..Default::default()
                         },
@@ -757,7 +769,7 @@ mod tests {
                     timeout_ms: Some(2_500),
                     ..Default::default()
                 }),
-                normalized_sql: "SELECT 1".to_owned(),
+                normalized_sql: Some("SELECT 1".to_owned()),
                 declared_result_window: buffa::MessageField::some(
                     super::types::CliDeclaredQueryResultWindow {
                         max_rows: Some(100),
@@ -768,13 +780,15 @@ mod tests {
                     },
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
-                    source_key: "warehouse".to_owned(),
-                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
-                    queryable: true,
-                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(
+                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    ),
+                    queryable: Some(true),
+                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
-                truncated: false,
+                truncated: Some(false),
                 ..Default::default()
             },
             Some("req_validation".to_owned()),
@@ -825,17 +839,17 @@ mod tests {
         let error = super::query_validation_from_generated(
             super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
-                    sql: "SELECT 1".to_owned(),
+                    sql: Some("SELECT 1".to_owned()),
                     ..Default::default()
                 }),
-                normalized_sql: "SELECT 1".to_owned(),
+                normalized_sql: Some("SELECT 1".to_owned()),
                 declared_result_window: buffa::MessageField::some(
                     super::types::CliDeclaredQueryResultWindow {
                         max_rows: Some(100),
                         ..Default::default()
                     },
                 ),
-                truncated: false,
+                truncated: Some(false),
                 ..Default::default()
             },
             Some("req_missing_validation_source".to_owned()),
@@ -857,13 +871,15 @@ mod tests {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
-                    source_key: "warehouse".to_owned(),
-                    provider: super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
-                    queryable: true,
-                    status: super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into(),
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(
+                        super::types::CliSourceProvider::CLI_SOURCE_PROVIDER_POSTGRES.into(),
+                    ),
+                    queryable: Some(true),
+                    status: Some(super::types::CliSourceStatus::CLI_SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
-                row_count: 1,
+                row_count: Some(1),
                 ..Default::default()
             },
             Some("req_missing_page".to_owned()),
@@ -885,10 +901,10 @@ mod tests {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
                 page: buffa::MessageField::some(super::types::CliPage {
-                    returned_count: 1,
+                    returned_count: Some(1),
                     ..Default::default()
                 }),
-                row_count: 1,
+                row_count: Some(1),
                 ..Default::default()
             },
             Some("req_missing_query_source".to_owned()),
