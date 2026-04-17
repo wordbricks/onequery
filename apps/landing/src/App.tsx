@@ -1078,10 +1078,11 @@ export function App() {
         <section className="section openclaw-demo-section" id="demo">
           <div className="section-intro">
             <p className="eyebrow">See it in action</p>
-            <h2>An AI agent answers a Discord thread with live data.</h2>
+            <h2>OpenClaw runs the OneQuery CLI inside a Discord thread.</h2>
             <p>
-              OneQuery sits behind the conversation, executing safe queries and
-              composing the report inline — no context switch, no copy-paste.
+              The OpenClaw agent invokes OneQuery commands from chat, executes
+              safe queries through the gateway, and posts the report back inline
+              — no context switch, no copy-paste.
             </p>
           </div>
 
