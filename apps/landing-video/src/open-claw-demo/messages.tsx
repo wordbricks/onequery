@@ -12,6 +12,25 @@ const CHAT_MESSAGE_GRID = "40px minmax(0, 1fr)";
 const CHAT_MESSAGE_GAP = 16;
 const YUHA_AVATAR_BACKGROUND = "linear-gradient(135deg, #f59e0b, #d97706)";
 const ONEQUERY_AVATAR_BACKGROUND = "linear-gradient(135deg, #7c3aed, #4f46e5)";
+const CHAT_MESSAGE_LAYOUT_STYLE: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: CHAT_MESSAGE_GRID,
+  gap: CHAT_MESSAGE_GAP,
+};
+const BASE_MESSAGE_TEXT_STYLE: React.CSSProperties = {
+  margin: 0,
+  maxWidth: MESSAGE_TEXT_MAX_WIDTH,
+  color: discord.text,
+  lineHeight: 1.55,
+};
+const USER_MESSAGE_TEXT_STYLE: React.CSSProperties = {
+  ...BASE_MESSAGE_TEXT_STYLE,
+  fontSize: 15,
+};
+const ASSISTANT_MESSAGE_TEXT_STYLE: React.CSSProperties = {
+  ...BASE_MESSAGE_TEXT_STYLE,
+  fontSize: 14.5,
+};
 
 type MessageLayoutProps = {
   model: OpenClawSceneModel;
@@ -22,28 +41,18 @@ type MessageLayoutProps = {
   card?: React.ReactNode;
 };
 
-const MessageHeader: React.FC<{ timestamp: string }> = ({ timestamp }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <strong
-      style={{
-        color: discord.text,
-        fontSize: 15,
-        fontWeight: 600,
-      }}
-    >
-      Yuha
-    </strong>
-    <Pill
-      text="APP"
-      background={discord.blurple}
-      color="#ffffff"
-      weight={700}
-    />
-    <span style={{ color: discord.textSoft, fontSize: 12 }}>{timestamp}</span>
-  </div>
-);
+type ChatHeaderProps = {
+  name: string;
+  timestamp: string;
+  pill?: {
+    text: string;
+    background: string;
+    color: string;
+    weight?: number;
+  };
+};
 
-const UserHeader: React.FC<{ timestamp: string }> = ({ timestamp }) => (
+const ChatHeader: React.FC<ChatHeaderProps> = ({ name, timestamp, pill }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <strong
       style={{
@@ -52,8 +61,16 @@ const UserHeader: React.FC<{ timestamp: string }> = ({ timestamp }) => (
         fontWeight: 600,
       }}
     >
-      OQOQ
+      {name}
     </strong>
+    {pill ? (
+      <Pill
+        text={pill.text}
+        background={pill.background}
+        color={pill.color}
+        weight={pill.weight}
+      />
+    ) : null}
     <span style={{ color: discord.textSoft, fontSize: 12 }}>{timestamp}</span>
   </div>
 );
@@ -75,9 +92,7 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: CHAT_MESSAGE_GRID,
-        gap: CHAT_MESSAGE_GAP,
+        ...CHAT_MESSAGE_LAYOUT_STYLE,
         opacity: animate(frame, headerStart, 12, 0, 1),
       }}
     >
@@ -87,7 +102,16 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
 
       <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
         <div style={enter(frame, headerStart, 12, 6)}>
-          <MessageHeader timestamp={timestamp} />
+          <ChatHeader
+            name="Yuha"
+            timestamp={timestamp}
+            pill={{
+              text: "APP",
+              background: discord.blurple,
+              color: "#ffffff",
+              weight: 700,
+            }}
+          />
         </div>
 
         {body}
@@ -114,9 +138,7 @@ export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
     <div
       style={{
         ...enter(frame, timeline.userMessage, 14, 10),
-        display: "grid",
-        gridTemplateColumns: CHAT_MESSAGE_GRID,
-        gap: CHAT_MESSAGE_GAP,
+        ...CHAT_MESSAGE_LAYOUT_STYLE,
       }}
     >
       <Avatar
@@ -125,14 +147,10 @@ export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
         color="#ffffff"
       />
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <UserHeader timestamp={DEMO_TIMESTAMPS.userPrompt} />
+        <ChatHeader name="OQOQ" timestamp={DEMO_TIMESTAMPS.userPrompt} />
         <p
           style={{
-            margin: 0,
-            maxWidth: MESSAGE_TEXT_MAX_WIDTH,
-            color: discord.text,
-            fontSize: 15,
-            lineHeight: 1.55,
+            ...USER_MESSAGE_TEXT_STYLE,
           }}
         >
           <span
@@ -174,11 +192,7 @@ export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
         <p
           style={{
             ...enter(frame, timeline.runMessageIntro, 12, 6),
-            margin: 0,
-            maxWidth: MESSAGE_TEXT_MAX_WIDTH,
-            color: discord.text,
-            fontSize: 14.5,
-            lineHeight: 1.55,
+            ...ASSISTANT_MESSAGE_TEXT_STYLE,
           }}
         >
           On it — running <span style={{ fontWeight: 600 }}>OneQuery</span>{" "}
@@ -222,11 +236,7 @@ export const YuhaReportMessage: React.FC<{ model: OpenClawSceneModel }> = ({
         <p
           style={{
             ...enter(frame, timeline.reportMessageIntro, 12, 6),
-            margin: 0,
-            maxWidth: MESSAGE_TEXT_MAX_WIDTH,
-            color: discord.text,
-            fontSize: 14.5,
-            lineHeight: 1.55,
+            ...ASSISTANT_MESSAGE_TEXT_STYLE,
           }}
         >
           {REPORT_MESSAGE}

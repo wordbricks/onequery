@@ -21,7 +21,7 @@ type OpenClawSceneEvent =
   | { type: typeof OPEN_CLAW_SCENE_EVENT.SHOW_REPORT_CARD }
   | { type: typeof OPEN_CLAW_SCENE_EVENT.COMPLETE };
 
-export type OpenClawScenePhase =
+type OpenClawScenePhase =
   | "booting"
   | "chromeVisible"
   | "promptVisible"
@@ -39,20 +39,81 @@ export type OpenClawSceneState = {
   hasRunCard: boolean;
   hasReportMessage: boolean;
   hasReportCard: boolean;
-  isComplete: boolean;
 };
 
-const OPEN_CLAW_SCENE_TAG = {
-  CHROME_VISIBLE: "chrome-visible",
-  USER_PROMPT_VISIBLE: "user-prompt-visible",
-  RUN_MESSAGE_VISIBLE: "run-message-visible",
-  RUN_CARD_VISIBLE: "run-card-visible",
-  REPORT_MESSAGE_VISIBLE: "report-message-visible",
-  REPORT_CARD_VISIBLE: "report-card-visible",
-  COMPLETE: "scene-complete",
-} as const;
-
 const OPEN_CLAW_SCENE_COMPLETE_DELAY = 12;
+
+// Comment: phase remains the source of truth; these booleans are a thin
+// projection for layout branches that only care about visibility.
+const OPEN_CLAW_SCENE_VISIBILITY: Record<
+  OpenClawScenePhase,
+  Omit<OpenClawSceneState, "phase">
+> = {
+  booting: {
+    hasChrome: false,
+    hasUserPrompt: false,
+    hasRunMessage: false,
+    hasRunCard: false,
+    hasReportMessage: false,
+    hasReportCard: false,
+  },
+  chromeVisible: {
+    hasChrome: true,
+    hasUserPrompt: false,
+    hasRunMessage: false,
+    hasRunCard: false,
+    hasReportMessage: false,
+    hasReportCard: false,
+  },
+  promptVisible: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: false,
+    hasRunCard: false,
+    hasReportMessage: false,
+    hasReportCard: false,
+  },
+  runMessageVisible: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: true,
+    hasRunCard: false,
+    hasReportMessage: false,
+    hasReportCard: false,
+  },
+  runCardVisible: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: true,
+    hasRunCard: true,
+    hasReportMessage: false,
+    hasReportCard: false,
+  },
+  reportMessageVisible: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: true,
+    hasRunCard: true,
+    hasReportMessage: true,
+    hasReportCard: false,
+  },
+  reportCardVisible: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: true,
+    hasRunCard: true,
+    hasReportMessage: true,
+    hasReportCard: true,
+  },
+  complete: {
+    hasChrome: true,
+    hasUserPrompt: true,
+    hasRunMessage: true,
+    hasRunCard: true,
+    hasReportMessage: true,
+    hasReportCard: true,
+  },
+};
 
 const openClawSceneMachine = setup({
   types: {} as {
@@ -68,77 +129,36 @@ const openClawSceneMachine = setup({
       },
     },
     chromeVisible: {
-      tags: [OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE],
       on: {
         [OPEN_CLAW_SCENE_EVENT.SHOW_USER_PROMPT]: "promptVisible",
       },
     },
     promptVisible: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-      ],
       on: {
         [OPEN_CLAW_SCENE_EVENT.SHOW_RUN_MESSAGE]: "runMessageVisible",
       },
     },
     runMessageVisible: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE,
-      ],
       on: {
         [OPEN_CLAW_SCENE_EVENT.SHOW_RUN_CARD]: "runCardVisible",
       },
     },
     runCardVisible: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_CARD_VISIBLE,
-      ],
       on: {
         [OPEN_CLAW_SCENE_EVENT.SHOW_REPORT_MESSAGE]: "reportMessageVisible",
       },
     },
     reportMessageVisible: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_CARD_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.REPORT_MESSAGE_VISIBLE,
-      ],
       on: {
         [OPEN_CLAW_SCENE_EVENT.SHOW_REPORT_CARD]: "reportCardVisible",
       },
     },
     reportCardVisible: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_CARD_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.REPORT_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.REPORT_CARD_VISIBLE,
-      ],
       on: {
         [OPEN_CLAW_SCENE_EVENT.COMPLETE]: "complete",
       },
     },
-    complete: {
-      tags: [
-        OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.RUN_CARD_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.REPORT_MESSAGE_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.REPORT_CARD_VISIBLE,
-        OPEN_CLAW_SCENE_TAG.COMPLETE,
-      ],
-    },
+    complete: {},
   },
 });
 
@@ -190,16 +210,10 @@ export const resolveOpenClawSceneState = (
     [snapshot] = transition(openClawSceneMachine, snapshot, milestone.event);
   }
 
+  const phase = snapshot.value as OpenClawScenePhase;
+
   return {
-    phase: snapshot.value as OpenClawScenePhase,
-    hasChrome: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.CHROME_VISIBLE),
-    hasUserPrompt: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.USER_PROMPT_VISIBLE),
-    hasRunMessage: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.RUN_MESSAGE_VISIBLE),
-    hasRunCard: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.RUN_CARD_VISIBLE),
-    hasReportMessage: snapshot.hasTag(
-      OPEN_CLAW_SCENE_TAG.REPORT_MESSAGE_VISIBLE
-    ),
-    hasReportCard: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.REPORT_CARD_VISIBLE),
-    isComplete: snapshot.hasTag(OPEN_CLAW_SCENE_TAG.COMPLETE),
+    phase,
+    ...OPEN_CLAW_SCENE_VISIBILITY[phase],
   };
 };

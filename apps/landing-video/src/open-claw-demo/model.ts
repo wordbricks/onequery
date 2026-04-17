@@ -1,4 +1,4 @@
-import { COMMANDS, EVENT_TYPES, TOP_REPOS } from "./content";
+import { COMMANDS, MAX_EVENT_COUNT, MAX_REPO_COUNT } from "./content";
 import type { CommandSegment } from "./content";
 import { resolveOpenClawSceneState } from "./scene.machine";
 import type { OpenClawSceneState } from "./scene.machine";
@@ -39,7 +39,7 @@ const buildCommandModel = (
   segments: readonly CommandSegment[]
 ): CommandModel => {
   const totalChars = getTotalChars(segments);
-  const typedChars = getTypedChars(frame, start, segments);
+  const typedChars = getTypedChars(frame, start, totalChars);
 
   return {
     segments,
@@ -81,7 +81,7 @@ export const buildOpenClawSceneModel = (
         COMMANDS.mergedPulls
       ),
     },
-    maxEventCount: EVENT_TYPES[0].count,
-    maxRepoCount: TOP_REPOS[0].count,
+    maxEventCount: MAX_EVENT_COUNT,
+    maxRepoCount: MAX_REPO_COUNT,
   };
 };

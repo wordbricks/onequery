@@ -85,12 +85,9 @@ export const getTotalChars = (segments: readonly { text: string }[]) =>
 export const getTypedChars = (
   frame: number,
   start: number,
-  segments: readonly { text: string }[]
+  totalChars: number
 ) =>
-  Math.min(
-    getTotalChars(segments),
-    Math.max(0, Math.floor((frame - start) * TYPING_SPEED))
-  );
+  Math.min(totalChars, Math.max(0, Math.floor((frame - start) * TYPING_SPEED)));
 
 export const getCommandStatus = (
   frame: number,

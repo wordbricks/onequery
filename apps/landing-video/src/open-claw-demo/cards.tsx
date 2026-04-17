@@ -14,6 +14,140 @@ import { fonts, surfaces } from "./theme";
 import { enter } from "./timing";
 
 const CARD_MAX_WIDTH = 920;
+const ONEQUERY_ICON_SRC = staticFile("onequery-icon.png");
+const CARD_SHELL_STYLE: React.CSSProperties = {
+  width: "100%",
+  maxWidth: CARD_MAX_WIDTH,
+  display: "grid",
+  gap: 8,
+  padding: 10,
+  borderRadius: 14,
+  background: surfaces.surface,
+  border: `1px solid ${surfaces.line}`,
+  transformOrigin: "top left",
+};
+const REPORT_PANEL_STYLE: React.CSSProperties = {
+  display: "grid",
+  gap: 5,
+  padding: "8px 10px 10px",
+  borderRadius: 10,
+  border: `1px solid ${surfaces.line}`,
+  background: surfaces.surface,
+};
+const METRIC_ROW_STYLE: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr) 24px",
+  alignItems: "center",
+  gap: 10,
+};
+
+type ScaledCardShellProps = {
+  enterStyle: React.CSSProperties;
+  scale: number;
+  shadow: string;
+  children: React.ReactNode;
+};
+
+type RunStep = {
+  key: string;
+  command: OpenClawSceneModel["commands"][keyof OpenClawSceneModel["commands"]];
+  resultStart: number;
+  result: string;
+};
+
+type MetricSectionProps = {
+  enterStyle: React.CSSProperties;
+  maxCount: number;
+  rows: readonly {
+    count: number;
+    label: string;
+    key: string | number;
+  }[];
+  monoLabels?: boolean;
+  title: string;
+};
+
+const ScaledCardShell: React.FC<ScaledCardShellProps> = ({
+  enterStyle,
+  scale,
+  shadow,
+  children,
+}) => (
+  <div
+    style={{
+      ...CARD_SHELL_STYLE,
+      ...enterStyle,
+      boxShadow: shadow,
+      transform: `${enterStyle.transform} scale(${scale})`,
+    }}
+  >
+    {children}
+  </div>
+);
+
+const TerminalResultLine: React.FC<{
+  frame: number;
+  start: number;
+  text: string;
+}> = ({ frame, start, text }) => (
+  <div
+    style={{
+      ...enter(frame, start, 10, 4),
+      paddingLeft: 18,
+      color: surfaces.terminalMuted,
+      fontSize: 11.5,
+    }}
+  >
+    {text}
+  </div>
+);
+
+const MetricSection: React.FC<MetricSectionProps> = ({
+  enterStyle,
+  maxCount,
+  rows,
+  monoLabels = false,
+  title,
+}) => (
+  <div
+    style={{
+      ...REPORT_PANEL_STYLE,
+      ...enterStyle,
+    }}
+  >
+    <SectionLabel text={title} />
+    <div style={{ display: "grid", gap: 5 }}>
+      {rows.map((row) => (
+        <div key={row.key} style={METRIC_ROW_STYLE}>
+          <span
+            style={{
+              color: surfaces.ink,
+              fontSize: 11.5,
+              fontWeight: 500,
+              fontFamily: monoLabels ? fonts.mono : undefined,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {row.label}
+          </span>
+          <Bar percent={(row.count / maxCount) * 100} />
+          <span
+            style={{
+              color: surfaces.textMuted,
+              fontSize: 11,
+              fontVariantNumeric: "tabular-nums",
+              textAlign: "right",
+            }}
+          >
+            {row.count}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
@@ -31,24 +165,32 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
   }
 
   const runCardEnter = enter(frame, timeline.runCard, 16, 12);
+  const runSteps: readonly RunStep[] = [
+    {
+      key: "eventsByType",
+      command: eventsByType,
+      resultStart: timeline.cmd1Out,
+      result: "\u2192 100 events \u00b7 7 types \u00b7 612 ms",
+    },
+    {
+      key: "reposByActivity",
+      command: reposByActivity,
+      resultStart: timeline.cmd2Out,
+      result: "\u2192 5 repos ranked \u00b7 58 ms",
+    },
+    {
+      key: "mergedPulls",
+      command: mergedPulls,
+      resultStart: timeline.cmd3Out,
+      result: "\u2192 11 merged PRs \u00b7 28 files changed \u00b7 812 ms",
+    },
+  ];
 
   return (
-    <div
-      style={{
-        ...runCardEnter,
-        width: "100%",
-        maxWidth: CARD_MAX_WIDTH,
-        display: "grid",
-        gap: 8,
-        padding: 10,
-        borderRadius: 14,
-        background: surfaces.surface,
-        border: `1px solid ${surfaces.line}`,
-        boxShadow:
-          "0 24px 48px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.04)",
-        transform: `${runCardEnter.transform} scale(${runCardScale})`,
-        transformOrigin: "top left",
-      }}
+    <ScaledCardShell
+      enterStyle={runCardEnter}
+      scale={runCardScale}
+      shadow="0 24px 48px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.04)"
     >
       <div
         style={{
@@ -81,7 +223,7 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
             }}
           >
             <Img
-              src={staticFile("onequery-icon.png")}
+              src={ONEQUERY_ICON_SRC}
               style={{ width: 32, height: 32, display: "block" }}
             />
           </div>
@@ -195,53 +337,22 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
           </span>
         </div>
 
-        <TypedCommandLine frame={frame} command={eventsByType} />
-        {eventsByType.status === "done" ? (
-          <div
-            style={{
-              ...enter(frame, timeline.cmd1Out, 10, 4),
-              paddingLeft: 18,
-              color: surfaces.terminalMuted,
-              fontSize: 11.5,
-            }}
-          >
-            → 100 events · 7 types · 612 ms
-          </div>
-        ) : null}
-
-        {frame >= timeline.cmd2 ? (
-          <TypedCommandLine frame={frame} command={reposByActivity} />
-        ) : null}
-        {reposByActivity.status === "done" ? (
-          <div
-            style={{
-              ...enter(frame, timeline.cmd2Out, 10, 4),
-              paddingLeft: 18,
-              color: surfaces.terminalMuted,
-              fontSize: 11.5,
-            }}
-          >
-            → 5 repos ranked · 58 ms
-          </div>
-        ) : null}
-
-        {frame >= timeline.cmd3 ? (
-          <TypedCommandLine frame={frame} command={mergedPulls} />
-        ) : null}
-        {mergedPulls.status === "done" ? (
-          <div
-            style={{
-              ...enter(frame, timeline.cmd3Out, 10, 4),
-              paddingLeft: 18,
-              color: surfaces.terminalMuted,
-              fontSize: 11.5,
-            }}
-          >
-            → 11 merged PRs · 28 files changed · 812 ms
-          </div>
-        ) : null}
+        {runSteps.map((step) =>
+          step.command.status === "idle" ? null : (
+            <React.Fragment key={step.key}>
+              <TypedCommandLine frame={frame} command={step.command} />
+              {step.command.status === "done" ? (
+                <TerminalResultLine
+                  frame={frame}
+                  start={step.resultStart}
+                  text={step.result}
+                />
+              ) : null}
+            </React.Fragment>
+          )
+        )}
       </div>
-    </div>
+    </ScaledCardShell>
   );
 };
 
@@ -264,22 +375,10 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
   const reportCardEnter = enter(frame, timeline.reportCard, 16, 12);
 
   return (
-    <div
-      style={{
-        ...reportCardEnter,
-        width: "100%",
-        maxWidth: CARD_MAX_WIDTH,
-        display: "grid",
-        gap: 8,
-        padding: 10,
-        borderRadius: 14,
-        background: surfaces.surface,
-        border: `1px solid ${surfaces.line}`,
-        boxShadow:
-          "0 20px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04)",
-        transform: `${reportCardEnter.transform} scale(${reportCardScale})`,
-        transformOrigin: "top left",
-      }}
+    <ScaledCardShell
+      enterStyle={reportCardEnter}
+      scale={reportCardScale}
+      shadow="0 20px 40px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.04)"
     >
       <div
         style={{
@@ -363,119 +462,35 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
           gap: 10,
         }}
       >
-        <div
-          style={{
-            ...enter(frame, timeline.reportTypes, 14, 8),
-            display: "grid",
-            gap: 5,
-            padding: "8px 10px 10px",
-            borderRadius: 10,
-            border: `1px solid ${surfaces.line}`,
-            background: surfaces.surface,
-          }}
-        >
-          <SectionLabel text="Events by type" />
-          <div style={{ display: "grid", gap: 5 }}>
-            {EVENT_TYPES.map((event) => (
-              <div
-                key={event.type}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr) 24px",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <span
-                  style={{
-                    color: surfaces.ink,
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {event.type}
-                </span>
-                <Bar percent={(event.count / maxEventCount) * 100} />
-                <span
-                  style={{
-                    color: surfaces.textMuted,
-                    fontSize: 11,
-                    fontVariantNumeric: "tabular-nums",
-                    textAlign: "right",
-                  }}
-                >
-                  {event.count}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <MetricSection
+          enterStyle={enter(frame, timeline.reportTypes, 14, 8)}
+          maxCount={maxEventCount}
+          rows={EVENT_TYPES.map((event) => ({
+            key: event.type,
+            label: event.type,
+            count: event.count,
+          }))}
+          title="Events by type"
+        />
 
-        <div
-          style={{
-            ...enter(frame, timeline.reportRepos, 14, 8),
-            display: "grid",
-            gap: 5,
-            padding: "8px 10px 10px",
-            borderRadius: 10,
-            border: `1px solid ${surfaces.line}`,
-            background: surfaces.surface,
-          }}
-        >
-          <SectionLabel text="Top repos" />
-          <div style={{ display: "grid", gap: 5 }}>
-            {TOP_REPOS.map((repo) => (
-              <div
-                key={repo.name}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr) 24px",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <span
-                  style={{
-                    color: surfaces.ink,
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                    fontFamily: fonts.mono,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {repo.name}
-                </span>
-                <Bar percent={(repo.count / maxRepoCount) * 100} />
-                <span
-                  style={{
-                    color: surfaces.textMuted,
-                    fontSize: 11,
-                    fontVariantNumeric: "tabular-nums",
-                    textAlign: "right",
-                  }}
-                >
-                  {repo.count}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <MetricSection
+          enterStyle={enter(frame, timeline.reportRepos, 14, 8)}
+          maxCount={maxRepoCount}
+          monoLabels
+          rows={TOP_REPOS.map((repo) => ({
+            key: repo.name,
+            label: repo.name,
+            count: repo.count,
+          }))}
+          title="Top repos"
+        />
       </div>
 
       <div
         style={{
+          ...REPORT_PANEL_STYLE,
           ...enter(frame, timeline.reportPRs, 14, 8),
-          display: "grid",
           gap: 6,
-          padding: "8px 10px 10px",
-          borderRadius: 10,
-          border: `1px solid ${surfaces.line}`,
-          background: surfaces.surface,
         }}
       >
         <div
@@ -559,6 +574,6 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
           ))}
         </div>
       </div>
-    </div>
+    </ScaledCardShell>
   );
 };

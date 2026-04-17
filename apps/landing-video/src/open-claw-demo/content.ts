@@ -70,6 +70,13 @@ export const TOP_REPOS = [
   { name: "openclaw/landing", count: 2 },
 ] as const;
 
+// Comment: derive maxima from the data so the charts do not depend on the
+// arrays staying manually sorted.
+export const MAX_EVENT_COUNT = Math.max(
+  ...EVENT_TYPES.map((event) => event.count)
+);
+export const MAX_REPO_COUNT = Math.max(...TOP_REPOS.map((repo) => repo.count));
+
 export const MERGED_PRS = [
   {
     number: 142,
