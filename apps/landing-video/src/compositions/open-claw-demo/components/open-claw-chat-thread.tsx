@@ -1,5 +1,5 @@
 import React from "react";
-import { Sequence, useCurrentFrame } from "remotion";
+import { Sequence, staticFile, useCurrentFrame } from "remotion";
 
 import {
   discordAvatarBackgrounds,
@@ -15,6 +15,8 @@ import { discordTokens, fontFamilies } from "../tokens";
 import { OneQueryReportSummaryCard } from "./report-summary-card";
 import { OneQueryRunSummaryCard } from "./run-summary-card";
 import { AvatarBadge, StatusPill } from "./ui";
+
+const assistantAvatarSource = staticFile("onequery-openclaw-icon.png");
 
 const messageTextMaxWidth = 860;
 const chatMessageLayoutStyle: React.CSSProperties = {
@@ -127,6 +129,8 @@ const AssistantMessageShell: React.FC<AssistantMessageShellProps> = ({
           label="Y"
           background={discordAvatarBackgrounds.assistant}
           color="#ffffff"
+          imageInset={1}
+          imageSrc={assistantAvatarSource}
         />
       </div>
 

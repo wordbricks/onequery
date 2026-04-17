@@ -18,7 +18,7 @@ export const discordWorkspace = {
 } as const;
 
 export const discordAvatarBackgrounds = {
-  assistant: "linear-gradient(135deg, #f59e0b, #d97706)",
+  assistant: "#f4f3ee",
   currentUser: "linear-gradient(135deg, #7c3aed, #4f46e5)",
 } as const;
 

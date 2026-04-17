@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate, useCurrentFrame } from "remotion";
+import { Img, interpolate, useCurrentFrame } from "remotion";
 
 import type { CommandRenderState } from "../scene-state";
 import { surfaceTokens } from "../tokens";
@@ -83,25 +83,43 @@ export const AvatarBadge: React.FC<{
   label: string;
   background: string;
   color: string;
+  imageInset?: number;
+  imageSrc?: string;
   size?: number;
-}> = ({ label, background, color, size = 40 }) => (
+}> = ({ label, background, color, imageInset = 0, imageSrc, size = 40 }) => (
   <div
     style={{
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      position: "relative",
       flex: "none",
       width: size,
       height: size,
       borderRadius: size / 2,
       background,
+      overflow: "hidden",
       color,
       fontSize: size * 0.38,
       fontWeight: 700,
       letterSpacing: "-0.04em",
     }}
   >
-    {label}
+    {imageSrc ? (
+      <Img
+        src={imageSrc}
+        style={{
+          position: "absolute",
+          inset: imageInset,
+          width: size - imageInset * 2,
+          height: size - imageInset * 2,
+          display: "block",
+          objectFit: "cover",
+        }}
+      />
+    ) : (
+      label
+    )}
   </div>
 );
 
