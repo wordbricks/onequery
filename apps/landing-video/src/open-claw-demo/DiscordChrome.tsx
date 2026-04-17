@@ -13,7 +13,18 @@ export const DiscordChrome: React.FC<{
   children: React.ReactNode;
   model: OpenClawSceneModel;
 }> = ({ children, model }) => {
-  const { frame, fps, timeline, windowScale } = model;
+  const {
+    frame,
+    fps,
+    scene: { hasChrome },
+    timeline,
+    windowScale,
+  } = model;
+
+  if (!hasChrome) {
+    return null;
+  }
+
   const windowEnter = enter(frame, timeline.window, 20, 14);
 
   return (

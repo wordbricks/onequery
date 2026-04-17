@@ -20,10 +20,16 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 }) => {
   const {
     frame,
+    scene: { hasRunCard },
     timeline,
     runCardScale,
     commands: { eventsByType, reposByActivity, mergedPulls },
   } = model;
+
+  if (!hasRunCard) {
+    return null;
+  }
+
   const runCardEnter = enter(frame, timeline.runCard, 16, 12);
 
   return (
@@ -242,8 +248,19 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const { frame, timeline, reportCardScale, maxEventCount, maxRepoCount } =
-    model;
+  const {
+    frame,
+    scene: { hasReportCard },
+    timeline,
+    reportCardScale,
+    maxEventCount,
+    maxRepoCount,
+  } = model;
+
+  if (!hasReportCard) {
+    return null;
+  }
+
   const reportCardEnter = enter(frame, timeline.reportCard, 16, 12);
 
   return (
@@ -536,7 +553,7 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
                   @{pr.user}
                 </span>
                 <span style={{ color: surfaces.textFaint }}>·</span>
-                <span>{pr.when}</span>
+                <span>{pr.mergedAt}</span>
               </span>
             </div>
           ))}

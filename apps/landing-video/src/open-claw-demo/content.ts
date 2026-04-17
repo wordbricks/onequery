@@ -75,19 +75,19 @@ export const MERGED_PRS = [
     number: 142,
     title: "Answer formatting polish for Discord threads",
     user: "lentil32",
-    when: "2h ago",
+    mergedAt: "Apr 17",
   },
   {
     number: 139,
     title: "Discord plugin wiring for OneQuery tool calls",
     user: "kirkh",
-    when: "yesterday",
+    mergedAt: "Apr 16",
   },
   {
     number: 135,
     title: "Demo scene restyling for the landing embed",
     user: "lentil32",
-    when: "2d ago",
+    mergedAt: "Apr 15",
   },
 ] as const;
 
@@ -105,6 +105,14 @@ export const CHANNELS = [
 ] as const;
 
 export const ACTIVE_CHANNEL = "plugin-demo";
+
+// Comment: fixed timestamps keep the rendered still and video stable as the
+// demo asset ages.
+export const DEMO_TIMESTAMPS = {
+  userPrompt: "Apr 17 at 2:46 PM",
+  runReply: "Apr 17 at 2:46 PM",
+  reportReply: "Apr 17 at 2:47 PM",
+} as const;
 
 export const USER_PROMPT =
   "run this week's OpenClaw review — group the org events by type and repo, then pull the merged PRs on the plugin repo so I know where the energy is going.";

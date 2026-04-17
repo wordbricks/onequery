@@ -1,7 +1,7 @@
 import React from "react";
 
 import { OneQueryReportCard, OneQueryRunCard } from "./cards";
-import { REPORT_MESSAGE, USER_PROMPT } from "./content";
+import { DEMO_TIMESTAMPS, REPORT_MESSAGE, USER_PROMPT } from "./content";
 import type { OpenClawSceneModel } from "./model";
 import { Avatar, Pill } from "./primitives";
 import { discord, fonts } from "./theme";
@@ -18,6 +18,7 @@ type MessageLayoutProps = {
   headerStart: number;
   body: React.ReactNode;
   timestamp: string;
+  visible: boolean;
   card?: React.ReactNode;
 };
 
@@ -42,7 +43,7 @@ const MessageHeader: React.FC<{ timestamp: string }> = ({ timestamp }) => (
   </div>
 );
 
-const UserHeader: React.FC = () => (
+const UserHeader: React.FC<{ timestamp: string }> = ({ timestamp }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <strong
       style={{
@@ -53,9 +54,7 @@ const UserHeader: React.FC = () => (
     >
       OQOQ
     </strong>
-    <span style={{ color: discord.textSoft, fontSize: 12 }}>
-      Today at 2:46 PM
-    </span>
+    <span style={{ color: discord.textSoft, fontSize: 12 }}>{timestamp}</span>
   </div>
 );
 
@@ -64,11 +63,12 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
   headerStart,
   body,
   timestamp,
+  visible,
   card,
 }) => {
   const { frame } = model;
 
-  if (frame < headerStart) {
+  if (!visible) {
     return null;
   }
 
@@ -100,9 +100,13 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
 export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const { frame, timeline } = model;
+  const {
+    frame,
+    scene: { hasUserPrompt },
+    timeline,
+  } = model;
 
-  if (frame < timeline.userMessage) {
+  if (!hasUserPrompt) {
     return null;
   }
 
@@ -121,7 +125,7 @@ export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
         color="#ffffff"
       />
       <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
-        <UserHeader />
+        <UserHeader timestamp={DEMO_TIMESTAMPS.userPrompt} />
         <p
           style={{
             margin: 0,
@@ -154,13 +158,18 @@ export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
 export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const { frame, timeline } = model;
+  const {
+    frame,
+    scene: { hasRunMessage },
+    timeline,
+  } = model;
 
   return (
     <YuhaMessageLayout
       model={model}
       headerStart={timeline.runMessageHeader}
-      timestamp="Today at 2:46 PM"
+      timestamp={DEMO_TIMESTAMPS.runReply}
+      visible={hasRunMessage}
       body={
         <p
           style={{
@@ -197,13 +206,18 @@ export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
 export const YuhaReportMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const { frame, timeline } = model;
+  const {
+    frame,
+    scene: { hasReportMessage },
+    timeline,
+  } = model;
 
   return (
     <YuhaMessageLayout
       model={model}
       headerStart={timeline.reportMessageHeader}
-      timestamp="Today at 2:47 PM"
+      timestamp={DEMO_TIMESTAMPS.reportReply}
+      visible={hasReportMessage}
       body={
         <p
           style={{
