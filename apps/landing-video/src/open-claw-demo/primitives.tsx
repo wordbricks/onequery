@@ -1,5 +1,5 @@
 import React from "react";
-import { interpolate } from "remotion";
+import { interpolate, useCurrentFrame } from "remotion";
 
 import type { CommandModel } from "./model";
 import { surfaces } from "./theme";
@@ -30,10 +30,9 @@ const renderTypedSegments = (
   });
 };
 
-export const Cursor: React.FC<{ frame: number; visible: boolean }> = ({
-  frame,
-  visible,
-}) => {
+export const Cursor: React.FC<{ visible: boolean }> = ({ visible }) => {
+  const frame = useCurrentFrame();
+
   if (!visible) {
     return null;
   }
@@ -57,9 +56,8 @@ export const Cursor: React.FC<{ frame: number; visible: boolean }> = ({
 };
 
 export const TypedCommandLine: React.FC<{
-  frame: number;
   command: CommandModel;
-}> = ({ frame, command }) => (
+}> = ({ command }) => (
   <div style={{ display: "flex", gap: 10 }}>
     <span style={{ color: surfaces.terminalPrompt }}>$</span>
     <code
@@ -70,7 +68,7 @@ export const TypedCommandLine: React.FC<{
       }}
     >
       {renderTypedSegments(command.segments, command.typedChars)}
-      <Cursor frame={frame} visible={command.status === "typing"} />
+      <Cursor visible={command.status === "typing"} />
     </code>
   </div>
 );

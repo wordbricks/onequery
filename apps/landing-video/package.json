@@ -9,7 +9,7 @@
     "build": "remotion bundle src/index.ts",
     "render": "bun run render:video",
     "render:video": "remotion render src/index.ts OpenClawDemoVideo out/openclaw-demo-video.mp4",
-    "render:still": "remotion still src/index.ts OpenClawDemo out/openclaw-demo.png",
+    "render:still": "bun run scripts/render-still.ts",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {

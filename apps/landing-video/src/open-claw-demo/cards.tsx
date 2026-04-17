@@ -1,17 +1,21 @@
 import React from "react";
-import { Img, staticFile } from "remotion";
+import { Img, staticFile, useCurrentFrame } from "remotion";
 
 import {
+  COMMANDS,
   EVENT_TYPES,
+  MAX_EVENT_COUNT,
+  MAX_REPO_COUNT,
   MERGED_PRS,
   NARRATIVE,
   OVERVIEW,
   TOP_REPOS,
 } from "./content";
-import type { OpenClawSceneModel } from "./model";
+import { buildCommandModel } from "./model";
+import type { CommandModel, OpenClawSceneModel } from "./model";
 import { Bar, Pill, SectionLabel, TypedCommandLine } from "./primitives";
 import { fonts, surfaces } from "./theme";
-import { enter } from "./timing";
+import { animate, enter } from "./timing";
 
 const CARD_MAX_WIDTH = 920;
 const ONEQUERY_ICON_SRC = staticFile("onequery-icon.png");
@@ -50,7 +54,7 @@ type ScaledCardShellProps = {
 
 type RunStep = {
   key: string;
-  command: OpenClawSceneModel["commands"][keyof OpenClawSceneModel["commands"]];
+  command: CommandModel;
   resultStart: number;
   result: string;
 };
@@ -152,31 +156,42 @@ const MetricSection: React.FC<MetricSectionProps> = ({
 export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const {
+  const frame = useCurrentFrame();
+  const { timeline } = model;
+  const runCardEnter = enter(frame, 0, 16, 12);
+  const runCardScale = animate(frame, 0, 16, 0.975, 1);
+  const eventsByType = buildCommandModel(
     frame,
-    timeline,
-    runCardScale,
-    commands: { eventsByType, reposByActivity, mergedPulls },
-  } = model;
-
-  const runCardEnter = enter(frame, timeline.runCard, 16, 12);
+    timeline.cmd1 - timeline.runCard,
+    COMMANDS.eventsByType
+  );
+  const reposByActivity = buildCommandModel(
+    frame,
+    timeline.cmd2 - timeline.runCard,
+    COMMANDS.reposByActivity
+  );
+  const mergedPulls = buildCommandModel(
+    frame,
+    timeline.cmd3 - timeline.runCard,
+    COMMANDS.mergedPulls
+  );
   const runSteps: readonly RunStep[] = [
     {
       key: "eventsByType",
       command: eventsByType,
-      resultStart: timeline.cmd1Out,
+      resultStart: timeline.cmd1Out - timeline.runCard,
       result: "\u2192 100 events \u00b7 7 types \u00b7 612 ms",
     },
     {
       key: "reposByActivity",
       command: reposByActivity,
-      resultStart: timeline.cmd2Out,
+      resultStart: timeline.cmd2Out - timeline.runCard,
       result: "\u2192 5 repos ranked \u00b7 58 ms",
     },
     {
       key: "mergedPulls",
       command: mergedPulls,
-      resultStart: timeline.cmd3Out,
+      resultStart: timeline.cmd3Out - timeline.runCard,
       result: "\u2192 11 merged PRs \u00b7 28 files changed \u00b7 812 ms",
     },
   ];
@@ -286,7 +301,7 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 
       <div
         style={{
-          ...enter(frame, timeline.terminal, 12, 8),
+          ...enter(frame, timeline.terminal - timeline.runCard, 12, 8),
           display: "grid",
           gap: 7,
           padding: "8px 12px 10px",
@@ -335,7 +350,7 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
         {runSteps.map((step) =>
           step.command.status === "idle" ? null : (
             <React.Fragment key={step.key}>
-              <TypedCommandLine frame={frame} command={step.command} />
+              <TypedCommandLine command={step.command} />
               {step.command.status === "done" ? (
                 <TerminalResultLine
                   frame={frame}
@@ -354,10 +369,10 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const { frame, timeline, reportCardScale, maxEventCount, maxRepoCount } =
-    model;
-
-  const reportCardEnter = enter(frame, timeline.reportCard, 16, 12);
+  const frame = useCurrentFrame();
+  const { timeline } = model;
+  const reportCardEnter = enter(frame, 0, 16, 12);
+  const reportCardScale = animate(frame, 0, 16, 0.985, 1);
 
   return (
     <ScaledCardShell
@@ -367,7 +382,7 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
     >
       <div
         style={{
-          ...enter(frame, timeline.reportOverview, 12, 6),
+          ...enter(frame, timeline.reportOverview - timeline.reportCard, 12, 6),
           display: "grid",
           gridTemplateColumns: "auto minmax(0, 1fr)",
           alignItems: "center",
@@ -426,7 +441,12 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
         </div>
         <span
           style={{
-            ...enter(frame, timeline.reportNarrative, 12, 4),
+            ...enter(
+              frame,
+              timeline.reportNarrative - timeline.reportCard,
+              12,
+              4
+            ),
             minWidth: 0,
             color: surfaces.textMuted,
             fontSize: 11,
@@ -448,8 +468,13 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
         }}
       >
         <MetricSection
-          enterStyle={enter(frame, timeline.reportTypes, 14, 8)}
-          maxCount={maxEventCount}
+          enterStyle={enter(
+            frame,
+            timeline.reportTypes - timeline.reportCard,
+            14,
+            8
+          )}
+          maxCount={MAX_EVENT_COUNT}
           rows={EVENT_TYPES.map((event) => ({
             key: event.type,
             label: event.type,
@@ -459,8 +484,13 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
         />
 
         <MetricSection
-          enterStyle={enter(frame, timeline.reportRepos, 14, 8)}
-          maxCount={maxRepoCount}
+          enterStyle={enter(
+            frame,
+            timeline.reportRepos - timeline.reportCard,
+            14,
+            8
+          )}
+          maxCount={MAX_REPO_COUNT}
           monoLabels
           rows={TOP_REPOS.map((repo) => ({
             key: repo.name,
@@ -474,7 +504,7 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
       <div
         style={{
           ...REPORT_PANEL_STYLE,
-          ...enter(frame, timeline.reportPRs, 14, 8),
+          ...enter(frame, timeline.reportPRs - timeline.reportCard, 14, 8),
           gap: 6,
         }}
       >
@@ -502,7 +532,12 @@ export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
             <div
               key={pr.number}
               style={{
-                ...enter(frame, timeline.reportPRs + index * 2, 12, 4),
+                ...enter(
+                  frame,
+                  timeline.reportPRs - timeline.reportCard + index * 2,
+                  12,
+                  4
+                ),
                 display: "grid",
                 gridTemplateColumns: "52px minmax(0, 1fr) auto",
                 alignItems: "center",
