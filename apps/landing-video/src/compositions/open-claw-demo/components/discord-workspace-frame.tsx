@@ -479,7 +479,7 @@ export const DiscordWorkspaceFrame: React.FC<DiscordWorkspaceFrameProps> = ({
             <div
               style={{
                 position: "absolute",
-                inset: "12px 24px 10px",
+                inset: "12px 24px 0",
                 minWidth: 0,
               }}
             >

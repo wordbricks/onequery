@@ -4,11 +4,11 @@ import { useCurrentFrame } from "remotion";
 import {
   eventTypeCounts,
   maxEventTypeCount,
-  maxRepositoryActivityCount,
+  maxTopRepositoryStarCount,
   mergedPullRequests,
   overviewMetrics,
   reportNarrative,
-  repositoryActivityCounts,
+  topRepositoryStars,
 } from "../fixtures/report";
 import type { OpenClawDemoSceneState } from "../scene-state";
 import { getFadeSlideInStyle, interpolateSceneValue } from "../timeline";
@@ -27,7 +27,7 @@ const reportPanelStyle: React.CSSProperties = {
 
 const metricRowStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr) 24px",
+  gridTemplateColumns: "minmax(0, 1.35fr) minmax(0, 1fr) 56px",
   alignItems: "center",
   gap: 10,
 };
@@ -43,6 +43,7 @@ type MetricPanelProps = {
     count: number;
     key: string | number;
     label: string;
+    valueText?: string;
   }[];
   title: string;
   useMonospaceLabels?: boolean;
@@ -89,7 +90,7 @@ const MetricPanel: React.FC<MetricPanelProps> = ({
               textAlign: "right",
             }}
           >
-            {row.count}
+            {row.valueText ?? row.count}
           </span>
         </div>
       ))}
@@ -223,17 +224,18 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
         <MetricPanel
           entryStyle={getFadeSlideInStyle(
             frame,
-            timeline.repositoryPanel - timeline.reportReplyCard,
+            timeline.topRepoStarsPanel - timeline.reportReplyCard,
             14,
             8
           )}
-          maxCount={maxRepositoryActivityCount}
-          rows={repositoryActivityCounts.map((repository) => ({
+          maxCount={maxTopRepositoryStarCount}
+          rows={topRepositoryStars.map((repository) => ({
             key: repository.name,
             label: repository.name,
             count: repository.count,
+            valueText: repository.valueText,
           }))}
-          title="Top repos"
+          title="Top repos by stars"
           useMonospaceLabels
         />
       </div>
@@ -257,7 +259,7 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
             justifyContent: "space-between",
           }}
         >
-          <SectionEyebrow text="Merged PRs | openclaw/plugin" />
+          <SectionEyebrow text="Recent merged PRs | openclaw/openclaw" />
           <span
             style={{
               color: surfaceTokens.textFaint,
@@ -266,7 +268,7 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
               letterSpacing: "0.02em",
             }}
           >
-            showing 3 of 11
+            showing {mergedPullRequests.length} recent merges
           </span>
         </div>
 

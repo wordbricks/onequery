@@ -30,12 +30,12 @@ type RunStep = {
 type RunStepDefinition = {
   commandFrameKey:
     | "eventTypeBreakdownCommand"
-    | "repositoryActivityBreakdownCommand"
+    | "topRepoStarsCommand"
     | "mergedPullRequestSummaryCommand";
   key: RunStepKey;
   resultFrameKey:
     | "eventTypeBreakdownResult"
-    | "repositoryActivityBreakdownResult"
+    | "topRepoStarsResult"
     | "mergedPullRequestSummaryResult";
 };
 
@@ -46,9 +46,9 @@ const runStepDefinitions = [
     resultFrameKey: "eventTypeBreakdownResult",
   },
   {
-    key: "repositoryActivityBreakdown",
-    commandFrameKey: "repositoryActivityBreakdownCommand",
-    resultFrameKey: "repositoryActivityBreakdownResult",
+    key: "topRepoStars",
+    commandFrameKey: "topRepoStarsCommand",
+    resultFrameKey: "topRepoStarsResult",
   },
   {
     key: "mergedPullRequestSummary",
@@ -158,9 +158,9 @@ export const OneQueryRunSummaryCard: React.FC<RunSummaryCardProps> = ({
                 lineHeight: 1.3,
               }}
             >
-              <span>OpenClaw plugin</span>
+              <span>OpenClaw org scan</span>
               <span>|</span>
-              <span>github-openclaw source</span>
+              <span>github source</span>
               <span>|</span>
               <span>
                 request-id{" "}
@@ -171,7 +171,7 @@ export const OneQueryRunSummaryCard: React.FC<RunSummaryCardProps> = ({
                     color: surfaceTokens.ink,
                   }}
                 >
-                  openclaw-weekly
+                  openclaw-org-scan
                 </code>
               </span>
             </div>

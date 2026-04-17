@@ -1,17 +1,17 @@
 export const discordChannels = [
   "announcements",
   "launch-room",
-  "plugin-demo",
+  "github-research",
   "shipping",
 ] as const;
 
-export const activeDiscordChannel = "plugin-demo";
+export const activeDiscordChannel = "github-research";
 
 export const discordWorkspace = {
   serverName: "OpenClaw",
   channelName: activeDiscordChannel,
   channelDescription:
-    "OpenClaw agent answers GitHub questions using the OneQuery plugin.",
+    "Live OpenClaw org analysis through the OneQuery GitHub source.",
   currentUserName: "OQOQ",
   currentUserStatus: "online",
   assistantName: "Yuha",
@@ -22,21 +22,23 @@ export const discordAvatarBackgrounds = {
   currentUser: "linear-gradient(135deg, #7c3aed, #4f46e5)",
 } as const;
 
-// Comment: Fixed timestamps keep still renders stable as the demo asset ages.
+// Comment: Fixed timestamps keep the still frame stable even though the
+// underlying GitHub data is time-sensitive.
 export const messageTimestamps = {
-  userPrompt: "Apr 17 at 2:46 PM",
-  runReply: "Apr 17 at 2:46 PM",
-  reportReply: "Apr 17 at 2:47 PM",
+  userPrompt: "Apr 17 at 3:47 PM",
+  runReply: "Apr 17 at 3:47 PM",
+  reportReply: "Apr 17 at 3:48 PM",
 } as const;
 
 export const userPromptText =
-  "run this week's OpenClaw review - group the org events by type and repo, then pull the merged PRs on the plugin repo so I know where the energy is going.";
+  "scan the openclaw GitHub org - break down the recent public events by type, rank the repos by stars, and show the latest merged PRs on openclaw/openclaw.";
 
 export const runReplyCopy = {
-  beforeSource: "On it - running OneQuery against",
-  sourceName: "github-openclaw",
-  afterSource: "read-only. I'll aggregate with jq and drop the breakdown here.",
+  beforeSource: "On it - querying the live org through",
+  sourceName: "github",
+  afterSource:
+    "read-only. I'll aggregate the API output and post the snapshot here.",
 } as const;
 
 export const reportReplyText =
-  "Done. Here's the read-only summary from the plugin run, split into activity, repo concentration, and merged PRs.";
+  "Done. Here's the live snapshot from the GitHub source: recent event mix, top repos by stars, and the latest merged PRs in openclaw/openclaw.";

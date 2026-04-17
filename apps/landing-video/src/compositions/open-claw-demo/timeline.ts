@@ -18,8 +18,8 @@ export type OpenClawTimeline = {
   runTerminalPanel: number;
   eventTypeBreakdownCommand: number;
   eventTypeBreakdownResult: number;
-  repositoryActivityBreakdownCommand: number;
-  repositoryActivityBreakdownResult: number;
+  topRepoStarsCommand: number;
+  topRepoStarsResult: number;
   mergedPullRequestSummaryCommand: number;
   mergedPullRequestSummaryResult: number;
   reportReplyHeader: number;
@@ -28,7 +28,7 @@ export type OpenClawTimeline = {
   reportOverview: number;
   reportNarrative: number;
   eventTypePanel: number;
-  repositoryPanel: number;
+  topRepoStarsPanel: number;
   mergedPullRequestPanel: number;
 };
 
@@ -48,8 +48,8 @@ export const createOpenClawTimeline = (fps: number): OpenClawTimeline => ({
   runTerminalPanel: framesFromSeconds(2.8, fps),
   eventTypeBreakdownCommand: framesFromSeconds(3.08, fps),
   eventTypeBreakdownResult: framesFromSeconds(5.21, fps),
-  repositoryActivityBreakdownCommand: framesFromSeconds(5.56, fps),
-  repositoryActivityBreakdownResult: framesFromSeconds(7.71, fps),
+  topRepoStarsCommand: framesFromSeconds(5.56, fps),
+  topRepoStarsResult: framesFromSeconds(7.71, fps),
   mergedPullRequestSummaryCommand: framesFromSeconds(8.08, fps),
   mergedPullRequestSummaryResult: framesFromSeconds(10.46, fps),
   reportReplyHeader: framesFromSeconds(10.74, fps),
@@ -58,7 +58,7 @@ export const createOpenClawTimeline = (fps: number): OpenClawTimeline => ({
   reportOverview: framesFromSeconds(11.4, fps),
   reportNarrative: framesFromSeconds(11.54, fps),
   eventTypePanel: framesFromSeconds(11.66, fps),
-  repositoryPanel: framesFromSeconds(11.88, fps),
+  topRepoStarsPanel: framesFromSeconds(11.88, fps),
   mergedPullRequestPanel: framesFromSeconds(12.18, fps),
 });
 

@@ -67,6 +67,13 @@ export const buildOpenClawDemoSceneState = (
     0,
     82
   );
+  const mergedPullRequestRevealScrollY = interpolateSceneValue(
+    frame,
+    timeline.mergedPullRequestPanel,
+    12,
+    0,
+    46
+  );
 
   return {
     frame,
@@ -80,7 +87,12 @@ export const buildOpenClawDemoSceneState = (
       1
     ),
     // Scroll older messages upward as the second assistant reply expands,
-    // keeping the newest Discord content inside the viewport.
-    discordThreadScrollY: reportReplyScrollY + reportCardRevealScrollY,
+    // keeping the newest Discord content inside the viewport. Bias an extra
+    // lift into the merged-PR reveal so the last report rows do not clip
+    // against the composer while they animate in.
+    discordThreadScrollY:
+      reportReplyScrollY +
+      reportCardRevealScrollY +
+      mergedPullRequestRevealScrollY,
   };
 };

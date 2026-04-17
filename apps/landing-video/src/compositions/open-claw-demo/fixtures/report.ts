@@ -1,48 +1,96 @@
+const formatCompactCount = (count: number) => {
+  if (count >= 100_000) {
+    return `${Math.round(count / 1000)}k`;
+  }
+
+  if (count >= 1_000) {
+    return `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  }
+
+  return `${count}`;
+};
+
+// Comment: These report fixtures mirror a live `onequery api --source github`
+// capture against `openclaw` from Apr 17, 2026.
 export const eventTypeCounts = [
-  { name: "PullRequestEvent", count: 28 },
-  { name: "PushEvent", count: 24 },
-  { name: "CreateEvent", count: 14 },
-  { name: "DeleteEvent", count: 12 },
-  { name: "IssueCommentEvent", count: 10 },
+  { name: "PullRequestEvent", count: 17 },
+  { name: "WatchEvent", count: 17 },
+  { name: "PullRequestReviewCommentEvent", count: 15 },
+  { name: "PullRequestReviewEvent", count: 14 },
+  { name: "PushEvent", count: 13 },
 ] as const;
 
-export const repositoryActivityCounts = [
-  { name: "openclaw/plugin", count: 72 },
-  { name: "openclaw/demo", count: 18 },
-  { name: "openclaw/homebrew-tap", count: 6 },
-  { name: "openclaw/docs", count: 2 },
-  { name: "openclaw/landing", count: 2 },
+export const topRepositoryStars = [
+  {
+    name: "openclaw/openclaw",
+    count: 359059,
+    valueText: formatCompactCount(359059),
+  },
+  {
+    name: "openclaw/clawhub",
+    count: 8050,
+    valueText: formatCompactCount(8050),
+  },
+  {
+    name: "openclaw/skills",
+    count: 4157,
+    valueText: formatCompactCount(4157),
+  },
+  {
+    name: "openclaw/acpx",
+    count: 2155,
+    valueText: formatCompactCount(2155),
+  },
+  {
+    name: "openclaw/lobster",
+    count: 1128,
+    valueText: formatCompactCount(1128),
+  },
 ] as const;
 
 export const mergedPullRequests = [
   {
-    number: 142,
-    title: "Answer formatting polish for Discord threads",
-    author: "lentil32",
-    mergedAt: "Apr 17",
+    number: 67876,
+    title: "fix(auth): serialize OAuth refresh across agents to fix #26322",
+    author: "visionik",
+    mergedAt: "06:44 UTC",
   },
   {
-    number: 139,
-    title: "Discord plugin wiring for OneQuery tool calls",
-    author: "kirkh",
-    mergedAt: "Apr 16",
+    number: 67643,
+    title: "matrix: fix sessions_spawn --thread subagent session spawning",
+    author: "eejohnso-ops",
+    mergedAt: "06:17 UTC",
   },
   {
-    number: 135,
-    title: "Demo scene restyling for the landing embed",
-    author: "lentil32",
-    mergedAt: "Apr 15",
+    number: 67993,
+    title: "fix(telegram): clear compaction replay after visible boundaries",
+    author: "obviyus",
+    mergedAt: "05:48 UTC",
   },
 ] as const;
 
+const recentPublicEventTotal = 98;
+
 export const overviewMetrics = [
-  { label: "Events", value: "100", hint: "last 7 days" },
-  { label: "Active repos", value: "7", hint: "non-empty" },
-  { label: "Merged PRs", value: "11", hint: "plugin repo" },
+  {
+    label: "Events",
+    value: `${recentPublicEventTotal}`,
+    hint: "recent public feed",
+  },
+  {
+    label: "Repos",
+    value: `${topRepositoryStars.length}`,
+    hint: "ranked by stars",
+  },
+  {
+    label: "Merged PRs",
+    value: `${mergedPullRequests.length}`,
+    hint: "openclaw/openclaw",
+  },
 ] as const;
 
 export const reportNarrative =
-  "Plugin layer dominates this week - answer formatting, Discord wiring, and demo polish.";
+  "Recent public activity is concentrated in openclaw/openclaw, and the star curve drops sharply after the flagship repo.";
 
 // Comment: Compute panel maxima from the fixtures so visual scale stays correct
 // even if the rows are reordered later.
@@ -50,6 +98,6 @@ export const maxEventTypeCount = Math.max(
   ...eventTypeCounts.map((eventType) => eventType.count)
 );
 
-export const maxRepositoryActivityCount = Math.max(
-  ...repositoryActivityCounts.map((repository) => repository.count)
+export const maxTopRepositoryStarCount = Math.max(
+  ...topRepositoryStars.map((repository) => repository.count)
 );

@@ -5,11 +5,15 @@ export type CommandSegment = {
   color: string;
 };
 
+// Comment: Keep these command fixtures aligned with the live `onequery api`
+// capture that backs the report fixtures.
 const oneQueryApiSegments = [
   { text: "onequery", color: surfaceTokens.terminalCommand },
   { text: " api", color: surfaceTokens.terminalSubcommand },
+  { text: " --request-id ", color: surfaceTokens.terminalFlag },
+  { text: "openclaw-org-scan", color: surfaceTokens.terminalPath },
   { text: " --source ", color: surfaceTokens.terminalFlag },
-  { text: "github-openclaw", color: surfaceTokens.terminalPath },
+  { text: "github", color: surfaceTokens.terminalPath },
 ] as const satisfies readonly CommandSegment[];
 
 const createStringFlagSegments = (flag: string, value: string) =>
@@ -41,27 +45,28 @@ export const terminalCommands = {
       "'group_by(.type) | map({type: .[0].type, count: length}) | sort_by(-.count)'"
     ),
   ]),
-  repositoryActivityBreakdown: createOneQueryCommand("/orgs/openclaw/events", [
+  topRepoStars: createOneQueryCommand("/orgs/openclaw/repos", [
     ...createStringFlagSegments("-F", "'params[per_page]=100'"),
     ...createJqFilterSegments(
-      "'group_by(.repo.name) | map({repo: .[0].repo.name, count: length}) | sort_by(-.count) | .[:5]'"
+      "'sort_by(-.stargazers_count) | map({repo: .full_name, stars: .stargazers_count}) | .[:5]'"
     ),
   ]),
   mergedPullRequestSummary: createOneQueryCommand(
-    "/repos/openclaw/plugin/pulls",
+    "/repos/openclaw/openclaw/pulls",
     [
       ...createStringFlagSegments("-f", "'params[state]=closed'"),
       ...createStringFlagSegments("-F", "'params[sort]=updated'"),
-      ...createStringFlagSegments("-F", "'params[per_page]=10'"),
+      ...createStringFlagSegments("-F", "'params[direction]=desc'"),
+      ...createStringFlagSegments("-F", "'params[per_page]=100'"),
       ...createJqFilterSegments(
-        "'map({number, title, user: .user.login, merged_at})'"
+        "'map(select(.merged_at != null)) | sort_by(.merged_at) | reverse | map({number, title, user: .user.login, merged_at}) | .[:3]'"
       ),
     ]
   ),
 } as const satisfies Record<string, readonly CommandSegment[]>;
 
 export const terminalStepSummaries = {
-  eventTypeBreakdown: "-> 100 events | 7 types | 612 ms",
-  repositoryActivityBreakdown: "-> 5 repos ranked | 58 ms",
-  mergedPullRequestSummary: "-> 11 merged PRs | 28 files changed | 812 ms",
+  eventTypeBreakdown: "-> 98 recent public events | 9 event types",
+  topRepoStars: "-> 5 repos ranked by stars",
+  mergedPullRequestSummary: "-> 3 recent merged PRs",
 } as const;
