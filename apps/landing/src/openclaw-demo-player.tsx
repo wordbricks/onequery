@@ -1,7 +1,13 @@
-import { defaultOpenClawDemoProps, getOpenClawDemoDurationInFrames, openClawDemoFps, openClawDemoHeight, openClawDemoWidth } from '@onequery/landing-video';
-import type { OpenClawDemoProps } from '@onequery/landing-video';
-import { Player } from '@remotion/player';
-import type { RenderLoading } from '@remotion/player';
+import {
+  defaultOpenClawDemoProps,
+  getOpenClawDemoDurationInFrames,
+  openClawDemoFps,
+  openClawDemoHeight,
+  openClawDemoWidth,
+} from "@onequery/landing-video";
+import type { OpenClawDemoProps } from "@onequery/landing-video";
+import { Player } from "@remotion/player";
+import type { RenderLoading } from "@remotion/player";
 import { useCallback, useMemo } from "react";
 
 const lazyOpenClawDemoScene = () =>
