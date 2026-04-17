@@ -6,6 +6,7 @@ import {
   maxEventTypeCount,
   maxTopRepositoryStarCount,
   mergedPullRequests,
+  mergedPullRequestRepository,
   overviewMetrics,
   reportNarrative,
   topRepositoryStars,
@@ -41,6 +42,7 @@ type MetricPanelProps = {
   maxCount: number;
   rows: readonly {
     count: number;
+    href?: string;
     key: string | number;
     label: string;
     valueText?: string;
@@ -48,6 +50,25 @@ type MetricPanelProps = {
   title: string;
   useMonospaceLabels?: boolean;
 };
+
+const ReportCardLink: React.FC<{
+  children: React.ReactNode;
+  href: string;
+  style?: React.CSSProperties;
+}> = ({ children, href, style }) => (
+  <a
+    className="openclaw-card-link"
+    href={href}
+    onClick={(event) => {
+      event.stopPropagation();
+    }}
+    rel="noreferrer"
+    style={style}
+    target="_blank"
+  >
+    {children}
+  </a>
+);
 
 const MetricPanel: React.FC<MetricPanelProps> = ({
   entryStyle,
@@ -66,19 +87,37 @@ const MetricPanel: React.FC<MetricPanelProps> = ({
     <div style={{ display: "grid", gap: 5 }}>
       {rows.map((row) => (
         <div key={row.key} style={metricRowStyle}>
-          <span
-            style={{
-              color: surfaceTokens.ink,
-              fontSize: 11.5,
-              fontWeight: 500,
-              fontFamily: useMonospaceLabels ? fontFamilies.mono : undefined,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {row.label}
-          </span>
+          {row.href ? (
+            <ReportCardLink
+              href={row.href}
+              style={{
+                color: surfaceTokens.ink,
+                display: "block",
+                fontFamily: useMonospaceLabels ? fontFamilies.mono : undefined,
+                fontSize: 11.5,
+                fontWeight: 500,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.label}
+            </ReportCardLink>
+          ) : (
+            <span
+              style={{
+                color: surfaceTokens.ink,
+                fontSize: 11.5,
+                fontWeight: 500,
+                fontFamily: useMonospaceLabels ? fontFamilies.mono : undefined,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {row.label}
+            </span>
+          )}
 
           <MetricBar percent={(row.count / maxCount) * 100} />
 
@@ -233,6 +272,7 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
             key: repository.name,
             label: repository.name,
             count: repository.count,
+            href: repository.href,
             valueText: repository.valueText,
           }))}
           title="Top repos by stars"
@@ -259,7 +299,28 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
             justifyContent: "space-between",
           }}
         >
-          <SectionEyebrow text="Recent merged PRs | openclaw/openclaw" />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              minWidth: 0,
+            }}
+          >
+            <SectionEyebrow text="Recent merged PRs |" />
+            <ReportCardLink
+              href={mergedPullRequestRepository.href}
+              style={{
+                color: surfaceTokens.textSoft,
+                fontFamily: fontFamilies.mono,
+                fontSize: 10.5,
+                fontWeight: 600,
+                lineHeight: 1,
+              }}
+            >
+              {mergedPullRequestRepository.name}
+            </ReportCardLink>
+          </div>
           <span
             style={{
               color: surfaceTokens.textFaint,
@@ -302,11 +363,23 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
                   fontWeight: 500,
                 }}
               >
-                #{pullRequest.number}
+                <ReportCardLink
+                  href={pullRequest.href}
+                  style={{
+                    color: surfaceTokens.textSoft,
+                    fontFamily: fontFamilies.mono,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                  }}
+                >
+                  #{pullRequest.number}
+                </ReportCardLink>
               </span>
 
-              <span
+              <ReportCardLink
+                href={pullRequest.href}
                 style={{
+                  display: "block",
                   color: surfaceTokens.ink,
                   fontSize: 12,
                   fontWeight: 500,
@@ -316,7 +389,7 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
                 }}
               >
                 {pullRequest.title}
-              </span>
+              </ReportCardLink>
 
               <span
                 style={{
@@ -334,7 +407,16 @@ export const OneQueryReportSummaryCard: React.FC<ReportSummaryCardProps> = ({
                     fontFamily: fontFamilies.mono,
                   }}
                 >
-                  @{pullRequest.author}
+                  <ReportCardLink
+                    href={pullRequest.authorHref}
+                    style={{
+                      color: surfaceTokens.ink,
+                      fontFamily: fontFamilies.mono,
+                      fontWeight: 500,
+                    }}
+                  >
+                    @{pullRequest.author}
+                  </ReportCardLink>
                 </span>
                 <span style={{ color: surfaceTokens.textFaint }}>|</span>
                 <span>{pullRequest.mergedAt}</span>

@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+.openclaw-inline-link,
+.openclaw-card-link {
+  cursor: pointer;
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+.openclaw-inline-link {
+  color: #00a8fc;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition:
+    background-size 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 180ms ease-out;
+}
+
+.openclaw-card-link {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  transition:
+    text-decoration-color 200ms ease-out,
+    filter 200ms ease-out;
+}
+
+.openclaw-inline-link:hover,
+.openclaw-inline-link:focus-visible {
+  color: #4db4ff;
+  background-size: 100% 1px;
+}
+
+.openclaw-card-link:hover,
+.openclaw-card-link:focus-visible {
+  text-decoration-color: currentColor;
+  filter: brightness(1.18);
+}

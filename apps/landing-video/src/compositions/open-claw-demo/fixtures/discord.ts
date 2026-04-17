@@ -1,3 +1,5 @@
+import { mergedPullRequests, topRepositoryStars } from "./report";
+
 export const discordChannels = [
   "announcements",
   "launch-room",
@@ -41,4 +43,30 @@ export const runReplyCopy = {
 } as const;
 
 export const reportReplyText =
-  "Done. Here's the live snapshot from the GitHub source: recent event mix, top repos by stars, and the latest merged PRs in openclaw/openclaw.";
+  "Done. Here's the live snapshot from the GitHub source: recent event mix, top repos by stars, and the latest merged PRs in";
+
+const [flagshipRepository] = topRepositoryStars;
+const [latestMergedPullRequest] = mergedPullRequests;
+const latestMergedPullRequestHref = `https://github.com/${flagshipRepository.name}/pull/${latestMergedPullRequest.number}`;
+
+// Comment: These GitHub links are pinned to the same OpenClaw snapshot so the
+// last message can deep-link to the repository, the latest merged PR, and the
+// PR owner without drifting as new merges land.
+export const reportReplyLinks = {
+  repository: {
+    href: `https://github.com/${flagshipRepository.name}`,
+    label: flagshipRepository.name,
+  },
+  pullRequest: {
+    href: latestMergedPullRequestHref,
+    label: `#${latestMergedPullRequest.number}`,
+  },
+  pullRequestTitle: {
+    href: latestMergedPullRequestHref,
+    label: latestMergedPullRequest.title,
+  },
+  owner: {
+    href: `https://github.com/${latestMergedPullRequest.author}`,
+    label: latestMergedPullRequest.author,
+  },
+} as const;

@@ -5,6 +5,7 @@ import {
   discordAvatarBackgrounds,
   discordWorkspace,
   messageTimestamps,
+  reportReplyLinks,
   reportReplyText,
   runReplyCopy,
   userPromptText,
@@ -230,6 +231,44 @@ const AssistantReplyMessageRow: React.FC<AssistantReplyMessageRowProps> = ({
   );
 };
 
+const AssistantInlineLink: React.FC<{
+  children: React.ReactNode;
+  href: string;
+}> = ({ children, href }) => (
+  <a
+    className="openclaw-inline-link"
+    href={href}
+    onClick={(event) => {
+      event.stopPropagation();
+    }}
+    rel="noreferrer"
+    target="_blank"
+  >
+    {children}
+  </a>
+);
+
+const ReportReplyBody: React.FC = () => (
+  <>
+    {reportReplyText}{" "}
+    <AssistantInlineLink href={reportReplyLinks.repository.href}>
+      {reportReplyLinks.repository.label}
+    </AssistantInlineLink>
+    . Latest merge:{" "}
+    <AssistantInlineLink href={reportReplyLinks.pullRequest.href}>
+      {reportReplyLinks.pullRequest.label}
+    </AssistantInlineLink>{" "}
+    <AssistantInlineLink href={reportReplyLinks.pullRequestTitle.href}>
+      {reportReplyLinks.pullRequestTitle.label}
+    </AssistantInlineLink>{" "}
+    by{" "}
+    <AssistantInlineLink href={reportReplyLinks.owner.href}>
+      {reportReplyLinks.owner.label}
+    </AssistantInlineLink>
+    .
+  </>
+);
+
 export const OpenClawChatThread: React.FC<ChatThreadProps> = ({
   sceneState,
 }) => {
@@ -273,7 +312,7 @@ export const OpenClawChatThread: React.FC<ChatThreadProps> = ({
           }
           cardStartFrame={timeline.reportReplyCard - timeline.reportReplyHeader}
           cardSequenceName="onequery-report-summary-card"
-          bodyContent={reportReplyText}
+          bodyContent={<ReportReplyBody />}
           card={<OneQueryReportSummaryCard sceneState={sceneState} />}
         />
       ),
