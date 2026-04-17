@@ -2,11 +2,11 @@ import { spawnSync } from "node:child_process";
 
 import {
   getOpenClawDemoStillFrame,
-  OPEN_CLAW_DEMO_DEFAULT_PROPS,
-} from "../src/open-claw-demo/OpenClawDemoScene";
+  openClawDemoComposition,
+} from "../src/compositions/open-claw-demo";
 
 // Keep the still export pinned to the same frame selection logic as the video.
-const frame = getOpenClawDemoStillFrame(OPEN_CLAW_DEMO_DEFAULT_PROPS);
+const frame = getOpenClawDemoStillFrame(openClawDemoComposition.defaultProps);
 
 const result = spawnSync(
   "bunx",
@@ -14,7 +14,7 @@ const result = spawnSync(
     "remotion",
     "still",
     "src/index.ts",
-    "OpenClawDemoVideo",
+    openClawDemoComposition.id,
     "out/openclaw-demo.png",
     "--frame",
     String(frame),

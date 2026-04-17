@@ -1,36 +1,39 @@
 import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 
-import type { CommandModel } from "./model";
-import { surfaces } from "./theme";
+import type { CommandRenderState } from "../scene-state";
+import { surfaceTokens } from "../tokens";
 
-const renderTypedSegments = (
+const renderVisibleCommandSegments = (
   segments: readonly { text: string; color: string }[],
-  visibleChars: number
+  visibleCharacterCount: number
 ) => {
-  let remaining = visibleChars;
-  let offset = 0;
+  let remainingCharacters = visibleCharacterCount;
+  let currentOffset = 0;
 
   return segments.map((segment) => {
-    if (remaining <= 0) {
+    if (remainingCharacters <= 0) {
       return null;
     }
 
-    const visible = Math.min(segment.text.length, remaining);
-    remaining -= segment.text.length;
+    const visibleCharactersInSegment = Math.min(
+      segment.text.length,
+      remainingCharacters
+    );
+    remainingCharacters -= segment.text.length;
 
-    const key = `${offset}:${segment.color}`;
-    offset += segment.text.length;
+    const key = `${currentOffset}:${segment.color}`;
+    currentOffset += segment.text.length;
 
     return (
       <span key={key} style={{ color: segment.color }}>
-        {segment.text.slice(0, visible)}
+        {segment.text.slice(0, visibleCharactersInSegment)}
       </span>
     );
   });
 };
 
-export const Cursor: React.FC<{ visible: boolean }> = ({ visible }) => {
+const BlinkingCursor: React.FC<{ visible: boolean }> = ({ visible }) => {
   const frame = useCurrentFrame();
 
   if (!visible) {
@@ -46,7 +49,7 @@ export const Cursor: React.FC<{ visible: boolean }> = ({ visible }) => {
     <span
       style={{
         marginLeft: 2,
-        color: surfaces.terminalText,
+        color: surfaceTokens.terminalText,
         opacity,
       }}
     >
@@ -55,11 +58,11 @@ export const Cursor: React.FC<{ visible: boolean }> = ({ visible }) => {
   );
 };
 
-export const TypedCommandLine: React.FC<{
-  command: CommandModel;
-}> = ({ command }) => (
+export const CommandLine: React.FC<{
+  commandState: CommandRenderState;
+}> = ({ commandState }) => (
   <div style={{ display: "flex", gap: 10 }}>
-    <span style={{ color: surfaces.terminalPrompt }}>$</span>
+    <span style={{ color: surfaceTokens.terminalPrompt }}>$</span>
     <code
       style={{
         margin: 0,
@@ -67,13 +70,16 @@ export const TypedCommandLine: React.FC<{
         wordBreak: "break-word",
       }}
     >
-      {renderTypedSegments(command.segments, command.typedChars)}
-      <Cursor visible={command.status === "typing"} />
+      {renderVisibleCommandSegments(
+        commandState.segments,
+        commandState.visibleCharacterCount
+      )}
+      <BlinkingCursor visible={commandState.typingStatus === "typing"} />
     </code>
   </div>
 );
 
-export const Avatar: React.FC<{
+export const AvatarBadge: React.FC<{
   label: string;
   background: string;
   color: string;
@@ -99,12 +105,12 @@ export const Avatar: React.FC<{
   </div>
 );
 
-export const Pill: React.FC<{
+export const StatusPill: React.FC<{
   text: string;
   background: string;
   color: string;
-  weight?: number;
-}> = ({ text, background, color, weight = 600 }) => (
+  fontWeight?: number;
+}> = ({ text, background, color, fontWeight = 600 }) => (
   <span
     style={{
       display: "inline-flex",
@@ -115,7 +121,7 @@ export const Pill: React.FC<{
       background,
       color,
       fontSize: 11,
-      fontWeight: weight,
+      fontWeight,
       letterSpacing: "0.01em",
       lineHeight: 1,
     }}
@@ -124,10 +130,10 @@ export const Pill: React.FC<{
   </span>
 );
 
-export const SectionLabel: React.FC<{ text: string }> = ({ text }) => (
+export const SectionEyebrow: React.FC<{ text: string }> = ({ text }) => (
   <div
     style={{
-      color: surfaces.textSoft,
+      color: surfaceTokens.textSoft,
       fontSize: 10.5,
       fontWeight: 600,
       letterSpacing: "0.08em",
@@ -138,13 +144,13 @@ export const SectionLabel: React.FC<{ text: string }> = ({ text }) => (
   </div>
 );
 
-export const Bar: React.FC<{ percent: number }> = ({ percent }) => (
+export const MetricBar: React.FC<{ percent: number }> = ({ percent }) => (
   <div
     style={{
       width: "100%",
       height: 6,
       borderRadius: 3,
-      background: surfaces.barTrack,
+      background: surfaceTokens.barTrack,
       overflow: "hidden",
     }}
   >
@@ -152,7 +158,7 @@ export const Bar: React.FC<{ percent: number }> = ({ percent }) => (
       style={{
         width: `${percent}%`,
         height: "100%",
-        background: surfaces.ink,
+        background: surfaceTokens.ink,
         borderRadius: 3,
       }}
     />

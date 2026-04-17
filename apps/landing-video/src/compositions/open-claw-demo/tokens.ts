@@ -6,17 +6,17 @@ const { fontFamily: geist } = loadFont("normal", {
   subsets: ["latin"],
 });
 
-const { fontFamily: mono } = loadMonoFont("normal", {
+const { fontFamily: jetBrainsMono } = loadMonoFont("normal", {
   weights: ["400", "500"],
   subsets: ["latin"],
 });
 
-export const fonts = {
+export const fontFamilies = {
   sans: geist,
-  mono,
+  mono: jetBrainsMono,
 } as const;
 
-export const discord = {
+export const discordTokens = {
   rail: "#1e1f22",
   sidebar: "#2b2d31",
   main: "#313338",
@@ -26,13 +26,13 @@ export const discord = {
   textMuted: "#b5bac1",
   textSoft: "#949ba4",
   textFaint: "#80848e",
-  mentionBg: "rgba(88, 101, 242, 0.30)",
+  mentionBackground: "rgba(88, 101, 242, 0.30)",
   mentionText: "#dee0fc",
   blurple: "#5865f2",
   success: "#23a55a",
 } as const;
 
-export const surfaces = {
+export const surfaceTokens = {
   surface: "#ffffff",
   surfaceMuted: "#fafafa",
   ink: "#0a0a0a",
@@ -43,13 +43,13 @@ export const surfaces = {
   lineSoft: "rgba(0, 0, 0, 0.06)",
   wash: "rgba(0, 0, 0, 0.05)",
   barTrack: "rgba(0, 0, 0, 0.07)",
-  successBg: "rgba(22, 163, 74, 0.12)",
+  successBackground: "rgba(22, 163, 74, 0.12)",
   successText: "#15803d",
-  terminalBg: "#0b0b0c",
+  terminalBackground: "#0b0b0c",
   terminalBorder: "rgba(255, 255, 255, 0.10)",
   terminalPrompt: "rgba(255, 255, 255, 0.34)",
-  terminalCmd: "#f4f4f5",
-  terminalSub: "#e4e4e7",
+  terminalCommand: "#f4f4f5",
+  terminalSubcommand: "#e4e4e7",
   terminalFlag: "#a1a1aa",
   terminalString: "#fde68a",
   terminalPath: "#bfdbfe",

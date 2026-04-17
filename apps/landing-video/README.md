@@ -30,3 +30,17 @@ bun run typecheck
 
 Dependencies are installed through the workspace, but day-to-day work for this
 package should assume `apps/landing-video` as the current directory.
+
+## Structure
+
+The app is organized composition-first under `src/compositions/`.
+
+For the OpenClaw landing asset:
+
+- `composition.ts` owns composition metadata, duration, and still-frame helpers.
+- `scene.tsx` owns the top-level visual tree only.
+- `timeline.ts` and `scene-state.ts` own timing math and render-state derivation.
+- `fixtures/` holds static demo content and report data.
+- `components/` holds Discord chrome, chat thread rows, and summary cards.
+
+`src/remotion-root.tsx` is intentionally thin and only registers compositions.
