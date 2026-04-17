@@ -4,6 +4,10 @@
   "private": false,
   "description": "Landing page video generator",
   "type": "module",
+  "exports": {
+    ".": "./src/lib.ts",
+    "./scene": "./src/compositions/open-claw-demo/scene.tsx"
+  },
   "scripts": {
     "dev": "remotion studio src/index.ts",
     "build": "remotion bundle src/index.ts",

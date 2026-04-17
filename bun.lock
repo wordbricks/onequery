@@ -59,8 +59,11 @@
       "name": "@onequery/landing",
       "version": "0.0.0",
       "dependencies": {
+        "@onequery/landing-video": "workspace:*",
+        "@remotion/player": "4.0.448",
         "react": "catalog:",
         "react-dom": "catalog:",
+        "remotion": "4.0.448",
       },
       "devDependencies": {
         "@onequery/self-host-runtime": "workspace:*",

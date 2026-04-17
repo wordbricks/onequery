@@ -1495,6 +1495,33 @@ code {
   margin-top: 20px;
 }
 
+.openclaw-demo-section {
+  gap: 28px;
+}
+
+.openclaw-demo-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 14 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow), var(--shadow-ring);
+}
+
+.openclaw-demo-player {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.openclaw-demo-loading {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-muted);
+}
+
 .control-plane-diagram {
   position: relative;
   display: grid;

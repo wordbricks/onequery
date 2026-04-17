@@ -17,6 +17,7 @@ import {
   LANDING_SELF_HOST_DOCS_URL,
 } from "./landing-config";
 import { FooterContactButton, ProductUpdatesSection } from "./marketing-forms";
+import { OpenClawDemoPlayer } from "./openclaw-demo-player";
 
 const querySnippet = `onequery query exec \\
   --source warehouse \\
@@ -1072,6 +1073,21 @@ export function App() {
           </div>
 
           <div className="hero-visual">{renderMockSurface("hero")}</div>
+        </section>
+
+        <section className="section openclaw-demo-section" id="demo">
+          <div className="section-intro">
+            <p className="eyebrow">See it in action</p>
+            <h2>An AI agent answers a Discord thread with live data.</h2>
+            <p>
+              OneQuery sits behind the conversation, executing safe queries and
+              composing the report inline — no context switch, no copy-paste.
+            </p>
+          </div>
+
+          <div className="openclaw-demo-frame">
+            <OpenClawDemoPlayer />
+          </div>
         </section>
 
         <section
