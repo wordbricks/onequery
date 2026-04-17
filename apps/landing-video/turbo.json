@@ -1,0 +1,33 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "remotion.config.ts",
+        "src/**",
+        "!src/**/.DS_Store"
+      ],
+      "outputs": ["build/**"]
+    },
+    "topo": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "remotion.config.ts",
+        "src/**",
+        "!src/**/.DS_Store"
+      ]
+    },
+    "typecheck": {
+      "inputs": [
+        "package.json",
+        "tsconfig.json",
+        "remotion.config.ts",
+        "src/**",
+        "!src/**/.DS_Store"
+      ]
+    }
+  }
+}

@@ -69,7 +69,7 @@ dash/
 .envrc
 
 /insights-agent
-/.tmp
+.tmp/
 
 # Terraform
 **/.terraform/*

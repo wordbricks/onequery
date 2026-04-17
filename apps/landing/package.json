@@ -12,8 +12,11 @@
     "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@onequery/landing-video": "workspace:*",
+    "@remotion/player": "4.0.448",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "remotion": "4.0.448"
   },
   "devDependencies": {
     "@onequery/self-host-runtime": "workspace:*",
