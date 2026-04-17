@@ -154,15 +154,10 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 }) => {
   const {
     frame,
-    scene: { hasRunCard },
     timeline,
     runCardScale,
     commands: { eventsByType, reposByActivity, mergedPulls },
   } = model;
-
-  if (!hasRunCard) {
-    return null;
-  }
 
   const runCardEnter = enter(frame, timeline.runCard, 16, 12);
   const runSteps: readonly RunStep[] = [
@@ -359,18 +354,8 @@ export const OneQueryRunCard: React.FC<{ model: OpenClawSceneModel }> = ({
 export const OneQueryReportCard: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const {
-    frame,
-    scene: { hasReportCard },
-    timeline,
-    reportCardScale,
-    maxEventCount,
-    maxRepoCount,
-  } = model;
-
-  if (!hasReportCard) {
-    return null;
-  }
+  const { frame, timeline, reportCardScale, maxEventCount, maxRepoCount } =
+    model;
 
   const reportCardEnter = enter(frame, timeline.reportCard, 16, 12);
 

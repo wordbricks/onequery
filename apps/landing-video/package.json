@@ -16,8 +16,7 @@
     "@remotion/google-fonts": "4.0.448",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "remotion": "4.0.448",
-    "xstate": "5.28.0"
+    "remotion": "4.0.448"
   },
   "devDependencies": {
     "@remotion/cli": "4.0.448",

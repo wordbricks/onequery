@@ -1,4 +1,5 @@
 import React from "react";
+import { Sequence } from "remotion";
 
 import { OneQueryReportCard, OneQueryRunCard } from "./cards";
 import { DEMO_TIMESTAMPS, REPORT_MESSAGE, USER_PROMPT } from "./content";
@@ -37,7 +38,6 @@ type MessageLayoutProps = {
   headerStart: number;
   body: React.ReactNode;
   timestamp: string;
-  visible: boolean;
   card?: React.ReactNode;
 };
 
@@ -80,14 +80,9 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
   headerStart,
   body,
   timestamp,
-  visible,
   card,
 }) => {
   const { frame } = model;
-
-  if (!visible) {
-    return null;
-  }
 
   return (
     <div
@@ -124,15 +119,7 @@ const YuhaMessageLayout: React.FC<MessageLayoutProps> = ({
 export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const {
-    frame,
-    scene: { hasUserPrompt },
-    timeline,
-  } = model;
-
-  if (!hasUserPrompt) {
-    return null;
-  }
+  const { frame, timeline } = model;
 
   return (
     <div
@@ -176,18 +163,13 @@ export const UserPromptMessage: React.FC<{ model: OpenClawSceneModel }> = ({
 export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const {
-    frame,
-    scene: { hasRunMessage },
-    timeline,
-  } = model;
+  const { frame, timeline } = model;
 
   return (
     <YuhaMessageLayout
       model={model}
       headerStart={timeline.runMessageHeader}
       timestamp={DEMO_TIMESTAMPS.runReply}
-      visible={hasRunMessage}
       body={
         <p
           style={{
@@ -212,7 +194,14 @@ export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
           read-only. I&apos;ll aggregate with jq and drop the breakdown here.
         </p>
       }
-      card={<OneQueryRunCard model={model} />}
+      card={
+        <Sequence
+          from={timeline.runCard - timeline.runMessageHeader}
+          layout="none"
+        >
+          <OneQueryRunCard model={model} />
+        </Sequence>
+      }
     />
   );
 };
@@ -220,18 +209,13 @@ export const YuhaRunMessage: React.FC<{ model: OpenClawSceneModel }> = ({
 export const YuhaReportMessage: React.FC<{ model: OpenClawSceneModel }> = ({
   model,
 }) => {
-  const {
-    frame,
-    scene: { hasReportMessage },
-    timeline,
-  } = model;
+  const { frame, timeline } = model;
 
   return (
     <YuhaMessageLayout
       model={model}
       headerStart={timeline.reportMessageHeader}
       timestamp={DEMO_TIMESTAMPS.reportReply}
-      visible={hasReportMessage}
       body={
         <p
           style={{
@@ -242,7 +226,14 @@ export const YuhaReportMessage: React.FC<{ model: OpenClawSceneModel }> = ({
           {REPORT_MESSAGE}
         </p>
       }
-      card={<OneQueryReportCard model={model} />}
+      card={
+        <Sequence
+          from={timeline.reportCard - timeline.reportMessageHeader}
+          layout="none"
+        >
+          <OneQueryReportCard model={model} />
+        </Sequence>
+      }
     />
   );
 };

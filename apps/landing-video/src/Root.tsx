@@ -2,30 +2,29 @@ import "./index.css";
 import { Composition, Still } from "remotion";
 
 import {
+  OPEN_CLAW_HEIGHT,
+  OPEN_CLAW_VIDEO_DURATION,
+  OPEN_CLAW_VIDEO_FPS,
+  OPEN_CLAW_WIDTH,
   OpenClawDemoScene,
-  OPEN_CLAW_STILL_FPS,
-  OPEN_CLAW_STILL_FRAME,
+  OpenClawDemoStill,
 } from "./open-claw-demo/OpenClawDemoScene";
 
 export const RemotionRoot: React.FC = () => (
   <>
     <Still
       id="OpenClawDemo"
-      component={OpenClawDemoScene}
-      defaultProps={{
-        frameOverride: OPEN_CLAW_STILL_FRAME,
-        fpsOverride: OPEN_CLAW_STILL_FPS,
-      }}
-      width={1400}
-      height={900}
+      component={OpenClawDemoStill}
+      width={OPEN_CLAW_WIDTH}
+      height={OPEN_CLAW_HEIGHT}
     />
     <Composition
       id="OpenClawDemoVideo"
       component={OpenClawDemoScene}
-      durationInFrames={600}
-      fps={30}
-      width={1400}
-      height={900}
+      durationInFrames={OPEN_CLAW_VIDEO_DURATION}
+      fps={OPEN_CLAW_VIDEO_FPS}
+      width={OPEN_CLAW_WIDTH}
+      height={OPEN_CLAW_HEIGHT}
     />
   </>
 );
