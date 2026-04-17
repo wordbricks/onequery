@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill } from "remotion";
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 
 import { DiscordChrome } from "./DiscordChrome";
 import {
@@ -10,11 +10,23 @@ import {
 import { buildOpenClawSceneModel } from "./model";
 import { fonts } from "./theme";
 
-export const OpenClawDemoScene: React.FC<{ frame: number; fps: number }> = ({
-  frame,
-  fps,
+export const OPEN_CLAW_STILL_FRAME = 520;
+export const OPEN_CLAW_STILL_FPS = 30;
+
+export type OpenClawDemoSceneProps = {
+  frameOverride?: number;
+  fpsOverride?: number;
+};
+
+export const OpenClawDemoScene: React.FC<OpenClawDemoSceneProps> = ({
+  frameOverride,
+  fpsOverride,
 }) => {
-  const model = buildOpenClawSceneModel(frame, fps);
+  const currentFrame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const frame = frameOverride ?? currentFrame;
+  const resolvedFps = fpsOverride ?? fps;
+  const model = buildOpenClawSceneModel(frame, resolvedFps);
 
   return (
     <AbsoluteFill

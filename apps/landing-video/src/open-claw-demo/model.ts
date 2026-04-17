@@ -11,8 +11,6 @@ import type { CommandStatus, OpenClawTimeline } from "./timing";
 
 type CommandKey = keyof typeof COMMANDS;
 
-export type SceneStage = "shell" | "prompt" | "running" | "reporting";
-
 export type CommandModel = {
   segments: readonly CommandSegment[];
   typedChars: number;
@@ -23,7 +21,6 @@ export type CommandModel = {
 export type OpenClawSceneModel = {
   frame: number;
   fps: number;
-  stage: SceneStage;
   timeline: OpenClawTimeline;
   windowScale: number;
   runCardScale: number;
@@ -49,22 +46,6 @@ const buildCommandModel = (
   };
 };
 
-const resolveStage = (
-  frame: number,
-  timeline: OpenClawTimeline
-): SceneStage => {
-  if (frame < timeline.userMessage) {
-    return "shell";
-  }
-  if (frame < timeline.runMessageHeader) {
-    return "prompt";
-  }
-  if (frame < timeline.reportMessageHeader) {
-    return "running";
-  }
-  return "reporting";
-};
-
 export const buildOpenClawSceneModel = (
   frame: number,
   fps: number
@@ -74,7 +55,6 @@ export const buildOpenClawSceneModel = (
   return {
     frame,
     fps,
-    stage: resolveStage(frame, timeline),
     timeline,
     windowScale: animate(frame, timeline.window, 20, 0.985, 1),
     runCardScale: animate(frame, timeline.runCard, 16, 0.975, 1),

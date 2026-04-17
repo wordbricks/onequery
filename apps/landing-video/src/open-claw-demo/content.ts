@@ -109,9 +109,6 @@ export const ACTIVE_CHANNEL = "plugin-demo";
 export const USER_PROMPT =
   "run this week's OpenClaw review — group the org events by type and repo, then pull the merged PRs on the plugin repo so I know where the energy is going.";
 
-export const RUN_MESSAGE =
-  "On it — running OneQuery against github-openclaw read-only. I'll aggregate with jq and drop the breakdown here.";
-
 export const REPORT_MESSAGE =
   "Done. Here's the read-only summary from the plugin run, split into activity, repo concentration, and merged PRs.";
 
