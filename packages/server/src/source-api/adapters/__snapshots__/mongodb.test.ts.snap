@@ -148,8 +148,8 @@ exports[`mongodb source api adapter > describes database and collection operatio
   ],
   "source": {
     "displayName": "MongoDB Prod",
-    "key": "mongodb-prod",
     "provider": "mongodb",
+    "sourceKey": "mongodb-prod",
   },
 }
 `;
@@ -179,8 +179,8 @@ exports[`mongodb source api adapter > executes MongoDB collection requests throu
   "selector": "analytics",
   "source": {
     "displayName": "MongoDB Prod",
-    "key": "mongodb-prod",
     "provider": "mongodb",
+    "sourceKey": "mongodb-prod",
   },
   "status": 200,
 }

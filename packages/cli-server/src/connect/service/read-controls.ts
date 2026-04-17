@@ -26,12 +26,10 @@ export function parseCliPaginatedReadControls(input: CliPaginatedQueryInput) {
 
 export function buildCliPage(page: {
   nextCursor: string | null;
-  returned: number;
-  hasMore: boolean;
+  returnedCount: number;
 }): MessageInitShape<typeof CliPageSchema> {
   return {
-    hasMore: page.hasMore,
-    returned: BigInt(page.returned),
+    returnedCount: BigInt(page.returnedCount),
     ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
   };
 }

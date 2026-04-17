@@ -65,6 +65,11 @@ pub(super) async fn build_plan(
     descriptor: &SourceApiDescriptor,
     context: &CommandContext,
 ) -> Result<PlannedCommand, CliError> {
+    let source_key = descriptor
+        .source
+        .as_option()
+        .and_then(|source| source.source_key.as_deref())
+        .unwrap_or(args.source.as_str());
     let intent = resolve_intent(args, descriptor, context)?;
     if matches!(intent, ResolvedIntent::Describe) {
         return Ok(PlannedCommand::Describe);
@@ -81,49 +86,41 @@ pub(super) async fn build_plan(
     let operation = descriptor
         .operations
         .iter()
-        .find(|candidate| candidate.name == operation_name)
+        .find(|candidate| candidate.name.as_deref() == Some(operation_name.as_str()))
         .ok_or_else(|| {
             source_api_parse_error(
                 context,
                 "unsupported source API operation",
-                format!(
-                    "operation `{operation_name}` is not described for source `{}`",
-                    descriptor.source.key
-                ),
-                descriptor.source.key.as_str(),
+                format!("operation `{operation_name}` is not described for source `{source_key}`"),
+                source_key,
             )
         })?;
 
-    validate_selector(
-        operation,
-        selector.as_deref(),
-        context,
-        descriptor.source.key.as_str(),
-    )?;
-    validate_pagination(args, operation, context, descriptor.source.key.as_str())?;
-    validate_method(args, operation, context, descriptor.source.key.as_str())?;
-    validate_field_flags(args, operation, context, descriptor.source.key.as_str())?;
-    validate_input(args, operation, context, descriptor.source.key.as_str())?;
+    validate_selector(operation, selector.as_deref(), context, source_key)?;
+    validate_pagination(args, operation, context, source_key)?;
+    validate_method(args, operation, context, source_key)?;
+    validate_field_flags(args, operation, context, source_key)?;
+    validate_input(args, operation, context, source_key)?;
 
-    let headers = parse_headers(
-        &args.headers,
-        operation,
-        context,
-        descriptor.source.key.as_str(),
-    )?;
+    let headers = parse_headers(&args.headers, operation, context, source_key)?;
 
+    let field_policy = operation.field_policy.as_option();
     let mut reader = SourceApiInputReader::default();
     let field_patch = parse_field_patch(
         &args.raw_fields,
         &args.fields,
         FieldPathPolicy {
-            supports_nested_paths: operation.field_policy.supports_nested_paths,
-            supports_array_paths: operation.field_policy.supports_array_paths,
+            supports_nested_paths: field_policy
+                .and_then(|policy| policy.supports_nested_paths)
+                .unwrap_or(false),
+            supports_array_paths: field_policy
+                .and_then(|policy| policy.supports_array_paths)
+                .unwrap_or(false),
         },
-        operation.name.as_str(),
+        operation.name.as_deref().unwrap_or_default(),
         &mut reader,
         context,
-        descriptor.source.key.as_str(),
+        source_key,
     )
     .await?;
     let field_patch = field_patch
@@ -133,24 +130,16 @@ pub(super) async fn build_plan(
                     context,
                     "invalid source API field patch",
                     format!("source API field patch must be valid JSON object data: {error}"),
-                    descriptor.source.key.as_str(),
+                    source_key,
                 )
             })
         })
         .transpose()?;
-    let body = load_request_body(
-        args,
-        operation,
-        &mut reader,
-        context,
-        descriptor.source.key.as_str(),
-    )
-    .await?;
+    let body = load_request_body(args, operation, &mut reader, context, source_key).await?;
 
     let draft = SourceApiDraft {
-        org_slug: String::new(),
-        source_key: String::new(),
         operation: operation.name.clone(),
+        descriptor_version: descriptor.descriptor_version.clone(),
         selector,
         method_override: normalized_method_override(args.method.as_deref()),
         headers,
@@ -189,35 +178,36 @@ fn validate_selector(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
     match (
-        source_api_selector_kind_or_none(operation.selector_kind),
+        source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into())),
         selector,
     ) {
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE, None) => Ok(()),
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE, Some(_)) => {
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, None) => Ok(()),
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, Some(_)) => {
             Err(source_api_parse_error(
                 context,
                 "source API selector is not allowed",
-                format!("operation `{}` does not accept a selector", operation.name),
+                format!("operation `{operation_name}` does not accept a selector"),
                 source_key,
             ))
         }
         (
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
             Some(_),
         ) => Ok(()),
         (
-            SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
             None,
         ) => Err(source_api_parse_error(
             context,
             "source API selector is required",
-            format!("operation `{}` requires a selector", operation.name),
+            format!("operation `{operation_name}` requires a selector"),
             source_key,
         )),
-        (SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_UNSPECIFIED, _) => unreachable!(),
+        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED, _) => unreachable!(),
     }
 }
 
@@ -227,6 +217,7 @@ fn validate_pagination(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
     if args.slurp && !args.paginate {
         return Err(source_api_parse_error(
             context,
@@ -249,8 +240,8 @@ fn validate_pagination(
         return Ok(());
     }
 
-    if source_api_pagination_policy_or_none(operation.pagination_policy)
-        == SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
+    if source_api_pagination_policy_or_none(operation.pagination_policy.unwrap_or_else(|| 0.into()))
+        == SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
     {
         return Ok(());
     }
@@ -258,7 +249,7 @@ fn validate_pagination(
     Err(source_api_parse_error(
         context,
         "source API pagination is not supported",
-        format!("operation `{}` does not support pagination", operation.name),
+        format!("operation `{operation_name}` does not support pagination"),
         source_key,
     ))
 }
@@ -269,39 +260,39 @@ fn validate_method(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
     let Some(method) = normalized_method_override(args.method.as_deref()) else {
         return Ok(());
     };
 
-    if source_api_operation_kind_or_http_request(operation.kind)
-        != SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+    if source_api_operation_kind_or_http_request(operation.kind.unwrap_or_else(|| 0.into()))
+        != SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
     {
         return Err(source_api_parse_error(
             context,
             "source API method override is not allowed",
-            format!(
-                "operation `{}` is not an HTTP request operation",
-                operation.name
-            ),
+            format!("operation `{operation_name}` is not an HTTP request operation"),
             source_key,
         ));
     }
 
     let allowed_methods = operation
         .method_policy
-        .allowed_methods
-        .iter()
-        .filter_map(|candidate| normalized_method_override(Some(candidate.as_str())))
-        .collect::<Vec<_>>();
+        .as_option()
+        .map(|policy| {
+            policy
+                .allowed_methods
+                .iter()
+                .filter_map(|candidate| normalized_method_override(Some(candidate.as_str())))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
     if !allowed_methods.is_empty() && !allowed_methods.iter().any(|candidate| candidate == &method)
     {
         return Err(source_api_parse_error(
             context,
             "source API method override is invalid",
-            format!(
-                "method `{method}` is not allowed for operation `{}`",
-                operation.name
-            ),
+            format!("method `{method}` is not allowed for operation `{operation_name}`"),
             source_key,
         ));
     }
@@ -315,26 +306,31 @@ fn validate_field_flags(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
-    if !args.raw_fields.is_empty() && !operation.field_policy.supports_raw_fields {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
+    let field_policy = operation.field_policy.as_option();
+
+    if !args.raw_fields.is_empty()
+        && !field_policy
+            .and_then(|policy| policy.allows_raw_fields)
+            .unwrap_or(false)
+    {
         return Err(source_api_parse_error(
             context,
             "raw field patches are not supported",
-            format!(
-                "operation `{}` does not accept `-f/--raw-field`",
-                operation.name
-            ),
+            format!("operation `{operation_name}` does not accept `-f/--raw-field`"),
             source_key,
         ));
     }
 
-    if !args.fields.is_empty() && !operation.field_policy.supports_typed_fields {
+    if !args.fields.is_empty()
+        && !field_policy
+            .and_then(|policy| policy.allows_typed_fields)
+            .unwrap_or(false)
+    {
         return Err(source_api_parse_error(
             context,
             "typed field patches are not supported",
-            format!(
-                "operation `{}` does not accept `-F/--field`",
-                operation.name
-            ),
+            format!("operation `{operation_name}` does not accept `-F/--field`"),
             source_key,
         ));
     }
@@ -348,13 +344,20 @@ fn validate_input(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<(), CliError> {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
+    let field_policy = operation.field_policy.as_option();
     if args.input.is_none() {
         return Ok(());
     }
 
-    if operation.field_policy.accepts_input
-        && source_api_input_mode_or_none(operation.field_policy.input_mode)
-            != SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE
+    if field_policy
+        .and_then(|policy| policy.accepts_input)
+        .unwrap_or(false)
+        && source_api_input_mode_or_none(
+            field_policy
+                .and_then(|policy| policy.input_mode)
+                .unwrap_or_else(|| 0.into()),
+        ) != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
     {
         return Ok(());
     }
@@ -362,7 +365,7 @@ fn validate_input(
     Err(source_api_parse_error(
         context,
         "source API request input is not supported",
-        format!("operation `{}` does not accept `--input`", operation.name),
+        format!("operation `{operation_name}` does not accept `--input`"),
         source_key,
     ))
 }
@@ -373,12 +376,18 @@ fn parse_headers(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<Vec<SourceApiHeader>, CliError> {
-    let allowed_names = operation
+    let operation_name = operation.name.as_deref().unwrap_or_default();
+    let allowed_header_names = operation
         .header_policy
-        .allowed_names
-        .iter()
-        .map(|value| value.to_ascii_lowercase())
-        .collect::<Vec<_>>();
+        .as_option()
+        .map(|policy| {
+            policy
+                .allowed_request_header_names
+                .iter()
+                .map(|value| value.to_ascii_lowercase())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
 
     values
         .iter()
@@ -402,36 +411,30 @@ fn parse_headers(
                 ));
             }
 
-            if allowed_names.is_empty() {
+            if allowed_header_names.is_empty() {
                 return Err(source_api_parse_error(
                     context,
                     "source API headers are not supported",
-                    format!(
-                        "operation `{}` does not accept `-H/--header`",
-                        operation.name
-                    ),
+                    format!("operation `{operation_name}` does not accept `-H/--header`"),
                     source_key,
                 ));
             }
 
-            if !allowed_names
+            if !allowed_header_names
                 .iter()
                 .any(|candidate| candidate == &name.to_ascii_lowercase())
             {
                 return Err(source_api_parse_error(
                     context,
                     "source API header is not allowed",
-                    format!(
-                        "header `{name}` is not allowed for operation `{}`",
-                        operation.name
-                    ),
+                    format!("header `{name}` is not allowed for operation `{operation_name}`"),
                     source_key,
                 ));
             }
 
             Ok(SourceApiHeader {
-                name: name.to_owned(),
-                value: header_value.trim().to_owned(),
+                name: Some(name.to_owned()),
+                value: Some(header_value.trim().to_owned()),
                 ..Default::default()
             })
         })
@@ -445,18 +448,25 @@ async fn load_request_body(
     context: &CommandContext,
     source_key: &str,
 ) -> Result<Option<SourceApiRequestBody>, CliError> {
+    let operation_name = operation.name.as_deref().unwrap_or_default();
     let Some(input_path) = args.input.as_deref() else {
         return Ok(None);
     };
 
-    match source_api_input_mode_or_none(operation.field_policy.input_mode) {
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE => Err(source_api_parse_error(
+    match source_api_input_mode_or_none(
+        operation
+            .field_policy
+            .as_option()
+            .and_then(|policy| policy.input_mode)
+            .unwrap_or_else(|| 0.into()),
+    ) {
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE => Err(source_api_parse_error(
             context,
             "source API request input is not supported",
-            format!("operation `{}` does not accept `--input`", operation.name),
+            format!("operation `{operation_name}` does not accept `--input`"),
             source_key,
         )),
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT => {
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT => {
             let raw_input = reader
                 .read_text(
                     input_path,
@@ -491,7 +501,7 @@ async fn load_request_body(
             })?;
             Ok(Some(SourceApiRequestBody::JsonBody(Box::new(value))))
         }
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_BODY => {
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY => {
             let raw_input = reader
                 .read_bytes(
                     input_path,
@@ -521,7 +531,7 @@ async fn load_request_body(
                 Err(_) => Ok(Some(SourceApiRequestBody::BinaryBody(raw_input))),
             }
         }
-        SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
+        SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
     }
 }
 
@@ -575,9 +585,7 @@ mod tests {
                 slurp: true,
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -597,9 +605,7 @@ mod tests {
                 max_pages: Some(nz_u32(2)),
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -619,7 +625,7 @@ mod tests {
                 paginate: true,
                 ..api_args()
             },
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE),
             &context(),
             "github-prod",
         )
@@ -637,9 +643,7 @@ mod tests {
                 max_pages: Some(nz_u32(3)),
                 ..api_args()
             },
-            &operation(
-                SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN,
-            ),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN),
             &context(),
             "github-prod",
         )
@@ -650,7 +654,7 @@ mod tests {
     fn parse_headers_rejects_headers_when_operation_disallows_them() {
         let error = parse_headers(
             &["Accept: application/json".to_owned()],
-            &operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE),
+            &operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE),
             &context(),
             "github-prod",
         )
@@ -666,10 +670,10 @@ mod tests {
             &["accept: application/json".to_owned()],
             &SourceApiOperation {
                 header_policy: MessageField::some(SourceApiHeaderPolicy {
-                    allowed_names: vec!["Accept".to_owned()],
+                    allowed_request_header_names: vec!["Accept".to_owned()],
                     ..Default::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             },
             &context(),
             "github-prod",
@@ -679,8 +683,8 @@ mod tests {
         assert_eq!(
             headers,
             vec![SourceApiHeader {
-                name: "accept".to_owned(),
-                value: "application/json".to_owned(),
+                name: Some("accept".to_owned()),
+                value: Some("application/json".to_owned()),
                 ..Default::default()
             }]
         );
@@ -695,11 +699,11 @@ mod tests {
             },
             &descriptor_with_operation(SourceApiOperation {
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    accepts_input: false,
-                    input_mode: SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_NONE.into(),
+                    accepts_input: Some(false),
+                    input_mode: Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE.into()),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -719,14 +723,14 @@ mod tests {
                 ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
-                selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    supports_typed_fields: true,
-                    supports_nested_paths: false,
-                    supports_array_paths: false,
+                    allows_typed_fields: Some(true),
+                    supports_nested_paths: Some(false),
+                    supports_array_paths: Some(false),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -749,14 +753,14 @@ mod tests {
                 ..api_args()
             },
             &descriptor_with_operation(SourceApiOperation {
-                selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    supports_typed_fields: true,
-                    supports_nested_paths: true,
-                    supports_array_paths: false,
+                    allows_typed_fields: Some(true),
+                    supports_nested_paths: Some(true),
+                    supports_array_paths: Some(false),
                     ..SourceApiFieldPolicy::default()
                 }),
-                ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
             }),
             &context(),
         )
@@ -786,14 +790,17 @@ mod tests {
                     ..api_args()
                 },
                 &descriptor_with_operation(SourceApiOperation {
-                    selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    selector_kind: Some(
+                        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
-                        accepts_input: true,
-                        input_mode: SourceApiInputMode::CLI_SOURCE_API_INPUT_MODE_REQUEST_OBJECT
-                            .into(),
+                        accepts_input: Some(true),
+                        input_mode: Some(
+                            SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT.into(),
+                        ),
                         ..SourceApiFieldPolicy::default()
                     }),
-                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                    ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
                 }),
                 &context(),
             )
@@ -831,14 +838,16 @@ mod tests {
                     ..api_args()
                 },
                 &descriptor_with_operation(SourceApiOperation {
-                    selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    selector_kind: Some(
+                        SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
+                    ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
-                        supports_typed_fields: true,
-                        supports_nested_paths: true,
-                        supports_array_paths: true,
+                        allows_typed_fields: Some(true),
+                        supports_nested_paths: Some(true),
+                        supports_array_paths: Some(true),
                         ..SourceApiFieldPolicy::default()
                     }),
-                    ..operation(SourceApiPaginationPolicy::CLI_SOURCE_API_PAGINATION_POLICY_NONE)
+                    ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
                 }),
                 &context(),
             )
@@ -876,16 +885,16 @@ mod tests {
 
     fn operation(pagination_policy: SourceApiPaginationPolicy) -> SourceApiOperation {
         SourceApiOperation {
-            name: "fetch".to_owned(),
-            kind: SourceApiOperationKind::CLI_SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into(),
-            summary: String::new(),
-            description: String::new(),
-            selector_kind: SourceApiSelectorKind::CLI_SOURCE_API_SELECTOR_KIND_PATH.into(),
+            name: Some("fetch".to_owned()),
+            kind: Some(SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
+            summary: None,
+            description: None,
+            selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH.into()),
             selector_label: None,
             method_policy: MessageField::some(SourceApiMethodPolicy::default()),
             field_policy: MessageField::some(SourceApiFieldPolicy::default()),
             header_policy: MessageField::some(SourceApiHeaderPolicy::default()),
-            pagination_policy: pagination_policy.into(),
+            pagination_policy: Some(pagination_policy.into()),
             examples: Vec::new(),
             notes: Vec::new(),
             ..Default::default()
@@ -915,14 +924,14 @@ mod tests {
     fn descriptor_with_operation(operation: SourceApiOperation) -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
-                key: "github-prod".to_owned(),
-                provider:
-                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
-                        .into(),
+                source_key: Some("github-prod".to_owned()),
+                provider: Some(
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
+                ),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()
             }),
-            descriptor_version: "2026-04-09".to_owned(),
+            descriptor_version: Some("2026-04-09".to_owned()),
             default_path_operation: Some("fetch".to_owned()),
             operations: vec![operation],
             examples: Vec::new(),

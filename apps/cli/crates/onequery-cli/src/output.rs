@@ -742,8 +742,7 @@ mod tests {
                     "warnings": ["server returned advisory metadata"],
                     "page": {
                         "nextCursor": "cursor_123",
-                        "returned": 50,
-                        "hasMore": true
+                        "returnedCount": 50
                     }
                 }),
             )
@@ -764,15 +763,13 @@ mod tests {
                     "warnings": ["server returned advisory metadata"],
                     "page": {
                         "nextCursor": "cursor_123",
-                        "returned": 50,
-                        "hasMore": true
+                        "returnedCount": 50
                     }
                 },
                 "warnings": ["server returned advisory metadata"],
                 "page": {
                     "nextCursor": "cursor_123",
-                    "returned": 50,
-                    "hasMore": true
+                    "returnedCount": 50
                 }
             })
         );

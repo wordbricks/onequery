@@ -391,7 +391,7 @@ fn parse_source_connect_input(
 fn source_connect_input_examples() -> Vec<String> {
     vec![
         "onequery source connect --source <provider>".to_owned(),
-        "onequery --org <org_slug> source connect --source postgres --input '{\"name\":\"warehouse\",\"credentials\":{\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
+        "onequery --org <org_slug> source connect --source postgres --input '{\"sourceKey\":\"warehouse\",\"credentials\":{\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
     ]
 }
 
@@ -409,7 +409,7 @@ fn render_source_connect_result_output(
     let lines = vec![
         format!(
             "Source connected: {}",
-            result.source.name.as_deref().unwrap_or("-")
+            result.source.source_key.as_deref().unwrap_or("-")
         ),
         format!(
             "Provider: {}",
@@ -524,7 +524,7 @@ mod tests {
     fn render_source_connect_result_output_snapshot() {
         let output = render_source_connect_result_output(SourceConnectResult {
             source: SourceSummary {
-                name: Some("warehouse".to_owned()),
+                source_key: Some("warehouse".to_owned()),
                 display_name: None,
                 provider: Some("postgres".to_owned()),
                 queryable: Some(true),
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn source_connect_input_rejects_org_fields() {
         let error = parse_source_connect_input(
-            r#"{"name":"warehouse","organizationSlug":"acme","credentials":{"host":"db.example.com"}}"#,
+            r#"{"sourceKey":"warehouse","organizationSlug":"acme","credentials":{"host":"db.example.com"}}"#,
             &CommandContext {
                 command_line: "onequery source connect --source postgres --input <excerpt>"
                     .to_owned(),

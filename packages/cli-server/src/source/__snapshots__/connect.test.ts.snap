@@ -14,11 +14,11 @@ Agent workflow:
 3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
 4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
 
-Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source postgres --input '<json>'\`
-Verify: \`onequery source show <name>\`
+Verify: \`onequery source show <source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
-The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
 Connect a Postgres database with a direct host, database, and login.
 
@@ -29,7 +29,7 @@ Steps:
 Example input:
 \`\`\`json
 {
-  "name": "warehouse",
+  "sourceKey": "warehouse",
   "credentials": {
     "host": "db.example.com",
     "port": 5432,
@@ -57,11 +57,11 @@ Agent workflow:
 3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
 4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
 
-Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source posthog --input '<json>'\`
-Verify: \`onequery source show <name>\`
+Verify: \`onequery source show <source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
-The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
 Connect PostHog with the PostHog app host URL, a personal API key, and project ID.
 
@@ -75,7 +75,7 @@ Steps:
 Example input:
 \`\`\`json
 {
-  "name": "posthog_main",
+  "sourceKey": "posthog_main",
   "credentials": {
     "hostUrl": "https://us.posthog.com",
     "personalApiKey": "phx_personal_key",
@@ -100,11 +100,11 @@ Agent workflow:
 3. If browser capability is missing, install \`agent-browser\` with \`npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser\`, then follow that skill to open a browser and continue the setup with the user.
 4. Only use the final credential value when you are ready to build the JSON input and run the connect command.
 
-Use a CLI-safe \`name\` such as \`warehouse\` or \`github_main\`.
+Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source supabase --input '<json>'\`
-Verify: \`onequery source show <name>\`
+Verify: \`onequery source show <source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
-The JSON input shape is always \`{ "name": string, "credentials": { ...provider-specific fields... } }\`.
+The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
 Connect Supabase with the session pooler host, database, and login credentials over the Postgres wire protocol.
 
@@ -116,7 +116,7 @@ Steps:
 Example input:
 \`\`\`json
 {
-  "name": "supabase_prod",
+  "sourceKey": "supabase_prod",
   "credentials": {
     "host": "aws-0-us-east-1.pooler.supabase.com",
     "port": 5432,

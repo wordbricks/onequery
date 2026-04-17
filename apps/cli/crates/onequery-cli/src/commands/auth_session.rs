@@ -311,18 +311,6 @@ pub(crate) fn authenticated_api_client<B, T>(
     )
 }
 
-pub(crate) fn authenticated_api_client_with_timeout<B, T>(
-    context: &CommandContext,
-    runtime: &Runtime<B, T>,
-    request_timeout: Duration,
-) -> Result<AuthenticatedApiClient, CliError> {
-    let Some(access_token) = runtime.auth_session.access_token() else {
-        return Err(not_logged_in_error(context, missing_auth_try_next(context)));
-    };
-
-    build_authenticated_api_client(context, request_timeout, access_token)
-}
-
 pub(crate) fn unauthenticated_api_client<B, T>(
     context: &CommandContext,
     runtime: &Runtime<B, T>,

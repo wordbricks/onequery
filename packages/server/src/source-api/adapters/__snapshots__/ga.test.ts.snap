@@ -102,8 +102,8 @@ exports[`google analytics source api adapter > describes report and realtime ope
   ],
   "source": {
     "displayName": "Google Analytics Prod",
-    "key": "ga-prod",
     "provider": "ga",
+    "sourceKey": "ga-prod",
   },
 }
 `;
@@ -126,8 +126,8 @@ exports[`google analytics source api adapter > executes Google Analytics request
   "operation": "run_report",
   "source": {
     "displayName": "Google Analytics Prod",
-    "key": "ga-prod",
     "provider": "ga",
+    "sourceKey": "ga-prod",
   },
   "status": 200,
 }
@@ -153,8 +153,8 @@ exports[`google analytics source api adapter > normalizes missing Google Analyti
   "operation": "run_report",
   "source": {
     "displayName": "Google Analytics Prod",
-    "key": "ga-prod",
     "provider": "ga",
+    "sourceKey": "ga-prod",
   },
   "status": 200,
 }

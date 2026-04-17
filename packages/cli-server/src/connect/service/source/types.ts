@@ -6,6 +6,7 @@ import type {
 } from "@onequery/db/server";
 
 import {
+  CliSourceSchema,
   ConnectSourceResponseSchema,
   GetSourceConnectGuideResponseSchema,
   GetSourceResponseSchema,
@@ -18,6 +19,7 @@ export type GetSourceConnectGuideResponseInit = MessageInitShape<
 export type ConnectSourceResponseInit = MessageInitShape<
   typeof ConnectSourceResponseSchema
 >;
+export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
 export type GetSourceResponseInit = MessageInitShape<
   typeof GetSourceResponseSchema
 >;
@@ -30,7 +32,7 @@ export type ParsedConnectSourceCredentials = {
   credentials: Credentials;
 };
 
-export type BuildGetSourceResponseInput = {
+export type BuildCliSourceInput = {
   sourceKey: string;
   displayName?: string | null;
   provider: ProviderType;

@@ -3,8 +3,8 @@ import {
   sanitizeCliRemoteText,
   sanitizeUndefinedableCliRemoteText,
 } from "../../../transport/sanitization";
-import { CliQueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
-import { buildGetSourceResponse } from "../source-service/response";
+import { QueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
+import { buildCliSource } from "../source/response";
 import type {
   ExecuteQueryColumnMessage,
   ExecuteQueryPayload,
@@ -28,7 +28,7 @@ export function buildQueryValidateResponse(response: {
     cellMaxChars: number;
     timeoutMs: number;
   };
-  source: Parameters<typeof buildGetSourceResponse>[0];
+  source: Parameters<typeof buildCliSource>[0];
   truncated: boolean;
 }): ValidateQueryResponseInit {
   return {
@@ -47,7 +47,7 @@ export function buildQueryValidateResponse(response: {
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
       timeoutMs: response.declaredResultWindow.timeoutMs,
     },
-    source: buildGetSourceResponse(response.source),
+    source: buildCliSource(response.source),
     truncated: response.truncated,
   };
 }
@@ -57,11 +57,11 @@ export function buildQueryExecuteResponse(response: {
   elapsedMs: number;
   rowCount: number;
   rows: readonly (readonly string[])[];
-  source: Parameters<typeof buildGetSourceResponse>[0];
+  source: Parameters<typeof buildCliSource>[0];
   truncated: boolean;
 }): ExecuteQueryPayload {
   return {
-    source: buildGetSourceResponse(response.source),
+    source: buildCliSource(response.source),
     rowCount: BigInt(response.rowCount),
     elapsedMs: BigInt(response.elapsedMs),
     columns: response.columns.map(buildCliQueryColumn),
@@ -121,19 +121,19 @@ function buildCliQueryRow(row: readonly string[]): ExecuteQueryRowMessage {
 function toCliQueryLogicalType(value: string) {
   switch (value) {
     case "string":
-      return CliQueryLogicalType.STRING;
+      return QueryLogicalType.STRING;
     case "number":
-      return CliQueryLogicalType.NUMBER;
+      return QueryLogicalType.NUMBER;
     case "boolean":
-      return CliQueryLogicalType.BOOLEAN;
+      return QueryLogicalType.BOOLEAN;
     case "bigint":
-      return CliQueryLogicalType.BIGINT;
+      return QueryLogicalType.BIGINT;
     case "datetime":
-      return CliQueryLogicalType.DATETIME;
+      return QueryLogicalType.DATETIME;
     case "array":
-      return CliQueryLogicalType.ARRAY;
+      return QueryLogicalType.ARRAY;
     case "json":
-      return CliQueryLogicalType.JSON;
+      return QueryLogicalType.JSON;
     default:
       return undefined;
   }

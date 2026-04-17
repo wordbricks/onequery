@@ -30,8 +30,8 @@ exports[`mixpanel source api adapter > binds query_engage continuation state to 
   "selector": undefined,
   "source": {
     "displayName": "Mixpanel Prod",
-    "key": "mixpanel-prod",
     "provider": "mixpanel",
+    "sourceKey": "mixpanel-prod",
   },
   "status": 200,
 }
@@ -237,8 +237,8 @@ exports[`mixpanel source api adapter > describes structured and HTTP operations 
   ],
   "source": {
     "displayName": "Mixpanel Prod",
-    "key": "mixpanel-prod",
     "provider": "mixpanel",
+    "sourceKey": "mixpanel-prod",
   },
 }
 `;
@@ -263,8 +263,8 @@ exports[`mixpanel source api adapter > executes structured segmentation requests
   "selector": undefined,
   "source": {
     "displayName": "Mixpanel Prod",
-    "key": "mixpanel-prod",
     "provider": "mixpanel",
+    "sourceKey": "mixpanel-prod",
   },
   "status": 200,
 }

@@ -2,6 +2,6 @@
 source: crates/onequery-cli/src/commands/source.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-NAME         PROVIDER  QUERY  STATUS
+SOURCE KEY   PROVIDER  QUERY  STATUS
 warehouse    postgres  yes    active
 github_main  github    no     active

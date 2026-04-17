@@ -47,7 +47,7 @@ describe("executePreparedSourceApi", () => {
       headers: [],
       operation: "fetch",
       source: {
-        key: "github-prod",
+        sourceKey: "github-prod",
         provider: "github",
       },
       status: 200,

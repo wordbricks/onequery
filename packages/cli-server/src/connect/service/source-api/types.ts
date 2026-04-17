@@ -6,7 +6,7 @@ import type {
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type {
-  CliSourceApiExecuteMode,
+  SourceApiExecuteMode,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequest,
   ExecuteSourceApiResponseSchema,
@@ -45,7 +45,7 @@ export type SourceApiExecuteCommand =
       kind: "start";
       target: SourceApiTarget;
       draft: CliSourceApiDraft;
-      mode: CliSourceApiExecuteMode;
+      mode: SourceApiExecuteMode;
     }
   | {
       kind: "resume";

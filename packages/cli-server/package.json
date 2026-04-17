@@ -16,18 +16,16 @@
     "@bufbuild/protobuf": "catalog:",
     "@bufbuild/protovalidate": "1.1.1",
     "@connectrpc/connect": "catalog:",
+    "@connectrpc/connect-node": "catalog:",
     "@connectrpc/validate": "0.2.0",
+    "@hono/node-server": "catalog:",
     "@onequery/base": "workspace:*",
     "@onequery/codecs": "workspace:*",
     "@onequery/db": "workspace:*",
-    "@onequery/hono-connect": "workspace:*",
     "@onequery/server": "workspace:*",
     "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@hono/node-server": "catalog:"
   }
 }

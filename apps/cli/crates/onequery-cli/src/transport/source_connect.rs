@@ -186,8 +186,8 @@ pub(crate) async fn load_source_connect_guide(
     let response = match client
         .cli()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
-            org_slug,
-            source: types::CliSourceProvider::from(source).into(),
+            org_slug: Some(org_slug),
+            provider: Some(types::SourceProvider::from(source).into()),
             ..Default::default()
         })
         .await
@@ -215,8 +215,8 @@ pub(crate) async fn connect_source(
 ) -> Result<ApiSuccess<SourceConnectResult>, ApiFailure> {
     let org_slug: String =
         crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
-    let name = input
-        .remove("name")
+    let source_key = input
+        .remove("sourceKey")
         .and_then(|value| match value {
             Value::String(value) if !value.trim().is_empty() => Some(value),
             _ => None,
@@ -224,7 +224,7 @@ pub(crate) async fn connect_source(
         .ok_or_else(|| {
             conversion_failure(
                 ErrorStage::ResolveSource,
-                "source connect input must include non-empty string field `name`",
+                "source connect input must include non-empty string field `sourceKey`",
             )
         })?;
     let credentials = input.remove("credentials").ok_or_else(|| {
@@ -238,8 +238,8 @@ pub(crate) async fn connect_source(
     let response = match client
         .cli()
         .connect_source(types::ConnectSourceRequest {
-            org_slug,
-            name,
+            org_slug: Some(org_slug),
+            source_key: Some(source_key),
             credentials: MessageField::some(credentials),
             ..Default::default()
         })
@@ -305,7 +305,7 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::Mongodb(Box::new(
                     types::ConnectSourceMongoDbCredentials {
-                        connection_string: input.connection_string,
+                        connection_string: Some(input.connection_string),
                         database: input.database,
                         databases: input.databases,
                         ..Default::default()
@@ -333,7 +333,7 @@ fn connect_source_credentials_from_json(
                 kind: Some(types::connect_source_credentials::Kind::Laminar(Box::new(
                     types::ConnectSourceLaminarCredentials {
                         api_base_url: input.api_base_url,
-                        api_key: input.api_key,
+                        api_key: Some(input.api_key),
                         ..Default::default()
                     },
                 ))),
@@ -347,8 +347,8 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::AwsAthenaConnector(
                     Box::new(types::ConnectSourceAwsAthenaConnectorCredentials {
-                        connector_id: input.connector_id,
-                        database: input.database,
+                        connector_id: Some(input.connector_id),
+                        database: Some(input.database),
                         max_rows: input.max_rows,
                         timeout_ms: input.timeout_ms,
                         workgroup: input.workgroup,
@@ -376,9 +376,9 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::Amplitude(
                     Box::new(types::ConnectSourceAmplitudeCredentials {
-                        api_key: input.api_key,
+                        api_key: Some(input.api_key),
                         region: amplitude_region_from_input(input.region)?,
-                        secret_key: input.secret_key,
+                        secret_key: Some(input.secret_key),
                         ..Default::default()
                     }),
                 )),
@@ -392,10 +392,10 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::Mixpanel(Box::new(
                     types::ConnectSourceMixpanelCredentials {
-                        project_id: input.project_id,
+                        project_id: Some(input.project_id),
                         region: mixpanel_region_from_input(input.region)?,
-                        secret: input.secret,
-                        username: input.username,
+                        secret: Some(input.secret),
+                        username: Some(input.username),
                         workspace_id: input.workspace_id,
                         ..Default::default()
                     },
@@ -410,9 +410,9 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::Posthog(Box::new(
                     types::ConnectSourcePostHogCredentials {
-                        host_url: input.host_url,
-                        personal_api_key: input.personal_api_key,
-                        project_id: input.project_id,
+                        host_url: Some(input.host_url),
+                        personal_api_key: Some(input.personal_api_key),
+                        project_id: Some(input.project_id),
                         ..Default::default()
                     },
                 ))),
@@ -427,8 +427,8 @@ fn connect_source_credentials_from_json(
                 kind: Some(types::connect_source_credentials::Kind::Sentry(Box::new(
                     types::ConnectSourceSentryCredentials {
                         api_base_url: input.api_base_url,
-                        auth_token: input.auth_token,
-                        organization_slug: input.organization_slug,
+                        auth_token: Some(input.auth_token),
+                        organization_slug: Some(input.organization_slug),
                         project_slug: input.project_slug,
                         ..Default::default()
                     },
@@ -443,7 +443,7 @@ fn connect_source_credentials_from_json(
             Ok(types::ConnectSourceCredentials {
                 kind: Some(types::connect_source_credentials::Kind::Github(Box::new(
                     types::ConnectSourceGitHubCredentials {
-                        access_token: input.access_token,
+                        access_token: Some(input.access_token),
                         installation_id: input.installation_id,
                         repositories: input.repositories,
                         ..Default::default()
@@ -470,12 +470,12 @@ fn postgres_message_from_input(
     input: PostgresSourceConnectCredentialsInput,
 ) -> Result<types::ConnectSourcePostgresCredentials, ApiFailure> {
     Ok(types::ConnectSourcePostgresCredentials {
-        database: input.database,
-        host: input.host,
-        password: input.password,
+        database: Some(input.database),
+        host: Some(input.host),
+        password: Some(input.password),
         port: input.port,
         ssl_mode: ssl_mode_from_input(input.ssl_mode)?,
-        username: input.username,
+        username: Some(input.username),
         ..Default::default()
     })
 }
@@ -484,12 +484,12 @@ fn mysql_message_from_input(
     input: MySqlSourceConnectCredentialsInput,
 ) -> Result<types::ConnectSourceMySqlCredentials, ApiFailure> {
     Ok(types::ConnectSourceMySqlCredentials {
-        database: input.database,
-        host: input.host,
-        password: input.password,
+        database: Some(input.database),
+        host: Some(input.host),
+        password: Some(input.password),
         port: input.port,
         ssl_mode: ssl_mode_from_input(input.ssl_mode)?,
-        username: input.username,
+        username: Some(input.username),
         ..Default::default()
     })
 }
@@ -508,7 +508,7 @@ fn big_query_credentials_from_input(
     )? {
         GoogleAuthMode::Oauth => Some(types::connect_source_big_query_credentials::Auth::Oauth(
             Box::new(types::ConnectSourceBigQueryOAuthCredentials {
-                project_id: input.project_id,
+                project_id: Some(input.project_id),
                 credentials: MessageField::some(google_oauth_credentials_from_input(
                     "bigquery",
                     input.access_token,
@@ -521,7 +521,7 @@ fn big_query_credentials_from_input(
         GoogleAuthMode::ServiceAccount => Some(
             types::connect_source_big_query_credentials::Auth::ServiceAccount(Box::new(
                 types::ConnectSourceBigQueryServiceAccountCredentials {
-                    project_id: input.project_id,
+                    project_id: Some(input.project_id),
                     service_account: MessageField::some(service_account_from_input(
                         "bigquery",
                         input.service_account,
@@ -553,7 +553,7 @@ fn google_analytics_credentials_from_input(
         GoogleAuthMode::Oauth => Some(
             types::connect_source_google_analytics_credentials::Auth::Oauth(Box::new(
                 types::ConnectSourceGoogleAnalyticsOAuthCredentials {
-                    property_id: input.property_id,
+                    property_id: Some(input.property_id),
                     credentials: MessageField::some(google_oauth_credentials_from_input(
                         "ga",
                         input.access_token,
@@ -567,7 +567,7 @@ fn google_analytics_credentials_from_input(
         GoogleAuthMode::ServiceAccount => Some(
             types::connect_source_google_analytics_credentials::Auth::ServiceAccount(Box::new(
                 types::ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-                    property_id: input.property_id,
+                    property_id: Some(input.property_id),
                     service_account: MessageField::some(service_account_from_input(
                         "ga",
                         input.service_account,
@@ -605,23 +605,23 @@ fn linear_credentials_from_input(
     let auth = if let Some(api_key) = input.api_key {
         Some(types::connect_source_linear_credentials::Auth::ApiKey(
             Box::new(types::ConnectSourceLinearApiKeyCredentials {
-                api_key,
+                api_key: Some(api_key),
                 ..Default::default()
             }),
         ))
     } else if has_oauth_fields {
         Some(types::connect_source_linear_credentials::Auth::Oauth(
             Box::new(types::ConnectSourceLinearOAuthCredentials {
-                access_token: require_field(
+                access_token: Some(require_field(
                     input.access_token,
                     "source connect credentials must include `accessToken` for Linear OAuth",
-                )?,
+                )?),
                 app_user_id: input.app_user_id,
                 expires_at: input.expires_at,
-                linear_organization_id: require_field(
+                linear_organization_id: Some(require_field(
                     input.linear_organization_id,
                     "source connect credentials must include `linearOrganizationId` for Linear OAuth",
-                )?,
+                )?),
                 linear_organization_name: input.linear_organization_name,
                 refresh_token: input.refresh_token,
                 scope: input.scope,
@@ -656,17 +656,17 @@ fn source_connect_input_failure(message: impl Into<String>) -> ApiFailure {
 
 fn ssl_mode_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectSslMode>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectSslMode>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("disable") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_DISABLE.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_DISABLE.into(),
         )),
         Some("prefer") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_PREFER.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_PREFER.into(),
         )),
         Some("require") => Ok(Some(
-            types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE.into(),
+            types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_REQUIRE.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.sslMode must be one of `disable`, `prefer`, `require`; got `{other}`"
@@ -676,14 +676,14 @@ fn ssl_mode_from_input(
 
 fn amplitude_region_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectAmplitudeRegion>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectAmplitudeRegion>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("us") => Ok(Some(
-            types::CliSourceConnectAmplitudeRegion::CLI_SOURCE_CONNECT_AMPLITUDE_REGION_US.into(),
+            types::SourceConnectAmplitudeRegion::SOURCE_CONNECT_AMPLITUDE_REGION_US.into(),
         )),
         Some("eu") => Ok(Some(
-            types::CliSourceConnectAmplitudeRegion::CLI_SOURCE_CONNECT_AMPLITUDE_REGION_EU.into(),
+            types::SourceConnectAmplitudeRegion::SOURCE_CONNECT_AMPLITUDE_REGION_EU.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.region must be one of `us`, `eu`; got `{other}`"
@@ -693,17 +693,17 @@ fn amplitude_region_from_input(
 
 fn mixpanel_region_from_input(
     value: Option<String>,
-) -> Result<Option<EnumValue<types::CliSourceConnectMixpanelRegion>>, ApiFailure> {
+) -> Result<Option<EnumValue<types::SourceConnectMixpanelRegion>>, ApiFailure> {
     match value.as_deref() {
         None => Ok(None),
         Some("us") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_US.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_US.into(),
         )),
         Some("eu") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_EU.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_EU.into(),
         )),
         Some("in") => Ok(Some(
-            types::CliSourceConnectMixpanelRegion::CLI_SOURCE_CONNECT_MIXPANEL_REGION_IN.into(),
+            types::SourceConnectMixpanelRegion::SOURCE_CONNECT_MIXPANEL_REGION_IN.into(),
         )),
         Some(other) => Err(source_connect_input_failure(format!(
             "source connect credentials.region must be one of `us`, `eu`, `in`; got `{other}`"
@@ -753,20 +753,20 @@ fn google_oauth_credentials_from_input(
     expires_at: Option<u64>,
 ) -> Result<types::ConnectSourceGoogleOAuthCredentials, ApiFailure> {
     Ok(types::ConnectSourceGoogleOAuthCredentials {
-        access_token: require_field(
+        access_token: Some(require_field(
             access_token,
             format!("source connect credentials must include `accessToken` for `{provider}` OAuth"),
-        )?,
-        refresh_token: require_field(
+        )?),
+        refresh_token: Some(require_field(
             refresh_token,
             format!(
                 "source connect credentials must include `refreshToken` for `{provider}` OAuth"
             ),
-        )?,
-        expires_at: require_field(
+        )?),
+        expires_at: Some(require_field(
             expires_at,
             format!("source connect credentials must include `expiresAt` for `{provider}` OAuth"),
-        )?,
+        )?),
         ..Default::default()
     })
 }
@@ -783,10 +783,10 @@ fn service_account_from_input(
     )?;
 
     Ok(types::ConnectSourceServiceAccountCredentials {
-        client_email: service_account.client_email,
-        private_key: service_account.private_key,
+        client_email: Some(service_account.client_email),
+        private_key: Some(service_account.private_key),
         private_key_id: service_account.private_key_id,
-        project_id: service_account.project_id,
+        project_id: Some(service_account.project_id),
         ..Default::default()
     })
 }
@@ -797,14 +797,44 @@ fn require_field<T>(value: Option<T>, message: impl Into<String>) -> Result<T, A
 
 fn source_connect_guide_from_generated(
     response: types::GetSourceConnectGuideResponse,
-    _request_id: Option<String>,
+    request_id: Option<String>,
 ) -> Result<SourceConnectGuide, ApiFailure> {
     Ok(SourceConnectGuide {
-        title: response.title,
-        description: response.description,
-        format: content_format_to_str(response.format),
-        content: response.content,
-        command: response.command,
+        title: response.title.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response missing title",
+                request_id.clone(),
+            )
+        })?,
+        description: response.description.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response missing description",
+                request_id.clone(),
+            )
+        })?,
+        format: content_format_to_str(response.format.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response missing format",
+                request_id.clone(),
+            )
+        })?),
+        content: response.content.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response missing content",
+                request_id.clone(),
+            )
+        })?,
+        command: response.command.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response missing command",
+                request_id,
+            )
+        })?,
     })
 }
 
@@ -816,13 +846,19 @@ fn source_connect_result_from_generated(
         decode_failure(
             ErrorStage::ResolveSource,
             "source connect response missing source",
-            request_id,
+            request_id.clone(),
         )
     })?;
 
     Ok(SourceConnectResult {
         source: source_summary_from_generated(source),
-        next_command: response.next_command,
+        next_command: response.next_command.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect response missing nextCommand",
+                request_id,
+            )
+        })?,
     })
 }
 
@@ -867,7 +903,7 @@ mod tests {
     fn source_connect_result_deserializes_canonical_shape() {
         let payload = json!({
             "source": {
-                "name": "warehouse",
+                "sourceKey": "warehouse",
                 "provider": "postgres",
                 "queryable": true,
                 "status": "active"
@@ -881,7 +917,7 @@ mod tests {
             parsed,
             SourceConnectResult {
                 source: SourceSummary {
-                    name: Some("warehouse".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
                     display_name: None,
                     provider: Some("postgres".to_owned()),
                     queryable: Some(true),
@@ -944,11 +980,14 @@ mod tests {
             .into_option()
             .expect("service-account message should be present");
 
-        assert_eq!(auth.project_id, "analytics-project");
-        assert_eq!(service_account.project_id, "analytics-project");
+        assert_eq!(auth.project_id, Some("analytics-project".to_owned()));
+        assert_eq!(
+            service_account.project_id,
+            Some("analytics-project".to_owned())
+        );
         assert_eq!(
             service_account.client_email,
-            "onequery@analytics-project.iam.gserviceaccount.com"
+            Some("onequery@analytics-project.iam.gserviceaccount.com".to_owned())
         );
         assert_eq!(service_account.private_key_id.as_deref(), Some("key-id"));
     }
@@ -973,11 +1012,14 @@ mod tests {
             panic!("expected supabase credentials kind");
         };
 
-        assert_eq!(postgres.host, "aws-0-us-east-1.pooler.supabase.com");
+        assert_eq!(
+            postgres.host,
+            Some("aws-0-us-east-1.pooler.supabase.com".to_owned())
+        );
         assert_eq!(postgres.port, Some(5432));
         assert_eq!(
             postgres.ssl_mode,
-            Some(types::CliSourceConnectSslMode::CLI_SOURCE_CONNECT_SSL_MODE_REQUIRE.into())
+            Some(types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_REQUIRE.into())
         );
     }
 }

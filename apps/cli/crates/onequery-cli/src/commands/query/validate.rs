@@ -29,7 +29,7 @@ use super::ValidateIdleState;
 use super::ValidateLoadingQueryInputState;
 use super::ValidateQueryRequest;
 use super::ValidatingQueryState;
-use super::authenticated_api_client_with_timeout;
+use super::authenticated_api_client;
 use super::ensure_authenticated_org;
 use super::input::effective_query_http_timeout;
 use super::input::load_query_request_payload;
@@ -293,11 +293,8 @@ async fn execute_validate_effect<B, T>(
         QueryValidateEffect::ValidateQuery { request } => {
             let request_timeout_sec = runtime.config.data().request_timeout_sec;
             let payload = with_effective_query_timeout(&request.payload, request_timeout_sec);
-            let client = match authenticated_api_client_with_timeout(
-                context,
-                runtime,
-                effective_query_http_timeout(&payload, request_timeout_sec),
-            ) {
+            let request_timeout = effective_query_http_timeout(&payload, request_timeout_sec);
+            let client = match authenticated_api_client(context, runtime) {
                 Ok(client) => client,
                 Err(error) => {
                     return QueryValidateEvent::QueryValidateFailed {
@@ -313,6 +310,7 @@ async fn execute_validate_effect<B, T>(
                 request.source_key.as_str(),
                 &payload,
                 &read_controls_from_read_args(&request.read),
+                request_timeout,
             )
             .await
             {

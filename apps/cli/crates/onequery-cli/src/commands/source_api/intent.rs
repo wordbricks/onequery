@@ -85,12 +85,17 @@ fn infer_selector_target(target: &str, descriptor: &SourceApiDescriptor) -> Opti
     if descriptor
         .operations
         .iter()
-        .any(|candidate| candidate.name == target)
+        .any(|candidate| candidate.name.as_deref() == Some(target))
     {
         return None;
     }
 
-    if descriptor.source.provider.as_known() == Some(SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB)
+    if descriptor
+        .source
+        .as_option()
+        .and_then(|source| source.provider)
+        .and_then(|provider| provider.as_known())
+        == Some(SourceApiProvider::SOURCE_PROVIDER_GITHUB)
     {
         return infer_github_repository_selector(target);
     }
@@ -353,20 +358,20 @@ mod tests {
     fn descriptor_with_operation(operation_name: &str) -> SourceApiDescriptor {
         SourceApiDescriptor {
             source: MessageField::some(SourceApiSource {
-                key: "github-prod".to_owned(),
-                provider:
-                    crate::transport::source_api::SourceApiProvider::CLI_SOURCE_PROVIDER_GITHUB
-                        .into(),
+                source_key: Some("github-prod".to_owned()),
+                provider: Some(
+                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
+                ),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()
             }),
-            descriptor_version: "2026-04-09".to_owned(),
+            descriptor_version: Some("2026-04-09".to_owned()),
             default_path_operation: Some("fetch".to_owned()),
             operations: if operation_name.is_empty() {
                 Vec::new()
             } else {
                 vec![crate::transport::source_api::SourceApiOperation {
-                    name: operation_name.to_owned(),
+                    name: Some(operation_name.to_owned()),
                     ..Default::default()
                 }]
             },

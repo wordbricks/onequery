@@ -8,8 +8,10 @@ use crate::transport::read_controls::PageInfo;
 pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
     PageInfo {
         next_cursor: page.next_cursor,
-        returned: usize::try_from(page.returned).unwrap_or(usize::MAX),
-        has_more: page.has_more,
+        returned_count: page
+            .returned_count
+            .map(|count| usize::try_from(count).unwrap_or(usize::MAX))
+            .unwrap_or_default(),
     }
 }
 
@@ -56,8 +58,7 @@ mod tests {
     fn page_info_from_generated_preserves_cursor_and_returned_count() {
         let page = serde_json::from_value(serde_json::json!({
             "nextCursor": "cursor_2",
-            "returned": 2,
-            "hasMore": true,
+            "returnedCount": 2,
         }))
         .expect("expected generated page to deserialize");
 
@@ -65,8 +66,7 @@ mod tests {
             page_info_from_generated(page),
             crate::transport::read_controls::PageInfo {
                 next_cursor: Some("cursor_2".to_owned()),
-                returned: 2,
-                has_more: true,
+                returned_count: 2,
             }
         );
     }

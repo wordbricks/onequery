@@ -85,7 +85,10 @@ pub(crate) async fn poll_login_session(
     session: &LoginSession,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
     let body = types::PollDeviceAuthorizationRequest {
-        device_code: try_into_value(session.device_code.as_str(), ErrorStage::Auth)?,
+        device_code: Some(try_into_value(
+            session.device_code.as_str(),
+            ErrorStage::Auth,
+        )?),
         ..Default::default()
     };
     let response = match client.cli().poll_device_authorization(body).await {
@@ -164,8 +167,8 @@ fn interpret_login_poll_problem(
     problem: ApiProblem,
 ) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
     let payload = match problem.code {
-        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
-        types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
+        types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
+        types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
         _ => return Err(ApiFailure::Problem(problem)),
     };
 
@@ -208,9 +211,15 @@ fn login_session_from_generated(
         verification_uri_complete: required_auth_string(
             response.verification_complete_url,
             "device authorization start response missing verificationCompleteUrl",
-            request_id,
+            request_id.clone(),
         )?,
-        poll_interval_ms: u64::from(response.poll_after_ms),
+        poll_interval_ms: u64::from(response.poll_after_ms.ok_or_else(|| {
+            decode_failure(
+                ErrorStage::Auth,
+                "device authorization start response missing pollAfterMs",
+                request_id.clone(),
+            )
+        })?),
         expires_in_sec: u64::try_from(seconds_until_expiry).unwrap_or(0),
     })
 }
@@ -222,7 +231,15 @@ fn login_poll_outcome_from_generated(
 ) -> Result<LoginPollOutcome, ApiFailure> {
     match response.outcome {
         Some(types::poll_device_authorization_response::Outcome::Pending(pending)) => {
-            if u64::from(pending.poll_after_ms) > poll_interval_ms {
+            let pending_poll_after_ms = u64::from(pending.poll_after_ms.ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::Auth,
+                    "device authorization poll response missing pollAfterMs",
+                    request_id.clone(),
+                )
+            })?);
+
+            if pending_poll_after_ms > poll_interval_ms {
                 Ok(LoginPollOutcome::SlowDown)
             } else {
                 Ok(LoginPollOutcome::Pending)
@@ -313,9 +330,9 @@ fn auth_user_from_response(
 }
 
 fn user_profile_from_generated(
-    id: String,
-    email: String,
-    display_name: String,
+    id: Option<String>,
+    email: Option<String>,
+    display_name: Option<String>,
     missing_field_prefix: &str,
     request_id: Option<String>,
 ) -> Result<UserProfile, ApiFailure> {
@@ -335,18 +352,17 @@ fn user_profile_from_generated(
 }
 
 fn required_auth_string(
-    value: String,
+    value: Option<String>,
     missing_message: impl Into<String>,
     request_id: Option<String>,
 ) -> Result<String, ApiFailure> {
-    if value.is_empty() {
-        Err(decode_failure(
+    match value {
+        Some(value) if !value.is_empty() => Ok(value),
+        _ => Err(decode_failure(
             ErrorStage::Auth,
             missing_message.into(),
             request_id,
-        ))
-    } else {
-        Ok(value)
+        )),
     }
 }
 
@@ -375,13 +391,11 @@ fn timestamp_to_datetime(
         .and_then(|nanos| chrono::DateTime::from_timestamp(timestamp.seconds, nanos))
 }
 
-fn auth_mode_from_generated(mode: buffa::EnumValue<types::CliAuthMode>) -> Option<String> {
-    match mode.as_known() {
-        Some(types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION) => {
-            Some("browser_session".to_owned())
-        }
-        Some(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
-        Some(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED) | None => None,
+fn auth_mode_from_generated(mode: Option<buffa::EnumValue<types::AuthMode>>) -> Option<String> {
+    match mode.and_then(|mode| mode.as_known()) {
+        Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION) => Some("browser_session".to_owned()),
+        Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN) => Some("bearer_token".to_owned()),
+        Some(types::AuthMode::AUTH_MODE_UNSPECIFIED) | None => None,
     }
 }
 
@@ -424,13 +438,15 @@ mod tests {
     fn auth_mode_from_generated_maps_known_values_to_legacy_strings() {
         assert_eq!(
             [
-                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_BROWSER_SESSION.into()),
-                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into()),
-                auth_mode_from_generated(types::CliAuthMode::CLI_AUTH_MODE_UNSPECIFIED.into()),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION.into(),)),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into(),)),
+                auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_UNSPECIFIED.into(),)),
+                auth_mode_from_generated(None),
             ],
             [
                 Some("browser_session".to_owned()),
                 Some("bearer_token".to_owned()),
+                None,
                 None,
             ]
         );
@@ -439,11 +455,13 @@ mod tests {
     #[test]
     fn login_session_from_generated_maps_start_response() {
         let response = types::StartDeviceAuthorizationResponse {
-            device_code: "device-code-123".to_owned(),
-            user_code: "ABCD1234".to_owned(),
-            verification_url: "https://example.test/device".to_owned(),
-            verification_complete_url: "https://example.test/device?user_code=ABCD1234".to_owned(),
-            poll_after_ms: 5_000,
+            device_code: Some("device-code-123".to_owned()),
+            user_code: Some("ABCD1234".to_owned()),
+            verification_url: Some("https://example.test/device".to_owned()),
+            verification_complete_url: Some(
+                "https://example.test/device?user_code=ABCD1234".to_owned(),
+            ),
+            poll_after_ms: Some(5_000),
             expires_at: buffa::MessageField::some(timestamp(4_102_444_800)),
             ..Default::default()
         };
@@ -471,7 +489,7 @@ mod tests {
         let pending = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
                 Box::new(types::CliPendingDeviceAuthorization {
-                    poll_after_ms: 5_000,
+                    poll_after_ms: Some(5_000),
                     ..Default::default()
                 }),
             )),
@@ -480,7 +498,7 @@ mod tests {
         let slowed = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
                 Box::new(types::CliPendingDeviceAuthorization {
-                    poll_after_ms: 10_000,
+                    poll_after_ms: Some(10_000),
                     ..Default::default()
                 }),
             )),
@@ -504,7 +522,7 @@ mod tests {
             outcome: Some(
                 types::poll_device_authorization_response::Outcome::Authorized(Box::new(
                     types::CliAuthorizedDeviceAuthorization {
-                        access_token: "pat_123".to_owned(),
+                        access_token: Some("pat_123".to_owned()),
                         ..Default::default()
                     },
                 )),
@@ -526,7 +544,7 @@ mod tests {
         let denied = interpret_login_poll_problem(ApiProblem {
             title: "Login Denied".to_owned(),
             detail: "device authorization was denied".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_DENIED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
@@ -538,7 +556,7 @@ mod tests {
         let expired = interpret_login_poll_problem(ApiProblem {
             title: "Login Session Expired".to_owned(),
             detail: "device authorization session expired".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
@@ -566,11 +584,11 @@ mod tests {
     #[test]
     fn whoami_from_generated_maps_session_response() {
         let response = types::GetSessionResponse {
-            auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+            auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
             user: buffa::MessageField::some(types::CliAuthUser {
-                id: "user-1".to_owned(),
-                email: "alice@example.com".to_owned(),
-                display_name: "Alice".to_owned(),
+                id: Some("user-1".to_owned()),
+                email: Some("alice@example.com".to_owned()),
+                display_name: Some("Alice".to_owned()),
                 ..Default::default()
             }),
             active_org_slug: Some("acme".to_owned()),
@@ -599,12 +617,12 @@ mod tests {
     #[test]
     fn refreshed_auth_session_from_generated_maps_refresh_response() {
         let response = types::RefreshSessionResponse {
-            access_token: "session-token-refreshed".to_owned(),
-            auth_mode: types::CliAuthMode::CLI_AUTH_MODE_BEARER_TOKEN.into(),
+            access_token: Some("session-token-refreshed".to_owned()),
+            auth_mode: Some(types::AuthMode::AUTH_MODE_BEARER_TOKEN.into()),
             user: buffa::MessageField::some(types::CliAuthUser {
-                id: "user-1".to_owned(),
-                email: "alice@example.com".to_owned(),
-                display_name: "Alice".to_owned(),
+                id: Some("user-1".to_owned()),
+                email: Some("alice@example.com".to_owned()),
+                display_name: Some("Alice".to_owned()),
                 ..Default::default()
             }),
             active_org_slug: Some("acme".to_owned()),
@@ -638,7 +656,7 @@ mod tests {
         let failure = interpret_login_poll_problem(ApiProblem {
             title: "Login Rate Limited".to_owned(),
             detail: "polling is temporarily rate limited".to_owned(),
-            code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
+            code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
             retryable: true,
             retry_after_ms: Some(10_000),
             stage: ErrorStage::Auth,
@@ -653,7 +671,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Login Rate Limited".to_owned(),
                 detail: "polling is temporarily rate limited".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_LOGIN_RATE_LIMITED,
+                code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
                 retryable: true,
                 retry_after_ms: Some(10_000),
                 stage: ErrorStage::Auth,

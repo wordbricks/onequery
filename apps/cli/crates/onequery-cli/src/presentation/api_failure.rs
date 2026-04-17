@@ -301,7 +301,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Source Not Found".to_owned(),
                 detail: "no source named \"warehouse\" exists".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_SOURCE_NOT_FOUND,
+                code: types::ProblemCode::PROBLEM_CODE_SOURCE_NOT_FOUND,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
@@ -344,7 +344,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Not Logged In".to_owned(),
                 detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -387,7 +387,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Not Logged In".to_owned(),
                 detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -471,7 +471,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Source Not Found".to_owned(),
                 detail: "no source named \"warehouse\" exists".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_SOURCE_NOT_FOUND,
+                code: types::ProblemCode::PROBLEM_CODE_SOURCE_NOT_FOUND,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ResolveSource,
@@ -543,7 +543,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Not Logged In".to_owned(),
                 detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -588,7 +588,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Not Logged In".to_owned(),
                 detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -617,7 +617,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Forbidden".to_owned(),
                 detail: "this account can no longer access the org list".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_FORBIDDEN,
+                code: types::ProblemCode::PROBLEM_CODE_FORBIDDEN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ResolveOrg,
@@ -644,7 +644,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Not Logged In".to_owned(),
                 detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_NOT_LOGGED_IN,
+                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::Auth,
@@ -674,7 +674,7 @@ mod tests {
             ApiFailure::Problem(ApiProblem {
                 title: "Invalid Request".to_owned(),
                 detail: "request body contains invalid fields".to_owned(),
-                code: types::CliProblemCode::CLI_PROBLEM_CODE_INVALID_REQUEST,
+                code: types::ProblemCode::PROBLEM_CODE_INVALID_REQUEST,
                 retryable: false,
                 retry_after_ms: None,
                 stage: ErrorStage::ExecuteQuery,

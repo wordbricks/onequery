@@ -1,74 +1,74 @@
 import type { ProviderType } from "@onequery/db/server";
 import { Result } from "better-result";
 
-import { CliSourceProvider } from "../gen/onequery/cli/v1/source_pb";
+import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import type { CliServiceResult } from "./result";
 import { cliServiceErr } from "./result";
 
-export function toCliSourceProvider(value: ProviderType): CliSourceProvider {
+export function toCliSourceProvider(value: ProviderType): SourceProvider {
   switch (value) {
     case "postgres":
-      return CliSourceProvider.POSTGRES;
+      return SourceProvider.POSTGRES;
     case "supabase":
-      return CliSourceProvider.SUPABASE;
+      return SourceProvider.SUPABASE;
     case "mysql":
-      return CliSourceProvider.MYSQL;
+      return SourceProvider.MYSQL;
     case "mongodb":
-      return CliSourceProvider.MONGODB;
+      return SourceProvider.MONGODB;
     case "bigquery":
-      return CliSourceProvider.BIGQUERY;
+      return SourceProvider.BIGQUERY;
     case "laminar":
-      return CliSourceProvider.LAMINAR;
+      return SourceProvider.LAMINAR;
     case "aws_athena_connector":
-      return CliSourceProvider.AWS_ATHENA_CONNECTOR;
+      return SourceProvider.AWS_ATHENA_CONNECTOR;
     case "ga":
-      return CliSourceProvider.GA;
+      return SourceProvider.GA;
     case "amplitude":
-      return CliSourceProvider.AMPLITUDE;
+      return SourceProvider.AMPLITUDE;
     case "mixpanel":
-      return CliSourceProvider.MIXPANEL;
+      return SourceProvider.MIXPANEL;
     case "posthog":
-      return CliSourceProvider.POSTHOG;
+      return SourceProvider.POSTHOG;
     case "sentry":
-      return CliSourceProvider.SENTRY;
+      return SourceProvider.SENTRY;
     case "github":
-      return CliSourceProvider.GITHUB;
+      return SourceProvider.GITHUB;
     case "linear":
-      return CliSourceProvider.LINEAR;
+      return SourceProvider.LINEAR;
   }
 }
 
 export function fromCliSourceProvider(
-  value: CliSourceProvider
+  value: SourceProvider
 ): CliServiceResult<ProviderType> {
   switch (value) {
-    case CliSourceProvider.POSTGRES:
+    case SourceProvider.POSTGRES:
       return Result.ok("postgres");
-    case CliSourceProvider.SUPABASE:
+    case SourceProvider.SUPABASE:
       return Result.ok("supabase");
-    case CliSourceProvider.MYSQL:
+    case SourceProvider.MYSQL:
       return Result.ok("mysql");
-    case CliSourceProvider.MONGODB:
+    case SourceProvider.MONGODB:
       return Result.ok("mongodb");
-    case CliSourceProvider.BIGQUERY:
+    case SourceProvider.BIGQUERY:
       return Result.ok("bigquery");
-    case CliSourceProvider.LAMINAR:
+    case SourceProvider.LAMINAR:
       return Result.ok("laminar");
-    case CliSourceProvider.AWS_ATHENA_CONNECTOR:
+    case SourceProvider.AWS_ATHENA_CONNECTOR:
       return Result.ok("aws_athena_connector");
-    case CliSourceProvider.GA:
+    case SourceProvider.GA:
       return Result.ok("ga");
-    case CliSourceProvider.AMPLITUDE:
+    case SourceProvider.AMPLITUDE:
       return Result.ok("amplitude");
-    case CliSourceProvider.MIXPANEL:
+    case SourceProvider.MIXPANEL:
       return Result.ok("mixpanel");
-    case CliSourceProvider.POSTHOG:
+    case SourceProvider.POSTHOG:
       return Result.ok("posthog");
-    case CliSourceProvider.SENTRY:
+    case SourceProvider.SENTRY:
       return Result.ok("sentry");
-    case CliSourceProvider.GITHUB:
+    case SourceProvider.GITHUB:
       return Result.ok("github");
-    case CliSourceProvider.LINEAR:
+    case SourceProvider.LINEAR:
       return Result.ok("linear");
     default:
       return cliServiceErr({
