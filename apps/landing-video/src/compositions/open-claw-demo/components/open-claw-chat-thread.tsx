@@ -229,7 +229,7 @@ const AssistantReplyMessageRow: React.FC<AssistantReplyMessageRowProps> = ({
 export const OpenClawChatThread: React.FC<ChatThreadProps> = ({
   sceneState,
 }) => {
-  const { timeline } = sceneState;
+  const { discordThreadScrollY, timeline } = sceneState;
   const chatSequences = [
     {
       from: timeline.userPromptMessage - timeline.windowMount,
@@ -277,7 +277,14 @@ export const OpenClawChatThread: React.FC<ChatThreadProps> = ({
   ] as const;
 
   return (
-    <>
+    <div
+      style={{
+        display: "grid",
+        alignContent: "start",
+        gap: 10,
+        transform: `translateY(${-discordThreadScrollY}px)`,
+      }}
+    >
       {chatSequences.map((chatSequence) => (
         <Sequence
           key={chatSequence.name}
@@ -288,6 +295,6 @@ export const OpenClawChatThread: React.FC<ChatThreadProps> = ({
           {chatSequence.content}
         </Sequence>
       ))}
-    </>
+    </div>
   );
 };

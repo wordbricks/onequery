@@ -20,6 +20,7 @@ export type OpenClawDemoSceneState = {
   fps: number;
   timeline: OpenClawTimeline;
   discordWindowScale: number;
+  discordThreadScrollY: number;
 };
 
 export const buildCommandRenderState = (
@@ -52,6 +53,20 @@ export const buildOpenClawDemoSceneState = (
   fps: number
 ): OpenClawDemoSceneState => {
   const timeline = createOpenClawTimeline(fps);
+  const reportReplyScrollY = interpolateSceneValue(
+    frame,
+    timeline.reportReplyHeader,
+    18,
+    0,
+    22
+  );
+  const reportCardRevealScrollY = interpolateSceneValue(
+    frame,
+    timeline.reportReplyCard,
+    36,
+    0,
+    82
+  );
 
   return {
     frame,
@@ -64,5 +79,8 @@ export const buildOpenClawDemoSceneState = (
       0.985,
       1
     ),
+    // Scroll older messages upward as the second assistant reply expands,
+    // keeping the newest Discord content inside the viewport.
+    discordThreadScrollY: reportReplyScrollY + reportCardRevealScrollY,
   };
 };

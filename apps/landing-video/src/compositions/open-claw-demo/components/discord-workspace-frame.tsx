@@ -13,6 +13,8 @@ import { AvatarBadge } from "./ui";
 
 const discordWindowWidth = 1348;
 const discordWindowHeight = 892;
+const bottomDockBoxHeight = 52;
+const sidebarUserPanelBackground = "#272a2f";
 const relatedServerBadges = [
   { label: "WB", background: "#404249" },
   { label: "AI", background: "#404249" },
@@ -118,6 +120,7 @@ const ChannelSidebar: React.FC<SceneStateProps> = ({ sceneState }) => {
         display: "grid",
         gridTemplateRows: "auto auto 1fr auto",
         gap: 10,
+        minHeight: 0,
       }}
     >
       <div
@@ -221,54 +224,63 @@ const ChannelSidebar: React.FC<SceneStateProps> = ({ sceneState }) => {
 
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "8px 10px",
-          background: "#232428",
+          padding: 8,
         }}
       >
-        <div style={{ position: "relative" }}>
-          <AvatarBadge
-            label="OQ"
-            background={discordAvatarBackgrounds.currentUser}
-            color="#ffffff"
-            size={32}
-          />
-          <span
-            style={{
-              position: "absolute",
-              right: -2,
-              bottom: -2,
-              width: 12,
-              height: 12,
-              borderRadius: 6,
-              background: discordTokens.success,
-              boxShadow: "0 0 0 3px #232428",
-            }}
-          />
-        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            height: bottomDockBoxHeight,
+            padding: "0 10px",
+            borderRadius: 8,
+            background: sidebarUserPanelBackground,
+            boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.03)",
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <AvatarBadge
+              label="OQ"
+              background={discordAvatarBackgrounds.currentUser}
+              color="#ffffff"
+              size={32}
+            />
+            <span
+              style={{
+                position: "absolute",
+                right: -2,
+                bottom: -2,
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                background: discordTokens.success,
+                boxShadow: `0 0 0 3px ${sidebarUserPanelBackground}`,
+              }}
+            />
+          </div>
 
-        <div style={{ display: "grid", gap: 1 }}>
-          <strong
-            style={{
-              color: discordTokens.text,
-              fontSize: 13,
-              fontWeight: 600,
-              lineHeight: 1.2,
-            }}
-          >
-            {discordWorkspace.currentUserName}
-          </strong>
-          <span
-            style={{
-              color: discordTokens.textSoft,
-              fontSize: 11,
-              lineHeight: 1.2,
-            }}
-          >
-            {discordWorkspace.currentUserStatus}
-          </span>
+          <div style={{ display: "grid", gap: 1 }}>
+            <strong
+              style={{
+                color: discordTokens.text,
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.2,
+              }}
+            >
+              {discordWorkspace.currentUserName}
+            </strong>
+            <span
+              style={{
+                color: discordTokens.textSoft,
+                fontSize: 11,
+                lineHeight: 1.2,
+              }}
+            >
+              {discordWorkspace.currentUserStatus}
+            </span>
+          </div>
         </div>
       </div>
     </aside>
@@ -333,6 +345,79 @@ const WorkspaceHeader: React.FC<SceneStateProps> = ({ sceneState }) => {
   );
 };
 
+const ThreadComposer: React.FC<SceneStateProps> = ({ sceneState }) => {
+  const { frame, fps, timeline } = sceneState;
+
+  return (
+    <div
+      style={{
+        ...getFadeSlideInStyle(
+          frame,
+          timeline.threadHeaderEnter + framesFromSeconds(0.08, fps),
+          12,
+          6
+        ),
+        padding: "8px 16px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          height: bottomDockBoxHeight,
+          padding: "0 14px",
+          borderRadius: 8,
+          background: "#383a40",
+          boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.03)",
+        }}
+      >
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            background: "#4e5058",
+            color: discordTokens.textMuted,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            lineHeight: 1,
+          }}
+        >
+          +
+        </div>
+
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            color: discordTokens.textSoft,
+            fontSize: 15,
+            fontWeight: 400,
+          }}
+        >
+          Message #{activeDiscordChannel}
+        </span>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            color: discordTokens.textSoft,
+            fontSize: 16,
+          }}
+        >
+          <span>{"\u2295"}</span>
+          <span>{"\u263A"}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const DiscordWorkspaceFrame: React.FC<DiscordWorkspaceFrameProps> = ({
   children,
   sceneState,
@@ -376,8 +461,9 @@ export const DiscordWorkspaceFrame: React.FC<DiscordWorkspaceFrameProps> = ({
         <main
           style={{
             display: "grid",
-            gridTemplateRows: "52px minmax(0, 1fr)",
+            gridTemplateRows: "52px minmax(0, 1fr) auto",
             minWidth: 0,
+            minHeight: 0,
             background: discordTokens.main,
           }}
         >
@@ -385,15 +471,23 @@ export const DiscordWorkspaceFrame: React.FC<DiscordWorkspaceFrameProps> = ({
 
           <div
             style={{
+              position: "relative",
               minHeight: 0,
-              padding: "12px 24px 14px",
-              display: "grid",
-              alignContent: "start",
-              gap: 10,
+              overflow: "hidden",
             }}
           >
-            {children}
+            <div
+              style={{
+                position: "absolute",
+                inset: "12px 24px 10px",
+                minWidth: 0,
+              }}
+            >
+              {children}
+            </div>
           </div>
+
+          <ThreadComposer sceneState={sceneState} />
         </main>
       </div>
     </div>
