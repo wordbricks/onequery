@@ -15,7 +15,7 @@ export const RemotionRoot: React.FC = () => (
     <Composition
       id="OpenClawDemoVideo"
       component={OpenClawDemoVideo}
-      durationInFrames={270}
+      durationInFrames={600}
       fps={30}
       width={1400}
       height={900}
