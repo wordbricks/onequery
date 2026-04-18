@@ -1,16 +1,13 @@
 import { LANDING_REPOSITORY_URL } from "./landing-config";
-import { createLandingApp } from "./server/app";
+import {
+  createLandingWorkerHandler,
+  LANDING_CONNECT_PATH_PREFIX,
+} from "./server/landing-worker";
+import type { LandingWorkerBindings } from "./server/landing-worker";
 
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response>;
-};
+type LandingWorkerEnv = CloudflareEnv & LandingWorkerBindings;
 
-type LandingWorkerEnv = {
-  ASSETS: AssetFetcher;
-  LANDING_SLACK_WEBHOOK_URL?: string;
-};
-
-const landingApp = createLandingApp();
+const landingWorkerHandler = createLandingWorkerHandler();
 
 // RFC 9727 API catalog for automated discovery.
 const apiCatalogBody = JSON.stringify({
@@ -34,7 +31,11 @@ const apiCatalogBody = JSON.stringify({
 });
 
 export default {
-  async fetch(request: Request, env: LandingWorkerEnv): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: LandingWorkerEnv,
+    ctx: ExecutionContext
+  ): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/.well-known/api-catalog") {
@@ -46,8 +47,8 @@ export default {
       });
     }
 
-    if (url.pathname.startsWith("/api/")) {
-      return landingApp.fetch(request, env);
+    if (url.pathname.startsWith(`${LANDING_CONNECT_PATH_PREFIX}/`)) {
+      return landingWorkerHandler.fetch(request, env, ctx);
     }
 
     return env.ASSETS.fetch(request);

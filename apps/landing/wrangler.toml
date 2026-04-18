@@ -1,0 +1,26 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+
+# Note: This Worker name must match the Cloudflare Worker project name
+# configured in Workers Builds for automatic GitHub deployments.
+name = "onequery-landing"
+main = "./src/worker.ts"
+compatibility_date = "2026-04-14"
+logpush = true
+
+[assets]
+directory = "./dist/client"
+# Keep the runtime binding explicit because src/worker.ts calls env.ASSETS.fetch().
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1

@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
-    "dev:worker": "bunx wrangler dev --config ./wrangler.jsonc",
+    "dev:worker": "bunx wrangler dev",
     "build": "bunx --bun vite build",
-    "deploy": "bun run build && bunx wrangler deploy --config ./wrangler.jsonc",
-    "deploy:preview": "bun run build && bunx wrangler versions upload --config ./wrangler.jsonc",
+    "deploy": "bun run build && bunx wrangler deploy",
+    "deploy:preview": "bun run build && bunx wrangler versions upload",
+    "cf-typegen": "bunx wrangler types worker-configuration.d.ts --env-interface CloudflareEnv",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
@@ -24,7 +25,6 @@
     "@remotion/player": "4.0.448",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
-    "hono": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "remotion": "catalog:"
