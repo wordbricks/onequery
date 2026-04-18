@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bunx --bun vite",
     "dev:worker": "bunx wrangler dev",
-    "build": "bun run --cwd ../../packages/self-host-runtime build && bunx --bun vite build",
+    "build": "bunx --bun vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
@@ -28,7 +28,7 @@
     "remotion": "4.0.448"
   },
   "devDependencies": {
-    "@onequery/self-host-runtime": "workspace:*",
+    "@onequery/installer": "workspace:*",
     "@tanstack/router-plugin": "1.153.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

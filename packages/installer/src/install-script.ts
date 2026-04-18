@@ -3,9 +3,9 @@ import {
   getRuntimeBundleDirectoryConfig,
 } from "@onequery/base/runtime-bundle";
 
-// Comment: release publishes one stable install bundle per Unix platform, so
-// keep the shell bootstrap deterministic and narrowly scoped to download,
-// extract, install, and link.
+// Comment: the public installer is shared by landing and the packaged runtime,
+// so its contract lives in a dedicated package instead of behind a downstream
+// prebuild owned by one consumer.
 const RELEASE_BASE_URL =
   "https://github.com/wordbricks/onequery/releases/latest/download";
 const MANAGED_NODE_VERSION = "24.11.0";

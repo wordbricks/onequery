@@ -253,6 +253,7 @@ local install.
 Current repo validation for the self-host path includes:
 
 - `bun run --cwd apps/cli test`
+- `bun run --cwd packages/installer test`
 - `bun run --cwd packages/self-host-runtime test`
 - `bun run --cwd packages/db typecheck`
 
@@ -264,6 +265,8 @@ Important covered surfaces:
   [`apps/cli/crates/onequery-cli/src/commands/auth/tests.rs`](../apps/cli/crates/onequery-cli/src/commands/auth/tests.rs)
 - packaged self-host smoke:
   [`apps/cli/scripts/self-host-smoke.integration.test.ts`](../apps/cli/scripts/self-host-smoke.integration.test.ts)
+- public installer contract:
+  [`packages/installer/src/install-script.test.ts`](../packages/installer/src/install-script.test.ts)
 - Self-host runtime lifecycle:
   [`packages/self-host-runtime/src/self-host/lifecycle.test.ts`](../packages/self-host-runtime/src/self-host/lifecycle.test.ts)
 - backup archive coverage:

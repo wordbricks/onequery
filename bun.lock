@@ -79,7 +79,7 @@
         "remotion": "4.0.448",
       },
       "devDependencies": {
-        "@onequery/self-host-runtime": "workspace:*",
+        "@onequery/installer": "workspace:*",
         "@tanstack/router-plugin": "1.153.1",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
@@ -241,6 +241,16 @@
         "vitest": "catalog:testing",
       },
     },
+    "packages/installer": {
+      "name": "@onequery/installer",
+      "version": "0.0.0",
+      "dependencies": {
+        "@onequery/base": "workspace:*",
+      },
+      "devDependencies": {
+        "vitest": "catalog:testing",
+      },
+    },
     "packages/openclaw-plugin": {
       "name": "@onequery/openclaw-plugin",
       "version": "0.0.0",
@@ -255,6 +265,7 @@
         "@onequery/cli-server": "workspace:*",
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
+        "@onequery/installer": "workspace:*",
         "@onequery/server": "workspace:*",
         "better-result": "catalog:",
         "hono": "catalog:",
@@ -1024,6 +1035,8 @@
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
 
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
+
+    "@onequery/installer": ["@onequery/installer@workspace:packages/installer"],
 
     "@onequery/landing": ["@onequery/landing@workspace:apps/landing"],
 

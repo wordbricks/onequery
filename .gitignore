@@ -81,3 +81,5 @@ crash.log
 web/.tanstack
 /openai-skills
 /codex-ref
+
+apps/landing-video/build

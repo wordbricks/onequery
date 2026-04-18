@@ -1,11 +1,11 @@
 {
-  "name": "@onequery/config-loader",
+  "name": "@onequery/installer",
   "version": "0.0.0",
   "private": false,
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/install-script.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "smol-toml": "1.6.1"
+    "@onequery/base": "workspace:*"
   },
   "devDependencies": {
     "vitest": "catalog:testing"

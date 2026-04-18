@@ -4,7 +4,7 @@ import {
   createInstallScript,
   INSTALL_SCRIPT_HEADERS,
   INSTALL_SCRIPT_PATH,
-} from "@onequery/self-host-runtime/install-script";
+} from "@onequery/installer";
 import type { Plugin } from "vite";
 
 const VITE_REQUEST_BASE_URL = "http://onequery-landing.local";
@@ -51,8 +51,8 @@ export function createInstallScriptPlugin(): Plugin {
       );
     },
     generateBundle() {
-      // Keep the landing asset sourced from the runtime package so the website
-      // and the runtime-served installer stay byte-for-byte aligned.
+      // Keep the landing asset sourced from the installer package so the
+      // website and the runtime-served installer stay byte-for-byte aligned.
       this.emitFile({
         fileName: asset.fileName,
         source: asset.source,
