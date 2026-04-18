@@ -1,3 +1,4 @@
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
@@ -9,7 +10,17 @@ import { createInstallScriptPlugin } from "./src/lib/vite-install-script";
 
 export default defineConfig(({ command }) => {
   const config = {
-    plugins: [react(), createInstallScriptPlugin()],
+    plugins: [
+      tanstackRouter({
+        autoCodeSplitting: true,
+        generatedRouteTree: "./src/routeTree.gen.ts",
+        routeFileIgnorePattern: "\\.test\\.tsx?$",
+        routesDirectory: "./src/routes",
+        target: "react",
+      }),
+      react(),
+      createInstallScriptPlugin(),
+    ],
     build: {
       outDir: "dist/client",
     },

@@ -1,3 +1,5 @@
+import { ConnectError } from "@connectrpc/connect";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import {
@@ -5,16 +7,7 @@ import {
   trackContactModalOpened,
   trackProductUpdatesSignup,
 } from "./analytics";
-import {
-  getFirstLeadCaptureError,
-  validateContactForm,
-  validateProductUpdatesForm,
-} from "./lead-capture";
-import { submitContactForm, submitProductUpdates } from "./marketing-api";
-
-type ProductUpdatesState = {
-  email: string;
-};
+import { landingClient } from "./lib/connect-client";
 
 type ContactState = {
   email: string;
@@ -28,38 +21,38 @@ const emptyContactState: ContactState = {
   name: "",
 };
 
+function toUserMessage(error: unknown, fallback: string) {
+  if (error instanceof ConnectError) {
+    return error.rawMessage;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export function ProductUpdatesSection() {
-  const [form, setForm] = useState<ProductUpdatesState>({ email: "" });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPending, setIsPending] = useState(false);
+  const [email, setEmail] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    const result = validateProductUpdatesForm(form);
-    if (!result.ok) {
-      setErrorMessage(getFirstLeadCaptureError(result.errors));
-      return;
-    }
-
-    setIsPending(true);
-    try {
-      await submitProductUpdates(result.value);
+  const mutation = useMutation({
+    mutationFn: (input: { email: string }) =>
+      landingClient.subscribeProductUpdates({ email: input.email }),
+    onSuccess(response) {
       trackProductUpdatesSignup();
-      setForm({ email: "" });
-      setSuccessMessage(`We’ll send product updates to ${result.value.email}.`);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to subscribe for product updates"
-      );
-    } finally {
-      setIsPending(false);
-    }
+      setEmail("");
+      setSuccessMessage(`We’ll send product updates to ${response.email}.`);
+    },
+  });
+
+  const errorMessage = mutation.isError
+    ? toUserMessage(mutation.error, "Failed to subscribe for product updates")
+    : null;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSuccessMessage(null);
+    mutation.mutate({ email });
   }
 
   return (
@@ -77,15 +70,15 @@ export function ProductUpdatesSection() {
             placeholder="you@company.com"
             className="marketing-input"
             aria-label="Email address"
-            value={form.email}
-            onChange={(event) => setForm({ email: event.currentTarget.value })}
+            value={email}
+            onChange={(event) => setEmail(event.currentTarget.value)}
           />
           <button
             type="submit"
             className="button button-primary marketing-submit-button"
-            disabled={isPending}
+            disabled={mutation.isPending}
           >
-            {isPending ? "Saving..." : "Notify me"}
+            {mutation.isPending ? "Saving..." : "Notify me"}
           </button>
         </div>
 
@@ -150,33 +143,24 @@ export function FooterContactButton() {
 }
 
 function ContactModal({ onClose }: { onClose: () => void }) {
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [form, setForm] = useState<ContactState>(emptyContactState);
-  const [isPending, setIsPending] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setErrorMessage(null);
-
-    const result = validateContactForm(form);
-    if (!result.ok) {
-      setErrorMessage(getFirstLeadCaptureError(result.errors));
-      return;
-    }
-
-    setIsPending(true);
-    try {
-      await submitContactForm(result.value);
+  const mutation = useMutation({
+    mutationFn: (input: ContactState) => landingClient.submitContact(input),
+    onSuccess() {
       trackContactFormSubmitted();
       setForm(emptyContactState);
       onClose();
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Failed to send message"
-      );
-    } finally {
-      setIsPending(false);
-    }
+    },
+  });
+
+  const errorMessage = mutation.isError
+    ? toUserMessage(mutation.error, "Failed to send message")
+    : null;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    mutation.mutate(form);
   }
 
   return (
@@ -267,9 +251,9 @@ function ContactModal({ onClose }: { onClose: () => void }) {
             <button
               type="submit"
               className="button button-primary contact-modal-submit"
-              disabled={isPending}
+              disabled={mutation.isPending}
             >
-              {isPending ? "Sending..." : "Send message"}
+              {mutation.isPending ? "Sending..." : "Send message"}
             </button>
             {errorMessage ? (
               <p className="marketing-form-feedback marketing-form-feedback-error">

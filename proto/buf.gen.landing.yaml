@@ -2,10 +2,10 @@ version: v2
 clean: true
 plugins:
   - local: protoc-gen-es
-    out: packages/cli-server/src/connect/gen
+    out: apps/landing/src/connect/gen
     include_imports: true
     opt:
       - target=ts
       - import_extension=.js
-    exclude_types:
+    types:
       - onequery.landing.v1
