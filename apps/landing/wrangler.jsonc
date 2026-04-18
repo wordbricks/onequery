@@ -2,10 +2,10 @@
   // Note: This Worker name must match the Cloudflare Worker project name
   // configured in Workers Builds for automatic GitHub deployments.
   "name": "onequery-landing",
-  "main": "./apps/landing/src/worker.ts",
+  "main": "./src/worker.ts",
   "compatibility_date": "2026-04-14",
   "assets": {
-    "directory": "./apps/landing/dist/client",
+    "directory": "./dist/client",
     "not_found_handling": "single-page-application",
   },
 }
