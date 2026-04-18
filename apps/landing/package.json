@@ -15,6 +15,7 @@
     "@bufbuild/protobuf": "catalog:",
     "@bufbuild/protovalidate": "1.1.1",
     "@connectrpc/connect": "catalog:",
+    "@connectrpc/connect-query": "2.2.0",
     "@connectrpc/connect-web": "2.1.1",
     "@connectrpc/validate": "0.2.0",
     "@onequery/landing-video": "workspace:*",

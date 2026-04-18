@@ -1,5 +1,5 @@
 import { ConnectError } from "@connectrpc/connect";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation } from "@connectrpc/connect-query";
 import { useEffect, useState } from "react";
 
 import {
@@ -7,7 +7,7 @@ import {
   trackContactModalOpened,
   trackProductUpdatesSignup,
 } from "./analytics";
-import { landingClient } from "./lib/connect-client";
+import { LandingService } from "./connect/gen/onequery/landing/v1/landing_pb";
 
 type ContactState = {
   email: string;
@@ -35,9 +35,7 @@ export function ProductUpdatesSection() {
   const [email, setEmail] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const mutation = useMutation({
-    mutationFn: (input: { email: string }) =>
-      landingClient.subscribeProductUpdates({ email: input.email }),
+  const mutation = useMutation(LandingService.method.subscribeProductUpdates, {
     onSuccess(response) {
       trackProductUpdatesSignup();
       setEmail("");
@@ -145,8 +143,7 @@ export function FooterContactButton() {
 function ContactModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<ContactState>(emptyContactState);
 
-  const mutation = useMutation({
-    mutationFn: (input: ContactState) => landingClient.submitContact(input),
+  const mutation = useMutation(LandingService.method.submitContact, {
     onSuccess() {
       trackContactFormSubmitted();
       setForm(emptyContactState);
