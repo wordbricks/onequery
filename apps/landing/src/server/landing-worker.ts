@@ -1,14 +1,13 @@
 import { createContextValues } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
 
+import { LANDING_CONNECT_PATH_PREFIX } from "../landing-api";
 import { landingContextKey, registerLandingRoutes } from "./landing-service";
 import { createWorkerHandler } from "./worker-handler";
 
 export interface LandingWorkerBindings {
   LANDING_SLACK_WEBHOOK_URL?: string;
 }
-
-export const LANDING_CONNECT_PATH_PREFIX = "/api" as const;
 
 export function createLandingWorkerHandler() {
   return createWorkerHandler<LandingWorkerBindings>({

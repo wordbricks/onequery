@@ -47,7 +47,27 @@ interface WorkerHandlerOptions<Env> extends ConnectRouterOptions {
   ) => Promise<Response> | Response;
 }
 
-export function createWorkerHandler<Env>(options: WorkerHandlerOptions<Env>) {
+export interface WorkerHandler<Env> {
+  fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response>;
+}
+
+function normalizeRequestPathPrefix(requestPathPrefix?: string) {
+  if (!requestPathPrefix || requestPathPrefix === "/") {
+    return "";
+  }
+
+  if (!requestPathPrefix.startsWith("/")) {
+    throw new Error("requestPathPrefix must start with '/'");
+  }
+
+  return requestPathPrefix.endsWith("/")
+    ? requestPathPrefix.slice(0, -1)
+    : requestPathPrefix;
+}
+
+export function createWorkerHandler<Env>(
+  options: WorkerHandlerOptions<Env>
+): WorkerHandler<Env> {
   const {
     contextValues,
     notFound,
@@ -59,7 +79,7 @@ export function createWorkerHandler<Env>(options: WorkerHandlerOptions<Env>) {
   const router = createConnectRouter(routerOptions);
   routes(router);
 
-  const prefix = requestPathPrefix ?? "";
+  const prefix = normalizeRequestPathPrefix(requestPathPrefix);
   const paths = new Map<string, UniversalHandler>();
   for (const handler of router.handlers) {
     paths.set(prefix + handler.requestPath, handler);

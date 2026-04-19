@@ -49,7 +49,8 @@ async function postToSlack(
   const upstream = await response.text().catch(() => "");
   // Comment: public lead-capture requests should not leak upstream webhook
   // details back to the browser, so worker errors stay generic.
-  console.error("[landing-service] slack webhook error", {
+  console.error({
+    event: "landing_service.slack_webhook_error",
     message: upstream.slice(0, 500),
     status: response.status,
   });

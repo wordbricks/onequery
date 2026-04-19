@@ -60,7 +60,7 @@ function loadGoogleTagManager(measurementId: string) {
   // Comment: external analytics scripts should never break the landing page if
   // a browser, test DOM, or CSP blocks the load.
   try {
-    document.head.append(script);
+    document.head.appendChild(script);
   } catch {
     // Comment: best-effort only; leave the app interactive without GA4.
   }

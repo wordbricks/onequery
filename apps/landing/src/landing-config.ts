@@ -6,10 +6,14 @@ export const LANDING_SECTION_IDS = {
 
 export const LANDING_REPOSITORY_URL =
   "https://github.com/wordbricks/onequery" as const;
+export const LANDING_REPOSITORY_RAW_URL =
+  "https://raw.githubusercontent.com/wordbricks/onequery/main" as const;
 export const LANDING_CLI_SOURCE_URL =
   `${LANDING_REPOSITORY_URL}/tree/main/apps/cli` as const;
 export const LANDING_SELF_HOST_DOCS_URL =
   `${LANDING_REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
+export const LANDING_PROTO_SOURCE_URL =
+  `${LANDING_REPOSITORY_RAW_URL}/proto/onequery/landing/v1/landing.proto` as const;
 export const LANDING_INSTALL_SCRIPT_URL =
   "https://onequery.dev/install.sh" as const;
 
