@@ -1,7 +1,4 @@
-import {
-  ONEQUERY_RUNTIME_ROOT_ENV_VAR,
-  getRuntimeBundleDirectoryConfig,
-} from "@onequery/base/runtime-bundle";
+import runtimeBundleLayoutJson from "@onequery/base/runtime-bundle.json" with { type: "json" };
 
 // Comment: the public installer is shared by landing and the packaged runtime,
 // so its contract lives in a dedicated package instead of behind a downstream
@@ -10,9 +7,10 @@ const RELEASE_BASE_URL =
   "https://github.com/wordbricks/onequery/releases/latest/download";
 const MANAGED_NODE_VERSION = "24.11.0";
 const MANAGED_NODE_DIST_BASE_URL = `https://nodejs.org/dist/v${MANAGED_NODE_VERSION}`;
+const ONEQUERY_RUNTIME_ROOT_ENV_VAR = runtimeBundleLayoutJson.runtimeRootEnvVar;
 
 const CURL_LIKE_USER_AGENT_PATTERN = /\b(curl|wget|httpie)\b/i;
-const PACKAGED_CLI_DIR = getRuntimeBundleDirectoryConfig("cli").relativePath;
+const PACKAGED_CLI_DIR = runtimeBundleLayoutJson.directories.cli.relativePath;
 const MANAGED_NODE_BIN_RELATIVE_PATH = "runtime/node/bin/node";
 const PACKAGED_SERVER_JS_RUNTIME_ENV_VAR = "ONEQUERY_SERVER_JS_RUNTIME";
 export const INSTALL_SCRIPT_PATH = "/install.sh" as const;

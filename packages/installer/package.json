@@ -5,9 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/install-script.ts"
+    ".": {
+      "types": "./src/install-script.ts",
+      "bun": "./src/install-script.ts",
+      "default": "./dist/install-script.js"
+    }
   },
   "scripts": {
+    "build": "bun build src/install-script.ts --outdir dist --target node --format esm",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
