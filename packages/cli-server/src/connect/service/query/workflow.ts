@@ -26,26 +26,28 @@ import type {
   CliQuerySourceRecord,
 } from "../../../domain/workflows";
 import { toCliErrorMessage } from "../../../observability";
-import { buildCliQuerySuccessResponse } from "../../../query/workflow";
-import type {
-  CliQueryExecutionWorkflowResult,
-  CliQueryValidationWorkflowResult,
-  runCliQueryExecutionWorkflow,
-  runCliQueryValidationWorkflow,
-} from "../../../query/workflow";
 import { getCliQueryableDatabaseProviderType } from "../../../source/model";
 import { CliConnectProblem } from "../../error";
 import { createCliServiceProblem } from "../result";
 import type { CliServiceResult } from "../result";
+import type {
+  createCliQueryExecutionDispatch,
+  createCliQueryValidationDispatch,
+} from "./dispatch";
+import { buildCliQuerySuccessResponse } from "./workflow-result";
+import type {
+  CliQueryExecutionWorkflowResult,
+  CliQueryValidationWorkflowResult,
+} from "./workflow-result";
 
 const EFFECT_LEASE_DURATION_MS = 30_000;
 
-type CliQueryExecutionDispatch = Parameters<
-  typeof runCliQueryExecutionWorkflow
->[0]["dispatch"];
-type CliQueryValidationDispatch = Parameters<
-  typeof runCliQueryValidationWorkflow
->[0]["dispatch"];
+type CliQueryExecutionDispatch = ReturnType<
+  typeof createCliQueryExecutionDispatch
+>;
+type CliQueryValidationDispatch = ReturnType<
+  typeof createCliQueryValidationDispatch
+>;
 
 type QueryWorkflowRuntimeBaseInput = {
   actorSnapshot: WorkflowActorSnapshot;

@@ -3,11 +3,6 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliSessionIdentity } from "../../../domain/workflows";
 import { resolveQueryResultWindow } from "../../../query/result-window";
-import type {
-  CliQueryExecutionWorkflowResult,
-  CliQueryValidationWorkflowResult,
-  runCliQueryExecutionWorkflow,
-} from "../../../query/workflow";
 import {
   QueryLogicalType,
   ExecuteQueryResponseSchema,
@@ -15,6 +10,10 @@ import {
 } from "../../gen/onequery/cli/v1/query_pb";
 import { CliSourceSchema } from "../../gen/onequery/cli/v1/source_pb";
 import type { CliHonoContext } from "../types";
+import type {
+  CliQueryExecutionWorkflowResult,
+  CliQueryValidationWorkflowResult,
+} from "./workflow-result";
 
 type CliQueryRequest = {
   orgSlug: string;
@@ -34,7 +33,7 @@ export type CliQueryValidationFailure = Exclude<
 >;
 
 export type CliQueryExecutionSuccess = Extract<
-  Awaited<ReturnType<typeof runCliQueryExecutionWorkflow>>,
+  CliQueryExecutionWorkflowResult,
   { kind: "response_ready" }
 >;
 

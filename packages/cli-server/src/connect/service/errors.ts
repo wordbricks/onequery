@@ -1,8 +1,8 @@
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 
 import type { CliQueryPlanResult } from "../../domain/workflows";
-import type { CliQueryExecutionWorkflowResult } from "../../query/workflow";
 import { createCliConnectProblem } from "../error";
+import type { CliQueryExecutionWorkflowResult } from "./query/workflow-result";
 
 export function createCliConnectSourceNotFoundProblem(
   orgSlug: string,

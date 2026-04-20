@@ -105,6 +105,10 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - the public API and UI read only V2 projection rows
   - superseded V1 schema, logging, and read-path dependencies are deleted from production code
+- [x] Finish the in-place CLI query replacement.
+  Exit criteria:
+  - active query service code no longer imports the superseded `packages/cli-server/src/query/workflow.ts` module
+  - superseded query workflow tests and snapshots are deleted
 
 ## Definition Of Done
 
