@@ -89,7 +89,7 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - command journaling, event append, fold update, and outbox emission are atomic
   - every family event table has a strict per-family `commit_position`
-- [ ] Port `query_action`.
+- [x] Port `query_action`.
   Exit criteria:
   - every query lifecycle outcome is represented as commands and events
   - V1-style observer logging is removed from the workflow path

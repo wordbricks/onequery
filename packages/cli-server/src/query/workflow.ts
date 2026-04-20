@@ -940,7 +940,7 @@ function planCliQuery(input: {
   };
 }
 
-function buildCliQuerySuccessResponse(input: {
+export function buildCliQuerySuccessResponse(input: {
   source: CliQuerySourceRecord;
   rows: Record<string, unknown>[];
   elapsedMs: number;
