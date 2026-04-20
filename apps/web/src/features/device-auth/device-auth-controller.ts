@@ -7,10 +7,14 @@ import { buildDeviceAuthPath, DEVICE_ROUTE } from "@/lib/app-routes";
 
 import {
   deviceAuthMachine,
+  readDeviceAuthErrorMessage,
+  readDeviceAuthResult,
   readNavigationErrorMessage,
+  submitDeviceDecisionRequest,
   readPanelView,
   readSessionEmail,
   readSessionSnapshot,
+  verifyDeviceRequest,
 } from "./device-auth-machine";
 import type { DevicePanelView, DeviceResult } from "./device-auth-machine";
 import { getPanelMeta } from "./device-auth-ui";
@@ -53,22 +57,26 @@ export function useDeviceAuthController(): DeviceAuthController {
     actorRef,
     (snapshot) => snapshot.context.activeUserCode
   );
-  const errorMessage = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.error
-  );
-  const result = useSelector(actorRef, (snapshot) => snapshot.context.result);
+  const errorMessage = useSelector(actorRef, readDeviceAuthErrorMessage);
+  const result = useSelector(actorRef, readDeviceAuthResult);
   const sessionEmail = useSelector(actorRef, readSessionEmail);
   const navigation = useSelector(
     actorRef,
     (snapshot) => snapshot.context.navigation
   );
-  const decisionAction = useSelector(
+  const pendingVerification = useSelector(
     actorRef,
-    (snapshot) => snapshot.context.decisionAction
+    (snapshot) => snapshot.context.pendingVerification
+  );
+  const pendingDecision = useSelector(
+    actorRef,
+    (snapshot) => snapshot.context.pendingDecision
   );
   const isPendingFlow = useSelector(actorRef, (snapshot) =>
     snapshot.matches("pending")
+  );
+  const isVerifying = useSelector(actorRef, (snapshot) =>
+    snapshot.matches("verifying")
   );
   const isSubmittingDecision = useSelector(actorRef, (snapshot) =>
     snapshot.matches({ pending: "submittingDecision" })
@@ -85,6 +93,40 @@ export function useDeviceAuthController(): DeviceAuthController {
   }, [actorRef, requestedUserCode]);
 
   useEffect(() => {
+    if (!isVerifying || pendingVerification === null) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    void verifyDeviceRequest(pendingVerification.userCode).then((result) => {
+      if (isCancelled) {
+        return;
+      }
+
+      if (result.isErr()) {
+        actorRef.send({
+          message: result.error.message,
+          requestId: pendingVerification.requestId,
+          type: "deviceAuth/verificationFailed",
+        });
+        return;
+      }
+
+      actorRef.send({
+        requestId: pendingVerification.requestId,
+        status: result.value.status,
+        type: "deviceAuth/verificationSucceeded",
+        userCode: result.value.userCode,
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [actorRef, isVerifying, pendingVerification]);
+
+  useEffect(() => {
     if (!isPendingFlow) {
       return;
     }
@@ -99,6 +141,44 @@ export function useDeviceAuthController(): DeviceAuthController {
       type: "deviceAuth/sessionSynced",
     });
   }, [actorRef, auth.session?.user.email, isPendingFlow]);
+
+  useEffect(() => {
+    if (!isSubmittingDecision || pendingDecision === null) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    void submitDeviceDecisionRequest({
+      action: pendingDecision.action,
+      userCode: pendingDecision.userCode,
+    }).then((result) => {
+      if (isCancelled) {
+        return;
+      }
+
+      if (result.isErr()) {
+        actorRef.send({
+          message: result.error.message,
+          requestId: pendingDecision.requestId,
+          type: "deviceAuth/decisionFailed",
+        });
+        return;
+      }
+
+      actorRef.send({
+        message: result.value.message,
+        requestId: pendingDecision.requestId,
+        title: result.value.title,
+        tone: result.value.tone,
+        type: "deviceAuth/decisionSucceeded",
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [actorRef, isSubmittingDecision, pendingDecision]);
 
   useEffect(() => {
     if (navigation === null || navigation.phase !== "pending") {
@@ -151,8 +231,10 @@ export function useDeviceAuthController(): DeviceAuthController {
     activeUserCode,
     errorMessage,
     inputCode,
-    isSubmittingApprove: isSubmittingDecision && decisionAction === "approve",
-    isSubmittingDeny: isSubmittingDecision && decisionAction === "deny",
+    isSubmittingApprove:
+      isSubmittingDecision && pendingDecision?.action === "approve",
+    isSubmittingDeny:
+      isSubmittingDecision && pendingDecision?.action === "deny",
     onboardingOrganizationId,
     onApprove: () => {
       actorRef.send({ type: "deviceAuth/approve" });

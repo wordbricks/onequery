@@ -43,6 +43,8 @@ test-results/
 *.tsbuildinfo
 __pycache__/
 *.py[cod]
+.wrangler/
+.dev.vars*
 
 .reports
 .claude/settings.local.json
@@ -69,7 +71,7 @@ dash/
 .envrc
 
 /insights-agent
-.tmp/
+.tmp
 
 # Terraform
 **/.terraform/*
@@ -81,3 +83,5 @@ crash.log
 web/.tanstack
 /openai-skills
 /codex-ref
+
+apps/landing-video/build

@@ -1,17 +1,6 @@
-import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import { readTomlFileSync } from "@onequery/config-loader";
-import type { TomlFileData } from "@onequery/config-loader";
 import { z } from "zod";
 
 import { sharedSecretSectionsSchema } from "./shared-secrets";
-
-const defaultRootDir = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../.."
-);
 
 const WORKSPACE_DEV_DATABASE_HOST = "localhost";
 const nonEmptyStringSchema = z.string().trim().min(1);
@@ -93,14 +82,13 @@ export const workspaceDevConfigSchema = z
 
 export const workspaceDevSecretsSchema = sharedSecretSectionsSchema;
 
+export type WorkspaceDevConfigFile = z.output<typeof workspaceDevConfigSchema>;
+export type WorkspaceDevSecretsFile = z.output<
+  typeof workspaceDevSecretsSchema
+>;
+
 export const WORKSPACE_DEV_CONFIG_FILENAME = "onequery.dev.toml";
 export const WORKSPACE_DEV_SECRETS_FILENAME = "onequery.dev.secrets.toml";
-
-export interface WorkspaceDevPaths {
-  readonly configPath: string;
-  readonly rootDir: string;
-  readonly secretsPath: string;
-}
 
 export interface WorkspaceDevBrowserConfig {
   readonly host: string;
@@ -144,15 +132,32 @@ export interface ResolvedWorkspaceDevConfig {
   readonly flags: {
     readonly disableRateLimit: boolean;
   };
-  readonly paths: WorkspaceDevPaths;
   readonly postgres: WorkspaceDevPostgresConfig;
   readonly profile: "workspace-dev";
   readonly publicOrigin: string;
 }
 
-export interface ResolveWorkspaceDevOptions {
-  readonly rootDir?: string;
+export type WorkspaceDevParseSource = "config" | "secrets";
+
+export interface WorkspaceDevParseIssue {
+  readonly message: string;
+  readonly path: readonly PropertyKey[];
+  readonly source: WorkspaceDevParseSource;
 }
+
+export interface WorkspaceDevParseError {
+  readonly issues: readonly WorkspaceDevParseIssue[];
+}
+
+export type ParseWorkspaceDevResult =
+  | {
+      readonly ok: true;
+      readonly value: ResolvedWorkspaceDevConfig;
+    }
+  | {
+      readonly error: WorkspaceDevParseError;
+      readonly ok: false;
+    };
 
 function createHttpOrigin(host: string, port: number): string {
   return `http://${host}:${port}`;
@@ -168,131 +173,114 @@ function createPostgresUrl(input: {
   return `postgres://${input.user}:${input.password}@${input.host}:${input.port}/${input.database}`;
 }
 
-function readOptionalTomlFile(path: string): TomlFileData {
-  return existsSync(path) ? readTomlFileSync(path) : {};
-}
-
-function formatIssuePath(path: readonly PropertyKey[]): string {
+export function formatWorkspaceDevIssuePath(
+  path: readonly PropertyKey[]
+): string {
   return path.length === 0
     ? "(root)"
     : path.map((entry) => String(entry)).join(".");
 }
 
-function buildWorkspaceDevError(
-  error: z.ZodError,
-  input: {
-    readonly paths: WorkspaceDevPaths;
-    readonly sourceLabel: "Config" | "Secrets";
-    readonly sourcePath: string;
-  }
-): Error {
-  const issues = error.issues.map(
-    (issue) => `- ${formatIssuePath(issue.path)}: ${issue.message}`
-  );
-
-  return new Error(
-    [
-      "Invalid workspace-dev config.",
-      `Config: ${input.paths.configPath}`,
-      `Secrets: ${input.paths.secretsPath}`,
-      `${input.sourceLabel}: ${input.sourcePath}`,
-      ...issues,
-    ].join("\n")
-  );
-}
-
-export function resolveWorkspaceDevPaths(
-  rootDir: string = defaultRootDir
-): WorkspaceDevPaths {
-  return {
-    configPath: resolve(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-    rootDir,
-    secretsPath: resolve(rootDir, WORKSPACE_DEV_SECRETS_FILENAME),
-  };
-}
-
-export function resolveWorkspaceDev(
-  input: ResolveWorkspaceDevOptions = {}
-): ResolvedWorkspaceDevConfig {
-  const paths = resolveWorkspaceDevPaths(input.rootDir);
-  const parsedConfig = workspaceDevConfigSchema.safeParse(
-    readOptionalTomlFile(paths.configPath)
-  );
-
-  if (!parsedConfig.success) {
-    throw buildWorkspaceDevError(parsedConfig.error, {
-      paths,
-      sourceLabel: "Config",
-      sourcePath: paths.configPath,
-    });
-  }
-
-  const parsedSecrets = workspaceDevSecretsSchema.safeParse(
-    readOptionalTomlFile(paths.secretsPath)
-  );
-
-  if (!parsedSecrets.success) {
-    throw buildWorkspaceDevError(parsedSecrets.error, {
-      paths,
-      sourceLabel: "Secrets",
-      sourcePath: paths.secretsPath,
-    });
-  }
-
-  const parsed = {
-    ...parsedConfig.data,
-    ...parsedSecrets.data,
-  };
-
+function buildResolvedWorkspaceDevConfig(input: {
+  readonly config: WorkspaceDevConfigFile;
+  readonly secrets: WorkspaceDevSecretsFile;
+}): ResolvedWorkspaceDevConfig {
   const browser = {
-    host: parsed.browser.host,
-    origin: createHttpOrigin(parsed.browser.host, parsed.browser.port),
-    port: parsed.browser.port,
+    host: input.config.browser.host,
+    origin: createHttpOrigin(
+      input.config.browser.host,
+      input.config.browser.port
+    ),
+    port: input.config.browser.port,
   };
   const api = {
-    host: parsed.api.host,
+    host: input.config.api.host,
     listen: {
-      host: parsed.api.host,
-      port: parsed.api.port,
+      host: input.config.api.host,
+      port: input.config.api.port,
     },
-    origin: createHttpOrigin(parsed.api.host, parsed.api.port),
-    port: parsed.api.port,
+    origin: createHttpOrigin(input.config.api.host, input.config.api.port),
+    port: input.config.api.port,
   };
   const postgres = {
-    containerPort: parsed.postgres.container_port,
-    database: parsed.postgres.database,
+    containerPort: input.config.postgres.container_port,
+    database: input.config.postgres.database,
     host: WORKSPACE_DEV_DATABASE_HOST,
-    hostPort: parsed.postgres.host_port,
-    password: parsed.postgres.password,
-    portBinding: `${parsed.postgres.host_port}:${parsed.postgres.container_port}`,
+    hostPort: input.config.postgres.host_port,
+    password: input.config.postgres.password,
+    portBinding: `${input.config.postgres.host_port}:${input.config.postgres.container_port}`,
     url: createPostgresUrl({
-      database: parsed.postgres.database,
+      database: input.config.postgres.database,
       host: WORKSPACE_DEV_DATABASE_HOST,
-      password: parsed.postgres.password,
-      port: parsed.postgres.host_port,
-      user: parsed.postgres.user,
+      password: input.config.postgres.password,
+      port: input.config.postgres.host_port,
+      user: input.config.postgres.user,
     }),
-    user: parsed.postgres.user,
+    user: input.config.postgres.user,
   };
 
   return {
     api,
     auth: {
-      secret: parsed.auth.secret,
+      secret: input.secrets.auth.secret,
     },
     browser,
     connectors: {
-      enrollmentToken: parsed.connectors.enrollment_token,
+      enrollmentToken: input.secrets.connectors.enrollment_token,
     },
     crypto: {
-      masterEncryptionKey: parsed.crypto.master_encryption_key,
+      masterEncryptionKey: input.secrets.crypto.master_encryption_key,
     },
     flags: {
-      disableRateLimit: parsed.flags.disable_rate_limit,
+      disableRateLimit: input.config.flags.disable_rate_limit,
     },
-    paths,
     postgres,
     profile: "workspace-dev",
     publicOrigin: browser.origin,
+  };
+}
+
+function toWorkspaceDevParseIssues(
+  source: WorkspaceDevParseSource,
+  error: z.ZodError
+): WorkspaceDevParseIssue[] {
+  return error.issues.map((issue) => ({
+    message: issue.message,
+    path: issue.path,
+    source,
+  }));
+}
+
+export function parseWorkspaceDev(input: {
+  readonly config: unknown;
+  readonly secrets: unknown;
+}): ParseWorkspaceDevResult {
+  const parsedConfig = workspaceDevConfigSchema.safeParse(input.config);
+  const parsedSecrets = workspaceDevSecretsSchema.safeParse(input.secrets);
+  if (!parsedConfig.success || !parsedSecrets.success) {
+    const issues: WorkspaceDevParseIssue[] = [];
+
+    if (!parsedConfig.success) {
+      issues.push(...toWorkspaceDevParseIssues("config", parsedConfig.error));
+    }
+
+    if (!parsedSecrets.success) {
+      issues.push(...toWorkspaceDevParseIssues("secrets", parsedSecrets.error));
+    }
+
+    return {
+      error: {
+        issues,
+      },
+      ok: false,
+    };
+  }
+
+  return {
+    ok: true,
+    value: buildResolvedWorkspaceDevConfig({
+      config: parsedConfig.data,
+      secrets: parsedSecrets.data,
+    }),
   };
 }

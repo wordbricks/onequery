@@ -661,9 +661,16 @@ async function seedPendingSourceApiAction(input: {
 
 describe("organizations audit route", () => {
   it("projects mixed-family actions, paginates by startedAt, filters on projection fields, and rebuilds after truncation", async () => {
-    const { client, db, test } = await createRouteIntegrationHarness({
+    const harness = await createRouteIntegrationHarness({
       databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-"),
     });
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { client, db, test } = harness.value;
 
     const runId = createRunId();
     const owner = test.createUser({
@@ -922,9 +929,16 @@ describe("organizations audit route", () => {
   });
 
   it("rejects unauthenticated and unauthorized audit reads and returns 404 for unknown orgs", async () => {
-    const { client, db, test } = await createRouteIntegrationHarness({
+    const harness = await createRouteIntegrationHarness({
       databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-access-"),
     });
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { client, db, test } = harness.value;
 
     const runId = createRunId();
     const owner = test.createUser({

@@ -81,11 +81,15 @@ describe("self-host bootstrap", () => {
 
   it("completes the first-run bootstrap flow and creates the initial owner organization", async () => {
     const runtimeConfig = await createTestRuntimeConfig();
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
     const storage = createServerStorage(
-      runtimeConfig,
+      runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig, storage });
+    const app = createServerApi({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -147,11 +151,15 @@ describe("self-host bootstrap", () => {
 
   it("blocks public signup after bootstrap but allows signup for pending invitation emails", async () => {
     const runtimeConfig = await createTestRuntimeConfig();
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
     const storage = createServerStorage(
-      runtimeConfig,
+      runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig, storage });
+    const app = createServerApi({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -263,11 +271,15 @@ describe("self-host bootstrap", () => {
 
   it("cleans up partially created bootstrap organizations when the auth response is malformed", async () => {
     const runtimeConfig = await createTestRuntimeConfig();
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
     const storage = createServerStorage(
-      runtimeConfig,
+      runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig, storage });
+    const app = createServerApi({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -334,11 +346,15 @@ describe("self-host bootstrap", () => {
 
   it("allows zero-org users to create a new organization after invite-only signup", async () => {
     const runtimeConfig = await createTestRuntimeConfig();
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
     const storage = createServerStorage(
-      runtimeConfig,
+      runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig, storage });
+    const app = createServerApi({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 

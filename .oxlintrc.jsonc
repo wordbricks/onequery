@@ -222,7 +222,6 @@
     "packages/cli-contract/openapi/generated/cli.openapi.json",
     "**/routeTree.gen.ts",
     "packages/ui/src/components/ui",
-    "packages/ui/src/hooks",
     "**/*.md",
   ],
   "overrides": [

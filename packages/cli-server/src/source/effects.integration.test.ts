@@ -11,8 +11,8 @@ import {
   prepareApplicationDatabase,
 } from "@onequery/db/server";
 import {
-  decryptCredentialsObject,
-  deriveKeyFromBase64,
+  decryptCredentialsObjectResult,
+  deriveKeyFromBase64Result,
   generateMasterKey,
 } from "@onequery/server/services/crypto/credential-encryption";
 import { afterEach, describe, expect, it } from "vitest";
@@ -51,6 +51,15 @@ async function createTestDb() {
   return createDb(connectionString);
 }
 
+function expectValidMasterKey(value: string): Uint8Array {
+  const parsed = deriveKeyFromBase64Result(value);
+  if (parsed.isErr()) {
+    throw new Error(`Expected valid master key: ${parsed.error.message}`);
+  }
+
+  return parsed.value;
+}
+
 describe("runCliConnectSourceEffect", () => {
   const openedDatabases: ClosableDatabase[] = [];
 
@@ -72,7 +81,7 @@ describe("runCliConnectSourceEffect", () => {
     });
 
     const masterEncryptionKey = generateMasterKey();
-    const masterKey = deriveKeyFromBase64(masterEncryptionKey);
+    const masterKey = expectValidMasterKey(masterEncryptionKey);
     const result = await runCliConnectSourceEffect({
       db,
       effect: {
@@ -114,14 +123,21 @@ describe("runCliConnectSourceEffect", () => {
     expect(persisted?.provider).toBe("postgres");
     expect(persisted?.credentialsEncrypted).toBeTruthy();
     expect(persisted?.credentialsIv).toBeTruthy();
-    expect(
-      decryptCredentialsObject(
-        persisted?.credentialsEncrypted ?? "",
-        persisted?.credentialsIv ?? "",
-        masterKey,
-        CredentialsSchema
-      )
-    ).toMatchObject({
+    const decrypted = decryptCredentialsObjectResult(
+      persisted?.credentialsEncrypted ?? "",
+      persisted?.credentialsIv ?? "",
+      masterKey,
+      CredentialsSchema
+    );
+
+    expect(decrypted.isOk()).toBe(true);
+    if (decrypted.isErr()) {
+      throw new Error(
+        `Expected valid persisted credentials: ${decrypted.error.message}`
+      );
+    }
+
+    expect(decrypted.value).toMatchObject({
       database: "analytics",
       type: "postgres",
       username: "postgres",

@@ -47,7 +47,7 @@ Desktop layout:
 Children:
 
 1. `a.brand-tile`
-- Links to `LANDING_REPOSITORY_URL`
+- Links to `REPOSITORY_URL`
 - Two-line stacked label:
   - `ONEQUERY`
   - `CLI`
@@ -55,8 +55,8 @@ Children:
 
 2. `nav.site-nav`
 - Horizontal auto-flow grid on desktop
-- Contains three in-page hash links from `LANDING_SECTION_IDS`
-- Adds one external `SOURCE` link to `LANDING_CLI_SOURCE_URL`
+- Contains three in-page hash links from `SECTION_IDS`
+- Adds one external `SOURCE` link to `CLI_SOURCE_URL`
 
 3. `a.header-cta`
 - External link to GitHub repository
@@ -139,10 +139,10 @@ div.download-command
 ```
 
 Behavior:
-- Copies `LANDING_DOWNLOAD_COMMAND`
+- Copies `DOWNLOAD_COMMAND`
 - Shows `⧉` by default
 - Temporarily changes to `COPIED`
-- Resets after `LANDING_COPY_FEEDBACK_RESET_DELAY_MS`
+- Resets after `COPY_FEEDBACK_RESET_DELAY_MS`
 
 Visual treatment:
 - Dark shell on blue hero
@@ -245,9 +245,9 @@ Left column:
 
 Right column:
 - Kicker: `QUICKSTART`
-- Preformatted install snippet from `LANDING_INSTALL_SNIPPET`
+- Preformatted install snippet from `INSTALL_SNIPPET`
 
-`LANDING_INSTALL_SNIPPET` currently expands to:
+`INSTALL_SNIPPET` currently expands to:
 - `curl -fsSL https://onequery.dev/install.sh | sh`
 - `onequery gateway`
 - `onequery config set server http://127.0.0.1:5656`

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app";
 
 function createTestApp() {
+  const runtime = createTestRuntimeConfig();
   const spaAssets = {
     fetch: vi.fn(
       async () =>
@@ -15,9 +16,17 @@ function createTestApp() {
     ),
   };
 
+  expect(runtime.isOk()).toBe(true);
+  if (runtime.isErr()) {
+    return {
+      app: null,
+      spaAssets,
+    };
+  }
+
   return {
     app: createApp({
-      runtime: createTestRuntimeConfig(),
+      runtime: runtime.value,
       spaAssets,
     }),
     spaAssets,
@@ -34,6 +43,9 @@ describe("runtime app", () => {
   it("serves the SPA shell and API routes from the same app", async () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
+    if (!app) {
+      return;
+    }
     const rootResponse = await app.fetch(new Request("http://local/"));
     const healthResponse = await app.fetch(
       new Request("http://local/api/health")
@@ -54,6 +66,9 @@ describe("runtime app", () => {
   it("returns an API 404 instead of the SPA shell for missing API paths", async () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
+    if (!app) {
+      return;
+    }
     const response = await app.fetch(new Request("http://local/api/missing"));
 
     expect(response.status).toBe(404);
@@ -64,6 +79,9 @@ describe("runtime app", () => {
   it("falls back to the SPA shell for non-api client routes", async () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
+    if (!app) {
+      return;
+    }
     const response = await app.fetch(
       new Request("http://local/settings/profile")
     );
@@ -76,6 +94,9 @@ describe("runtime app", () => {
   it("serves the installer script for curl-like root requests before the SPA shell", async () => {
     console.log = () => {};
     const { app, spaAssets } = createTestApp();
+    if (!app) {
+      return;
+    }
     const response = await app.fetch(
       new Request("http://local/", {
         headers: {

@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "catalog:",
-    "@bufbuild/protovalidate": "1.1.1",
+    "@bufbuild/protovalidate": "catalog:",
     "@connectrpc/connect": "catalog:",
     "@connectrpc/connect-node": "catalog:",
-    "@connectrpc/validate": "0.2.0",
+    "@connectrpc/validate": "catalog:",
     "@hono/node-server": "catalog:",
     "@onequery/base": "workspace:*",
     "@onequery/codecs": "workspace:*",

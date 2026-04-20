@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Comment: this Vite SPA still needs index.html as its document shell,
+    and the public SEO/share tags stay here until the landing app adopts SSR or
+    prerendering. TanStack Router can manage head tags in a client-only SPA,
+    but crawlers and link unfurlers often only see the initial HTML. -->
     <meta name="theme-color" content="#ffffff" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="application-name" content="OneQuery" />

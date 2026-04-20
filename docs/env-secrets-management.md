@@ -15,12 +15,15 @@ development now starts from authored config files and derived projections only.
 
 ### Workspace Dev
 
-Workspace development is owned by `@onequery/config`:
+Workspace development is split across a pure config core and an explicit Node
+shell:
 
 - `onequery.dev.toml`: tracked browser/API/Postgres defaults
 - `onequery.dev.secrets.toml`: untracked local secrets
-- `packages/config/src/workspace-dev.ts`: resolver and validation
+- `packages/config/src/workspace-dev.ts`: schema, validation, and normalization
 - `packages/config/src/projections/*`: Vite, Docker, and Drizzle projections
+- `packages/config-node/src/workspace-dev.ts`: filesystem-backed loader
+- `packages/config-node/src/workspace-dev-init.ts`: local secrets bootstrap
 
 `bun dev` uses this profile only.
 
@@ -36,7 +39,7 @@ Flow:
 onequery.dev.toml + onequery.dev.secrets.toml
                 |
                 v
-    packages/config resolveWorkspaceDev()
+      packages/config-node loadWorkspaceDev()
                 |
                 +--> Vite projection
                 +--> Docker projection

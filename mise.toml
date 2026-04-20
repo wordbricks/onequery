@@ -6,8 +6,8 @@
 "aqua:mitsuhiko/insta" = "1.47.1"
 "cargo:cargo-expand" = "1.0.121"
 "cargo:cargo-nextest" = "0.9.132"
-"npm:@antfu/ni" = "30.0.0"
 "npm:agent-browser" = "0.25.5"
+"npm:@antfu/ni" = "30.0.0"
 "npm:@hono/cli" = "0.1.10"
 
 [settings]

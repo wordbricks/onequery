@@ -1,8 +1,3 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
 
 import { projectDockerComposeConfig } from "./projections/docker";
@@ -12,404 +7,201 @@ import { projectViteDevServerConfig } from "./projections/vite";
 import { deriveTestProfile } from "./test-profile";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
 import {
-  resolveWorkspaceDev,
-  WORKSPACE_DEV_CONFIG_FILENAME,
-  WORKSPACE_DEV_SECRETS_FILENAME,
+  formatWorkspaceDevIssuePath,
+  parseWorkspaceDev,
 } from "./workspace-dev";
+import type { ParseWorkspaceDevResult } from "./workspace-dev";
 
-const repoRootDir = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../.."
-);
-
-function createTempRootDir(): string {
-  return mkdtempSync(join(tmpdir(), "onequery-config-"));
+function createValidWorkspaceDevInput(): {
+  config: {
+    api: {
+      host: string;
+      port: number;
+    };
+    browser: {
+      host: string;
+      port: number;
+    };
+    flags: {
+      disable_rate_limit: boolean;
+    };
+    postgres: {
+      container_port: number;
+      database: string;
+      host_port: number;
+      password: string;
+      user: string;
+    };
+  };
+  secrets: {
+    auth: {
+      secret: string;
+    };
+    connectors: {
+      enrollment_token: string;
+    };
+    crypto: {
+      master_encryption_key: string;
+    };
+  };
+} {
+  return {
+    config: {
+      api: {
+        host: "127.0.0.1",
+        port: 4601,
+      },
+      browser: {
+        host: "127.0.0.1",
+        port: 4600,
+      },
+      flags: {
+        disable_rate_limit: false,
+      },
+      postgres: {
+        container_port: 5433,
+        database: "workspace",
+        host_port: 6500,
+        password: "secret",
+        user: "workspace",
+      },
+    },
+    secrets: {
+      auth: {
+        secret: "workspace-auth-secret",
+      },
+      connectors: {
+        enrollment_token: "workspace-connector-token",
+      },
+      crypto: {
+        master_encryption_key: SAMPLE_MASTER_ENCRYPTION_KEY,
+      },
+    },
+  };
 }
 
-function writeToml(
-  rootDir: string,
-  filename: string,
-  lines: readonly string[]
-): void {
-  writeFileSync(join(rootDir, filename), `${lines.join("\n")}\n`, "utf8");
-}
-
-function writeDefaultWorkspaceDevSecrets(rootDir: string): void {
-  writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-    "[auth]",
-    'secret = "better-auth-secret"',
-    "",
-    "[crypto]",
-    `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
-    "",
-    "[connectors]",
-    'enrollment_token = "connector-token"',
-  ]);
-}
-
-function writeTrackedWorkspaceDevConfig(rootDir: string): void {
-  writeFileSync(
-    join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
-    readFileSync(join(repoRootDir, WORKSPACE_DEV_CONFIG_FILENAME), "utf8"),
-    "utf8"
-  );
-}
-
-function normalizeSnapshotValue(value: unknown, rootDir: string): unknown {
-  if (typeof value === "string") {
-    return value.replaceAll(rootDir, "<rootDir>");
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => normalizeSnapshotValue(entry, rootDir));
-  }
-
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        normalizeSnapshotValue(entry, rootDir),
-      ])
+function expectParseSuccess(
+  result: ParseWorkspaceDevResult
+): NonNullable<ParseWorkspaceDevResult & { ok: true }>["value"] {
+  if (!result.ok) {
+    throw new Error(
+      `Expected workspace-dev parse success, got issues: ${JSON.stringify(result.error.issues)}`
     );
   }
 
-  return value;
+  return result.value;
+}
+
+function expectParseFailure(
+  result: ParseWorkspaceDevResult
+): NonNullable<ParseWorkspaceDevResult & { ok: false }>["error"]["issues"] {
+  if (result.ok) {
+    throw new Error("Expected workspace-dev parse failure.");
+  }
+
+  return result.error.issues;
 }
 
 describe("@onequery/config workspace-dev", () => {
-  it("resolves workspace-dev values from the tracked dev config file", () => {
-    const rootDir = createTempRootDir();
+  it("parses workspace-dev config and produces stable projections", () => {
+    const workspaceDev = expectParseSuccess(
+      parseWorkspaceDev(createValidWorkspaceDevInput())
+    );
 
-    try {
-      writeTrackedWorkspaceDevConfig(rootDir);
-      writeDefaultWorkspaceDevSecrets(rootDir);
+    expect(workspaceDev).toMatchObject({
+      api: {
+        listen: {
+          host: "127.0.0.1",
+          port: 4601,
+        },
+        origin: "http://127.0.0.1:4601",
+      },
+      browser: {
+        origin: "http://127.0.0.1:4600",
+      },
+      flags: {
+        disableRateLimit: false,
+      },
+      postgres: {
+        host: "localhost",
+        portBinding: "6500:5433",
+        url: "postgres://workspace:secret@localhost:6500/workspace",
+      },
+      profile: "workspace-dev",
+      publicOrigin: "http://127.0.0.1:4600",
+    });
 
-      expect(
-        normalizeSnapshotValue(resolveWorkspaceDev({ rootDir }), rootDir)
-      ).toMatchSnapshot();
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
+    expect({
+      dockerCompose: projectDockerComposeConfig(workspaceDev),
+      drizzle: projectDrizzleConfig(workspaceDev),
+      serverLaunch: projectWorkspaceDevServerLaunchConfig(workspaceDev, {
+        assetDir: "/tmp/workspace-web",
+        migrationsDir: "/tmp/workspace-migrations",
+      }),
+      testProfile: deriveTestProfile(workspaceDev),
+      vite: projectViteDevServerConfig(workspaceDev),
+    }).toMatchSnapshot();
   });
 
-  it("merges public config overrides and produces projections", () => {
-    const rootDir = createTempRootDir();
+  it("collects config and secrets issues without file-system context", () => {
+    const issues = expectParseFailure(
+      parseWorkspaceDev({
+        config: {},
+        secrets: {},
+      })
+    ).map((issue) => ({
+      message: issue.message,
+      path: formatWorkspaceDevIssuePath(issue.path),
+      source: issue.source,
+    }));
 
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[browser]",
-        'host = "127.0.0.1"',
-        "port = 4600",
-        "",
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4601",
-        "",
-        "[postgres]",
-        "host_port = 6500",
-        "container_port = 5433",
-        'database = "workspace"',
-        'user = "workspace"',
-        'password = "secret"',
-        "",
-        "[flags]",
-        "disable_rate_limit = false",
-      ]);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "workspace-auth-secret"',
-        "",
-        "[crypto]",
-        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
-        "",
-        "[connectors]",
-        'enrollment_token = "workspace-connector-token"',
-      ]);
-
-      const workspaceDev = resolveWorkspaceDev({ rootDir });
-
-      expect({
-        dockerCompose: projectDockerComposeConfig(workspaceDev),
-        drizzle: projectDrizzleConfig(workspaceDev),
-        serverLaunch: projectWorkspaceDevServerLaunchConfig(workspaceDev, {
-          assetDir: "/tmp/workspace-web",
-          migrationsDir: "/tmp/workspace-migrations",
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "browser",
+          source: "config",
         }),
-        testProfile: deriveTestProfile(workspaceDev),
-        vite: projectViteDevServerConfig(workspaceDev),
-        workspaceDev: normalizeSnapshotValue(workspaceDev, rootDir),
-      }).toMatchSnapshot();
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
+        expect.objectContaining({
+          path: "api",
+          source: "config",
+        }),
+        expect.objectContaining({
+          path: "auth",
+          source: "secrets",
+        }),
+        expect.objectContaining({
+          path: "crypto",
+          source: "secrets",
+        }),
+      ])
+    );
   });
 
-  it("rejects missing secrets", () => {
-    const rootDir = createTempRootDir();
+  it("rejects invalid master encryption keys as secrets errors", () => {
+    const input = createValidWorkspaceDevInput();
+    input.secrets.crypto.master_encryption_key = "master";
 
-    try {
-      writeTrackedWorkspaceDevConfig(rootDir);
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        "Invalid workspace-dev config."
-      );
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("auth");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
+    const issues = expectParseFailure(parseWorkspaceDev(input));
+
+    expect(issues).toContainEqual({
+      message:
+        "Master encryption key must be valid base64 that decodes to exactly 32 bytes.",
+      path: ["crypto", "master_encryption_key"],
+      source: "secrets",
+    });
   });
 
-  it("rejects invalid master keys before projecting workspace-dev config", () => {
-    const rootDir = createTempRootDir();
+  it("rejects duplicate host ports as config errors", () => {
+    const input = createValidWorkspaceDevInput();
+    input.config.api.port = input.config.browser.port;
 
-    try {
-      writeTrackedWorkspaceDevConfig(rootDir);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        'master_encryption_key = "master"',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
+    const issues = expectParseFailure(parseWorkspaceDev(input));
 
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        "crypto.master_encryption_key"
-      );
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        "decodes to exactly 32 bytes"
-      );
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects duplicate host ports", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[browser]",
-        'host = "localhost"',
-        "port = 4545",
-        "",
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4545",
-        "",
-        "[postgres]",
-        "host_port = 5454",
-        "container_port = 5432",
-        'database = "onequery"',
-        'user = "onequery"',
-        'password = "onequery"',
-        "",
-        "[flags]",
-        "disable_rate_limit = true",
-      ]);
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        'Workspace-dev host ports must be unique. "api.port" conflicts with "browser.port" on 4545.'
-      );
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects unknown keys in the config file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[browser]",
-        'host = "localhost"',
-        "port = 4545",
-        'extra = "nope"',
-        "",
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4555",
-        "",
-        "[postgres]",
-        "host_port = 5454",
-        "container_port = 5432",
-        'database = "onequery"',
-        'user = "onequery"',
-        'password = "onequery"',
-        "",
-        "[flags]",
-        "disable_rate_limit = true",
-      ]);
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("extra");
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects unknown keys in the secrets file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeTrackedWorkspaceDevConfig(rootDir);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
-        'unexpected = "nope"',
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-      ]);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("unexpected");
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Secrets:");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects secret keys in the config file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[browser]",
-        'host = "localhost"',
-        "port = 4545",
-        "",
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4555",
-        "",
-        "[postgres]",
-        "host_port = 5454",
-        "container_port = 5432",
-        'database = "onequery"',
-        'user = "onequery"',
-        'password = "onequery"',
-        "",
-        "[flags]",
-        "disable_rate_limit = true",
-        "",
-        "[auth]",
-        'secret = "wrong-file"',
-      ]);
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("auth");
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Config:");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects config keys in the secrets file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeTrackedWorkspaceDevConfig(rootDir);
-      writeToml(rootDir, WORKSPACE_DEV_SECRETS_FILENAME, [
-        "[auth]",
-        'secret = "better-auth-secret"',
-        "",
-        "[crypto]",
-        `master_encryption_key = "${SAMPLE_MASTER_ENCRYPTION_KEY}"`,
-        "",
-        "[connectors]",
-        'enrollment_token = "connector-token"',
-        "",
-        "[browser]",
-        "port = 4545",
-      ]);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("Secrets:");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects misspelled nested keys in the config file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[browser]",
-        'host = "localhost"',
-        "prt = 4545",
-        "",
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4555",
-        "",
-        "[postgres]",
-        "host_port = 5454",
-        "container_port = 5432",
-        'database = "onequery"',
-        'user = "onequery"',
-        'password = "onequery"',
-        "",
-        "[flags]",
-        "disable_rate_limit = true",
-      ]);
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("prt");
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser.port");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects a missing tracked dev config file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        "Invalid workspace-dev config."
-      );
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
-  });
-
-  it("rejects an incomplete tracked dev config file", () => {
-    const rootDir = createTempRootDir();
-
-    try {
-      writeToml(rootDir, WORKSPACE_DEV_CONFIG_FILENAME, [
-        "[api]",
-        'host = "127.0.0.1"',
-        "port = 4555",
-        "",
-        "[postgres]",
-        "host_port = 5454",
-        "container_port = 5432",
-        'database = "onequery"',
-        'user = "onequery"',
-        'password = "onequery"',
-        "",
-        "[flags]",
-        "disable_rate_limit = true",
-      ]);
-      writeDefaultWorkspaceDevSecrets(rootDir);
-
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow(
-        "Invalid workspace-dev config."
-      );
-      expect(() => resolveWorkspaceDev({ rootDir })).toThrow("browser");
-    } finally {
-      rmSync(rootDir, { force: true, recursive: true });
-    }
+    expect(issues).toContainEqual({
+      message:
+        'Workspace-dev host ports must be unique. "api.port" conflicts with "browser.port" on 4600.',
+      path: ["api", "port"],
+      source: "config",
+    });
   });
 });
