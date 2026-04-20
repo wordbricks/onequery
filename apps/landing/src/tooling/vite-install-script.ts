@@ -1,10 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+// Comment: Vite loads the landing config before workspace package build output
+// exists, so the plugin needs the installer package's source-backed export
+// instead of the dist-backed root entry.
 import {
   createInstallScript,
   INSTALL_SCRIPT_HEADERS,
   INSTALL_SCRIPT_PATH,
-} from "@onequery/installer";
+} from "@onequery/installer/source";
 import type { Plugin } from "vite";
 
 const VITE_REQUEST_BASE_URL = "http://onequery-landing.local";

@@ -9,6 +9,10 @@
       "types": "./src/install-script.ts",
       "bun": "./src/install-script.ts",
       "default": "./dist/install-script.js"
+    },
+    "./source": {
+      "types": "./src/install-script.ts",
+      "default": "./src/install-script.ts"
     }
   },
   "scripts": {
