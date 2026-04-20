@@ -231,6 +231,18 @@ export async function runCliQueryExecutionWorkflowResult(
             };
           }
 
+          if (validationResult.kind === "query_preparation_failed") {
+            return {
+              commandPayload: {
+                detail: validationResult.detail,
+                hint: validationResult.hint,
+                kind: "preparation_failed",
+                type: "record_query_validation",
+              },
+              result: validationResult,
+            };
+          }
+
           return {
             commandPayload: {
               detail: validationResult.detail,
@@ -246,6 +258,14 @@ export async function runCliQueryExecutionWorkflowResult(
         return {
           detail: validation.result.detail,
           kind: "query_rejected",
+          requestId: input.requestId,
+        };
+      }
+      if (validation.result.kind === "query_preparation_failed") {
+        return {
+          detail: validation.result.detail,
+          hint: validation.result.hint,
+          kind: "query_preparation_failed",
           requestId: input.requestId,
         };
       }
@@ -592,6 +612,18 @@ export async function runCliQueryValidationWorkflowResult(
             };
           }
 
+          if (validationResult.kind === "query_preparation_failed") {
+            return {
+              commandPayload: {
+                detail: validationResult.detail,
+                hint: validationResult.hint,
+                kind: "preparation_failed",
+                type: "record_query_validation",
+              },
+              result: validationResult,
+            };
+          }
+
           return {
             commandPayload: {
               detail: validationResult.detail,
@@ -607,6 +639,14 @@ export async function runCliQueryValidationWorkflowResult(
         return {
           detail: validation.result.detail,
           kind: "query_rejected",
+          requestId: input.requestId,
+        };
+      }
+      if (validation.result.kind === "query_preparation_failed") {
+        return {
+          detail: validation.result.detail,
+          hint: validation.result.hint,
+          kind: "query_preparation_failed",
           requestId: input.requestId,
         };
       }

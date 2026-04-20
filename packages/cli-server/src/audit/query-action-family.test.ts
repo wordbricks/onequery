@@ -233,6 +233,67 @@ describe("query_action family", () => {
     });
   });
 
+  it("completes validation-stage preparation failures as terminal query_preparation_failed actions", () => {
+    let state = applyQueryDecision(null, [
+      {
+        queryMode: "validate",
+        queryText: "select 1",
+        type: "action_received",
+      },
+      {
+        source: {
+          displayName: null,
+          name: "warehouse",
+          organizationId: "org_1",
+          provider: "postgres",
+          sourceId: "source_1",
+          sourceKey: "warehouse",
+          sourceStatus: "active",
+        },
+        type: "source_loaded",
+      },
+    ]);
+
+    const decision = decideQueryAction(
+      state,
+      buildQueryCommand(
+        {
+          detail: "sql parser runtime unavailable",
+          hint: "retry the request",
+          kind: "preparation_failed",
+          type: "record_query_validation",
+        },
+        { actionId: "action_1", causedByEventId: state.lastEventId }
+      )
+    );
+
+    expect(decision).toMatchObject({
+      kind: "accepted",
+      effects: [],
+      events: [
+        {
+          detail: "sql parser runtime unavailable",
+          hint: "retry the request",
+          type: "query_preparation_failed",
+        },
+      ],
+    });
+
+    if (decision.kind !== "accepted") {
+      return;
+    }
+
+    state = applyQueryDecision(state, decision.events);
+    expect(state).toMatchObject({
+      failureCode: "query_preparation_failed",
+      outcome: "failed",
+      phase: "completed",
+      queryMode: "validate",
+      usageRecordingStatus: "not_started",
+      validatedQuery: null,
+    });
+  });
+
   it("rejects stale internal commands with causation_mismatch", () => {
     const state = applyQueryDecision(null, [
       {

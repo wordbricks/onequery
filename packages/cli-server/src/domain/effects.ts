@@ -112,6 +112,11 @@ export type CliValidateQueryEffectResult =
   | {
       kind: "query_rejected";
       detail: string;
+    }
+  | {
+      kind: "query_preparation_failed";
+      detail: string;
+      hint: string;
     };
 
 export type CliExecuteSqlEffect = {

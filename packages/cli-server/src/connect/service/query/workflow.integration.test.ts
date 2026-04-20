@@ -307,4 +307,85 @@ describe("query workflow audit runtime", () => {
       { effectType: "persist_usage", status: "completed" },
     ]);
   });
+
+  it("records validation preparation failures as query_preparation_failed", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const result = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource: async (): Promise<CliLoadSourceEffectResult> => ({
+          kind: "found",
+          source,
+        }),
+        validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
+          detail: "sql parser runtime unavailable",
+          hint: "retry the request",
+          kind: "query_preparation_failed",
+        }),
+      },
+      org,
+      requestId: "req-validate-preparation-failed-1",
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    const failure = unwrapOk(result);
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const actionRow = await db.query.queryActions.findFirst({
+      where: (table, { eq }) => eq(table.organizationId, org.id),
+    });
+    const eventRows = await db
+      .select()
+      .from(queryActionEvents)
+      .orderBy(asc(queryActionEvents.sequence));
+    const outboxRows = await db
+      .select()
+      .from(workflowEffectDispatches)
+      .orderBy(
+        asc(workflowEffectDispatches.createdAt),
+        asc(workflowEffectDispatches.id)
+      );
+
+    expect(failure).toMatchObject({
+      detail: "sql parser runtime unavailable",
+      hint: "retry the request",
+      kind: "query_preparation_failed",
+      requestId: "req-validate-preparation-failed-1",
+    });
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_validate",
+      "record_source_lookup",
+      "record_query_validation",
+    ]);
+    expect(actionRow).toMatchObject({
+      failureCode: "query_preparation_failed",
+      outcome: "failed",
+      phase: "completed",
+      queryMode: "validate",
+      queryText: "select 1",
+      usageRecordingStatus: "not_started",
+      validatedQuery: null,
+    });
+    expect(eventRows.map((row) => row.eventType)).toEqual([
+      "action_received",
+      "source_loaded",
+      "query_preparation_failed",
+    ]);
+    expect(
+      outboxRows.map((row) => ({
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      { effectType: "load_source", status: "completed" },
+      { effectType: "validate_query", status: "completed" },
+    ]);
+  });
 });
