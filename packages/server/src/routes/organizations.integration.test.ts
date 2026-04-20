@@ -862,6 +862,30 @@ describe("organizations audit route", () => {
         },
       });
 
+      const hiddenHintResponse = await client.api.organizations[
+        ":slug"
+      ].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            q: "remove write statements",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(hiddenHintResponse.status).toBe(200);
+
+      const hiddenHintPage = auditListResponseSchema.parse(
+        await hiddenHintResponse.json()
+      );
+
+      expect(hiddenHintPage.items).toHaveLength(0);
+
       await db.delete(auditFeedEntries);
       await db.delete(auditProjectionCheckpoints);
 

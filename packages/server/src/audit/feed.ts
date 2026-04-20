@@ -629,6 +629,8 @@ function finalizeQueryActionRow(
 
   return {
     ...finalized,
+    // Comment: search_document stays aligned with public feed text so
+    // internal-only preview hints do not become searchable.
     searchDocument: buildSearchDocument([
       title,
       subtitle,
@@ -641,8 +643,6 @@ function finalizeQueryActionRow(
       finalized.target.sourceName,
       finalized.preview.queryText,
       finalized.preview.validatedQuery,
-      finalized.preview.errorDetail,
-      finalized.preview.errorHint,
       finalized.failureCode,
       finalized.phase,
       finalized.outcome,
