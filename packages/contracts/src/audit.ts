@@ -223,8 +223,6 @@ export type AuditQueryActionMetrics = z.infer<
 export const auditQueryActionPreviewSchema = z
   .object({
     elapsedMs: z.number().int().nullable(),
-    errorDetail: z.string().nullable(),
-    errorHint: z.string().nullable(),
     queryText: z.string(),
     rowCount: z.number().int().nullable(),
     usageRecordingStatus: z.enum(AUDIT_QUERY_ACTION_USAGE_RECORDING_STATUSES),
@@ -249,13 +247,11 @@ export type AuditSourceApiActionMetrics = z.infer<
 export const auditSourceApiActionPreviewSchema = z
   .object({
     attemptNumber: z.number().int().nullable(),
-    errorDetail: z.string().nullable(),
     httpStatus: z.number().int().nullable(),
     invokeMode: z.enum(AUDIT_SOURCE_API_ACTION_INVOKE_MODES).nullable(),
     method: z.string().nullable(),
     operation: z.string().nullable(),
     pageCount: z.number().int().nullable(),
-    responseBytes: z.number().int().nullable(),
     selector: z.string().nullable(),
   })
   .strict();

@@ -746,11 +746,16 @@ describe("organizations audit route", () => {
       const firstPage = auditListResponseSchema.parse(
         await firstPageResponse.json()
       );
+      const firstItem = firstPage.items[0];
 
       expect(firstPage.projectedThrough.queryAction).not.toBeNull();
       expect(firstPage.projectedThrough.sourceApiAction).not.toBeNull();
       expect(firstPage.items).toHaveLength(1);
-      expect(firstPage.items[0]).toMatchObject({
+      expect(firstItem).toBeDefined();
+      if (!firstItem || !firstItem.preview) {
+        throw new Error("first audit page must include a preview");
+      }
+      expect(firstItem).toMatchObject({
         actionName: "execute",
         family: "query_action",
         familyActionId: `query-success-${runId}`,
@@ -758,6 +763,15 @@ describe("organizations audit route", () => {
         outcome: "succeeded",
         startedAt: "2026-03-27T10:00:00.000Z",
       });
+      expect(firstItem.preview).toMatchObject({
+        elapsedMs: 412,
+        queryText: "select * from customers",
+        rowCount: 12,
+        usageRecordingStatus: "succeeded",
+        validatedQuery: "select * from customers",
+      });
+      expect(firstItem.preview).not.toHaveProperty("errorDetail");
+      expect(firstItem.preview).not.toHaveProperty("errorHint");
       expect(firstPage.families).toEqual(["query_action"]);
       expect(firstPage.nextCursor).not.toBeNull();
 
@@ -783,9 +797,14 @@ describe("organizations audit route", () => {
       const secondPage = auditListResponseSchema.parse(
         await secondPageResponse.json()
       );
+      const secondItem = secondPage.items[0];
 
       expect(secondPage.items).toHaveLength(1);
-      expect(secondPage.items[0]).toMatchObject({
+      expect(secondItem).toBeDefined();
+      if (!secondItem || !secondItem.preview) {
+        throw new Error("second audit page must include a preview");
+      }
+      expect(secondItem).toMatchObject({
         actionName: "invoke",
         family: "source_api_action",
         familyActionId: `source-api-pending-${runId}`,
@@ -794,6 +813,17 @@ describe("organizations audit route", () => {
         outcome: "pending",
         startedAt: "2026-03-27T09:30:00.000Z",
       });
+      expect(secondItem.preview).toMatchObject({
+        attemptNumber: 1,
+        httpStatus: null,
+        invokeMode: "execute",
+        method: "GET",
+        operation: "listCustomers",
+        pageCount: 1,
+        selector: "/customers",
+      });
+      expect(secondItem.preview).not.toHaveProperty("errorDetail");
+      expect(secondItem.preview).not.toHaveProperty("responseBytes");
       expect(secondPage.nextCursor).not.toBeNull();
 
       const filteredResponse = await client.api.organizations[

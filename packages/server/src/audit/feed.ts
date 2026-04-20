@@ -18,12 +18,10 @@ import type {
   AuditQueryActionFailureCode,
   AuditQueryActionMetrics,
   AuditQueryActionPhase,
-  AuditQueryActionPreview,
   AuditSourceApiActionEventType,
   AuditSourceApiActionFailureCode,
   AuditSourceApiActionMetrics,
   AuditSourceApiActionPhase,
-  AuditSourceApiActionPreview,
   AuditTarget,
 } from "@onequery/contracts/audit";
 import {
@@ -294,6 +292,40 @@ const SourceApiEventPayloadSchema = z.discriminatedUnion("type", [
     .strict(),
 ]);
 
+// Comment: projection rows retain richer preview state than the public feed
+// contract exposes, so storage and API schemas stay separate here.
+const QueryActionProjectionPreviewSchema = z
+  .object({
+    elapsedMs: z.number().int().nullable(),
+    errorDetail: z.string().nullable(),
+    errorHint: z.string().nullable(),
+    queryText: z.string(),
+    rowCount: z.number().int().nullable(),
+    usageRecordingStatus: z.enum(["not_started", "succeeded", "failed"]),
+    validatedQuery: z.string().nullable(),
+  })
+  .strict();
+type QueryActionProjectionPreview = z.infer<
+  typeof QueryActionProjectionPreviewSchema
+>;
+
+const SourceApiActionProjectionPreviewSchema = z
+  .object({
+    attemptNumber: z.number().int().nullable(),
+    errorDetail: z.string().nullable(),
+    httpStatus: z.number().int().nullable(),
+    invokeMode: z.enum(["preview_only", "execute"]).nullable(),
+    method: z.string().nullable(),
+    operation: z.string().nullable(),
+    pageCount: z.number().int().nullable(),
+    responseBytes: z.number().int().nullable(),
+    selector: z.string().nullable(),
+  })
+  .strict();
+type SourceApiActionProjectionPreview = z.infer<
+  typeof SourceApiActionProjectionPreviewSchema
+>;
+
 type DatabaseExecutor =
   | Database
   | Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -324,7 +356,7 @@ type QueryActionProjectionRow = {
   originSurface: WorkflowSurface;
   outcome: AuditOutcome;
   phase: AuditQueryActionPhase;
-  preview: AuditQueryActionPreview;
+  preview: QueryActionProjectionPreview;
   searchDocument: string;
   startedAt: Date;
   subtitle: string;
@@ -347,7 +379,7 @@ type SourceApiActionProjectionRow = {
   originSurface: WorkflowSurface;
   outcome: AuditOutcome;
   phase: AuditSourceApiActionPhase;
-  preview: AuditSourceApiActionPreview;
+  preview: SourceApiActionProjectionPreview;
   searchDocument: string;
   startedAt: Date;
   subtitle: string;
@@ -498,7 +530,7 @@ function normalizeOriginActor(
 }
 
 function normalizeQueryActionMetrics(
-  preview: AuditQueryActionPreview
+  preview: QueryActionProjectionPreview
 ): AuditQueryActionMetrics | null {
   if (preview.elapsedMs === null && preview.rowCount === null) {
     return null;
@@ -511,7 +543,7 @@ function normalizeQueryActionMetrics(
 }
 
 function normalizeSourceApiMetrics(
-  preview: AuditSourceApiActionPreview
+  preview: SourceApiActionProjectionPreview
 ): AuditSourceApiActionMetrics | null {
   if (
     preview.httpStatus === null &&
@@ -682,7 +714,7 @@ function createQueryActionRowFromStart(
   const startCommand = QueryActionStartCommandPayloadSchema.parse(
     record.commandPayloadJson
   );
-  const preview = auditQueryActionPreviewSchema.parse({
+  const preview = QueryActionProjectionPreviewSchema.parse({
     elapsedMs: null,
     errorDetail: null,
     errorHint: null,
@@ -883,7 +915,7 @@ function createSourceApiActionRowFromStart(
   const startCommand = SourceApiStartCommandPayloadSchema.parse(
     record.commandPayloadJson
   );
-  const preview = auditSourceApiActionPreviewSchema.parse({
+  const preview = SourceApiActionProjectionPreviewSchema.parse({
     attemptNumber: null,
     errorDetail: null,
     httpStatus: null,
@@ -1150,7 +1182,7 @@ function parseStoredQueryActionRow(
     originSurface: row.originSurface,
     outcome: row.outcome as AuditOutcome,
     phase: row.phase as AuditQueryActionPhase,
-    preview: auditQueryActionPreviewSchema.parse(row.familyPreviewJson),
+    preview: QueryActionProjectionPreviewSchema.parse(row.familyPreviewJson),
     startedAt: row.startedAt,
     target: auditTargetSchema.parse(row.targetJson),
   });
@@ -1187,7 +1219,9 @@ function parseStoredSourceApiActionRow(
     originSurface: row.originSurface,
     outcome: row.outcome as AuditOutcome,
     phase: row.phase as AuditSourceApiActionPhase,
-    preview: auditSourceApiActionPreviewSchema.parse(row.familyPreviewJson),
+    preview: SourceApiActionProjectionPreviewSchema.parse(
+      row.familyPreviewJson
+    ),
     startedAt: row.startedAt,
     target: auditTargetSchema.parse(row.targetJson),
   });
@@ -1636,6 +1670,23 @@ function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
   const target = auditTargetSchema.parse(row.targetJson);
 
   if (row.family === "query_action") {
+    const preview =
+      row.familyPreviewJson === null
+        ? null
+        : (() => {
+            const storedPreview = QueryActionProjectionPreviewSchema.parse(
+              row.familyPreviewJson
+            );
+
+            return auditQueryActionPreviewSchema.parse({
+              elapsedMs: storedPreview.elapsedMs,
+              queryText: storedPreview.queryText,
+              rowCount: storedPreview.rowCount,
+              usageRecordingStatus: storedPreview.usageRecordingStatus,
+              validatedQuery: storedPreview.validatedQuery,
+            });
+          })();
+
     return {
       actionName:
         row.actionName === "validate" || row.actionName === "execute"
@@ -1663,16 +1714,32 @@ function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
       originSurface: row.originSurface,
       outcome: row.outcome as AuditOutcome,
       phase: row.phase as AuditQueryActionPhase,
-      preview:
-        row.familyPreviewJson === null
-          ? null
-          : auditQueryActionPreviewSchema.parse(row.familyPreviewJson),
+      preview,
       startedAt: row.startedAt.toISOString(),
       subtitle: row.subtitle,
       target,
       title: row.title,
     };
   }
+
+  const preview =
+    row.familyPreviewJson === null
+      ? null
+      : (() => {
+          const storedPreview = SourceApiActionProjectionPreviewSchema.parse(
+            row.familyPreviewJson
+          );
+
+          return auditSourceApiActionPreviewSchema.parse({
+            attemptNumber: storedPreview.attemptNumber,
+            httpStatus: storedPreview.httpStatus,
+            invokeMode: storedPreview.invokeMode,
+            method: storedPreview.method,
+            operation: storedPreview.operation,
+            pageCount: storedPreview.pageCount,
+            selector: storedPreview.selector,
+          });
+        })();
 
   return {
     actionName:
@@ -1701,10 +1768,7 @@ function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
     originSurface: row.originSurface,
     outcome: row.outcome as AuditOutcome,
     phase: row.phase as AuditSourceApiActionPhase,
-    preview:
-      row.familyPreviewJson === null
-        ? null
-        : auditSourceApiActionPreviewSchema.parse(row.familyPreviewJson),
+    preview,
     startedAt: row.startedAt.toISOString(),
     subtitle: row.subtitle,
     target,

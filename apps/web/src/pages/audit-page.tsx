@@ -118,17 +118,8 @@ function getDetailLine(item: AuditListItem) {
   return truncateText(requestShape || item.subtitle);
 }
 
-function getErrorDetail(item: AuditListItem) {
-  if (item.family === "query_action") {
-    return item.preview?.errorDetail ?? null;
-  }
-
-  return item.preview?.errorDetail ?? null;
-}
-
 function AuditTableRow({ item }: { item: AuditListItem }) {
   const metricsLabel = getMetricsLabel(item);
-  const errorDetail = getErrorDetail(item);
 
   return (
     <TableRow>
@@ -164,9 +155,6 @@ function AuditTableRow({ item }: { item: AuditListItem }) {
         <div className="text-muted-foreground mt-2 text-xs font-mono break-words">
           {getDetailLine(item)}
         </div>
-        {errorDetail ? (
-          <div className="text-destructive mt-2 text-xs">{errorDetail}</div>
-        ) : null}
       </TableCell>
       <TableCell className="align-top whitespace-normal">
         <div className="flex flex-col gap-2">
