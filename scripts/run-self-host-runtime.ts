@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadWorkspaceDev } from "@onequery/config-node";
 import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
-import { resolveWorkspaceDev } from "@onequery/config/workspace-dev";
 import { getDefaultSpaBuildDir } from "@onequery/self-host-runtime/assets";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -47,7 +47,7 @@ export function createLaunchConfig(
   configRootDir: string = rootDir
 ): ServerLaunchConfig {
   return projectWorkspaceDevServerLaunchConfig(
-    resolveWorkspaceDev({
+    loadWorkspaceDev({
       rootDir: configRootDir,
     }),
     {

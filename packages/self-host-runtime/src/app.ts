@@ -2,6 +2,10 @@ import {
   createCliRoute,
   createDeviceAuthorizationBrowserRoute,
 } from "@onequery/cli-server";
+import {
+  createInstallScriptResponse,
+  shouldServeInstallScript,
+} from "@onequery/installer";
 import { createServerApi } from "@onequery/server/app";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { sessionMiddleware } from "@onequery/server/middleware/session";
@@ -22,10 +26,6 @@ import {
   DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
   isApiRoutePath,
 } from "./constants";
-import {
-  createInstallScriptResponse,
-  shouldServeInstallScript,
-} from "./install-script";
 import { budgetRoute } from "./routes/budget/route";
 
 type SpaAssetBinding = {

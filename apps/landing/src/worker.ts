@@ -1,255 +1,107 @@
 import {
-  getFirstLeadCaptureError,
-  LEAD_CAPTURE_SOURCE,
-  validateContactForm,
-  validateProductUpdatesForm,
-} from "./lead-capture";
+  LANDING_API_CATALOG_PATH,
+  LANDING_CONNECT_PATH_PREFIX,
+  LANDING_SERVICE_NAME,
+} from "./landing/config/landing-api";
+import { PROTO_SOURCE_URL } from "./landing/config/landing-config";
+import { createLandingWorkerHandler } from "./server/landing/landing-worker";
+import type { LandingWorkerBindings } from "./server/landing/landing-worker";
 
-type AssetFetcher = {
-  fetch(request: Request): Promise<Response>;
-};
+type LandingWorkerEnv = CloudflareEnv & LandingWorkerBindings;
 
-type LandingWorkerEnv = {
-  ASSETS: AssetFetcher;
-  LANDING_SLACK_WEBHOOK_URL?: string;
-};
+const landingWorkerHandler = createLandingWorkerHandler();
+const API_CATALOG_MEDIA_TYPE = "application/linkset+json" as const;
+const API_CATALOG_PROFILE_URI =
+  "https://www.rfc-editor.org/info/rfc9727" as const;
+const API_CATALOG_LINK_HEADER =
+  `<${LANDING_API_CATALOG_PATH}>; rel="api-catalog"; type="${API_CATALOG_MEDIA_TYPE}"` as const;
+const DISCOVERY_LINK_HEADERS = [API_CATALOG_LINK_HEADER] as const;
+const HOMEPAGE_PATHS = new Set(["/", "/index.html"]);
 
-function createApiResponse(
-  payload: object,
-  status: number,
-  init: ResponseInit = {}
-) {
-  const headers = new Headers(init.headers);
-  headers.set("Access-Control-Allow-Headers", "Content-Type");
-  headers.set("Access-Control-Allow-Methods", "OPTIONS, POST");
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set("Cache-Control", "no-store");
-  headers.set("Content-Type", "application/json; charset=utf-8");
-  return new Response(JSON.stringify(payload), {
-    ...init,
+const API_CATALOG_HEADERS = {
+  "Cache-Control": "public, max-age=3600",
+  "Content-Type": `${API_CATALOG_MEDIA_TYPE}; profile="${API_CATALOG_PROFILE_URI}"`,
+} as const;
+
+function appendLinkHeaders(response: Response, linkValues: readonly string[]) {
+  if (linkValues.length === 0) {
+    return response;
+  }
+
+  const headers = new Headers(response.headers);
+  for (const linkValue of linkValues) {
+    headers.append("Link", linkValue);
+  }
+
+  return new Response(response.body, {
     headers,
-    status,
-  });
-}
-
-function createMethodNotAllowedResponse() {
-  return createApiResponse({ error: "Method not allowed" }, 405, {
-    headers: {
-      Allow: "OPTIONS, POST",
-    },
-  });
-}
-
-function readSlackWebhookUrl(env: LandingWorkerEnv) {
-  return env.LANDING_SLACK_WEBHOOK_URL?.trim() || null;
-}
-
-function escapeSlackText(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-async function postSlackMessage(
-  env: LandingWorkerEnv,
-  payload: Record<string, unknown>
-) {
-  const slackWebhookUrl = readSlackWebhookUrl(env);
-  if (!slackWebhookUrl) {
-    return createApiResponse(
-      { error: "Landing ingest is not configured" },
-      503
-    );
-  }
-
-  const response = await fetch(slackWebhookUrl, {
-    body: JSON.stringify(payload),
-    headers: {
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-
-  if (response.ok) {
-    return null;
-  }
-
-  const message = await response.text().catch(() => "");
-
-  // Comment: public lead-capture requests should not leak upstream webhook
-  // details back to the browser, so worker errors stay generic.
-  console.error("[landing-worker] slack webhook error", {
-    message: message.slice(0, 500),
     status: response.status,
+    statusText: response.statusText,
   });
-  return createApiResponse({ error: "Failed to deliver notification" }, 502);
 }
 
-async function handleProductUpdates(
-  request: Request,
-  env: LandingWorkerEnv
-): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return createApiResponse({}, 204);
+function shouldAdvertiseApiCatalog(url: URL, response: Response) {
+  if (!HOMEPAGE_PATHS.has(url.pathname)) {
+    return false;
   }
 
-  if (request.method !== "POST") {
-    return createMethodNotAllowedResponse();
-  }
+  return response.headers.get("Content-Type")?.includes("text/html") ?? false;
+}
 
-  const payload = await request.json().catch(() => null);
-  if (!payload || typeof payload !== "object") {
-    return createApiResponse({ error: "Invalid JSON body" }, 400);
-  }
-
-  const result = validateProductUpdatesForm({
-    email:
-      "email" in payload && typeof payload.email === "string"
-        ? payload.email
-        : "",
-  });
-  if (!result.ok) {
-    return createApiResponse(
-      { error: getFirstLeadCaptureError(result.errors) },
-      422
-    );
-  }
-
-  const slackError = await postSlackMessage(env, {
-    text: `New product updates signup: ${result.value.email}`,
-    blocks: [
+function createApiCatalog(origin: string) {
+  return {
+    linkset: [
       {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: "New product updates signup",
-        },
-      },
-      {
-        type: "section",
-        fields: [
+        anchor: new URL(
+          `${LANDING_CONNECT_PATH_PREFIX}/${LANDING_SERVICE_NAME}`,
+          origin
+        ).toString(),
+        // Comment: omit service-doc until the landing RPC has a stable public
+        // document target instead of the previously broken README link.
+        "service-desc": [
           {
-            type: "mrkdwn",
-            text: `*Email*\n${escapeSlackText(result.value.email)}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Source*\n${LEAD_CAPTURE_SOURCE}`,
+            href: PROTO_SOURCE_URL,
+            type: "text/plain",
           },
         ],
       },
     ],
-  });
-
-  if (slackError) {
-    return slackError;
-  }
-
-  return createApiResponse({ ok: true }, 201);
+  };
 }
 
-async function handleContact(
-  request: Request,
-  env: LandingWorkerEnv
-): Promise<Response> {
-  if (request.method === "OPTIONS") {
-    return createApiResponse({}, 204);
-  }
-
-  if (request.method !== "POST") {
-    return createMethodNotAllowedResponse();
-  }
-
-  const payload = await request.json().catch(() => null);
-  if (!payload || typeof payload !== "object") {
-    return createApiResponse({ error: "Invalid JSON body" }, 400);
-  }
-
-  const result = validateContactForm({
-    email:
-      "email" in payload && typeof payload.email === "string"
-        ? payload.email
-        : "",
-    message:
-      "message" in payload && typeof payload.message === "string"
-        ? payload.message
-        : "",
-    name:
-      "name" in payload && typeof payload.name === "string" ? payload.name : "",
-  });
-  if (!result.ok) {
-    return createApiResponse(
-      { error: getFirstLeadCaptureError(result.errors) },
-      422
-    );
-  }
-
-  const slackError = await postSlackMessage(env, {
-    text: `New contact request from ${result.value.name} (${result.value.email})`,
-    blocks: [
-      {
-        type: "header",
-        text: {
-          type: "plain_text",
-          text: "New contact request",
-        },
-      },
-      {
-        type: "section",
-        fields: [
-          {
-            type: "mrkdwn",
-            text: `*Name*\n${escapeSlackText(result.value.name)}`,
-          },
-          {
-            type: "mrkdwn",
-            text: `*Email*\n${escapeSlackText(result.value.email)}`,
-          },
-        ],
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*Message*\n${escapeSlackText(result.value.message)}`,
-        },
-      },
-      {
-        type: "context",
-        elements: [
-          {
-            type: "mrkdwn",
-            text: `Source: ${LEAD_CAPTURE_SOURCE}`,
-          },
-        ],
-      },
-    ],
-  });
-
-  if (slackError) {
-    return slackError;
-  }
-
-  return createApiResponse({ ok: true }, 201);
-}
-
-export default {
-  async fetch(request: Request, env: LandingWorkerEnv): Promise<Response> {
+const worker: ExportedHandler<LandingWorkerEnv> = {
+  async fetch(
+    request: Request,
+    env: LandingWorkerEnv,
+    ctx: ExecutionContext
+  ): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/product-updates") {
-      return handleProductUpdates(request, env);
+    if (url.pathname === LANDING_API_CATALOG_PATH) {
+      return appendLinkHeaders(
+        new Response(JSON.stringify(createApiCatalog(url.origin)), {
+          headers: API_CATALOG_HEADERS,
+        }),
+        DISCOVERY_LINK_HEADERS
+      );
     }
 
-    if (url.pathname === "/api/contact") {
-      return handleContact(request, env);
+    if (
+      url.pathname === LANDING_CONNECT_PATH_PREFIX ||
+      url.pathname.startsWith(`${LANDING_CONNECT_PATH_PREFIX}/`)
+    ) {
+      return landingWorkerHandler.fetch(request, env, ctx);
     }
 
-    if (url.pathname.startsWith("/api/")) {
-      return createApiResponse({ error: "Not found" }, 404);
+    // The homepage HTML is emitted by the asset binding, so discovery headers
+    // belong at the worker boundary instead of inside TanStack Router routes.
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (!shouldAdvertiseApiCatalog(url, assetResponse)) {
+      return assetResponse;
     }
 
-    return env.ASSETS.fetch(request);
+    return appendLinkHeaders(assetResponse, DISCOVERY_LINK_HEADERS);
   },
 };
+
+export default worker;

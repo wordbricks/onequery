@@ -48,6 +48,12 @@ describe("dataSourcesCrudRoute", () => {
     );
     const runtimeConfig = createTestRuntimeConfigFromDatabaseUrl(dbUrl);
     const runtime = createDatabaseRuntime(dbUrl);
+
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
+
     openedDatabases.push(runtime.db as ClosableDatabase);
 
     await runtime.db.insert(runtime.schema.organization).values({
@@ -76,7 +82,7 @@ describe("dataSourcesCrudRoute", () => {
           db: runtime.db,
           schema: runtime.schema,
         } as StorageVariables["storage"]);
-        c.set("runtime", runtimeConfig);
+        c.set("runtime", runtimeConfig.value);
         c.set("session", createSession("user-1"));
         await next();
       })

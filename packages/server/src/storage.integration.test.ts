@@ -19,18 +19,24 @@ import type { ClosableDatabase } from "./test/integration-helpers";
 async function createPgliteStorage() {
   const databaseUrl = await createPgliteDatabaseUrl("onequery-storage-test-");
   const pgliteDir = databaseUrl.replace("pglite:", "");
+  const runtimeConfig = createTestRuntimeConfigFromDatabaseUrl(databaseUrl, {
+    auth: {
+      secret: "test-better-auth-secret-1234567890",
+    },
+    crypto: {
+      masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+    },
+  });
+
+  expect(runtimeConfig.isOk()).toBe(true);
+  if (runtimeConfig.isErr()) {
+    return null;
+  }
 
   return {
     pgliteDir,
     storage: createServerStorage(
-      createTestRuntimeConfigFromDatabaseUrl(databaseUrl, {
-        auth: {
-          secret: "test-better-auth-secret-1234567890",
-        },
-        crypto: {
-          masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
-        },
-      }),
+      runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     ),
   };
@@ -46,7 +52,11 @@ describe("server storage", () => {
   });
 
   it("boots PGlite storage and persists auth, org, and data-source state", async () => {
-    const { pgliteDir, storage } = await createPgliteStorage();
+    const pgliteStorage = await createPgliteStorage();
+    if (!pgliteStorage) {
+      return;
+    }
+    const { pgliteDir, storage } = pgliteStorage;
     openedDatabases.push(storage.db as ClosableDatabase);
 
     expect(storage.engine).toBe("pglite");

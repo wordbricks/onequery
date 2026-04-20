@@ -15,7 +15,7 @@ import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
-  decryptCredentialsObject,
+  decryptCredentialsObjectResult,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
 import { listGitHubRepositories } from "../../services/github/relay";
@@ -80,12 +80,16 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         );
       }
 
-      const credentials = decryptCredentialsObject(
+      const credentialsResult = decryptCredentialsObjectResult(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,
         c.var.runtime.crypto.masterEncryptionKey,
         CredentialsSchema
       );
+      if (credentialsResult.isErr()) {
+        return c.json({ error: "Invalid stored credentials" }, 500);
+      }
+      const credentials = credentialsResult.value;
 
       if (!isGitHubCredentials(credentials)) {
         return c.json({ error: "Invalid GitHub credentials" }, 400);
@@ -149,12 +153,16 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
         return c.json({ error: "Data source is not GitHub" }, 400);
       }
 
-      const credentials = decryptCredentialsObject(
+      const credentialsResult = decryptCredentialsObjectResult(
         dataSource.credentialsEncrypted,
         dataSource.credentialsIv,
         c.var.runtime.crypto.masterEncryptionKey,
         CredentialsSchema
       );
+      if (credentialsResult.isErr()) {
+        return c.json({ error: "Invalid stored credentials" }, 500);
+      }
+      const credentials = credentialsResult.value;
 
       if (!isGitHubCredentials(credentials)) {
         return c.json({ error: "Invalid GitHub credentials" }, 400);

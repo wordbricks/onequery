@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`@onequery/config workspace-dev > merges public config overrides and produces projections 1`] = `
+exports[`@onequery/config workspace-dev > parses workspace-dev config and produces stable projections 1`] = `
 {
   "dockerCompose": {
     "environment": {
@@ -66,98 +66,5 @@ exports[`@onequery/config workspace-dev > merges public config overrides and pro
     "apiProxyTarget": "http://127.0.0.1:4601",
     "port": 4600,
   },
-  "workspaceDev": {
-    "api": {
-      "host": "127.0.0.1",
-      "listen": {
-        "host": "127.0.0.1",
-        "port": 4601,
-      },
-      "origin": "http://127.0.0.1:4601",
-      "port": 4601,
-    },
-    "auth": {
-      "secret": "workspace-auth-secret",
-    },
-    "browser": {
-      "host": "127.0.0.1",
-      "origin": "http://127.0.0.1:4600",
-      "port": 4600,
-    },
-    "connectors": {
-      "enrollmentToken": "workspace-connector-token",
-    },
-    "crypto": {
-      "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
-    },
-    "flags": {
-      "disableRateLimit": false,
-    },
-    "paths": {
-      "configPath": "<rootDir>/onequery.dev.toml",
-      "rootDir": "<rootDir>",
-      "secretsPath": "<rootDir>/onequery.dev.secrets.toml",
-    },
-    "postgres": {
-      "containerPort": 5433,
-      "database": "workspace",
-      "host": "localhost",
-      "hostPort": 6500,
-      "password": "secret",
-      "portBinding": "6500:5433",
-      "url": "postgres://workspace:secret@localhost:6500/workspace",
-      "user": "workspace",
-    },
-    "profile": "workspace-dev",
-    "publicOrigin": "http://127.0.0.1:4600",
-  },
-}
-`;
-
-exports[`@onequery/config workspace-dev > resolves workspace-dev values from the tracked dev config file 1`] = `
-{
-  "api": {
-    "host": "127.0.0.1",
-    "listen": {
-      "host": "127.0.0.1",
-      "port": 4555,
-    },
-    "origin": "http://127.0.0.1:4555",
-    "port": 4555,
-  },
-  "auth": {
-    "secret": "better-auth-secret",
-  },
-  "browser": {
-    "host": "localhost",
-    "origin": "http://localhost:4545",
-    "port": 4545,
-  },
-  "connectors": {
-    "enrollmentToken": "connector-token",
-  },
-  "crypto": {
-    "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
-  },
-  "flags": {
-    "disableRateLimit": true,
-  },
-  "paths": {
-    "configPath": "<rootDir>/onequery.dev.toml",
-    "rootDir": "<rootDir>",
-    "secretsPath": "<rootDir>/onequery.dev.secrets.toml",
-  },
-  "postgres": {
-    "containerPort": 5432,
-    "database": "onequery",
-    "host": "localhost",
-    "hostPort": 5454,
-    "password": "onequery",
-    "portBinding": "5454:5432",
-    "url": "postgres://onequery:onequery@localhost:5454/onequery",
-    "user": "onequery",
-  },
-  "profile": "workspace-dev",
-  "publicOrigin": "http://localhost:4545",
 }
 `;

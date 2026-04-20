@@ -4,11 +4,9 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-import { resolveViteDevServerConfig } from "./src/lib/vite-dev-server-config";
-
 const isE2E = process.env.ONEQUERY_E2E === "1";
 
-export default defineConfig(({ command }) => {
+export default defineConfig(async ({ command }) => {
   const config = {
     define: {
       "globalThis.__ONEQUERY_E2E__": JSON.stringify(isE2E),
@@ -38,7 +36,9 @@ export default defineConfig(({ command }) => {
     return config;
   }
 
-  const { apiProxyTarget, port } = resolveViteDevServerConfig();
+  const configNodePackage = "@onequery/config-node";
+  const { loadViteDevServerConfig } = await import(configNodePackage);
+  const { apiProxyTarget, port } = loadViteDevServerConfig();
 
   return {
     ...config,

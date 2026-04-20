@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./device-auth": "./src/device-auth.ts",
     "./organization-permissions": "./src/organization-permissions.ts",
-    "./runtime-bundle": "./src/runtime-bundle.ts"
+    "./runtime-bundle": "./src/runtime-bundle.ts",
+    "./runtime-bundle.json": "./src/runtime-bundle.json"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"

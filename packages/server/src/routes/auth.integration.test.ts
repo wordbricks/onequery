@@ -17,7 +17,14 @@ import {
 
 describe("auth route organization deletion guardrails", () => {
   it("blocks self-serve org deletion and preserves org-owned state", async () => {
-    const { app, auth, db, test } = await createRouteIntegrationHarness();
+    const harness = await createRouteIntegrationHarness();
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { app, auth, db, test } = harness.value;
 
     const runId = createRunId();
     const user = test.createUser({

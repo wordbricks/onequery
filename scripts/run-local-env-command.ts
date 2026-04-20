@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import {
   projectDockerComposeConfig,
   projectDrizzleConfig,
-  resolveWorkspaceDev,
 } from "@onequery/config";
+import { loadWorkspaceDev } from "@onequery/config-node";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -67,7 +67,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function main(): void {
   const { command, commandArgs, cwd } = parseArgs(process.argv.slice(2));
-  const workspaceDev = resolveWorkspaceDev({
+  const workspaceDev = loadWorkspaceDev({
     rootDir,
   });
   const drizzle = projectDrizzleConfig(workspaceDev);

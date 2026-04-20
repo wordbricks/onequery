@@ -61,9 +61,10 @@ schema.
 
 ## Environment Files
 
-- `@onequery/config/workspace-dev` owns the workspace-dev authored shape and
-  resolver.
-- `@onequery/config/workspace-dev-init` seeds the local secrets file.
+- `@onequery/config/workspace-dev` owns the workspace-dev authored shape,
+  validation, and pure projections.
+- `@onequery/config-node` owns filesystem-backed loading and local secrets-file
+  bootstrap.
 - `onequery.dev.toml` is the tracked repo config for local dev defaults.
 - `onequery.dev.secrets.toml` is a local machine file and stays untracked.
 
@@ -79,7 +80,7 @@ For a higher-level overview, see
 - `packages/github-rulesets`: package that owns the repo-tracked GitHub
   ruleset planner and sync CLI for `.github/rulesets/`.
 - `scripts/run-local-env-command.ts`: runs a command with config projected from
-  the workspace-dev resolver at process launch.
+  the workspace-dev loader at process launch.
 - `scripts/upload-image.ts`: uploads local images into the app’s asset flow.
 
 ## GitHub Rulesets
