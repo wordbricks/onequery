@@ -1,4 +1,5 @@
 import { createClient } from "@connectrpc/connect";
+import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 
 import { landingTransport } from "../../app/runtime/connect-transport";
@@ -10,34 +11,29 @@ import {
 } from "../analytics/landing-analytics";
 import type { ContactForm } from "./contact-modal.machine";
 import {
+  DEFAULT_CONTACT_ERROR_MESSAGE,
   createContactModalMachine,
   readContactModalErrorMessage,
 } from "./contact-modal.machine";
+import { toUserMessage } from "./marketing-errors";
 import {
+  DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
   createProductUpdatesMachine,
   readProductUpdatesFeedback,
 } from "./product-updates.machine";
 
 const landingClient = createClient(LandingService, landingTransport);
-const productUpdatesMachine = createProductUpdatesMachine({
-  async subscribeProductUpdates({ email }) {
-    const response = await landingClient.subscribeProductUpdates({
-      email,
-    });
+const productUpdatesMachine = createProductUpdatesMachine();
+const contactModalMachine = createContactModalMachine();
 
-    return {
-      email: response.email,
-    };
-  },
-  trackProductUpdatesSignup,
-});
-const contactModalMachine = createContactModalMachine({
-  async submitContact(form) {
-    await landingClient.submitContact(form);
-  },
-  trackContactFormSubmitted,
-  trackContactModalOpened,
-});
+function runBestEffort(action: () => void) {
+  try {
+    action();
+  } catch {
+    // Comment: landing analytics is best-effort and should never block form
+    // state transitions or RPC result handling.
+  }
+}
 
 function useProductUpdatesController() {
   const actorRef = useActorRef(productUpdatesMachine);
@@ -46,6 +42,65 @@ function useProductUpdatesController() {
   const isSubmitting = useSelector(actorRef, (snapshot) =>
     snapshot.matches("submitting")
   );
+
+  useMountEffect(() => {
+    let isActive = true;
+    let lastStartedSubmissionRequestId = 0;
+
+    async function handleSnapshot(
+      snapshot: ReturnType<typeof actorRef.getSnapshot>
+    ) {
+      const pendingSubmission = snapshot.context.pendingSubmission;
+
+      if (
+        !snapshot.matches("submitting") ||
+        pendingSubmission === null ||
+        pendingSubmission.requestId === lastStartedSubmissionRequestId
+      ) {
+        return;
+      }
+
+      lastStartedSubmissionRequestId = pendingSubmission.requestId;
+
+      try {
+        const response = await landingClient.subscribeProductUpdates({
+          email: pendingSubmission.email,
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        actorRef.send({
+          type: "productUpdates/submissionSucceeded",
+          email: response.email,
+          requestId: pendingSubmission.requestId,
+        });
+        runBestEffort(trackProductUpdatesSignup);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        actorRef.send({
+          type: "productUpdates/submissionFailed",
+          message: toUserMessage(error, DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE),
+          requestId: pendingSubmission.requestId,
+        });
+      }
+    }
+
+    void handleSnapshot(actorRef.getSnapshot());
+
+    const subscription = actorRef.subscribe((snapshot) => {
+      void handleSnapshot(snapshot);
+    });
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  });
 
   return {
     email,
@@ -83,6 +138,62 @@ function useContactModalController(): ContactModalController {
     snapshot.matches({ open: "submitting" })
   );
 
+  useMountEffect(() => {
+    let isActive = true;
+    let lastStartedSubmissionRequestId = 0;
+
+    async function handleSnapshot(
+      snapshot: ReturnType<typeof actorRef.getSnapshot>
+    ) {
+      const pendingSubmission = snapshot.context.pendingSubmission;
+
+      if (
+        !snapshot.matches({ open: "submitting" }) ||
+        pendingSubmission === null ||
+        pendingSubmission.requestId === lastStartedSubmissionRequestId
+      ) {
+        return;
+      }
+
+      lastStartedSubmissionRequestId = pendingSubmission.requestId;
+
+      try {
+        await landingClient.submitContact(pendingSubmission.form);
+
+        if (!isActive) {
+          return;
+        }
+
+        actorRef.send({
+          type: "contactModal/submitSucceeded",
+          requestId: pendingSubmission.requestId,
+        });
+        runBestEffort(trackContactFormSubmitted);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        actorRef.send({
+          type: "contactModal/submitFailed",
+          message: toUserMessage(error, DEFAULT_CONTACT_ERROR_MESSAGE),
+          requestId: pendingSubmission.requestId,
+        });
+      }
+    }
+
+    void handleSnapshot(actorRef.getSnapshot());
+
+    const subscription = actorRef.subscribe((snapshot) => {
+      void handleSnapshot(snapshot);
+    });
+
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
+  });
+
   return {
     errorMessage,
     form,
@@ -92,6 +203,7 @@ function useContactModalController(): ContactModalController {
       actorRef.send({ type: "contactModal/closeRequested" });
     },
     open: () => {
+      runBestEffort(trackContactModalOpened);
       actorRef.send({ type: "contactModal/openRequested" });
     },
     setField: (field, value) => {
@@ -181,6 +293,7 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
       role="presentation"
       onMouseDown={controller.close}
     >
+      <ContactModalLifecycle onClose={controller.close} />
       <div
         className="contact-modal"
         role="dialog"
@@ -271,4 +384,28 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
       </div>
     </div>
   );
+}
+
+function ContactModalLifecycle({ onClose }: { onClose: () => void }) {
+  useMountEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      onClose();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  });
+
+  return null;
 }

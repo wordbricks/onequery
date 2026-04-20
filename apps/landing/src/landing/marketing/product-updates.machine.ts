@@ -1,17 +1,7 @@
-import { Result } from "better-result";
-import {
-  assertEvent,
-  assign,
-  fromCallback,
-  fromPromise,
-  sendTo,
-  setup,
-} from "xstate";
+import { assertEvent, assign, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
-import { toUserMessage } from "./marketing-errors";
-
-const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
+export const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
   "Failed to subscribe for product updates";
 
 type ProductUpdatesContext = {
@@ -28,6 +18,11 @@ type ProductUpdatesContext = {
         kind: "success";
         email: string;
       };
+  nextSubmissionRequestId: number;
+  pendingSubmission: {
+    email: string;
+    requestId: number;
+  } | null;
 };
 
 type ProductUpdatesEvent =
@@ -37,18 +32,17 @@ type ProductUpdatesEvent =
     }
   | {
       type: "productUpdates/submit";
+    }
+  | {
+      type: "productUpdates/submissionFailed";
+      message: string;
+      requestId: number;
+    }
+  | {
+      type: "productUpdates/submissionSucceeded";
+      email: string;
+      requestId: number;
     };
-
-type ProductUpdatesDependencies = {
-  subscribeProductUpdates: (input: { email: string }) => Promise<{
-    email: string;
-  }>;
-  trackProductUpdatesSignup: () => void;
-};
-
-type ProductUpdatesTelemetryEvent = {
-  type: "productUpdatesTelemetry/signupSucceeded";
-};
 
 function createInitialContext(): ProductUpdatesContext {
   return {
@@ -56,51 +50,43 @@ function createInitialContext(): ProductUpdatesContext {
     feedback: {
       kind: "idle",
     },
+    nextSubmissionRequestId: 1,
+    pendingSubmission: null,
   };
 }
 
-export function createProductUpdatesMachine(
-  dependencies: ProductUpdatesDependencies
-) {
-  const telemetry = fromCallback<ProductUpdatesTelemetryEvent>(
-    ({ receive }) => {
-      receive((event) => {
-        const trackingResult = Result.try(() => {
-          switch (event.type) {
-            case "productUpdatesTelemetry/signupSucceeded": {
-              dependencies.trackProductUpdatesSignup();
-              break;
-            }
-          }
-        });
-
-        if (trackingResult.isErr()) {
-          // Comment: analytics should never strand the workflow in a loading
-          // state after the signup request has already succeeded.
-        }
-      });
-    }
-  );
-
+export function createProductUpdatesMachine() {
   return setup({
     types: {
       context: {} as ProductUpdatesContext,
       events: {} as ProductUpdatesEvent,
     },
     actions: {
+      clearPendingSubmission: assign({
+        pendingSubmission: () => null,
+      }),
       recordSuccess: assign({
         email: () => "",
-        feedback: (_, params: { email: string }) => ({
-          kind: "success" as const,
-          email: params.email,
-        }),
+        feedback: ({ context, event }) => {
+          assertEvent(event, "productUpdates/submissionSucceeded");
+
+          if (context.pendingSubmission?.requestId !== event.requestId) {
+            return context.feedback;
+          }
+
+          return {
+            kind: "success" as const,
+            email: event.email,
+          };
+        },
       }),
-      storeSubmitError: assign({
-        feedback: (_, params: { message: string }) => ({
-          kind: "failure" as const,
-          message: params.message,
-        }),
-      }),
+      startSubmission: assign(({ context }) => ({
+        nextSubmissionRequestId: context.nextSubmissionRequestId + 1,
+        pendingSubmission: {
+          email: context.email,
+          requestId: context.nextSubmissionRequestId,
+        },
+      })),
       storeEmail: assign(({ event }) => {
         assertEvent(event, "productUpdates/emailChanged");
         return {
@@ -110,20 +96,36 @@ export function createProductUpdatesMachine(
           },
         };
       }),
+      storeSubmitError: assign({
+        feedback: ({ context, event }) => {
+          assertEvent(event, "productUpdates/submissionFailed");
+
+          if (context.pendingSubmission?.requestId !== event.requestId) {
+            return context.feedback;
+          }
+
+          return {
+            kind: "failure" as const,
+            message: event.message,
+          };
+        },
+      }),
     },
-    actors: {
-      submitProductUpdates: fromPromise<{ email: string }, { email: string }>(
-        async ({ input }) => dependencies.subscribeProductUpdates(input)
-      ),
-      telemetry,
+    guards: {
+      matchesPendingSubmission: ({ context, event }) => {
+        if (
+          event.type !== "productUpdates/submissionFailed" &&
+          event.type !== "productUpdates/submissionSucceeded"
+        ) {
+          return false;
+        }
+
+        return context.pendingSubmission?.requestId === event.requestId;
+      },
     },
   }).createMachine({
     id: "productUpdates",
     initial: "editing",
-    invoke: {
-      id: "telemetry",
-      src: "telemetry",
-    },
     context: createInitialContext(),
     states: {
       editing: {
@@ -131,40 +133,23 @@ export function createProductUpdatesMachine(
           "productUpdates/emailChanged": {
             actions: "storeEmail",
           },
-          "productUpdates/submit": "submitting",
+          "productUpdates/submit": {
+            actions: "startSubmission",
+            target: "submitting",
+          },
         },
       },
       submitting: {
-        invoke: {
-          src: "submitProductUpdates",
-          input: ({ context }) => ({
-            email: context.email,
-          }),
-          onDone: {
-            actions: [
-              {
-                type: "recordSuccess",
-                params: ({ event }) => ({
-                  email: event.output.email,
-                }),
-              },
-              sendTo("telemetry", {
-                type: "productUpdatesTelemetry/signupSucceeded",
-              }),
-            ],
-            target: "success",
-          },
-          onError: {
-            actions: {
-              type: "storeSubmitError",
-              params: ({ event }) => ({
-                message: toUserMessage(
-                  event.error,
-                  DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-                ),
-              }),
-            },
+        on: {
+          "productUpdates/submissionFailed": {
+            actions: ["storeSubmitError", "clearPendingSubmission"],
+            guard: "matchesPendingSubmission",
             target: "failure",
+          },
+          "productUpdates/submissionSucceeded": {
+            actions: ["recordSuccess", "clearPendingSubmission"],
+            guard: "matchesPendingSubmission",
+            target: "success",
           },
         },
       },
@@ -174,7 +159,10 @@ export function createProductUpdatesMachine(
             actions: "storeEmail",
             target: "editing",
           },
-          "productUpdates/submit": "submitting",
+          "productUpdates/submit": {
+            actions: "startSubmission",
+            target: "submitting",
+          },
         },
       },
       failure: {
@@ -183,7 +171,10 @@ export function createProductUpdatesMachine(
             actions: "storeEmail",
             target: "editing",
           },
-          "productUpdates/submit": "submitting",
+          "productUpdates/submit": {
+            actions: "startSubmission",
+            target: "submitting",
+          },
         },
       },
     },
