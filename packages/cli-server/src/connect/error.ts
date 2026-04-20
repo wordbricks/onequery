@@ -13,7 +13,11 @@ import {
   BadRequestSchema,
   RetryInfoSchema,
 } from "./gen/google/rpc/error_details_pb";
-import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
+import {
+  CliErrorDetailSchema,
+  ProblemCode,
+  ProblemStage,
+} from "./gen/onequery/cli/v1/common_pb";
 
 export type CliConnectValidationIssue = {
   field: string;
@@ -57,6 +61,11 @@ export class CliConnectProblem extends TaggedError("CliConnectProblem")<{
   }
 }
 
+type CliConnectErrorProblem = Pick<
+  CliProblemCatalogEntry,
+  "code" | "connectCode" | "hint" | "retryable" | "stage" | "title"
+>;
+
 function toCliConnectCode(code: CliConnectCode): Code {
   switch (code) {
     case "already_exists":
@@ -94,7 +103,7 @@ function toRetryDelayMessage(retryAfterMs: number) {
   } satisfies MessageInitShape<typeof RetryInfoSchema>["retryDelay"];
 }
 
-function createCliErrorDetail(problem: CliProblemCatalogEntry) {
+function createCliErrorDetail(problem: CliConnectErrorProblem) {
   return {
     desc: CliErrorDetailSchema,
     value: {
@@ -129,30 +138,67 @@ export function createCliConnectError(
 ) {
   const problemInput =
     input instanceof CliConnectProblem ? input : createCliConnectProblem(input);
-  const problem: CliProblemCatalogEntry = CLI_PROBLEM_CATALOG[problemInput.key];
+  const problem: CliConnectErrorProblem = CLI_PROBLEM_CATALOG[problemInput.key];
+  return createCliConnectErrorFromProblem(problem, {
+    cause: problemInput.cause,
+    detail: problemInput.message,
+    errors: problemInput.errors,
+    retryAfterMs: problemInput.retryAfterMs,
+  });
+}
+
+export function createCliInvalidRequestConnectError(input: {
+  cause?: unknown;
+  detail?: string;
+  errors?: CliConnectValidationIssue[];
+  hint: string;
+  stage: ProblemStage;
+}) {
+  return createCliConnectErrorFromProblem(
+    {
+      code: ProblemCode.INVALID_REQUEST,
+      connectCode: "invalid_argument",
+      hint: input.hint,
+      retryable: false,
+      stage: input.stage,
+      title: "Invalid Request",
+    },
+    input
+  );
+}
+
+function createCliConnectErrorFromProblem(
+  problem: CliConnectErrorProblem,
+  input: {
+    cause?: unknown;
+    detail?: string;
+    errors?: readonly CliConnectValidationIssue[];
+    retryAfterMs?: number;
+  }
+) {
   const details: NonNullable<ConstructorParameters<typeof ConnectError>[3]> = [
     createCliErrorDetail(problem),
   ];
 
-  if (typeof problemInput.retryAfterMs === "number") {
+  if (typeof input.retryAfterMs === "number") {
     details.push({
       desc: RetryInfoSchema,
       value: {
-        retryDelay: toRetryDelayMessage(problemInput.retryAfterMs),
+        retryDelay: toRetryDelayMessage(input.retryAfterMs),
       } satisfies MessageInitShape<typeof RetryInfoSchema>,
     });
   }
 
-  if (problemInput.errors && problemInput.errors.length > 0) {
-    details.push(createCliBadRequestDetail([...problemInput.errors]));
+  if (input.errors && input.errors.length > 0) {
+    details.push(createCliBadRequestDetail([...input.errors]));
   }
 
   return new ConnectError(
-    problemInput.message,
+    input.detail ?? problem.title,
     toCliConnectCode(problem.connectCode),
     undefined,
     details,
-    problemInput.cause
+    input.cause
   );
 }
 
