@@ -10,6 +10,8 @@ import {
 } from "@connectrpc/connect/protocol";
 import type { UniversalHandler } from "@connectrpc/connect/protocol";
 
+import { LANDING_CONNECT_PATH_PREFIX } from "../landing-api";
+
 interface WorkerHandlerOptions<Env> extends ConnectRouterOptions {
   /**
    * Route definitions. We recommend the following pattern:
@@ -27,32 +29,23 @@ interface WorkerHandlerOptions<Env> extends ConnectRouterOptions {
    * Then pass this function here.
    */
   routes: (router: ConnectRouter) => void;
-  requestPathPrefix?: string;
   /**
    * Context values to extract from the request. These values are passed to
    * the handlers.
    */
-  contextValues?: (
+  contextValues: (
     request: Request,
     env: Env,
     ctx: ExecutionContext
   ) => ContextValues;
-  /**
-   * Called when no route matches the request.
-   */
-  notFound?: (
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext
-  ) => Promise<Response> | Response;
 }
 
 export interface WorkerHandler<Env> {
   fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response>;
 }
 
-function normalizeRequestPathPrefix(requestPathPrefix?: string) {
-  if (!requestPathPrefix || requestPathPrefix === "/") {
+function normalizeRequestPathPrefix(requestPathPrefix: string) {
+  if (requestPathPrefix === "/") {
     return "";
   }
 
@@ -65,39 +58,33 @@ function normalizeRequestPathPrefix(requestPathPrefix?: string) {
     : requestPathPrefix;
 }
 
+const landingRequestPathPrefix = normalizeRequestPathPrefix(
+  LANDING_CONNECT_PATH_PREFIX
+);
+
 export function createWorkerHandler<Env>(
   options: WorkerHandlerOptions<Env>
 ): WorkerHandler<Env> {
-  const {
-    contextValues,
-    notFound,
-    requestPathPrefix,
-    routes,
-    ...routerOptions
-  } = options;
+  const { contextValues, routes, ...routerOptions } = options;
 
   const router = createConnectRouter(routerOptions);
   routes(router);
 
-  const prefix = normalizeRequestPathPrefix(requestPathPrefix);
   const paths = new Map<string, UniversalHandler>();
   for (const handler of router.handlers) {
-    paths.set(prefix + handler.requestPath, handler);
+    paths.set(landingRequestPathPrefix + handler.requestPath, handler);
   }
 
   return {
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
       const handler = paths.get(new URL(request.url).pathname);
       if (!handler) {
-        return (
-          (await notFound?.(request, env, ctx)) ??
-          new Response("Not found", { status: 404 })
-        );
+        return new Response("Not found", { status: 404 });
       }
 
       const universalRequest = {
         ...universalServerRequestFromFetch(request, {}),
-        contextValues: contextValues?.(request, env, ctx),
+        contextValues: contextValues(request, env, ctx),
       };
 
       try {
