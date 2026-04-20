@@ -28,7 +28,7 @@
     "@tanstack/react-query-persist-client": "5.90.20",
     "@tanstack/react-router": "catalog:",
     "@tanstack/zod-adapter": "1.153.1",
-    "@xstate/react": "6.0.0",
+    "@xstate/react": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
     "idb-keyval": "6.2.2",
@@ -39,7 +39,7 @@
     "react-dom": "catalog:",
     "react-hook-form": "7.71.1",
     "sonner": "catalog:",
-    "xstate": "5.28.0",
+    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
