@@ -20,9 +20,15 @@ export type ContactForm = {
 };
 
 type ContactModalContext = {
-  errorMessage: string | null;
   form: ContactForm;
-  successfulSubmissionCount: number;
+  submission:
+    | {
+        kind: "idle";
+      }
+    | {
+        kind: "submitFailed";
+        message: string;
+      };
 };
 
 type ContactModalEvent =
@@ -43,8 +49,8 @@ type ContactModalEvent =
 
 type ContactModalDependencies = {
   submitContact: (form: ContactForm) => Promise<void>;
-  trackContactFormSubmitted?: () => void;
-  trackContactModalOpened?: () => void;
+  trackContactFormSubmitted: () => void;
+  trackContactModalOpened: () => void;
 };
 
 type ContactModalTelemetryEvent =
@@ -65,9 +71,10 @@ function createEmptyContactForm(): ContactForm {
 
 function createInitialContext(): ContactModalContext {
   return {
-    errorMessage: null,
     form: createEmptyContactForm(),
-    successfulSubmissionCount: 0,
+    submission: {
+      kind: "idle",
+    },
   };
 }
 
@@ -105,11 +112,11 @@ export function createContactModalMachine(
       const trackingResult = Result.try(() => {
         switch (event.type) {
           case "contactModalTelemetry/modalOpened": {
-            dependencies.trackContactModalOpened?.();
+            dependencies.trackContactModalOpened();
             break;
           }
           case "contactModalTelemetry/formSubmitted": {
-            dependencies.trackContactFormSubmitted?.();
+            dependencies.trackContactFormSubmitted();
             break;
           }
         }
@@ -129,28 +136,34 @@ export function createContactModalMachine(
     },
     actions: {
       closeWithSuccess: assign({
-        errorMessage: () => null,
         form: () => createEmptyContactForm(),
-        successfulSubmissionCount: ({ context }) =>
-          context.successfulSubmissionCount + 1,
+        submission: () => ({
+          kind: "idle" as const,
+        }),
       }),
-      resetForm: assign(({ context }) => ({
-        errorMessage: null,
+      resetForm: assign(() => ({
         form: createEmptyContactForm(),
-        successfulSubmissionCount: context.successfulSubmissionCount,
+        submission: {
+          kind: "idle" as const,
+        },
       })),
       storeFieldValue: assign(({ context, event }) => {
         assertEvent(event, "contactModal/fieldChanged");
         return {
-          errorMessage: null,
           form: {
             ...context.form,
             [event.field]: event.value,
           },
+          submission: {
+            kind: "idle" as const,
+          },
         };
       }),
       storeSubmitError: assign({
-        errorMessage: (_, params: { message: string }) => params.message,
+        submission: (_, params: { message: string }) => ({
+          kind: "submitFailed" as const,
+          message: params.message,
+        }),
       }),
     },
     actors: {
@@ -237,5 +250,9 @@ export function createContactModalMachine(
 export function readContactModalErrorMessage(
   snapshot: SnapshotFrom<ReturnType<typeof createContactModalMachine>>
 ): string | null {
-  return snapshot.context.errorMessage;
+  if (snapshot.context.submission.kind !== "submitFailed") {
+    return null;
+  }
+
+  return snapshot.context.submission.message;
 }

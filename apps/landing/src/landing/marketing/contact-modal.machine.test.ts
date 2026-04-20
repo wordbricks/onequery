@@ -3,11 +3,15 @@ import { createActor, waitFor } from "xstate";
 
 import { createContactModalMachine } from "./contact-modal.machine";
 
+function noop() {}
+
 describe("createContactModalMachine", () => {
   it("closes on success and resets the captured form state", async () => {
     const actor = createActor(
       createContactModalMachine({
         submitContact: async () => undefined,
+        trackContactFormSubmitted: noop,
+        trackContactModalOpened: noop,
       })
     );
 
@@ -37,7 +41,9 @@ describe("createContactModalMachine", () => {
       message: "",
       name: "",
     });
-    expect(actor.getSnapshot().context.successfulSubmissionCount).toBe(1);
+    expect(actor.getSnapshot().context.submission).toEqual({
+      kind: "idle",
+    });
   });
 
   it("returns to editing with the previous form contents after a failed submit", async () => {
@@ -46,6 +52,8 @@ describe("createContactModalMachine", () => {
         submitContact: async () => {
           throw new Error("Lead capture offline");
         },
+        trackContactFormSubmitted: noop,
+        trackContactModalOpened: noop,
       })
     );
 
@@ -69,15 +77,17 @@ describe("createContactModalMachine", () => {
     expect(actor.getSnapshot().context.form.message).toBe(
       "Need a rollout plan."
     );
-    expect(actor.getSnapshot().context.errorMessage).toBe(
-      "Lead capture offline"
-    );
+    expect(actor.getSnapshot().context.submission).toEqual({
+      kind: "submitFailed",
+      message: "Lead capture offline",
+    });
   });
 
   it("ignores telemetry failures after a successful submit", async () => {
     const actor = createActor(
       createContactModalMachine({
         submitContact: async () => undefined,
+        trackContactModalOpened: noop,
         trackContactFormSubmitted: () => {
           throw new Error("analytics boom");
         },
@@ -92,6 +102,8 @@ describe("createContactModalMachine", () => {
     await Promise.resolve();
 
     expect(actor.getSnapshot().matches("closed")).toBe(true);
-    expect(actor.getSnapshot().context.successfulSubmissionCount).toBe(1);
+    expect(actor.getSnapshot().context.submission).toEqual({
+      kind: "idle",
+    });
   });
 });

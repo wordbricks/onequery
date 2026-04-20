@@ -16,9 +16,18 @@ const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
 
 type ProductUpdatesContext = {
   email: string;
-  errorMessage: string | null;
-  lastSubmittedEmail: string | null;
-  successfulSubmissionCount: number;
+  feedback:
+    | {
+        kind: "idle";
+      }
+    | {
+        kind: "failure";
+        message: string;
+      }
+    | {
+        kind: "success";
+        email: string;
+      };
 };
 
 type ProductUpdatesEvent =
@@ -34,7 +43,7 @@ type ProductUpdatesDependencies = {
   subscribeProductUpdates: (input: { email: string }) => Promise<{
     email: string;
   }>;
-  trackProductUpdatesSignup?: () => void;
+  trackProductUpdatesSignup: () => void;
 };
 
 type ProductUpdatesTelemetryEvent = {
@@ -44,9 +53,9 @@ type ProductUpdatesTelemetryEvent = {
 function createInitialContext(): ProductUpdatesContext {
   return {
     email: "",
-    errorMessage: null,
-    lastSubmittedEmail: null,
-    successfulSubmissionCount: 0,
+    feedback: {
+      kind: "idle",
+    },
   };
 }
 
@@ -59,7 +68,7 @@ export function createProductUpdatesMachine(
         const trackingResult = Result.try(() => {
           switch (event.type) {
             case "productUpdatesTelemetry/signupSucceeded": {
-              dependencies.trackProductUpdatesSignup?.();
+              dependencies.trackProductUpdatesSignup();
               break;
             }
           }
@@ -81,21 +90,24 @@ export function createProductUpdatesMachine(
     actions: {
       recordSuccess: assign({
         email: () => "",
-        errorMessage: () => null,
-        lastSubmittedEmail: (_, params: { email: string }) => params.email,
-        successfulSubmissionCount: ({ context }) =>
-          context.successfulSubmissionCount + 1,
+        feedback: (_, params: { email: string }) => ({
+          kind: "success" as const,
+          email: params.email,
+        }),
       }),
       storeSubmitError: assign({
-        errorMessage: (_, params: { message: string }) => params.message,
-        lastSubmittedEmail: () => null,
+        feedback: (_, params: { message: string }) => ({
+          kind: "failure" as const,
+          message: params.message,
+        }),
       }),
       storeEmail: assign(({ event }) => {
         assertEvent(event, "productUpdates/emailChanged");
         return {
           email: event.email,
-          errorMessage: null,
-          lastSubmittedEmail: null,
+          feedback: {
+            kind: "idle" as const,
+          },
         };
       }),
     },
@@ -181,19 +193,20 @@ export function createProductUpdatesMachine(
 export function readProductUpdatesFeedback(
   snapshot: SnapshotFrom<ReturnType<typeof createProductUpdatesMachine>>
 ) {
-  if (snapshot.matches("failure")) {
+  const { feedback } = snapshot.context;
+
+  if (feedback.kind === "failure") {
     return {
       className: "marketing-form-feedback marketing-form-feedback-error",
-      message:
-        snapshot.context.errorMessage ?? DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
+      message: feedback.message,
       role: "alert" as const,
     };
   }
 
-  if (snapshot.matches("success")) {
+  if (feedback.kind === "success") {
     return {
       className: "marketing-form-feedback marketing-form-feedback-success",
-      message: `We’ll send product updates to ${snapshot.context.lastSubmittedEmail}.`,
+      message: `We’ll send product updates to ${feedback.email}.`,
       role: "status" as const,
     };
   }

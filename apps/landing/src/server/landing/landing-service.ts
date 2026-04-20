@@ -11,14 +11,26 @@ import {
 
 export const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
+export type LandingNotificationDelivery =
+  | {
+      kind: "local-dev-null-sink";
+    }
+  | {
+      kind: "slack-webhook";
+      webhookUrl: string;
+    }
+  | {
+      kind: "unconfigured";
+    };
+
 export interface LandingServiceContext {
-  allowLocalNotificationFallback: boolean;
-  slackWebhookUrl: string | null;
+  notificationDelivery: LandingNotificationDelivery;
 }
 
 export const landingContextKey = createContextKey<LandingServiceContext>({
-  allowLocalNotificationFallback: false,
-  slackWebhookUrl: null,
+  notificationDelivery: {
+    kind: "unconfigured",
+  },
 });
 
 class LandingNotificationConfigurationError extends TaggedError(
@@ -46,7 +58,51 @@ type LandingNotificationError =
   | LandingNotificationRequestError
   | LandingNotificationResponseError;
 
+type SlackPlainText = {
+  type: "plain_text";
+  text: string;
+};
+
+type SlackMarkdownText = {
+  type: "mrkdwn";
+  text: string;
+};
+
+type SlackHeaderBlock = {
+  type: "header";
+  text: SlackPlainText;
+};
+
+type SlackSectionBlock =
+  | {
+      type: "section";
+      fields: readonly SlackMarkdownText[];
+    }
+  | {
+      type: "section";
+      text: SlackMarkdownText;
+    };
+
+type SlackContextBlock = {
+  type: "context";
+  elements: readonly SlackMarkdownText[];
+};
+
+type LandingNotificationPayload = {
+  text: string;
+  blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
+};
+
 type LandingLogger = Pick<typeof console, "error" | "info">;
+type LandingNotificationRuntime = {
+  logger: LandingLogger;
+  transport: typeof fetch;
+};
+
+const defaultLandingNotificationRuntime: LandingNotificationRuntime = {
+  logger: console,
+  transport: fetch,
+};
 
 function escapeSlackText(value: string) {
   return value
@@ -55,30 +111,80 @@ function escapeSlackText(value: string) {
     .replaceAll(">", "&gt;");
 }
 
-export async function deliverLandingNotification(input: {
-  allowLocalFallback: boolean;
-  logger?: LandingLogger;
-  payload: Record<string, unknown>;
-  slackWebhookUrl: string | null;
-  transport?: typeof fetch;
-}): Promise<Result<void, LandingNotificationError>> {
-  const {
-    allowLocalFallback,
-    logger = console,
-    payload,
-    slackWebhookUrl,
-    transport = fetch,
-  } = input;
+function createProductUpdatesNotification(
+  email: string
+): LandingNotificationPayload {
+  return {
+    text: `New product updates signup: ${email}`,
+    blocks: [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "New product updates signup" },
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Email*\n${escapeSlackText(email)}` },
+          { type: "mrkdwn", text: `*Source*\n${LEAD_CAPTURE_SOURCE}` },
+        ],
+      },
+    ],
+  };
+}
 
-  if (!slackWebhookUrl) {
-    if (allowLocalFallback) {
-      logger.info({
-        event: "landing_service.local_notification_fallback",
-        payload,
-      });
-      return Result.ok(undefined);
-    }
+function createContactNotification(input: {
+  email: string;
+  message: string;
+  name: string;
+}): LandingNotificationPayload {
+  return {
+    text: `New contact request from ${input.name} (${input.email})`,
+    blocks: [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "New contact request" },
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Name*\n${escapeSlackText(input.name)}` },
+          { type: "mrkdwn", text: `*Email*\n${escapeSlackText(input.email)}` },
+        ],
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Message*\n${escapeSlackText(input.message)}`,
+        },
+      },
+      {
+        type: "context",
+        elements: [{ type: "mrkdwn", text: `Source: ${LEAD_CAPTURE_SOURCE}` }],
+      },
+    ],
+  };
+}
 
+export async function deliverLandingNotification(
+  input: {
+    delivery: LandingNotificationDelivery;
+    payload: LandingNotificationPayload;
+  },
+  runtime: LandingNotificationRuntime
+): Promise<Result<void, LandingNotificationError>> {
+  const { delivery, payload } = input;
+  const { logger, transport } = runtime;
+
+  if (delivery.kind === "local-dev-null-sink") {
+    logger.info({
+      event: "landing_service.local_notification_fallback",
+      payload,
+    });
+    return Result.ok(undefined);
+  }
+
+  if (delivery.kind === "unconfigured") {
     return Result.err(
       new LandingNotificationConfigurationError({
         message: "Landing ingest is not configured",
@@ -88,7 +194,7 @@ export async function deliverLandingNotification(input: {
 
   const responseResult = await Result.tryPromise({
     try: () =>
-      transport(slackWebhookUrl, {
+      transport(delivery.webhookUrl, {
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -146,28 +252,14 @@ function toErrorMessage(error: unknown): string {
 const landingServiceImpl: ServiceImpl<typeof LandingService> = {
   async subscribeProductUpdates(request, ctx) {
     const email = request.email.trim().toLowerCase();
-    const { allowLocalNotificationFallback, slackWebhookUrl } =
-      ctx.values.get(landingContextKey);
-    const delivery = await deliverLandingNotification({
-      allowLocalFallback: allowLocalNotificationFallback,
-      payload: {
-        text: `New product updates signup: ${email}`,
-        blocks: [
-          {
-            type: "header",
-            text: { type: "plain_text", text: "New product updates signup" },
-          },
-          {
-            type: "section",
-            fields: [
-              { type: "mrkdwn", text: `*Email*\n${escapeSlackText(email)}` },
-              { type: "mrkdwn", text: `*Source*\n${LEAD_CAPTURE_SOURCE}` },
-            ],
-          },
-        ],
+    const { notificationDelivery } = ctx.values.get(landingContextKey);
+    const delivery = await deliverLandingNotification(
+      {
+        delivery: notificationDelivery,
+        payload: createProductUpdatesNotification(email),
       },
-      slackWebhookUrl,
-    });
+      defaultLandingNotificationRuntime
+    );
     if (delivery.isErr()) {
       throw toLandingConnectError(delivery.error);
     }
@@ -178,41 +270,14 @@ const landingServiceImpl: ServiceImpl<typeof LandingService> = {
     const email = request.email.trim().toLowerCase();
     const name = request.name.trim();
     const message = request.message.trim();
-    const { allowLocalNotificationFallback, slackWebhookUrl } =
-      ctx.values.get(landingContextKey);
-    const delivery = await deliverLandingNotification({
-      allowLocalFallback: allowLocalNotificationFallback,
-      payload: {
-        text: `New contact request from ${name} (${email})`,
-        blocks: [
-          {
-            type: "header",
-            text: { type: "plain_text", text: "New contact request" },
-          },
-          {
-            type: "section",
-            fields: [
-              { type: "mrkdwn", text: `*Name*\n${escapeSlackText(name)}` },
-              { type: "mrkdwn", text: `*Email*\n${escapeSlackText(email)}` },
-            ],
-          },
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `*Message*\n${escapeSlackText(message)}`,
-            },
-          },
-          {
-            type: "context",
-            elements: [
-              { type: "mrkdwn", text: `Source: ${LEAD_CAPTURE_SOURCE}` },
-            ],
-          },
-        ],
+    const { notificationDelivery } = ctx.values.get(landingContextKey);
+    const delivery = await deliverLandingNotification(
+      {
+        delivery: notificationDelivery,
+        payload: createContactNotification({ email, message, name }),
       },
-      slackWebhookUrl,
-    });
+      defaultLandingNotificationRuntime
+    );
     if (delivery.isErr()) {
       throw toLandingConnectError(delivery.error);
     }

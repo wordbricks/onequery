@@ -3,6 +3,8 @@ import { createActor, waitFor } from "xstate";
 
 import { createProductUpdatesMachine } from "./product-updates.machine";
 
+function noop() {}
+
 describe("createProductUpdatesMachine", () => {
   it("resets the form while preserving the submitted email after success", async () => {
     const actor = createActor(
@@ -10,6 +12,7 @@ describe("createProductUpdatesMachine", () => {
         subscribeProductUpdates: async ({ email }) => ({
           email: email.trim().toLowerCase(),
         }),
+        trackProductUpdatesSignup: noop,
       })
     );
 
@@ -23,10 +26,10 @@ describe("createProductUpdatesMachine", () => {
     await waitFor(actor, (snapshot) => snapshot.matches("success"));
 
     expect(actor.getSnapshot().context.email).toBe("");
-    expect(actor.getSnapshot().context.lastSubmittedEmail).toBe(
-      "team@onequery.dev"
-    );
-    expect(actor.getSnapshot().context.successfulSubmissionCount).toBe(1);
+    expect(actor.getSnapshot().context.feedback).toEqual({
+      kind: "success",
+      email: "team@onequery.dev",
+    });
   });
 
   it("keeps the operator in a retryable failure state when RPC submission fails", async () => {
@@ -35,6 +38,7 @@ describe("createProductUpdatesMachine", () => {
         subscribeProductUpdates: async () => {
           throw new Error("Webhook unavailable");
         },
+        trackProductUpdatesSignup: noop,
       })
     );
 
@@ -48,9 +52,10 @@ describe("createProductUpdatesMachine", () => {
     await waitFor(actor, (snapshot) => snapshot.matches("failure"));
 
     expect(actor.getSnapshot().context.email).toBe("team@onequery.dev");
-    expect(actor.getSnapshot().context.errorMessage).toBe(
-      "Webhook unavailable"
-    );
+    expect(actor.getSnapshot().context.feedback).toEqual({
+      kind: "failure",
+      message: "Webhook unavailable",
+    });
   });
 
   it("ignores telemetry failures after a successful signup", async () => {
@@ -74,8 +79,9 @@ describe("createProductUpdatesMachine", () => {
     await Promise.resolve();
 
     expect(actor.getSnapshot().matches("success")).toBe(true);
-    expect(actor.getSnapshot().context.lastSubmittedEmail).toBe(
-      "team@onequery.dev"
-    );
+    expect(actor.getSnapshot().context.feedback).toEqual({
+      kind: "success",
+      email: "team@onequery.dev",
+    });
   });
 });

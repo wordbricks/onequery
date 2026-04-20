@@ -9,15 +9,23 @@ describe("deliverLandingNotification", () => {
       info: vi.fn(),
     };
     const transport = vi.fn<typeof fetch>();
-    const payload = { text: "New product updates signup: test@example.com" };
+    const payload = {
+      text: "New product updates signup: test@example.com",
+      blocks: [],
+    };
 
-    const result = await deliverLandingNotification({
-      allowLocalFallback: true,
-      logger,
-      payload,
-      slackWebhookUrl: null,
-      transport,
-    });
+    const result = await deliverLandingNotification(
+      {
+        delivery: {
+          kind: "local-dev-null-sink",
+        },
+        payload,
+      },
+      {
+        logger,
+        transport,
+      }
+    );
 
     expect(result.isOk()).toBe(true);
     expect(transport).not.toHaveBeenCalled();
@@ -28,11 +36,27 @@ describe("deliverLandingNotification", () => {
   });
 
   it("stays unavailable outside local loopback when the webhook is missing", async () => {
-    const result = await deliverLandingNotification({
-      allowLocalFallback: false,
-      payload: { text: "New product updates signup: test@example.com" },
-      slackWebhookUrl: null,
-    });
+    const logger = {
+      error: vi.fn(),
+      info: vi.fn(),
+    };
+    const transport = vi.fn<typeof fetch>();
+
+    const result = await deliverLandingNotification(
+      {
+        delivery: {
+          kind: "unconfigured",
+        },
+        payload: {
+          text: "New product updates signup: test@example.com",
+          blocks: [],
+        },
+      },
+      {
+        logger,
+        transport,
+      }
+    );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -48,15 +72,24 @@ describe("deliverLandingNotification", () => {
     const transport = vi
       .fn<typeof fetch>()
       .mockResolvedValue(new Response(null, { status: 200 }));
-    const payload = { text: "New product updates signup: test@example.com" };
+    const payload = {
+      text: "New product updates signup: test@example.com",
+      blocks: [],
+    };
 
-    const result = await deliverLandingNotification({
-      allowLocalFallback: false,
-      logger,
-      payload,
-      slackWebhookUrl: "https://example.com/hooks/landing",
-      transport,
-    });
+    const result = await deliverLandingNotification(
+      {
+        delivery: {
+          kind: "slack-webhook",
+          webhookUrl: "https://example.com/hooks/landing",
+        },
+        payload,
+      },
+      {
+        logger,
+        transport,
+      }
+    );
 
     expect(result.isOk()).toBe(true);
     expect(transport).toHaveBeenCalledWith(
