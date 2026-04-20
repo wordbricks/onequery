@@ -2,11 +2,11 @@ import { assertEvent, assign, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import {
-  LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
-  LANDING_INSTALL_COMMANDS,
+  COPY_FEEDBACK_RESET_DELAY_MS,
+  INSTALL_COMMANDS,
 } from "../config/landing-config";
 
-export type InstallMethod = (typeof LANDING_INSTALL_COMMANDS)[number];
+export type InstallMethod = (typeof INSTALL_COMMANDS)[number];
 export type InstallMethodLabel = InstallMethod["label"];
 
 type PendingCopyRequest = {
@@ -44,7 +44,7 @@ type DownloadCommandMachineOptions = {
   copyFeedbackResetDelayMs?: number;
 };
 
-const defaultInstallMethod = LANDING_INSTALL_COMMANDS[0];
+const defaultInstallMethod = INSTALL_COMMANDS[0];
 
 function createInitialContext(): DownloadCommandContext {
   return {
@@ -57,7 +57,7 @@ function createInitialContext(): DownloadCommandContext {
 
 export function getInstallMethod(label: InstallMethodLabel): InstallMethod {
   return (
-    LANDING_INSTALL_COMMANDS.find((method) => method.label === label) ??
+    INSTALL_COMMANDS.find((method) => method.label === label) ??
     defaultInstallMethod
   );
 }
@@ -66,7 +66,7 @@ export function createDownloadCommandMachine(
   options: DownloadCommandMachineOptions = {}
 ) {
   const copyFeedbackResetDelayMs =
-    options.copyFeedbackResetDelayMs ?? LANDING_COPY_FEEDBACK_RESET_DELAY_MS;
+    options.copyFeedbackResetDelayMs ?? COPY_FEEDBACK_RESET_DELAY_MS;
 
   return setup({
     types: {

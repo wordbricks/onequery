@@ -5,7 +5,7 @@ import {
   trackInstallCommandCopied,
   trackInstallMethodSelected,
 } from "../analytics/landing-analytics";
-import { LANDING_INSTALL_COMMANDS } from "../config/landing-config";
+import { INSTALL_COMMANDS } from "../config/landing-config";
 import {
   createDownloadCommandMachine,
   readCopiedMethodLabel,
@@ -92,9 +92,7 @@ function useDownloadCommandController() {
     copy: () => {
       actorRef.send({ type: "downloadCommand/copyRequested" });
     },
-    selectMethod: (
-      label: (typeof LANDING_INSTALL_COMMANDS)[number]["label"]
-    ) => {
+    selectMethod: (label: (typeof INSTALL_COMMANDS)[number]["label"]) => {
       runBestEffort(() => trackInstallMethodSelected(label));
       actorRef.send({
         type: "downloadCommand/methodSelected",
@@ -111,7 +109,7 @@ export function DownloadCommand() {
   return (
     <div className="install-selector">
       <div className="install-tabs" role="tablist" aria-label="Install method">
-        {LANDING_INSTALL_COMMANDS.map((method) => {
+        {INSTALL_COMMANDS.map((method) => {
           const isSelected = method.label === selectedMethod.label;
 
           return (

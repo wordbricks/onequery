@@ -3,7 +3,7 @@ import {
   LANDING_CONNECT_PATH_PREFIX,
   LANDING_SERVICE_NAME,
 } from "./landing/config/landing-api";
-import { LANDING_PROTO_SOURCE_URL } from "./landing/config/landing-config";
+import { PROTO_SOURCE_URL } from "./landing/config/landing-config";
 import { createLandingWorkerHandler } from "./server/landing/landing-worker";
 import type { LandingWorkerBindings } from "./server/landing/landing-worker";
 
@@ -60,7 +60,7 @@ function createApiCatalog(origin: string) {
         // document target instead of the previously broken README link.
         "service-desc": [
           {
-            href: LANDING_PROTO_SOURCE_URL,
+            href: PROTO_SOURCE_URL,
             type: "text/plain",
           },
         ],

@@ -5,8 +5,8 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 import {
-  getLandingDevPort,
-  LANDING_DEV_SERVER_HOST,
+  DEFAULT_DEV_PORT,
+  DEV_SERVER_HOST,
 } from "./src/landing/config/landing-config";
 import { createInstallScriptPlugin } from "./src/tooling/vite-install-script";
 
@@ -47,10 +47,12 @@ export default defineConfig(({ command }) => {
   return {
     ...config,
     server: {
-      host: LANDING_DEV_SERVER_HOST,
+      host: DEV_SERVER_HOST,
       // Comment: the Cloudflare Vite plugin runs the worker inside the Vite
       // dev server, so landing RPC stays same-origin without a separate proxy.
-      port: getLandingDevPort(),
+      // Comment: keep the default port here and let Vite's native `--port`
+      // handling override it when a local workflow needs a different port.
+      port: DEFAULT_DEV_PORT,
       strictPort: true,
       allowedHosts: ["localhost", "host.docker.internal"],
     },

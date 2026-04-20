@@ -2,10 +2,10 @@ import type { ComponentPropsWithoutRef } from "react";
 
 import { trackLandingCtaClick } from "../analytics/landing-analytics";
 import {
-  LANDING_INSTALL_SCRIPT_URL,
-  LANDING_REPOSITORY_URL,
-  LANDING_SECTION_IDS,
-  LANDING_SELF_HOST_DOCS_URL,
+  INSTALL_SCRIPT_URL,
+  REPOSITORY_URL,
+  SECTION_IDS,
+  SELF_HOST_DOCS_URL,
 } from "../config/landing-config";
 import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
 import {
@@ -47,14 +47,14 @@ type LandingCtaLink = {
 const heroActions = [
   {
     className: "button button-primary",
-    href: `#${LANDING_SECTION_IDS.install}`,
+    href: `#${SECTION_IDS.install}`,
     label: "Get started",
     trackingName: "hero_get_started",
     trackingSection: "hero",
   },
   {
     className: "button button-secondary",
-    href: LANDING_REPOSITORY_URL,
+    href: REPOSITORY_URL,
     label: "Browse repository",
     rel: "noreferrer",
     target: "_blank",
@@ -66,7 +66,7 @@ const heroActions = [
 const finalCtaActions = [
   {
     className: "button button-primary",
-    href: LANDING_INSTALL_SCRIPT_URL,
+    href: INSTALL_SCRIPT_URL,
     label: "Install now",
     rel: "noreferrer",
     target: "_blank",
@@ -75,7 +75,7 @@ const finalCtaActions = [
   },
   {
     className: "button button-secondary",
-    href: LANDING_SELF_HOST_DOCS_URL,
+    href: SELF_HOST_DOCS_URL,
     label: "Read self-host docs",
     rel: "noreferrer",
     target: "_blank",
@@ -140,7 +140,7 @@ function SiteHeader() {
       <div className="header-actions">
         <TrackedLink
           className="header-github-link"
-          href={LANDING_REPOSITORY_URL}
+          href={REPOSITORY_URL}
           target="_blank"
           rel="noreferrer"
           aria-label="Open OneQuery GitHub repository"
@@ -224,10 +224,7 @@ function OpenClawSection() {
 
 function SummarySection() {
   return (
-    <section
-      className="section section-summary"
-      id={LANDING_SECTION_IDS.surface}
-    >
+    <section className="section section-summary" id={SECTION_IDS.surface}>
       <div className="section-intro">
         <p className="eyebrow">What OneQuery does</p>
         <h2>
@@ -247,7 +244,7 @@ function SummarySection() {
 
 function InstallSection() {
   return (
-    <section className="section utility-grid" id={LANDING_SECTION_IDS.install}>
+    <section className="section utility-grid" id={SECTION_IDS.install}>
       <article className="utility-panel">
         <p className="eyebrow">Install</p>
         <h2>Up and running in a few commands.</h2>
@@ -274,7 +271,7 @@ function WorkflowSection() {
   return (
     <section
       className="section utility-grid utility-grid-offset"
-      id={LANDING_SECTION_IDS.workflow}
+      id={SECTION_IDS.workflow}
     >
       <article className="utility-panel utility-panel-code workflow-panel-example">
         <p className="eyebrow">Query example</p>

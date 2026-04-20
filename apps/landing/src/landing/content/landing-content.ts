@@ -1,9 +1,9 @@
 import {
-  LANDING_CLI_SOURCE_URL,
-  LANDING_DOWNLOAD_COMMAND,
-  LANDING_INSTALL_SCRIPT_URL,
-  LANDING_REPOSITORY_URL,
-  LANDING_SECTION_IDS,
+  CLI_SOURCE_URL,
+  DOWNLOAD_COMMAND,
+  INSTALL_SCRIPT_URL,
+  REPOSITORY_URL,
+  SECTION_IDS,
 } from "../config/landing-config";
 import type { TerminalLine } from "../terminal/terminal-surface";
 
@@ -29,17 +29,17 @@ const querySnippet = `onequery query exec \\
 
 export const FOOTER_LINKS = [
   {
-    href: LANDING_REPOSITORY_URL,
+    href: REPOSITORY_URL,
     label: "GitHub",
     trackingName: "footer_github",
   },
   {
-    href: LANDING_CLI_SOURCE_URL,
+    href: CLI_SOURCE_URL,
     label: "CLI source",
     trackingName: "footer_cli_source",
   },
   {
-    href: LANDING_INSTALL_SCRIPT_URL,
+    href: INSTALL_SCRIPT_URL,
     label: "Install script",
     trackingName: "footer_install_script",
   },
@@ -59,9 +59,9 @@ export const INSTALL_STEPS = [
 ] as const;
 
 export const NAVIGATION_ITEMS = [
-  { href: `#${LANDING_SECTION_IDS.surface}`, label: "Product" },
-  { href: `#${LANDING_SECTION_IDS.install}`, label: "Install" },
-  { href: `#${LANDING_SECTION_IDS.workflow}`, label: "Workflow" },
+  { href: `#${SECTION_IDS.surface}`, label: "Product" },
+  { href: `#${SECTION_IDS.install}`, label: "Install" },
+  { href: `#${SECTION_IDS.workflow}`, label: "Workflow" },
 ] satisfies ReadonlyArray<NavigationItem>;
 
 export const QUERY_DETAILS_SNIPPET = `source       warehouse
@@ -72,7 +72,7 @@ rows         7 returned
 budget       $4.2k remaining`;
 
 export const QUICKSTART_TERMINAL_LINES = [
-  { kind: "prompt", text: LANDING_DOWNLOAD_COMMAND },
+  { kind: "prompt", text: DOWNLOAD_COMMAND },
   { kind: "output", text: "downloaded @onequery/cli to ~/.local/bin" },
   { kind: "prompt", text: "onequery gateway start" },
   { kind: "output", text: "gateway listening on http://localhost:5656" },

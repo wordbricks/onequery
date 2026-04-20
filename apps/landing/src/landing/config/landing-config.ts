@@ -1,32 +1,29 @@
-export const LANDING_SECTION_IDS = {
+export const SECTION_IDS = {
   install: "install",
   surface: "surface",
   workflow: "workflow",
 } as const;
 
-export const LANDING_REPOSITORY_URL =
-  "https://github.com/wordbricks/onequery" as const;
-export const LANDING_REPOSITORY_RAW_URL =
+export const REPOSITORY_URL = "https://github.com/wordbricks/onequery" as const;
+export const REPOSITORY_RAW_URL =
   "https://raw.githubusercontent.com/wordbricks/onequery/main" as const;
-export const LANDING_CLI_SOURCE_URL =
-  `${LANDING_REPOSITORY_URL}/tree/main/apps/cli` as const;
-export const LANDING_SELF_HOST_DOCS_URL =
-  `${LANDING_REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
-export const LANDING_PROTO_SOURCE_URL =
-  `${LANDING_REPOSITORY_RAW_URL}/proto/onequery/landing/v1/landing.proto` as const;
-export const LANDING_INSTALL_SCRIPT_URL =
-  "https://onequery.dev/install.sh" as const;
+export const CLI_SOURCE_URL = `${REPOSITORY_URL}/tree/main/apps/cli` as const;
+export const SELF_HOST_DOCS_URL =
+  `${REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
+export const PROTO_SOURCE_URL =
+  `${REPOSITORY_RAW_URL}/proto/onequery/landing/v1/landing.proto` as const;
+export const INSTALL_SCRIPT_URL = "https://onequery.dev/install.sh" as const;
 
-export const LANDING_DOWNLOAD_COMMAND =
-  `curl -fsSL ${LANDING_INSTALL_SCRIPT_URL} | sh` as const;
+export const DOWNLOAD_COMMAND =
+  `curl -fsSL ${INSTALL_SCRIPT_URL} | sh` as const;
 
 // Note: README currently uses `bun add -g @onequery/cli`, while
 // docs/self-host.md still says `bun install -g @onequery/cli`.
 // Keep the README wording here until the docs are reconciled.
-export const LANDING_INSTALL_COMMANDS = [
+export const INSTALL_COMMANDS = [
   {
     label: "Install script",
-    command: LANDING_DOWNLOAD_COMMAND,
+    command: DOWNLOAD_COMMAND,
   },
   {
     label: "Homebrew",
@@ -42,32 +39,11 @@ export const LANDING_INSTALL_COMMANDS = [
   },
 ] as const;
 
-export const LANDING_INSTALL_SNIPPET = `${LANDING_DOWNLOAD_COMMAND}
+export const INSTALL_SNIPPET = `${DOWNLOAD_COMMAND}
 
 onequery gateway start
 onequery auth login` as const;
 
-export const LANDING_COPY_FEEDBACK_RESET_DELAY_MS = 1500;
-export const DEFAULT_LANDING_DEV_PORT = 4546;
-export const LANDING_DEV_SERVER_HOST = "0.0.0.0" as const;
-const PORT_DIGITS_PATTERN = /^\d+$/;
-
-export function getLandingDevPort(
-  envPort = process.env.ONEQUERY_LANDING_DEV_PORT
-) {
-  const trimmedPort = envPort?.trim();
-  if (!trimmedPort) {
-    return DEFAULT_LANDING_DEV_PORT;
-  }
-
-  if (!PORT_DIGITS_PATTERN.test(trimmedPort)) {
-    return DEFAULT_LANDING_DEV_PORT;
-  }
-
-  const parsedPort = Number.parseInt(trimmedPort, 10);
-  if (Number.isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
-    return DEFAULT_LANDING_DEV_PORT;
-  }
-
-  return parsedPort;
-}
+export const COPY_FEEDBACK_RESET_DELAY_MS = 1500;
+export const DEFAULT_DEV_PORT = 4546;
+export const DEV_SERVER_HOST = "0.0.0.0" as const;
