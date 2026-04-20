@@ -93,7 +93,7 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - every query lifecycle outcome is represented as commands and events
   - V1-style observer logging is removed from the workflow path
-- [ ] Land `source_api_action`.
+- [x] Land `source_api_action`.
   Exit criteria:
   - describe, preview-only invoke, execute, resume, and terminal failure are explicit transitions
   - continuation identity is bound to the audited action and resume point

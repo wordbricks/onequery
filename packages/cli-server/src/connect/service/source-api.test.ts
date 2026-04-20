@@ -1,6 +1,16 @@
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
+import {
+  createDb,
+  organization,
+  prepareApplicationDatabase,
+} from "@onequery/db/server";
 import {
   SourceApiExecutionStageError,
   SourceApiExpiredError,
@@ -8,8 +18,9 @@ import {
   SourceApiPermissionDeniedError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
 import { createCliConnectProblem } from "../error";
 import {
@@ -45,7 +56,9 @@ expect.addSnapshotSerializer({
 });
 
 const session = {
+  authMode: "browser_session",
   user: {
+    email: "jane@example.com",
     id: "user-1",
   },
 } as const;
@@ -59,26 +72,18 @@ const authorizedOrg = {
   },
 } as const;
 
-const honoContext = {
-  var: {
-    runtime: {
-      crypto: {
-        masterEncryptionKey: "master-key",
-      },
-    },
-    storage: {
-      db: { kind: "db" },
-    },
-  },
-} as const;
-
 const loadedSource = {
-  kind: "loaded",
+  kind: "found",
   source: {
+    credentialsEncrypted: "encrypted",
+    credentialsIv: "iv",
     displayName: "GitHub Prod",
     id: "source-1",
+    name: "github-prod",
+    organizationId: authorizedOrg.org.id,
     provider: "github",
     sourceKey: "github-prod",
+    status: "active",
   },
 } as const;
 
@@ -188,16 +193,19 @@ const sourceApiPreview = {
 } as const;
 
 const decodedContinuationToken = {
+  actionId: "action_123",
   expiresAt: "2026-04-10T00:05:00.000Z",
   issuedAt: "2026-04-10T00:00:00.000Z",
   prepared: {
     ...prepared,
     paginationPolicy: "continuation_token",
   },
+  preparedRequestFingerprint: prepared.preparedBinding,
+  resumeFromEventId: "event_resume_123",
   state: {
     cursor: "page_2",
   },
-  version: 2 as const,
+  version: 3 as const,
 };
 
 const executionResponse = {
@@ -222,7 +230,55 @@ const executionResponse = {
   status: 200,
 } as const;
 
-function createHarness() {
+type ClosableDatabase = {
+  $client?: {
+    close?: () => Promise<unknown>;
+    end?: (options?: Record<string, unknown>) => Promise<unknown>;
+  };
+};
+
+const migrationsFolder = fileURLToPath(
+  new URL("../../../../db/src/migrations", import.meta.url)
+);
+
+async function closeDatabase(db: ClosableDatabase): Promise<void> {
+  const client = db.$client;
+  if (client && typeof client.close === "function") {
+    await client.close();
+    return;
+  }
+
+  if (client && typeof client.end === "function") {
+    await client.end({ timeout: 0 });
+  }
+}
+
+async function createHarness() {
+  const connectionString = `pglite:${join(tmpdir(), "pglite", randomUUID())}`;
+  await prepareApplicationDatabase({
+    connectionString,
+    migrationsFolder,
+  });
+  const db = createDb(connectionString);
+  await db.insert(organization).values({
+    id: authorizedOrg.org.id,
+    name: "Acme",
+    slug: authorizedOrg.org.slug,
+  });
+
+  const honoContext = {
+    var: {
+      runtime: {
+        crypto: {
+          masterEncryptionKey: "master-key",
+        },
+      },
+      storage: {
+        db,
+      },
+    },
+  } as const;
+
   const requestContext = {
     honoContext,
     requestId: "req_cli_123",
@@ -261,6 +317,7 @@ function createHarness() {
   };
 
   return {
+    db,
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
@@ -268,8 +325,221 @@ function createHarness() {
   };
 }
 
+async function seedResumableSourceApiAction(
+  db: ReturnType<typeof createDb>,
+  requestId: string
+) {
+  const startResult = await storeSourceApiActionCommand({
+    command: {
+      actionId: null,
+      actorSnapshot: {
+        authMode: session.authMode,
+        email: session.user.email,
+        membershipRoles: [...authorizedOrg.membershipRoles],
+        userId: session.user.id,
+      },
+      causedByEventId: null,
+      commandInvocationId: `${requestId}:start`,
+      commandPayload: {
+        invokeMode: "execute",
+        requestDescriptor: {
+          descriptorVersion: "github-v1",
+          kind: "http_request",
+          method: "POST",
+          operation: "fetch",
+          paginationPolicy: "continuation_token",
+          selector: "/issues",
+        },
+        sourceKey: "github-prod",
+        type: "start_invoke",
+      },
+      family: "source_api_action",
+      observedAt: new Date("2026-04-10T00:00:00.000Z"),
+      organizationId: authorizedOrg.org.id,
+      requestId,
+      surface: "cli",
+    },
+    db,
+  });
+
+  expect(startResult.isOk()).toBe(true);
+  if (startResult.isErr() || startResult.value.kind !== "accepted") {
+    throw new Error("failed to seed source api start action");
+  }
+
+  const startEvent = startResult.value.events.at(-1);
+  if (!startEvent) {
+    throw new Error("missing source api start event");
+  }
+
+  const sourceLoadedResult = await storeSourceApiActionCommand({
+    command: {
+      actionId: startResult.value.actionId,
+      actorSnapshot: {
+        authMode: session.authMode,
+        email: session.user.email,
+        membershipRoles: [...authorizedOrg.membershipRoles],
+        userId: session.user.id,
+      },
+      causedByEventId: startEvent.id,
+      commandInvocationId: `${requestId}:source_loaded`,
+      commandPayload: {
+        kind: "found",
+        source: {
+          displayName: loadedSource.source.displayName,
+          provider: loadedSource.source.provider,
+          sourceId: loadedSource.source.id,
+          sourceKey: loadedSource.source.sourceKey,
+        },
+        type: "record_source_lookup",
+      },
+      family: "source_api_action",
+      observedAt: new Date("2026-04-10T00:00:01.000Z"),
+      organizationId: authorizedOrg.org.id,
+      requestId,
+      surface: "system",
+    },
+    db,
+  });
+
+  expect(sourceLoadedResult.isOk()).toBe(true);
+  if (
+    sourceLoadedResult.isErr() ||
+    sourceLoadedResult.value.kind !== "accepted"
+  ) {
+    throw new Error("failed to seed source api source lookup");
+  }
+
+  const sourceLoadedEvent = sourceLoadedResult.value.events.at(-1);
+  if (!sourceLoadedEvent) {
+    throw new Error("missing source api source_loaded event");
+  }
+
+  const descriptorResult = await storeSourceApiActionCommand({
+    command: {
+      actionId: startResult.value.actionId,
+      actorSnapshot: {
+        authMode: session.authMode,
+        email: session.user.email,
+        membershipRoles: [...authorizedOrg.membershipRoles],
+        userId: session.user.id,
+      },
+      causedByEventId: sourceLoadedEvent.id,
+      commandInvocationId: `${requestId}:descriptor`,
+      commandPayload: {
+        kind: "resolved",
+        requestDescriptor: {
+          descriptorVersion: "github-v1",
+          kind: "http_request",
+          method: "POST",
+          operation: "fetch",
+          paginationPolicy: "continuation_token",
+          selector: "/issues",
+        },
+        type: "record_descriptor_resolution",
+      },
+      family: "source_api_action",
+      observedAt: new Date("2026-04-10T00:00:02.000Z"),
+      organizationId: authorizedOrg.org.id,
+      requestId,
+      surface: "system",
+    },
+    db,
+  });
+
+  expect(descriptorResult.isOk()).toBe(true);
+  if (descriptorResult.isErr() || descriptorResult.value.kind !== "accepted") {
+    throw new Error("failed to seed source api descriptor");
+  }
+
+  const descriptorEvent = descriptorResult.value.events.at(-1);
+  if (!descriptorEvent) {
+    throw new Error("missing source api descriptor event");
+  }
+
+  const preparedResult = await storeSourceApiActionCommand({
+    command: {
+      actionId: startResult.value.actionId,
+      actorSnapshot: {
+        authMode: session.authMode,
+        email: session.user.email,
+        membershipRoles: [...authorizedOrg.membershipRoles],
+        userId: session.user.id,
+      },
+      causedByEventId: descriptorEvent.id,
+      commandInvocationId: `${requestId}:prepared`,
+      commandPayload: {
+        kind: "prepared",
+        preparedRequestFingerprint: prepared.preparedBinding,
+        type: "record_request_preparation",
+      },
+      family: "source_api_action",
+      observedAt: new Date("2026-04-10T00:00:03.000Z"),
+      organizationId: authorizedOrg.org.id,
+      requestId,
+      surface: "system",
+    },
+    db,
+  });
+
+  expect(preparedResult.isOk()).toBe(true);
+  if (preparedResult.isErr() || preparedResult.value.kind !== "accepted") {
+    throw new Error("failed to seed source api preparation");
+  }
+
+  const preparedEvent = preparedResult.value.events.at(-1);
+  if (!preparedEvent) {
+    throw new Error("missing source api prepared event");
+  }
+
+  const pageFetchResult = await storeSourceApiActionCommand({
+    command: {
+      actionId: startResult.value.actionId,
+      actorSnapshot: {
+        authMode: session.authMode,
+        email: session.user.email,
+        membershipRoles: [...authorizedOrg.membershipRoles],
+        userId: session.user.id,
+      },
+      causedByEventId: preparedEvent.id,
+      commandInvocationId: `${requestId}:page_fetch`,
+      commandPayload: {
+        attemptNumber: 1,
+        contentType: "text/plain",
+        hasContinuation: true,
+        httpStatus: 200,
+        kind: "succeeded",
+        pageIndex: 0,
+        responseBytes: 2,
+        type: "record_page_fetch",
+      },
+      family: "source_api_action",
+      observedAt: new Date("2026-04-10T00:00:04.000Z"),
+      organizationId: authorizedOrg.org.id,
+      requestId,
+      surface: "system",
+    },
+    db,
+  });
+
+  expect(pageFetchResult.isOk()).toBe(true);
+  if (pageFetchResult.isErr() || pageFetchResult.value.kind !== "accepted") {
+    throw new Error("failed to seed source api page fetch");
+  }
+
+  const pageFetchEvent = pageFetchResult.value.events.at(-1);
+  if (!pageFetchEvent) {
+    throw new Error("missing source api page fetch event");
+  }
+
+  return {
+    actionId: startResult.value.actionId,
+    resumeFromEventId: pageFetchEvent.id,
+  };
+}
+
 function createHandlerContext(
-  requestContext: ReturnType<typeof createHarness>["requestContext"]
+  requestContext: Awaited<ReturnType<typeof createHarness>>["requestContext"]
 ) {
   return {
     values: createContextValues().set(
@@ -402,12 +672,21 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
 }
 
 describe("source api connect service", () => {
+  const openedDatabases: ClosableDatabase[] = [];
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  afterEach(async () => {
+    for (const db of openedDatabases.splice(0)) {
+      await closeDatabase(db);
+    }
+  });
+
   it("describes the source API through the Connect handler", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     const request = create(DescribeSourceApiRequestSchema, {
       orgSlug: "acme",
       sourceKey: "github-prod",
@@ -432,7 +711,8 @@ describe("source api connect service", () => {
   });
 
   it("previews source API execution through the Connect handler", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -486,7 +766,8 @@ describe("source api connect service", () => {
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -524,7 +805,8 @@ describe("source api connect service", () => {
   });
 
   it("executes source API requests through the Connect handler", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -564,7 +846,8 @@ describe("source api connect service", () => {
   });
 
   it("preserves JSON source API response bodies through the Connect handler", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
       ...executionResponse,
       body: {
@@ -607,7 +890,17 @@ describe("source api connect service", () => {
   });
 
   it("binds continuation tokens to execution state during resume", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
+    const seeded = await seedResumableSourceApiAction(
+      harness.db,
+      "req_cli_resume_seed"
+    );
+    harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
+      ...decodedContinuationToken,
+      actionId: seeded.actionId,
+      resumeFromEventId: seeded.resumeFromEventId,
+    });
     harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
       ...executionResponse,
       nextContinuationState: {
@@ -640,7 +933,9 @@ describe("source api connect service", () => {
       encodeSourceApiContinuationTokenCall: encodeContinuationTokenCall
         ? {
             ...encodeContinuationTokenCall,
+            actionId: "<action_id>",
             now: encodeContinuationTokenCall.now ?? null,
+            resumeFromEventId: "<event_id>",
           }
         : null,
       executePreparedSourceApiCall:
@@ -651,7 +946,8 @@ describe("source api connect service", () => {
   });
 
   it("rejects continuation token resume for operations without continuation support", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
       ...decodedContinuationToken,
       prepared: {
@@ -678,7 +974,8 @@ describe("source api connect service", () => {
   });
 
   it("maps malformed continuation tokens to invalid arguments", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiInvalidRequestError(
@@ -701,7 +998,8 @@ describe("source api connect service", () => {
   });
 
   it("maps expired continuation tokens to failed precondition", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiExpiredError(
@@ -724,7 +1022,17 @@ describe("source api connect service", () => {
   });
 
   it("maps descriptor drift to failed precondition during resume", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
+    const seeded = await seedResumableSourceApiAction(
+      harness.db,
+      "req_cli_resume_drift_seed"
+    );
+    harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
+      ...decodedContinuationToken,
+      actionId: seeded.actionId,
+      resumeFromEventId: seeded.resumeFromEventId,
+    });
     harness.dependencies.describeSourceApi.mockResolvedValueOnce({
       ...descriptor,
       descriptorVersion: "github-v2",
@@ -744,7 +1052,8 @@ describe("source api connect service", () => {
   });
 
   it("maps source api authorization failures to permission denied", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "authorize",
@@ -785,7 +1094,8 @@ describe("source api connect service", () => {
   });
 
   it("maps adapter execution failures to connect errors", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "execute",
@@ -822,7 +1132,8 @@ describe("source api connect service", () => {
   });
 
   it("returns not logged in before validating source api execute input", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliConnectProblem({
@@ -855,7 +1166,8 @@ describe("source api connect service", () => {
   });
 
   it("returns not logged in before decoding continuation tokens", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliConnectProblem({
@@ -890,7 +1202,8 @@ describe("source api connect service", () => {
   });
 
   it("resolves the requested resume source before decoding continuation tokens", async () => {
-    const harness = createHarness();
+    const harness = await createHarness();
+    openedDatabases.push(harness.db as ClosableDatabase);
     harness.dependencies.runCliLoadSourceEffect.mockResolvedValueOnce({
       kind: "not_found",
     });

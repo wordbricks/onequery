@@ -4,12 +4,10 @@ import { liftAuthenticatedCliServiceMethod } from "../authenticated";
 import type { AuthenticatedCliResultServiceMethod } from "../authenticated";
 import type { CliServiceMethod } from "../types";
 import { buildCliDescribeSourceApiResponse } from "./codec";
+import { resolveSourceApiWorkflowContext } from "./context";
 import { resolveSourceApiServiceDependencies } from "./dependencies";
 import type { SourceApiServiceDependencies } from "./dependencies";
-import {
-  resolveAuthorizedSourceApiAccess,
-  resolveSourceApiDescriptor,
-} from "./runtime";
+import { runDescribeSourceApiWorkflowResult } from "./workflow";
 
 export function createHandleDescribeSourceApi(
   dependencies: Partial<SourceApiServiceDependencies> = {}
@@ -21,35 +19,32 @@ export function createHandleDescribeSourceApi(
     "describeSourceApi"
   > = async (request, requestContext) =>
     Result.gen(async function* handleDescribeSourceApiFlow() {
-      const access = yield* Result.await(
-        resolveAuthorizedSourceApiAccess(
-          {
-            action: "source_api.describe",
-            orgSlug: request.orgSlug,
-            requestContext,
-            sourceKey: request.sourceKey,
-          },
-          resolvedDependencies
-        )
+      const workflowContext = yield* Result.await(
+        resolveSourceApiWorkflowContext({
+          action: "source_api.describe",
+          orgSlug: request.orgSlug,
+          requestContext,
+        })
       );
       const descriptor = yield* Result.await(
-        resolveSourceApiDescriptor(
-          {
-            actor: access.actor,
-            source: access.source,
-          },
-          resolvedDependencies
-        )
+        runDescribeSourceApiWorkflowResult({
+          ...workflowContext,
+          dependencies: resolvedDependencies,
+          sourceKey: request.sourceKey,
+        })
       );
 
       resolvedDependencies.logCliEvent({
-        details: resolvedDependencies.buildCliRequestLogDetails(access.c, {
-          operationCount: descriptor.operations.length,
-          orgSlug: access.authorizedOrg.org.slug,
-          provider: descriptor.source.provider,
-          roles: access.authorizedOrg.membershipRoles,
-          sourceKey: descriptor.source.sourceKey,
-        }),
+        details: resolvedDependencies.buildCliRequestLogDetails(
+          workflowContext.c,
+          {
+            operationCount: descriptor.operations.length,
+            orgSlug: workflowContext.orgSlug,
+            provider: descriptor.source.provider,
+            roles: workflowContext.actor.membershipRoles,
+            sourceKey: descriptor.source.sourceKey,
+          }
+        ),
         event: "source_api.describe.resolved",
         level: "info",
       });
