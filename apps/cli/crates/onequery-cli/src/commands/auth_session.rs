@@ -567,9 +567,10 @@ mod tests {
         );
 
         with_command_snapshot_path(|| {
-            assert_snapshot!(
-                render_error(&error, EffectiveOutputMode::Text),
-                @r#"
+            crate::test_support::snapshot_settings_with_issue_url_filter().bind(|| {
+                assert_snapshot!(
+                    render_error(&error, EffectiveOutputMode::Text),
+                    @r#"
 Error: not logged in
 Command: onequery query exec --source warehouse --sql "select 1"
 Stage: auth
@@ -577,8 +578,12 @@ Why: no OneQuery token was found in the environment or local auth store.
 Try:
   - onequery auth login
   - onequery auth import --input <path|->
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>
 "#
-            );
+                );
+            });
         });
     }
 

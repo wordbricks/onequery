@@ -456,7 +456,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -520,6 +521,7 @@ mod tests {
         let rendered =
             render_error(&error, EffectiveOutputMode::Text).replace(&config_path, "<CONFIG_PATH>");
 
-        assert_snapshot!(rendered);
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
     }
 }

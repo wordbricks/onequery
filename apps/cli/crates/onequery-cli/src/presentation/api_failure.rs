@@ -489,7 +489,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -511,7 +512,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -534,7 +536,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -608,7 +611,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -635,7 +639,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -665,7 +670,8 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 
     #[test]
@@ -703,6 +709,7 @@ mod tests {
             },
         );
 
-        assert_snapshot!(render_error(&error, EffectiveOutputMode::Text));
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
     }
 }

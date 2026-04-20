@@ -10,3 +10,6 @@ Request ID: req_source_auth
 Hint: login via the OneQuery web app and retry
 Try:
   - onequery auth login
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>
