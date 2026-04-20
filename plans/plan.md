@@ -85,7 +85,7 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - every family implements the same `decide` and `reduce` shape
   - generic rejection handling and illegal-transition tests exist
-- [ ] Land the storage contract.
+- [x] Land the storage contract.
   Exit criteria:
   - command journaling, event append, fold update, and outbox emission are atomic
   - every family event table has a strict per-family `commit_position`

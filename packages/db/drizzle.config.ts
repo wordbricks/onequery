@@ -10,6 +10,8 @@ export default defineConfig({
   },
   out: "./src/migrations",
   schema: [
+    "./src/schema/audit-projection-checkpoints.ts",
+    "./src/schema/audit-workflow.ts",
     "./src/schema/auth.ts",
     "./src/schema/bigquery-query-costs.ts",
     "./src/schema/cli-query-actions.ts",
@@ -19,7 +21,13 @@ export default defineConfig({
     "./src/schema/data-sources.ts",
     "./src/schema/data-source-table-usage.ts",
     "./src/schema/organization-profiles.ts",
+    "./src/schema/query-actions.ts",
+    "./src/schema/query-action-events.ts",
     "./src/schema/user-profiles.ts",
+    "./src/schema/source-api-actions.ts",
+    "./src/schema/source-api-action-events.ts",
+    "./src/schema/workflow-commands.ts",
+    "./src/schema/workflow-effect-dispatches.ts",
     "./src/schema/relations.ts",
   ],
 });

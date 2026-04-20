@@ -11,6 +11,8 @@ import {
   isPgliteConnectionString,
   resolvePgliteRuntimeOptions,
 } from "./pglite";
+import * as auditProjectionCheckpointsSchema from "./schema/audit-projection-checkpoints";
+import * as auditWorkflowSchema from "./schema/audit-workflow";
 import * as authSchema from "./schema/auth";
 import * as bigQueryQueryCostsSchema from "./schema/bigquery-query-costs";
 import * as cliQueryActionEventsSchema from "./schema/cli-query-action-events";
@@ -20,10 +22,18 @@ import * as dataSourceQueryCostsSchema from "./schema/data-source-query-costs";
 import * as dataSourceTableUsageSchema from "./schema/data-source-table-usage";
 import * as dataSourcesSchema from "./schema/data-sources";
 import * as organizationProfilesSchema from "./schema/organization-profiles";
+import * as queryActionEventsSchema from "./schema/query-action-events";
+import * as queryActionsSchema from "./schema/query-actions";
 import * as relationsSchema from "./schema/relations";
+import * as sourceApiActionEventsSchema from "./schema/source-api-action-events";
+import * as sourceApiActionsSchema from "./schema/source-api-actions";
 import * as userProfilesSchema from "./schema/user-profiles";
+import * as workflowCommandsSchema from "./schema/workflow-commands";
+import * as workflowEffectDispatchesSchema from "./schema/workflow-effect-dispatches";
 
 export const postgresSchema = {
+  ...auditProjectionCheckpointsSchema,
+  ...auditWorkflowSchema,
   ...authSchema,
   ...bigQueryQueryCostsSchema,
   ...cliQueryActionsSchema,
@@ -33,7 +43,13 @@ export const postgresSchema = {
   ...dataSourceTableUsageSchema,
   ...connectorsSchema,
   ...organizationProfilesSchema,
+  ...queryActionsSchema,
+  ...queryActionEventsSchema,
+  ...sourceApiActionsSchema,
+  ...sourceApiActionEventsSchema,
   ...userProfilesSchema,
+  ...workflowCommandsSchema,
+  ...workflowEffectDispatchesSchema,
   ...relationsSchema,
 };
 
@@ -161,6 +177,8 @@ function createPgliteDb(connectionString: string): Database {
   });
 }
 
+export * from "./schema/audit-projection-checkpoints";
+export * from "./schema/audit-workflow";
 export * from "./schema/auth";
 export * from "./schema/bigquery-query-costs";
 export * from "./schema/connectors";
@@ -168,5 +186,11 @@ export * from "./schema/data-source-query-costs";
 export * from "./schema/data-source-table-usage";
 export * from "./schema/data-sources";
 export * from "./schema/organization-profiles";
+export * from "./schema/query-action-events";
+export * from "./schema/query-actions";
 export * from "./schema/relations";
+export * from "./schema/source-api-action-events";
+export * from "./schema/source-api-actions";
 export * from "./schema/user-profiles";
+export * from "./schema/workflow-commands";
+export * from "./schema/workflow-effect-dispatches";
