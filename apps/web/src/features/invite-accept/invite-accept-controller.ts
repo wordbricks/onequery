@@ -1,6 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useMachine } from "@xstate/react";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 import { useCallback, useEffect } from "react";
 import { assertEvent, assign, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
@@ -145,6 +148,38 @@ type InviteAcceptController = {
   status: InviteAcceptStatus;
 };
 
+class InviteAcceptRequestError extends TaggedError("InviteAcceptRequestError")<{
+  cause?: unknown;
+  message: string;
+  reason: "request_failed" | "response_failed";
+}>() {}
+
+class InviteRedirectResolutionError extends TaggedError(
+  "InviteRedirectResolutionError"
+)<{
+  acceptedOrganizationId: string;
+  cause?: unknown;
+  message: string;
+  reason:
+    | "organization_list_failed"
+    | "organization_lookup_failed"
+    | "organization_missing"
+    | "session_refresh_failed";
+  userId?: string;
+}>() {}
+
+type InviteAcceptRequestResult = ResultType<
+  {
+    acceptedOrganizationId: string;
+  },
+  InviteAcceptRequestError
+>;
+
+type InviteRedirectResolutionResult = ResultType<
+  InviteAcceptRedirectTarget,
+  InviteRedirectResolutionError
+>;
+
 function createIdleInviteAcceptOutcome(): InviteAcceptOutcome {
   return {
     kind: "idle",
@@ -219,6 +254,134 @@ function requireRedirectTarget(
   return context.redirectTarget ?? HOME_REDIRECT_TARGET;
 }
 
+async function acceptInvitationRequest(
+  invitationId: string
+): Promise<InviteAcceptRequestResult> {
+  const responseResult = await Result.tryPromise({
+    try: () =>
+      organization.acceptInvitation({
+        invitationId,
+      }),
+    catch: (cause: unknown) =>
+      new InviteAcceptRequestError({
+        cause,
+        message: DEFAULT_ACCEPT_ERROR_MESSAGE,
+        reason: "request_failed",
+      }),
+  });
+  if (responseResult.isErr()) {
+    return Result.err(responseResult.error);
+  }
+
+  const response = responseResult.value;
+  if (response.error) {
+    return Result.err(
+      new InviteAcceptRequestError({
+        message: readMessageText(
+          response.error.message,
+          DEFAULT_ACCEPT_ERROR_MESSAGE
+        ),
+        reason: "response_failed",
+      })
+    );
+  }
+
+  return Result.ok({
+    acceptedOrganizationId: response.data.member.organizationId,
+  });
+}
+
+async function resolveInviteRedirect(input: {
+  acceptedOrganizationId: string;
+  queryClient: QueryClient;
+  refetchSession: () => Promise<unknown>;
+  userId: string | undefined;
+}): Promise<InviteRedirectResolutionResult> {
+  const sessionRefreshResult = await Result.tryPromise({
+    try: () => input.refetchSession(),
+    catch: (cause: unknown) =>
+      new InviteRedirectResolutionError({
+        acceptedOrganizationId: input.acceptedOrganizationId,
+        cause,
+        message: "Failed to refresh organizations after accepting invitation",
+        reason: "session_refresh_failed",
+        ...(input.userId ? { userId: input.userId } : {}),
+      }),
+  });
+  if (sessionRefreshResult.isErr()) {
+    logInviteRedirectResolutionError(sessionRefreshResult.error);
+    return Result.err(sessionRefreshResult.error);
+  }
+
+  const organizationsResult = await Result.tryPromise({
+    try: () =>
+      input.queryClient.fetchQuery({
+        ...organizationsQueryOptions(input.userId),
+        staleTime: 0,
+      }),
+    catch: (cause: unknown) =>
+      new InviteRedirectResolutionError({
+        acceptedOrganizationId: input.acceptedOrganizationId,
+        cause,
+        message: "Failed to refresh organizations after accepting invitation",
+        reason: "organization_list_failed",
+        ...(input.userId ? { userId: input.userId } : {}),
+      }),
+  });
+  if (organizationsResult.isErr()) {
+    logInviteRedirectResolutionError(organizationsResult.error);
+    return Result.err(organizationsResult.error);
+  }
+
+  const acceptedOrganization = organizationsResult.value.find(
+    (organization: { id: string }) =>
+      organization.id === input.acceptedOrganizationId
+  );
+  if (acceptedOrganization) {
+    return Result.ok({
+      kind: "organization",
+      organizationSlug: resolveOrganizationSlug(acceptedOrganization),
+    });
+  }
+
+  const fullOrganizationResult = await Result.tryPromise({
+    try: () =>
+      organization.getFullOrganization({
+        query: {
+          organizationId: input.acceptedOrganizationId,
+        },
+      }),
+    catch: (cause: unknown) =>
+      new InviteRedirectResolutionError({
+        acceptedOrganizationId: input.acceptedOrganizationId,
+        cause,
+        message: "Failed to load accepted organization details",
+        reason: "organization_lookup_failed",
+        ...(input.userId ? { userId: input.userId } : {}),
+      }),
+  });
+  if (fullOrganizationResult.isErr()) {
+    logInviteRedirectResolutionError(fullOrganizationResult.error);
+    return Result.err(fullOrganizationResult.error);
+  }
+
+  if (fullOrganizationResult.value.data?.slug) {
+    return Result.ok({
+      kind: "organization",
+      organizationSlug: fullOrganizationResult.value.data.slug,
+    });
+  }
+
+  const error = new InviteRedirectResolutionError({
+    acceptedOrganizationId: input.acceptedOrganizationId,
+    message: "Accepted invitation but organization was not found",
+    reason: "organization_missing",
+    ...(input.userId ? { userId: input.userId } : {}),
+  });
+  logInviteRedirectResolutionError(error);
+  return Result.err(error);
+}
+
 function readErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof Error)) {
     return fallback;
@@ -230,6 +393,33 @@ function readErrorMessage(error: unknown, fallback: string): string {
   }
 
   return message;
+}
+
+function readMessageText(message: string | null | undefined, fallback: string) {
+  const trimmedMessage = message?.trim() ?? "";
+  return trimmedMessage.length > 0 ? trimmedMessage : fallback;
+}
+
+function logInviteRedirectResolutionError(
+  error: InviteRedirectResolutionError
+) {
+  if (error.reason === "organization_missing") {
+    console.error(
+      "[invite] accepted invitation but organization was not found",
+      {
+        acceptedOrganizationId: error.acceptedOrganizationId,
+        userId: error.userId,
+      }
+    );
+    return;
+  }
+
+  console.error("[invite] accepted invitation but failed to refresh orgs", {
+    acceptedOrganizationId: error.acceptedOrganizationId,
+    error: error.cause ?? error.message,
+    reason: error.reason,
+    userId: error.userId,
+  });
 }
 
 export function createInviteAcceptMachine(
@@ -492,75 +682,24 @@ export function useInviteAcceptController(): InviteAcceptController {
   const { auth, refetchSession } = routeApi.useRouteContext();
   const userId = auth.session?.user.id;
 
-  const acceptInvitation = useCallback(async () => {
-    const result = await organization.acceptInvitation({
-      invitationId,
-    });
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
+  const acceptInvitation = useCallback(
+    () => acceptInvitationRequest(invitationId),
+    [invitationId]
+  );
 
-    return {
-      acceptedOrganizationId: result.data.member.organizationId,
-    };
-  }, [invitationId]);
-
+  // Comment: invite acceptance mutates persisted membership data, so the
+  // redirect should be resolved against a fresh user-scoped org list.
+  // Comment: Better Auth already knows the accepted organization id, so fall
+  // back to an explicit org lookup before redirecting home when the refreshed
+  // membership list still lags.
   const resolveRedirect = useCallback(
-    async (
-      acceptedOrganizationId: string
-    ): Promise<InviteAcceptRedirectTarget> => {
-      try {
-        await refetchSession();
-        // Comment: invite acceptance mutates persisted membership data, so the
-        // redirect should be resolved against a fresh user-scoped org list.
-        const organizations = await queryClient.fetchQuery({
-          ...organizationsQueryOptions(userId),
-          staleTime: 0,
-        });
-
-        const acceptedOrganization = organizations.find(
-          (org) => org.id === acceptedOrganizationId
-        );
-        if (acceptedOrganization) {
-          return {
-            kind: "organization",
-            organizationSlug: resolveOrganizationSlug(acceptedOrganization),
-          };
-        }
-
-        // Comment: Better Auth already knows the accepted organization id, so
-        // fall back to an explicit org lookup before giving up to home. This
-        // avoids routing users to `/` if the refreshed membership list lags.
-        const fullOrganization = await organization.getFullOrganization({
-          query: { organizationId: acceptedOrganizationId },
-        });
-        if (fullOrganization.data?.slug) {
-          return {
-            kind: "organization",
-            organizationSlug: fullOrganization.data.slug,
-          };
-        }
-
-        console.error(
-          "[invite] accepted invitation but organization was not found",
-          {
-            acceptedOrganizationId,
-            userId,
-          }
-        );
-      } catch (error) {
-        console.error(
-          "[invite] accepted invitation but failed to refresh orgs",
-          {
-            acceptedOrganizationId,
-            error,
-            userId,
-          }
-        );
-      }
-
-      return HOME_REDIRECT_TARGET;
-    },
+    (acceptedOrganizationId: string): Promise<InviteRedirectResolutionResult> =>
+      resolveInviteRedirect({
+        acceptedOrganizationId,
+        queryClient,
+        refetchSession,
+        userId,
+      }),
     [queryClient, refetchSession, userId]
   );
 
@@ -580,29 +719,26 @@ export function useInviteAcceptController(): InviteAcceptController {
 
     let isCancelled = false;
 
-    acceptInvitation()
-      .then(({ acceptedOrganizationId }) => {
-        if (isCancelled) {
-          return;
-        }
+    void acceptInvitation().then((result) => {
+      if (isCancelled) {
+        return;
+      }
 
+      if (result.isErr()) {
         send({
-          acceptedOrganizationId,
-          requestId: pendingAcceptRequest.requestId,
-          type: INVITE_ACCEPT_EVENT.ACCEPT_SUCCEEDED,
-        });
-      })
-      .catch((error: unknown) => {
-        if (isCancelled) {
-          return;
-        }
-
-        send({
-          message: readErrorMessage(error, DEFAULT_ACCEPT_ERROR_MESSAGE),
+          message: result.error.message,
           requestId: pendingAcceptRequest.requestId,
           type: INVITE_ACCEPT_EVENT.ACCEPT_FAILED,
         });
+        return;
+      }
+
+      send({
+        acceptedOrganizationId: result.value.acceptedOrganizationId,
+        requestId: pendingAcceptRequest.requestId,
+        type: INVITE_ACCEPT_EVENT.ACCEPT_SUCCEEDED,
       });
+    });
 
     return () => {
       isCancelled = true;
@@ -616,28 +752,27 @@ export function useInviteAcceptController(): InviteAcceptController {
 
     let isCancelled = false;
 
-    resolveRedirect(pendingRedirectResolution.acceptedOrganizationId)
-      .then((redirectTarget) => {
+    void resolveRedirect(pendingRedirectResolution.acceptedOrganizationId).then(
+      (result) => {
         if (isCancelled) {
           return;
         }
 
+        if (result.isErr()) {
+          send({
+            requestId: pendingRedirectResolution.requestId,
+            type: INVITE_ACCEPT_EVENT.REDIRECT_RESOLUTION_FAILED,
+          });
+          return;
+        }
+
         send({
-          redirectTarget,
+          redirectTarget: result.value,
           requestId: pendingRedirectResolution.requestId,
           type: INVITE_ACCEPT_EVENT.REDIRECT_RESOLVED,
         });
-      })
-      .catch(() => {
-        if (isCancelled) {
-          return;
-        }
-
-        send({
-          requestId: pendingRedirectResolution.requestId,
-          type: INVITE_ACCEPT_EVENT.REDIRECT_RESOLUTION_FAILED,
-        });
-      });
+      }
+    );
 
     return () => {
       isCancelled = true;

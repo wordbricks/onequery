@@ -30,6 +30,7 @@
     "@tanstack/zod-adapter": "1.153.1",
     "@xstate/react": "catalog:",
     "better-auth": "catalog:",
+    "better-result": "catalog:",
     "hono": "catalog:",
     "idb-keyval": "6.2.2",
     "mysql2": "catalog:",

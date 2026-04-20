@@ -1,6 +1,8 @@
 import { createClient } from "@connectrpc/connect";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 import { landingTransport } from "../../app/runtime/connect-transport";
 import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
@@ -25,6 +27,68 @@ import {
 const landingClient = createClient(LandingService, landingTransport);
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
+
+class ProductUpdatesSubmissionError extends TaggedError(
+  "ProductUpdatesSubmissionError"
+)<{
+  cause: unknown;
+  message: string;
+}>() {}
+
+class ContactSubmissionError extends TaggedError("ContactSubmissionError")<{
+  cause: unknown;
+  message: string;
+}>() {}
+
+type ProductUpdatesSubmissionResult = ResultType<
+  {
+    email: string;
+  },
+  ProductUpdatesSubmissionError
+>;
+
+type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
+
+async function submitProductUpdatesRequest(
+  email: string
+): Promise<ProductUpdatesSubmissionResult> {
+  const responseResult = await Result.tryPromise({
+    try: () =>
+      landingClient.subscribeProductUpdates({
+        email,
+      }),
+    catch: (cause: unknown) =>
+      new ProductUpdatesSubmissionError({
+        cause,
+        message: toUserMessage(cause, DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE),
+      }),
+  });
+  if (responseResult.isErr()) {
+    return Result.err(responseResult.error);
+  }
+
+  return Result.ok({
+    email: responseResult.value.email,
+  });
+}
+
+async function submitContactRequest(
+  form: ContactForm
+): Promise<ContactSubmissionResult> {
+  const responseResult = await Result.tryPromise({
+    try: () => landingClient.submitContact(form),
+    catch: (cause: unknown) =>
+      new ContactSubmissionError({
+        cause,
+        message: toUserMessage(cause, DEFAULT_CONTACT_ERROR_MESSAGE),
+      }),
+  });
+  if (responseResult.isErr()) {
+    return Result.err(responseResult.error);
+  }
+
+  return Result.ok(undefined);
+}
 
 function runBestEffort(action: () => void) {
   try {
@@ -62,32 +126,27 @@ function useProductUpdatesController() {
 
       lastStartedSubmissionRequestId = pendingSubmission.requestId;
 
-      try {
-        const response = await landingClient.subscribeProductUpdates({
-          email: pendingSubmission.email,
-        });
+      const result = await submitProductUpdatesRequest(pendingSubmission.email);
 
-        if (!isActive) {
-          return;
-        }
+      if (!isActive) {
+        return;
+      }
 
-        actorRef.send({
-          type: "productUpdates/submissionSucceeded",
-          email: response.email,
-          requestId: pendingSubmission.requestId,
-        });
-        runBestEffort(trackProductUpdatesSignup);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-
+      if (result.isErr()) {
         actorRef.send({
           type: "productUpdates/submissionFailed",
-          message: toUserMessage(error, DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE),
+          message: result.error.message,
           requestId: pendingSubmission.requestId,
         });
+        return;
       }
+
+      actorRef.send({
+        type: "productUpdates/submissionSucceeded",
+        email: result.value.email,
+        requestId: pendingSubmission.requestId,
+      });
+      runBestEffort(trackProductUpdatesSignup);
     }
 
     void handleSnapshot(actorRef.getSnapshot());
@@ -157,29 +216,26 @@ function useContactModalController(): ContactModalController {
 
       lastStartedSubmissionRequestId = pendingSubmission.requestId;
 
-      try {
-        await landingClient.submitContact(pendingSubmission.form);
+      const result = await submitContactRequest(pendingSubmission.form);
 
-        if (!isActive) {
-          return;
-        }
+      if (!isActive) {
+        return;
+      }
 
-        actorRef.send({
-          type: "contactModal/submitSucceeded",
-          requestId: pendingSubmission.requestId,
-        });
-        runBestEffort(trackContactFormSubmitted);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-
+      if (result.isErr()) {
         actorRef.send({
           type: "contactModal/submitFailed",
-          message: toUserMessage(error, DEFAULT_CONTACT_ERROR_MESSAGE),
+          message: result.error.message,
           requestId: pendingSubmission.requestId,
         });
+        return;
       }
+
+      actorRef.send({
+        type: "contactModal/submitSucceeded",
+        requestId: pendingSubmission.requestId,
+      });
+      runBestEffort(trackContactFormSubmitted);
     }
 
     void handleSnapshot(actorRef.getSnapshot());

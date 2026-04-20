@@ -99,39 +99,27 @@ export function useDeviceAuthController(): DeviceAuthController {
 
     let isCancelled = false;
 
-    verifyDeviceRequest(pendingVerification.userCode)
-      .then((result) => {
-        if (isCancelled) {
-          return;
-        }
+    void verifyDeviceRequest(pendingVerification.userCode).then((result) => {
+      if (isCancelled) {
+        return;
+      }
 
-        if (result.kind === "error") {
-          actorRef.send({
-            message: result.message,
-            requestId: pendingVerification.requestId,
-            type: "deviceAuth/verificationFailed",
-          });
-          return;
-        }
-
+      if (result.isErr()) {
         actorRef.send({
-          requestId: pendingVerification.requestId,
-          status: result.status,
-          type: "deviceAuth/verificationSucceeded",
-          userCode: result.userCode,
-        });
-      })
-      .catch(() => {
-        if (isCancelled) {
-          return;
-        }
-
-        actorRef.send({
-          message: "The device code could not be verified. Try again.",
+          message: result.error.message,
           requestId: pendingVerification.requestId,
           type: "deviceAuth/verificationFailed",
         });
+        return;
+      }
+
+      actorRef.send({
+        requestId: pendingVerification.requestId,
+        status: result.value.status,
+        type: "deviceAuth/verificationSucceeded",
+        userCode: result.value.userCode,
       });
+    });
 
     return () => {
       isCancelled = true;
@@ -161,43 +149,31 @@ export function useDeviceAuthController(): DeviceAuthController {
 
     let isCancelled = false;
 
-    submitDeviceDecisionRequest({
+    void submitDeviceDecisionRequest({
       action: pendingDecision.action,
       userCode: pendingDecision.userCode,
-    })
-      .then((result) => {
-        if (isCancelled) {
-          return;
-        }
+    }).then((result) => {
+      if (isCancelled) {
+        return;
+      }
 
-        if (result.kind === "error") {
-          actorRef.send({
-            message: result.message,
-            requestId: pendingDecision.requestId,
-            type: "deviceAuth/decisionFailed",
-          });
-          return;
-        }
-
+      if (result.isErr()) {
         actorRef.send({
-          message: result.message,
-          requestId: pendingDecision.requestId,
-          title: result.title,
-          tone: result.tone,
-          type: "deviceAuth/decisionSucceeded",
-        });
-      })
-      .catch(() => {
-        if (isCancelled) {
-          return;
-        }
-
-        actorRef.send({
-          message: "The device request could not be completed. Try again.",
+          message: result.error.message,
           requestId: pendingDecision.requestId,
           type: "deviceAuth/decisionFailed",
         });
+        return;
+      }
+
+      actorRef.send({
+        message: result.value.message,
+        requestId: pendingDecision.requestId,
+        title: result.value.title,
+        tone: result.value.tone,
+        type: "deviceAuth/decisionSucceeded",
       });
+    });
 
     return () => {
       isCancelled = true;

@@ -1,4 +1,6 @@
 import { useMachine } from "@xstate/react";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { assertEvent, assign, setup } from "xstate";
@@ -97,6 +99,13 @@ type BudgetSettingsController = {
   clear: () => void;
 };
 
+class BudgetSaveError extends TaggedError("BudgetSaveError")<{
+  cause: unknown;
+  message: string;
+}>() {}
+
+type BudgetSaveResult = ResultType<OrganizationSettings, BudgetSaveError>;
+
 function createInitialContext(
   initialBudgetUsd: number | null
 ): BudgetSettingsContext {
@@ -142,6 +151,21 @@ function toSaveStatus(stateValue: string): SaveStatus {
     return "error";
   }
   return "idle";
+}
+
+async function saveBudgetRequest(input: {
+  errorMessage: string;
+  nextBudgetUsd: number | null;
+  saveBudget: (nextBudgetUsd: number | null) => Promise<OrganizationSettings>;
+}): Promise<BudgetSaveResult> {
+  return Result.tryPromise({
+    try: () => input.saveBudget(input.nextBudgetUsd),
+    catch: (cause: unknown) =>
+      new BudgetSaveError({
+        cause,
+        message: input.errorMessage,
+      }),
+  });
 }
 
 export function createBudgetSettingsMachine(
@@ -346,30 +370,30 @@ export function useBudgetSettingsController(
 
     let isCancelled = false;
 
-    input
-      .saveBudget(pendingSaveRequest.nextBudgetUsd)
-      .then((result: OrganizationSettings) => {
-        if (isCancelled) {
-          return;
-        }
+    void saveBudgetRequest({
+      errorMessage: input.errorMessage ?? DEFAULT_ERROR_MESSAGE,
+      nextBudgetUsd: pendingSaveRequest.nextBudgetUsd,
+      saveBudget: input.saveBudget,
+    }).then((result) => {
+      if (isCancelled) {
+        return;
+      }
 
-        send({
-          monthlyBudgetUsd: result.monthlyBudgetUsd,
-          requestId: pendingSaveRequest.requestId,
-          type: BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED,
-        });
-      })
-      .catch(() => {
-        if (isCancelled) {
-          return;
-        }
-
-        toast.error(input.errorMessage ?? DEFAULT_ERROR_MESSAGE);
+      if (result.isErr()) {
+        toast.error(result.error.message);
         send({
           requestId: pendingSaveRequest.requestId,
           type: BUDGET_SETTINGS_EVENT.SAVE_FAILED,
         });
+        return;
+      }
+
+      send({
+        monthlyBudgetUsd: result.value.monthlyBudgetUsd,
+        requestId: pendingSaveRequest.requestId,
+        type: BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED,
       });
+    });
 
     return () => {
       isCancelled = true;

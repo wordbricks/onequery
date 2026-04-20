@@ -1,4 +1,6 @@
 import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 import type { InferResponseType } from "hono/client";
 import { assertEvent, assign, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
@@ -105,29 +107,6 @@ type DeviceAuthTypes = {
   events: DeviceAuthEvent;
 };
 
-type VerifyDeviceRequestResult =
-  | {
-      kind: "verified";
-      status: "pending" | "approved" | "denied";
-      userCode: string;
-    }
-  | {
-      kind: "error";
-      message: string;
-    };
-
-type SubmitDecisionRequestResult =
-  | {
-      kind: "success";
-      title: string;
-      message: string;
-      tone: DeviceResultTone;
-    }
-  | {
-      kind: "error";
-      message: string;
-    };
-
 export type DevicePanelView =
   | "entry"
   | "verifying"
@@ -155,6 +134,36 @@ const GENERIC_DEVICE_VERIFY_ERROR_MESSAGE =
   "The device code could not be verified. Try again.";
 const GENERIC_DEVICE_DECISION_ERROR_MESSAGE =
   "The device request could not be completed. Try again.";
+
+class DeviceVerificationError extends TaggedError("DeviceVerificationError")<{
+  cause?: unknown;
+  message: string;
+  reason: "missing_code" | "request_failed" | "response_failed";
+}>() {}
+
+class DeviceDecisionError extends TaggedError("DeviceDecisionError")<{
+  action: DeviceDecisionAction;
+  cause?: unknown;
+  message: string;
+  reason: "missing_code" | "request_failed" | "response_failed";
+}>() {}
+
+type VerifyDeviceRequestResult = ResultType<
+  {
+    status: "pending" | "approved" | "denied";
+    userCode: string;
+  },
+  DeviceVerificationError
+>;
+
+type SubmitDecisionRequestResult = ResultType<
+  {
+    title: string;
+    message: string;
+    tone: DeviceResultTone;
+  },
+  DeviceDecisionError
+>;
 
 function createIdleDeviceAuthAlert(): DeviceAuthAlert {
   return {
@@ -231,48 +240,67 @@ export async function verifyDeviceRequest(
   const deviceClient = createApiClient();
 
   if (!userCode) {
-    return {
-      kind: "error",
-      message: "Enter the code shown in your terminal to continue.",
-    };
+    return Result.err(
+      new DeviceVerificationError({
+        message: "Enter the code shown in your terminal to continue.",
+        reason: "missing_code",
+      })
+    );
   }
 
-  try {
-    const response = await deviceClient.api.device.verify.$get({
-      query: {
-        user_code: userCode,
-      },
+  const responseResult = await Result.tryPromise({
+    try: () =>
+      deviceClient.api.device.verify.$get({
+        query: {
+          user_code: userCode,
+        },
+      }),
+    catch: (cause: unknown) =>
+      new DeviceVerificationError({
+        cause,
+        message: GENERIC_DEVICE_VERIFY_ERROR_MESSAGE,
+        reason: "request_failed",
+      }),
+  });
+  if (responseResult.isErr()) {
+    console.error("[device-auth] failed to verify device code", {
+      errorName: readErrorName(responseResult.error.cause),
     });
+    return Result.err(responseResult.error);
+  }
 
-    if (!response.ok) {
-      const payload: VerifyDeviceResponse | null = await response
-        .json()
-        .catch(() => null);
-      return {
-        kind: "error",
+  const response = responseResult.value;
+
+  if (!response.ok) {
+    const payload =
+      await readResponseJsonOrNull<VerifyDeviceResponse>(response);
+    return Result.err(
+      new DeviceVerificationError({
         message: readDeviceErrorMessage(
           payload,
           GENERIC_DEVICE_VERIFY_ERROR_MESSAGE
         ),
-      };
-    }
-
-    const payload: VerifyDeviceSuccessResponse = await response.json();
-
-    return {
-      kind: "verified",
-      status: payload.status,
-      userCode: payload.userCode,
-    };
-  } catch (error) {
-    console.error("[device-auth] failed to verify device code", {
-      errorName: readErrorName(error),
-    });
-    return {
-      kind: "error",
-      message: GENERIC_DEVICE_VERIFY_ERROR_MESSAGE,
-    };
+        reason: "response_failed",
+      })
+    );
   }
+
+  const payload =
+    await readResponseJsonOrNull<VerifyDeviceSuccessResponse>(response);
+  if (payload === null) {
+    console.error("[device-auth] failed to parse verify device response");
+    return Result.err(
+      new DeviceVerificationError({
+        message: GENERIC_DEVICE_VERIFY_ERROR_MESSAGE,
+        reason: "response_failed",
+      })
+    );
+  }
+
+  return Result.ok({
+    status: payload.status,
+    userCode: payload.userCode,
+  });
 }
 
 export async function submitDeviceDecisionRequest(input: {
@@ -282,54 +310,88 @@ export async function submitDeviceDecisionRequest(input: {
   const deviceClient = createApiClient();
 
   if (!input.userCode) {
-    return {
-      kind: "error",
-      message: "The device request could not be completed. Try again.",
-    };
+    return Result.err(
+      new DeviceDecisionError({
+        action: input.action,
+        message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
+        reason: "missing_code",
+      })
+    );
   }
 
-  try {
-    const submitDecision =
-      input.action === "approve"
-        ? deviceClient.api.device.approve.$post
-        : deviceClient.api.device.deny.$post;
-    const response = await submitDecision({
-      form: {
-        user_code: input.userCode,
-      },
+  const submitDecision =
+    input.action === "approve"
+      ? deviceClient.api.device.approve.$post
+      : deviceClient.api.device.deny.$post;
+  const responseResult = await Result.tryPromise({
+    try: () =>
+      submitDecision({
+        form: {
+          user_code: input.userCode,
+        },
+      }),
+    catch: (cause: unknown) =>
+      new DeviceDecisionError({
+        action: input.action,
+        cause,
+        message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
+        reason: "request_failed",
+      }),
+  });
+  if (responseResult.isErr()) {
+    console.error("[device-auth] failed to submit device decision", {
+      action: input.action,
+      errorName: readErrorName(responseResult.error.cause),
     });
+    return Result.err(responseResult.error);
+  }
 
-    if (!response.ok) {
-      const payload: SubmitDeviceDecisionResponse | null = await response
-        .json()
-        .catch(() => null);
-      return {
-        kind: "error",
+  const response = responseResult.value;
+
+  if (!response.ok) {
+    const payload =
+      await readResponseJsonOrNull<SubmitDeviceDecisionResponse>(response);
+    return Result.err(
+      new DeviceDecisionError({
+        action: input.action,
         message: readDeviceErrorMessage(
           payload,
           GENERIC_DEVICE_DECISION_ERROR_MESSAGE
         ),
-      };
-    }
-
-    const payload: SubmitDeviceDecisionSuccessResponse = await response.json();
-
-    return {
-      kind: "success",
-      message: payload.message,
-      title: payload.title,
-      tone: input.action === "approve" ? "success" : "error",
-    };
-  } catch (error) {
-    console.error("[device-auth] failed to submit device decision", {
-      action: input.action,
-      errorName: readErrorName(error),
-    });
-    return {
-      kind: "error",
-      message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
-    };
+        reason: "response_failed",
+      })
+    );
   }
+
+  const payload =
+    await readResponseJsonOrNull<SubmitDeviceDecisionSuccessResponse>(response);
+  if (payload === null) {
+    console.error("[device-auth] failed to parse device decision response", {
+      action: input.action,
+    });
+    return Result.err(
+      new DeviceDecisionError({
+        action: input.action,
+        message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
+        reason: "response_failed",
+      })
+    );
+  }
+
+  return Result.ok({
+    message: payload.message,
+    title: payload.title,
+    tone: input.action === "approve" ? "success" : "error",
+  });
+}
+
+async function readResponseJsonOrNull<T>(
+  response: Response
+): Promise<T | null> {
+  const payloadResult = await Result.tryPromise(
+    () => response.json() as Promise<T>
+  );
+  return payloadResult.isErr() ? null : payloadResult.value;
 }
 
 export const deviceAuthMachine = setup({
