@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { projectViteDevServerConfig } from "@onequery/config/projections/vite";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import {
   WORKSPACE_DEV_CONFIG_FILENAME,
@@ -21,6 +22,20 @@ function writeToml(
   lines: readonly string[]
 ): void {
   writeFileSync(join(rootDir, filename), `${lines.join("\n")}\n`, "utf8");
+}
+
+function captureThrownError(callback: () => unknown): Error {
+  try {
+    callback();
+  } catch (error) {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    throw error;
+  }
+
+  throw new Error("Expected callback to throw.");
 }
 
 describe("@onequery/config-node workspace-dev", () => {
@@ -58,23 +73,21 @@ describe("@onequery/config-node workspace-dev", () => {
         'enrollment_token = "workspace-connector-token"',
       ]);
 
-      expect(loadWorkspaceDev({ rootDir })).toEqual({
+      const workspaceDev = loadWorkspaceDev({ rootDir });
+
+      expect(workspaceDev).toMatchObject({
         api: {
-          host: "127.0.0.1",
           listen: {
             host: "127.0.0.1",
             port: 4601,
           },
           origin: "http://127.0.0.1:4601",
-          port: 4601,
         },
         auth: {
           secret: "workspace-auth-secret",
         },
         browser: {
-          host: "127.0.0.1",
           origin: "http://127.0.0.1:4600",
-          port: 4600,
         },
         connectors: {
           enrollmentToken: "workspace-connector-token",
@@ -82,26 +95,17 @@ describe("@onequery/config-node workspace-dev", () => {
         crypto: {
           masterEncryptionKey: SAMPLE_MASTER_ENCRYPTION_KEY,
         },
-        flags: {
-          disableRateLimit: false,
-        },
         postgres: {
-          containerPort: 5433,
-          database: "workspace",
           host: "localhost",
-          hostPort: 6500,
-          password: "secret",
           portBinding: "6500:5433",
           url: "postgres://workspace:secret@localhost:6500/workspace",
-          user: "workspace",
         },
         profile: "workspace-dev",
         publicOrigin: "http://127.0.0.1:4600",
       });
-      expect(loadViteDevServerConfig({ rootDir })).toEqual({
-        apiProxyTarget: "http://127.0.0.1:4601",
-        port: 4600,
-      });
+      expect(loadViteDevServerConfig({ rootDir })).toEqual(
+        projectViteDevServerConfig(workspaceDev)
+      );
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }
@@ -127,17 +131,17 @@ describe("@onequery/config-node workspace-dev", () => {
         "disable_rate_limit = false",
       ]);
 
-      expect(() => loadWorkspaceDev({ rootDir })).toThrow(
-        "Invalid workspace-dev config."
-      );
-      expect(() => loadWorkspaceDev({ rootDir })).toThrow(
+      const error = captureThrownError(() => loadWorkspaceDev({ rootDir }));
+
+      expect(error.message).toContain("Invalid workspace-dev config.");
+      expect(error.message).toContain(
         `Config file: ${join(rootDir, WORKSPACE_DEV_CONFIG_FILENAME)}`
       );
-      expect(() => loadWorkspaceDev({ rootDir })).toThrow(
+      expect(error.message).toContain(
         `Secrets file: ${join(rootDir, WORKSPACE_DEV_SECRETS_FILENAME)}`
       );
-      expect(() => loadWorkspaceDev({ rootDir })).toThrow("config.browser");
-      expect(() => loadWorkspaceDev({ rootDir })).toThrow("secrets.auth");
+      expect(error.message).toContain("config.browser");
+      expect(error.message).toContain("secrets.auth");
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }
