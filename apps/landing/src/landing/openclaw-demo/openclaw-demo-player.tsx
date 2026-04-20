@@ -8,36 +8,27 @@ import {
 import type { OpenClawDemoProps } from "@onequery/landing-video";
 import { Player } from "@remotion/player";
 import type { RenderLoading } from "@remotion/player";
-import { useCallback, useMemo } from "react";
 
 const lazyOpenClawDemoScene = () =>
   import("@onequery/landing-video/scene").then((module) => ({
     default: module.OpenClawDemoScene,
   }));
 
+const openClawDemoInputProps: OpenClawDemoProps = defaultOpenClawDemoProps;
+const openClawDemoDurationInFrames = getOpenClawDemoDurationInFrames(
+  defaultOpenClawDemoProps
+);
+
+const renderLoading: RenderLoading = () => (
+  <div className="openclaw-demo-loading" aria-hidden="true" />
+);
+
 export function OpenClawDemoPlayer() {
-  const lazyComponent = useCallback(lazyOpenClawDemoScene, []);
-
-  const inputProps = useMemo<OpenClawDemoProps>(
-    () => defaultOpenClawDemoProps,
-    []
-  );
-
-  const durationInFrames = useMemo(
-    () => getOpenClawDemoDurationInFrames(defaultOpenClawDemoProps),
-    []
-  );
-
-  const renderLoading = useCallback<RenderLoading>(
-    () => <div className="openclaw-demo-loading" aria-hidden="true" />,
-    []
-  );
-
   return (
     <Player
-      lazyComponent={lazyComponent}
-      inputProps={inputProps}
-      durationInFrames={durationInFrames}
+      lazyComponent={lazyOpenClawDemoScene}
+      inputProps={openClawDemoInputProps}
+      durationInFrames={openClawDemoDurationInFrames}
       compositionWidth={openClawDemoWidth}
       compositionHeight={openClawDemoHeight}
       fps={openClawDemoFps}

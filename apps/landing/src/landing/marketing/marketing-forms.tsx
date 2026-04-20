@@ -1,57 +1,67 @@
-import { ConnectError } from "@connectrpc/connect";
 import { useMutation } from "@connectrpc/connect-query";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
+import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
   trackProductUpdatesSignup,
-} from "./analytics";
-import { LandingService } from "./connect/gen/onequery/landing/v1/landing_pb";
-
-type ContactState = {
-  email: string;
-  message: string;
-  name: string;
-};
-
-const emptyContactState: ContactState = {
-  email: "",
-  message: "",
-  name: "",
-};
-
-function toUserMessage(error: unknown, fallback: string) {
-  if (error instanceof ConnectError) {
-    return error.rawMessage;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return fallback;
-}
+} from "../analytics/landing-analytics";
+import type {
+  ContactModalAction,
+  ContactModalState,
+} from "./marketing-forms.machine";
+import {
+  contactModalReducer,
+  initialContactModalState,
+  initialProductUpdatesState,
+  productUpdatesReducer,
+  toUserMessage,
+} from "./marketing-forms.machine";
 
 export function ProductUpdatesSection() {
-  const [email, setEmail] = useState("");
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(
+    productUpdatesReducer,
+    initialProductUpdatesState
+  );
 
-  const mutation = useMutation(LandingService.method.subscribeProductUpdates, {
-    onSuccess(response) {
-      trackProductUpdatesSignup();
-      setEmail("");
-      setSuccessMessage(`We’ll send product updates to ${response.email}.`);
-    },
-  });
-
-  const errorMessage = mutation.isError
-    ? toUserMessage(mutation.error, "Failed to subscribe for product updates")
-    : null;
+  const mutation = useMutation(LandingService.method.subscribeProductUpdates);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSuccessMessage(null);
-    mutation.mutate({ email });
+    dispatch({ type: "submitRequested" });
+    mutation.mutate(
+      { email: state.email },
+      {
+        onError(error) {
+          dispatch({
+            type: "submitFailed",
+            message: toUserMessage(
+              error,
+              "Failed to subscribe for product updates"
+            ),
+          });
+        },
+        onSuccess(response) {
+          trackProductUpdatesSignup();
+          dispatch({ type: "submitSucceeded", email: response.email });
+        },
+      }
+    );
   }
+
+  const feedbackClassName =
+    state.submission.tag === "failed"
+      ? "marketing-form-feedback marketing-form-feedback-error"
+      : state.submission.tag === "succeeded"
+        ? "marketing-form-feedback marketing-form-feedback-success"
+        : "marketing-form-feedback";
+  const feedbackMessage =
+    state.submission.tag === "failed"
+      ? state.submission.message
+      : state.submission.tag === "succeeded"
+        ? `We’ll send product updates to ${state.submission.value.email}.`
+        : "We only use this to send product updates.";
 
   return (
     <section className="section marketing-updates">
@@ -68,31 +78,29 @@ export function ProductUpdatesSection() {
             placeholder="you@company.com"
             className="marketing-input"
             aria-label="Email address"
-            value={email}
-            onChange={(event) => setEmail(event.currentTarget.value)}
+            value={state.email}
+            disabled={state.submission.tag === "submitting"}
+            onChange={(event) =>
+              dispatch({
+                type: "emailChanged",
+                email: event.currentTarget.value,
+              })
+            }
           />
           <button
             type="submit"
             className="button button-primary marketing-submit-button"
-            disabled={mutation.isPending}
+            disabled={state.submission.tag === "submitting"}
           >
-            {mutation.isPending ? "Saving..." : "Notify me"}
+            {state.submission.tag === "submitting" ? "Saving..." : "Notify me"}
           </button>
         </div>
 
         <p
-          className={
-            errorMessage
-              ? "marketing-form-feedback marketing-form-feedback-error"
-              : successMessage
-                ? "marketing-form-feedback marketing-form-feedback-success"
-                : "marketing-form-feedback"
-          }
-          role={errorMessage ? "alert" : "status"}
+          className={feedbackClassName}
+          role={state.submission.tag === "failed" ? "alert" : "status"}
         >
-          {errorMessage ??
-            successMessage ??
-            "We only use this to send product updates."}
+          {feedbackMessage}
         </p>
       </form>
     </section>
@@ -100,10 +108,13 @@ export function ProductUpdatesSection() {
 }
 
 export function FooterContactButton() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [state, dispatch] = useReducer(
+    contactModalReducer,
+    initialContactModalState
+  );
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!state.isOpen) {
       return;
     }
 
@@ -112,7 +123,7 @@ export function FooterContactButton() {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setIsOpen(false);
+        dispatch({ type: "closeRequested" });
       }
     }
 
@@ -121,7 +132,7 @@ export function FooterContactButton() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [state.isOpen]);
 
   return (
     <>
@@ -130,41 +141,47 @@ export function FooterContactButton() {
         className="contact-link-button"
         onClick={() => {
           trackContactModalOpened();
-          setIsOpen(true);
+          dispatch({ type: "openRequested" });
         }}
       >
         Contact
       </button>
-      {isOpen ? <ContactModal onClose={() => setIsOpen(false)} /> : null}
+      {state.isOpen ? <ContactModal state={state} dispatch={dispatch} /> : null}
     </>
   );
 }
 
-function ContactModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState<ContactState>(emptyContactState);
-
-  const mutation = useMutation(LandingService.method.submitContact, {
-    onSuccess() {
-      trackContactFormSubmitted();
-      setForm(emptyContactState);
-      onClose();
-    },
-  });
-
-  const errorMessage = mutation.isError
-    ? toUserMessage(mutation.error, "Failed to send message")
-    : null;
+function ContactModal({
+  dispatch,
+  state,
+}: {
+  dispatch: React.Dispatch<ContactModalAction>;
+  state: ContactModalState;
+}) {
+  const mutation = useMutation(LandingService.method.submitContact);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    mutation.mutate(form);
+    dispatch({ type: "submitRequested" });
+    mutation.mutate(state.form, {
+      onError(error) {
+        dispatch({
+          type: "submitFailed",
+          message: toUserMessage(error, "Failed to send message"),
+        });
+      },
+      onSuccess() {
+        trackContactFormSubmitted();
+        dispatch({ type: "submitSucceeded" });
+      },
+    });
   }
 
   return (
     <div
       className="contact-modal-backdrop"
       role="presentation"
-      onMouseDown={onClose}
+      onMouseDown={() => dispatch({ type: "closeRequested" })}
     >
       <div
         className="contact-modal"
@@ -176,7 +193,7 @@ function ContactModal({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           className="contact-modal-close"
-          onClick={onClose}
+          onClick={() => dispatch({ type: "closeRequested" })}
           aria-label="Close contact form"
         >
           ×
@@ -199,12 +216,14 @@ function ContactModal({ onClose }: { onClose: () => void }) {
                 type="text"
                 placeholder="Jane Doe"
                 className="contact-modal-input"
-                value={form.name}
+                disabled={state.submission.tag === "submitting"}
+                value={state.form.name}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    name: event.currentTarget.value,
-                  }))
+                  dispatch({
+                    type: "fieldChanged",
+                    field: "name",
+                    value: event.currentTarget.value,
+                  })
                 }
               />
             </label>
@@ -215,12 +234,14 @@ function ContactModal({ onClose }: { onClose: () => void }) {
                 type="email"
                 placeholder="you@company.com"
                 className="contact-modal-input"
-                value={form.email}
+                disabled={state.submission.tag === "submitting"}
+                value={state.form.email}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    email: event.currentTarget.value,
-                  }))
+                  dispatch({
+                    type: "fieldChanged",
+                    field: "email",
+                    value: event.currentTarget.value,
+                  })
                 }
               />
             </label>
@@ -231,12 +252,14 @@ function ContactModal({ onClose }: { onClose: () => void }) {
             <textarea
               placeholder="Share your use case, timeline, or the integration you need."
               className="contact-modal-textarea"
-              value={form.message}
+              disabled={state.submission.tag === "submitting"}
+              value={state.form.message}
               onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  message: event.currentTarget.value,
-                }))
+                dispatch({
+                  type: "fieldChanged",
+                  field: "message",
+                  value: event.currentTarget.value,
+                })
               }
             />
           </label>
@@ -248,13 +271,15 @@ function ContactModal({ onClose }: { onClose: () => void }) {
             <button
               type="submit"
               className="button button-primary contact-modal-submit"
-              disabled={mutation.isPending}
+              disabled={state.submission.tag === "submitting"}
             >
-              {mutation.isPending ? "Sending..." : "Send message"}
+              {state.submission.tag === "submitting"
+                ? "Sending..."
+                : "Send message"}
             </button>
-            {errorMessage ? (
+            {state.submission.tag === "failed" ? (
               <p className="marketing-form-feedback marketing-form-feedback-error">
-                {errorMessage}
+                {state.submission.message}
               </p>
             ) : null}
           </div>

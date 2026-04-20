@@ -6,7 +6,7 @@ import {
   LandingService,
   SubmitContactResponseSchema,
   SubscribeProductUpdatesResponseSchema,
-} from "../connect/gen/onequery/landing/v1/landing_pb.js";
+} from "../../connect/gen/onequery/landing/v1/landing_pb.js";
 
 export const LEAD_CAPTURE_SOURCE = "onequery_landing";
 

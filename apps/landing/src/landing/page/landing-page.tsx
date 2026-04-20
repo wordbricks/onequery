@@ -1,20 +1,17 @@
 import { useEffect } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
-import { trackLandingCtaClick, trackPageView } from "../analytics";
+import {
+  trackLandingCtaClick,
+  trackPageView,
+} from "../analytics/landing-analytics";
 import {
   LANDING_INSTALL_SCRIPT_URL,
   LANDING_REPOSITORY_URL,
   LANDING_SECTION_IDS,
   LANDING_SELF_HOST_DOCS_URL,
-} from "../landing-config";
-import { FooterContactButton, ProductUpdatesSection } from "../marketing-forms";
-import { OpenClawDemoPlayer } from "../openclaw-demo-player";
-import { BRAND_ICON_PATHS } from "./brand-icon-paths";
-import { ControlPlaneDiagram } from "./components/control-plane-diagram";
-import { DownloadCommand } from "./components/download-command";
-import { HeroProductSurface } from "./components/hero-product-surface";
-import { TerminalSurface } from "./components/terminal-surface";
+} from "../config/landing-config";
+import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
 import {
   FOOTER_LINKS,
   HERO_SIGNALS,
@@ -23,7 +20,16 @@ import {
   QUERY_DETAILS_SNIPPET,
   QUERY_TERMINAL_LINES,
   QUICKSTART_TERMINAL_LINES,
-} from "./landing-content";
+} from "../content/landing-content";
+import { ControlPlaneDiagram } from "../control-plane/control-plane-diagram";
+import { DownloadCommand } from "../download-command/download-command";
+import { HeroProductSurface } from "../hero-product/hero-product-surface";
+import {
+  FooterContactButton,
+  ProductUpdatesSection,
+} from "../marketing/marketing-forms";
+import { OpenClawDemoPlayer } from "../openclaw-demo/openclaw-demo-player";
+import { TerminalSurface } from "../terminal/terminal-surface";
 
 type TrackedLinkProps = ComponentPropsWithoutRef<"a"> & {
   href: string;

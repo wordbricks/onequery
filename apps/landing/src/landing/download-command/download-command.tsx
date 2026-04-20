@@ -3,76 +3,16 @@ import { useEffect, useReducer } from "react";
 import {
   trackInstallCommandCopied,
   trackInstallMethodSelected,
-} from "../../analytics";
+} from "../analytics/landing-analytics";
 import {
   LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
   LANDING_INSTALL_COMMANDS,
-} from "../../landing-config";
-
-type InstallMethodLabel = (typeof LANDING_INSTALL_COMMANDS)[number]["label"];
-
-type DownloadCommandAction =
-  | { type: "copyFailed" }
-  | { type: "copySucceeded"; label: InstallMethodLabel }
-  | { type: "resetCopyFeedback" }
-  | { type: "selectMethod"; label: InstallMethodLabel };
-
-type DownloadCommandState = {
-  copiedMethodLabel: InstallMethodLabel | null;
-  selectedMethodLabel: InstallMethodLabel;
-};
-
-const defaultInstallMethod = LANDING_INSTALL_COMMANDS[0];
-
-const initialDownloadCommandState: DownloadCommandState = {
-  copiedMethodLabel: null,
-  selectedMethodLabel: defaultInstallMethod.label,
-};
-
-function downloadCommandReducer(
-  state: DownloadCommandState,
-  action: DownloadCommandAction
-): DownloadCommandState {
-  switch (action.type) {
-    case "copyFailed":
-      return {
-        ...state,
-        copiedMethodLabel: null,
-      };
-
-    case "copySucceeded":
-      return {
-        ...state,
-        copiedMethodLabel: action.label,
-      };
-
-    case "resetCopyFeedback":
-      if (state.copiedMethodLabel === null) {
-        return state;
-      }
-
-      return {
-        ...state,
-        copiedMethodLabel: null,
-      };
-
-    case "selectMethod":
-      return {
-        ...state,
-        selectedMethodLabel: action.label,
-      };
-
-    default:
-      return state;
-  }
-}
-
-function getInstallMethod(label: InstallMethodLabel) {
-  return (
-    LANDING_INSTALL_COMMANDS.find((method) => method.label === label) ??
-    defaultInstallMethod
-  );
-}
+} from "../config/landing-config";
+import {
+  downloadCommandReducer,
+  getInstallMethod,
+  initialDownloadCommandState,
+} from "./download-command.machine";
 
 export function DownloadCommand() {
   const [state, dispatch] = useReducer(

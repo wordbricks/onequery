@@ -2,10 +2,10 @@ import {
   LANDING_API_CATALOG_PATH,
   LANDING_CONNECT_PATH_PREFIX,
   LANDING_SERVICE_NAME,
-} from "./landing-api";
-import { LANDING_PROTO_SOURCE_URL } from "./landing-config";
-import { createLandingWorkerHandler } from "./server/landing-worker";
-import type { LandingWorkerBindings } from "./server/landing-worker";
+} from "./landing/config/landing-api";
+import { LANDING_PROTO_SOURCE_URL } from "./landing/config/landing-config";
+import { createLandingWorkerHandler } from "./server/landing/landing-worker";
+import type { LandingWorkerBindings } from "./server/landing/landing-worker";
 
 type LandingWorkerEnv = CloudflareEnv & LandingWorkerBindings;
 

@@ -1,5 +1,5 @@
-import { BRAND_ICON_PATHS } from "../brand-icon-paths";
-import type { BrandIconName } from "../brand-icon-paths";
+import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
+import type { BrandIconName } from "../content/brand-icon-paths";
 
 type ControlPlaneInput = {
   key: string;

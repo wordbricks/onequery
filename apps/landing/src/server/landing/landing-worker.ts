@@ -1,8 +1,8 @@
 import { createContextValues } from "@connectrpc/connect";
 import { createValidateInterceptor } from "@connectrpc/validate";
 
+import { createWorkerHandler } from "../rpc/worker-handler";
 import { landingContextKey, registerLandingRoutes } from "./landing-service";
-import { createWorkerHandler } from "./worker-handler";
 
 export interface LandingWorkerBindings {
   // Comment: local and preview environments can intentionally omit the

@@ -10,7 +10,7 @@ import {
 } from "@connectrpc/connect/protocol";
 import type { UniversalHandler } from "@connectrpc/connect/protocol";
 
-import { LANDING_CONNECT_PATH_PREFIX } from "../landing-api";
+import { LANDING_CONNECT_PATH_PREFIX } from "../../landing/config/landing-api";
 
 interface WorkerHandlerOptions<Env> extends ConnectRouterOptions {
   /**
