@@ -10,3 +10,6 @@ Request ID: req_org_auth
 Hint: refresh your session and retry
 Try:
   - refresh your session and retry
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>

@@ -10,3 +10,6 @@ Try:
   - onequery gateway start
   - onequery gateway status
   - retry onequery auth login
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>

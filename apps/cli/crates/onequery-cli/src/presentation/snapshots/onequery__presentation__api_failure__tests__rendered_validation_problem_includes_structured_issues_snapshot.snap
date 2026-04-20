@@ -13,3 +13,6 @@ Validation:
   - sql: query must be read-only (custom)
 Try:
   - correct the request and retry
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>

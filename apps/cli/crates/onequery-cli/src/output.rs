@@ -516,6 +516,13 @@ fn render_text_error(error: &CliError) -> String {
         }
     }
 
+    // Surfacing a pre-filled GitHub issue URL on every text error lets users
+    // report bugs without manually rebuilding the trace. JSON output stays
+    // clean for scripting.
+    lines.push(String::new());
+    lines.push("Think this is a bug? Report it with the error already filled in:".to_owned());
+    lines.push(format!("  {}", crate::issue_report::build_issue_url(error)));
+
     lines.join("\n")
 }
 
@@ -559,7 +566,8 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
-        assert_snapshot!(rendered);
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
     }
 
     #[test]
@@ -575,7 +583,8 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
-        assert_snapshot!(rendered);
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
     }
 
     #[test]
@@ -591,7 +600,8 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
-        assert_snapshot!(rendered);
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
     }
 
     #[test]

@@ -11,3 +11,6 @@ Hint: queries must be read-only
 Try:
   - retry with a read-only SELECT
   - run onequery source show warehouse
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>
