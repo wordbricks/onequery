@@ -43,6 +43,8 @@ test-results/
 *.tsbuildinfo
 __pycache__/
 *.py[cod]
+.wrangler/
+.dev.vars*
 
 .reports
 .claude/settings.local.json

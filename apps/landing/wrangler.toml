@@ -8,8 +8,10 @@ compatibility_date = "2026-04-14"
 logpush = true
 
 [assets]
-directory = "./dist/client"
-# Keep the runtime binding explicit because src/worker.ts calls env.ASSETS.fetch().
+# Comment: keep the runtime binding explicit because src/worker.ts calls
+# env.ASSETS.fetch(). The Cloudflare Vite plugin populates the client asset
+# directory in its generated deploy config, so this input config should only
+# declare routing and binding intent.
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*", "/.well-known/api-catalog"]

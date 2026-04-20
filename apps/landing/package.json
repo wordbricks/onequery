@@ -4,12 +4,11 @@
   "private": false,
   "type": "module",
   "scripts": {
-    "dev": "bunx --bun vite",
-    "dev:worker": "bunx wrangler dev",
-    "build": "bunx --bun vite build",
-    "deploy": "bun run build && bunx wrangler deploy",
-    "deploy:preview": "bun run build && bunx wrangler versions upload",
-    "cf-typegen": "bunx wrangler types worker-configuration.d.ts --env-interface CloudflareEnv",
+    "dev": "vite",
+    "build": "vite build",
+    "deploy": "bun run build && wrangler deploy",
+    "deploy:preview": "bun run build && wrangler versions upload",
+    "cf-typegen": "wrangler types worker-configuration.d.ts --env-interface CloudflareEnv",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
@@ -34,6 +33,7 @@
     "xstate": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:tooling",
     "@onequery/installer": "workspace:*",
     "@rolldown/plugin-babel": "catalog:tooling",
     "@tanstack/router-plugin": "catalog:",
@@ -43,6 +43,7 @@
     "@vitejs/plugin-react": "catalog:tooling",
     "babel-plugin-react-compiler": "catalog:tooling",
     "vite": "catalog:tooling",
-    "vitest": "catalog:testing"
+    "vitest": "catalog:testing",
+    "wrangler": "catalog:tooling"
   }
 }
