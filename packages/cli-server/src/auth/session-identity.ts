@@ -1,3 +1,4 @@
+import { dateLikeToDate } from "@onequery/codecs/date";
 import { eq, getDatabaseSchema } from "@onequery/db/server";
 import type { ServerStorage } from "@onequery/server/storage";
 import { z } from "zod";
@@ -7,10 +8,9 @@ import type {
   CliSessionIdentity,
 } from "../domain/workflows";
 
-const CliAuthSessionTimestampSchema = z
-  .union([z.date(), z.iso.datetime()])
-  .nullish();
 const CliAuthSessionTokenSchema = z.string().trim().min(1);
+const CliAuthSessionTimestampSchema = dateLikeToDate.nullish();
+const CliOptionalAuthSessionTokenSchema = CliAuthSessionTokenSchema.nullable();
 
 const CliAuthSessionSchema = z.object({
   session: z.object({
@@ -55,20 +55,7 @@ async function resolveActiveOrgSlug(
 function toOptionalIsoString(
   value: ResolvedCliAuthSession["session"]["createdAt"]
 ): string | null {
-  if (!value) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) {
-    return null;
-  }
-
-  return parsed.toISOString();
+  return value?.toISOString() ?? null;
 }
 
 async function parseCliSessionIdentity(
@@ -102,8 +89,8 @@ async function parseCliSessionIdentity(
 }
 
 function normalizeCliAccessToken(value: string | null) {
-  const normalized = value?.trim();
-  return normalized && normalized.length > 0 ? normalized : null;
+  const parsed = CliOptionalAuthSessionTokenSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 function resolveCliSessionAuthMode(headers: Headers): CliSessionAuthMode {

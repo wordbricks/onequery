@@ -57,6 +57,20 @@ describe("read controls policy", () => {
     expect(result.error.message).toBe("cursor is invalid");
   });
 
+  it("rejects page cursors with invalid payload shapes", () => {
+    const cursor = Buffer.from(JSON.stringify({ offset: -1 })).toString(
+      "base64url"
+    );
+    const result = parsePageCursor(cursor);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected cursor parsing to fail");
+    }
+
+    expect(result.error.message).toBe("cursor is invalid");
+  });
+
   it("paginates from the decoded offset", () => {
     const page = paginateItems(["a", "b", "c", "d"], {
       limit: 2,
