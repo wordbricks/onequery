@@ -60,7 +60,7 @@ windows-sys = { workspace = true, features = [
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
-insta = { workspace = true }
+insta = { workspace = true, features = ["filters"] }
 
 [build-dependencies]
 buffa = { workspace = true, features = ["json"] }

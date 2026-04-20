@@ -9,3 +9,6 @@ Why: failed to decode query response: expected value at line 1 column 1
 Request ID: req_decode
 Try:
   - retry onequery query exec --source warehouse --sql "select 1"
+
+Think this is a bug? Report it with the error already filled in:
+  <REPORT_URL>
