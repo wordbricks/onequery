@@ -2,14 +2,16 @@ import { execSync } from "node:child_process";
 
 import {
   deriveTestProfile,
-  ensureWorkspaceDevSecretsFileSync,
   projectDockerComposeConfig,
-  resolveWorkspaceDev,
 } from "@onequery/config";
 import type {
   DerivedTestProfile,
   ResolvedWorkspaceDevConfig,
 } from "@onequery/config";
+import {
+  ensureWorkspaceDevSecretsFileSync,
+  loadWorkspaceDev,
+} from "@onequery/config-node";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY_MS = 1000;
@@ -27,7 +29,7 @@ let dockerComposeEnvCache: NodeJS.ProcessEnv | undefined;
 
 function getWorkspaceDev(): ResolvedWorkspaceDevConfig {
   if (!workspaceDevCache) {
-    workspaceDevCache = resolveWorkspaceDev({
+    workspaceDevCache = loadWorkspaceDev({
       rootDir: process.cwd(),
     });
   }

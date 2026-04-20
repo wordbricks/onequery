@@ -17,7 +17,6 @@
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
     "@onequery/base": "workspace:*",
-    "@onequery/config": "workspace:*",
     "@onequery/contracts": "workspace:*",
     "@onequery/datetime": "workspace:*",
     "@onequery/db": "workspace:*",
@@ -44,6 +43,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@onequery/config-node": "workspace:*",
     "@playwright/test": "1.57.0",
     "@rolldown/plugin-babel": "catalog:tooling",
     "@tailwindcss/vite": "catalog:tooling",

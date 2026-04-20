@@ -9,7 +9,6 @@
     "./server-launch": "./src/server-launch.ts",
     "./shared-secrets": "./src/shared-secrets.ts",
     "./workspace-dev": "./src/workspace-dev.ts",
-    "./workspace-dev-init": "./src/workspace-dev-init.ts",
     "./test-profile": "./src/test-profile.ts",
     "./testing": "./src/testing.ts",
     "./projections/docker": "./src/projections/docker.ts",
@@ -23,7 +22,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@onequery/config-loader": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -8,6 +8,7 @@
         "@bufbuild/buf": "catalog:tooling",
         "@bufbuild/protoc-gen-es": "catalog:tooling",
         "@onequery/config": "workspace:*",
+        "@onequery/config-node": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/self-host-runtime": "workspace:*",
         "@testing-library/jest-dom": "6.9.1",
@@ -118,7 +119,6 @@
       "dependencies": {
         "@hookform/resolvers": "5.2.2",
         "@onequery/base": "workspace:*",
-        "@onequery/config": "workspace:*",
         "@onequery/contracts": "workspace:*",
         "@onequery/datetime": "workspace:*",
         "@onequery/db": "workspace:*",
@@ -145,6 +145,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@onequery/config-node": "workspace:*",
         "@playwright/test": "1.57.0",
         "@rolldown/plugin-babel": "catalog:tooling",
         "@tailwindcss/vite": "catalog:tooling",
@@ -196,7 +197,6 @@
       "name": "@onequery/config",
       "version": "0.0.0",
       "dependencies": {
-        "@onequery/config-loader": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -207,7 +207,18 @@
       "name": "@onequery/config-loader",
       "version": "0.0.0",
       "dependencies": {
-        "smol-toml": "1.6.1",
+        "smol-toml": "catalog:",
+      },
+      "devDependencies": {
+        "vitest": "catalog:testing",
+      },
+    },
+    "packages/config-node": {
+      "name": "@onequery/config-node",
+      "version": "0.0.0",
+      "dependencies": {
+        "@onequery/config": "workspace:*",
+        "@onequery/config-loader": "workspace:*",
       },
       "devDependencies": {
         "vitest": "catalog:testing",
@@ -380,6 +391,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.448",
+    "smol-toml": "1.6.1",
     "sonner": "2.0.7",
     "unstorage": "1.17.4",
     "xstate": "5.30.0",
@@ -1060,6 +1072,8 @@
     "@onequery/config": ["@onequery/config@workspace:packages/config"],
 
     "@onequery/config-loader": ["@onequery/config-loader@workspace:packages/config-loader"],
+
+    "@onequery/config-node": ["@onequery/config-node@workspace:packages/config-node"],
 
     "@onequery/connector": ["@onequery/connector@workspace:apps/connector"],
 

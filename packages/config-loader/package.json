@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "smol-toml": "1.6.1"
+    "smol-toml": "catalog:"
   },
   "devDependencies": {
     "vitest": "catalog:testing"
