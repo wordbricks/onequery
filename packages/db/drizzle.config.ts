@@ -15,8 +15,6 @@ export default defineConfig({
     "./src/schema/audit-workflow.ts",
     "./src/schema/auth.ts",
     "./src/schema/bigquery-query-costs.ts",
-    "./src/schema/cli-query-actions.ts",
-    "./src/schema/cli-query-action-events.ts",
     "./src/schema/connectors.ts",
     "./src/schema/data-source-query-costs.ts",
     "./src/schema/data-sources.ts",

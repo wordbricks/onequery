@@ -3,67 +3,6 @@ import { z } from "zod";
 export const DEFAULT_AUDIT_LIMIT = 25;
 export const MAX_AUDIT_LIMIT = 100;
 
-export const CLI_QUERY_ACTION_TYPES = ["validate", "execute"] as const;
-export type CliQueryActionType = (typeof CLI_QUERY_ACTION_TYPES)[number];
-
-export const CLI_QUERY_ACTION_STAGES = [
-  "received",
-  "load_source",
-  "validate_query",
-  "load_credentials",
-  "execute_query",
-  "persist_usage",
-  "completed",
-] as const;
-export type CliQueryActionStage = (typeof CLI_QUERY_ACTION_STAGES)[number];
-
-export const CLI_QUERY_ACTION_STATUSES = [
-  "pending",
-  "succeeded",
-  "source_not_found",
-  "source_not_queryable",
-  "query_rejected",
-  "query_preparation_failed",
-  "query_unavailable",
-  "query_timed_out",
-  "query_execution_failed",
-] as const;
-export type CliQueryActionStatus = (typeof CLI_QUERY_ACTION_STATUSES)[number];
-
-export const CLI_QUERY_USAGE_PERSISTENCE_STATUSES = [
-  "not_started",
-  "succeeded",
-  "failed",
-] as const;
-export type CliQueryUsagePersistenceStatus =
-  (typeof CLI_QUERY_USAGE_PERSISTENCE_STATUSES)[number];
-
-export const CLI_QUERY_ACTION_ACTOR_AUTH_MODES = [
-  "browser_session",
-  "bearer_token",
-] as const;
-export type CliQueryActionActorAuthMode =
-  (typeof CLI_QUERY_ACTION_ACTOR_AUTH_MODES)[number];
-
-export const CLI_QUERY_ACTION_EVENT_TYPES = [
-  "action_received",
-  "source_loaded",
-  "source_not_found",
-  "source_not_queryable",
-  "query_validated",
-  "query_rejected",
-  "credentials_loaded",
-  "query_preparation_failed",
-  "query_executed",
-  "query_unavailable",
-  "query_timed_out",
-  "query_execution_failed",
-  "usage_persisted",
-  "usage_persist_failed",
-] as const;
-export type CliQueryActionEventType =
-  (typeof CLI_QUERY_ACTION_EVENT_TYPES)[number];
-
 export const AUDIT_FAMILIES = ["query_action", "source_api_action"] as const;
 export type AuditFamily = (typeof AUDIT_FAMILIES)[number];
 

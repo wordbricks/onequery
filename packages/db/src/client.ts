@@ -16,8 +16,6 @@ import * as auditProjectionCheckpointsSchema from "./schema/audit-projection-che
 import * as auditWorkflowSchema from "./schema/audit-workflow";
 import * as authSchema from "./schema/auth";
 import * as bigQueryQueryCostsSchema from "./schema/bigquery-query-costs";
-import * as cliQueryActionEventsSchema from "./schema/cli-query-action-events";
-import * as cliQueryActionsSchema from "./schema/cli-query-actions";
 import * as connectorsSchema from "./schema/connectors";
 import * as dataSourceQueryCostsSchema from "./schema/data-source-query-costs";
 import * as dataSourceTableUsageSchema from "./schema/data-source-table-usage";
@@ -38,8 +36,6 @@ export const postgresSchema = {
   ...auditWorkflowSchema,
   ...authSchema,
   ...bigQueryQueryCostsSchema,
-  ...cliQueryActionsSchema,
-  ...cliQueryActionEventsSchema,
   ...dataSourcesSchema,
   ...dataSourceQueryCostsSchema,
   ...dataSourceTableUsageSchema,

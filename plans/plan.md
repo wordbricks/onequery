@@ -101,7 +101,7 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - the feed rebuilds from committed events
   - cursor pagination remains stable while actions continue to evolve
-- [ ] Remove superseded V1 paths.
+- [x] Remove superseded V1 paths.
   Exit criteria:
   - the public API and UI read only V2 projection rows
   - superseded V1 schema, logging, and read-path dependencies are deleted from production code

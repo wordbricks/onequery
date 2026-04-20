@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 import {
   asc,
-  cliQueryActions,
   createDb,
   organization,
   prepareApplicationDatabase,
@@ -112,7 +111,7 @@ describe("query workflow audit runtime", () => {
     }
   });
 
-  it("records validateQuery through query_action storage without writing V1 rows", async () => {
+  it("records validateQuery through query_action storage only", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -156,7 +155,6 @@ describe("query workflow audit runtime", () => {
         asc(workflowEffectDispatches.createdAt),
         asc(workflowEffectDispatches.id)
       );
-    const legacyRows = await db.select().from(cliQueryActions);
 
     expect(validation).toMatchObject({
       kind: "ready",
@@ -195,10 +193,9 @@ describe("query workflow audit runtime", () => {
       { effectType: "load_source", status: "completed" },
       { effectType: "validate_query", status: "completed" },
     ]);
-    expect(legacyRows).toHaveLength(0);
   });
 
-  it("records executeQuery through query_action storage and completes the outbox chain", async () => {
+  it("records executeQuery through query_action storage only and completes the outbox chain", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -260,7 +257,6 @@ describe("query workflow audit runtime", () => {
         asc(workflowEffectDispatches.createdAt),
         asc(workflowEffectDispatches.id)
       );
-    const legacyRows = await db.select().from(cliQueryActions);
 
     expect(execution).toMatchObject({
       kind: "response_ready",
@@ -310,6 +306,5 @@ describe("query workflow audit runtime", () => {
       { effectType: "execute_query", status: "completed" },
       { effectType: "persist_usage", status: "completed" },
     ]);
-    expect(legacyRows).toHaveLength(0);
   });
 });

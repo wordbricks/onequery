@@ -3,8 +3,6 @@ export * from "./schema/audit-feed-entries";
 export * from "./schema/audit-projection-checkpoints";
 export * from "./schema/audit-workflow";
 export * from "./schema/auth";
-export * from "./schema/cli-query-action-events";
-export * from "./schema/cli-query-actions";
 export * from "./schema/connectors";
 export * from "./schema/data-source-query-costs";
 export * from "./schema/data-source-table-usage";

@@ -1,5 +1,4 @@
 import type {
-  CliQueryActionType,
   DatabaseCredentialProviderType,
   DatabaseCredentials,
   DataSourceStatus,
@@ -26,6 +25,8 @@ import type {
   CliQuerySuccessResult,
 } from "../domain/workflows";
 import { getCliQueryableDatabaseProviderType } from "../source/model";
+
+type QueryActionType = "validate" | "execute";
 
 type CliQueryWorkflowBase = {
   requestId: string;
@@ -73,21 +74,21 @@ type CliPersistQueryUsageState = {
 export type CliQueryWorkflowEvent =
   | {
       type: "source_loaded";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       source: CliQuerySourceRecord;
     }
   | {
       type: "source_not_found";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       orgSlug: string;
     }
   | {
       type: "source_not_queryable";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       provider: ProviderType;
@@ -95,7 +96,7 @@ export type CliQueryWorkflowEvent =
     }
   | {
       type: "query_validated";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       source: CliQuerySourceRecord;
@@ -104,7 +105,7 @@ export type CliQueryWorkflowEvent =
     }
   | {
       type: "query_rejected";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       source: CliQuerySourceRecord;
@@ -119,7 +120,7 @@ export type CliQueryWorkflowEvent =
     }
   | {
       type: "query_preparation_failed";
-      actionType: CliQueryActionType;
+      actionType: QueryActionType;
       requestId: string;
       sourceKey: string;
       source: CliQuerySourceRecord | null;

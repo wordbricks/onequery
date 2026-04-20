@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   bigqueryQueryCostsRelations,
-  cliQueryActionEventsRelations,
-  cliQueryActionsRelations,
   connectorJobsRelations,
   connectorsRelations,
   dataSourceQueryCostsRelations,
@@ -17,8 +15,6 @@ describe("relations", () => {
   it("exports the OSS-safe relation definitions", () => {
     const relationExports = {
       bigqueryQueryCostsRelations,
-      cliQueryActionEventsRelations,
-      cliQueryActionsRelations,
       connectorJobsRelations,
       connectorsRelations,
       dataSourceQueryCostsRelations,
@@ -28,7 +24,7 @@ describe("relations", () => {
       userProfilesRelations,
     };
 
-    expect(Object.keys(relationExports)).toHaveLength(10);
+    expect(Object.keys(relationExports)).toHaveLength(8);
 
     for (const relation of Object.values(relationExports)) {
       expect(relation).toBeTruthy();
