@@ -19,6 +19,7 @@ This file is the entry point for the Audit V2 plan set. The companion documents 
 - [x] Audited 2026-04-20: [storage-contract.md](./storage-contract.md)
 - [x] Audited 2026-04-20: [query-family.md](./query-family.md)
 - [x] Audited 2026-04-20: [source-api-family.md](./source-api-family.md)
+- [x] Audited 2026-04-20: [projection-and-api.md](./projection-and-api.md)
 
 ## Target Properties
 
