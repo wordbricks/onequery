@@ -1651,6 +1651,7 @@ function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
           ? null
           : (row.failureCode as AuditQueryActionFailureCode),
       family: "query_action" as const,
+      familyActionId: row.familyActionId,
       id: buildAuditFeedId(row.family, row.familyActionId),
       lastEventAt: row.lastEventAt.toISOString(),
       lastEventType: row.lastEventType as AuditQueryActionEventType,
@@ -1688,6 +1689,7 @@ function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
         ? null
         : (row.failureCode as AuditSourceApiActionFailureCode),
     family: "source_api_action" as const,
+    familyActionId: row.familyActionId,
     id: buildAuditFeedId(row.family, row.familyActionId),
     lastEventAt: row.lastEventAt.toISOString(),
     lastEventType: row.lastEventType as AuditSourceApiActionEventType,

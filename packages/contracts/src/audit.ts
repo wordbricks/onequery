@@ -267,6 +267,7 @@ const auditBaseListItemSchema = z
   .object({
     actionName: z.enum(AUDIT_ACTION_NAMES),
     completedAt: z.iso.datetime().nullable(),
+    familyActionId: z.string(),
     id: z.string(),
     originActor: auditOriginActorSchema,
     originSurface: z.string(),

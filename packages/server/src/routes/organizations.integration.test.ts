@@ -753,6 +753,7 @@ describe("organizations audit route", () => {
       expect(firstPage.items[0]).toMatchObject({
         actionName: "execute",
         family: "query_action",
+        familyActionId: `query-success-${runId}`,
         id: `query_action:query-success-${runId}`,
         outcome: "succeeded",
         startedAt: "2026-03-27T10:00:00.000Z",
@@ -787,6 +788,7 @@ describe("organizations audit route", () => {
       expect(secondPage.items[0]).toMatchObject({
         actionName: "invoke",
         family: "source_api_action",
+        familyActionId: `source-api-pending-${runId}`,
         id: `source_api_action:source-api-pending-${runId}`,
         lastEventAt: "2026-03-27T11:00:00.000Z",
         outcome: "pending",
@@ -822,6 +824,7 @@ describe("organizations audit route", () => {
       expect(filtered.items).toHaveLength(1);
       expect(filtered.items[0]).toMatchObject({
         family: "source_api_action",
+        familyActionId: `source-api-pending-${runId}`,
         id: `source_api_action:source-api-pending-${runId}`,
         outcome: "pending",
         target: {
