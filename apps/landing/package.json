@@ -33,10 +33,13 @@
   },
   "devDependencies": {
     "@onequery/installer": "workspace:*",
+    "@rolldown/plugin-babel": "catalog:tooling",
     "@tanstack/router-plugin": "catalog:",
+    "@types/babel__core": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:tooling",
+    "babel-plugin-react-compiler": "catalog:tooling",
     "vite": "catalog:tooling",
     "vitest": "catalog:testing"
   }

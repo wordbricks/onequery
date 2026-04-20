@@ -1,5 +1,6 @@
+import babel from "@rolldown/plugin-babel";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 import {
@@ -21,6 +22,11 @@ export default defineConfig(({ command }) => {
         target: "react",
       }),
       react(),
+      // Surprising: editor type-checking for this plugin also needs
+      // @types/babel__core, even though the runtime dependency is already present.
+      babel({
+        presets: [reactCompilerPreset()],
+      }),
       createInstallScriptPlugin(),
     ],
     build: {

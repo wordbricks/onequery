@@ -1,6 +1,6 @@
 import { createClient } from "@connectrpc/connect";
 import { useActorRef, useSelector } from "@xstate/react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { landingTransport } from "../../app/runtime/connect-transport";
 import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
@@ -20,24 +20,25 @@ import {
 } from "./product-updates.machine";
 
 const landingClient = createClient(LandingService, landingTransport);
+const productUpdatesMachine = createProductUpdatesMachine({
+  async subscribeProductUpdates({ email }) {
+    const response = await landingClient.subscribeProductUpdates({
+      email,
+    });
+
+    return {
+      email: response.email,
+    };
+  },
+});
+const contactModalMachine = createContactModalMachine({
+  async submitContact(form) {
+    await landingClient.submitContact(form);
+  },
+});
 
 function useProductUpdatesController() {
-  const machine = useMemo(
-    () =>
-      createProductUpdatesMachine({
-        async subscribeProductUpdates({ email }) {
-          const response = await landingClient.subscribeProductUpdates({
-            email,
-          });
-
-          return {
-            email: response.email,
-          };
-        },
-      }),
-    []
-  );
-  const actorRef = useActorRef(machine);
+  const actorRef = useActorRef(productUpdatesMachine);
   const email = useSelector(actorRef, (snapshot) => snapshot.context.email);
   const feedback = useSelector(actorRef, readProductUpdatesFeedback);
   const isSubmitting = useSelector(actorRef, (snapshot) =>
@@ -84,16 +85,7 @@ type ContactModalController = {
 };
 
 function useContactModalController(): ContactModalController {
-  const machine = useMemo(
-    () =>
-      createContactModalMachine({
-        async submitContact(form) {
-          await landingClient.submitContact(form);
-        },
-      }),
-    []
-  );
-  const actorRef = useActorRef(machine);
+  const actorRef = useActorRef(contactModalMachine);
   const form = useSelector(actorRef, (snapshot) => snapshot.context.form);
   const errorMessage = useSelector(actorRef, readContactModalErrorMessage);
   const isOpen = useSelector(actorRef, (snapshot) => snapshot.matches("open"));

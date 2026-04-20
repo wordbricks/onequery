@@ -1,33 +1,26 @@
 import { useActorRef, useSelector } from "@xstate/react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import {
   trackInstallCommandCopied,
   trackInstallMethodSelected,
 } from "../analytics/landing-analytics";
-import {
-  LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
-  LANDING_INSTALL_COMMANDS,
-} from "../config/landing-config";
+import { LANDING_INSTALL_COMMANDS } from "../config/landing-config";
 import {
   createDownloadCommandMachine,
   readCopiedMethodLabel,
   readSelectedInstallMethod,
 } from "./download-command.machine";
 
+const downloadCommandMachine = createDownloadCommandMachine({
+  async copyCommand({ command, label }) {
+    await navigator.clipboard.writeText(command);
+    return label;
+  },
+});
+
 function useDownloadCommandController() {
-  const machine = useMemo(
-    () =>
-      createDownloadCommandMachine({
-        async copyCommand({ command, label }) {
-          await navigator.clipboard.writeText(command);
-          return label;
-        },
-        copyFeedbackResetDelayMs: LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
-      }),
-    []
-  );
-  const actorRef = useActorRef(machine);
+  const actorRef = useActorRef(downloadCommandMachine);
   const selectedMethod = useSelector(actorRef, readSelectedInstallMethod);
   const copiedMethodLabel = useSelector(actorRef, readCopiedMethodLabel);
 
