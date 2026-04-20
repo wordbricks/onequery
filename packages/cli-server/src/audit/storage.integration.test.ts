@@ -11,7 +11,6 @@ import {
   prepareApplicationDatabase,
   queryActionEvents,
   queryActions,
-  sql,
   sourceApiActionEvents,
   workflowCommands,
   workflowEffectDispatches,
@@ -425,11 +424,6 @@ describe("audit workflow storage", () => {
     );
     const startEvent = expectFirstCommittedEvent(startDecision);
 
-    await db.execute(
-      sql.raw(
-        'ALTER TABLE "query_action_events" DROP CONSTRAINT "query_action_events_action_id_query_actions_id_fk"'
-      )
-    );
     await db
       .delete(queryActions)
       .where(eq(queryActions.id, startDecision.actionId));
@@ -460,6 +454,33 @@ describe("audit workflow storage", () => {
       queryMode: "validate",
       queryText: "select 1",
     });
+  });
+
+  it("keeps event history when an action fold row is deleted so the cache can rebuild", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const startDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildStartValidateCommand(),
+          db,
+        })
+      ),
+      "accepted"
+    );
+
+    await db
+      .delete(queryActions)
+      .where(eq(queryActions.id, startDecision.actionId));
+
+    const orphanedEventRows = await db
+      .select()
+      .from(queryActionEvents)
+      .where(eq(queryActionEvents.actionId, startDecision.actionId));
+
+    expect(orphanedEventRows).toHaveLength(1);
+    expect(orphanedEventRows[0]?.eventType).toBe("action_received");
   });
 
   it("repairs a corrupt action fold from committed events before deciding the next command", async () => {
@@ -508,6 +529,53 @@ describe("audit workflow storage", () => {
       lastEventSequence: 2,
       phase: "validate_query",
       queryMode: "validate",
+    });
+  });
+
+  it("repairs a drifted fold cache last-event pointer from committed events", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const startDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildStartValidateCommand(),
+          db,
+        })
+      ),
+      "accepted"
+    );
+    const startEvent = expectFirstCommittedEvent(startDecision);
+
+    await db
+      .update(queryActions)
+      .set({
+        lastEventId: "missing-event",
+        lastEventSequence: 99,
+      })
+      .where(eq(queryActions.id, startDecision.actionId));
+
+    const sourceLoadedDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildSourceLoadedCommand({
+            actionId: startDecision.actionId,
+            causedByEventId: startEvent.id,
+          }),
+          db,
+        })
+      ),
+      "accepted"
+    );
+
+    const repairedActionRow = await db.query.queryActions.findFirst({
+      where: eq(queryActions.id, startDecision.actionId),
+    });
+
+    expect(repairedActionRow).toMatchObject({
+      lastEventId: expectFirstCommittedEvent(sourceLoadedDecision).id,
+      lastEventSequence: 2,
+      phase: "validate_query",
     });
   });
 

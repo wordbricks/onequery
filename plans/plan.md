@@ -13,6 +13,11 @@ This file is the entry point for the Audit V2 plan set. The companion documents 
 - [projection-and-api.md](./projection-and-api.md) defines the rebuildable read model and the public feed contract.
 - [spec.md](./spec.md) summarizes directory-level document ownership and precedence.
 
+## Implementation Audit
+
+- [x] Audited 2026-04-20: [shared-kernel.md](./shared-kernel.md)
+- [x] Audited 2026-04-20: [storage-contract.md](./storage-contract.md)
+
 ## Target Properties
 
 - write-side truth is explicit workflow state, not observer logging

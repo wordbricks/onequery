@@ -9,7 +9,6 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { WorkflowJson } from "./audit-workflow";
-import { sourceApiActions } from "./source-api-actions";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
 import { workflowCommands } from "./workflow-commands";
@@ -17,9 +16,9 @@ import { workflowCommands } from "./workflow-commands";
 export const sourceApiActionEvents = pgTable(
   "source_api_action_events",
   {
-    actionId: text("action_id")
-      .notNull()
-      .references(() => sourceApiActions.id, { onDelete: "cascade" }),
+    // Comment: the event log is authoritative and must survive action-row
+    // repair, so `action_id` does not cascade through the fold cache table.
+    actionId: text("action_id").notNull(),
     commandId: text("command_id")
       .notNull()
       .references(() => workflowCommands.id, { onDelete: "cascade" }),

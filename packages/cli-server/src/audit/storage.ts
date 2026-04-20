@@ -2,6 +2,7 @@ import {
   TransactionRollbackError,
   and,
   asc,
+  desc,
   eq,
   queryActionEvents,
   queryActions,
@@ -234,7 +235,7 @@ type WorkflowStoreAdapter<
     commandId: string;
     events: readonly WorkflowCommittedEvent<Event>[];
     tx: DatabaseTransaction;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   loadEventsByCommandId: (
     db: Database,
     commandId: string
@@ -243,6 +244,10 @@ type WorkflowStoreAdapter<
     db: Database,
     actionId: string
   ) => Promise<WorkflowActionHistory<Event> | null>;
+  loadLatestEventPointer: (
+    db: Database,
+    actionId: string
+  ) => Promise<WorkflowActionRepairAnchor | null>;
   loadState: (db: Database, actionId: string) => Promise<State | null>;
   repairAction: (input: {
     actionId: string;
@@ -336,17 +341,23 @@ const queryActionStoreAdapter: WorkflowStoreAdapter<
     });
   },
   insertEvents: async ({ actionId, commandId, events, tx }) => {
-    await tx.insert(queryActionEvents).values(
-      events.map((event) => ({
-        actionId,
-        commandId,
-        eventType: event.type,
-        id: event.id,
-        occurredAt: event.occurredAt,
-        payloadJson: toWorkflowEventPayloadJson(event),
-        sequence: event.sequence,
-      }))
-    );
+    const inserted = await tx
+      .insert(queryActionEvents)
+      .values(
+        events.map((event) => ({
+          actionId,
+          commandId,
+          eventType: event.type,
+          id: event.id,
+          occurredAt: event.occurredAt,
+          payloadJson: toWorkflowEventPayloadJson(event),
+          sequence: event.sequence,
+        }))
+      )
+      .onConflictDoNothing()
+      .returning({ id: queryActionEvents.id });
+
+    return inserted.length === events.length;
   },
   loadEventsByCommandId: async (db, commandId) => {
     const rows = await db
@@ -384,6 +395,19 @@ const queryActionStoreAdapter: WorkflowStoreAdapter<
       events: rows.map((row) => decodeQueryActionCommittedEvent(row.eventRow)),
       organizationId: firstRow.organizationId,
     };
+  },
+  loadLatestEventPointer: async (db, actionId) => {
+    const row = await db.query.queryActionEvents.findFirst({
+      orderBy: [desc(queryActionEvents.sequence)],
+      where: eq(queryActionEvents.actionId, actionId),
+    });
+
+    return row === undefined
+      ? null
+      : {
+          lastEventId: row.id,
+          lastEventSequence: row.sequence,
+        };
   },
   loadState: async (db, actionId) => {
     const row = await db.query.queryActions.findFirst({
@@ -471,17 +495,23 @@ const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
     });
   },
   insertEvents: async ({ actionId, commandId, events, tx }) => {
-    await tx.insert(sourceApiActionEvents).values(
-      events.map((event) => ({
-        actionId,
-        commandId,
-        eventType: event.type,
-        id: event.id,
-        occurredAt: event.occurredAt,
-        payloadJson: toWorkflowEventPayloadJson(event),
-        sequence: event.sequence,
-      }))
-    );
+    const inserted = await tx
+      .insert(sourceApiActionEvents)
+      .values(
+        events.map((event) => ({
+          actionId,
+          commandId,
+          eventType: event.type,
+          id: event.id,
+          occurredAt: event.occurredAt,
+          payloadJson: toWorkflowEventPayloadJson(event),
+          sequence: event.sequence,
+        }))
+      )
+      .onConflictDoNothing()
+      .returning({ id: sourceApiActionEvents.id });
+
+    return inserted.length === events.length;
   },
   loadEventsByCommandId: async (db, commandId) => {
     const rows = await db
@@ -519,6 +549,19 @@ const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
       events: rows.map((row) => decodeSourceApiCommittedEvent(row.eventRow)),
       organizationId: firstRow.organizationId,
     };
+  },
+  loadLatestEventPointer: async (db, actionId) => {
+    const row = await db.query.sourceApiActionEvents.findFirst({
+      orderBy: [desc(sourceApiActionEvents.sequence)],
+      where: eq(sourceApiActionEvents.actionId, actionId),
+    });
+
+    return row === undefined
+      ? null
+      : {
+          lastEventId: row.id,
+          lastEventSequence: row.sequence,
+        };
   },
   loadState: async (db, actionId) => {
     const row = await db.query.sourceApiActions.findFirst({
@@ -810,7 +853,19 @@ async function loadWorkflowState<
     const loadedState = await input.adapter.loadState(input.db, input.actionId);
 
     if (loadedState !== null) {
-      return Result.ok(loadedState);
+      const latestEventPointer = await input.adapter.loadLatestEventPointer(
+        input.db,
+        input.actionId
+      );
+
+      if (hasMatchingRepairAnchor(loadedState, latestEventPointer)) {
+        return Result.ok(loadedState);
+      }
+
+      repairAnchor = {
+        lastEventId: loadedState.lastEventId,
+        lastEventSequence: loadedState.lastEventSequence,
+      };
     }
   } catch (cause) {
     if (cause instanceof WorkflowStorageCorruptRowError) {
@@ -1009,6 +1064,34 @@ async function commitWorkflowDecision<
 
       const nextState = requireFoldedState(foldedState);
       const nextActionId = requireAcceptedActionId(actionId);
+      const insertedEvents = await adapter.insertEvents({
+        actionId: nextActionId,
+        commandId,
+        events: committedEvents,
+        tx,
+      });
+
+      if (!insertedEvents) {
+        tx.rollback();
+      }
+
+      const lastCommittedEvent = committedEvents.at(-1);
+      if (!lastCommittedEvent) {
+        throw new WorkflowStorageWriteError({
+          actionId: nextActionId,
+          family: adapter.family,
+          operation: "build_committed_events",
+        });
+      }
+
+      await insertWorkflowEffectDispatches({
+        actionId: nextActionId,
+        effects: decision.effects,
+        family: adapter.family,
+        occurredAt: command.observedAt,
+        originEventId: lastCommittedEvent.id,
+        tx,
+      });
 
       if (currentState === null) {
         await adapter.insertAction({
@@ -1031,30 +1114,6 @@ async function commitWorkflowDecision<
           tx.rollback();
         }
       }
-
-      await adapter.insertEvents({
-        actionId: nextActionId,
-        commandId,
-        events: committedEvents,
-        tx,
-      });
-      const lastCommittedEvent = committedEvents.at(-1);
-      if (!lastCommittedEvent) {
-        throw new WorkflowStorageWriteError({
-          actionId: nextActionId,
-          family: adapter.family,
-          operation: "build_committed_events",
-        });
-      }
-
-      await insertWorkflowEffectDispatches({
-        actionId: nextActionId,
-        effects: decision.effects,
-        family: adapter.family,
-        occurredAt: command.observedAt,
-        originEventId: lastCommittedEvent.id,
-        tx,
-      });
 
       return {
         actionId: nextActionId,
@@ -1335,4 +1394,15 @@ function requireCurrentState<State>(state: State | null) {
   }
 
   return state;
+}
+
+function hasMatchingRepairAnchor(
+  state: Pick<WorkflowActionRepairAnchor, "lastEventId" | "lastEventSequence">,
+  repairAnchor: WorkflowActionRepairAnchor | null
+) {
+  return (
+    repairAnchor !== null &&
+    state.lastEventId === repairAnchor.lastEventId &&
+    state.lastEventSequence === repairAnchor.lastEventSequence
+  );
 }
