@@ -1,6 +1,9 @@
+import { DATA_SOURCE_STATUS, PROVIDER_TYPES } from "@onequery/db/server";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
+import { z } from "zod";
 
 import {
+  WORKFLOW_OUTCOMES,
   acceptWorkflowDecision,
   hasMatchingCausation,
   rejectCausationMismatch,
@@ -58,6 +61,18 @@ export type QueryActionSourceDescriptor = {
   sourceStatus: DataSourceStatus;
 };
 
+export const QueryActionSourceDescriptorSchema = z
+  .object({
+    displayName: z.string().nullable(),
+    name: z.string(),
+    organizationId: z.string(),
+    provider: z.enum(PROVIDER_TYPES),
+    sourceId: z.string(),
+    sourceKey: z.string(),
+    sourceStatus: z.enum(DATA_SOURCE_STATUS),
+  })
+  .strict();
+
 export type QueryActionState = WorkflowStateBase<
   QueryActionPhase,
   QueryActionFailureCode
@@ -68,6 +83,23 @@ export type QueryActionState = WorkflowStateBase<
   validatedQuery: string | null;
   usageRecordingStatus: QueryActionUsageRecordingStatus;
 };
+
+export const QueryActionStateSchema = z
+  .object({
+    completedAt: z.date().nullable(),
+    failureCode: z.enum(QUERY_ACTION_FAILURE_CODES).nullable(),
+    lastEventId: z.string(),
+    lastEventSequence: z.number().int(),
+    outcome: z.enum(WORKFLOW_OUTCOMES),
+    phase: z.enum(QUERY_ACTION_PHASES),
+    queryMode: z.enum(QUERY_ACTION_MODES),
+    queryText: z.string(),
+    sourceDescriptor: QueryActionSourceDescriptorSchema.nullable(),
+    startedAt: z.date(),
+    usageRecordingStatus: z.enum(QUERY_ACTION_USAGE_RECORDING_STATUSES),
+    validatedQuery: z.string().nullable(),
+  })
+  .strict();
 
 export type QueryActionCommandPayload =
   | {
@@ -221,6 +253,96 @@ export type QueryActionEvent =
       detail: string;
       type: "usage_persist_failed";
     };
+
+export const QueryActionEventSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      queryMode: z.enum(QUERY_ACTION_MODES),
+      queryText: z.string(),
+      type: z.literal("action_received"),
+    })
+    .strict(),
+  z
+    .object({
+      source: QueryActionSourceDescriptorSchema,
+      type: z.literal("source_loaded"),
+    })
+    .strict(),
+  z
+    .object({
+      sourceKey: z.string(),
+      type: z.literal("source_not_found"),
+    })
+    .strict(),
+  z
+    .object({
+      provider: z.enum(PROVIDER_TYPES),
+      sourceStatus: z.enum(DATA_SOURCE_STATUS),
+      type: z.literal("source_not_queryable"),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("query_validated"),
+      validatedQuery: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      hint: z.string().optional(),
+      type: z.literal("query_rejected"),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("credentials_loaded"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      hint: z.string().optional(),
+      type: z.literal("query_preparation_failed"),
+    })
+    .strict(),
+  z
+    .object({
+      elapsedMs: z.number(),
+      rowCount: z.number(),
+      type: z.literal("query_executed"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      type: z.literal("query_unavailable"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      type: z.literal("query_timed_out"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      type: z.literal("query_execution_failed"),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("usage_persisted"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      type: z.literal("usage_persist_failed"),
+    })
+    .strict(),
+]);
 
 export type QueryActionCommittedEvent =
   WorkflowCommittedEvent<QueryActionEvent>;

@@ -1,10 +1,13 @@
+import { PROVIDER_TYPES } from "@onequery/db/server";
 import type { ProviderType } from "@onequery/db/server";
 import type {
   SourceApiOperationKind,
   SourceApiPaginationPolicy,
 } from "@onequery/server/source-api";
+import { z } from "zod";
 
 import {
+  WORKFLOW_OUTCOMES,
   acceptWorkflowDecision,
   hasMatchingCausation,
   rejectCausationMismatch,
@@ -29,6 +32,16 @@ export const SOURCE_API_ACTION_INVOKE_MODES = [
 ] as const;
 export type SourceApiActionInvokeMode =
   (typeof SOURCE_API_ACTION_INVOKE_MODES)[number];
+
+export const SOURCE_API_OPERATION_KINDS = [
+  "http_request",
+  "structured_request",
+] as const satisfies readonly SourceApiOperationKind[];
+
+export const SOURCE_API_PAGINATION_POLICIES = [
+  "none",
+  "continuation_token",
+] as const satisfies readonly SourceApiPaginationPolicy[];
 
 export const SOURCE_API_ACTION_PHASES = [
   "load_source",
@@ -60,6 +73,15 @@ export type SourceApiActionSourceDescriptor = {
   sourceKey: string;
 };
 
+export const SourceApiActionSourceDescriptorSchema = z
+  .object({
+    displayName: z.string().nullable(),
+    provider: z.enum(PROVIDER_TYPES),
+    sourceId: z.string(),
+    sourceKey: z.string(),
+  })
+  .strict();
+
 export type SourceApiActionRequestDescriptor = {
   descriptorVersion: string | null;
   kind: SourceApiOperationKind | null;
@@ -69,9 +91,26 @@ export type SourceApiActionRequestDescriptor = {
   selector: string | null;
 };
 
+export const SourceApiActionRequestDescriptorSchema = z
+  .object({
+    descriptorVersion: z.string().nullable(),
+    kind: z.enum(SOURCE_API_OPERATION_KINDS).nullable(),
+    method: z.string().nullable(),
+    operation: z.string(),
+    paginationPolicy: z.enum(SOURCE_API_PAGINATION_POLICIES).nullable(),
+    selector: z.string().nullable(),
+  })
+  .strict();
+
 export type SourceApiActionPageProgress = {
   nextPageIndex: number;
 };
+
+export const SourceApiActionPageProgressSchema = z
+  .object({
+    nextPageIndex: z.number().int(),
+  })
+  .strict();
 
 export type SourceApiActionState = WorkflowStateBase<
   SourceApiActionPhase,
@@ -85,6 +124,25 @@ export type SourceApiActionState = WorkflowStateBase<
   requestKind: SourceApiActionRequestKind;
   sourceDescriptor: SourceApiActionSourceDescriptor | null;
 };
+
+export const SourceApiActionStateSchema = z
+  .object({
+    attemptNumber: z.number().int().nullable(),
+    completedAt: z.date().nullable(),
+    failureCode: z.enum(SOURCE_API_ACTION_FAILURE_CODES).nullable(),
+    invokeMode: z.enum(SOURCE_API_ACTION_INVOKE_MODES).nullable(),
+    lastEventId: z.string(),
+    lastEventSequence: z.number().int(),
+    outcome: z.enum(WORKFLOW_OUTCOMES),
+    pageProgress: SourceApiActionPageProgressSchema.nullable(),
+    phase: z.enum(SOURCE_API_ACTION_PHASES),
+    preparedRequestFingerprint: z.string().nullable(),
+    requestDescriptor: SourceApiActionRequestDescriptorSchema.nullable(),
+    requestKind: z.enum(SOURCE_API_ACTION_REQUEST_KINDS),
+    sourceDescriptor: SourceApiActionSourceDescriptorSchema.nullable(),
+    startedAt: z.date(),
+  })
+  .strict();
 
 export type SourceApiActionCommandPayload =
   | {
@@ -243,6 +301,89 @@ export type SourceApiActionEvent =
       pageIndex: number;
       type: "page_fetch_failed";
     };
+
+export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      invokeMode: z.enum(SOURCE_API_ACTION_INVOKE_MODES).nullable(),
+      requestDescriptor: SourceApiActionRequestDescriptorSchema.nullable(),
+      requestKind: z.enum(SOURCE_API_ACTION_REQUEST_KINDS),
+      type: z.literal("action_received"),
+    })
+    .strict(),
+  z
+    .object({
+      source: SourceApiActionSourceDescriptorSchema,
+      type: z.literal("source_loaded"),
+    })
+    .strict(),
+  z
+    .object({
+      sourceKey: z.string(),
+      type: z.literal("source_not_found"),
+    })
+    .strict(),
+  z
+    .object({
+      requestDescriptor: SourceApiActionRequestDescriptorSchema.nullable(),
+      type: z.literal("descriptor_resolved"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
+      type: z.literal("descriptor_resolution_failed"),
+    })
+    .strict(),
+  z
+    .object({
+      preparedRequestFingerprint: z.string(),
+      type: z.literal("request_prepared"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      failureCode: z.enum(["invalid_request", "permission_denied"]),
+      type: z.literal("request_preparation_failed"),
+    })
+    .strict(),
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      type: z.literal("resume_requested"),
+    })
+    .strict(),
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      contentType: z.string().nullable(),
+      hasContinuation: z.boolean(),
+      httpStatus: z.number().int(),
+      pageIndex: z.number().int(),
+      responseBytes: z.number().int().nullable(),
+      type: z.literal("page_fetch_succeeded"),
+    })
+    .strict(),
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      detail: z.string(),
+      failureCode: z
+        .enum([
+          "request_failed",
+          "request_timed_out",
+          "execution_failed",
+          "execution_state_invalid",
+        ])
+        .nullable(),
+      kind: z.enum(["retryable_failure", "terminal_failure"]),
+      pageIndex: z.number().int(),
+      type: z.literal("page_fetch_failed"),
+    })
+    .strict(),
+]);
 
 export type SourceApiActionCommittedEvent =
   WorkflowCommittedEvent<SourceApiActionEvent>;

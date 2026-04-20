@@ -13,25 +13,34 @@ import {
 } from "@onequery/db/server";
 import type { Database, WorkflowJson } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
+import { z } from "zod";
 
 import type {
+  SharedWorkflowRejectCode,
   WorkflowCommandEnvelope,
   WorkflowCommittedEvent,
   WorkflowDecision,
   WorkflowFamily,
   WorkflowStateBase,
 } from "./kernel";
-import { decideQueryAction, reduceQueryAction } from "./query-action-family";
+import { SHARED_WORKFLOW_REJECT_CODES } from "./kernel";
+import {
+  QueryActionEventSchema,
+  QueryActionStateSchema,
+  decideQueryAction,
+  reduceQueryAction,
+} from "./query-action-family";
 import type {
   QueryActionCommand,
   QueryActionCommandPayload,
   QueryActionEffect,
   QueryActionEvent,
   QueryActionRejectCode,
-  QueryActionSourceDescriptor,
   QueryActionState,
 } from "./query-action-family";
 import {
+  SourceApiActionEventSchema,
+  SourceApiActionStateSchema,
   decideSourceApiAction,
   reduceSourceApiAction,
 } from "./source-api-action-family";
@@ -40,10 +49,7 @@ import type {
   SourceApiActionCommandPayload,
   SourceApiActionEffect,
   SourceApiActionEvent,
-  SourceApiActionPageProgress,
   SourceApiActionRejectCode,
-  SourceApiActionRequestDescriptor,
-  SourceApiActionSourceDescriptor,
   SourceApiActionState,
 } from "./source-api-action-family";
 
@@ -52,6 +58,16 @@ const MAX_STORAGE_COMMIT_ATTEMPTS = 5;
 type DatabaseTransaction = Parameters<
   Parameters<Database["transaction"]>[0]
 >[0];
+
+type WorkflowActionRepairAnchor = {
+  lastEventId: string;
+  lastEventSequence: number;
+};
+
+type WorkflowActionHistory<Event extends { type: string }> = {
+  events: readonly WorkflowCommittedEvent<Event>[];
+  organizationId: string;
+};
 
 type StoredAcceptedWorkflowDecision<
   Family extends WorkflowFamily,
@@ -159,6 +175,36 @@ class WorkflowStorageContentionError extends TaggedError(
   }
 }
 
+class WorkflowStorageCorruptRowError extends TaggedError(
+  "WorkflowStorageCorruptRowError"
+)<{
+  actionId?: string;
+  cause?: unknown;
+  entity: string;
+  family: WorkflowFamily;
+  message: string;
+  repairAnchor?: WorkflowActionRepairAnchor | null;
+}>() {
+  constructor(input: {
+    actionId?: string;
+    cause?: unknown;
+    entity: string;
+    family: WorkflowFamily;
+    repairAnchor?: WorkflowActionRepairAnchor | null;
+  }) {
+    super({
+      ...(input.actionId === undefined ? {} : { actionId: input.actionId }),
+      ...(input.cause === undefined ? {} : { cause: input.cause }),
+      entity: input.entity,
+      family: input.family,
+      message: `workflow storage row is corrupt for ${input.family} ${input.entity}`,
+      ...(input.repairAnchor === undefined
+        ? {}
+        : { repairAnchor: input.repairAnchor }),
+    });
+  }
+}
+
 export type WorkflowStorageError =
   | WorkflowStorageReadError
   | WorkflowStorageWriteError
@@ -193,7 +239,18 @@ type WorkflowStoreAdapter<
     db: Database,
     commandId: string
   ) => Promise<readonly WorkflowCommittedEvent<Event>[]>;
+  loadHistoryByActionId: (
+    db: Database,
+    actionId: string
+  ) => Promise<WorkflowActionHistory<Event> | null>;
   loadState: (db: Database, actionId: string) => Promise<State | null>;
+  repairAction: (input: {
+    actionId: string;
+    organizationId: string;
+    repairAnchor: WorkflowActionRepairAnchor | null;
+    state: State;
+    tx: DatabaseTransaction;
+  }) => Promise<boolean>;
   reduce: (state: State | null, event: WorkflowCommittedEvent<Event>) => State;
   updateAction: (input: {
     actionId: string;
@@ -215,6 +272,52 @@ type TransactionCommitOutcome<
       kind: "race_lost";
     };
 
+function toQueryActionActionColumns(state: QueryActionState) {
+  return {
+    completedAt: state.completedAt,
+    failureCode: state.failureCode,
+    lastEventId: state.lastEventId,
+    lastEventSequence: state.lastEventSequence,
+    outcome: state.outcome,
+    phase: state.phase,
+    queryMode: state.queryMode,
+    queryText: state.queryText,
+    sourceDescriptorJson:
+      state.sourceDescriptor === null
+        ? null
+        : toWorkflowJson(state.sourceDescriptor),
+    startedAt: state.startedAt,
+    usageRecordingStatus: state.usageRecordingStatus,
+    validatedQuery: state.validatedQuery,
+  };
+}
+
+function toSourceApiActionColumns(state: SourceApiActionState) {
+  return {
+    attemptNumber: state.attemptNumber,
+    completedAt: state.completedAt,
+    failureCode: state.failureCode,
+    invokeMode: state.invokeMode,
+    lastEventId: state.lastEventId,
+    lastEventSequence: state.lastEventSequence,
+    outcome: state.outcome,
+    pageProgressJson:
+      state.pageProgress === null ? null : toWorkflowJson(state.pageProgress),
+    phase: state.phase,
+    preparedRequestFingerprint: state.preparedRequestFingerprint,
+    requestDescriptorJson:
+      state.requestDescriptor === null
+        ? null
+        : toWorkflowJson(state.requestDescriptor),
+    requestKind: state.requestKind,
+    sourceDescriptorJson:
+      state.sourceDescriptor === null
+        ? null
+        : toWorkflowJson(state.sourceDescriptor),
+    startedAt: state.startedAt,
+  };
+}
+
 const queryActionStoreAdapter: WorkflowStoreAdapter<
   "query_action",
   QueryActionCommandPayload,
@@ -227,23 +330,9 @@ const queryActionStoreAdapter: WorkflowStoreAdapter<
   family: "query_action",
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(queryActions).values({
-      completedAt: state.completedAt,
-      failureCode: state.failureCode,
       id: actionId,
-      lastEventId: state.lastEventId,
-      lastEventSequence: state.lastEventSequence,
       organizationId,
-      outcome: state.outcome,
-      phase: state.phase,
-      queryMode: state.queryMode,
-      queryText: state.queryText,
-      sourceDescriptorJson:
-        state.sourceDescriptor === null
-          ? null
-          : toWorkflowJson(state.sourceDescriptor),
-      startedAt: state.startedAt,
-      usageRecordingStatus: state.usageRecordingStatus,
-      validatedQuery: state.validatedQuery,
+      ...toQueryActionActionColumns(state),
     });
   },
   insertEvents: async ({ actionId, commandId, events, tx }) => {
@@ -268,12 +357,77 @@ const queryActionStoreAdapter: WorkflowStoreAdapter<
 
     return rows.map(decodeQueryActionCommittedEvent);
   },
+  loadHistoryByActionId: async (db, actionId) => {
+    const rows = await db
+      .select({
+        eventRow: queryActionEvents,
+        organizationId: workflowCommands.organizationId,
+      })
+      .from(queryActionEvents)
+      .innerJoin(
+        workflowCommands,
+        eq(workflowCommands.id, queryActionEvents.commandId)
+      )
+      .where(eq(queryActionEvents.actionId, actionId))
+      .orderBy(asc(queryActionEvents.sequence));
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const firstRow = rows[0];
+    if (!firstRow) {
+      return null;
+    }
+
+    return {
+      events: rows.map((row) => decodeQueryActionCommittedEvent(row.eventRow)),
+      organizationId: firstRow.organizationId,
+    };
+  },
   loadState: async (db, actionId) => {
     const row = await db.query.queryActions.findFirst({
       where: eq(queryActions.id, actionId),
     });
 
     return row === undefined ? null : decodeQueryActionState(row);
+  },
+  repairAction: async ({
+    actionId,
+    organizationId,
+    repairAnchor,
+    state,
+    tx,
+  }) => {
+    if (repairAnchor !== null) {
+      const updated = await tx
+        .update(queryActions)
+        .set(toQueryActionActionColumns(state))
+        .where(
+          and(
+            eq(queryActions.id, actionId),
+            eq(queryActions.lastEventId, repairAnchor.lastEventId),
+            eq(queryActions.lastEventSequence, repairAnchor.lastEventSequence)
+          )
+        )
+        .returning({ id: queryActions.id });
+
+      if (updated.length === 1) {
+        return true;
+      }
+    }
+
+    const inserted = await tx
+      .insert(queryActions)
+      .values({
+        id: actionId,
+        organizationId,
+        ...toQueryActionActionColumns(state),
+      })
+      .onConflictDoNothing()
+      .returning({ id: queryActions.id });
+
+    return inserted.length === 1;
   },
   reduce: reduceQueryAction,
   updateAction: async ({
@@ -285,23 +439,7 @@ const queryActionStoreAdapter: WorkflowStoreAdapter<
   }) => {
     const updated = await tx
       .update(queryActions)
-      .set({
-        completedAt: state.completedAt,
-        failureCode: state.failureCode,
-        lastEventId: state.lastEventId,
-        lastEventSequence: state.lastEventSequence,
-        outcome: state.outcome,
-        phase: state.phase,
-        queryMode: state.queryMode,
-        queryText: state.queryText,
-        sourceDescriptorJson:
-          state.sourceDescriptor === null
-            ? null
-            : toWorkflowJson(state.sourceDescriptor),
-        startedAt: state.startedAt,
-        usageRecordingStatus: state.usageRecordingStatus,
-        validatedQuery: state.validatedQuery,
-      })
+      .set(toQueryActionActionColumns(state))
       .where(
         and(
           eq(queryActions.id, actionId),
@@ -327,29 +465,9 @@ const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
   family: "source_api_action",
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(sourceApiActions).values({
-      attemptNumber: state.attemptNumber,
-      completedAt: state.completedAt,
-      failureCode: state.failureCode,
       id: actionId,
-      invokeMode: state.invokeMode,
-      lastEventId: state.lastEventId,
-      lastEventSequence: state.lastEventSequence,
       organizationId,
-      outcome: state.outcome,
-      pageProgressJson:
-        state.pageProgress === null ? null : toWorkflowJson(state.pageProgress),
-      phase: state.phase,
-      preparedRequestFingerprint: state.preparedRequestFingerprint,
-      requestDescriptorJson:
-        state.requestDescriptor === null
-          ? null
-          : toWorkflowJson(state.requestDescriptor),
-      requestKind: state.requestKind,
-      sourceDescriptorJson:
-        state.sourceDescriptor === null
-          ? null
-          : toWorkflowJson(state.sourceDescriptor),
-      startedAt: state.startedAt,
+      ...toSourceApiActionColumns(state),
     });
   },
   insertEvents: async ({ actionId, commandId, events, tx }) => {
@@ -374,12 +492,80 @@ const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
 
     return rows.map(decodeSourceApiCommittedEvent);
   },
+  loadHistoryByActionId: async (db, actionId) => {
+    const rows = await db
+      .select({
+        eventRow: sourceApiActionEvents,
+        organizationId: workflowCommands.organizationId,
+      })
+      .from(sourceApiActionEvents)
+      .innerJoin(
+        workflowCommands,
+        eq(workflowCommands.id, sourceApiActionEvents.commandId)
+      )
+      .where(eq(sourceApiActionEvents.actionId, actionId))
+      .orderBy(asc(sourceApiActionEvents.sequence));
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const firstRow = rows[0];
+    if (!firstRow) {
+      return null;
+    }
+
+    return {
+      events: rows.map((row) => decodeSourceApiCommittedEvent(row.eventRow)),
+      organizationId: firstRow.organizationId,
+    };
+  },
   loadState: async (db, actionId) => {
     const row = await db.query.sourceApiActions.findFirst({
       where: eq(sourceApiActions.id, actionId),
     });
 
     return row === undefined ? null : decodeSourceApiActionState(row);
+  },
+  repairAction: async ({
+    actionId,
+    organizationId,
+    repairAnchor,
+    state,
+    tx,
+  }) => {
+    if (repairAnchor !== null) {
+      const updated = await tx
+        .update(sourceApiActions)
+        .set(toSourceApiActionColumns(state))
+        .where(
+          and(
+            eq(sourceApiActions.id, actionId),
+            eq(sourceApiActions.lastEventId, repairAnchor.lastEventId),
+            eq(
+              sourceApiActions.lastEventSequence,
+              repairAnchor.lastEventSequence
+            )
+          )
+        )
+        .returning({ id: sourceApiActions.id });
+
+      if (updated.length === 1) {
+        return true;
+      }
+    }
+
+    const inserted = await tx
+      .insert(sourceApiActions)
+      .values({
+        id: actionId,
+        organizationId,
+        ...toSourceApiActionColumns(state),
+      })
+      .onConflictDoNothing()
+      .returning({ id: sourceApiActions.id });
+
+    return inserted.length === 1;
   },
   reduce: reduceSourceApiAction,
   updateAction: async ({
@@ -391,31 +577,7 @@ const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
   }) => {
     const updated = await tx
       .update(sourceApiActions)
-      .set({
-        attemptNumber: state.attemptNumber,
-        completedAt: state.completedAt,
-        failureCode: state.failureCode,
-        invokeMode: state.invokeMode,
-        lastEventId: state.lastEventId,
-        lastEventSequence: state.lastEventSequence,
-        outcome: state.outcome,
-        pageProgressJson:
-          state.pageProgress === null
-            ? null
-            : toWorkflowJson(state.pageProgress),
-        phase: state.phase,
-        preparedRequestFingerprint: state.preparedRequestFingerprint,
-        requestDescriptorJson:
-          state.requestDescriptor === null
-            ? null
-            : toWorkflowJson(state.requestDescriptor),
-        requestKind: state.requestKind,
-        sourceDescriptorJson:
-          state.sourceDescriptor === null
-            ? null
-            : toWorkflowJson(state.sourceDescriptor),
-        startedAt: state.startedAt,
-      })
+      .set(toSourceApiActionColumns(state))
       .where(
         and(
           eq(sourceApiActions.id, actionId),
@@ -593,7 +755,10 @@ async function loadStoredWorkflowDecision<
           commandId: storedCommand.id,
           family: input.adapter.family,
           kind: "rejected",
-          rejectCode: storedCommand.rejectCode as RejectCode,
+          rejectCode: parseStoredSharedRejectCode(
+            input.adapter.family,
+            storedCommand.rejectCode
+          ) as RejectCode,
           ...(storedCommand.rejectDetail === null
             ? {}
             : { rejectDetail: storedCommand.rejectDetail }),
@@ -639,14 +804,97 @@ async function loadWorkflowState<
     return Result.ok(null);
   }
 
+  let repairAnchor: WorkflowActionRepairAnchor | null = null;
+
+  try {
+    const loadedState = await input.adapter.loadState(input.db, input.actionId);
+
+    if (loadedState !== null) {
+      return Result.ok(loadedState);
+    }
+  } catch (cause) {
+    if (cause instanceof WorkflowStorageCorruptRowError) {
+      repairAnchor = cause.repairAnchor ?? null;
+    } else {
+      return Result.err(
+        new WorkflowStorageReadError({
+          cause,
+          family: input.adapter.family,
+          operation: "load_action_state",
+        })
+      );
+    }
+  }
+
+  return rebuildWorkflowState({
+    actionId: input.actionId,
+    adapter: input.adapter,
+    db: input.db,
+    repairAnchor,
+  });
+}
+
+async function rebuildWorkflowState<
+  Family extends WorkflowFamily,
+  CommandPayload extends { type: string },
+  State extends WorkflowStateBase<string, string>,
+  Event extends { type: string },
+  Effect extends { type: string },
+  RejectCode extends string,
+>(input: {
+  actionId: string;
+  adapter: WorkflowStoreAdapter<
+    Family,
+    CommandPayload,
+    State,
+    Event,
+    Effect,
+    RejectCode
+  >;
+  db: Database;
+  repairAnchor: WorkflowActionRepairAnchor | null;
+}): Promise<Result<State | null, WorkflowStorageError>> {
   return Result.tryPromise({
     catch: (cause) =>
       new WorkflowStorageReadError({
         cause,
         family: input.adapter.family,
-        operation: "load_action_state",
+        operation: "rebuild_action_state",
       }),
-    try: () => input.adapter.loadState(input.db, input.actionId as string),
+    try: async () => {
+      const history = await input.adapter.loadHistoryByActionId(
+        input.db,
+        input.actionId
+      );
+
+      if (history === null) {
+        return null;
+      }
+
+      const rebuiltState = requireFoldedState(
+        foldCommittedEvents({
+          events: history.events,
+          initialState: null,
+          reduce: input.adapter.reduce,
+        })
+      );
+
+      const repaired = await input.db.transaction((tx) =>
+        input.adapter.repairAction({
+          actionId: input.actionId,
+          organizationId: history.organizationId,
+          repairAnchor: input.repairAnchor,
+          state: rebuiltState,
+          tx,
+        })
+      );
+
+      if (repaired) {
+        return rebuiltState;
+      }
+
+      return input.adapter.loadState(input.db, input.actionId);
+    },
   });
 }
 
@@ -899,60 +1147,76 @@ function foldCommittedEvents<State, Event extends { type: string }>(input: {
 function decodeQueryActionState(
   row: typeof queryActions.$inferSelect
 ): QueryActionState {
-  return {
-    completedAt: row.completedAt,
-    failureCode: row.failureCode as QueryActionState["failureCode"],
-    lastEventId: row.lastEventId,
-    lastEventSequence: row.lastEventSequence,
-    outcome: row.outcome,
-    phase: row.phase as QueryActionState["phase"],
-    queryMode: row.queryMode as QueryActionState["queryMode"],
-    queryText: row.queryText,
-    sourceDescriptor: fromWorkflowJson<QueryActionSourceDescriptor>(
-      row.sourceDescriptorJson
-    ),
-    startedAt: row.startedAt,
-    usageRecordingStatus:
-      row.usageRecordingStatus as QueryActionState["usageRecordingStatus"],
-    validatedQuery: row.validatedQuery,
-  };
+  return parseStoredWorkflowValue({
+    actionId: row.id,
+    entity: "query_action_state",
+    family: "query_action",
+    repairAnchor: {
+      lastEventId: row.lastEventId,
+      lastEventSequence: row.lastEventSequence,
+    },
+    schema: QueryActionStateSchema,
+    value: {
+      completedAt: row.completedAt,
+      failureCode: row.failureCode,
+      lastEventId: row.lastEventId,
+      lastEventSequence: row.lastEventSequence,
+      outcome: row.outcome,
+      phase: row.phase,
+      queryMode: row.queryMode,
+      queryText: row.queryText,
+      sourceDescriptor: row.sourceDescriptorJson,
+      startedAt: row.startedAt,
+      usageRecordingStatus: row.usageRecordingStatus,
+      validatedQuery: row.validatedQuery,
+    },
+  });
 }
 
 function decodeSourceApiActionState(
   row: typeof sourceApiActions.$inferSelect
 ): SourceApiActionState {
-  return {
-    attemptNumber: row.attemptNumber,
-    completedAt: row.completedAt,
-    failureCode: row.failureCode as SourceApiActionState["failureCode"],
-    invokeMode: row.invokeMode as SourceApiActionState["invokeMode"],
-    lastEventId: row.lastEventId,
-    lastEventSequence: row.lastEventSequence,
-    outcome: row.outcome,
-    pageProgress: fromWorkflowJson<SourceApiActionPageProgress>(
-      row.pageProgressJson
-    ),
-    phase: row.phase as SourceApiActionState["phase"],
-    preparedRequestFingerprint: row.preparedRequestFingerprint,
-    requestDescriptor: fromWorkflowJson<SourceApiActionRequestDescriptor>(
-      row.requestDescriptorJson
-    ),
-    requestKind: row.requestKind as SourceApiActionState["requestKind"],
-    sourceDescriptor: fromWorkflowJson<SourceApiActionSourceDescriptor>(
-      row.sourceDescriptorJson
-    ),
-    startedAt: row.startedAt,
-  };
+  return parseStoredWorkflowValue({
+    actionId: row.id,
+    entity: "source_api_action_state",
+    family: "source_api_action",
+    repairAnchor: {
+      lastEventId: row.lastEventId,
+      lastEventSequence: row.lastEventSequence,
+    },
+    schema: SourceApiActionStateSchema,
+    value: {
+      attemptNumber: row.attemptNumber,
+      completedAt: row.completedAt,
+      failureCode: row.failureCode,
+      invokeMode: row.invokeMode,
+      lastEventId: row.lastEventId,
+      lastEventSequence: row.lastEventSequence,
+      outcome: row.outcome,
+      pageProgress: row.pageProgressJson,
+      phase: row.phase,
+      preparedRequestFingerprint: row.preparedRequestFingerprint,
+      requestDescriptor: row.requestDescriptorJson,
+      requestKind: row.requestKind,
+      sourceDescriptor: row.sourceDescriptorJson,
+      startedAt: row.startedAt,
+    },
+  });
 }
 
 function decodeQueryActionCommittedEvent(
   row: typeof queryActionEvents.$inferSelect
 ): WorkflowCommittedEvent<QueryActionEvent> {
   return {
-    ...fromWorkflowPayloadJson<QueryActionEvent>(
-      row.eventType,
-      row.payloadJson
-    ),
+    ...parseStoredWorkflowValue({
+      entity: "query_action_event",
+      family: "query_action",
+      schema: QueryActionEventSchema,
+      value: {
+        type: row.eventType,
+        ...row.payloadJson,
+      },
+    }),
     id: row.id,
     occurredAt: row.occurredAt,
     sequence: row.sequence,
@@ -963,14 +1227,56 @@ function decodeSourceApiCommittedEvent(
   row: typeof sourceApiActionEvents.$inferSelect
 ): WorkflowCommittedEvent<SourceApiActionEvent> {
   return {
-    ...fromWorkflowPayloadJson<SourceApiActionEvent>(
-      row.eventType,
-      row.payloadJson
-    ),
+    ...parseStoredWorkflowValue({
+      entity: "source_api_action_event",
+      family: "source_api_action",
+      schema: SourceApiActionEventSchema,
+      value: {
+        type: row.eventType,
+        ...row.payloadJson,
+      },
+    }),
     id: row.id,
     occurredAt: row.occurredAt,
     sequence: row.sequence,
   };
+}
+
+function parseStoredWorkflowValue<Schema extends z.ZodTypeAny>(input: {
+  actionId?: string;
+  entity: string;
+  family: WorkflowFamily;
+  repairAnchor?: WorkflowActionRepairAnchor | null;
+  schema: Schema;
+  value: unknown;
+}): z.infer<Schema> {
+  const parsed = input.schema.safeParse(input.value);
+
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  throw new WorkflowStorageCorruptRowError({
+    ...(input.actionId === undefined ? {} : { actionId: input.actionId }),
+    cause: parsed.error,
+    entity: input.entity,
+    family: input.family,
+    ...(input.repairAnchor === undefined
+      ? {}
+      : { repairAnchor: input.repairAnchor }),
+  });
+}
+
+function parseStoredSharedRejectCode(
+  family: WorkflowFamily,
+  value: string | null
+): SharedWorkflowRejectCode {
+  return parseStoredWorkflowValue({
+    entity: "workflow_command_reject_code",
+    family,
+    schema: z.enum(SHARED_WORKFLOW_REJECT_CODES),
+    value,
+  });
 }
 
 function toWorkflowPayloadJson<Value extends { type: string }>(value: Value) {
@@ -993,24 +1299,10 @@ function toWorkflowEventPayloadJson<Value extends { type: string }>(
   return toWorkflowJson(payload);
 }
 
-function fromWorkflowPayloadJson<Value extends { type: string }>(
-  type: string,
-  payloadJson: WorkflowJson
-) {
-  return {
-    type,
-    ...payloadJson,
-  } as Value;
-}
-
 function toWorkflowJson(value: Record<string, unknown>): WorkflowJson {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined)
   );
-}
-
-function fromWorkflowJson<Value>(value: WorkflowJson | null) {
-  return value as Value | null;
 }
 
 function requireStoredAcceptedActionId(actionId: string | null) {

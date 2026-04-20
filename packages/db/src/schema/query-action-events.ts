@@ -23,7 +23,7 @@ export const queryActionEvents = pgTable(
     commandId: text("command_id")
       .notNull()
       .references(() => workflowCommands.id, { onDelete: "cascade" }),
-    commitPosition: bigserial("commit_position", { mode: "number" }).notNull(),
+    commitPosition: bigserial("commit_position", { mode: "bigint" }).notNull(),
     eventType: text("event_type").notNull(),
     id: text("id").primaryKey().$defaultFn(ulid),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),

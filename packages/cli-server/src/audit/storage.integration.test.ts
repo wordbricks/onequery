@@ -11,6 +11,7 @@ import {
   prepareApplicationDatabase,
   queryActionEvents,
   queryActions,
+  sql,
   sourceApiActionEvents,
   workflowCommands,
   workflowEffectDispatches,
@@ -132,6 +133,25 @@ function buildSourceLoadedCommand(input: {
   };
 }
 
+function buildMissingQueryActionCommand(): QueryActionCommand {
+  return {
+    actionId: "missing-query-action",
+    actorSnapshot,
+    causedByEventId: null,
+    commandInvocationId: "cmd-query-missing",
+    commandPayload: {
+      kind: "found",
+      source: sourceDescriptor,
+      type: "record_source_lookup",
+    },
+    family: "query_action",
+    observedAt: new Date("2026-04-20T07:14:00.000Z"),
+    organizationId: "org_1",
+    requestId: "req-query-missing",
+    surface: "system",
+  };
+}
+
 function buildDescribeCommand(): SourceApiActionCommand {
   return {
     actionId: null,
@@ -205,6 +225,17 @@ function unwrapSourceApiResult(
   }
 
   return result.value;
+}
+
+function unwrapQueryError(
+  result: Awaited<ReturnType<typeof storeQueryActionCommand>>
+) {
+  expect(result.isErr()).toBe(true);
+  if (result.isOk()) {
+    throw new Error("expected query workflow storage error");
+  }
+
+  return result.error;
 }
 
 describe("audit workflow storage", () => {
@@ -297,7 +328,7 @@ describe("audit workflow storage", () => {
     ).toEqual([
       {
         commandId: startDecision.commandId,
-        commitPosition: 1,
+        commitPosition: 1n,
         eventType: "action_received",
         payloadJson: {
           queryMode: "validate",
@@ -307,7 +338,7 @@ describe("audit workflow storage", () => {
       },
       {
         commandId: sourceLoadedDecision.commandId,
-        commitPosition: 2,
+        commitPosition: 2n,
         eventType: "source_loaded",
         payloadJson: {
           source: sourceDescriptor,
@@ -379,29 +410,113 @@ describe("audit workflow storage", () => {
     expect(outboxRows).toHaveLength(1);
   });
 
+  it("rebuilds a missing action fold from committed events before deciding the next command", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const startDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildStartValidateCommand(),
+          db,
+        })
+      ),
+      "accepted"
+    );
+    const startEvent = expectFirstCommittedEvent(startDecision);
+
+    await db.execute(
+      sql.raw(
+        'ALTER TABLE "query_action_events" DROP CONSTRAINT "query_action_events_action_id_query_actions_id_fk"'
+      )
+    );
+    await db
+      .delete(queryActions)
+      .where(eq(queryActions.id, startDecision.actionId));
+
+    const sourceLoadedDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildSourceLoadedCommand({
+            actionId: startDecision.actionId,
+            causedByEventId: startEvent.id,
+          }),
+          db,
+        })
+      ),
+      "accepted"
+    );
+
+    const repairedActionRow = await db.query.queryActions.findFirst({
+      where: eq(queryActions.id, startDecision.actionId),
+    });
+
+    expect(sourceLoadedDecision.idempotency).toBe("fresh");
+    expect(repairedActionRow).toMatchObject({
+      lastEventId: expectFirstCommittedEvent(sourceLoadedDecision).id,
+      lastEventSequence: 2,
+      outcome: "pending",
+      phase: "validate_query",
+      queryMode: "validate",
+      queryText: "select 1",
+    });
+  });
+
+  it("repairs a corrupt action fold from committed events before deciding the next command", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const startDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildStartValidateCommand(),
+          db,
+        })
+      ),
+      "accepted"
+    );
+    const startEvent = expectFirstCommittedEvent(startDecision);
+
+    await db
+      .update(queryActions)
+      .set({
+        phase: "corrupt_phase",
+        queryMode: "corrupt_mode",
+      })
+      .where(eq(queryActions.id, startDecision.actionId));
+
+    const sourceLoadedDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command: buildSourceLoadedCommand({
+            actionId: startDecision.actionId,
+            causedByEventId: startEvent.id,
+          }),
+          db,
+        })
+      ),
+      "accepted"
+    );
+
+    const repairedActionRow = await db.query.queryActions.findFirst({
+      where: eq(queryActions.id, startDecision.actionId),
+    });
+
+    expect(sourceLoadedDecision.idempotency).toBe("fresh");
+    expect(repairedActionRow).toMatchObject({
+      lastEventId: expectFirstCommittedEvent(sourceLoadedDecision).id,
+      lastEventSequence: 2,
+      phase: "validate_query",
+      queryMode: "validate",
+    });
+  });
+
   it("records rejected commands without fabricating events or outbox rows", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
-    const result = await storeQueryActionCommand({
-      command: {
-        actionId: "missing-query-action",
-        actorSnapshot,
-        causedByEventId: null,
-        commandInvocationId: "cmd-query-missing",
-        commandPayload: {
-          kind: "found",
-          source: sourceDescriptor,
-          type: "record_source_lookup",
-        },
-        family: "query_action",
-        observedAt: new Date("2026-04-20T07:14:00.000Z"),
-        organizationId: "org_1",
-        requestId: "req-query-missing",
-        surface: "system",
-      },
-      db,
-    });
+    const command = buildMissingQueryActionCommand();
+    const result = await storeQueryActionCommand({ command, db });
     const rejectedDecision = expectStoredDecision(
       unwrapQueryResult(result),
       "rejected"
@@ -425,6 +540,68 @@ describe("audit workflow storage", () => {
     expect(actionRows).toHaveLength(0);
     expect(eventRows).toHaveLength(0);
     expect(outboxRows).toHaveLength(0);
+  });
+
+  it("returns the stored rejected outcome for duplicate rejected delivery", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const command = buildMissingQueryActionCommand();
+    const firstDecision = expectStoredDecision(
+      unwrapQueryResult(await storeQueryActionCommand({ command, db })),
+      "rejected"
+    );
+    const secondDecision = expectStoredDecision(
+      unwrapQueryResult(await storeQueryActionCommand({ command, db })),
+      "rejected"
+    );
+
+    expect(firstDecision).toMatchObject({
+      idempotency: "fresh",
+      rejectCode: "unknown_action",
+    });
+    expect(secondDecision).toEqual({
+      ...firstDecision,
+      idempotency: "replayed",
+    });
+
+    const commandRows = await selectWorkflowCommandRows(db, "query_action");
+    expect(commandRows).toHaveLength(1);
+  });
+
+  it("surfaces a storage read error when a stored accepted event payload is corrupt", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const command = buildStartValidateCommand();
+    const storedDecision = expectStoredDecision(
+      unwrapQueryResult(await storeQueryActionCommand({ command, db })),
+      "accepted"
+    );
+
+    await db
+      .update(queryActionEvents)
+      .set({
+        payloadJson: {
+          queryMode: "corrupt_mode",
+          queryText: "select 1",
+        },
+      })
+      .where(eq(queryActionEvents.commandId, storedDecision.commandId));
+
+    const error = unwrapQueryError(
+      await storeQueryActionCommand({
+        command,
+        db,
+      })
+    );
+
+    expect(error.family).toBe("query_action");
+    expect("operation" in error).toBe(true);
+    if (!("operation" in error)) {
+      throw new Error("expected workflow storage read error");
+    }
+    expect(error.operation).toBe("load_command_journal");
   });
 
   it("uses an independent commit position sequence per family", async () => {
@@ -455,7 +632,7 @@ describe("audit workflow storage", () => {
       where: eq(sourceApiActionEvents.commandId, sourceApiDecision.commandId),
     });
 
-    expect(queryEventRow?.commitPosition).toBe(1);
-    expect(sourceApiEventRow?.commitPosition).toBe(1);
+    expect(queryEventRow?.commitPosition).toBe(1n);
+    expect(sourceApiEventRow?.commitPosition).toBe(1n);
   });
 });

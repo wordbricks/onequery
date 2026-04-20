@@ -7,9 +7,9 @@ export const auditProjectionCheckpoints = pgTable(
   "audit_projection_checkpoints",
   {
     family: text("family").$type<WorkflowFamily>().notNull(),
-    lastCommitPosition: bigint("last_commit_position", { mode: "number" })
+    lastCommitPosition: bigint("last_commit_position", { mode: "bigint" })
       .notNull()
-      .default(0),
+      .default(0n),
     projectionName: text("projection_name").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
