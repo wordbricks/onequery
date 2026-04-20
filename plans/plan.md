@@ -81,7 +81,7 @@ Temporary implementation sequencing does not change the target architecture.
 
 ## Delivery Sequence
 
-- [ ] Land the shared kernel contract.
+- [x] Land the shared kernel contract.
   Exit criteria:
   - every family implements the same `decide` and `reduce` shape
   - generic rejection handling and illegal-transition tests exist
