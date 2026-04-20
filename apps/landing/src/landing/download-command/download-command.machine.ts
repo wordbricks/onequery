@@ -1,4 +1,12 @@
-import { assertEvent, assign, fromPromise, setup } from "xstate";
+import { Result } from "better-result";
+import {
+  assertEvent,
+  assign,
+  fromCallback,
+  fromPromise,
+  sendTo,
+  setup,
+} from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import {
@@ -29,7 +37,19 @@ type DownloadCommandDependencies = {
     label: InstallMethodLabel;
   }) => Promise<InstallMethodLabel>;
   copyFeedbackResetDelayMs?: number;
+  trackInstallCommandCopied?: (label: InstallMethodLabel) => void;
+  trackInstallMethodSelected?: (label: InstallMethodLabel) => void;
 };
+
+type DownloadCommandTelemetryEvent =
+  | {
+      type: "downloadCommandTelemetry/installCommandCopied";
+      label: InstallMethodLabel;
+    }
+  | {
+      type: "downloadCommandTelemetry/installMethodSelected";
+      label: InstallMethodLabel;
+    };
 
 const defaultInstallMethod = LANDING_INSTALL_COMMANDS[0];
 
@@ -53,6 +73,30 @@ export function createDownloadCommandMachine(
   const copyFeedbackResetDelayMs =
     dependencies.copyFeedbackResetDelayMs ??
     LANDING_COPY_FEEDBACK_RESET_DELAY_MS;
+
+  const telemetry = fromCallback<DownloadCommandTelemetryEvent>(
+    ({ receive }) => {
+      receive((event) => {
+        const trackingResult = Result.try(() => {
+          switch (event.type) {
+            case "downloadCommandTelemetry/installCommandCopied": {
+              dependencies.trackInstallCommandCopied?.(event.label);
+              break;
+            }
+            case "downloadCommandTelemetry/installMethodSelected": {
+              dependencies.trackInstallMethodSelected?.(event.label);
+              break;
+            }
+          }
+        });
+
+        if (trackingResult.isErr()) {
+          // Comment: analytics is best-effort only; drop tracker failures so
+          // install command state stays driven by user intent and clipboard IO.
+        }
+      });
+    }
+  );
 
   return setup({
     types: {
@@ -82,17 +126,28 @@ export function createDownloadCommandMachine(
           label: InstallMethodLabel;
         }
       >(async ({ input }) => dependencies.copyCommand(input)),
+      telemetry,
     },
   }).createMachine({
     id: "downloadCommand",
     initial: "idle",
+    invoke: {
+      id: "telemetry",
+      src: "telemetry",
+    },
     context: createInitialContext(),
     states: {
       idle: {
         on: {
           "downloadCommand/copyRequested": "copying",
           "downloadCommand/methodSelected": {
-            actions: "selectMethod",
+            actions: [
+              sendTo("telemetry", ({ event }) => ({
+                type: "downloadCommandTelemetry/installMethodSelected",
+                label: event.label,
+              })),
+              "selectMethod",
+            ],
           },
         },
       },
@@ -107,12 +162,18 @@ export function createDownloadCommandMachine(
             };
           },
           onDone: {
-            actions: {
-              type: "storeCopiedMethod",
-              params: ({ event }) => ({
+            actions: [
+              {
+                type: "storeCopiedMethod",
+                params: ({ event }) => ({
+                  label: event.output,
+                }),
+              },
+              sendTo("telemetry", ({ event }) => ({
+                type: "downloadCommandTelemetry/installCommandCopied",
                 label: event.output,
-              }),
-            },
+              })),
+            ],
             target: "copied",
           },
           onError: {
@@ -122,7 +183,13 @@ export function createDownloadCommandMachine(
         },
         on: {
           "downloadCommand/methodSelected": {
-            actions: "selectMethod",
+            actions: [
+              sendTo("telemetry", ({ event }) => ({
+                type: "downloadCommandTelemetry/installMethodSelected",
+                label: event.label,
+              })),
+              "selectMethod",
+            ],
           },
         },
       },
@@ -136,7 +203,13 @@ export function createDownloadCommandMachine(
         on: {
           "downloadCommand/copyRequested": "copying",
           "downloadCommand/methodSelected": {
-            actions: "selectMethod",
+            actions: [
+              sendTo("telemetry", ({ event }) => ({
+                type: "downloadCommandTelemetry/installMethodSelected",
+                label: event.label,
+              })),
+              "selectMethod",
+            ],
           },
         },
       },

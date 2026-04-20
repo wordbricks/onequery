@@ -1,4 +1,12 @@
-import { assertEvent, assign, fromPromise, setup } from "xstate";
+import { Result } from "better-result";
+import {
+  assertEvent,
+  assign,
+  fromCallback,
+  fromPromise,
+  sendTo,
+  setup,
+} from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import { toUserMessage } from "./marketing-errors";
@@ -26,6 +34,11 @@ type ProductUpdatesDependencies = {
   subscribeProductUpdates: (input: { email: string }) => Promise<{
     email: string;
   }>;
+  trackProductUpdatesSignup?: () => void;
+};
+
+type ProductUpdatesTelemetryEvent = {
+  type: "productUpdatesTelemetry/signupSucceeded";
 };
 
 function createInitialContext(): ProductUpdatesContext {
@@ -40,6 +53,26 @@ function createInitialContext(): ProductUpdatesContext {
 export function createProductUpdatesMachine(
   dependencies: ProductUpdatesDependencies
 ) {
+  const telemetry = fromCallback<ProductUpdatesTelemetryEvent>(
+    ({ receive }) => {
+      receive((event) => {
+        const trackingResult = Result.try(() => {
+          switch (event.type) {
+            case "productUpdatesTelemetry/signupSucceeded": {
+              dependencies.trackProductUpdatesSignup?.();
+              break;
+            }
+          }
+        });
+
+        if (trackingResult.isErr()) {
+          // Comment: analytics should never strand the workflow in a loading
+          // state after the signup request has already succeeded.
+        }
+      });
+    }
+  );
+
   return setup({
     types: {
       context: {} as ProductUpdatesContext,
@@ -70,10 +103,15 @@ export function createProductUpdatesMachine(
       submitProductUpdates: fromPromise<{ email: string }, { email: string }>(
         async ({ input }) => dependencies.subscribeProductUpdates(input)
       ),
+      telemetry,
     },
   }).createMachine({
     id: "productUpdates",
     initial: "editing",
+    invoke: {
+      id: "telemetry",
+      src: "telemetry",
+    },
     context: createInitialContext(),
     states: {
       editing: {
@@ -91,12 +129,17 @@ export function createProductUpdatesMachine(
             email: context.email,
           }),
           onDone: {
-            actions: {
-              type: "recordSuccess",
-              params: ({ event }) => ({
-                email: event.output.email,
+            actions: [
+              {
+                type: "recordSuccess",
+                params: ({ event }) => ({
+                  email: event.output.email,
+                }),
+              },
+              sendTo("telemetry", {
+                type: "productUpdatesTelemetry/signupSucceeded",
               }),
-            },
+            ],
             target: "success",
           },
           onError: {

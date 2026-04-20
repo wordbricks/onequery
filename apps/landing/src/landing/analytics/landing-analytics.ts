@@ -1,3 +1,5 @@
+import { Result } from "better-result";
+
 type AnalyticsEventValue = boolean | number | string | undefined;
 
 type AnalyticsEventParams = Record<string, AnalyticsEventValue>;
@@ -13,7 +15,6 @@ const GOOGLE_TAG_MANAGER_URL = "https://www.googletagmanager.com/gtag/js";
 const DEFAULT_GA_MEASUREMENT_ID = "G-TVPWK9V4TE";
 
 const configuredMeasurementIds = new Set<string>();
-const trackedPagePaths = new Set<string>();
 
 function getMeasurementId() {
   const configuredMeasurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
@@ -57,11 +58,12 @@ function loadGoogleTagManager(measurementId: string) {
   script.src = `${GOOGLE_TAG_MANAGER_URL}?id=${measurementId}`;
   script.dataset.gaMeasurementId = measurementId;
 
-  // Comment: external analytics scripts should never break the landing page if
-  // a browser, test DOM, or CSP blocks the load.
-  try {
-    document.head.appendChild(script);
-  } catch {
+  const appendScriptResult = Result.try(() =>
+    document.head.appendChild(script)
+  );
+  if (appendScriptResult.isErr()) {
+    // Comment: external analytics scripts should never break the landing page
+    // if a browser, test DOM, or CSP blocks the load.
     // Comment: best-effort only; leave the app interactive without GA4.
   }
 }
@@ -110,14 +112,6 @@ export function trackPageView() {
   }
 
   const pagePath = getPagePath();
-
-  // Comment: React StrictMode replays effects in development, so keep the
-  // landing page view idempotent per path to avoid duplicate GA4 hits.
-  if (trackedPagePaths.has(pagePath)) {
-    return;
-  }
-
-  trackedPagePaths.add(pagePath);
 
   trackEvent("page_view", {
     page_location: window.location.href,
@@ -171,5 +165,4 @@ export function trackContactFormSubmitted() {
 
 export function resetAnalyticsStateForTests() {
   configuredMeasurementIds.clear();
-  trackedPagePaths.clear();
 }

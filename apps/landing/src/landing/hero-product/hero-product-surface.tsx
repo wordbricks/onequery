@@ -109,7 +109,7 @@ function useHeroProductController() {
   return {
     activeTab,
     safeQuery,
-    selectTab(tab: HeroProductTab) {
+    selectTab: (tab: HeroProductTab) => {
       actorRef.send({
         type: "heroProduct/tabSelected",
         tab,

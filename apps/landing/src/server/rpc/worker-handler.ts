@@ -9,6 +9,7 @@ import {
   universalServerResponseToFetch,
 } from "@connectrpc/connect/protocol";
 import type { UniversalHandler } from "@connectrpc/connect/protocol";
+import { Result } from "better-result";
 
 import { LANDING_CONNECT_PATH_PREFIX } from "../../landing/config/landing-api";
 
@@ -87,15 +88,22 @@ export function createWorkerHandler<Env>(
         contextValues: contextValues(request, env, ctx),
       };
 
-      try {
-        const universalResponse = await handler(universalRequest);
-        return universalServerResponseToFetch(universalResponse);
-      } catch (reason) {
-        if (ConnectError.from(reason).code === Code.Aborted) {
+      const universalResponseResult = await Result.tryPromise({
+        try: () => handler(universalRequest),
+        catch: (cause: unknown) => cause,
+      });
+      if (universalResponseResult.isErr()) {
+        // Comment: Connect's universal handler contract is still throw-based, so
+        // the adapter only rethrows at the final RPC boundary.
+        if (
+          ConnectError.from(universalResponseResult.error).code === Code.Aborted
+        ) {
           return new Response(null, { status: 499 });
         }
-        throw reason;
+        throw universalResponseResult.error;
       }
+
+      return universalServerResponseToFetch(universalResponseResult.value);
     },
   };
 }

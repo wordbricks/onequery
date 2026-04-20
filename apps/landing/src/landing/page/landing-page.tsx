@@ -1,10 +1,6 @@
-import { useEffect, useRef } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
-import {
-  trackLandingCtaClick,
-  trackPageView,
-} from "../analytics/landing-analytics";
+import { trackLandingCtaClick } from "../analytics/landing-analytics";
 import {
   LANDING_INSTALL_SCRIPT_URL,
   LANDING_REPOSITORY_URL,
@@ -365,19 +361,6 @@ function SiteFooter() {
 }
 
 export function LandingPage() {
-  const hasTrackedPageView = useRef(false);
-
-  useEffect(() => {
-    if (hasTrackedPageView.current) {
-      return;
-    }
-
-    // Comment: React Strict Mode replays effects in development, so gate the
-    // analytics beacon at the page boundary.
-    hasTrackedPageView.current = true;
-    trackPageView();
-  }, []);
-
   return (
     <div className="page-shell">
       <SiteHeader />

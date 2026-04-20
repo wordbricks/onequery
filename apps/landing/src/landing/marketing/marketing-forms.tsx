@@ -1,6 +1,5 @@
 import { createClient } from "@connectrpc/connect";
 import { useActorRef, useSelector } from "@xstate/react";
-import { useEffect } from "react";
 
 import { landingTransport } from "../../app/runtime/connect-transport";
 import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
@@ -30,11 +29,14 @@ const productUpdatesMachine = createProductUpdatesMachine({
       email: response.email,
     };
   },
+  trackProductUpdatesSignup,
 });
 const contactModalMachine = createContactModalMachine({
   async submitContact(form) {
     await landingClient.submitContact(form);
   },
+  trackContactFormSubmitted,
+  trackContactModalOpened,
 });
 
 function useProductUpdatesController() {
@@ -44,30 +46,18 @@ function useProductUpdatesController() {
   const isSubmitting = useSelector(actorRef, (snapshot) =>
     snapshot.matches("submitting")
   );
-  const successfulSubmissionCount = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.successfulSubmissionCount
-  );
-
-  useEffect(() => {
-    if (successfulSubmissionCount === 0) {
-      return;
-    }
-
-    trackProductUpdatesSignup();
-  }, [successfulSubmissionCount]);
 
   return {
     email,
     feedback,
     isSubmitting,
-    setEmail(nextEmail: string) {
+    setEmail: (nextEmail: string) => {
       actorRef.send({
         type: "productUpdates/emailChanged",
         email: nextEmail,
       });
     },
-    submit() {
+    submit: () => {
       actorRef.send({ type: "productUpdates/submit" });
     },
   };
@@ -92,39 +82,26 @@ function useContactModalController(): ContactModalController {
   const isSubmitting = useSelector(actorRef, (snapshot) =>
     snapshot.matches({ open: "submitting" })
   );
-  const successfulSubmissionCount = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.successfulSubmissionCount
-  );
-
-  useEffect(() => {
-    if (successfulSubmissionCount === 0) {
-      return;
-    }
-
-    trackContactFormSubmitted();
-  }, [successfulSubmissionCount]);
 
   return {
     errorMessage,
     form,
     isOpen,
     isSubmitting,
-    close() {
+    close: () => {
       actorRef.send({ type: "contactModal/closeRequested" });
     },
-    open() {
-      trackContactModalOpened();
+    open: () => {
       actorRef.send({ type: "contactModal/openRequested" });
     },
-    setField(field, value) {
+    setField: (field, value) => {
       actorRef.send({
         type: "contactModal/fieldChanged",
         field,
         value,
       });
     },
-    submit() {
+    submit: () => {
       actorRef.send({ type: "contactModal/submit" });
     },
   };

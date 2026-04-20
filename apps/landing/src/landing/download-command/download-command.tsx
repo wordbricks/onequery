@@ -1,5 +1,4 @@
 import { useActorRef, useSelector } from "@xstate/react";
-import { useEffect } from "react";
 
 import {
   trackInstallCommandCopied,
@@ -17,6 +16,8 @@ const downloadCommandMachine = createDownloadCommandMachine({
     await navigator.clipboard.writeText(command);
     return label;
   },
+  trackInstallCommandCopied,
+  trackInstallMethodSelected,
 });
 
 function useDownloadCommandController() {
@@ -24,22 +25,15 @@ function useDownloadCommandController() {
   const selectedMethod = useSelector(actorRef, readSelectedInstallMethod);
   const copiedMethodLabel = useSelector(actorRef, readCopiedMethodLabel);
 
-  useEffect(() => {
-    if (copiedMethodLabel === null) {
-      return;
-    }
-
-    trackInstallCommandCopied(copiedMethodLabel);
-  }, [copiedMethodLabel]);
-
   return {
     copiedMethodLabel,
     selectedMethod,
-    copy() {
+    copy: () => {
       actorRef.send({ type: "downloadCommand/copyRequested" });
     },
-    selectMethod(label: (typeof LANDING_INSTALL_COMMANDS)[number]["label"]) {
-      trackInstallMethodSelected(label);
+    selectMethod: (
+      label: (typeof LANDING_INSTALL_COMMANDS)[number]["label"]
+    ) => {
       actorRef.send({
         type: "downloadCommand/methodSelected",
         label,

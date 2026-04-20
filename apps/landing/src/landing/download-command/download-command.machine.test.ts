@@ -52,4 +52,26 @@ describe("createDownloadCommandMachine", () => {
 
     vi.useRealTimers();
   });
+
+  it("ignores telemetry failures while still updating the copied state", async () => {
+    const actor = createActor(
+      createDownloadCommandMachine({
+        copyCommand: async ({ label }) => label,
+        trackInstallCommandCopied: () => {
+          throw new Error("analytics boom");
+        },
+      })
+    );
+
+    actor.start();
+    actor.send({ type: "downloadCommand/copyRequested" });
+
+    await waitFor(actor, (snapshot) => snapshot.matches("copied"));
+    await Promise.resolve();
+
+    expect(actor.getSnapshot().matches("copied")).toBe(true);
+    expect(actor.getSnapshot().context.copiedMethodLabel).toBe(
+      "Install script"
+    );
+  });
 });

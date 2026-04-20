@@ -1,4 +1,12 @@
-import { assertEvent, assign, fromCallback, fromPromise, setup } from "xstate";
+import { Result } from "better-result";
+import {
+  assertEvent,
+  assign,
+  fromCallback,
+  fromPromise,
+  sendTo,
+  setup,
+} from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import { toUserMessage } from "./marketing-errors";
@@ -35,7 +43,17 @@ type ContactModalEvent =
 
 type ContactModalDependencies = {
   submitContact: (form: ContactForm) => Promise<void>;
+  trackContactFormSubmitted?: () => void;
+  trackContactModalOpened?: () => void;
 };
+
+type ContactModalTelemetryEvent =
+  | {
+      type: "contactModalTelemetry/modalOpened";
+    }
+  | {
+      type: "contactModalTelemetry/formSubmitted";
+    };
 
 function createEmptyContactForm(): ContactForm {
   return {
@@ -82,6 +100,28 @@ const bindModalLifecycle = fromCallback<ContactModalEvent>(({ sendBack }) => {
 export function createContactModalMachine(
   dependencies: ContactModalDependencies
 ) {
+  const telemetry = fromCallback<ContactModalTelemetryEvent>(({ receive }) => {
+    receive((event) => {
+      const trackingResult = Result.try(() => {
+        switch (event.type) {
+          case "contactModalTelemetry/modalOpened": {
+            dependencies.trackContactModalOpened?.();
+            break;
+          }
+          case "contactModalTelemetry/formSubmitted": {
+            dependencies.trackContactFormSubmitted?.();
+            break;
+          }
+        }
+      });
+
+      if (trackingResult.isErr()) {
+        // Comment: lead-capture telemetry is best-effort; never let it change
+        // whether the modal opens, closes, or reports submission success.
+      }
+    });
+  });
+
   return setup({
     types: {
       context: {} as ContactModalContext,
@@ -118,15 +158,25 @@ export function createContactModalMachine(
       submitContact: fromPromise<void, { form: ContactForm }>(
         async ({ input }) => dependencies.submitContact(input.form)
       ),
+      telemetry,
     },
   }).createMachine({
     id: "contactModal",
     initial: "closed",
+    invoke: {
+      id: "telemetry",
+      src: "telemetry",
+    },
     context: createInitialContext(),
     states: {
       closed: {
         on: {
-          "contactModal/openRequested": "open",
+          "contactModal/openRequested": {
+            actions: sendTo("telemetry", {
+              type: "contactModalTelemetry/modalOpened",
+            }),
+            target: "open",
+          },
         },
       },
       open: {
@@ -156,7 +206,12 @@ export function createContactModalMachine(
                 form: context.form,
               }),
               onDone: {
-                actions: "closeWithSuccess",
+                actions: [
+                  "closeWithSuccess",
+                  sendTo("telemetry", {
+                    type: "contactModalTelemetry/formSubmitted",
+                  }),
+                ],
                 target: "#contactModal.closed",
               },
               onError: {

@@ -52,4 +52,30 @@ describe("createProductUpdatesMachine", () => {
       "Webhook unavailable"
     );
   });
+
+  it("ignores telemetry failures after a successful signup", async () => {
+    const actor = createActor(
+      createProductUpdatesMachine({
+        subscribeProductUpdates: async ({ email }) => ({ email }),
+        trackProductUpdatesSignup: () => {
+          throw new Error("analytics boom");
+        },
+      })
+    );
+
+    actor.start();
+    actor.send({
+      type: "productUpdates/emailChanged",
+      email: "team@onequery.dev",
+    });
+    actor.send({ type: "productUpdates/submit" });
+
+    await waitFor(actor, (snapshot) => snapshot.matches("success"));
+    await Promise.resolve();
+
+    expect(actor.getSnapshot().matches("success")).toBe(true);
+    expect(actor.getSnapshot().context.lastSubmittedEmail).toBe(
+      "team@onequery.dev"
+    );
+  });
 });

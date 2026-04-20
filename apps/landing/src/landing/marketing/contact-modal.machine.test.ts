@@ -73,4 +73,25 @@ describe("createContactModalMachine", () => {
       "Lead capture offline"
     );
   });
+
+  it("ignores telemetry failures after a successful submit", async () => {
+    const actor = createActor(
+      createContactModalMachine({
+        submitContact: async () => undefined,
+        trackContactFormSubmitted: () => {
+          throw new Error("analytics boom");
+        },
+      })
+    );
+
+    actor.start();
+    actor.send({ type: "contactModal/openRequested" });
+    actor.send({ type: "contactModal/submit" });
+
+    await waitFor(actor, (snapshot) => snapshot.matches("closed"));
+    await Promise.resolve();
+
+    expect(actor.getSnapshot().matches("closed")).toBe(true);
+    expect(actor.getSnapshot().context.successfulSubmissionCount).toBe(1);
+  });
 });
