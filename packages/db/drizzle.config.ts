@@ -10,6 +10,7 @@ export default defineConfig({
   },
   out: "./src/migrations",
   schema: [
+    "./src/schema/audit-feed-entries.ts",
     "./src/schema/audit-projection-checkpoints.ts",
     "./src/schema/audit-workflow.ts",
     "./src/schema/auth.ts",

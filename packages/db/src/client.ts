@@ -11,6 +11,7 @@ import {
   isPgliteConnectionString,
   resolvePgliteRuntimeOptions,
 } from "./pglite";
+import * as auditFeedEntriesSchema from "./schema/audit-feed-entries";
 import * as auditProjectionCheckpointsSchema from "./schema/audit-projection-checkpoints";
 import * as auditWorkflowSchema from "./schema/audit-workflow";
 import * as authSchema from "./schema/auth";
@@ -32,6 +33,7 @@ import * as workflowCommandsSchema from "./schema/workflow-commands";
 import * as workflowEffectDispatchesSchema from "./schema/workflow-effect-dispatches";
 
 export const postgresSchema = {
+  ...auditFeedEntriesSchema,
   ...auditProjectionCheckpointsSchema,
   ...auditWorkflowSchema,
   ...authSchema,
@@ -177,6 +179,7 @@ function createPgliteDb(connectionString: string): Database {
   });
 }
 
+export * from "./schema/audit-feed-entries";
 export * from "./schema/audit-projection-checkpoints";
 export * from "./schema/audit-workflow";
 export * from "./schema/auth";

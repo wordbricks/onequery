@@ -1,4 +1,5 @@
 import { bigint, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 
 import type { WorkflowFamily } from "./audit-workflow";
 import { pgTable } from "./table";
@@ -9,7 +10,7 @@ export const auditProjectionCheckpoints = pgTable(
     family: text("family").$type<WorkflowFamily>().notNull(),
     lastCommitPosition: bigint("last_commit_position", { mode: "bigint" })
       .notNull()
-      .default(0n),
+      .default(sql`0`),
     projectionName: text("projection_name").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

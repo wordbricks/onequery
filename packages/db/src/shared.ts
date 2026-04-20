@@ -24,6 +24,7 @@ export {
   TransactionRollbackError,
 } from "drizzle-orm";
 export * from "./credentials";
+export * from "./schema/audit-feed-entries";
 export * from "./schema/audit-projection-checkpoints";
 export * from "./schema/audit-workflow";
 export * from "./schema/auth";

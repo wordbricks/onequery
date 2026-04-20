@@ -97,7 +97,7 @@ Temporary implementation sequencing does not change the target architecture.
   Exit criteria:
   - describe, preview-only invoke, execute, resume, and terminal failure are explicit transitions
   - continuation identity is bound to the audited action and resume point
-- [ ] Build the unified projection and public API.
+- [x] Build the unified projection and public API.
   Exit criteria:
   - the feed rebuilds from committed events
   - cursor pagination remains stable while actions continue to evolve
