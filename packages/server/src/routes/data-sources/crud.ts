@@ -23,7 +23,7 @@ import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import { ensureConnectorOrganization } from "../../services/connectors/broker";
 import {
-  decryptCredentialsObject,
+  decryptCredentialsObjectResult,
   encryptCredentialsObject,
 } from "../../services/crypto/credential-encryption";
 import {
@@ -454,20 +454,18 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       if (existing.provider === "linear") {
-        const decryptOutcome = Result.try({
-          try: () =>
-            decryptCredentialsObject(
-              existing.credentialsEncrypted,
-              existing.credentialsIv,
-              c.var.runtime.crypto.masterEncryptionKey,
-              credentialSchemaMap.linear
-            ),
-          catch: (cause) =>
+        const decryptOutcome = decryptCredentialsObjectResult(
+          existing.credentialsEncrypted,
+          existing.credentialsIv,
+          c.var.runtime.crypto.masterEncryptionKey,
+          credentialSchemaMap.linear
+        ).mapError(
+          (cause) =>
             new LinearCredentialsDecryptError({
               cause,
               message: "Failed to decrypt Linear credentials during disconnect",
-            }),
-        });
+            })
+        );
 
         if (decryptOutcome.isOk()) {
           const revokeOutcome = await revokeLinearToken({

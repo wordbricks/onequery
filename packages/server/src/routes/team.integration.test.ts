@@ -31,7 +31,14 @@ function expectExpiryToMatchPolicy(expiresAt: Date, createdAtMs: number) {
 
 describe("team invitation expiry alignment", () => {
   it("returns 7-day expirations, rejects expired invites, and reuses pending invites on re-invite", async () => {
-    const { auth, client, db, test } = await createRouteIntegrationHarness();
+    const harness = await createRouteIntegrationHarness();
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { auth, client, db, test } = harness.value;
 
     const runId = createRunId();
     const adminUser = test.createUser({

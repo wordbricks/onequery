@@ -1,8 +1,11 @@
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
+
 import type {
   ServerRuntimeConfig,
   ServerRuntimeStorageConfig,
 } from "../runtime";
-import { deriveKeyFromBase64 } from "../services/crypto/credential-encryption";
+import { deriveKeyFromBase64Result } from "../services/crypto/credential-encryption";
 
 export const TEST_PUBLIC_ORIGIN = "http://localhost:4545";
 export const TEST_SERVER_MASTER_ENCRYPTION_KEY =
@@ -24,6 +27,19 @@ export type TestRuntimeConfigOverrides = Omit<
   rateLimit?: Partial<ServerRuntimeConfig["rateLimit"]>;
 };
 
+export class TestRuntimeConfigError extends TaggedError(
+  "TestRuntimeConfigError"
+)<{
+  cause?: unknown;
+  field: "crypto.masterEncryptionKey";
+  message: string;
+}>() {}
+
+export type TestRuntimeConfigResult = ResultType<
+  ServerRuntimeConfig,
+  TestRuntimeConfigError
+>;
+
 function toRuntimeStorageConfig(
   connectionString: string
 ): ServerRuntimeStorageConfig {
@@ -42,7 +58,7 @@ function toRuntimeStorageConfig(
   };
 }
 
-const defaultRuntime: ServerRuntimeConfig = {
+const defaultRuntimeBase = {
   auth: {
     baseURL: TEST_PUBLIC_ORIGIN,
     emailDelivery: {
@@ -52,9 +68,6 @@ const defaultRuntime: ServerRuntimeConfig = {
   },
   connectors: {
     enrollmentToken: "test-connector-token",
-  },
-  crypto: {
-    masterEncryptionKey: deriveKeyFromBase64(TEST_SERVER_MASTER_ENCRYPTION_KEY),
   },
   listen: {
     host: "127.0.0.1",
@@ -69,65 +82,82 @@ const defaultRuntime: ServerRuntimeConfig = {
     enabled: false,
   },
   runtimePaths: undefined,
-  storage: toRuntimeStorageConfig(DEFAULT_TEST_DATABASE_URL),
-};
+} satisfies Omit<ServerRuntimeConfig, "crypto" | "storage">;
 
 export function createTestRuntimeConfig(
   overrides: TestRuntimeConfigOverrides = {}
-): ServerRuntimeConfig {
+): TestRuntimeConfigResult {
+  const { databaseUrl, ...runtimeOverrides } = overrides;
   const runtimeStorage =
-    overrides.databaseUrl !== undefined
-      ? toRuntimeStorageConfig(overrides.databaseUrl)
-      : (overrides.storage ?? defaultRuntime.storage);
+    databaseUrl !== undefined
+      ? toRuntimeStorageConfig(databaseUrl)
+      : (runtimeOverrides.storage ??
+        toRuntimeStorageConfig(DEFAULT_TEST_DATABASE_URL));
 
-  return {
-    ...defaultRuntime,
-    ...overrides,
-    auth: {
-      ...defaultRuntime.auth,
-      ...overrides.auth,
-      emailDelivery:
-        overrides.auth?.emailDelivery ?? defaultRuntime.auth.emailDelivery,
-    },
-    connectors: {
-      ...defaultRuntime.connectors,
-      ...overrides.connectors,
-    },
-    crypto: {
-      ...defaultRuntime.crypto,
-      ...normalizeCryptoOverrides(overrides.crypto),
-    },
-    listen: {
-      ...defaultRuntime.listen,
-      ...overrides.listen,
-    },
-    rateLimit: {
-      ...defaultRuntime.rateLimit,
-      ...overrides.rateLimit,
-    },
-    storage: runtimeStorage,
-  };
+  return Result.gen(function* createTestRuntimeConfigFlow() {
+    const masterEncryptionKey = yield* resolveTestMasterEncryptionKeyResult(
+      runtimeOverrides.crypto?.masterEncryptionKey
+    );
+
+    return Result.ok({
+      ...defaultRuntimeBase,
+      ...runtimeOverrides,
+      auth: {
+        ...defaultRuntimeBase.auth,
+        ...runtimeOverrides.auth,
+        emailDelivery:
+          runtimeOverrides.auth?.emailDelivery ??
+          defaultRuntimeBase.auth.emailDelivery,
+      },
+      connectors: {
+        ...defaultRuntimeBase.connectors,
+        ...runtimeOverrides.connectors,
+      },
+      crypto: {
+        masterEncryptionKey,
+      },
+      listen: {
+        ...defaultRuntimeBase.listen,
+        ...runtimeOverrides.listen,
+      },
+      rateLimit: {
+        ...defaultRuntimeBase.rateLimit,
+        ...runtimeOverrides.rateLimit,
+      },
+      storage: runtimeStorage,
+    });
+  });
 }
 
-function normalizeCryptoOverrides(
-  crypto: TestRuntimeConfigOverrides["crypto"]
-): Partial<ServerRuntimeConfig["crypto"]> {
-  if (!crypto?.masterEncryptionKey) {
-    return {};
+function resolveTestMasterEncryptionKeyResult(
+  value: NonNullable<
+    TestRuntimeConfigOverrides["crypto"]
+  >["masterEncryptionKey"]
+): ResultType<Uint8Array, TestRuntimeConfigError> {
+  if (value instanceof Uint8Array) {
+    return Result.ok(value);
   }
 
-  return {
-    masterEncryptionKey:
-      typeof crypto.masterEncryptionKey === "string"
-        ? deriveKeyFromBase64(crypto.masterEncryptionKey)
-        : crypto.masterEncryptionKey,
-  };
+  const parsed = deriveKeyFromBase64Result(
+    value ?? TEST_SERVER_MASTER_ENCRYPTION_KEY
+  );
+  if (parsed.isErr()) {
+    return Result.err(
+      new TestRuntimeConfigError({
+        cause: parsed.error,
+        field: "crypto.masterEncryptionKey",
+        message: `Invalid test runtime crypto.masterEncryptionKey: ${parsed.error.message}`,
+      })
+    );
+  }
+
+  return Result.ok(parsed.value);
 }
 
 export function createTestRuntimeConfigFromDatabaseUrl(
   databaseUrl: string,
   overrides: TestRuntimeConfigOverrides = {}
-): ServerRuntimeConfig {
+): TestRuntimeConfigResult {
   return createTestRuntimeConfig({
     ...overrides,
     databaseUrl,

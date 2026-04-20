@@ -22,6 +22,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@onequery/codecs": "workspace:*",
+    "better-result": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

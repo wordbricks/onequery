@@ -197,6 +197,8 @@
       "name": "@onequery/config",
       "version": "0.0.0",
       "dependencies": {
+        "@onequery/codecs": "workspace:*",
+        "better-result": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {

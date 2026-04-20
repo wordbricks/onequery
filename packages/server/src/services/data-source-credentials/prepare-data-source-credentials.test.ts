@@ -2,11 +2,20 @@ import type { ProviderType } from "@onequery/db/server";
 import { describe, expect, it } from "vitest";
 
 import {
-  deriveKeyFromBase64,
+  deriveKeyFromBase64Result,
   encryptCredentialsObject,
   generateMasterKey,
 } from "../crypto/credential-encryption";
 import { prepareDataSourceCredentials } from "./prepare-data-source-credentials";
+
+function expectValidMasterKey(value: string): Uint8Array {
+  const parsed = deriveKeyFromBase64Result(value);
+  if (parsed.isErr()) {
+    throw new Error(`Expected valid master key: ${parsed.error.message}`);
+  }
+
+  return parsed.value;
+}
 
 function createRecord(
   input?: Partial<{
@@ -29,7 +38,7 @@ function createRecord(
 describe("prepare data source credentials", () => {
   it("decrypts matching stored credentials", async () => {
     const masterKeyBase64 = generateMasterKey();
-    const masterKey = deriveKeyFromBase64(masterKeyBase64);
+    const masterKey = expectValidMasterKey(masterKeyBase64);
     const encrypted = encryptCredentialsObject(
       {
         database: "app",
@@ -68,7 +77,7 @@ describe("prepare data source credentials", () => {
   });
 
   it("redacts data source names and parser details from invalid credential errors", async () => {
-    const masterKey = deriveKeyFromBase64(generateMasterKey());
+    const masterKey = expectValidMasterKey(generateMasterKey());
     const result = await prepareDataSourceCredentials({
       dataSource: createRecord({
         credentialsEncrypted: "not-hex",
@@ -90,7 +99,7 @@ describe("prepare data source credentials", () => {
 
   it("rejects provider mismatches without echoing decrypted credential contents", async () => {
     const masterKeyBase64 = generateMasterKey();
-    const masterKey = deriveKeyFromBase64(masterKeyBase64);
+    const masterKey = expectValidMasterKey(masterKeyBase64);
     const encrypted = encryptCredentialsObject(
       {
         apiKey: "secret-api-key",

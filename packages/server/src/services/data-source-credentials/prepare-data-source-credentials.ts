@@ -3,7 +3,7 @@ import type { Credentials, ProviderType } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import { decryptCredentialsObject } from "../crypto/credential-encryption";
+import { decryptCredentialsObjectResult } from "../crypto/credential-encryption";
 
 export type DataSourceCredentialRecord = {
   id: string;
@@ -55,21 +55,19 @@ export async function prepareDataSourceCredentials(input: {
     );
   }
 
-  const decrypted = Result.try({
-    try: () =>
-      decryptCredentialsObject(
-        input.dataSource.credentialsEncrypted,
-        input.dataSource.credentialsIv,
-        input.masterEncryptionKey,
-        CredentialsSchema
-      ),
-    catch: (cause) =>
+  const decrypted = decryptCredentialsObjectResult(
+    input.dataSource.credentialsEncrypted,
+    input.dataSource.credentialsIv,
+    input.masterEncryptionKey,
+    CredentialsSchema
+  ).mapError(
+    (cause) =>
       new PrepareCredentialsError({
         cause,
         message: `${INVALID_CREDENTIALS_MESSAGE} for ${descriptor}`,
         reason: "decrypt_failed",
-      }),
-  });
+      })
+  );
   if (decrypted.isErr()) {
     return Result.err(decrypted.error);
   }
