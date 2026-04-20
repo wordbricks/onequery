@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy": "bun run build && bunx wrangler deploy",
-    "deploy:preview": "bun run build && bunx wrangler versions upload",
+    "deploy": "bun run --cwd ../.. landing:build && bunx wrangler deploy",
+    "deploy:preview": "bun run --cwd ../.. landing:build && bunx wrangler versions upload",
     "cf-typegen": "bunx wrangler types worker-configuration.d.ts --env-interface CloudflareEnv",
     "test": "vitest run",
     "test:watch": "vitest",

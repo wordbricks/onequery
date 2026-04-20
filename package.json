@@ -71,7 +71,7 @@
     "dev": "bun run dev:setup && turbo dev --filter='!@onequery/connector'",
     "dev:with-connector": "bun run dev:setup && turbo dev",
     "dev:setup": "bun run scripts/dev-setup.ts",
-    "landing:build": "bun run --cwd apps/landing build",
+    "landing:build": "bunx turbo build --filter @onequery/landing",
     "landing:deploy": "bun run --cwd apps/landing deploy",
     "landing:deploy:preview": "bun run --cwd apps/landing deploy:preview",
     "github:rulesets:check": "bun run --cwd packages/github-rulesets rulesets:check",
