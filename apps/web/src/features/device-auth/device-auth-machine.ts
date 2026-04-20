@@ -1,6 +1,6 @@
 import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import type { InferResponseType } from "hono/client";
-import { assertEvent, assign, fromPromise, setup } from "xstate";
+import { assertEvent, assign, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import { createApiClient } from "@/lib/api-client";
@@ -27,27 +27,77 @@ type DeviceNavigation = {
   phase: "pending" | "running";
 };
 
+type DeviceVerificationRequest = {
+  requestId: number;
+  userCode: string | null;
+};
+
+type DeviceDecisionRequest = {
+  action: DeviceDecisionAction;
+  requestId: number;
+  userCode: string | null;
+};
+
+type DeviceAuthAlert =
+  | { kind: "idle" }
+  | {
+      kind: "error";
+      message: string;
+    };
+
+type DeviceAuthResultState =
+  | { kind: "idle" }
+  | {
+      kind: "ready";
+      result: DeviceResult;
+    };
+
 type DeviceAuthContext = {
   inputCode: string;
   activeUserCode: string | null;
-  error: string | null;
-  result: DeviceResult | null;
+  alert: DeviceAuthAlert;
+  resultState: DeviceAuthResultState;
   session: DeviceSession;
-  decisionAction: DeviceDecisionAction | null;
   navigation: DeviceNavigation | null;
   nextNavigationId: number;
+  nextAsyncRequestId: number;
+  pendingVerification: DeviceVerificationRequest | null;
+  pendingDecision: DeviceDecisionRequest | null;
 };
 
 type DeviceAuthEvent =
   | { type: "deviceAuth/routeSynced"; userCode: string | null }
   | { type: "deviceAuth/inputChanged"; value: string }
   | { type: "deviceAuth/submit" }
+  | {
+      type: "deviceAuth/verificationFailed";
+      message: string;
+      requestId: number;
+    }
+  | {
+      type: "deviceAuth/verificationSucceeded";
+      requestId: number;
+      status: "pending" | "approved" | "denied";
+      userCode: string;
+    }
   | { type: "deviceAuth/navigationStarted"; id: number }
   | { type: "deviceAuth/navigationCompleted"; id: number }
   | { type: "deviceAuth/navigationFailed"; id: number; message: string }
   | { type: "deviceAuth/sessionSynced"; session: DeviceSession }
   | { type: "deviceAuth/approve" }
   | { type: "deviceAuth/deny" }
+  | {
+      type: "deviceAuth/decisionFailed";
+      message: string;
+      requestId: number;
+    }
+  | {
+      type: "deviceAuth/decisionSucceeded";
+      message: string;
+      requestId: number;
+      title: string;
+      tone: DeviceResultTone;
+    }
   | { type: "deviceAuth/useDifferentCode" };
 
 type DeviceAuthTypes = {
@@ -55,7 +105,7 @@ type DeviceAuthTypes = {
   events: DeviceAuthEvent;
 };
 
-type VerifyDeviceOutput =
+type VerifyDeviceRequestResult =
   | {
       kind: "verified";
       status: "pending" | "approved" | "denied";
@@ -66,7 +116,7 @@ type VerifyDeviceOutput =
       message: string;
     };
 
-type SubmitDecisionOutput =
+type SubmitDecisionRequestResult =
   | {
       kind: "success";
       title: string;
@@ -86,16 +136,16 @@ export type DevicePanelView =
   | "review"
   | "result";
 
-const deviceClient = createApiClient();
-type VerifyDeviceGet = (typeof deviceClient.api.device.verify)["$get"];
+type DeviceClient = ReturnType<typeof createApiClient>;
+type VerifyDeviceGet = DeviceClient["api"]["device"]["verify"]["$get"];
 type VerifyDeviceSuccessResponse = InferResponseType<VerifyDeviceGet, 200>;
 type VerifyDeviceResponse = InferResponseType<VerifyDeviceGet>;
 type SubmitDeviceDecisionSuccessResponse = InferResponseType<
-  (typeof deviceClient.api.device.approve)["$post"],
+  DeviceClient["api"]["device"]["approve"]["$post"],
   200
 >;
 type SubmitDeviceDecisionResponse = InferResponseType<
-  (typeof deviceClient.api.device.approve)["$post"]
+  DeviceClient["api"]["device"]["approve"]["$post"]
 >;
 
 // Comment: these device routes do not use Hono validators yet, so RPC gives us
@@ -106,22 +156,55 @@ const GENERIC_DEVICE_VERIFY_ERROR_MESSAGE =
 const GENERIC_DEVICE_DECISION_ERROR_MESSAGE =
   "The device request could not be completed. Try again.";
 
+function createIdleDeviceAuthAlert(): DeviceAuthAlert {
+  return {
+    kind: "idle",
+  };
+}
+
+function createDeviceAuthErrorAlert(message: string): DeviceAuthAlert {
+  return {
+    kind: "error",
+    message,
+  };
+}
+
+function createIdleDeviceAuthResultState(): DeviceAuthResultState {
+  return {
+    kind: "idle",
+  };
+}
+
+function createReadyDeviceAuthResultState(
+  result: DeviceResult
+): DeviceAuthResultState {
+  return {
+    kind: "ready",
+    result,
+  };
+}
+
 function createInitialContext(): DeviceAuthContext {
   return {
     activeUserCode: null,
-    decisionAction: null,
-    error: null,
+    alert: createIdleDeviceAuthAlert(),
     inputCode: "",
     navigation: null,
+    nextAsyncRequestId: 1,
     nextNavigationId: 1,
-    result: null,
+    pendingDecision: null,
+    pendingVerification: null,
+    resultState: createIdleDeviceAuthResultState(),
     session: { kind: "pending" },
   };
 }
 
-function resetFlowContext(context: DeviceAuthContext): DeviceAuthContext {
+function resetFlowContext(
+  context: Pick<DeviceAuthContext, "nextAsyncRequestId" | "nextNavigationId">
+): DeviceAuthContext {
   return {
     ...createInitialContext(),
+    nextAsyncRequestId: context.nextAsyncRequestId,
     nextNavigationId: context.nextNavigationId,
   };
 }
@@ -142,11 +225,12 @@ function queueNavigation(
   };
 }
 
-const verifyDeviceActor = fromPromise<
-  VerifyDeviceOutput,
-  { userCode: string | null }
->(async ({ input }) => {
-  if (!input.userCode) {
+export async function verifyDeviceRequest(
+  userCode: string | null
+): Promise<VerifyDeviceRequestResult> {
+  const deviceClient = createApiClient();
+
+  if (!userCode) {
     return {
       kind: "error",
       message: "Enter the code shown in your terminal to continue.",
@@ -156,7 +240,7 @@ const verifyDeviceActor = fromPromise<
   try {
     const response = await deviceClient.api.device.verify.$get({
       query: {
-        user_code: input.userCode,
+        user_code: userCode,
       },
     });
 
@@ -189,12 +273,14 @@ const verifyDeviceActor = fromPromise<
       message: GENERIC_DEVICE_VERIFY_ERROR_MESSAGE,
     };
   }
-});
+}
 
-const submitDecisionActor = fromPromise<
-  SubmitDecisionOutput,
-  { action: "approve" | "deny"; userCode: string | null }
->(async ({ input }) => {
+export async function submitDeviceDecisionRequest(input: {
+  action: DeviceDecisionAction;
+  userCode: string | null;
+}): Promise<SubmitDecisionRequestResult> {
+  const deviceClient = createApiClient();
+
   if (!input.userCode) {
     return {
       kind: "error",
@@ -244,12 +330,12 @@ const submitDecisionActor = fromPromise<
       message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
     };
   }
-});
+}
 
 export const deviceAuthMachine = setup({
   actions: {
     resetToEntry: assign(({ context }) => resetFlowContext(context)),
-    syncRouteToVerification: assign(({ event }) => {
+    stageVerificationFromRoute: assign(({ context, event }) => {
       assertEvent(event, "deviceAuth/routeSynced");
       if (event.userCode === null) {
         return {};
@@ -258,17 +344,21 @@ export const deviceAuthMachine = setup({
       return {
         inputCode: event.userCode,
         activeUserCode: event.userCode,
-        error: null,
-        result: null,
-        decisionAction: null,
-        navigation: null,
+        alert: createIdleDeviceAuthAlert(),
+        nextAsyncRequestId: context.nextAsyncRequestId + 1,
+        pendingDecision: null,
+        pendingVerification: {
+          requestId: context.nextAsyncRequestId,
+          userCode: event.userCode,
+        },
+        resultState: createIdleDeviceAuthResultState(),
       };
     }),
     setInputCode: assign(({ event }) => {
       assertEvent(event, "deviceAuth/inputChanged");
       return {
         inputCode: event.value,
-        error: null,
+        alert: createIdleDeviceAuthAlert(),
       };
     }),
     stageVerificationFromInput: assign(({ context }) => {
@@ -280,20 +370,28 @@ export const deviceAuthMachine = setup({
       return {
         inputCode: userCode,
         activeUserCode: userCode,
-        error: null,
-        result: null,
-        decisionAction: null,
+        alert: createIdleDeviceAuthAlert(),
+        nextAsyncRequestId: context.nextAsyncRequestId + 1,
+        pendingDecision: null,
+        pendingVerification: {
+          requestId: context.nextAsyncRequestId,
+          userCode,
+        },
+        resultState: createIdleDeviceAuthResultState(),
         ...queueNavigation(context, userCode, false),
       };
     }),
     setMissingCodeError: assign({
-      error: () => "Enter the code shown in your terminal to continue.",
+      alert: () =>
+        createDeviceAuthErrorAlert(
+          "Enter the code shown in your terminal to continue."
+        ),
     }),
     syncSession: assign(({ event }) => {
       assertEvent(event, "deviceAuth/sessionSynced");
       return {
         session: event.session,
-        error: null,
+        alert: createIdleDeviceAuthAlert(),
       };
     }),
     queueClearCodeNavigation: assign(({ context }) => {
@@ -303,14 +401,24 @@ export const deviceAuthMachine = setup({
         ...queueNavigation(resetContext, null, false),
       };
     }),
-    stageApproveDecision: assign({
-      decisionAction: () => "approve",
-      error: () => null,
-    }),
-    stageDenyDecision: assign({
-      decisionAction: () => "deny",
-      error: () => null,
-    }),
+    stageApproveDecision: assign(({ context }) => ({
+      alert: createIdleDeviceAuthAlert(),
+      nextAsyncRequestId: context.nextAsyncRequestId + 1,
+      pendingDecision: {
+        action: "approve" as const,
+        requestId: context.nextAsyncRequestId,
+        userCode: context.activeUserCode,
+      },
+    })),
+    stageDenyDecision: assign(({ context }) => ({
+      alert: createIdleDeviceAuthAlert(),
+      nextAsyncRequestId: context.nextAsyncRequestId + 1,
+      pendingDecision: {
+        action: "deny" as const,
+        requestId: context.nextAsyncRequestId,
+        userCode: context.activeUserCode,
+      },
+    })),
     markNavigationRunning: assign(({ context, event }) => {
       assertEvent(event, "deviceAuth/navigationStarted");
       if (context.navigation === null || context.navigation.id !== event.id) {
@@ -342,13 +450,98 @@ export const deviceAuthMachine = setup({
 
       return {
         navigation: null,
-        error: event.message,
+        alert: createDeviceAuthErrorAlert(event.message),
       };
     }),
-  },
-  actors: {
-    verifyCode: verifyDeviceActor,
-    submitDecision: submitDecisionActor,
+    storeVerificationFailure: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/verificationFailed");
+      if (context.pendingVerification?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return {
+        alert: createDeviceAuthErrorAlert(event.message),
+        inputCode: context.activeUserCode ?? context.inputCode,
+        pendingDecision: null,
+        pendingVerification: null,
+        resultState: createIdleDeviceAuthResultState(),
+      };
+    }),
+    storeVerifiedPending: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/verificationSucceeded");
+      if (context.pendingVerification?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return readVerifiedTransition({
+        context,
+        resultState: createIdleDeviceAuthResultState(),
+        userCode: event.userCode,
+      });
+    }),
+    storeVerifiedApproved: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/verificationSucceeded");
+      if (context.pendingVerification?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return readVerifiedTransition({
+        context,
+        resultState: createReadyDeviceAuthResultState({
+          title: "Device Approved",
+          message:
+            "Return to your terminal to continue. You can close this tab.",
+          tone: "success",
+        }),
+        userCode: event.userCode,
+      });
+    }),
+    storeVerifiedDenied: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/verificationSucceeded");
+      if (context.pendingVerification?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return readVerifiedTransition({
+        context,
+        resultState: createReadyDeviceAuthResultState({
+          title: "Device Denied",
+          message:
+            "This device code has already been denied. Start onequery auth login again if you need a new code.",
+          tone: "error",
+        }),
+        userCode: event.userCode,
+      });
+    }),
+    storeDecisionFailure: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/decisionFailed");
+      if (context.pendingDecision?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return {
+        alert: createDeviceAuthErrorAlert(event.message),
+        inputCode: context.activeUserCode ?? "",
+        pendingDecision: null,
+        resultState: createIdleDeviceAuthResultState(),
+      };
+    }),
+    storeDecisionSuccess: assign(({ context, event }) => {
+      assertEvent(event, "deviceAuth/decisionSucceeded");
+      if (context.pendingDecision?.requestId !== event.requestId) {
+        return {};
+      }
+
+      return {
+        alert: createIdleDeviceAuthAlert(),
+        pendingDecision: null,
+        resultState: createReadyDeviceAuthResultState({
+          message: event.message,
+          title: event.title,
+          tone: event.tone,
+        }),
+      };
+    }),
   },
   guards: {
     routeCleared: ({ event }) =>
@@ -365,6 +558,13 @@ export const deviceAuthMachine = setup({
     sessionSignedOut: ({ event }) =>
       event.type === "deviceAuth/sessionSynced" &&
       event.session.kind === "signedOut",
+    matchesPendingVerification: ({ context, event }) =>
+      event.type === "deviceAuth/verificationFailed" &&
+      context.pendingVerification?.requestId === event.requestId,
+    matchesPendingDecision: ({ context, event }) =>
+      (event.type === "deviceAuth/decisionFailed" ||
+        event.type === "deviceAuth/decisionSucceeded") &&
+      context.pendingDecision?.requestId === event.requestId,
   },
   types: {} as DeviceAuthTypes,
 }).createMachine({
@@ -381,7 +581,7 @@ export const deviceAuthMachine = setup({
       {
         guard: "routeChanged",
         target: ".verifying",
-        actions: "syncRouteToVerification",
+        actions: "stageVerificationFromRoute",
       },
     ],
     "deviceAuth/navigationStarted": {
@@ -413,63 +613,35 @@ export const deviceAuthMachine = setup({
       },
     },
     verifying: {
-      invoke: {
-        src: "verifyCode",
-        input: ({ context }) => ({
-          userCode: context.activeUserCode,
-        }),
-        onDone: [
+      on: {
+        "deviceAuth/verificationFailed": {
+          actions: "storeVerificationFailure",
+          guard: "matchesPendingVerification",
+          target: "entry",
+        },
+        "deviceAuth/verificationSucceeded": [
           {
-            guard: ({ event }) => isVerifyError(event.output),
-            target: "entry",
-            actions: assign(({ context, event }) => ({
-              inputCode: context.activeUserCode ?? context.inputCode,
-              error: readVerifyErrorMessage(event.output),
-              result: null,
-              decisionAction: null,
-            })),
-          },
-          {
-            guard: ({ event }) => isVerifiedPending(event.output),
+            guard: ({ context, event }) =>
+              event.type === "deviceAuth/verificationSucceeded" &&
+              context.pendingVerification?.requestId === event.requestId &&
+              event.status === "pending",
             target: "pending",
-            actions: assign(({ context, event }) =>
-              readVerifiedTransition({
-                context,
-                output: event.output,
-                result: null,
-              })
-            ),
+            actions: "storeVerifiedPending",
           },
           {
-            guard: ({ event }) => isVerifiedApproved(event.output),
+            guard: ({ context, event }) =>
+              event.type === "deviceAuth/verificationSucceeded" &&
+              context.pendingVerification?.requestId === event.requestId &&
+              event.status === "approved",
             target: "result",
-            actions: assign(({ context, event }) =>
-              readVerifiedTransition({
-                context,
-                output: event.output,
-                result: {
-                  title: "Device Approved",
-                  message:
-                    "Return to your terminal to continue. You can close this tab.",
-                  tone: "success",
-                },
-              })
-            ),
+            actions: "storeVerifiedApproved",
           },
           {
+            guard: ({ context, event }) =>
+              event.type === "deviceAuth/verificationSucceeded" &&
+              context.pendingVerification?.requestId === event.requestId,
             target: "result",
-            actions: assign(({ context, event }) =>
-              readVerifiedTransition({
-                context,
-                output: event.output,
-                result: {
-                  title: "Device Denied",
-                  message:
-                    "This device code has already been denied. Start onequery auth login again if you need a new code.",
-                  tone: "error",
-                },
-              })
-            ),
+            actions: "storeVerifiedDenied",
           },
         ],
       },
@@ -514,32 +686,17 @@ export const deviceAuthMachine = setup({
           },
         },
         submittingDecision: {
-          invoke: {
-            src: "submitDecision",
-            input: ({ context }) => ({
-              action: readDecisionAction(context),
-              userCode: context.activeUserCode,
-            }),
-            onDone: [
-              {
-                guard: ({ event }) => isDecisionError(event.output),
-                target: "#deviceAuth.entry",
-                actions: assign(({ context, event }) => ({
-                  inputCode: context.activeUserCode ?? "",
-                  error: readDecisionErrorMessage(event.output),
-                  result: null,
-                  decisionAction: null,
-                })),
-              },
-              {
-                target: "#deviceAuth.result",
-                actions: assign(({ event }) => ({
-                  error: null,
-                  result: readDecisionResult(event.output),
-                  decisionAction: null,
-                })),
-              },
-            ],
+          on: {
+            "deviceAuth/decisionFailed": {
+              actions: "storeDecisionFailure",
+              guard: "matchesPendingDecision",
+              target: "#deviceAuth.entry",
+            },
+            "deviceAuth/decisionSucceeded": {
+              actions: "storeDecisionSuccess",
+              guard: "matchesPendingDecision",
+              target: "#deviceAuth.result",
+            },
           },
         },
       },
@@ -585,6 +742,18 @@ export function readSessionEmail(snapshot: DeviceAuthSnapshot) {
     : null;
 }
 
+export function readDeviceAuthErrorMessage(snapshot: DeviceAuthSnapshot) {
+  return snapshot.context.alert.kind === "error"
+    ? snapshot.context.alert.message
+    : null;
+}
+
+export function readDeviceAuthResult(snapshot: DeviceAuthSnapshot) {
+  return snapshot.context.resultState.kind === "ready"
+    ? snapshot.context.resultState.result
+    : null;
+}
+
 function normalizeUserCode(value: string | null) {
   return normalizeDeviceUserCode(value) ?? null;
 }
@@ -623,33 +792,20 @@ function readDeviceErrorMessage(
   return "error" in payload ? fallback : fallback;
 }
 
-function readDecisionAction(context: DeviceAuthContext): DeviceDecisionAction {
-  if (context.decisionAction === null) {
-    throw new Error("Decision action is required before submitting.");
-  }
-
-  return context.decisionAction;
-}
-
 function readVerifiedTransition(input: {
   context: DeviceAuthContext;
-  output: VerifyDeviceOutput;
-  result: DeviceResult | null;
+  resultState: DeviceAuthResultState;
+  userCode: string;
 }) {
-  const userCode = readVerifiedUserCode(
-    input.output,
-    input.context.activeUserCode
-  );
-
   return {
-    activeUserCode: userCode,
-    decisionAction: null,
-    error: null,
-    inputCode: userCode ?? input.context.inputCode,
-    result: input.result,
-    ...(shouldReplaceNavigation(input.context.activeUserCode, input.output) &&
-    userCode !== null
-      ? queueNavigation(input.context, userCode, true)
+    activeUserCode: input.userCode,
+    alert: createIdleDeviceAuthAlert(),
+    inputCode: input.userCode,
+    pendingDecision: null,
+    pendingVerification: null,
+    resultState: input.resultState,
+    ...(shouldReplaceNavigation(input.context.activeUserCode, input.userCode)
+      ? queueNavigation(input.context, input.userCode, true)
       : {
           navigation: null,
           nextNavigationId: input.context.nextNavigationId,
@@ -657,76 +813,11 @@ function readVerifiedTransition(input: {
   };
 }
 
-function isVerifyError(output: VerifyDeviceOutput): output is {
-  kind: "error";
-  message: string;
-} {
-  return output.kind === "error";
-}
-
-function isVerifiedPending(output: VerifyDeviceOutput): output is {
-  kind: "verified";
-  status: "pending";
-  userCode: string;
-} {
-  return output.kind === "verified" && output.status === "pending";
-}
-
-function isVerifiedApproved(output: VerifyDeviceOutput): output is {
-  kind: "verified";
-  status: "approved";
-  userCode: string;
-} {
-  return output.kind === "verified" && output.status === "approved";
-}
-
-function readVerifyErrorMessage(output: VerifyDeviceOutput) {
-  return output.kind === "error"
-    ? output.message
-    : "The device code could not be verified. Try again.";
-}
-
-function readVerifiedUserCode(
-  output: VerifyDeviceOutput,
-  fallback: string | null
-) {
-  return output.kind === "verified" ? output.userCode : fallback;
-}
-
 function shouldReplaceNavigation(
   activeUserCode: string | null,
-  output: VerifyDeviceOutput
+  userCode: string
 ) {
-  return output.kind === "verified" && output.userCode !== activeUserCode;
-}
-
-function isDecisionError(output: SubmitDecisionOutput): output is {
-  kind: "error";
-  message: string;
-} {
-  return output.kind === "error";
-}
-
-function readDecisionErrorMessage(output: SubmitDecisionOutput) {
-  return output.kind === "error"
-    ? output.message
-    : "The device request could not be completed. Try again.";
-}
-
-function readDecisionResult(output: SubmitDecisionOutput): DeviceResult {
-  if (output.kind === "success") {
-    return {
-      message: output.message,
-      title: output.title,
-      tone: output.tone,
-    };
-  }
-
-  return {
-    message: output.message,
-    title: "Device Request Failed",
-    tone: "error",
-  };
+  return userCode !== activeUserCode;
 }
 
 function readErrorName(error: unknown) {

@@ -9,13 +9,15 @@ import {
 export type InstallMethod = (typeof LANDING_INSTALL_COMMANDS)[number];
 export type InstallMethodLabel = InstallMethod["label"];
 
+type PendingCopyRequest = {
+  command: string;
+  label: InstallMethodLabel;
+  requestId: number;
+};
+
 type DownloadCommandContext = {
   copiedMethodLabel: InstallMethodLabel | null;
-  pendingCopyRequest: {
-    command: string;
-    label: InstallMethodLabel;
-    requestId: number;
-  } | null;
+  pendingCopyRequest: PendingCopyRequest | null;
   nextCopyRequestId: number;
   selectedMethodLabel: InstallMethodLabel;
 };

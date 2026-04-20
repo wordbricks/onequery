@@ -1,7 +1,7 @@
 import { useMachine } from "@xstate/react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { assign, fromPromise, setup } from "xstate";
+import { assertEvent, assign, setup } from "xstate";
 
 import type { SaveStatus } from "@/lib/use-auto-save";
 import type { OrganizationSettings } from "@/queries/organization-queries";
@@ -20,6 +20,8 @@ const BUDGET_SETTINGS_EVENT = {
   CLEAR: "budgetSettings/clear",
   INPUT_CHANGED: "budgetSettings/inputChanged",
   SAVE: "budgetSettings/save",
+  SAVE_FAILED: "budgetSettings/saveFailed",
+  SAVE_SUCCEEDED: "budgetSettings/saveSucceeded",
   SETTINGS_SYNCED: "budgetSettings/settingsSynced",
 } as const;
 
@@ -30,8 +32,15 @@ const BUDGET_SETTINGS_STATE = {
   SAVING: "saving",
 } as const;
 
+type PendingBudgetSaveRequest = {
+  nextBudgetUsd: number | null;
+  requestId: number;
+};
+
 type BudgetSettingsContext = {
   budgetInput: string;
+  nextSaveRequestId: number;
+  pendingSaveRequest: PendingBudgetSaveRequest | null;
   persistedBudgetUsd: number | null;
 };
 
@@ -41,6 +50,15 @@ type BudgetSettingsEvent =
       value: string;
     }
   | { type: typeof BUDGET_SETTINGS_EVENT.SAVE }
+  | {
+      type: typeof BUDGET_SETTINGS_EVENT.SAVE_FAILED;
+      requestId: number;
+    }
+  | {
+      type: typeof BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED;
+      monthlyBudgetUsd: number | null;
+      requestId: number;
+    }
   | { type: typeof BUDGET_SETTINGS_EVENT.CLEAR }
   | {
       type: typeof BUDGET_SETTINGS_EVENT.SETTINGS_SYNCED;
@@ -49,12 +67,11 @@ type BudgetSettingsEvent =
 
 type BudgetSettingsMachineInput = {
   initialBudgetUsd: number | null;
-  saveBudget: (nextBudgetUsd: number | null) => Promise<OrganizationSettings>;
-  errorMessage?: string;
 };
 
-type BudgetSettingsActorInput = {
-  nextBudgetUsd: number | null;
+type BudgetSettingsMachineOptions = {
+  errorIdleDelayMs?: number;
+  savedIdleDelayMs?: number;
 };
 
 type BudgetSettingsTypes = {
@@ -85,6 +102,8 @@ function createInitialContext(
 ): BudgetSettingsContext {
   return {
     budgetInput: formatBudgetInput(initialBudgetUsd),
+    nextSaveRequestId: 1,
+    pendingSaveRequest: null,
     persistedBudgetUsd: initialBudgetUsd,
   };
 }
@@ -125,20 +144,23 @@ function toSaveStatus(stateValue: string): SaveStatus {
   return "idle";
 }
 
-function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
+export function createBudgetSettingsMachine(
+  input: BudgetSettingsMachineInput,
+  options: BudgetSettingsMachineOptions = {}
+) {
+  const savedIdleDelayMs = options.savedIdleDelayMs ?? SAVED_IDLE_DELAY_MS;
+  const errorIdleDelayMs = options.errorIdleDelayMs ?? ERROR_IDLE_DELAY_MS;
+
   return setup({
     actions: {
+      clearPendingSaveRequest: assign({
+        pendingSaveRequest: () => null,
+      }),
       updateBudgetInput: assign({
         budgetInput: (_, params: { value: string }) => params.value,
       }),
       clearBudgetInput: assign({
         budgetInput: () => "",
-      }),
-      storePersistedBudget: assign({
-        persistedBudgetUsd: (_, params: { monthlyBudgetUsd: number | null }) =>
-          params.monthlyBudgetUsd,
-        budgetInput: (_, params: { monthlyBudgetUsd: number | null }) =>
-          formatBudgetInput(params.monthlyBudgetUsd),
       }),
       syncBudgetFromSettings: assign({
         persistedBudgetUsd: (_, params: { monthlyBudgetUsd: number | null }) =>
@@ -146,19 +168,39 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
         budgetInput: (_, params: { monthlyBudgetUsd: number | null }) =>
           formatBudgetInput(params.monthlyBudgetUsd),
       }),
-      notifySaveError: () => {
-        toast.error(input.errorMessage ?? DEFAULT_ERROR_MESSAGE);
-      },
-    },
-    actors: {
-      saveBudget: fromPromise<OrganizationSettings, BudgetSettingsActorInput>(
-        async ({ input: actorInput }) =>
-          input.saveBudget(actorInput.nextBudgetUsd)
-      ),
+      startSaveRequest: assign(({ context }) => ({
+        nextSaveRequestId: context.nextSaveRequestId + 1,
+        pendingSaveRequest: {
+          nextBudgetUsd: getPendingBudgetUsd(context),
+          requestId: context.nextSaveRequestId,
+        },
+      })),
+      storePersistedBudget: assign(({ context, event }) => {
+        assertEvent(event, BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED);
+
+        if (context.pendingSaveRequest?.requestId !== event.requestId) {
+          return {};
+        }
+
+        return {
+          budgetInput: formatBudgetInput(event.monthlyBudgetUsd),
+          persistedBudgetUsd: event.monthlyBudgetUsd,
+        };
+      }),
     },
     guards: {
       canSave: ({ context }) => canSaveBudget(context),
       canClear: ({ context }) => canClearBudget(context),
+      matchesPendingSaveRequest: ({ context, event }) => {
+        if (
+          event.type !== BUDGET_SETTINGS_EVENT.SAVE_FAILED &&
+          event.type !== BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED
+        ) {
+          return false;
+        }
+
+        return context.pendingSaveRequest?.requestId === event.requestId;
+      },
     },
     types: {} as BudgetSettingsTypes,
   }).createMachine({
@@ -188,35 +230,17 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
           },
           [BUDGET_SETTINGS_EVENT.SAVE]: {
             guard: "canSave",
+            actions: "startSaveRequest",
             target: BUDGET_SETTINGS_STATE.SAVING,
           },
           [BUDGET_SETTINGS_EVENT.CLEAR]: {
             guard: "canClear",
+            actions: ["clearBudgetInput", "startSaveRequest"],
             target: BUDGET_SETTINGS_STATE.SAVING,
-            actions: "clearBudgetInput",
           },
         },
       },
       [BUDGET_SETTINGS_STATE.SAVING]: {
-        invoke: {
-          src: "saveBudget",
-          input: ({ context }) => ({
-            nextBudgetUsd: getPendingBudgetUsd(context),
-          }),
-          onDone: {
-            target: BUDGET_SETTINGS_STATE.SAVED,
-            actions: {
-              type: "storePersistedBudget",
-              params: ({ event }) => ({
-                monthlyBudgetUsd: event.output.monthlyBudgetUsd,
-              }),
-            },
-          },
-          onError: {
-            target: BUDGET_SETTINGS_STATE.ERROR,
-            actions: "notifySaveError",
-          },
-        },
         on: {
           [BUDGET_SETTINGS_EVENT.INPUT_CHANGED]: {
             actions: {
@@ -225,12 +249,22 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
                 value: event.value,
               }),
             },
+          },
+          [BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED]: {
+            actions: ["storePersistedBudget", "clearPendingSaveRequest"],
+            guard: "matchesPendingSaveRequest",
+            target: BUDGET_SETTINGS_STATE.SAVED,
+          },
+          [BUDGET_SETTINGS_EVENT.SAVE_FAILED]: {
+            actions: "clearPendingSaveRequest",
+            guard: "matchesPendingSaveRequest",
+            target: BUDGET_SETTINGS_STATE.ERROR,
           },
         },
       },
       [BUDGET_SETTINGS_STATE.SAVED]: {
         after: {
-          [SAVED_IDLE_DELAY_MS]: BUDGET_SETTINGS_STATE.EDITING,
+          [savedIdleDelayMs]: BUDGET_SETTINGS_STATE.EDITING,
         },
         on: {
           [BUDGET_SETTINGS_EVENT.INPUT_CHANGED]: {
@@ -244,18 +278,19 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
           },
           [BUDGET_SETTINGS_EVENT.SAVE]: {
             guard: "canSave",
+            actions: "startSaveRequest",
             target: BUDGET_SETTINGS_STATE.SAVING,
           },
           [BUDGET_SETTINGS_EVENT.CLEAR]: {
             guard: "canClear",
+            actions: ["clearBudgetInput", "startSaveRequest"],
             target: BUDGET_SETTINGS_STATE.SAVING,
-            actions: "clearBudgetInput",
           },
         },
       },
       [BUDGET_SETTINGS_STATE.ERROR]: {
         after: {
-          [ERROR_IDLE_DELAY_MS]: BUDGET_SETTINGS_STATE.EDITING,
+          [errorIdleDelayMs]: BUDGET_SETTINGS_STATE.EDITING,
         },
         on: {
           [BUDGET_SETTINGS_EVENT.INPUT_CHANGED]: {
@@ -269,12 +304,13 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
           },
           [BUDGET_SETTINGS_EVENT.SAVE]: {
             guard: "canSave",
+            actions: "startSaveRequest",
             target: BUDGET_SETTINGS_STATE.SAVING,
           },
           [BUDGET_SETTINGS_EVENT.CLEAR]: {
             guard: "canClear",
+            actions: ["clearBudgetInput", "startSaveRequest"],
             target: BUDGET_SETTINGS_STATE.SAVING,
-            actions: "clearBudgetInput",
           },
         },
       },
@@ -285,16 +321,14 @@ function createBudgetSettingsMachine(input: BudgetSettingsMachineInput) {
 export function useBudgetSettingsController(
   input: UseBudgetSettingsControllerInput
 ): BudgetSettingsController {
-  const machine = useMemo(
-    () =>
-      createBudgetSettingsMachine({
-        initialBudgetUsd: input.monthlyBudgetUsd,
-        saveBudget: input.saveBudget,
-        errorMessage: input.errorMessage,
-      }),
-    [input.errorMessage, input.saveBudget]
+  const [machine] = useState(() =>
+    createBudgetSettingsMachine({
+      initialBudgetUsd: input.monthlyBudgetUsd,
+    })
   );
   const [state, send] = useMachine(machine);
+  const pendingSaveRequest = state.context.pendingSaveRequest;
+  const isSaving = state.matches(BUDGET_SETTINGS_STATE.SAVING);
 
   useEffect(() => {
     // Comment: React Query owns the persisted setting. Re-sync the local draft
@@ -304,6 +338,49 @@ export function useBudgetSettingsController(
       type: BUDGET_SETTINGS_EVENT.SETTINGS_SYNCED,
     });
   }, [input.monthlyBudgetUsd, send]);
+
+  useEffect(() => {
+    if (!isSaving || pendingSaveRequest === null) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    input
+      .saveBudget(pendingSaveRequest.nextBudgetUsd)
+      .then((result: OrganizationSettings) => {
+        if (isCancelled) {
+          return;
+        }
+
+        send({
+          monthlyBudgetUsd: result.monthlyBudgetUsd,
+          requestId: pendingSaveRequest.requestId,
+          type: BUDGET_SETTINGS_EVENT.SAVE_SUCCEEDED,
+        });
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        toast.error(input.errorMessage ?? DEFAULT_ERROR_MESSAGE);
+        send({
+          requestId: pendingSaveRequest.requestId,
+          type: BUDGET_SETTINGS_EVENT.SAVE_FAILED,
+        });
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    input.errorMessage,
+    input.saveBudget,
+    isSaving,
+    pendingSaveRequest,
+    send,
+  ]);
 
   const setBudgetInput = useCallback(
     (value: string) => {

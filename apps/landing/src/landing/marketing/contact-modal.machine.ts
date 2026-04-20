@@ -9,21 +9,23 @@ export type ContactForm = {
   name: string;
 };
 
+type ContactModalSubmission = { kind: "idle" } | ContactModalSubmissionFailure;
+
+type ContactModalSubmissionFailure = {
+  kind: "submitFailed";
+  message: string;
+};
+
+type PendingContactSubmission = {
+  form: ContactForm;
+  requestId: number;
+};
+
 type ContactModalContext = {
   form: ContactForm;
   nextSubmissionRequestId: number;
-  pendingSubmission: {
-    form: ContactForm;
-    requestId: number;
-  } | null;
-  submission:
-    | {
-        kind: "idle";
-      }
-    | {
-        kind: "submitFailed";
-        message: string;
-      };
+  pendingSubmission: PendingContactSubmission | null;
+  submission: ContactModalSubmission;
 };
 
 type ContactModalEvent =
@@ -59,14 +61,18 @@ function createEmptyContactForm(): ContactForm {
   };
 }
 
+function createIdleSubmission(): ContactModalSubmission {
+  return {
+    kind: "idle",
+  };
+}
+
 function createInitialContext(): ContactModalContext {
   return {
     form: createEmptyContactForm(),
     nextSubmissionRequestId: 1,
     pendingSubmission: null,
-    submission: {
-      kind: "idle",
-    },
+    submission: createIdleSubmission(),
   };
 }
 
@@ -80,9 +86,7 @@ export function createContactModalMachine() {
       closeWithSuccess: assign({
         form: () => createEmptyContactForm(),
         pendingSubmission: () => null,
-        submission: () => ({
-          kind: "idle" as const,
-        }),
+        submission: () => createIdleSubmission(),
       }),
       clearPendingSubmission: assign({
         pendingSubmission: () => null,
@@ -90,9 +94,7 @@ export function createContactModalMachine() {
       resetForm: assign(() => ({
         form: createEmptyContactForm(),
         pendingSubmission: null,
-        submission: {
-          kind: "idle" as const,
-        },
+        submission: createIdleSubmission(),
       })),
       startSubmitRequest: assign(({ context }) => ({
         nextSubmissionRequestId: context.nextSubmissionRequestId + 1,
@@ -108,9 +110,7 @@ export function createContactModalMachine() {
             ...context.form,
             [event.field]: event.value,
           },
-          submission: {
-            kind: "idle" as const,
-          },
+          submission: createIdleSubmission(),
         };
       }),
       storeSubmitError: assign({

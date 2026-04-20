@@ -4,25 +4,27 @@ import type { SnapshotFrom } from "xstate";
 export const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
   "Failed to subscribe for product updates";
 
+type ProductUpdatesFeedback =
+  | { kind: "idle" }
+  | {
+      kind: "failure";
+      message: string;
+    }
+  | {
+      kind: "success";
+      email: string;
+    };
+
+type PendingProductUpdatesSubmission = {
+  email: string;
+  requestId: number;
+};
+
 type ProductUpdatesContext = {
   email: string;
-  feedback:
-    | {
-        kind: "idle";
-      }
-    | {
-        kind: "failure";
-        message: string;
-      }
-    | {
-        kind: "success";
-        email: string;
-      };
+  feedback: ProductUpdatesFeedback;
   nextSubmissionRequestId: number;
-  pendingSubmission: {
-    email: string;
-    requestId: number;
-  } | null;
+  pendingSubmission: PendingProductUpdatesSubmission | null;
 };
 
 type ProductUpdatesEvent =
@@ -47,11 +49,15 @@ type ProductUpdatesEvent =
 function createInitialContext(): ProductUpdatesContext {
   return {
     email: "",
-    feedback: {
-      kind: "idle",
-    },
+    feedback: createIdleFeedback(),
     nextSubmissionRequestId: 1,
     pendingSubmission: null,
+  };
+}
+
+function createIdleFeedback(): ProductUpdatesFeedback {
+  return {
+    kind: "idle",
   };
 }
 
@@ -91,9 +97,7 @@ export function createProductUpdatesMachine() {
         assertEvent(event, "productUpdates/emailChanged");
         return {
           email: event.email,
-          feedback: {
-            kind: "idle" as const,
-          },
+          feedback: createIdleFeedback(),
         };
       }),
       storeSubmitError: assign({
