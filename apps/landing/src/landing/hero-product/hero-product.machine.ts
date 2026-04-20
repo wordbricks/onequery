@@ -1,3 +1,6 @@
+import { assign, setup } from "xstate";
+import type { SnapshotFrom } from "xstate";
+
 export const HERO_PRODUCT_TAB_ORDER = [
   "integrations",
   "query",
@@ -12,11 +15,7 @@ export type SafeQueryCheckId =
 export type SafeQueryCheckStatus = "pending" | "success" | "failure";
 export type SafeQueryResult = "pending" | "pass" | "blocked";
 
-export type SafeQueryAnimationAction =
-  | { type: "advance" }
-  | { type: "restart" };
-
-export type SafeQueryAnimationState = {
+type SafeQueryAnimationState = {
   cycleIndex: number;
   result: SafeQueryResult;
   statuses: Record<SafeQueryCheckId, SafeQueryCheckStatus>;
@@ -29,9 +28,14 @@ type SafeQueryScenario =
       failingStepId: SafeQueryCheckId;
     };
 
-export type HeroProductAction =
-  | { type: "advanceTab" }
-  | { type: "selectTab"; tab: HeroProductTab };
+type HeroProductContext = {
+  safeQuery: SafeQueryAnimationState;
+};
+
+type HeroProductEvent = {
+  type: "heroProduct/tabSelected";
+  tab: HeroProductTab;
+};
 
 type HeroProductAuditEntry = {
   detail: string;
@@ -89,12 +93,14 @@ const heroSafeQueryScenarios = [
   { failingStepId: "budgetLimit", result: "blocked" },
 ] satisfies ReadonlyArray<SafeQueryScenario>;
 
-const SAFE_QUERY_INITIAL_DELAY_MS = 360;
-const SAFE_QUERY_STEP_DELAY_MS = 520;
-const SAFE_QUERY_RESULT_HOLD_MS = 900;
+export const SAFE_QUERY_INITIAL_DELAY_MS = 360;
+export const SAFE_QUERY_STEP_DELAY_MS = 520;
+export const SAFE_QUERY_RESULT_HOLD_MS = 900;
+// Comment: the initial dwell already covers the first checklist transition, so
+// only the remaining checks contribute step delays to a full cycle.
 const SAFE_QUERY_FULL_CYCLE_MS =
   SAFE_QUERY_INITIAL_DELAY_MS +
-  heroSafeQueryChecks.length * SAFE_QUERY_STEP_DELAY_MS +
+  (heroSafeQueryChecks.length - 1) * SAFE_QUERY_STEP_DELAY_MS +
   SAFE_QUERY_RESULT_HOLD_MS;
 const SAFE_QUERY_TAB_MIN_DWELL_MS = 6500;
 
@@ -116,113 +122,194 @@ function createSafeQueryStatuses(): Record<
   };
 }
 
-export const initialHeroProductTab = HERO_PRODUCT_TAB_ORDER[0];
-
-export const initialSafeQueryAnimationState: SafeQueryAnimationState = {
-  cycleIndex: 0,
-  result: "pending",
-  statuses: createSafeQueryStatuses(),
-};
-
-export function heroProductReducer(
-  state: HeroProductTab,
-  action: HeroProductAction
-): HeroProductTab {
-  switch (action.type) {
-    case "advanceTab": {
-      const currentIndex = HERO_PRODUCT_TAB_ORDER.indexOf(state);
-      const nextIndex = (currentIndex + 1) % HERO_PRODUCT_TAB_ORDER.length;
-      return HERO_PRODUCT_TAB_ORDER[nextIndex] ?? initialHeroProductTab;
-    }
-
-    case "selectTab":
-      return action.tab;
-
-    default:
-      return state;
-  }
+function createInitialSafeQueryState(): SafeQueryAnimationState {
+  return {
+    cycleIndex: 0,
+    result: "pending",
+    statuses: createSafeQueryStatuses(),
+  };
 }
 
-export function safeQueryAnimationReducer(
-  state: SafeQueryAnimationState,
-  action: SafeQueryAnimationAction
-): SafeQueryAnimationState {
-  switch (action.type) {
-    case "advance": {
-      if (state.result !== "pending") {
-        return state;
-      }
-
-      const scenario =
-        heroSafeQueryScenarios[
-          state.cycleIndex % heroSafeQueryScenarios.length
-        ];
-
-      if (scenario === undefined) {
-        return state;
-      }
-
-      const nextCheck = heroSafeQueryChecks.find(
-        (check) => state.statuses[check.id] === "pending"
-      );
-
-      if (nextCheck === undefined) {
-        return state;
-      }
-
-      const nextStatus =
-        scenario.result === "blocked" && scenario.failingStepId === nextCheck.id
-          ? "failure"
-          : "success";
-      const nextStatuses = {
-        ...state.statuses,
-        [nextCheck.id]: nextStatus,
-      };
-
-      if (nextStatus === "failure") {
-        return {
-          ...state,
-          result: "blocked",
-          statuses: nextStatuses,
-        };
-      }
-
-      const hasPendingChecks = heroSafeQueryChecks.some(
-        (check) => nextStatuses[check.id] === "pending"
-      );
-
-      return {
-        ...state,
-        result: hasPendingChecks ? "pending" : "pass",
-        statuses: nextStatuses,
-      };
-    }
-
-    case "restart":
-      return {
-        cycleIndex: state.cycleIndex + 1,
-        result: "pending",
-        statuses: createSafeQueryStatuses(),
-      };
-
-    default:
-      return state;
-  }
-}
-
-export function getSafeQueryAnimationDelay(
+function advanceSafeQuery(
   state: SafeQueryAnimationState
-): number {
-  if (
-    state.result === "pending" &&
-    heroSafeQueryChecks.every((check) => state.statuses[check.id] === "pending")
-  ) {
-    return SAFE_QUERY_INITIAL_DELAY_MS;
+): SafeQueryAnimationState {
+  if (state.result !== "pending") {
+    return state;
   }
 
-  if (state.result === "pending") {
-    return SAFE_QUERY_STEP_DELAY_MS;
+  const scenario =
+    heroSafeQueryScenarios[state.cycleIndex % heroSafeQueryScenarios.length];
+
+  if (scenario === undefined) {
+    return state;
   }
 
-  return SAFE_QUERY_RESULT_HOLD_MS;
+  const nextCheck = heroSafeQueryChecks.find(
+    (check) => state.statuses[check.id] === "pending"
+  );
+
+  if (nextCheck === undefined) {
+    return state;
+  }
+
+  const nextStatus =
+    scenario.result === "blocked" && scenario.failingStepId === nextCheck.id
+      ? "failure"
+      : "success";
+  const nextStatuses = {
+    ...state.statuses,
+    [nextCheck.id]: nextStatus,
+  };
+
+  if (nextStatus === "failure") {
+    return {
+      ...state,
+      result: "blocked",
+      statuses: nextStatuses,
+    };
+  }
+
+  const hasPendingChecks = heroSafeQueryChecks.some(
+    (check) => nextStatuses[check.id] === "pending"
+  );
+
+  return {
+    ...state,
+    result: hasPendingChecks ? "pending" : "pass",
+    statuses: nextStatuses,
+  };
+}
+
+export const heroProductMachine = setup({
+  types: {
+    context: {} as HeroProductContext,
+    events: {} as HeroProductEvent,
+  },
+  actions: {
+    advanceSafeQuery: assign(({ context }) => ({
+      safeQuery: advanceSafeQuery(context.safeQuery),
+    })),
+    resetSafeQuery: assign({
+      safeQuery: () => createInitialSafeQueryState(),
+    }),
+    restartSafeQuery: assign(({ context }) => ({
+      safeQuery: {
+        cycleIndex: context.safeQuery.cycleIndex + 1,
+        result: "pending" as const,
+        statuses: createSafeQueryStatuses(),
+      },
+    })),
+  },
+  guards: {
+    selectedAuditTab: ({ event }) => event.tab === "audit",
+    selectedIntegrationsTab: ({ event }) => event.tab === "integrations",
+    selectedQueryTab: ({ event }) => event.tab === "query",
+    safeQueryBlocked: ({ context }) => context.safeQuery.result === "blocked",
+    safeQueryPassed: ({ context }) => context.safeQuery.result === "pass",
+  },
+}).createMachine({
+  id: "heroProduct",
+  initial: "integrations",
+  context: {
+    safeQuery: createInitialSafeQueryState(),
+  },
+  on: {
+    "heroProduct/tabSelected": [
+      {
+        guard: "selectedIntegrationsTab",
+        target: ".integrations",
+      },
+      {
+        guard: "selectedQueryTab",
+        target: ".query",
+      },
+      {
+        guard: "selectedAuditTab",
+        target: ".audit",
+      },
+    ],
+  },
+  states: {
+    integrations: {
+      after: {
+        [HERO_TAB_DWELL_MS.integrations]: "query",
+      },
+    },
+    query: {
+      entry: "resetSafeQuery",
+      initial: "initialDelay",
+      after: {
+        [HERO_TAB_DWELL_MS.query]: "#heroProduct.audit",
+      },
+      states: {
+        initialDelay: {
+          after: {
+            [SAFE_QUERY_INITIAL_DELAY_MS]: "advancing",
+          },
+        },
+        advancing: {
+          entry: "advanceSafeQuery",
+          always: [
+            {
+              guard: "safeQueryBlocked",
+              target: "blocked",
+            },
+            {
+              guard: "safeQueryPassed",
+              target: "passed",
+            },
+            {
+              target: "waitingForNextCheck",
+            },
+          ],
+        },
+        waitingForNextCheck: {
+          after: {
+            [SAFE_QUERY_STEP_DELAY_MS]: "advancing",
+          },
+        },
+        passed: {
+          after: {
+            [SAFE_QUERY_RESULT_HOLD_MS]: {
+              actions: "restartSafeQuery",
+              target: "initialDelay",
+            },
+          },
+        },
+        blocked: {
+          after: {
+            [SAFE_QUERY_RESULT_HOLD_MS]: {
+              actions: "restartSafeQuery",
+              target: "initialDelay",
+            },
+          },
+        },
+      },
+    },
+    audit: {
+      after: {
+        [HERO_TAB_DWELL_MS.audit]: "integrations",
+      },
+    },
+  },
+});
+
+export function readActiveHeroProductTab(
+  snapshot: SnapshotFrom<typeof heroProductMachine>
+): HeroProductTab {
+  if (snapshot.matches("integrations")) {
+    return "integrations";
+  }
+
+  if (snapshot.matches("query")) {
+    return "query";
+  }
+
+  return "audit";
+}
+
+export function readSafeQueryAnimationState(
+  snapshot: SnapshotFrom<typeof heroProductMachine>
+): SafeQueryAnimationState {
+  return snapshot.context.safeQuery;
 }

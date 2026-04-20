@@ -73,10 +73,11 @@
         "@remotion/player": "4.0.448",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",
-        "hono": "catalog:",
+        "@xstate/react": "catalog:",
         "react": "catalog:",
         "react-dom": "catalog:",
         "remotion": "catalog:",
+        "xstate": "catalog:",
       },
       "devDependencies": {
         "@onequery/installer": "workspace:*",
@@ -360,6 +361,7 @@
     "@types/pg": "8.16.0",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "@xstate/react": "6.0.0",
     "better-auth": "1.5.5",
     "better-result": "2.8.2",
     "hono": "4.11.4",
@@ -373,6 +375,7 @@
     "remotion": "4.0.448",
     "sonner": "2.0.7",
     "unstorage": "1.17.4",
+    "xstate": "5.28.0",
     "zod": "4.3.5",
   },
   "catalogs": {

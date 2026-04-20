@@ -1,47 +1,25 @@
-import { useEffect, useReducer } from "react";
+import { useActorRef, useSelector } from "@xstate/react";
 
 import type { HeroProductTab } from "./hero-product.machine";
 import {
-  HERO_TAB_DWELL_MS,
-  getSafeQueryAnimationDelay,
+  heroProductMachine,
   heroProductAuditEntries,
   heroProductIntegrationRows,
-  heroProductReducer,
   heroProductTabMeta,
   heroProductTabs,
   heroSafeQueryChecks,
-  initialHeroProductTab,
-  initialSafeQueryAnimationState,
-  safeQueryAnimationReducer,
+  readActiveHeroProductTab,
+  readSafeQueryAnimationState,
 } from "./hero-product.machine";
 
-function SafeQueryPanel() {
-  const [state, dispatch] = useReducer(
-    safeQueryAnimationReducer,
-    initialSafeQueryAnimationState
-  );
-
-  // Safe-query feedback loops through explicit reducer transitions so the
-  // mock stays deterministic across pass and blocked scenarios.
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      if (state.result === "pending") {
-        dispatch({ type: "advance" });
-        return;
-      }
-
-      dispatch({ type: "restart" });
-    }, getSafeQueryAnimationDelay(state));
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [state]);
-
+function SafeQueryPanel({
+  result,
+  statuses,
+}: ReturnType<typeof useHeroProductController>["safeQuery"]) {
   return (
     <div
       className="hero-safe-query"
-      data-result={state.result}
+      data-result={result}
       aria-label="Safe querying checks"
     >
       <div className="hero-safe-query-preview">
@@ -55,7 +33,7 @@ function SafeQueryPanel() {
       <div className="hero-safe-query-sidebar">
         <div className="hero-safe-query-checklist" aria-live="polite">
           {heroSafeQueryChecks.map((check) => {
-            const status = state.statuses[check.id];
+            const status = statuses[check.id];
             const indicator =
               status === "success" ? "✓" : status === "failure" ? "×" : "";
 
@@ -75,10 +53,10 @@ function SafeQueryPanel() {
         </div>
 
         <div className="hero-safe-query-result-wrap">
-          <div className="hero-safe-query-result" data-result={state.result}>
-            {state.result === "blocked"
+          <div className="hero-safe-query-result" data-result={result}>
+            {result === "blocked"
               ? "BLOCKED"
-              : state.result === "pass"
+              : result === "pass"
                 ? "PASS"
                 : "CHECKING"}
           </div>
@@ -104,7 +82,7 @@ function renderHeroProductPanel(activeTab: HeroProductTab) {
       );
 
     case "query":
-      return <SafeQueryPanel />;
+      return null;
 
     case "audit":
       return (
@@ -123,22 +101,25 @@ function renderHeroProductPanel(activeTab: HeroProductTab) {
   }
 }
 
+function useHeroProductController() {
+  const actorRef = useActorRef(heroProductMachine);
+  const activeTab = useSelector(actorRef, readActiveHeroProductTab);
+  const safeQuery = useSelector(actorRef, readSafeQueryAnimationState);
+
+  return {
+    activeTab,
+    safeQuery,
+    selectTab(tab: HeroProductTab) {
+      actorRef.send({
+        type: "heroProduct/tabSelected",
+        tab,
+      });
+    },
+  };
+}
+
 export function HeroProductSurface() {
-  const [activeTab, dispatch] = useReducer(
-    heroProductReducer,
-    initialHeroProductTab
-  );
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      dispatch({ type: "advanceTab" });
-    }, HERO_TAB_DWELL_MS[activeTab]);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [activeTab]);
-
+  const { activeTab, safeQuery, selectTab } = useHeroProductController();
   const activeTabMeta = heroProductTabMeta[activeTab];
 
   return (
@@ -165,7 +146,7 @@ export function HeroProductSurface() {
                   ? "hero-product-nav-button hero-product-nav-active"
                   : "hero-product-nav-button"
               }
-              onClick={() => dispatch({ type: "selectTab", tab: tab.id })}
+              onClick={() => selectTab(tab.id)}
             >
               {tab.label}
             </button>
@@ -196,13 +177,19 @@ export function HeroProductSurface() {
             <span>{activeTabMeta.tag}</span>
           </div>
           <div className="hero-product-panel-body">
-            <div
-              key={activeTab}
-              className="hero-product-panel"
-              data-tab={activeTab}
-            >
-              {renderHeroProductPanel(activeTab)}
-            </div>
+            {activeTab === "query" ? (
+              <div className="hero-product-panel" data-tab={activeTab}>
+                <SafeQueryPanel {...safeQuery} />
+              </div>
+            ) : (
+              <div
+                key={activeTab}
+                className="hero-product-panel"
+                data-tab={activeTab}
+              >
+                {renderHeroProductPanel(activeTab)}
+              </div>
+            )}
           </div>
         </section>
       </div>

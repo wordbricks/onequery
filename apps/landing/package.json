@@ -25,9 +25,11 @@
     "@remotion/player": "4.0.448",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "@xstate/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "remotion": "catalog:"
+    "remotion": "catalog:",
+    "xstate": "catalog:"
   },
   "devDependencies": {
     "@onequery/installer": "workspace:*",

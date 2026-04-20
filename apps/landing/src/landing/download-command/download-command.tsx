@@ -1,4 +1,5 @@
-import { useEffect, useReducer } from "react";
+import { useActorRef, useSelector } from "@xstate/react";
+import { useEffect, useMemo } from "react";
 
 import {
   trackInstallCommandCopied,
@@ -9,42 +10,54 @@ import {
   LANDING_INSTALL_COMMANDS,
 } from "../config/landing-config";
 import {
-  downloadCommandReducer,
-  getInstallMethod,
-  initialDownloadCommandState,
+  createDownloadCommandMachine,
+  readCopiedMethodLabel,
+  readSelectedInstallMethod,
 } from "./download-command.machine";
 
-export function DownloadCommand() {
-  const [state, dispatch] = useReducer(
-    downloadCommandReducer,
-    initialDownloadCommandState
+function useDownloadCommandController() {
+  const machine = useMemo(
+    () =>
+      createDownloadCommandMachine({
+        async copyCommand({ command, label }) {
+          await navigator.clipboard.writeText(command);
+          return label;
+        },
+        copyFeedbackResetDelayMs: LANDING_COPY_FEEDBACK_RESET_DELAY_MS,
+      }),
+    []
   );
-
-  const selectedMethod = getInstallMethod(state.selectedMethodLabel);
+  const actorRef = useActorRef(machine);
+  const selectedMethod = useSelector(actorRef, readSelectedInstallMethod);
+  const copiedMethodLabel = useSelector(actorRef, readCopiedMethodLabel);
 
   useEffect(() => {
-    if (state.copiedMethodLabel === null) {
+    if (copiedMethodLabel === null) {
       return;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      dispatch({ type: "resetCopyFeedback" });
-    }, LANDING_COPY_FEEDBACK_RESET_DELAY_MS);
+    trackInstallCommandCopied(copiedMethodLabel);
+  }, [copiedMethodLabel]);
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [state.copiedMethodLabel]);
+  return {
+    copiedMethodLabel,
+    selectedMethod,
+    copy() {
+      actorRef.send({ type: "downloadCommand/copyRequested" });
+    },
+    selectMethod(label: (typeof LANDING_INSTALL_COMMANDS)[number]["label"]) {
+      trackInstallMethodSelected(label);
+      actorRef.send({
+        type: "downloadCommand/methodSelected",
+        label,
+      });
+    },
+  };
+}
 
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(selectedMethod.command);
-      trackInstallCommandCopied(selectedMethod.label);
-      dispatch({ type: "copySucceeded", label: selectedMethod.label });
-    } catch {
-      dispatch({ type: "copyFailed" });
-    }
-  }
+export function DownloadCommand() {
+  const { copiedMethodLabel, copy, selectMethod, selectedMethod } =
+    useDownloadCommandController();
 
   return (
     <div className="install-selector">
@@ -61,10 +74,7 @@ export function DownloadCommand() {
               aria-selected={isSelected}
               aria-controls="install-command-panel"
               className={`install-tab ${isSelected ? "install-tab-active" : ""}`}
-              onClick={() => {
-                trackInstallMethodSelected(method.label);
-                dispatch({ type: "selectMethod", label: method.label });
-              }}
+              onClick={() => selectMethod(method.label)}
             >
               {method.label}
             </button>
@@ -84,9 +94,9 @@ export function DownloadCommand() {
           type="button"
           className="install-method-copy"
           aria-label={`Copy ${selectedMethod.label} install command`}
-          onClick={handleCopy}
+          onClick={copy}
         >
-          {state.copiedMethodLabel === selectedMethod.label ? "Copied" : "Copy"}
+          {copiedMethodLabel === selectedMethod.label ? "Copied" : "Copy"}
         </button>
       </div>
     </div>

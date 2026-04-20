@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
 import {
@@ -365,7 +365,16 @@ function SiteFooter() {
 }
 
 export function LandingPage() {
+  const hasTrackedPageView = useRef(false);
+
   useEffect(() => {
+    if (hasTrackedPageView.current) {
+      return;
+    }
+
+    // Comment: React Strict Mode replays effects in development, so gate the
+    // analytics beacon at the page boundary.
+    hasTrackedPageView.current = true;
     trackPageView();
   }, []);
 
