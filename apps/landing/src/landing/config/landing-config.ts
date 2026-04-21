@@ -1,5 +1,6 @@
 export const SECTION_IDS = {
   install: "install",
+  roadmap: "roadmap",
   surface: "surface",
   workflow: "workflow",
 } as const;
