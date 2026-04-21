@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { deliverLandingNotification } from "./landing-service";
+import { deliverLandingNotification } from "./landing-notifications";
 
 describe("deliverLandingNotification", () => {
   it("accepts local loopback requests without a configured webhook", async () => {

@@ -1,13 +1,4 @@
-import { create } from "@bufbuild/protobuf";
-import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
-import { Code, ConnectError, createContextKey } from "@connectrpc/connect";
 import { Result, TaggedError } from "better-result";
-
-import {
-  LandingService,
-  SubmitContactResponseSchema,
-  SubscribeProductUpdatesResponseSchema,
-} from "../../connect/gen/onequery/landing/v1/landing_pb.js";
 
 export const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
@@ -23,37 +14,27 @@ export type LandingNotificationDelivery =
       kind: "unconfigured";
     };
 
-export interface LandingServiceContext {
-  notificationDelivery: LandingNotificationDelivery;
-}
-
-export const landingContextKey = createContextKey<LandingServiceContext>({
-  notificationDelivery: {
-    kind: "unconfigured",
-  },
-});
-
-class LandingNotificationConfigurationError extends TaggedError(
+export class LandingNotificationConfigurationError extends TaggedError(
   "LandingNotificationConfigurationError"
 )<{
   message: string;
 }>() {}
 
-class LandingNotificationRequestError extends TaggedError(
+export class LandingNotificationRequestError extends TaggedError(
   "LandingNotificationRequestError"
 )<{
   message: string;
   cause: unknown;
 }>() {}
 
-class LandingNotificationResponseError extends TaggedError(
+export class LandingNotificationResponseError extends TaggedError(
   "LandingNotificationResponseError"
 )<{
   message: string;
   status: number;
 }>() {}
 
-type LandingNotificationError =
+export type LandingNotificationError =
   | LandingNotificationConfigurationError
   | LandingNotificationRequestError
   | LandingNotificationResponseError;
@@ -88,18 +69,18 @@ type SlackContextBlock = {
   elements: readonly SlackMarkdownText[];
 };
 
-type LandingNotificationPayload = {
+export type LandingNotificationPayload = {
   text: string;
   blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
 };
 
 type LandingLogger = Pick<typeof console, "error" | "info">;
-type LandingNotificationRuntime = {
+export type LandingNotificationRuntime = {
   logger: LandingLogger;
   transport: typeof fetch;
 };
 
-const defaultLandingNotificationRuntime: LandingNotificationRuntime = {
+export const defaultLandingNotificationRuntime: LandingNotificationRuntime = {
   logger: console,
   transport: fetch,
 };
@@ -111,7 +92,7 @@ function escapeSlackText(value: string) {
     .replaceAll(">", "&gt;");
 }
 
-function createProductUpdatesNotification(
+export function createProductUpdatesNotification(
   email: string
 ): LandingNotificationPayload {
   return {
@@ -132,7 +113,7 @@ function createProductUpdatesNotification(
   };
 }
 
-function createContactNotification(input: {
+export function createContactNotification(input: {
   email: string;
   message: string;
   name: string;
@@ -218,7 +199,7 @@ export async function deliverLandingNotification(
   const upstream = (await Result.tryPromise(() => response.text())).unwrapOr(
     ""
   );
-  // Comment: public lead-capture requests should not leak upstream webhook
+  // Public lead-capture requests should not leak upstream webhook
   // details back to the browser, so worker errors stay generic.
   logger.error({
     event: "landing_service.slack_webhook_error",
@@ -233,58 +214,10 @@ export async function deliverLandingNotification(
   );
 }
 
-function toLandingConnectError(error: LandingNotificationError) {
-  if (LandingNotificationConfigurationError.is(error)) {
-    return new ConnectError(error.message, Code.Unavailable);
-  }
-
-  return new ConnectError("Failed to deliver notification", Code.Unavailable);
-}
-
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
 
   return String(error);
-}
-
-const landingServiceImpl: ServiceImpl<typeof LandingService> = {
-  async subscribeProductUpdates(request, ctx) {
-    const email = request.email.trim().toLowerCase();
-    const { notificationDelivery } = ctx.values.get(landingContextKey);
-    const delivery = await deliverLandingNotification(
-      {
-        delivery: notificationDelivery,
-        payload: createProductUpdatesNotification(email),
-      },
-      defaultLandingNotificationRuntime
-    );
-    if (delivery.isErr()) {
-      throw toLandingConnectError(delivery.error);
-    }
-    return create(SubscribeProductUpdatesResponseSchema, { email });
-  },
-
-  async submitContact(request, ctx) {
-    const email = request.email.trim().toLowerCase();
-    const name = request.name.trim();
-    const message = request.message.trim();
-    const { notificationDelivery } = ctx.values.get(landingContextKey);
-    const delivery = await deliverLandingNotification(
-      {
-        delivery: notificationDelivery,
-        payload: createContactNotification({ email, message, name }),
-      },
-      defaultLandingNotificationRuntime
-    );
-    if (delivery.isErr()) {
-      throw toLandingConnectError(delivery.error);
-    }
-    return create(SubmitContactResponseSchema, {});
-  },
-};
-
-export function registerLandingRoutes(router: ConnectRouter) {
-  router.service(LandingService, landingServiceImpl);
 }

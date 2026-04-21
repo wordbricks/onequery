@@ -1,9 +1,7 @@
-import { TransportProvider } from "@connectrpc/connect-query";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
-import { landingTransport } from "./runtime/connect-transport";
 import { createQueryClient } from "./runtime/query-client";
 import { registerRouterPageViewTracking } from "./runtime/router-page-view-tracking";
 
@@ -30,10 +28,8 @@ declare module "@tanstack/react-router" {
 
 export function App() {
   return (
-    <TransportProvider transport={landingTransport}>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </TransportProvider>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   );
 }

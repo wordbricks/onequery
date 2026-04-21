@@ -1,11 +1,9 @@
-import { createClient } from "@connectrpc/connect";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import { landingTransport } from "../../app/runtime/connect-transport";
-import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
+import { landingApiClient } from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -17,14 +15,13 @@ import {
   createContactModalMachine,
   readContactModalErrorMessage,
 } from "./contact-modal.machine";
-import { toUserMessage } from "./marketing-errors";
+import { readApiErrorMessage } from "./marketing-errors";
 import {
   DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
   createProductUpdatesMachine,
   readProductUpdatesFeedback,
 } from "./product-updates.machine";
 
-const landingClient = createClient(LandingService, landingTransport);
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
 
@@ -54,21 +51,35 @@ async function submitProductUpdatesRequest(
 ): Promise<ProductUpdatesSubmissionResult> {
   const responseResult = await Result.tryPromise({
     try: () =>
-      landingClient.subscribeProductUpdates({
-        email,
+      landingApiClient.api["product-updates"].$post({
+        json: { email },
       }),
     catch: (cause: unknown) =>
       new ProductUpdatesSubmissionError({
         cause,
-        message: toUserMessage(cause, DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE),
+        message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
       }),
   });
   if (responseResult.isErr()) {
     return Result.err(responseResult.error);
   }
 
+  const response = responseResult.value;
+  if (!response.ok) {
+    return Result.err(
+      new ProductUpdatesSubmissionError({
+        cause: response,
+        message: await readApiErrorMessage(
+          response,
+          DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+        ),
+      })
+    );
+  }
+
+  const body = await response.json();
   return Result.ok({
-    email: responseResult.value.email,
+    email: body.email,
   });
 }
 
@@ -76,15 +87,31 @@ async function submitContactRequest(
   form: ContactForm
 ): Promise<ContactSubmissionResult> {
   const responseResult = await Result.tryPromise({
-    try: () => landingClient.submitContact(form),
+    try: () =>
+      landingApiClient.api.contact.$post({
+        json: form,
+      }),
     catch: (cause: unknown) =>
       new ContactSubmissionError({
         cause,
-        message: toUserMessage(cause, DEFAULT_CONTACT_ERROR_MESSAGE),
+        message: DEFAULT_CONTACT_ERROR_MESSAGE,
       }),
   });
   if (responseResult.isErr()) {
     return Result.err(responseResult.error);
+  }
+
+  const response = responseResult.value;
+  if (!response.ok) {
+    return Result.err(
+      new ContactSubmissionError({
+        cause: response,
+        message: await readApiErrorMessage(
+          response,
+          DEFAULT_CONTACT_ERROR_MESSAGE
+        ),
+      })
+    );
   }
 
   return Result.ok(undefined);

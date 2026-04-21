@@ -14,12 +14,7 @@
     "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "catalog:",
-    "@bufbuild/protovalidate": "catalog:",
-    "@connectrpc/connect": "catalog:",
-    "@connectrpc/connect-query": "2.2.0",
-    "@connectrpc/connect-web": "2.1.1",
-    "@connectrpc/validate": "catalog:",
+    "@hono/zod-validator": "catalog:",
     "@onequery/landing-video": "workspace:*",
     "@onequery/ui": "workspace:*",
     "@remotion/player": "4.0.448",
@@ -27,10 +22,13 @@
     "@tanstack/react-router": "catalog:",
     "@xstate/react": "catalog:",
     "better-result": "catalog:",
+    "hono": "catalog:",
+    "hono-problem-details": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "remotion": "catalog:",
-    "xstate": "catalog:"
+    "xstate": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:tooling",

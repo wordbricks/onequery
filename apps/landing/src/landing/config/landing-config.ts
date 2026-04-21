@@ -6,13 +6,9 @@ export const SECTION_IDS = {
 } as const;
 
 export const REPOSITORY_URL = "https://github.com/wordbricks/onequery" as const;
-export const REPOSITORY_RAW_URL =
-  "https://raw.githubusercontent.com/wordbricks/onequery/main" as const;
 export const CLI_SOURCE_URL = `${REPOSITORY_URL}/tree/main/apps/cli` as const;
 export const SELF_HOST_DOCS_URL =
   `${REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
-export const PROTO_SOURCE_URL =
-  `${REPOSITORY_RAW_URL}/proto/onequery/landing/v1/landing.proto` as const;
 export const INSTALL_SCRIPT_URL = "https://onequery.dev/install.sh" as const;
 
 export const DOWNLOAD_COMMAND =
