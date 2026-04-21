@@ -112,12 +112,6 @@ export const ROADMAP_LANES = [
     title: "Actively being built",
     items: [
       {
-        key: "1password",
-        title: "1Password integration",
-        description:
-          "Resolve source credentials and connection secrets from a shared 1Password vault so they never live on operator laptops or in env files.",
-      },
-      {
         key: "agent-profiles",
         title: "Agent profiles",
         description:
@@ -142,6 +136,12 @@ export const ROADMAP_LANES = [
     status: "later",
     title: "Coming after that",
     items: [
+      {
+        key: "1password",
+        title: "1Password integration",
+        description:
+          "Resolve source credentials and connection secrets from a shared 1Password vault so they never live on operator laptops or in env files.",
+      },
       {
         key: "sso-saml",
         title: "SSO & SAML",
