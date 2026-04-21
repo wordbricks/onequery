@@ -2,18 +2,14 @@ import { Result } from "better-result";
 
 import { CliConnectProblem } from "../../error";
 import type { CliServiceResult } from "../result";
+import { toCliQueryExecutionFailureResult } from "./workflow-outcome";
+import { runPreparedCliQueryWorkflow } from "./workflow-preparation";
 import type { CliQueryExecutionWorkflowResult } from "./workflow-result";
+import { createQueryAuditProblem } from "./workflow-runtime";
 import {
-  createQueryAuditProblem,
-  storeAcceptedQueryActionCommand,
-} from "./workflow-runtime";
-import {
-  createInitialQueryWorkflowLoadedState,
   runQueryCredentialsLoadStep,
   runQueryExecutionStep,
-  runQuerySourceLookupStep,
   runQueryUsagePersistenceStep,
-  runQueryValidationStep,
 } from "./workflow-steps";
 import type { CliQueryExecutionWorkflowInput } from "./workflow-types";
 
@@ -23,69 +19,26 @@ export async function runCliQueryExecutionWorkflowResult(
   return Result.tryPromise({
     try: async (): Promise<CliQueryExecutionWorkflowResult> => {
       const timeoutMs = input.timeoutMs ?? null;
-      let loadedState = createInitialQueryWorkflowLoadedState();
-
-      const startDecision = await storeAcceptedQueryActionCommand({
-        actionId: null,
+      const preparation = await runPreparedCliQueryWorkflow({
         actorSnapshot: input.actorSnapshot,
-        causedByEventId: null,
-        commandInvocationId: `query_action:${input.requestId}:start_execute`,
-        commandPayload: {
-          queryText: input.sql,
-          sourceKey: input.sourceName,
-          type: "start_execute",
-        },
-        db: input.db,
-        organizationId: input.org.id,
-        requestId: input.requestId,
-        surface: "cli",
-      });
-
-      const sourceLookup = await runQuerySourceLookupStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: startDecision,
         db: input.db,
         dispatch: input.dispatch,
-        loadedState,
+        mode: "start_execute",
         org: input.org,
         requestId: input.requestId,
         sourceName: input.sourceName,
-      });
-      loadedState = sourceLookup.loadedState;
-
-      if (sourceLookup.step.result.kind !== "queryable_source_loaded") {
-        return sourceLookup.step.result;
-      }
-
-      const validation = await runQueryValidationStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: sourceLookup.step.decision,
-        db: input.db,
-        dispatch: input.dispatch,
-        organizationId: input.org.id,
-        requestId: input.requestId,
+        sql: input.sql,
       });
 
-      if (validation.result.kind === "query_rejected") {
-        return {
-          detail: validation.result.detail,
-          kind: "query_rejected",
-          requestId: input.requestId,
-        };
+      if (preparation.kind !== "ready") {
+        return preparation.result;
       }
-      if (validation.result.kind === "query_preparation_failed") {
-        return {
-          detail: validation.result.detail,
-          hint: validation.result.hint,
-          kind: "query_preparation_failed",
-          requestId: input.requestId,
-        };
-      }
-      const validationReady = validation.result;
+
+      let loadedState = preparation.prepared.loadedState;
 
       const credentials = await runQueryCredentialsLoadStep({
         actorSnapshot: input.actorSnapshot,
-        currentDecision: validation.decision,
+        currentDecision: preparation.prepared.validationDecision,
         db: input.db,
         dispatch: input.dispatch,
         loadedState,
@@ -112,34 +65,15 @@ export async function runCliQueryExecutionWorkflowResult(
         organizationId: input.org.id,
         requestId: input.requestId,
         timeoutMs,
-        truncated: validationReady.truncated,
+        truncated: preparation.prepared.truncated,
       });
       loadedState = execution.loadedState;
 
       if (execution.step.result.kind !== "succeeded") {
-        switch (execution.step.result.kind) {
-          case "query_unavailable":
-            return {
-              detail: execution.step.result.detail,
-              kind: "query_unavailable",
-              requestId: input.requestId,
-              retryable: true,
-            };
-          case "query_timed_out":
-            return {
-              detail: execution.step.result.detail,
-              kind: "query_timed_out",
-              requestId: input.requestId,
-              retryable: true,
-            };
-          case "query_execution_failed":
-            return {
-              detail: execution.step.result.detail,
-              kind: "query_execution_failed",
-              requestId: input.requestId,
-              retryable: false,
-            };
-        }
+        return toCliQueryExecutionFailureResult({
+          requestId: input.requestId,
+          result: execution.step.result,
+        });
       }
 
       const usagePersistence = await runQueryUsagePersistenceStep({

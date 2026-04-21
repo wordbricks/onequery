@@ -11,8 +11,9 @@ import {
 import { CliSourceSchema } from "../../gen/onequery/cli/v1/source_pb";
 import type { CliHonoContext } from "../types";
 import type {
+  CliQueryExecutionFailureResult,
   CliQueryExecutionWorkflowResult,
-  CliQueryValidationWorkflowResult,
+  CliQueryWorkflowPreparationFailureResult,
 } from "./workflow-result";
 
 type CliQueryRequest = {
@@ -27,20 +28,15 @@ type CliQueryRequest = {
   };
 };
 
-export type CliQueryValidationFailure = Exclude<
-  CliQueryValidationWorkflowResult,
-  { kind: "ready" }
->;
+export type CliQueryValidationFailure =
+  CliQueryWorkflowPreparationFailureResult;
 
 export type CliQueryExecutionSuccess = Extract<
   CliQueryExecutionWorkflowResult,
   { kind: "response_ready" }
 >;
 
-export type CliQueryExecutionFailure = Exclude<
-  CliQueryExecutionWorkflowResult,
-  { kind: "response_ready" }
->;
+export type CliQueryExecutionFailure = CliQueryExecutionFailureResult;
 
 export type ValidateQueryResponseInit = MessageInitShape<
   typeof ValidateQueryResponseSchema

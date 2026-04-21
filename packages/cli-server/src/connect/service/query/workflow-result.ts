@@ -1,5 +1,3 @@
-import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
-
 import type { CliPersistUsageEffectResult } from "../../../domain/effects";
 import type {
   CliQueryColumn,
@@ -8,36 +6,13 @@ import type {
   CliQuerySuccessResult,
 } from "../../../domain/workflows";
 
-export type CliQueryExecutionWorkflowResult =
-  | {
-      kind: "response_ready";
-      response: CliQuerySuccessResult;
-      usagePersistence: CliPersistUsageEffectResult;
-    }
-  | {
-      kind: "source_not_found";
-      orgSlug: string;
-      sourceName: string;
-      requestId: string;
-    }
-  | {
-      kind: "source_not_queryable";
-      requestId: string;
-      sourceName: string;
-      provider: ProviderType;
-      status: DataSourceStatus;
-    }
-  | {
-      kind: "query_rejected";
-      requestId: string;
-      detail: string;
-    }
-  | {
-      kind: "query_preparation_failed";
-      requestId: string;
-      detail: string;
-      hint?: string;
-    }
+export type CliQueryWorkflowPreparationFailureResult = Exclude<
+  CliQueryPlanResult,
+  { kind: "ready" }
+>;
+
+export type CliQueryExecutionFailureResult =
+  | CliQueryWorkflowPreparationFailureResult
   | {
       kind: "query_unavailable";
       requestId: string;
@@ -56,6 +31,14 @@ export type CliQueryExecutionWorkflowResult =
       detail: string;
       retryable: false;
     };
+
+export type CliQueryExecutionWorkflowResult =
+  | {
+      kind: "response_ready";
+      response: CliQuerySuccessResult;
+      usagePersistence: CliPersistUsageEffectResult;
+    }
+  | CliQueryExecutionFailureResult;
 
 export type CliQueryValidationWorkflowResult = CliQueryPlanResult;
 

@@ -3,16 +3,9 @@ import { Result } from "better-result";
 import { CliConnectProblem } from "../../error";
 import type { CliServiceResult } from "../result";
 import { toCliSourceRecord } from "./workflow-codec";
+import { runPreparedCliQueryWorkflow } from "./workflow-preparation";
 import type { CliQueryValidationWorkflowResult } from "./workflow-result";
-import {
-  createQueryAuditProblem,
-  storeAcceptedQueryActionCommand,
-} from "./workflow-runtime";
-import {
-  createInitialQueryWorkflowLoadedState,
-  runQuerySourceLookupStep,
-  runQueryValidationStep,
-} from "./workflow-steps";
+import { createQueryAuditProblem } from "./workflow-runtime";
 import type { CliQueryValidationWorkflowInput } from "./workflow-types";
 
 export async function runCliQueryValidationWorkflowResult(
@@ -21,72 +14,29 @@ export async function runCliQueryValidationWorkflowResult(
   return Result.tryPromise({
     try: async (): Promise<CliQueryValidationWorkflowResult> => {
       const timeoutMs = input.timeoutMs ?? null;
-      const loadedState = createInitialQueryWorkflowLoadedState();
-
-      const startDecision = await storeAcceptedQueryActionCommand({
-        actionId: null,
+      const preparation = await runPreparedCliQueryWorkflow({
         actorSnapshot: input.actorSnapshot,
-        causedByEventId: null,
-        commandInvocationId: `query_action:${input.requestId}:start_validate`,
-        commandPayload: {
-          queryText: input.sql,
-          sourceKey: input.sourceName,
-          type: "start_validate",
-        },
-        db: input.db,
-        organizationId: input.org.id,
-        requestId: input.requestId,
-        surface: "cli",
-      });
-
-      const sourceLookup = await runQuerySourceLookupStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: startDecision,
         db: input.db,
         dispatch: input.dispatch,
-        loadedState,
+        mode: "start_validate",
         org: input.org,
         requestId: input.requestId,
         sourceName: input.sourceName,
+        sql: input.sql,
       });
 
-      if (sourceLookup.step.result.kind !== "queryable_source_loaded") {
-        return sourceLookup.step.result;
-      }
-
-      const validation = await runQueryValidationStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: sourceLookup.step.decision,
-        db: input.db,
-        dispatch: input.dispatch,
-        organizationId: input.org.id,
-        requestId: input.requestId,
-      });
-
-      if (validation.result.kind === "query_rejected") {
-        return {
-          detail: validation.result.detail,
-          kind: "query_rejected",
-          requestId: input.requestId,
-        };
-      }
-      if (validation.result.kind === "query_preparation_failed") {
-        return {
-          detail: validation.result.detail,
-          hint: validation.result.hint,
-          kind: "query_preparation_failed",
-          requestId: input.requestId,
-        };
+      if (preparation.kind !== "ready") {
+        return preparation.result;
       }
 
       return {
         kind: "ready",
-        normalizedSql: validation.result.normalizedSql,
+        normalizedSql: preparation.prepared.normalizedSql,
         requestId: input.requestId,
-        source: toCliSourceRecord(validation.effect.source),
+        source: toCliSourceRecord(preparation.prepared.source),
         sourceName: input.sourceName,
         timeoutMs,
-        truncated: validation.result.truncated,
+        truncated: preparation.prepared.truncated,
       };
     },
     catch: (error) =>
