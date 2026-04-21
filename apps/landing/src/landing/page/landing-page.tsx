@@ -25,6 +25,7 @@ import {
   ProductUpdatesSection,
 } from "../marketing/marketing-forms";
 import { OpenClawDemoPlayer } from "../openclaw-demo/openclaw-demo-player";
+import { RoadmapSection } from "../roadmap/roadmap-section";
 import { TerminalSurface } from "../terminal/terminal-surface";
 
 type TrackedLinkProps = ComponentPropsWithoutRef<"a"> & {
@@ -364,10 +365,11 @@ export function LandingPage() {
 
       <main className="page-main">
         <HeroSection />
-        <OpenClawSection />
         <SummarySection />
         <InstallSection />
         <WorkflowSection />
+        <RoadmapSection />
+        <OpenClawSection />
         <FinalCtaSection />
         <ProductUpdatesSection />
       </main>
