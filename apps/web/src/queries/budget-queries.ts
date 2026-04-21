@@ -1,53 +1,22 @@
 import { queryOptions } from "@tanstack/react-query";
+import type { InferResponseType } from "hono/client";
 
 import { createApiClient } from "@/lib/api-client";
 import { DEFAULT_QUERY_STALE_TIME_MS } from "@/lib/query-timing";
 
 const client = createApiClient();
 
-export interface BudgetDashboardOverview {
-  totalCostUsd: number;
-  queryCount: number;
-  totalDataVolumeBytes: string;
-  activeConnectionCount: number;
-  activeProviderCount: number;
-  averageCostPerQueryUsd: number;
-}
-
-export interface BudgetDashboardProviderRow {
-  provider: string;
-  totalCostUsd: number;
-  queryCount: number;
-  totalDataVolumeBytes: string;
-}
-
-export interface BudgetDashboardConnectionRow {
-  connectionName: string;
-  provider: string;
-  totalCostUsd: number;
-  queryCount: number;
-  totalDataVolumeBytes: string;
-}
-
-export interface BudgetDashboardDailyRow {
-  date: string;
-  totalCostUsd: number;
-  queryCount: number;
-  totalDataVolumeBytes: string;
-}
-
-export interface BudgetDashboardResponse {
-  windowDays: number;
-  requestedWindowDays: number;
-  windowStart: string;
-  windowEnd: string;
-  generatedAt: string;
-  dataAvailableFrom: string;
-  overview: BudgetDashboardOverview;
-  providerBreakdown: BudgetDashboardProviderRow[];
-  connectionBreakdown: BudgetDashboardConnectionRow[];
-  dailyCost: BudgetDashboardDailyRow[];
-}
+export type BudgetDashboardResponse = InferResponseType<
+  typeof client.api.budget.$get,
+  200
+>;
+export type BudgetDashboardOverview = BudgetDashboardResponse["overview"];
+export type BudgetDashboardProviderRow =
+  BudgetDashboardResponse["providerBreakdown"][number];
+export type BudgetDashboardConnectionRow =
+  BudgetDashboardResponse["connectionBreakdown"][number];
+export type BudgetDashboardDailyRow =
+  BudgetDashboardResponse["dailyCost"][number];
 
 async function fetchBudgetDashboard(
   organizationId: string,

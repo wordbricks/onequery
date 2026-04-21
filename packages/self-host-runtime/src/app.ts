@@ -8,12 +8,8 @@ import {
 } from "@onequery/installer";
 import { createServerApi } from "@onequery/server/app";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
-import { sessionMiddleware } from "@onequery/server/middleware/session";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
-import {
-  createServerStorage,
-  serverStorageMiddleware,
-} from "@onequery/server/storage";
+import { createServerStorage } from "@onequery/server/storage";
 import type { ServerStorage } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { problemDetailsHandler } from "hono-problem-details";
@@ -21,12 +17,10 @@ import { logger } from "hono/logger";
 
 import {
   API_ROUTE_PREFIX,
-  BUDGET_API_ROUTE_PREFIX,
   CLI_API_ROUTE_PREFIX,
   DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
   isApiRoutePath,
 } from "./constants";
-import { budgetRoute } from "./routes/budget/route";
 
 type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
@@ -85,11 +79,6 @@ export function createApiApp(input: CreateBunAppOptions) {
           storage,
         })
       )
-      .use(BUDGET_API_ROUTE_PREFIX, serverStorageMiddleware(storage))
-      .use(`${BUDGET_API_ROUTE_PREFIX}/*`, serverStorageMiddleware(storage))
-      .use(BUDGET_API_ROUTE_PREFIX, sessionMiddleware())
-      .use(`${BUDGET_API_ROUTE_PREFIX}/*`, sessionMiddleware())
-      .route(BUDGET_API_ROUTE_PREFIX, budgetRoute)
   );
 }
 

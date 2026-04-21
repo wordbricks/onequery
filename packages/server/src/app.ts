@@ -7,6 +7,7 @@ import type { SessionVariables } from "./middleware/session";
 import { createProblemDetailsErrorHandler } from "./observability/error-reporting";
 import { authRoute } from "./routes/auth";
 import { bootstrapRoute } from "./routes/bootstrap";
+import { budgetRoute } from "./routes/budget";
 import { connectorJobsRoute, connectorsRoute } from "./routes/connectors";
 import { dataSourcesRoute } from "./routes/data-sources";
 import { healthRoute } from "./routes/health";
@@ -62,8 +63,11 @@ export function createServerApi(input: CreateServerApiOptions) {
       .use("/team/*", sessionMiddleware())
       .use("/data-sources", sessionMiddleware())
       .use("/data-sources/*", sessionMiddleware())
+      .use("/budget", sessionMiddleware())
+      .use("/budget/*", sessionMiddleware())
       .route("/", healthRoute)
       .route("/bootstrap", bootstrapRoute)
+      .route("/budget", budgetRoute)
       .route("/connectors", connectorsRoute)
       .route("/jobs", connectorJobsRoute)
       .route("/auth", authRoute)
