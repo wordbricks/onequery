@@ -1,9 +1,20 @@
-import { and, asc, eq, workflowEffectDispatches } from "@onequery/db/server";
+import {
+  DATA_SOURCE_STATUS,
+  PROVIDER_TYPES,
+  and,
+  asc,
+  eq,
+  queryActionEvents,
+  workflowCommands,
+  workflowEffectDispatches,
+} from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
 import { Result } from "better-result";
+import { z } from "zod";
 
 import {
   QueryActionEffectSchema,
+  QueryActionEventSchema,
   storeQueryActionCommand,
 } from "../../../audit";
 import type {
@@ -16,14 +27,14 @@ import type {
   WorkflowActorSnapshot,
 } from "../../../audit";
 import type {
-  CliLoadCredentialsEffectResult,
   CliPersistUsageEffectResult,
   CliValidateQueryEffectResult,
 } from "../../../domain/effects";
 import type {
   AccessibleCliOrg,
-  CliQueryExecutionResult,
+  CliQuerySuccessResult,
   CliQuerySourceRecord,
+  CliSourceRecord,
 } from "../../../domain/workflows";
 import { toCliErrorMessage } from "../../../observability";
 import { getCliQueryableDatabaseProviderType } from "../../../source/model";
@@ -70,10 +81,46 @@ type LoadedQueryActionEffect = {
   effectKey: string;
   id: string;
   originEventId: string;
+  status: "completed" | "leased" | "pending";
 };
 
 type QueryableSourceLoadedResult = {
   kind: "queryable_source_loaded";
+};
+
+type QueryCredentialsLoadResult =
+  | {
+      kind: "loaded";
+    }
+  | {
+      detail: string;
+      kind: "credentials_invalid";
+    };
+
+type QueryExecutionEffectResult =
+  | {
+      kind: "succeeded";
+      response: CliQuerySuccessResult;
+    }
+  | {
+      detail: string;
+      kind: "query_unavailable";
+      retryable: true;
+    }
+  | {
+      detail: string;
+      kind: "query_timed_out";
+      retryable: true;
+    }
+  | {
+      detail: string;
+      kind: "query_execution_failed";
+      retryable: false;
+    };
+
+type StoredAcceptedQueryActionResultCommand = {
+  commandPayload: { type: string } & Record<string, unknown>;
+  decision: StoredAcceptedQueryActionDecision;
 };
 
 type QueryExecutionSourceLookupResult =
@@ -86,6 +133,102 @@ type QueryValidationSourceLookupResult =
   | Extract<CliQueryValidationWorkflowResult, { kind: "source_not_found" }>
   | Extract<CliQueryValidationWorkflowResult, { kind: "source_not_queryable" }>;
 
+const CliQuerySuccessResultSchema = z
+  .object({
+    columns: z.array(
+      z
+        .object({
+          logicalType: z
+            .enum([
+              "string",
+              "number",
+              "boolean",
+              "bigint",
+              "datetime",
+              "array",
+              "json",
+            ])
+            .nullable(),
+          name: z.string(),
+        })
+        .strict()
+    ),
+    elapsedMs: z.number().int(),
+    rowCount: z.number().int(),
+    rows: z.array(z.array(z.string())),
+    source: z
+      .object({
+        displayName: z.string().nullable(),
+        id: z.string(),
+        provider: z.enum(PROVIDER_TYPES),
+        sourceKey: z.string(),
+        status: z.enum(DATA_SOURCE_STATUS),
+      })
+      .strict(),
+    truncated: z.boolean(),
+  })
+  .strict();
+
+const StoredQueryValidationResultPayloadSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("accepted"),
+      truncated: z.boolean(),
+      type: z.literal("record_query_validation"),
+      validatedQuery: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      hint: z.string().optional(),
+      kind: z.literal("rejected"),
+      type: z.literal("record_query_validation"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      hint: z.string(),
+      kind: z.literal("preparation_failed"),
+      type: z.literal("record_query_validation"),
+    })
+    .strict(),
+]);
+
+const StoredQueryExecutionResultPayloadSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      elapsedMs: z.number().int(),
+      kind: z.literal("succeeded"),
+      response: CliQuerySuccessResultSchema,
+      rowCount: z.number().int(),
+      type: z.literal("record_query_execution"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      kind: z.literal("unavailable"),
+      type: z.literal("record_query_execution"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      kind: z.literal("timed_out"),
+      type: z.literal("record_query_execution"),
+    })
+    .strict(),
+  z
+    .object({
+      detail: z.string(),
+      kind: z.literal("failed"),
+      type: z.literal("record_query_execution"),
+    })
+    .strict(),
+]);
+
 export async function runCliQueryExecutionWorkflowResult(
   input: QueryWorkflowRuntimeBaseInput & {
     dispatch: CliQueryExecutionDispatch;
@@ -96,12 +239,6 @@ export async function runCliQueryExecutionWorkflowResult(
       const timeoutMs = input.timeoutMs ?? null;
       let loadedSource: CliQuerySourceRecord | null = null;
       let loadedCredentials: DatabaseCredentials | null = null;
-      let successfulResponse:
-        | Extract<
-            CliQueryExecutionWorkflowResult,
-            { kind: "response_ready" }
-          >["response"]
-        | null = null;
 
       const startDecision = await storeAcceptedQueryActionCommand({
         actionId: null,
@@ -128,6 +265,13 @@ export async function runCliQueryExecutionWorkflowResult(
         db: input.db,
         expectedEffectType: "load_source",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQuerySourceLookupResult({
+            decision: stored.decision,
+            orgSlug: input.org.slug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          }),
         requestId: input.requestId,
         run: async (effect) => {
           const source = await input.dispatch.loadSource({
@@ -175,7 +319,6 @@ export async function runCliQueryExecutionWorkflowResult(
           }
 
           loadedSource = source.source;
-
           return {
             commandPayload: {
               kind: "found",
@@ -202,6 +345,8 @@ export async function runCliQueryExecutionWorkflowResult(
         db: input.db,
         expectedEffectType: "validate_query",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQueryValidationResult(stored.commandPayload),
         requestId: input.requestId,
         run: async (effect) => {
           const databaseType = getCliQueryableDatabaseProviderType(
@@ -224,6 +369,7 @@ export async function runCliQueryExecutionWorkflowResult(
             return {
               commandPayload: {
                 kind: "accepted",
+                truncated: validationResult.truncated,
                 type: "record_query_validation",
                 validatedQuery: validationResult.normalizedSql,
               },
@@ -273,16 +419,24 @@ export async function runCliQueryExecutionWorkflowResult(
 
       const credentials = await dispatchStoredQueryActionEffect<
         "load_credentials",
-        CliLoadCredentialsEffectResult
+        QueryCredentialsLoadResult
       >({
         actorSnapshot: input.actorSnapshot,
         currentDecision: validation.decision,
         db: input.db,
         expectedEffectType: "load_credentials",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQueryCredentialsLoadResult(stored.decision),
         requestId: input.requestId,
-        run: async () => {
-          const source = requireLoadedSource(loadedSource);
+        run: async (effect) => {
+          const source = await loadRequiredCliQuerySourceRecord({
+            cachedSource: loadedSource,
+            dispatch: input.dispatch,
+            sourceDescriptor: effect.source,
+          });
+          loadedSource = source;
+
           const credentialsResult = await input.dispatch.loadCredentials({
             kind: "load_credentials",
             source,
@@ -296,7 +450,9 @@ export async function runCliQueryExecutionWorkflowResult(
                 kind: "loaded",
                 type: "record_credentials_load",
               },
-              result: credentialsResult,
+              result: {
+                kind: "loaded" as const,
+              },
             };
           }
 
@@ -307,7 +463,10 @@ export async function runCliQueryExecutionWorkflowResult(
               kind: "preparation_failed",
               type: "record_credentials_load",
             },
-            result: credentialsResult,
+            result: {
+              detail: credentialsResult.detail,
+              kind: "credentials_invalid" as const,
+            },
           };
         },
       });
@@ -323,21 +482,34 @@ export async function runCliQueryExecutionWorkflowResult(
 
       const execution = await dispatchStoredQueryActionEffect<
         "execute_query",
-        CliQueryExecutionResult
+        QueryExecutionEffectResult
       >({
         actorSnapshot: input.actorSnapshot,
         currentDecision: credentials.decision,
         db: input.db,
         expectedEffectType: "execute_query",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQueryExecutionResult(stored.commandPayload),
         requestId: input.requestId,
         run: async (effect) => {
-          const source = requireLoadedSource(loadedSource);
-          const loadedQueryCredentials =
-            requireLoadedCredentials(loadedCredentials);
+          const source = await loadRequiredCliQuerySourceRecord({
+            cachedSource: loadedSource,
+            dispatch: input.dispatch,
+            sourceDescriptor: effect.source,
+          });
+          loadedSource = source;
+
+          const queryCredentials = await loadRequiredCliQueryCredentials({
+            cachedCredentials: loadedCredentials,
+            dispatch: input.dispatch,
+            source,
+          });
+          loadedCredentials = queryCredentials;
+
           const executionResult = await input.dispatch.executeSql({
             clientTimeoutMs: timeoutMs,
-            credentials: loadedQueryCredentials,
+            credentials: queryCredentials,
             kind: "execute_sql",
             requestId: input.requestId,
             source,
@@ -345,21 +517,25 @@ export async function runCliQueryExecutionWorkflowResult(
           });
 
           if (executionResult.kind === "succeeded") {
-            successfulResponse = buildCliQuerySuccessResponse({
+            const response = buildCliQuerySuccessResponse({
               elapsedMs: executionResult.elapsedMs,
               rows: executionResult.rows,
-              source,
+              source: toCliSourceRecord(effect.source),
               truncated: validationReady.truncated,
             });
 
             return {
               commandPayload: {
-                elapsedMs: successfulResponse.elapsedMs,
+                elapsedMs: response.elapsedMs,
                 kind: "succeeded",
-                rowCount: successfulResponse.rowCount,
+                response,
+                rowCount: response.rowCount,
                 type: "record_query_execution",
               },
-              result: executionResult,
+              result: {
+                kind: "succeeded" as const,
+                response,
+              },
             };
           }
 
@@ -371,7 +547,11 @@ export async function runCliQueryExecutionWorkflowResult(
                   kind: "unavailable",
                   type: "record_query_execution",
                 },
-                result: executionResult,
+                result: {
+                  detail: executionResult.detail,
+                  kind: "query_unavailable" as const,
+                  retryable: true as const,
+                },
               };
             case "query_timed_out":
               return {
@@ -380,7 +560,11 @@ export async function runCliQueryExecutionWorkflowResult(
                   kind: "timed_out",
                   type: "record_query_execution",
                 },
-                result: executionResult,
+                result: {
+                  detail: executionResult.detail,
+                  kind: "query_timed_out" as const,
+                  retryable: true as const,
+                },
               };
             case "query_execution_failed":
               return {
@@ -389,7 +573,11 @@ export async function runCliQueryExecutionWorkflowResult(
                   kind: "failed",
                   type: "record_query_execution",
                 },
-                result: executionResult,
+                result: {
+                  detail: executionResult.detail,
+                  kind: "query_execution_failed" as const,
+                  retryable: false as const,
+                },
               };
           }
         },
@@ -430,6 +618,11 @@ export async function runCliQueryExecutionWorkflowResult(
         db: input.db,
         expectedEffectType: "persist_usage",
         organizationId: input.org.id,
+        replay: ({ effect, stored }) =>
+          toStoredUsagePersistenceResult({
+            decision: stored.decision,
+            sourceId: effect.sourceId,
+          }),
         requestId: input.requestId,
         run: async (effect) => {
           const usageResult = await input.dispatch.persistUsage({
@@ -460,7 +653,7 @@ export async function runCliQueryExecutionWorkflowResult(
 
       return {
         kind: "response_ready",
-        response: requireSuccessfulResponse(successfulResponse),
+        response: execution.result.response,
         usagePersistence: usagePersistence.result,
       };
     },
@@ -482,7 +675,6 @@ export async function runCliQueryValidationWorkflowResult(
   return Result.tryPromise({
     try: async (): Promise<CliQueryValidationWorkflowResult> => {
       const timeoutMs = input.timeoutMs ?? null;
-      let loadedSource: CliQuerySourceRecord | null = null;
 
       const startDecision = await storeAcceptedQueryActionCommand({
         actionId: null,
@@ -509,6 +701,13 @@ export async function runCliQueryValidationWorkflowResult(
         db: input.db,
         expectedEffectType: "load_source",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQuerySourceLookupResult({
+            decision: stored.decision,
+            orgSlug: input.org.slug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          }),
         requestId: input.requestId,
         run: async (effect) => {
           const source = await input.dispatch.loadSource({
@@ -555,8 +754,6 @@ export async function runCliQueryValidationWorkflowResult(
             };
           }
 
-          loadedSource = source.source;
-
           return {
             commandPayload: {
               kind: "found",
@@ -583,6 +780,8 @@ export async function runCliQueryValidationWorkflowResult(
         db: input.db,
         expectedEffectType: "validate_query",
         organizationId: input.org.id,
+        replay: ({ stored }) =>
+          toStoredQueryValidationResult(stored.commandPayload),
         requestId: input.requestId,
         run: async (effect) => {
           const databaseType = getCliQueryableDatabaseProviderType(
@@ -605,6 +804,7 @@ export async function runCliQueryValidationWorkflowResult(
             return {
               commandPayload: {
                 kind: "accepted",
+                truncated: validationResult.truncated,
                 type: "record_query_validation",
                 validatedQuery: validationResult.normalizedSql,
               },
@@ -655,7 +855,7 @@ export async function runCliQueryValidationWorkflowResult(
         kind: "ready",
         normalizedSql: validation.result.normalizedSql,
         requestId: input.requestId,
-        source: requireLoadedSource(loadedSource),
+        source: toCliSourceRecord(validation.effect.source),
         sourceName: input.sourceName,
         timeoutMs,
         truncated: validation.result.truncated,
@@ -680,6 +880,10 @@ async function dispatchStoredQueryActionEffect<
   db: Database;
   expectedEffectType: EffectType;
   organizationId: string;
+  replay: (input: {
+    effect: Extract<QueryActionEffect, { type: EffectType }>;
+    stored: StoredAcceptedQueryActionResultCommand;
+  }) => Promise<TResult> | TResult;
   requestId: string;
   run: (effect: Extract<QueryActionEffect, { type: EffectType }>) => Promise<{
     commandPayload: QueryActionCommandPayload;
@@ -700,6 +904,27 @@ async function dispatchStoredQueryActionEffect<
     expectedEffectType: input.expectedEffectType,
     originEventId: originEvent.id,
   });
+
+  const stored = await loadStoredAcceptedQueryActionResultCommand({
+    commandInvocationId: `${effectDispatch.effectKey}:result`,
+    db: input.db,
+  });
+  if (stored !== null) {
+    return {
+      decision: stored.decision,
+      effect: effectDispatch.effect,
+      result: await input.replay({
+        effect: effectDispatch.effect,
+        stored,
+      }),
+    };
+  }
+
+  if (effectDispatch.status !== "pending") {
+    throw createQueryAuditProblem(
+      `query_action effect ${effectDispatch.id} is ${effectDispatch.status} without a stored result command`
+    );
+  }
 
   await leaseQueryActionEffect({
     db: input.db,
@@ -783,6 +1008,7 @@ async function loadRequiredQueryActionEffect<
   effectKey: string;
   id: string;
   originEventId: string;
+  status: "completed" | "leased" | "pending";
 }> {
   const [row] = await input.db
     .select()
@@ -791,8 +1017,7 @@ async function loadRequiredQueryActionEffect<
       and(
         eq(workflowEffectDispatches.actionId, input.actionId),
         eq(workflowEffectDispatches.family, "query_action"),
-        eq(workflowEffectDispatches.originEventId, input.originEventId),
-        eq(workflowEffectDispatches.status, "pending")
+        eq(workflowEffectDispatches.originEventId, input.originEventId)
       )
     )
     .orderBy(
@@ -833,7 +1058,286 @@ async function loadRequiredQueryActionEffect<
     effectKey: row.effectKey,
     id: row.id,
     originEventId: row.originEventId,
+    status: row.status,
   };
+}
+
+async function loadStoredAcceptedQueryActionResultCommand(input: {
+  commandInvocationId: string;
+  db: Database;
+}): Promise<StoredAcceptedQueryActionResultCommand | null> {
+  const storedCommand = await input.db.query.workflowCommands.findFirst({
+    where: and(
+      eq(workflowCommands.family, "query_action"),
+      eq(workflowCommands.commandInvocationId, input.commandInvocationId)
+    ),
+  });
+
+  if (storedCommand === undefined) {
+    return null;
+  }
+
+  if (storedCommand.decisionKind !== "accepted") {
+    throw createQueryAuditProblem(
+      `query_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
+    );
+  }
+
+  if (storedCommand.actionId === null) {
+    throw createQueryAuditProblem(
+      `query_action stored result command ${input.commandInvocationId} is missing its action id`
+    );
+  }
+
+  const events = await input.db
+    .select()
+    .from(queryActionEvents)
+    .where(eq(queryActionEvents.commandId, storedCommand.id))
+    .orderBy(asc(queryActionEvents.sequence));
+
+  return {
+    commandPayload: {
+      type: storedCommand.commandType,
+      ...storedCommand.commandPayloadJson,
+    },
+    decision: {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      events: events.map((row) => {
+        const parsed = QueryActionEventSchema.safeParse({
+          type: row.eventType,
+          ...row.payloadJson,
+        });
+        if (!parsed.success) {
+          throw createQueryAuditProblem(
+            `query_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
+            parsed.error
+          );
+        }
+
+        return {
+          ...parsed.data,
+          id: row.id,
+          occurredAt: row.occurredAt,
+          sequence: row.sequence,
+        };
+      }),
+      family: "query_action",
+      idempotency: "replayed" as const,
+      kind: "accepted" as const,
+    },
+  };
+}
+
+function toStoredQuerySourceLookupResult(input: {
+  decision: StoredAcceptedQueryActionDecision;
+  orgSlug: string;
+  requestId: string;
+  sourceName: string;
+}): QueryExecutionSourceLookupResult | QueryValidationSourceLookupResult {
+  const event = requireLastCommittedEvent(input.decision);
+
+  switch (event.type) {
+    case "source_loaded":
+      return {
+        kind: "queryable_source_loaded",
+      };
+    case "source_not_found":
+      return {
+        kind: "source_not_found",
+        orgSlug: input.orgSlug,
+        requestId: input.requestId,
+        sourceName: input.sourceName,
+      };
+    case "source_not_queryable":
+      return {
+        kind: "source_not_queryable",
+        provider: event.provider,
+        requestId: input.requestId,
+        sourceName: input.sourceName,
+        status: event.sourceStatus,
+      };
+    default:
+      throw createQueryAuditProblem(
+        `query_action replay expected a source lookup event but loaded ${event.type}`
+      );
+  }
+}
+
+function toStoredQueryValidationResult(
+  commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"]
+): CliValidateQueryEffectResult {
+  const parsed =
+    StoredQueryValidationResultPayloadSchema.safeParse(commandPayload);
+  if (!parsed.success) {
+    throw createQueryAuditProblem(
+      "query_action stored validation result payload is corrupt",
+      parsed.error
+    );
+  }
+
+  switch (parsed.data.kind) {
+    case "accepted":
+      return {
+        kind: "query_ready",
+        normalizedSql: parsed.data.validatedQuery,
+        truncated: parsed.data.truncated,
+      };
+    case "rejected":
+      return {
+        detail: parsed.data.detail,
+        kind: "query_rejected",
+      };
+    case "preparation_failed":
+      return {
+        detail: parsed.data.detail,
+        hint: parsed.data.hint,
+        kind: "query_preparation_failed",
+      };
+  }
+}
+
+function toStoredQueryCredentialsLoadResult(
+  decision: StoredAcceptedQueryActionDecision
+): QueryCredentialsLoadResult {
+  const event = requireLastCommittedEvent(decision);
+
+  switch (event.type) {
+    case "credentials_loaded":
+      return {
+        kind: "loaded",
+      };
+    case "query_preparation_failed":
+      return {
+        detail: event.detail,
+        kind: "credentials_invalid",
+      };
+    default:
+      throw createQueryAuditProblem(
+        `query_action replay expected a credentials load event but loaded ${event.type}`
+      );
+  }
+}
+
+function toStoredQueryExecutionResult(
+  commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"]
+): QueryExecutionEffectResult {
+  const parsed =
+    StoredQueryExecutionResultPayloadSchema.safeParse(commandPayload);
+  if (!parsed.success) {
+    throw createQueryAuditProblem(
+      "query_action stored execution result payload is corrupt",
+      parsed.error
+    );
+  }
+
+  switch (parsed.data.kind) {
+    case "succeeded":
+      return {
+        kind: "succeeded",
+        response: parsed.data.response,
+      };
+    case "unavailable":
+      return {
+        detail: parsed.data.detail,
+        kind: "query_unavailable",
+        retryable: true,
+      };
+    case "timed_out":
+      return {
+        detail: parsed.data.detail,
+        kind: "query_timed_out",
+        retryable: true,
+      };
+    case "failed":
+      return {
+        detail: parsed.data.detail,
+        kind: "query_execution_failed",
+        retryable: false,
+      };
+  }
+}
+
+function toStoredUsagePersistenceResult(input: {
+  decision: StoredAcceptedQueryActionDecision;
+  sourceId: string;
+}): CliPersistUsageEffectResult {
+  const event = requireLastCommittedEvent(input.decision);
+
+  switch (event.type) {
+    case "usage_persisted":
+      return {
+        kind: "usage_persisted",
+      };
+    case "usage_persist_failed":
+      return {
+        detail: event.detail,
+        kind: "usage_persist_failed",
+        sourceId: input.sourceId,
+      };
+    default:
+      throw createQueryAuditProblem(
+        `query_action replay expected a usage persistence event but loaded ${event.type}`
+      );
+  }
+}
+
+async function loadRequiredCliQuerySourceRecord(input: {
+  cachedSource: CliQuerySourceRecord | null;
+  dispatch: Pick<CliQueryExecutionDispatch, "loadSource">;
+  sourceDescriptor: QueryActionSourceDescriptor;
+}): Promise<CliQuerySourceRecord> {
+  if (input.cachedSource !== null) {
+    return input.cachedSource;
+  }
+
+  const loaded = await input.dispatch.loadSource({
+    kind: "load_source",
+    organizationId: input.sourceDescriptor.organizationId,
+    sourceKey: input.sourceDescriptor.sourceKey,
+  });
+
+  if (loaded.kind !== "found") {
+    throw createQueryAuditProblem(
+      `query_action replay could not reload source "${input.sourceDescriptor.sourceKey}" for a downstream effect`
+    );
+  }
+
+  if (
+    loaded.source.id !== input.sourceDescriptor.sourceId ||
+    loaded.source.organizationId !== input.sourceDescriptor.organizationId ||
+    loaded.source.provider !== input.sourceDescriptor.provider ||
+    loaded.source.sourceKey !== input.sourceDescriptor.sourceKey
+  ) {
+    throw createQueryAuditProblem(
+      `query_action replay reloaded source "${input.sourceDescriptor.sourceKey}" with a mismatched identity`
+    );
+  }
+
+  return loaded.source;
+}
+
+async function loadRequiredCliQueryCredentials(input: {
+  cachedCredentials: DatabaseCredentials | null;
+  dispatch: Pick<CliQueryExecutionDispatch, "loadCredentials">;
+  source: CliQuerySourceRecord;
+}): Promise<DatabaseCredentials> {
+  if (input.cachedCredentials !== null) {
+    return input.cachedCredentials;
+  }
+
+  const loaded = await input.dispatch.loadCredentials({
+    kind: "load_credentials",
+    source: input.source,
+  });
+
+  if (loaded.kind !== "credentials_loaded") {
+    throw createQueryAuditProblem(
+      `query_action replay could not reload credentials for source "${input.source.sourceKey}"`
+    );
+  }
+
+  return loaded.credentials;
 }
 
 async function leaseQueryActionEffect(input: {
@@ -919,47 +1423,6 @@ function requireLastCommittedEvent(
   return event;
 }
 
-function requireLoadedSource(
-  source: CliQuerySourceRecord | null
-): CliQuerySourceRecord {
-  if (source === null) {
-    throw createQueryAuditProblem(
-      "query_action source cache was missing during effect dispatch"
-    );
-  }
-
-  return source;
-}
-
-function requireLoadedCredentials(
-  credentials: DatabaseCredentials | null
-): DatabaseCredentials {
-  if (credentials === null) {
-    throw createQueryAuditProblem(
-      "query_action credentials cache was missing during execute_query"
-    );
-  }
-
-  return credentials;
-}
-
-function requireSuccessfulResponse(
-  response:
-    | Extract<
-        CliQueryExecutionWorkflowResult,
-        { kind: "response_ready" }
-      >["response"]
-    | null
-) {
-  if (response === null) {
-    throw createQueryAuditProblem(
-      "query_action execution response was missing before usage persistence"
-    );
-  }
-
-  return response;
-}
-
 function toQueryActionSourceDescriptor(
   source: CliQuerySourceRecord
 ): QueryActionSourceDescriptor {
@@ -971,6 +1434,18 @@ function toQueryActionSourceDescriptor(
     sourceId: source.id,
     sourceKey: source.sourceKey,
     sourceStatus: source.status,
+  };
+}
+
+function toCliSourceRecord(
+  source: QueryActionSourceDescriptor
+): CliSourceRecord {
+  return {
+    displayName: source.displayName,
+    id: source.sourceId,
+    provider: source.provider,
+    sourceKey: source.sourceKey,
+    status: source.sourceStatus,
   };
 }
 

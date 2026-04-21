@@ -14,7 +14,7 @@ import {
 } from "@onequery/db/server";
 import type { DatabaseCredentials } from "@onequery/db/server";
 import type { Result as ResultType } from "better-result";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
 import type {
@@ -160,7 +160,13 @@ describe("query workflow audit runtime", () => {
       kind: "ready",
       normalizedSql: "select 1",
       requestId: "req-validate-1",
-      source,
+      source: {
+        displayName: source.displayName,
+        id: source.id,
+        provider: source.provider,
+        sourceKey: source.sourceKey,
+        status: source.status,
+      },
       sourceName: "warehouse",
       timeoutMs: 5_000,
       truncated: false,
@@ -386,6 +392,163 @@ describe("query workflow audit runtime", () => {
     ).toEqual([
       { effectType: "load_source", status: "completed" },
       { effectType: "validate_query", status: "completed" },
+    ]);
+  });
+
+  it("replays completed validateQuery requests without redispatching effects", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const firstResult = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource: vi.fn().mockResolvedValue({
+          kind: "found",
+          source,
+        } satisfies CliLoadSourceEffectResult),
+        validateQuery: vi.fn().mockResolvedValue({
+          kind: "query_ready",
+          normalizedSql: "select 1",
+          truncated: false,
+        } satisfies CliValidateQueryEffectResult),
+      },
+      org,
+      requestId: "req-validate-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    const replayResult = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource: vi
+          .fn<() => Promise<CliLoadSourceEffectResult>>()
+          .mockRejectedValue(new Error("loadSource should not run on replay")),
+        validateQuery: vi
+          .fn<() => Promise<CliValidateQueryEffectResult>>()
+          .mockRejectedValue(
+            new Error("validateQuery should not run on replay")
+          ),
+      },
+      org,
+      requestId: "req-validate-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    expect(unwrapOk(replayResult)).toEqual(unwrapOk(firstResult));
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_validate",
+      "record_source_lookup",
+      "record_query_validation",
+    ]);
+  });
+
+  it("replays completed executeQuery requests without rerunning the query", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+
+    const executeSql = vi.fn().mockResolvedValue({
+      elapsedMs: 12,
+      kind: "succeeded",
+      rows: [{ answer: 42 }],
+    } satisfies CliQueryExecutionResult);
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
+
+    const firstResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: vi.fn().mockResolvedValue({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        } satisfies CliLoadCredentialsEffectResult),
+        loadSource: vi.fn().mockResolvedValue({
+          kind: "found",
+          source,
+        } satisfies CliLoadSourceEffectResult),
+        persistUsage,
+        validateQuery: vi.fn().mockResolvedValue({
+          kind: "query_ready",
+          normalizedSql: "select 42 as answer",
+          truncated: false,
+        } satisfies CliValidateQueryEffectResult),
+      },
+      org,
+      requestId: "req-execute-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+
+    const replayResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql: vi
+          .fn<() => Promise<CliQueryExecutionResult>>()
+          .mockRejectedValue(new Error("executeSql should not run on replay")),
+        loadCredentials: vi
+          .fn<() => Promise<CliLoadCredentialsEffectResult>>()
+          .mockRejectedValue(
+            new Error("loadCredentials should not run on replay")
+          ),
+        loadSource: vi
+          .fn<() => Promise<CliLoadSourceEffectResult>>()
+          .mockRejectedValue(new Error("loadSource should not run on replay")),
+        persistUsage: vi
+          .fn<() => Promise<CliPersistUsageEffectResult>>()
+          .mockRejectedValue(
+            new Error("persistUsage should not run on replay")
+          ),
+        validateQuery: vi
+          .fn<() => Promise<CliValidateQueryEffectResult>>()
+          .mockRejectedValue(
+            new Error("validateQuery should not run on replay")
+          ),
+      },
+      org,
+      requestId: "req-execute-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+
+    expect(unwrapOk(replayResult)).toEqual(unwrapOk(firstResult));
+    expect(executeSql).toHaveBeenCalledTimes(1);
+    expect(persistUsage).toHaveBeenCalledTimes(1);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_execute",
+      "record_source_lookup",
+      "record_query_validation",
+      "record_credentials_load",
+      "record_query_execution",
+      "record_usage_persistence",
     ]);
   });
 });

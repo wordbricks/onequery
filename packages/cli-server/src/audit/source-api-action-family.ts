@@ -1,8 +1,12 @@
+import type { JsonValue } from "@bufbuild/protobuf";
 import { PROVIDER_TYPES } from "@onequery/db/server";
 import type { ProviderType } from "@onequery/db/server";
 import type {
+  SourceApiDescriptor,
+  SourceApiHeader,
   SourceApiOperationKind,
   SourceApiPaginationPolicy,
+  SourceApiSource,
 } from "@onequery/server/source-api";
 import { z } from "zod";
 
@@ -112,6 +116,34 @@ export const SourceApiActionPageProgressSchema = z
   })
   .strict();
 
+export type StoredSourceApiResponseBody =
+  | {
+      kind: "none";
+    }
+  | {
+      kind: "json";
+      value: JsonValue;
+    }
+  | {
+      kind: "text";
+      value: string;
+    }
+  | {
+      base64: string;
+      kind: "binary";
+    };
+
+export type StoredSourceApiExecutionResult = {
+  body: StoredSourceApiResponseBody;
+  contentType: string;
+  headers: readonly SourceApiHeader[];
+  nextContinuationState?: JsonValue;
+  operation: string;
+  selector?: string;
+  source: SourceApiSource;
+  status: number;
+};
+
 export type SourceApiActionState = WorkflowStateBase<
   SourceApiActionPhase,
   SourceApiActionFailureCode
@@ -171,6 +203,7 @@ export type SourceApiActionCommandPayload =
       type: "record_source_lookup";
     }
   | {
+      descriptor: SourceApiDescriptor;
       kind: "resolved";
       requestDescriptor: SourceApiActionRequestDescriptor | null;
       type: "record_descriptor_resolution";
@@ -201,6 +234,7 @@ export type SourceApiActionCommandPayload =
   | {
       attemptNumber: number;
       contentType: string | null;
+      executionResult: StoredSourceApiExecutionResult;
       hasContinuation: boolean;
       httpStatus: number;
       kind: "succeeded";

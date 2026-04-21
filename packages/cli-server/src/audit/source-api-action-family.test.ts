@@ -22,6 +22,80 @@ const actorSnapshot: WorkflowActorSnapshot = {
 
 const baseObservedAt = new Date("2026-04-20T09:00:00.000Z");
 
+const resolvedDescriptor = {
+  descriptorVersion: "v1",
+  examples: [],
+  notes: [],
+  operations: [
+    {
+      description: "Fetch data",
+      examples: [],
+      fieldPolicy: {
+        acceptsInput: false,
+        allowsRawFields: false,
+        allowsTypedFields: false,
+        inputMode: "none" as const,
+        mergePatches: false,
+        supportsArrayPaths: false,
+        supportsNestedPaths: false,
+      },
+      headerPolicy: {
+        allowedRequestHeaders: [],
+        allowedResponseHeaders: [],
+      },
+      kind: "http_request" as const,
+      methodPolicy: {
+        allowedMethods: ["GET"],
+        defaultMethod: "GET",
+      },
+      name: "fetch",
+      notes: [],
+      paginationPolicy: "continuation_token" as const,
+      selectorKind: "path" as const,
+      selectorLabel: "path",
+      summary: "Fetch data",
+    },
+  ],
+  source: {
+    displayName: "GitHub",
+    provider: "github" as const,
+    sourceKey: "github",
+  },
+} as const;
+
+const firstPageExecutionResult = {
+  body: {
+    kind: "json" as const,
+    value: {
+      page: 1,
+    },
+  },
+  contentType: "application/json",
+  headers: [],
+  nextContinuationState: {
+    cursor: "page-2",
+  },
+  operation: "fetch",
+  selector: "customers",
+  source: resolvedDescriptor.source,
+  status: 200,
+} as const;
+
+const secondPageExecutionResult = {
+  body: {
+    kind: "json" as const,
+    value: {
+      page: 2,
+    },
+  },
+  contentType: "application/json",
+  headers: [],
+  operation: "fetch",
+  selector: "customers?page=2",
+  source: resolvedDescriptor.source,
+  status: 200,
+} as const;
+
 function buildSourceApiCommand(
   commandPayload: SourceApiActionCommandPayload,
   overrides: Partial<
@@ -114,6 +188,7 @@ describe("source_api_action family", () => {
       state,
       buildSourceApiCommand(
         {
+          descriptor: resolvedDescriptor,
           kind: "resolved",
           requestDescriptor: {
             descriptorVersion: "v1",
@@ -157,6 +232,15 @@ describe("source_api_action family", () => {
         {
           attemptNumber: 1,
           contentType: "application/json",
+          executionResult: {
+            ...firstPageExecutionResult,
+            body: {
+              kind: "json",
+              value: {
+                page: 1,
+              },
+            },
+          },
           hasContinuation: true,
           httpStatus: 200,
           kind: "succeeded",
@@ -197,6 +281,15 @@ describe("source_api_action family", () => {
         {
           attemptNumber: 2,
           contentType: "application/json",
+          executionResult: {
+            ...secondPageExecutionResult,
+            body: {
+              kind: "json",
+              value: {
+                page: 2,
+              },
+            },
+          },
           hasContinuation: false,
           httpStatus: 200,
           kind: "succeeded",

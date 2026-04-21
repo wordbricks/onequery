@@ -2,6 +2,7 @@ import { DATA_SOURCE_STATUS, PROVIDER_TYPES } from "@onequery/db/server";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 import { z } from "zod";
 
+import type { CliQuerySuccessResult } from "../domain/workflows";
 import {
   WORKFLOW_OUTCOMES,
   acceptWorkflowDecision,
@@ -133,6 +134,7 @@ export type QueryActionCommandPayload =
       detail?: never;
       hint?: never;
       kind: "accepted";
+      truncated: boolean;
       validatedQuery: string;
     }
   | {
@@ -162,6 +164,7 @@ export type QueryActionCommandPayload =
       elapsedMs: number;
       kind: "succeeded";
       rowCount: number;
+      response: CliQuerySuccessResult;
     }
   | {
       type: "record_query_execution";

@@ -1,6 +1,14 @@
 import { Buffer } from "node:buffer";
 
-import { and, asc, eq, workflowEffectDispatches } from "@onequery/db/server";
+import {
+  PROVIDER_TYPES,
+  and,
+  asc,
+  eq,
+  sourceApiActionEvents,
+  workflowCommands,
+  workflowEffectDispatches,
+} from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import type {
   PreparedSourceApi,
@@ -13,9 +21,11 @@ import type {
   SourceApiPreview,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
+import { z } from "zod";
 
 import {
   SourceApiActionEffectSchema,
+  SourceApiActionEventSchema,
   storeSourceApiActionCommand,
 } from "../../../audit";
 import type {
@@ -25,6 +35,7 @@ import type {
   SourceApiActionEvent,
   SourceApiActionRequestDescriptor,
   SourceApiActionSourceDescriptor,
+  StoredSourceApiExecutionResult,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
 } from "../../../audit";
@@ -71,13 +82,13 @@ type LoadedSourceApiActionEffect = {
   effectKey: string;
   id: string;
   originEventId: string;
+  status: "completed" | "leased" | "pending";
 };
 
 type DescriptorResolutionResult =
   | {
       descriptor: SourceApiDescriptor;
       kind: "resolved";
-      loadedSource: PreparedSourceConnection;
     }
   | {
       kind: "failed";
@@ -87,12 +98,16 @@ type DescriptorResolutionResult =
 type RequestPreparationResult =
   | {
       kind: "prepared";
-      prepared: PreparedSourceApi;
     }
   | {
       kind: "failed";
       problem: ReturnType<typeof createCliServiceProblem>;
     };
+
+type StoredAcceptedSourceApiActionResultCommand = {
+  commandPayload: { type: string } & Record<string, unknown>;
+  decision: StoredAcceptedSourceApiActionDecision;
+};
 
 type PageFetchResult =
   | {
@@ -117,6 +132,190 @@ type LoadedPreparedSourceResult =
       detail: string;
       kind: "unavailable";
     };
+
+const JsonValueSchema: z.ZodType<import("@bufbuild/protobuf").JsonValue> =
+  z.lazy(() =>
+    z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.null(),
+      z.array(JsonValueSchema),
+      z.record(z.string(), JsonValueSchema),
+    ])
+  );
+
+const SourceApiSourceSchema = z
+  .object({
+    displayName: z.string().nullable().optional(),
+    provider: z.enum(PROVIDER_TYPES),
+    sourceKey: z.string(),
+  })
+  .strict();
+
+const SourceApiHeaderSchema = z
+  .object({
+    name: z.string(),
+    value: z.string(),
+  })
+  .strict();
+
+const SourceApiExampleSchema = z
+  .object({
+    command: z.string(),
+    description: z.string().optional(),
+    label: z.string(),
+  })
+  .strict();
+
+const SourceApiOperationSchema = z
+  .object({
+    description: z.string(),
+    examples: z.array(SourceApiExampleSchema),
+    fieldPolicy: z
+      .object({
+        acceptsInput: z.boolean(),
+        allowsRawFields: z.boolean(),
+        allowsTypedFields: z.boolean(),
+        inputMode: z.enum(["none", "request_object", "request_body"]),
+        mergePatches: z.boolean(),
+        supportsArrayPaths: z.boolean(),
+        supportsNestedPaths: z.boolean(),
+      })
+      .strict(),
+    headerPolicy: z
+      .object({
+        allowedRequestHeaders: z.array(z.string()),
+        allowedResponseHeaders: z.array(z.string()),
+      })
+      .strict(),
+    kind: z.enum(["http_request", "structured_request"]),
+    methodPolicy: z
+      .object({
+        allowedMethods: z.array(z.string()),
+        defaultMethod: z.string().optional(),
+      })
+      .strict(),
+    name: z.string(),
+    notes: z.array(z.string()),
+    paginationPolicy: z.enum(["none", "continuation_token"]),
+    selectorKind: z.enum(["none", "path", "identifier"]),
+    selectorLabel: z.string().optional(),
+    summary: z.string(),
+  })
+  .strict();
+
+const SourceApiDescriptorSchema = z
+  .object({
+    defaultPathOperation: z.string().optional(),
+    descriptorVersion: z.string(),
+    examples: z.array(SourceApiExampleSchema),
+    notes: z.array(z.string()),
+    operations: z.array(SourceApiOperationSchema),
+    source: SourceApiSourceSchema,
+  })
+  .strict();
+
+const StoredSourceApiResponseBodySchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("none"),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("json"),
+      value: JsonValueSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("text"),
+      value: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      base64: z.string(),
+      kind: z.literal("binary"),
+    })
+    .strict(),
+]);
+
+const StoredSourceApiExecutionResultSchema = z
+  .object({
+    body: StoredSourceApiResponseBodySchema,
+    contentType: z.string(),
+    headers: z.array(SourceApiHeaderSchema),
+    nextContinuationState: JsonValueSchema.optional(),
+    operation: z.string(),
+    selector: z.string().optional(),
+    source: SourceApiSourceSchema,
+    status: z.number().int(),
+  })
+  .strict();
+
+const StoredDescriptorResolutionResultPayloadSchema = z.discriminatedUnion(
+  "kind",
+  [
+    z
+      .object({
+        descriptor: SourceApiDescriptorSchema,
+        kind: z.literal("resolved"),
+        requestDescriptor: z.unknown().nullable(),
+        type: z.literal("record_descriptor_resolution"),
+      })
+      .strict(),
+    z
+      .object({
+        detail: z.string(),
+        failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
+        kind: z.literal("failed"),
+        type: z.literal("record_descriptor_resolution"),
+      })
+      .strict(),
+  ]
+);
+
+const StoredPageFetchResultPayloadSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      contentType: z.string().nullable(),
+      executionResult: StoredSourceApiExecutionResultSchema,
+      hasContinuation: z.boolean(),
+      httpStatus: z.number().int(),
+      kind: z.literal("succeeded"),
+      pageIndex: z.number().int(),
+      responseBytes: z.number().int().nullable(),
+      type: z.literal("record_page_fetch"),
+    })
+    .strict(),
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      detail: z.string(),
+      kind: z.literal("retryable_failure"),
+      pageIndex: z.number().int(),
+      type: z.literal("record_page_fetch"),
+    })
+    .strict(),
+  z
+    .object({
+      attemptNumber: z.number().int(),
+      detail: z.string(),
+      failureCode: z.enum([
+        "request_failed",
+        "request_timed_out",
+        "execution_failed",
+        "execution_state_invalid",
+      ]),
+      kind: z.literal("terminal_failure"),
+      pageIndex: z.number().int(),
+      type: z.literal("record_page_fetch"),
+    })
+    .strict(),
+]);
 
 export async function runDescribeSourceApiWorkflowResult(
   input: SourceApiWorkflowContext & {
@@ -152,6 +351,7 @@ export async function runDescribeSourceApiWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "load_source",
         organizationId: input.organizationId,
+        replay: ({ stored }) => toStoredSourceLookupResult(stored.decision),
         requestId: input.requestId,
         run: async (effect) => {
           const source = await input.dependencies.runCliLoadSourceEffect({
@@ -205,6 +405,16 @@ export async function runDescribeSourceApiWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "resolve_descriptor",
         organizationId: input.organizationId,
+        replay: ({ stored }) => {
+          const result = toStoredDescriptorResolutionResult(
+            stored.commandPayload
+          );
+          if (result.kind === "resolved") {
+            resolvedDescriptor = result.descriptor;
+          }
+
+          return result;
+        },
         requestId: input.requestId,
         run: async (effect) => {
           const loadedSource = await loadPreparedSourceConnection({
@@ -263,6 +473,7 @@ export async function runDescribeSourceApiWorkflowResult(
           resolvedDescriptor = descriptor.value;
           return {
             commandPayload: {
+              descriptor: descriptor.value,
               kind: "resolved",
               requestDescriptor: null,
               type: "record_descriptor_resolution",
@@ -270,7 +481,6 @@ export async function runDescribeSourceApiWorkflowResult(
             result: {
               descriptor: descriptor.value,
               kind: "resolved" as const,
-              loadedSource: loadedSource.source,
             },
           };
         },
@@ -305,7 +515,6 @@ export async function runStartSourceApiExecuteWorkflowResult(
     try: async () => {
       let resolvedDescriptor: SourceApiDescriptor | null = null;
       let preparedRequest: PreparedSourceApi | null = null;
-      let preparedSource: PreparedSourceConnection | null = null;
 
       const startDecision = await storeAcceptedSourceApiActionCommand({
         actionId: null,
@@ -333,6 +542,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "load_source",
         organizationId: input.organizationId,
+        replay: ({ stored }) => toStoredSourceLookupResult(stored.decision),
         requestId: input.requestId,
         run: async (effect) => {
           const source = await input.dependencies.runCliLoadSourceEffect({
@@ -386,6 +596,16 @@ export async function runStartSourceApiExecuteWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "resolve_descriptor",
         organizationId: input.organizationId,
+        replay: ({ stored }) => {
+          const result = toStoredDescriptorResolutionResult(
+            stored.commandPayload
+          );
+          if (result.kind === "resolved") {
+            resolvedDescriptor = result.descriptor;
+          }
+
+          return result;
+        },
         requestId: input.requestId,
         run: async (effect) => {
           const loadedSource = await loadPreparedSourceConnection({
@@ -414,7 +634,6 @@ export async function runStartSourceApiExecuteWorkflowResult(
             };
           }
 
-          preparedSource = loadedSource.source;
           const descriptor = await resolveSourceApiDescriptor(
             {
               actor: input.actor,
@@ -445,6 +664,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
           resolvedDescriptor = descriptor.value;
           return {
             commandPayload: {
+              descriptor: descriptor.value,
               kind: "resolved",
               requestDescriptor: buildResolvedRequestDescriptor({
                 descriptor: descriptor.value,
@@ -455,7 +675,6 @@ export async function runStartSourceApiExecuteWorkflowResult(
             result: {
               descriptor: descriptor.value,
               kind: "resolved" as const,
-              loadedSource: loadedSource.source,
             },
           };
         },
@@ -474,11 +693,18 @@ export async function runStartSourceApiExecuteWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "prepare_request",
         organizationId: input.organizationId,
+        replay: ({ stored }) =>
+          toStoredRequestPreparationResult(stored.decision),
         requestId: input.requestId,
-        run: async () => {
+        run: async (effect) => {
           const descriptor =
             requireResolvedSourceApiDescriptor(resolvedDescriptor);
-          const source = requirePreparedSourceConnection(preparedSource);
+          const source = await loadRequiredPreparedSourceConnection({
+            c: input.c,
+            dependencies: input.dependencies,
+            organizationId: input.organizationId,
+            source: effect.source,
+          });
           const prepared = await prepareSourceApiDraftResult(
             {
               actor: input.actor,
@@ -517,7 +743,6 @@ export async function runStartSourceApiExecuteWorkflowResult(
             },
             result: {
               kind: "prepared" as const,
-              prepared: prepared.value,
             },
           };
         },
@@ -527,7 +752,16 @@ export async function runStartSourceApiExecuteWorkflowResult(
         throw preparation.result.problem;
       }
 
-      const prepared = requirePreparedSourceApi(preparedRequest);
+      const prepared = await loadRequiredPreparedSourceApi({
+        actor: input.actor,
+        c: input.c,
+        dependencies: input.dependencies,
+        descriptor: resolvedDescriptor,
+        draft: input.draft,
+        prepared: preparedRequest,
+        source: preparation.effect.source,
+      });
+      preparedRequest = prepared;
       const preview = input.dependencies.createSourceApiPreview(prepared);
 
       if (input.invokeMode === "preview_only") {
@@ -545,10 +779,25 @@ export async function runStartSourceApiExecuteWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "execute_page",
         organizationId: input.organizationId,
+        replay: ({ stored }) => toStoredPageFetchResult(stored.commandPayload),
         requestId: input.requestId,
         run: async (effect) => {
-          const source = requirePreparedSourceConnection(preparedSource);
-          const currentPrepared = requirePreparedSourceApi(preparedRequest);
+          const source = await loadRequiredPreparedSourceConnection({
+            c: input.c,
+            dependencies: input.dependencies,
+            organizationId: input.organizationId,
+            source: effect.source,
+          });
+          const currentPrepared = await loadRequiredPreparedSourceApi({
+            actor: input.actor,
+            c: input.c,
+            dependencies: input.dependencies,
+            descriptor: resolvedDescriptor,
+            draft: input.draft,
+            prepared: preparedRequest,
+            source: effect.source,
+          });
+          preparedRequest = currentPrepared;
           assertMatchingPreparedRequestFingerprint({
             expectedFingerprint: effect.preparedRequestFingerprint,
             prepared: currentPrepared,
@@ -578,6 +827,9 @@ export async function runStartSourceApiExecuteWorkflowResult(
             commandPayload: {
               attemptNumber: effect.attemptNumber,
               contentType: executionResult.result.contentType,
+              executionResult: encodeStoredSourceApiExecutionResult(
+                executionResult.result
+              ),
               hasContinuation:
                 executionResult.result.nextContinuationState !== undefined,
               httpStatus: executionResult.result.status,
@@ -682,6 +934,7 @@ export async function runResumeSourceApiExecuteWorkflowResult(
         db: input.c.var.storage.db,
         expectedEffectType: "execute_page",
         organizationId: input.organizationId,
+        replay: ({ stored }) => toStoredPageFetchResult(stored.commandPayload),
         requestId: input.requestId,
         run: async (effect) => {
           assertMatchingPreparedRequestFingerprint({
@@ -714,6 +967,9 @@ export async function runResumeSourceApiExecuteWorkflowResult(
             commandPayload: {
               attemptNumber: effect.attemptNumber,
               contentType: executionResult.result.contentType,
+              executionResult: encodeStoredSourceApiExecutionResult(
+                executionResult.result
+              ),
               hasContinuation:
                 executionResult.result.nextContinuationState !== undefined,
               httpStatus: executionResult.result.status,
@@ -850,6 +1106,10 @@ async function dispatchStoredSourceApiActionEffect<
   db: Database;
   expectedEffectType: EffectType;
   organizationId: string;
+  replay: (input: {
+    effect: Extract<SourceApiActionEffect, { type: EffectType }>;
+    stored: StoredAcceptedSourceApiActionResultCommand;
+  }) => Promise<TResult> | TResult;
   requestId: string;
   run: (
     effect: Extract<SourceApiActionEffect, { type: EffectType }>
@@ -862,10 +1122,9 @@ async function dispatchStoredSourceApiActionEffect<
   effect: Extract<SourceApiActionEffect, { type: EffectType }>;
   result: TResult;
 }> {
-  // Comment: source_api_action intentionally keeps raw drafts and continuation
-  // state out of the audit tables, so the request path still leases and
-  // dispatches committed outbox rows inline while those transient values remain
-  // in memory for this request.
+  // Comment: source_api_action still keeps drafts and continuation state off
+  // the action state row, but replayable result commands now carry the minimum
+  // data needed to reuse completed external work instead of refetching it.
   const originEvent = requireLastCommittedEvent(input.currentDecision);
   const effectDispatch = await loadRequiredSourceApiActionEffect({
     actionId: input.currentDecision.actionId,
@@ -873,6 +1132,27 @@ async function dispatchStoredSourceApiActionEffect<
     expectedEffectType: input.expectedEffectType,
     originEventId: originEvent.id,
   });
+
+  const stored = await loadStoredAcceptedSourceApiActionResultCommand({
+    commandInvocationId: `${effectDispatch.effectKey}:result`,
+    db: input.db,
+  });
+  if (stored !== null) {
+    return {
+      decision: stored.decision,
+      effect: effectDispatch.effect,
+      result: await input.replay({
+        effect: effectDispatch.effect,
+        stored,
+      }),
+    };
+  }
+
+  if (effectDispatch.status !== "pending") {
+    throw createSourceApiAuditProblem(
+      `source_api_action effect ${effectDispatch.id} is ${effectDispatch.status} without a stored result command`
+    );
+  }
 
   await leaseSourceApiActionEffect({
     db: input.db,
@@ -956,6 +1236,7 @@ async function loadRequiredSourceApiActionEffect<
   effectKey: string;
   id: string;
   originEventId: string;
+  status: "completed" | "leased" | "pending";
 }> {
   const [row] = await input.db
     .select()
@@ -964,8 +1245,7 @@ async function loadRequiredSourceApiActionEffect<
       and(
         eq(workflowEffectDispatches.actionId, input.actionId),
         eq(workflowEffectDispatches.family, "source_api_action"),
-        eq(workflowEffectDispatches.originEventId, input.originEventId),
-        eq(workflowEffectDispatches.status, "pending")
+        eq(workflowEffectDispatches.originEventId, input.originEventId)
       )
     )
     .orderBy(
@@ -1007,7 +1287,365 @@ async function loadRequiredSourceApiActionEffect<
     effectKey: row.effectKey,
     id: row.id,
     originEventId: row.originEventId,
+    status: row.status,
   };
+}
+
+async function loadStoredAcceptedSourceApiActionResultCommand(input: {
+  commandInvocationId: string;
+  db: Database;
+}): Promise<StoredAcceptedSourceApiActionResultCommand | null> {
+  const storedCommand = await input.db.query.workflowCommands.findFirst({
+    where: and(
+      eq(workflowCommands.family, "source_api_action"),
+      eq(workflowCommands.commandInvocationId, input.commandInvocationId)
+    ),
+  });
+
+  if (storedCommand === undefined) {
+    return null;
+  }
+
+  if (storedCommand.decisionKind !== "accepted") {
+    throw createSourceApiAuditProblem(
+      `source_api_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
+    );
+  }
+
+  if (storedCommand.actionId === null) {
+    throw createSourceApiAuditProblem(
+      `source_api_action stored result command ${input.commandInvocationId} is missing its action id`
+    );
+  }
+
+  const events = await input.db
+    .select()
+    .from(sourceApiActionEvents)
+    .where(eq(sourceApiActionEvents.commandId, storedCommand.id))
+    .orderBy(asc(sourceApiActionEvents.sequence));
+
+  return {
+    commandPayload: {
+      type: storedCommand.commandType,
+      ...storedCommand.commandPayloadJson,
+    },
+    decision: {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      events: events.map((row) => {
+        const parsed = SourceApiActionEventSchema.safeParse({
+          type: row.eventType,
+          ...row.payloadJson,
+        });
+        if (!parsed.success) {
+          throw createSourceApiAuditProblem(
+            `source_api_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
+            parsed.error
+          );
+        }
+
+        return {
+          ...parsed.data,
+          id: row.id,
+          occurredAt: row.occurredAt,
+          sequence: row.sequence,
+        };
+      }),
+      family: "source_api_action",
+      idempotency: "replayed" as const,
+      kind: "accepted" as const,
+    },
+  };
+}
+
+function toStoredSourceLookupResult(
+  decision: StoredAcceptedSourceApiActionDecision
+): { kind: "found" } | { kind: "not_found" } {
+  const event = requireLastCommittedEvent(decision);
+
+  switch (event.type) {
+    case "source_loaded":
+      return {
+        kind: "found",
+      };
+    case "source_not_found":
+      return {
+        kind: "not_found",
+      };
+    default:
+      throw createSourceApiAuditProblem(
+        `source_api_action replay expected a source lookup event but loaded ${event.type}`
+      );
+  }
+}
+
+function toStoredDescriptorResolutionResult(
+  commandPayload: StoredAcceptedSourceApiActionResultCommand["commandPayload"]
+): DescriptorResolutionResult {
+  const parsed =
+    StoredDescriptorResolutionResultPayloadSchema.safeParse(commandPayload);
+  if (!parsed.success) {
+    throw createSourceApiAuditProblem(
+      "source_api_action stored descriptor resolution payload is corrupt",
+      parsed.error
+    );
+  }
+
+  if (parsed.data.kind === "resolved") {
+    return {
+      descriptor: parsed.data.descriptor,
+      kind: "resolved",
+    };
+  }
+
+  return {
+    kind: "failed",
+    problem: createCliServiceProblem({
+      detail: parsed.data.detail,
+      key:
+        parsed.data.failureCode === "permission_denied"
+          ? "SOURCE_API_FORBIDDEN"
+          : "SOURCE_API_SOURCE_UNAVAILABLE",
+    }),
+  };
+}
+
+function toStoredRequestPreparationResult(
+  decision: StoredAcceptedSourceApiActionDecision
+): RequestPreparationResult {
+  const event = requireLastCommittedEvent(decision);
+
+  switch (event.type) {
+    case "request_prepared":
+      return {
+        kind: "prepared",
+      };
+    case "request_preparation_failed":
+      return {
+        kind: "failed",
+        problem: createCliServiceProblem({
+          detail: event.detail,
+          key:
+            event.failureCode === "permission_denied"
+              ? "SOURCE_API_FORBIDDEN"
+              : "SOURCE_REQUEST_INVALID",
+        }),
+      };
+    default:
+      throw createSourceApiAuditProblem(
+        `source_api_action replay expected a request preparation event but loaded ${event.type}`
+      );
+  }
+}
+
+function toStoredPageFetchResult(
+  commandPayload: StoredAcceptedSourceApiActionResultCommand["commandPayload"]
+): PageFetchResult {
+  const parsed = StoredPageFetchResultPayloadSchema.safeParse(commandPayload);
+  if (!parsed.success) {
+    throw createSourceApiAuditProblem(
+      "source_api_action stored page fetch payload is corrupt",
+      parsed.error
+    );
+  }
+
+  switch (parsed.data.kind) {
+    case "succeeded":
+      return {
+        kind: "succeeded",
+        result: decodeStoredSourceApiExecutionResult(
+          parsed.data.executionResult
+        ),
+      };
+    case "retryable_failure":
+      return {
+        kind: "failed",
+        problem: createCliServiceProblem({
+          detail: parsed.data.detail,
+          key: "SOURCE_API_EXECUTION_FAILED",
+        }),
+      };
+    case "terminal_failure":
+      return {
+        kind: "failed",
+        problem: createCliServiceProblem({
+          detail: parsed.data.detail,
+          key: toCliServiceProblemKeyForPageFetchFailure(
+            parsed.data.failureCode
+          ),
+        }),
+      };
+  }
+}
+
+function encodeStoredSourceApiExecutionResult(
+  result: SourceApiExecutionResult
+): StoredSourceApiExecutionResult {
+  return {
+    body: encodeStoredSourceApiResponseBody(result.body),
+    contentType: result.contentType,
+    headers: [...result.headers],
+    ...(result.nextContinuationState === undefined
+      ? {}
+      : { nextContinuationState: result.nextContinuationState }),
+    operation: result.operation,
+    ...(result.selector === undefined ? {} : { selector: result.selector }),
+    source: result.source,
+    status: result.status,
+  };
+}
+
+function decodeStoredSourceApiExecutionResult(
+  result: StoredSourceApiExecutionResult
+): SourceApiExecutionResult {
+  return {
+    body: decodeStoredSourceApiResponseBody(result.body),
+    contentType: result.contentType,
+    headers: [...result.headers],
+    ...(result.nextContinuationState === undefined
+      ? {}
+      : { nextContinuationState: result.nextContinuationState }),
+    operation: result.operation,
+    ...(result.selector === undefined ? {} : { selector: result.selector }),
+    source: result.source,
+    status: result.status,
+  };
+}
+
+function encodeStoredSourceApiResponseBody(
+  body: SourceApiExecutionResult["body"]
+) {
+  switch (body.kind) {
+    case "binary":
+      return {
+        base64: Buffer.from(body.value).toString("base64"),
+        kind: "binary" as const,
+      };
+    case "json":
+      return {
+        kind: "json" as const,
+        value: body.value,
+      };
+    case "text":
+      return {
+        kind: "text" as const,
+        value: body.value,
+      };
+    case "none":
+      return {
+        kind: "none" as const,
+      };
+  }
+}
+
+function decodeStoredSourceApiResponseBody(
+  body: StoredSourceApiExecutionResult["body"]
+): SourceApiExecutionResult["body"] {
+  switch (body.kind) {
+    case "binary":
+      return {
+        kind: "binary",
+        value: Buffer.from(body.base64, "base64"),
+      };
+    case "json":
+      return {
+        kind: "json",
+        value: body.value as never,
+      };
+    case "text":
+      return {
+        kind: "text",
+        value: body.value,
+      };
+    case "none":
+      return {
+        kind: "none",
+      };
+  }
+}
+
+async function loadRequiredPreparedSourceConnection(input: {
+  c: CliHonoContext;
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
+  >;
+  organizationId: string;
+  source: Pick<
+    SourceApiActionSourceDescriptor,
+    "provider" | "sourceId" | "sourceKey"
+  >;
+}): Promise<PreparedSourceConnection> {
+  const loaded = await loadPreparedSourceConnection(input);
+
+  if (loaded.kind !== "loaded") {
+    throw createSourceApiAuditProblem(
+      `source_api_action replay could not reload source "${input.source.sourceKey}" for a downstream effect`
+    );
+  }
+
+  return loaded.source;
+}
+
+async function loadRequiredPreparedSourceApi(input: {
+  actor: SourceApiActorContext;
+  c: CliHonoContext;
+  dependencies: SourceApiServiceDependencies;
+  descriptor: SourceApiDescriptor | null;
+  draft: SourceApiDraft;
+  prepared: PreparedSourceApi | null;
+  source: Pick<
+    SourceApiActionSourceDescriptor,
+    "provider" | "sourceId" | "sourceKey"
+  >;
+}): Promise<PreparedSourceApi> {
+  if (input.prepared !== null) {
+    return input.prepared;
+  }
+
+  const descriptor = requireResolvedSourceApiDescriptor(input.descriptor);
+  const source = await loadRequiredPreparedSourceConnection({
+    c: input.c,
+    dependencies: input.dependencies,
+    organizationId: input.actor.organizationId,
+    source: input.source,
+  });
+  const prepared = await prepareSourceApiDraftResult(
+    {
+      actor: input.actor,
+      descriptor,
+      draft: input.draft,
+      source,
+    },
+    input.dependencies
+  );
+
+  if (prepared.isErr()) {
+    throw createSourceApiAuditProblem(
+      "source_api_action replay could not rebuild the prepared request",
+      prepared.error
+    );
+  }
+
+  return prepared.value;
+}
+
+function toCliServiceProblemKeyForPageFetchFailure(
+  failureCode:
+    | "execution_failed"
+    | "execution_state_invalid"
+    | "request_failed"
+    | "request_timed_out"
+) {
+  switch (failureCode) {
+    case "execution_state_invalid":
+      return "SOURCE_API_EXECUTION_STATE_INVALID" as const;
+    case "request_failed":
+    case "request_timed_out":
+      return "SOURCE_API_EXECUTION_FAILED" as const;
+    case "execution_failed":
+      return "SOURCE_API_EXECUTION_FAILED" as const;
+  }
 }
 
 async function leaseSourceApiActionEffect(input: {
@@ -1357,28 +1995,6 @@ function requireResolvedSourceApiDescriptor(
   }
 
   return descriptor;
-}
-
-function requirePreparedSourceConnection(
-  source: PreparedSourceConnection | null
-): PreparedSourceConnection {
-  if (source === null) {
-    throw createSourceApiAuditProblem(
-      "source_api_action source cache was missing during effect dispatch"
-    );
-  }
-
-  return source;
-}
-
-function requirePreparedSourceApi(prepared: PreparedSourceApi | null) {
-  if (prepared === null) {
-    throw createSourceApiAuditProblem(
-      "source_api_action prepared request cache was missing during execute_page"
-    );
-  }
-
-  return prepared;
 }
 
 function ensureCliServiceProblem(error: unknown) {

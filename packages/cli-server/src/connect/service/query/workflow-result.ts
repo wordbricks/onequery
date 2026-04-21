@@ -4,7 +4,7 @@ import type { CliPersistUsageEffectResult } from "../../../domain/effects";
 import type {
   CliQueryColumn,
   CliQueryPlanResult,
-  CliQuerySourceRecord,
+  CliSourceRecord,
   CliQuerySuccessResult,
 } from "../../../domain/workflows";
 
@@ -60,7 +60,7 @@ export type CliQueryExecutionWorkflowResult =
 export type CliQueryValidationWorkflowResult = CliQueryPlanResult;
 
 export function buildCliQuerySuccessResponse(input: {
-  source: CliQuerySourceRecord;
+  source: CliSourceRecord;
   rows: Record<string, unknown>[];
   elapsedMs: number;
   truncated: boolean;

@@ -427,6 +427,7 @@ async function seedResumableSourceApiAction(
       causedByEventId: sourceLoadedEvent.id,
       commandInvocationId: `${requestId}:descriptor`,
       commandPayload: {
+        descriptor,
         kind: "resolved",
         requestDescriptor: {
           descriptorVersion: "github-v1",
@@ -506,6 +507,21 @@ async function seedResumableSourceApiAction(
       commandPayload: {
         attemptNumber: 1,
         contentType: "text/plain",
+        executionResult: {
+          body: {
+            kind: "text",
+            value: "ok",
+          },
+          contentType: "text/plain",
+          headers: [],
+          nextContinuationState: {
+            cursor: "next",
+          },
+          operation: "fetch",
+          selector: "/issues",
+          source: descriptor.source,
+          status: 200,
+        },
         hasContinuation: true,
         httpStatus: 200,
         kind: "succeeded",

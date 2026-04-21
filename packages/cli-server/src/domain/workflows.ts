@@ -121,7 +121,7 @@ export type CliQueryPlanResult =
       kind: "ready";
       requestId: string;
       sourceName: string;
-      source: CliQuerySourceRecord;
+      source: CliSourceRecord;
       normalizedSql: string;
       timeoutMs: number | null;
       truncated: boolean;

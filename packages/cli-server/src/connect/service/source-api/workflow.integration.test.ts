@@ -458,6 +458,99 @@ describe("source api workflow audit runtime", () => {
     ]);
   });
 
+  it("replays completed start_invoke requests without refetching the page", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const executePreparedSourceApi = vi
+      .fn()
+      .mockResolvedValueOnce(firstPageResult)
+      .mockRejectedValueOnce(
+        new Error("executePreparedSourceApi should not run on replay")
+      );
+    const dependencies = createDependencies({
+      executePreparedSourceApi,
+      prepareSourceApiDraft: vi.fn().mockResolvedValue(executePrepared),
+    });
+
+    const firstResult = await runStartSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-start-replay-1"),
+      dependencies,
+      draft: {
+        body: {
+          kind: "none",
+        },
+        headers: [],
+        operation: "fetch",
+        selector: "/issues",
+      },
+      invokeMode: "execute",
+      sourceKey: "github-prod",
+    });
+
+    const replayResult = await runStartSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-start-replay-1"),
+      dependencies,
+      draft: {
+        body: {
+          kind: "none",
+        },
+        headers: [],
+        operation: "fetch",
+        selector: "/issues",
+      },
+      invokeMode: "execute",
+      sourceKey: "github-prod",
+    });
+
+    const first = unwrapOk(firstResult);
+    const replayed = unwrapOk(replayResult);
+    expect({
+      ...replayed,
+      continuationToken: undefined,
+    }).toEqual({
+      ...first,
+      continuationToken: undefined,
+    });
+    const firstContinuation = decodeSourceApiContinuationToken({
+      now: new Date("2026-04-20T09:00:30.000Z"),
+      secret: "master-key",
+      token: first.continuationToken ?? "",
+    });
+    const replayedContinuation = decodeSourceApiContinuationToken({
+      now: new Date("2026-04-20T09:00:30.000Z"),
+      secret: "master-key",
+      token: replayed.continuationToken ?? "",
+    });
+    expect({
+      actionId: replayedContinuation.actionId,
+      preparedRequestFingerprint:
+        replayedContinuation.preparedRequestFingerprint,
+      resumeFromEventId: replayedContinuation.resumeFromEventId,
+      state: replayedContinuation.state,
+      version: replayedContinuation.version,
+    }).toEqual({
+      actionId: firstContinuation.actionId,
+      preparedRequestFingerprint: firstContinuation.preparedRequestFingerprint,
+      resumeFromEventId: firstContinuation.resumeFromEventId,
+      state: firstContinuation.state,
+      version: firstContinuation.version,
+    });
+    expect(executePreparedSourceApi).toHaveBeenCalledTimes(1);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_invoke",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+      "record_request_preparation",
+      "record_page_fetch",
+    ]);
+  });
+
   it("records execute plus resume on the same source_api_action", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
@@ -583,6 +676,74 @@ describe("source api workflow audit runtime", () => {
       { effectType: "prepare_request", status: "completed" },
       { effectType: "execute_page", status: "completed" },
       { effectType: "execute_page", status: "completed" },
+    ]);
+  });
+
+  it("replays completed resume_invoke requests without refetching the page", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const executePreparedSourceApi = vi
+      .fn()
+      .mockResolvedValueOnce(firstPageResult)
+      .mockResolvedValueOnce(finalPageResult)
+      .mockRejectedValueOnce(
+        new Error("executePreparedSourceApi should not run on replay")
+      );
+    const dependencies = createDependencies({
+      executePreparedSourceApi,
+    });
+
+    const startResult = await runStartSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-resume-replay-start-1"),
+      dependencies,
+      draft: {
+        body: {
+          kind: "none",
+        },
+        headers: [],
+        operation: "fetch",
+        selector: "/issues",
+      },
+      invokeMode: "execute",
+      sourceKey: "github-prod",
+    });
+    const started = unwrapOk(startResult);
+    const continuation = decodeSourceApiContinuationToken({
+      now: new Date("2026-04-20T09:00:30.000Z"),
+      secret: "master-key",
+      token: started.continuationToken ?? "",
+    });
+
+    const firstResumeResult = await runResumeSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-resume-replay-1"),
+      continuation,
+      dependencies,
+      source: preparedSource as never,
+    });
+
+    const replayResumeResult = await runResumeSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-resume-replay-1"),
+      continuation,
+      dependencies,
+      source: preparedSource as never,
+    });
+
+    expect(unwrapOk(replayResumeResult)).toEqual(unwrapOk(firstResumeResult));
+    expect(executePreparedSourceApi).toHaveBeenCalledTimes(2);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_invoke",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+      "record_request_preparation",
+      "record_page_fetch",
+      "resume_invoke",
+      "record_page_fetch",
     ]);
   });
 

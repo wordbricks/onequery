@@ -19,6 +19,26 @@ const actorSnapshot: WorkflowActorSnapshot = {
 
 const baseObservedAt = new Date("2026-04-20T08:00:00.000Z");
 
+const queryExecutionResponse = {
+  columns: [
+    {
+      logicalType: "number" as const,
+      name: "answer",
+    },
+  ],
+  elapsedMs: 18,
+  rowCount: 42,
+  rows: [["42"]],
+  source: {
+    displayName: "Warehouse",
+    id: "source_1",
+    provider: "postgres" as const,
+    sourceKey: "warehouse",
+    status: "active" as const,
+  },
+  truncated: false,
+};
+
 function buildQueryCommand(
   commandPayload: QueryActionCommandPayload,
   overrides: Partial<
@@ -108,6 +128,7 @@ describe("query_action family", () => {
       buildQueryCommand(
         {
           kind: "accepted",
+          truncated: false,
           type: "record_query_validation",
           validatedQuery: "SELECT * FROM customers LIMIT 1000",
         },
@@ -142,6 +163,7 @@ describe("query_action family", () => {
         {
           elapsedMs: 18,
           kind: "succeeded",
+          response: queryExecutionResponse,
           rowCount: 42,
           type: "record_query_execution",
         },
@@ -207,6 +229,7 @@ describe("query_action family", () => {
       buildQueryCommand(
         {
           kind: "accepted",
+          truncated: false,
           type: "record_query_validation",
           validatedQuery: "SELECT 1",
         },
