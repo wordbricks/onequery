@@ -2,9 +2,9 @@ import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
-import type { InferResponseType } from "hono/client";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
+import type { ProductUpdatesSuccessResponse } from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -25,10 +25,6 @@ import {
 
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
-
-type ProductUpdatesPost =
-  (typeof landingApiClient.api)["product-updates"]["$post"];
-type ProductUpdatesSuccessResponse = InferResponseType<ProductUpdatesPost, 200>;
 
 class ProductUpdatesSubmissionError extends TaggedError(
   "ProductUpdatesSubmissionError"

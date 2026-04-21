@@ -30,13 +30,21 @@ export type LandingAppEnv = {
 };
 
 export const ProductUpdatesRequestSchema = z.object({
-  email: z.email("email must be a valid email address").max(320),
+  email: z
+    .string()
+    .trim()
+    .email("email must be a valid email address")
+    .max(320),
 });
 
 export const ContactRequestSchema = z.object({
-  name: z.string().min(1, "name is required").max(200),
-  email: z.email("email must be a valid email address").max(320),
-  message: z.string().min(1, "message is required").max(4000),
+  name: z.string().trim().min(1, "name is required").max(200),
+  email: z
+    .string()
+    .trim()
+    .email("email must be a valid email address")
+    .max(320),
+  message: z.string().trim().min(1, "message is required").max(4000),
 });
 
 export type LandingValidationError = {
@@ -121,20 +129,33 @@ function resolveDelivery(c: Context<LandingAppEnv>) {
   });
 }
 
-function notificationProblem(error: LandingNotificationError) {
+function notificationProblem(
+  error: LandingNotificationError
+): TypedResponse<LandingServiceUnavailableProblemResponse, 503, "json"> {
   if (LandingNotificationConfigurationError.is(error)) {
     return problemDetails({
       detail: error.message,
       status: 503,
       title: "Service Unavailable",
-    });
+      // Comment: hono-problem-details exposes the standalone response builder as
+      // an untyped `Response`, so we restore the concrete 503 problem-details
+      // shape here to keep the route surface precise for RPC consumers.
+    }).getResponse() as unknown as TypedResponse<
+      LandingServiceUnavailableProblemResponse,
+      503,
+      "json"
+    >;
   }
 
   return problemDetails({
     detail: "Failed to deliver notification",
     status: 503,
     title: "Service Unavailable",
-  });
+  }).getResponse() as unknown as TypedResponse<
+    LandingServiceUnavailableProblemResponse,
+    503,
+    "json"
+  >;
 }
 
 export interface CreateLandingAppOptions {
@@ -157,7 +178,7 @@ function registerLandingRoutes(
       zValidator("json", ProductUpdatesRequestSchema, zodProblemHook()),
       async (c) => {
         const { email } = c.req.valid("json");
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = email.toLowerCase();
         const result = await deliverLandingNotification(
           {
             delivery: resolveDelivery(c),
@@ -166,7 +187,7 @@ function registerLandingRoutes(
           notificationRuntime
         );
         if (result.isErr()) {
-          throw notificationProblem(result.error);
+          return notificationProblem(result.error);
         }
         return c.json<LandingProductUpdatesResponse, 200>(
           { email: normalizedEmail },
@@ -179,9 +200,9 @@ function registerLandingRoutes(
       zValidator("json", ContactRequestSchema, zodProblemHook()),
       async (c) => {
         const { email, message, name } = c.req.valid("json");
-        const normalizedEmail = email.trim().toLowerCase();
-        const normalizedName = name.trim();
-        const normalizedMessage = message.trim();
+        const normalizedEmail = email.toLowerCase();
+        const normalizedName = name;
+        const normalizedMessage = message;
         const result = await deliverLandingNotification(
           {
             delivery: resolveDelivery(c),
@@ -194,7 +215,7 @@ function registerLandingRoutes(
           notificationRuntime
         );
         if (result.isErr()) {
-          throw notificationProblem(result.error);
+          return notificationProblem(result.error);
         }
         return c.json<Record<never, never>, 200>({}, 200);
       }

@@ -1,13 +1,9 @@
-import type {
-  LandingInternalProblemResponse,
-  LandingServiceUnavailableProblemResponse,
-  LandingValidationProblemResponse,
-} from "../../server/landing/landing-app";
+import type { LandingProblemResponse } from "../../app/runtime/landing-api-client";
 
-export type LandingApiProblemResponse =
-  | LandingInternalProblemResponse
-  | LandingServiceUnavailableProblemResponse
-  | LandingValidationProblemResponse;
+type LandingValidationProblemResponse = Extract<
+  LandingProblemResponse,
+  { status: 422 }
+>;
 
 function readFirstFieldErrorMessage(
   errors: LandingValidationProblemResponse["errors"]
@@ -17,7 +13,7 @@ function readFirstFieldErrorMessage(
 }
 
 export function readApiErrorMessage(
-  response: LandingApiProblemResponse,
+  response: LandingProblemResponse,
   fallback: string
 ): string {
   if (response.status === 422) {
