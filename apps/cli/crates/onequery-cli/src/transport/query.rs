@@ -28,6 +28,11 @@ use crate::transport::query_parameter::query_request_parameter_to_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
+use crate::transport::response_decode::decode_required_bool;
+use crate::transport::response_decode::decode_required_u32_as_u64;
+use crate::transport::response_decode::decode_required_u32_as_usize;
+use crate::transport::response_decode::decode_required_u64;
+use crate::transport::response_decode::require_non_empty_text;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
 
@@ -504,56 +509,6 @@ fn decode_required_usize(
 ) -> Result<usize, ApiFailure> {
     let value = value.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
     usize::try_from(value).map_err(|error| decode_failure(stage, error.to_string(), request_id))
-}
-
-fn decode_required_u64(
-    value: Option<u64>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<u64, ApiFailure> {
-    value.ok_or_else(|| decode_failure(stage, message, request_id))
-}
-
-fn decode_required_u32_as_usize(
-    value: Option<u32>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<usize, ApiFailure> {
-    let value = value.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
-    usize::try_from(value).map_err(|error| decode_failure(stage, error.to_string(), request_id))
-}
-
-fn decode_required_u32_as_u64(
-    value: Option<u32>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<u64, ApiFailure> {
-    value
-        .map(u64::from)
-        .ok_or_else(|| decode_failure(stage, message, request_id))
-}
-
-fn decode_required_bool(
-    value: Option<bool>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<bool, ApiFailure> {
-    value.ok_or_else(|| decode_failure(stage, message, request_id))
-}
-
-fn require_non_empty_text(
-    value: Option<String>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<String, ApiFailure> {
-    value
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| decode_failure(stage, message, request_id))
 }
 
 #[cfg(test)]

@@ -40,6 +40,10 @@ import type {
   StartSourceApiExecuteWorkflowInput,
 } from "./workflow-types";
 
+type SourceApiPageFetchStepResult = Awaited<
+  ReturnType<typeof runSourceApiPageFetchStep>
+>;
+
 export async function runStartSourceApiExecuteWorkflowResult(
   input: StartSourceApiExecuteWorkflowInput
 ): Promise<CliServiceResult<SourceApiExecuteSuccess>> {
@@ -135,26 +139,15 @@ export async function runStartSourceApiExecuteWorkflowResult(
         },
       });
 
-      if (pageFetch.result.kind === "failed") {
-        throw pageFetch.result.problem;
-      }
-
-      const lastCommittedEvent = requireLastCommittedEvent(pageFetch.decision);
-      return {
-        continuationToken: encodeSourceApiContinuationTokenValue(
-          {
-            actionId: pageFetch.decision.actionId,
-            prepared: preparedRequest,
-            preparedRequestFingerprint: preparedRequest.preparedBinding,
-            result: pageFetch.result.result,
-            resumeFromEventId: lastCommittedEvent.id,
-            secret: input.c.var.runtime.crypto.masterEncryptionKey,
-          },
-          input.dependencies
-        ),
+      return buildSourceApiExecuteSuccess({
+        decision: pageFetch.decision,
+        dependencies: input.dependencies,
+        prepared: preparedRequest,
+        preparedRequestFingerprint: preparedRequest.preparedBinding,
         preview,
-        result: pageFetch.result.result,
-      };
+        result: requireSuccessfulSourceApiPageFetch(pageFetch),
+        secret: input.c.var.runtime.crypto.masterEncryptionKey,
+      });
     },
     catch: (error) => ensureCliServiceProblem(error),
   });
@@ -234,27 +227,16 @@ export async function runResumeSourceApiExecuteWorkflowResult(
         },
       });
 
-      if (pageFetch.result.kind === "failed") {
-        throw pageFetch.result.problem;
-      }
-
-      const lastCommittedEvent = requireLastCommittedEvent(pageFetch.decision);
-      return {
-        continuationToken: encodeSourceApiContinuationTokenValue(
-          {
-            actionId: pageFetch.decision.actionId,
-            prepared: input.continuation.prepared,
-            preparedRequestFingerprint:
-              input.continuation.preparedRequestFingerprint,
-            result: pageFetch.result.result,
-            resumeFromEventId: lastCommittedEvent.id,
-            secret: input.c.var.runtime.crypto.masterEncryptionKey,
-          },
-          input.dependencies
-        ),
+      return buildSourceApiExecuteSuccess({
+        decision: pageFetch.decision,
+        dependencies: input.dependencies,
+        prepared: input.continuation.prepared,
+        preparedRequestFingerprint:
+          input.continuation.preparedRequestFingerprint,
         preview,
-        result: pageFetch.result.result,
-      };
+        result: requireSuccessfulSourceApiPageFetch(pageFetch),
+        secret: input.c.var.runtime.crypto.masterEncryptionKey,
+      });
     },
     catch: (error) => ensureCliServiceProblem(error),
   });
@@ -280,19 +262,12 @@ async function executePreparedSourceApiAttempt(input: {
   );
 
   if (validity.isErr()) {
-    const failure = toExecutePageFailure(validity.error, input.dependencies);
-    return {
-      commandPayload: {
-        attemptNumber: input.attemptNumber,
-        detail: failure.problem.message,
-        failureCode: failure.failureCode,
-        kind: "terminal_failure",
-        pageIndex: input.pageIndex,
-        type: "record_page_fetch",
-      },
-      kind: "failed",
-      problem: failure.problem,
-    };
+    return toTerminalPageFetchFailureResult({
+      attemptNumber: input.attemptNumber,
+      dependencies: input.dependencies,
+      pageIndex: input.pageIndex,
+      problem: validity.error,
+    });
   }
 
   const execution = await executePreparedSourceApiResult(
@@ -309,24 +284,80 @@ async function executePreparedSourceApiAttempt(input: {
   );
 
   if (execution.isErr()) {
-    const failure = toExecutePageFailure(execution.error, input.dependencies);
-    return {
-      commandPayload: {
-        attemptNumber: input.attemptNumber,
-        detail: failure.problem.message,
-        failureCode: failure.failureCode,
-        kind: "terminal_failure",
-        pageIndex: input.pageIndex,
-        type: "record_page_fetch",
-      },
-      kind: "failed",
-      problem: failure.problem,
-    };
+    return toTerminalPageFetchFailureResult({
+      attemptNumber: input.attemptNumber,
+      dependencies: input.dependencies,
+      pageIndex: input.pageIndex,
+      problem: execution.error,
+    });
   }
 
   return {
     kind: "succeeded",
     result: execution.value,
+  };
+}
+
+function requireSuccessfulSourceApiPageFetch(
+  step: SourceApiPageFetchStepResult
+): SourceApiExecutionResult {
+  if (step.result.kind === "failed") {
+    throw step.result.problem;
+  }
+
+  return step.result.result;
+}
+
+function buildSourceApiExecuteSuccess(input: {
+  decision: SourceApiPageFetchStepResult["decision"];
+  dependencies: Pick<
+    SourceApiServiceDependencies,
+    "encodeSourceApiContinuationToken"
+  >;
+  prepared: PreparedSourceApi;
+  preparedRequestFingerprint: string;
+  preview: SourceApiExecuteSuccess["preview"];
+  result: SourceApiExecutionResult;
+  secret: string | Uint8Array;
+}): SourceApiExecuteSuccess {
+  const lastCommittedEvent = requireLastCommittedEvent(input.decision);
+
+  return {
+    continuationToken: encodeSourceApiContinuationTokenValue(
+      {
+        actionId: input.decision.actionId,
+        prepared: input.prepared,
+        preparedRequestFingerprint: input.preparedRequestFingerprint,
+        result: input.result,
+        resumeFromEventId: lastCommittedEvent.id,
+        secret: input.secret,
+      },
+      input.dependencies
+    ),
+    preview: input.preview,
+    result: input.result,
+  };
+}
+
+function toTerminalPageFetchFailureResult(input: {
+  attemptNumber: number;
+  dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">;
+  pageIndex: number;
+  problem: ReturnType<typeof createCliServiceProblem>;
+}): SourceApiPageFetchAttemptResult {
+  const failure = toExecutePageFailure(input.problem, input.dependencies);
+
+  return {
+    commandPayload: {
+      attemptNumber: input.attemptNumber,
+      detail: failure.problem.message,
+      failureCode: failure.failureCode,
+      kind: "terminal_failure",
+      pageIndex: input.pageIndex,
+      type: "record_page_fetch",
+    },
+    kind: "failed",
+    problem: failure.problem,
   };
 }
 

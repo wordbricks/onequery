@@ -8,7 +8,6 @@ import type {
   ExecuteQueryColumnMessage,
   ExecuteQueryPayload,
   ExecuteQueryRowMessage,
-  QuerySourceInit,
   ValidateQueryResponseInit,
 } from "./types";
 
@@ -47,7 +46,7 @@ export function buildQueryValidateResponse(response: {
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
       timeoutMs: response.declaredResultWindow.timeoutMs,
     },
-    source: buildQuerySource(response.source),
+    source: buildCliSource(response.source),
     truncated: response.truncated,
   };
 }
@@ -61,7 +60,7 @@ export function buildQueryExecuteResponse(response: {
   truncated: boolean;
 }): ExecuteQueryPayload {
   return {
-    source: buildQuerySource(response.source),
+    source: buildCliSource(response.source),
     rowCount: BigInt(response.rowCount),
     elapsedMs: BigInt(response.elapsedMs),
     columns: response.columns.map(buildCliQueryColumn),
@@ -92,20 +91,6 @@ export function buildQueryExecuteSanitization(hasRows: boolean) {
       ? ["$.columns[*].name", "$.rows[*].values[*]"]
       : ["$.columns[*].name"]
   );
-}
-
-function buildQuerySource(
-  source: Parameters<typeof buildCliSource>[0]
-): QuerySourceInit {
-  const cliSource = buildCliSource(source);
-
-  return {
-    provider: cliSource.provider,
-    queryable: cliSource.queryable,
-    sourceKey: cliSource.sourceKey,
-    status: cliSource.status,
-    ...(cliSource.displayName ? { displayName: cliSource.displayName } : {}),
-  };
 }
 
 function buildCliQueryColumn(column: {

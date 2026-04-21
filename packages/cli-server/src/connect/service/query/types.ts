@@ -8,7 +8,7 @@ import {
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../../gen/onequery/cli/v1/query_pb";
-import { CliSourceSchema } from "../../gen/onequery/cli/v1/source_pb";
+import type { CliSourceInit } from "../source/types";
 import type { CliHonoContext } from "../types";
 import type {
   CliQueryExecutionFailureResult,
@@ -22,7 +22,6 @@ type ValidateQueryResponseMessageInit = MessageInitShape<
 type ExecuteQueryResponseMessageInit = MessageInitShape<
   typeof ExecuteQueryResponseSchema
 >;
-type QuerySourceMessageInit = MessageInitShape<typeof CliSourceSchema>;
 
 export type CliQueryServiceRequest = {
   orgSlug: string;
@@ -46,14 +45,6 @@ export type CliQueryExecutionSuccess = Extract<
 
 export type CliQueryExecutionFailure = CliQueryExecutionFailureResult;
 
-export type QuerySourceInit = {
-  displayName?: QuerySourceMessageInit["displayName"];
-  provider: QuerySourceMessageInit["provider"];
-  queryable: QuerySourceMessageInit["queryable"];
-  sourceKey: QuerySourceMessageInit["sourceKey"];
-  status: QuerySourceMessageInit["status"];
-};
-
 export type ExecuteQueryColumnMessage = {
   name: string;
   logicalType?: QueryLogicalType;
@@ -69,7 +60,7 @@ export type ValidateQueryResponseInit = {
   >;
   normalizedSql: string;
   request: NonNullable<ValidateQueryResponseMessageInit["request"]>;
-  source: QuerySourceInit;
+  source: CliSourceInit;
   truncated: boolean;
 };
 
@@ -78,7 +69,7 @@ export type ExecuteQueryPayload = {
   elapsedMs: bigint;
   rowCount: bigint;
   rows: ExecuteQueryRowMessage[];
-  source: QuerySourceInit;
+  source: CliSourceInit;
   truncated: boolean;
 };
 

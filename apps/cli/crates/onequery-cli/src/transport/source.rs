@@ -19,9 +19,11 @@ use crate::transport::pagination::page_info_from_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
+use crate::transport::response_decode::decode_required_bool;
+use crate::transport::response_decode::require_non_empty_text;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceSummary {
     pub(crate) source_key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -32,6 +34,7 @@ pub(crate) struct SourceSummary {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SourceListPayload {
     #[serde(default)]
     pub(crate) sources: Vec<SourceSummary>,
@@ -39,14 +42,14 @@ pub(crate) struct SourceListPayload {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceTestPayload {
     pub(crate) source: SourceSummary,
     pub(crate) outcome: SourceTestOutcome,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceTestOutcome {
     pub(crate) kind: String,
     pub(crate) message: String,
@@ -165,18 +168,12 @@ pub(crate) async fn get_source_by_key_with_controls(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let source = payload.source.into_option().ok_or_else(|| {
-        decode_failure(
-            ErrorStage::ResolveSource,
-            "source get response missing source",
-            request_id.clone(),
-        )
-    })?;
 
     Ok(ApiSuccess {
-        payload: source_summary_from_generated(
-            source,
+        payload: decode_required_source_summary(
+            payload.source.into_option(),
             ErrorStage::ResolveSource,
+            "source get response missing source",
             request_id.clone(),
         )?,
         request_id,
@@ -207,13 +204,7 @@ pub(crate) async fn test_source(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let source = payload.source.into_option().ok_or_else(|| {
-        decode_failure(
-            ErrorStage::ResolveSource,
-            "source test response missing source",
-            request_id.clone(),
-        )
-    })?;
+    let source = payload.source.into_option();
     let outcome = payload.outcome.ok_or_else(|| {
         decode_failure(
             ErrorStage::ResolveSource,
@@ -245,15 +236,26 @@ pub(crate) async fn test_source(
 
     Ok(ApiSuccess {
         payload: SourceTestPayload {
-            source: source_summary_from_generated(
+            source: decode_required_source_summary(
                 source,
                 ErrorStage::ResolveSource,
+                "source test response missing source",
                 request_id.clone(),
             )?,
             outcome,
         },
         request_id,
     })
+}
+
+fn decode_required_source_summary(
+    summary: Option<types::CliSource>,
+    stage: ErrorStage,
+    message: &str,
+    request_id: Option<String>,
+) -> Result<SourceSummary, ApiFailure> {
+    let summary = summary.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
+    source_summary_from_generated(summary, stage, request_id)
 }
 
 pub(crate) fn source_summary_from_generated(
@@ -310,26 +312,6 @@ fn source_test_unsupported_reason_to_str(
         Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED)
         | None => "unknown".to_owned(),
     }
-}
-
-fn decode_required_bool(
-    value: Option<bool>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<bool, ApiFailure> {
-    value.ok_or_else(|| decode_failure(stage, message, request_id))
-}
-
-fn require_non_empty_text(
-    value: Option<String>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<String, ApiFailure> {
-    value
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| decode_failure(stage, message, request_id))
 }
 
 #[cfg(test)]
