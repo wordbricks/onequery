@@ -1,3 +1,9 @@
+type JsonReadableResponse = {
+  clone: () => {
+    json: () => Promise<unknown>;
+  };
+};
+
 type ProblemDetailsBody = {
   detail?: unknown;
   title?: unknown;
@@ -24,7 +30,7 @@ function readFirstFieldErrorMessage(errors: unknown): string | null {
 }
 
 export async function readApiErrorMessage(
-  response: Response,
+  response: JsonReadableResponse,
   fallback: string
 ): Promise<string> {
   const cloned = response.clone();

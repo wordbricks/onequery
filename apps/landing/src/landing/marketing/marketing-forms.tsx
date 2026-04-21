@@ -25,6 +25,10 @@ import {
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
 
+type ProductUpdatesResponseBody = {
+  email: string;
+};
+
 class ProductUpdatesSubmissionError extends TaggedError(
   "ProductUpdatesSubmissionError"
 )<{
@@ -77,7 +81,7 @@ async function submitProductUpdatesRequest(
     );
   }
 
-  const body = await response.json();
+  const body = (await response.json()) as ProductUpdatesResponseBody;
   return Result.ok({
     email: body.email,
   });

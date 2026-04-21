@@ -1,8 +1,13 @@
 import { zValidator } from "@hono/zod-validator";
-import type { Context } from "hono";
+import type { Hook } from "@hono/zod-validator";
+import type { Context, Env, ValidationTargets } from "hono";
 import { Hono } from "hono";
 import { problemDetails, problemDetailsHandler } from "hono-problem-details";
+import { zodProblemHook as createProblemDetailsZodHook } from "hono-problem-details/zod";
+import type { ZodProblemHookOptions } from "hono-problem-details/zod";
 import { z } from "zod";
+import type * as v3 from "zod/v3";
+import type * as v4 from "zod/v4/core";
 
 import {
   createContactNotification,
@@ -37,38 +42,30 @@ export const ContactRequestSchema = z.object({
   message: z.string().min(1, "message is required").max(4000),
 });
 
-type ZodValidationIssue = {
-  path: readonly PropertyKey[];
-  message: string;
-  code?: string;
-};
+type AnyZodSchema = v3.ZodType | v4.$ZodType;
 
-type ZodValidationFailure = {
-  issues: readonly ZodValidationIssue[];
-};
+function zodProblemHook<
+  T,
+  E extends Env,
+  P extends string,
+  Target extends keyof ValidationTargets = keyof ValidationTargets,
+  Schema extends AnyZodSchema = AnyZodSchema,
+>(
+  options?: ZodProblemHookOptions
+): Hook<T, E, P, Target, Record<never, never>, Schema> {
+  const hook = createProblemDetailsZodHook(options);
 
-function zodProblemHook(
-  result:
-    | { success: true; data: unknown }
-    | { success: false; error: ZodValidationFailure; data: unknown },
-  _c: Context
-): void {
-  if (result.success) {
-    return;
-  }
-
-  throw problemDetails({
-    detail: "Request validation failed",
-    extensions: {
-      errors: result.error.issues.map((issue) => ({
-        code: issue.code ?? "invalid",
-        field: issue.path.map((part) => String(part)).join("."),
-        message: issue.message,
-      })),
-    },
-    status: 422,
-    title: "Validation Error",
-  });
+  return ((result, c) =>
+    // Comment: upstream 0.4.0 fixes the runtime path for Zod v4, but the
+    // exported hook type is still narrower than @hono/zod-validator's v4 hook.
+    hook(result as Parameters<typeof hook>[0], c as Context)) as Hook<
+    T,
+    E,
+    P,
+    Target,
+    Record<never, never>,
+    Schema
+  >;
 }
 
 function isLoopbackHostname(hostname: string) {
@@ -138,7 +135,7 @@ export function createLandingApp(options: CreateLandingAppOptions = {}) {
     .onError(problemDetailsHandler())
     .post(
       "/product-updates",
-      zValidator("json", ProductUpdatesRequestSchema, zodProblemHook),
+      zValidator("json", ProductUpdatesRequestSchema, zodProblemHook()),
       async (c) => {
         const { email } = c.req.valid("json");
         const normalizedEmail = email.trim().toLowerCase();
@@ -157,7 +154,7 @@ export function createLandingApp(options: CreateLandingAppOptions = {}) {
     )
     .post(
       "/contact",
-      zValidator("json", ContactRequestSchema, zodProblemHook),
+      zValidator("json", ContactRequestSchema, zodProblemHook()),
       async (c) => {
         const { email, message, name } = c.req.valid("json");
         const normalizedEmail = email.trim().toLowerCase();

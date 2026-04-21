@@ -1,58 +1,35 @@
-import type { Context } from "hono";
-import { problemDetails } from "hono-problem-details";
+import type { Hook } from "@hono/zod-validator";
+import type { Context, Env, ValidationTargets } from "hono";
+import { zodProblemHook as createProblemDetailsZodHook } from "hono-problem-details/zod";
+import type { ZodProblemHookOptions } from "hono-problem-details/zod";
+import type * as v3 from "zod/v3";
+import type * as v4 from "zod/v4/core";
 
-export type ZodProblemHookOptions = {
-  title?: string;
-  detail?: string;
-};
+type AnyZodSchema = v3.ZodType | v4.$ZodType;
 
-type ValidationError = {
-  field: string;
-  message: string;
-  code: string;
-};
+export type { ZodProblemHookOptions } from "hono-problem-details/zod";
 
-type ZodValidationIssue = {
-  path: readonly PropertyKey[];
-  message: string;
-  code?: string;
-};
+export function zodProblemHook<
+  T,
+  E extends Env,
+  P extends string,
+  Target extends keyof ValidationTargets = keyof ValidationTargets,
+  Schema extends AnyZodSchema = AnyZodSchema,
+>(
+  options?: ZodProblemHookOptions
+): Hook<T, E, P, Target, Record<never, never>, Schema> {
+  const hook = createProblemDetailsZodHook(options);
 
-type ZodValidationFailure = {
-  issues: readonly ZodValidationIssue[];
-};
-
-function formatErrors(
-  issues: readonly ZodValidationIssue[]
-): ValidationError[] {
-  return issues.map((issue) => ({
-    code: issue.code ?? "invalid",
-    field: issue.path.map((part) => String(part)).join("."),
-    message: issue.message,
-  }));
-}
-
-// NOTE: hono-problem-details/zod currently targets classic ZodError types.
-// This repo uses Zod v4 with @hono/zod-validator, so we keep the same response
-// shape from README while using a v4-compatible hook signature.
-export function zodProblemHook(options?: ZodProblemHookOptions) {
-  return (
-    result:
-      | { success: true; data: unknown }
-      | { success: false; error: ZodValidationFailure; data: unknown },
-    _c: Context
-  ): void => {
-    if (result.success) {
-      return;
-    }
-
-    throw problemDetails({
-      detail: options?.detail ?? "Request validation failed",
-      extensions: {
-        errors: formatErrors(result.error.issues),
-      },
-      status: 422,
-      title: options?.title ?? "Validation Error",
-    });
-  };
+  return ((result, c) =>
+    // Comment: hono-problem-details@0.4.0 handles the Zod v4 runtime shape,
+    // but its hook type still narrows `error` to `ZodError` instead of the
+    // broader `$ZodError` that @hono/zod-validator exposes for v4 schemas.
+    hook(result as Parameters<typeof hook>[0], c as Context)) as Hook<
+    T,
+    E,
+    P,
+    Target,
+    Record<never, never>,
+    Schema
+  >;
 }
