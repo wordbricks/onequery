@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,16 @@ import {
   SourceApiPermissionDeniedError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
@@ -237,6 +246,11 @@ type ClosableDatabase = {
   };
 };
 
+type OpenedDatabase = {
+  db: ClosableDatabase;
+  rootDir: string;
+};
+
 const migrationsFolder = fileURLToPath(
   new URL("../../../../db/src/migrations", import.meta.url)
 );
@@ -253,13 +267,30 @@ async function closeDatabase(db: ClosableDatabase): Promise<void> {
   }
 }
 
-async function createHarness() {
-  const connectionString = `pglite:${join(tmpdir(), "pglite", randomUUID())}`;
-  await prepareApplicationDatabase({
-    connectionString,
-    migrationsFolder,
+let migratedTemplateRootDir: string | null = null;
+
+async function createIsolatedDatabase() {
+  if (migratedTemplateRootDir === null) {
+    throw new Error("source api test database template is not initialized");
+  }
+
+  const rootDir = mkdtempSync(join(tmpdir(), "onequery-source-api-test-"));
+  const dataDir = join(rootDir, "db");
+
+  // Reuse one migrated template per file so these handler tests stay stable
+  // under CI load instead of rerunning the full migration set each time.
+  cpSync(join(migratedTemplateRootDir, "db"), dataDir, {
+    recursive: true,
   });
-  const db = createDb(connectionString);
+
+  return {
+    db: createDb(`pglite:${dataDir}`),
+    rootDir,
+  };
+}
+
+async function createHarness() {
+  const { db, rootDir } = await createIsolatedDatabase();
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -321,6 +352,7 @@ async function createHarness() {
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
+    rootDir,
     requestContext,
   };
 }
@@ -687,22 +719,54 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
   };
 }
 
-describe("source api connect service", () => {
-  const openedDatabases: ClosableDatabase[] = [];
+describe("source api connect service", { timeout: 15_000 }, () => {
+  const openedDatabases: OpenedDatabase[] = [];
+
+  beforeAll(async () => {
+    migratedTemplateRootDir = mkdtempSync(
+      join(tmpdir(), "onequery-source-api-template-")
+    );
+    await prepareApplicationDatabase({
+      connectionString: `pglite:${join(migratedTemplateRootDir, "db")}`,
+      migrationsFolder,
+    });
+  }, 15_000);
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(async () => {
-    for (const db of openedDatabases.splice(0)) {
+    for (const { db, rootDir } of openedDatabases.splice(0)) {
       await closeDatabase(db);
+      rmSync(rootDir, {
+        force: true,
+        recursive: true,
+      });
     }
   });
 
-  it("describes the source API through the Connect handler", async () => {
+  afterAll(() => {
+    if (migratedTemplateRootDir !== null) {
+      rmSync(migratedTemplateRootDir, {
+        force: true,
+        recursive: true,
+      });
+      migratedTemplateRootDir = null;
+    }
+  });
+
+  async function createTrackedHarness() {
     const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    openedDatabases.push({
+      db: harness.db as ClosableDatabase,
+      rootDir: harness.rootDir,
+    });
+    return harness;
+  }
+
+  it("describes the source API through the Connect handler", async () => {
+    const harness = await createTrackedHarness();
     const request = create(DescribeSourceApiRequestSchema, {
       orgSlug: "acme",
       sourceKey: "github-prod",
@@ -727,8 +791,7 @@ describe("source api connect service", () => {
   });
 
   it("previews source API execution through the Connect handler", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -782,8 +845,7 @@ describe("source api connect service", () => {
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -821,8 +883,7 @@ describe("source api connect service", () => {
   });
 
   it("executes source API requests through the Connect handler", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
       input: {
         case: "start",
@@ -862,8 +923,7 @@ describe("source api connect service", () => {
   });
 
   it("preserves JSON source API response bodies through the Connect handler", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
       ...executionResponse,
       body: {
@@ -906,8 +966,7 @@ describe("source api connect service", () => {
   });
 
   it("binds continuation tokens to execution state during resume", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     const seeded = await seedResumableSourceApiAction(
       harness.db,
       "req_cli_resume_seed"
@@ -962,8 +1021,7 @@ describe("source api connect service", () => {
   });
 
   it("rejects continuation token resume for operations without continuation support", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
       ...decodedContinuationToken,
       prepared: {
@@ -990,8 +1048,7 @@ describe("source api connect service", () => {
   });
 
   it("maps malformed continuation tokens to invalid arguments", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiInvalidRequestError(
@@ -1014,8 +1071,7 @@ describe("source api connect service", () => {
   });
 
   it("maps expired continuation tokens to failed precondition", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiExpiredError(
@@ -1038,8 +1094,7 @@ describe("source api connect service", () => {
   });
 
   it("maps descriptor drift to failed precondition during resume", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     const seeded = await seedResumableSourceApiAction(
       harness.db,
       "req_cli_resume_drift_seed"
@@ -1068,8 +1123,7 @@ describe("source api connect service", () => {
   });
 
   it("maps source api authorization failures to permission denied", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "authorize",
@@ -1110,8 +1164,7 @@ describe("source api connect service", () => {
   });
 
   it("maps adapter execution failures to connect errors", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "execute",
@@ -1148,8 +1201,7 @@ describe("source api connect service", () => {
   });
 
   it("returns not logged in before validating source api execute input", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliConnectProblem({
@@ -1182,8 +1234,7 @@ describe("source api connect service", () => {
   });
 
   it("returns not logged in before decoding continuation tokens", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliConnectProblem({
@@ -1218,8 +1269,7 @@ describe("source api connect service", () => {
   });
 
   it("resolves the requested resume source before decoding continuation tokens", async () => {
-    const harness = await createHarness();
-    openedDatabases.push(harness.db as ClosableDatabase);
+    const harness = await createTrackedHarness();
     harness.dependencies.runCliLoadSourceEffect.mockResolvedValueOnce({
       kind: "not_found",
     });
