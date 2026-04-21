@@ -9,29 +9,30 @@ import type { AuthenticatedCliConnectRequestContext } from "../../context";
 import { liftAuthenticatedCliServiceMethod } from "../authenticated";
 import type { AuthenticatedCliResultServiceMethod } from "../authenticated";
 import type { CliServiceResult } from "../result";
-import type { CliServiceMethod } from "../types";
+import type { CliHonoContext, CliServiceMethod } from "../types";
 import {
   buildCliExecuteSourceApiResponse,
   buildSourceApiDraft,
   isCliSourceApiPreviewOnlyMode,
   resolveSourceApiExecuteCommand,
 } from "./codec";
+import { resolveSourceApiWorkflowContext } from "./context";
 import { resolveSourceApiServiceDependencies } from "./dependencies";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
-  assertPreparedSourceApiStillValid,
   createSourceApiConnectProblem,
   decodeSourceApiContinuationTokenResult,
-  executePreparedSourceApiResult,
-  prepareSourceApiDraftResult,
   resolveAuthorizedSourceApiAccess,
-  resolveSourceApiDescriptor,
 } from "./runtime";
 import type {
   ExecuteSourceApiResponseInit,
   SourceApiAccessState,
   SourceApiExecuteCommand,
 } from "./types";
+import {
+  runResumeSourceApiExecuteWorkflowResult,
+  runStartSourceApiExecuteWorkflowResult,
+} from "./workflow";
 
 type StartSourceApiExecuteCommand = Extract<
   SourceApiExecuteCommand,
@@ -98,40 +99,34 @@ async function handleStartSourceApiCommand(
   dependencies: SourceApiServiceDependencies
 ): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
   return Result.gen(async function* handleStartSourceApiCommandFlow() {
-    const access = yield* Result.await(
-      resolveExecuteSourceApiAccess(input, dependencies)
+    const workflowContext = yield* Result.await(
+      resolveSourceApiWorkflowContext({
+        action: "source_api.execute",
+        orgSlug: input.command.target.orgSlug,
+        requestContext: input.requestContext,
+      })
     );
-    const descriptor = yield* Result.await(
-      resolveSourceApiDescriptor(
-        {
-          actor: access.actor,
-          source: access.source,
-        },
-        dependencies
-      )
+    const response = yield* Result.await(
+      runStartSourceApiExecuteWorkflowResult({
+        ...workflowContext,
+        dependencies,
+        draft: buildSourceApiDraft(input.command.draft),
+        invokeMode: isCliSourceApiPreviewOnlyMode(input.command.mode)
+          ? "preview_only"
+          : "execute",
+        sourceKey: input.command.target.sourceKey,
+      })
     );
-    const prepared = yield* Result.await(
-      prepareSourceApiDraftResult(
-        {
-          actor: access.actor,
-          descriptor,
-          draft: buildSourceApiDraft(input.command.draft),
-          source: access.source,
-        },
-        dependencies
-      )
-    );
-    const preview = dependencies.createSourceApiPreview(prepared);
 
     if (isCliSourceApiPreviewOnlyMode(input.command.mode)) {
       dependencies.logCliEvent({
-        details: dependencies.buildCliRequestLogDetails(access.c, {
-          kind: preview.kind,
+        details: dependencies.buildCliRequestLogDetails(workflowContext.c, {
+          kind: response.preview.kind,
           mode: "preview_only",
-          operation: preview.operation,
-          orgSlug: access.authorizedOrg.org.slug,
-          provider: preview.source.provider,
-          sourceKey: preview.source.sourceKey,
+          operation: response.preview.operation,
+          orgSlug: workflowContext.orgSlug,
+          provider: response.preview.source.provider,
+          sourceKey: response.preview.source.sourceKey,
         }),
         event: "source_api.execute.preview_resolved",
         level: "info",
@@ -139,43 +134,39 @@ async function handleStartSourceApiCommand(
 
       return Result.ok(
         buildCliExecuteSourceApiResponse({
-          preview,
+          preview: response.preview,
         })
       );
     }
 
-    const result = yield* Result.await(
-      executePreparedSourceApiResult(
-        {
-          actor: access.actor,
-          prepared,
-          source: access.source,
-        },
-        dependencies
-      )
-    );
-    const continuationToken = encodeSourceApiContinuationTokenValue(
-      {
-        prepared,
-        result,
-        secret: access.c.var.runtime.crypto.masterEncryptionKey,
-      },
-      dependencies
-    );
+    const result = response.result;
+    if (result === undefined) {
+      return Result.err(
+        createSourceApiConnectProblem({
+          error: new Error(
+            "source_api_action execute completed without an execution result"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
+    }
 
     logResolvedSourceApiExecution(
       {
-        access,
+        c: workflowContext.c,
         mode: "execute",
+        orgSlug: workflowContext.orgSlug,
         result,
+        roles: workflowContext.actor.membershipRoles,
       },
       dependencies
     );
 
     return Result.ok(
       buildCliExecuteSourceApiResponse({
-        continuationToken,
-        preview,
+        continuationToken: response.continuationToken,
+        preview: response.preview,
         result,
       })
     );
@@ -202,55 +193,55 @@ async function handleResumeSourceApiCommand(
       dependencies
     );
 
-    yield* Result.await(
-      assertPreparedSourceApiStillValid(
-        {
-          actor: access.actor,
-          prepared: continuation.prepared,
-          source: access.source,
-        },
-        dependencies
-      )
-    );
     yield* requireContinuationPaginationSupport(
       continuation.prepared,
+      continuation.state,
       dependencies
     );
 
-    const result = yield* Result.await(
-      executePreparedSourceApiResult(
-        {
-          actor: access.actor,
-          continuation: continuation.state,
-          prepared: continuation.prepared,
-          source: access.source,
-        },
-        dependencies
-      )
+    const workflowContext = yield* Result.await(
+      resolveSourceApiWorkflowContext({
+        action: "source_api.execute",
+        orgSlug: input.command.target.orgSlug,
+        requestContext: input.requestContext,
+      })
     );
-    const preview = dependencies.createSourceApiPreview(continuation.prepared);
-    const continuationToken = encodeSourceApiContinuationTokenValue(
-      {
-        prepared: continuation.prepared,
-        result,
-        secret: access.c.var.runtime.crypto.masterEncryptionKey,
-      },
-      dependencies
+    const response = yield* Result.await(
+      runResumeSourceApiExecuteWorkflowResult({
+        ...workflowContext,
+        continuation,
+        dependencies,
+        source: access.source,
+      })
     );
+    const result = response.result;
+    if (result === undefined) {
+      return Result.err(
+        createSourceApiConnectProblem({
+          error: new Error(
+            "source_api_action resume completed without an execution result"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
+    }
 
     logResolvedSourceApiExecution(
       {
-        access,
+        c: access.c,
         mode: "resume",
+        orgSlug: access.authorizedOrg.org.slug,
         result,
+        roles: access.authorizedOrg.membershipRoles,
       },
       dependencies
     );
 
     return Result.ok(
       buildCliExecuteSourceApiResponse({
-        continuationToken,
-        preview,
+        continuationToken: response.continuationToken,
+        preview: response.preview,
         result,
       })
     );
@@ -280,9 +271,13 @@ async function resolveExecuteSourceApiAccess(
 
 function requireContinuationPaginationSupport(
   prepared: PreparedSourceApi,
+  continuationState: SourceApiExecutionResult["nextContinuationState"] | null,
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ) {
-  if (prepared.paginationPolicy === "continuation_token") {
+  if (
+    continuationState === null ||
+    prepared.paginationPolicy === "continuation_token"
+  ) {
     return Result.ok(undefined);
   }
 
@@ -297,35 +292,13 @@ function requireContinuationPaginationSupport(
   );
 }
 
-function encodeSourceApiContinuationTokenValue(
-  input: {
-    now?: Date;
-    prepared: PreparedSourceApi;
-    result: SourceApiExecutionResult;
-    secret: string | Uint8Array;
-  },
-  dependencies: Pick<
-    SourceApiServiceDependencies,
-    "encodeSourceApiContinuationToken"
-  >
-): string | undefined {
-  if (input.result.nextContinuationState === undefined) {
-    return undefined;
-  }
-
-  return dependencies.encodeSourceApiContinuationToken({
-    now: input.now,
-    prepared: input.prepared,
-    secret: input.secret,
-    state: input.result.nextContinuationState,
-  });
-}
-
 function logResolvedSourceApiExecution(
   input: {
-    access: SourceApiAccessState;
+    c: CliHonoContext;
     mode: "execute" | "resume";
+    orgSlug: string;
     result: SourceApiExecutionResult;
+    roles: readonly string[];
   },
   dependencies: Pick<
     SourceApiServiceDependencies,
@@ -333,12 +306,12 @@ function logResolvedSourceApiExecution(
   >
 ) {
   dependencies.logCliEvent({
-    details: dependencies.buildCliRequestLogDetails(input.access.c, {
+    details: dependencies.buildCliRequestLogDetails(input.c, {
       mode: input.mode,
       operation: input.result.operation,
-      orgSlug: input.access.authorizedOrg.org.slug,
+      orgSlug: input.orgSlug,
       provider: input.result.source.provider,
-      roles: input.access.authorizedOrg.membershipRoles,
+      roles: input.roles,
       sourceKey: input.result.source.sourceKey,
       status: input.result.status,
     }),

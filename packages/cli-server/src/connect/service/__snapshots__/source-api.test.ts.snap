@@ -8,6 +8,7 @@ exports[`source api connect service > binds continuation tokens to execution sta
     "token": "continuation_1",
   },
   "encodeSourceApiContinuationTokenCall": {
+    "actionId": "<action_id>",
     "now": null,
     "prepared": {
       "body": {
@@ -39,6 +40,8 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "sourceKey": "github-prod",
       "url": "https://api.github.com/issues",
     },
+    "preparedRequestFingerprint": "prepared_binding_123",
+    "resumeFromEventId": "<event_id>",
     "secret": "master-key",
     "state": {
       "cursor": "page_3",
@@ -276,7 +279,9 @@ exports[`source api connect service > describes the source API through the Conne
     "action": "source_api.describe",
     "orgSlug": "acme",
     "session": {
+      "authMode": "browser_session",
       "user": {
+        "email": "jane@example.com",
         "id": "user-1",
       },
     },
@@ -397,7 +402,9 @@ exports[`source api connect service > executes source API requests through the C
     "action": "source_api.execute",
     "orgSlug": "acme",
     "session": {
+      "authMode": "browser_session",
       "user": {
+        "email": "jane@example.com",
         "id": "user-1",
       },
     },
@@ -602,7 +609,9 @@ exports[`source api connect service > previews source API execution through the 
     "action": "source_api.execute",
     "orgSlug": "acme",
     "session": {
+      "authMode": "browser_session",
       "user": {
+        "email": "jane@example.com",
         "id": "user-1",
       },
     },

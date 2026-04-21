@@ -3,10 +3,6 @@ import { Result } from "better-result";
 import { createCliConnectProblemForQueryPlanResult } from "../errors";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import {
-  createCliQueryActionTrailForRequest,
-  createCliQueryWorkflowObserver,
-} from "./action-trail";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryValidationDispatch } from "./dispatch";
 import {
@@ -24,28 +20,16 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
     const resolved = yield* Result.await(
       resolveCliQueryRequestState(request, context)
     );
-    const actionTrail = yield* Result.await(
-      createCliQueryActionTrailForRequest({
-        actionType: "validate",
-        authorizedOrg: resolved.authorizedOrg,
-        c: resolved.c,
-        requestId: resolved.requestId,
-        resultWindow: resolved.resultWindow,
-        session: resolved.session,
-        sourceKey: request.sourceKey,
-        sql: resolved.query.sql,
-      })
-    );
-    const observer = createCliQueryWorkflowObserver({
-      actionId: actionTrail.actionId,
-      actionType: "validate",
-      c: resolved.c,
-      sourceKey: request.sourceKey,
-    });
     const result = yield* Result.await(
       runCliQueryValidationWorkflowResult({
+        actorSnapshot: {
+          authMode: resolved.session.authMode,
+          email: resolved.session.user.email,
+          membershipRoles: [...resolved.authorizedOrg.membershipRoles],
+          userId: resolved.session.user.id,
+        },
+        db: resolved.c.var.storage.db,
         dispatch: createCliQueryValidationDispatch(resolved.c),
-        observer,
         org: resolved.authorizedOrg.org,
         requestId: resolved.requestId,
         sourceName: request.sourceKey,

@@ -246,11 +246,14 @@ export type SourceApiPreview = {
 };
 
 export type SourceApiContinuationTokenPayload = {
-  version: 2;
+  version: 3;
   issuedAt: string;
   expiresAt: string;
+  actionId: string;
   prepared: PreparedSourceApi;
-  state: JsonValue;
+  preparedRequestFingerprint: string;
+  resumeFromEventId: string;
+  state: JsonValue | null;
 };
 
 type UnboundPreparedPaginationBasis = {

@@ -1,18 +1,11 @@
 import { zValidator } from "@hono/zod-validator";
 import { auditListQuerySchema } from "@onequery/contracts/audit";
-import {
-  and,
-  desc,
-  eq,
-  getDatabaseSchema,
-  lt,
-  or,
-  sql,
-} from "@onequery/db/server";
+import { and, eq, getDatabaseSchema } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import { InvalidAuditCursorError, listAuditFeedPage } from "../audit/feed";
 import {
   canReadOrganizationAudit,
   doesOrganizationMembershipGrantPermission,
@@ -33,11 +26,6 @@ const UpdateOrgSettingsSchema = z
   .refine((body) => body.monthlyBudgetUsd !== undefined, {
     message: "At least one organization setting must be provided",
   });
-
-type AuditCursor = {
-  id: string;
-  occurredAt: Date;
-};
 
 function getOrganizationSettingsSelection(db: Database) {
   const { organizationProfiles } = getDatabaseSchema(db);
@@ -84,38 +72,6 @@ async function findOrganizationMembershipBySlug(input: {
     organizationId: org.id,
     rawRole: membership.role,
   };
-}
-
-function escapeLikePattern(value: string): string {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll("%", "\\%")
-    .replaceAll("_", "\\_");
-}
-
-function buildCaseInsensitiveContains(column: unknown, value: string) {
-  const pattern = `%${escapeLikePattern(value.toLowerCase())}%`;
-  return sql`lower(coalesce(${column}, '')) like ${pattern} escape '\\'`;
-}
-
-function decodeAuditCursor(cursor: string): AuditCursor | null {
-  const separatorIndex = cursor.indexOf("|");
-  if (separatorIndex <= 0 || separatorIndex === cursor.length - 1) {
-    return null;
-  }
-
-  const occurredAt = new Date(cursor.slice(0, separatorIndex));
-  const id = cursor.slice(separatorIndex + 1);
-
-  if (Number.isNaN(occurredAt.getTime()) || id.length === 0) {
-    return null;
-  }
-
-  return { id, occurredAt };
-}
-
-function encodeAuditCursor(input: AuditCursor): string {
-  return `${input.occurredAt.toISOString()}|${input.id}`;
 }
 
 /**
@@ -206,147 +162,21 @@ export const organizationsRoute = new Hono<{
         );
       }
 
-      const { cliQueryActionEvents, cliQueryActions } = getDatabaseSchema(db);
-      const conditions = [
-        eq(cliQueryActions.organizationId, membership.organizationId),
-      ];
+      try {
+        const response = await listAuditFeedPage({
+          db,
+          organizationId: membership.organizationId,
+          query,
+        });
 
-      if (query.status) {
-        conditions.push(eq(cliQueryActions.status, query.status));
-      }
-
-      if (query.actionType) {
-        conditions.push(eq(cliQueryActions.actionType, query.actionType));
-      }
-
-      if (query.sourceKey) {
-        conditions.push(eq(cliQueryActions.sourceKey, query.sourceKey));
-      }
-
-      if (query.q) {
-        const searchCondition = or(
-          buildCaseInsensitiveContains(cliQueryActions.actorEmail, query.q),
-          buildCaseInsensitiveContains(cliQueryActions.sourceKey, query.q),
-          buildCaseInsensitiveContains(cliQueryActions.sql, query.q)
-        );
-
-        if (searchCondition) {
-          conditions.push(searchCondition);
-        }
-      }
-
-      if (query.cursor) {
-        const cursor = decodeAuditCursor(query.cursor);
-        if (!cursor) {
+        return c.json(response);
+      } catch (error) {
+        if (error instanceof InvalidAuditCursorError) {
           return c.json({ error: "Invalid cursor" }, 400);
         }
 
-        const cursorCondition = or(
-          lt(cliQueryActions.lastEventAt, cursor.occurredAt),
-          and(
-            eq(cliQueryActions.lastEventAt, cursor.occurredAt),
-            lt(cliQueryActions.id, cursor.id)
-          )
-        );
-
-        if (cursorCondition) {
-          conditions.push(cursorCondition);
-        }
+        throw error;
       }
-
-      // Comment: Audit v1 is intentionally action-history, not raw event
-      // history; reading the aggregate row plus its last event keeps the API
-      // stable while the broader audit model is still narrow.
-      const rows = await db
-        .select({
-          actionType: cliQueryActions.actionType,
-          actorEmail: cliQueryActions.actorEmail,
-          actorMembershipRoles: cliQueryActions.actorMembershipRoles,
-          actorUserId: cliQueryActions.actorUserId,
-          elapsedMs: cliQueryActions.elapsedMs,
-          errorDetail: cliQueryActions.errorDetail,
-          errorHint: cliQueryActions.errorHint,
-          id: cliQueryActions.id,
-          lastEventType: cliQueryActionEvents.eventType,
-          normalizedSql: cliQueryActions.normalizedSql,
-          normalizedSqlChanged: cliQueryActions.normalizedSqlChanged,
-          occurredAt: cliQueryActions.lastEventAt,
-          provider: cliQueryActions.provider,
-          requestId: cliQueryActions.requestId,
-          retryable: cliQueryActions.retryable,
-          rowCount: cliQueryActions.rowCount,
-          sourceId: cliQueryActions.sourceId,
-          sourceKey: cliQueryActions.sourceKey,
-          sql: cliQueryActions.sql,
-          stage: cliQueryActions.stage,
-          status: cliQueryActions.status,
-          usagePersistenceStatus: cliQueryActions.usagePersistenceStatus,
-        })
-        .from(cliQueryActions)
-        .innerJoin(
-          cliQueryActionEvents,
-          and(
-            eq(cliQueryActionEvents.queryActionId, cliQueryActions.id),
-            eq(cliQueryActionEvents.id, cliQueryActions.lastEventId)
-          )
-        )
-        .where(and(...conditions))
-        .orderBy(desc(cliQueryActions.lastEventAt), desc(cliQueryActions.id))
-        .limit(query.limit + 1);
-
-      const pageRows = rows.slice(0, query.limit);
-      const lastRow = pageRows.at(-1);
-
-      return c.json({
-        families: ["cli_query_action"] as const,
-        items: pageRows.map((row) => ({
-          action: {
-            provider: row.provider ?? null,
-            requestId: row.requestId,
-            sourceId: row.sourceId ?? null,
-            sourceKey: row.sourceKey,
-            type: row.actionType,
-          },
-          actor: {
-            email: row.actorEmail,
-            membershipRoles: row.actorMembershipRoles,
-            userId: row.actorUserId,
-          },
-          error:
-            row.errorDetail || row.errorHint
-              ? {
-                  detail: row.errorDetail ?? null,
-                  hint: row.errorHint ?? null,
-                }
-              : null,
-          family: "cli_query_action" as const,
-          id: row.id,
-          metrics: {
-            elapsedMs: row.elapsedMs ?? null,
-            retryable: row.retryable ?? null,
-            rowCount: row.rowCount ?? null,
-          },
-          occurredAt: row.occurredAt,
-          query: {
-            normalizedSql: row.normalizedSql ?? null,
-            normalizedSqlChanged: row.normalizedSqlChanged,
-            sql: row.sql,
-          },
-          state: {
-            lastEventType: row.lastEventType,
-            stage: row.stage,
-            status: row.status,
-            usagePersistenceStatus: row.usagePersistenceStatus,
-          },
-        })),
-        nextCursor:
-          rows.length > query.limit && lastRow
-            ? encodeAuditCursor({
-                id: lastRow.id,
-                occurredAt: lastRow.occurredAt,
-              })
-            : null,
-      });
     }
   )
   .get("/:slug/settings", async (c) => {

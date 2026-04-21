@@ -31,6 +31,17 @@ type ValidationValue = {
   changed: boolean;
 };
 
+export type CliQueryValidationFailure =
+  | {
+      detail: string;
+      kind: "query_rejected";
+    }
+  | {
+      detail: string;
+      hint: string;
+      kind: "query_preparation_failed";
+    };
+
 type SqlValidationErrorReason =
   | "cte_must_select"
   | "empty_query"
@@ -449,6 +460,29 @@ function toErrorMessage(error: unknown): string {
   }
 
   return String(error);
+}
+
+export function classifyCliQueryValidationFailure(
+  error: unknown
+): CliQueryValidationFailure {
+  if (
+    error instanceof SqlValidationError &&
+    (error.reason === "parser_init_failed" ||
+      (error.reason === "parse_failed" &&
+        error.cause instanceof TypeError &&
+        error.message.includes("invalid AST")))
+  ) {
+    return {
+      detail: error.message,
+      hint: "retry the request",
+      kind: "query_preparation_failed",
+    };
+  }
+
+  return {
+    detail: toErrorMessage(error),
+    kind: "query_rejected",
+  };
 }
 
 function invalid(

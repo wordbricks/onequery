@@ -2,13 +2,22 @@ import { z } from "zod";
 
 export const DEFAULT_AUDIT_LIMIT = 25;
 export const MAX_AUDIT_LIMIT = 100;
-export const AUDIT_FAMILY = "cli_query_action" as const;
 
-export const CLI_QUERY_ACTION_TYPES = ["validate", "execute"] as const;
-export type CliQueryActionType = (typeof CLI_QUERY_ACTION_TYPES)[number];
+export const AUDIT_FAMILIES = ["query_action", "source_api_action"] as const;
+export type AuditFamily = (typeof AUDIT_FAMILIES)[number];
 
-export const CLI_QUERY_ACTION_STAGES = [
-  "received",
+export const AUDIT_ACTION_NAMES = [
+  "validate",
+  "execute",
+  "describe",
+  "invoke",
+] as const;
+export type AuditActionName = (typeof AUDIT_ACTION_NAMES)[number];
+
+export const AUDIT_OUTCOMES = ["pending", "succeeded", "failed"] as const;
+export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
+
+export const AUDIT_QUERY_ACTION_PHASES = [
   "load_source",
   "validate_query",
   "load_credentials",
@@ -16,11 +25,9 @@ export const CLI_QUERY_ACTION_STAGES = [
   "persist_usage",
   "completed",
 ] as const;
-export type CliQueryActionStage = (typeof CLI_QUERY_ACTION_STAGES)[number];
+export type AuditQueryActionPhase = (typeof AUDIT_QUERY_ACTION_PHASES)[number];
 
-export const CLI_QUERY_ACTION_STATUSES = [
-  "pending",
-  "succeeded",
+export const AUDIT_QUERY_ACTION_FAILURE_CODES = [
   "source_not_found",
   "source_not_queryable",
   "query_rejected",
@@ -29,24 +36,10 @@ export const CLI_QUERY_ACTION_STATUSES = [
   "query_timed_out",
   "query_execution_failed",
 ] as const;
-export type CliQueryActionStatus = (typeof CLI_QUERY_ACTION_STATUSES)[number];
+export type AuditQueryActionFailureCode =
+  (typeof AUDIT_QUERY_ACTION_FAILURE_CODES)[number];
 
-export const CLI_QUERY_USAGE_PERSISTENCE_STATUSES = [
-  "not_started",
-  "succeeded",
-  "failed",
-] as const;
-export type CliQueryUsagePersistenceStatus =
-  (typeof CLI_QUERY_USAGE_PERSISTENCE_STATUSES)[number];
-
-export const CLI_QUERY_ACTION_ACTOR_AUTH_MODES = [
-  "browser_session",
-  "bearer_token",
-] as const;
-export type CliQueryActionActorAuthMode =
-  (typeof CLI_QUERY_ACTION_ACTOR_AUTH_MODES)[number];
-
-export const CLI_QUERY_ACTION_EVENT_TYPES = [
+export const AUDIT_QUERY_ACTION_EVENT_TYPES = [
   "action_received",
   "source_loaded",
   "source_not_found",
@@ -62,8 +55,62 @@ export const CLI_QUERY_ACTION_EVENT_TYPES = [
   "usage_persisted",
   "usage_persist_failed",
 ] as const;
-export type CliQueryActionEventType =
-  (typeof CLI_QUERY_ACTION_EVENT_TYPES)[number];
+export type AuditQueryActionEventType =
+  (typeof AUDIT_QUERY_ACTION_EVENT_TYPES)[number];
+
+export const AUDIT_QUERY_ACTION_USAGE_RECORDING_STATUSES = [
+  "not_started",
+  "succeeded",
+  "failed",
+] as const;
+export type AuditQueryActionUsageRecordingStatus =
+  (typeof AUDIT_QUERY_ACTION_USAGE_RECORDING_STATUSES)[number];
+
+export const AUDIT_SOURCE_API_ACTION_PHASES = [
+  "load_source",
+  "describe_source",
+  "prepare_request",
+  "execute_request",
+  "await_resume",
+  "completed",
+] as const;
+export type AuditSourceApiActionPhase =
+  (typeof AUDIT_SOURCE_API_ACTION_PHASES)[number];
+
+export const AUDIT_SOURCE_API_ACTION_FAILURE_CODES = [
+  "source_not_found",
+  "descriptor_unavailable",
+  "invalid_request",
+  "permission_denied",
+  "request_failed",
+  "request_timed_out",
+  "execution_failed",
+  "execution_state_invalid",
+] as const;
+export type AuditSourceApiActionFailureCode =
+  (typeof AUDIT_SOURCE_API_ACTION_FAILURE_CODES)[number];
+
+export const AUDIT_SOURCE_API_ACTION_EVENT_TYPES = [
+  "action_received",
+  "source_loaded",
+  "source_not_found",
+  "descriptor_resolved",
+  "descriptor_resolution_failed",
+  "request_prepared",
+  "request_preparation_failed",
+  "resume_requested",
+  "page_fetch_succeeded",
+  "page_fetch_failed",
+] as const;
+export type AuditSourceApiActionEventType =
+  (typeof AUDIT_SOURCE_API_ACTION_EVENT_TYPES)[number];
+
+export const AUDIT_SOURCE_API_ACTION_INVOKE_MODES = [
+  "preview_only",
+  "execute",
+] as const;
+export type AuditSourceApiActionInvokeMode =
+  (typeof AUDIT_SOURCE_API_ACTION_INVOKE_MODES)[number];
 
 const trimmedSearchStringSchema = z.preprocess((value: unknown) => {
   if (typeof value !== "string") {
@@ -74,24 +121,6 @@ const trimmedSearchStringSchema = z.preprocess((value: unknown) => {
   return trimmed.length === 0 ? undefined : trimmed;
 }, z.string().min(1).max(200));
 
-const actionTypeSearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.enum(CLI_QUERY_ACTION_TYPES));
-
-const statusSearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.enum(CLI_QUERY_ACTION_STATUSES));
-
 const cursorSearchSchema = z.preprocess((value: unknown) => {
   if (typeof value !== "string") {
     return undefined;
@@ -101,83 +130,205 @@ const cursorSearchSchema = z.preprocess((value: unknown) => {
   return trimmed.length === 0 ? undefined : trimmed;
 }, z.string().min(1).max(256));
 
+const familySearchSchema = z.preprocess((value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}, z.enum(AUDIT_FAMILIES));
+
+const actionNameSearchSchema = z.preprocess((value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}, z.enum(AUDIT_ACTION_NAMES));
+
+const outcomeSearchSchema = z.preprocess((value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
+}, z.enum(AUDIT_OUTCOMES));
+
 export const auditSearchSchema = z.object({
-  actionType: actionTypeSearchSchema.optional(),
+  actionName: actionNameSearchSchema.optional(),
   cursor: cursorSearchSchema.optional(),
+  family: familySearchSchema.optional(),
   limit: z.coerce
     .number()
     .int()
     .min(1)
     .max(MAX_AUDIT_LIMIT)
     .catch(DEFAULT_AUDIT_LIMIT),
+  outcome: outcomeSearchSchema.optional(),
   q: trimmedSearchStringSchema.optional(),
   sourceKey: trimmedSearchStringSchema.optional(),
-  status: statusSearchSchema.optional(),
 });
 export type AuditSearch = z.infer<typeof auditSearchSchema>;
 
 export const auditListQuerySchema = z.object({
-  actionType: actionTypeSearchSchema.optional(),
+  actionName: actionNameSearchSchema.optional(),
   cursor: cursorSearchSchema.optional(),
+  family: familySearchSchema.optional(),
   limit: z.coerce
     .number()
     .int()
     .min(1)
     .max(MAX_AUDIT_LIMIT)
     .default(DEFAULT_AUDIT_LIMIT),
+  outcome: outcomeSearchSchema.optional(),
   q: trimmedSearchStringSchema.optional(),
   sourceKey: trimmedSearchStringSchema.optional(),
-  status: statusSearchSchema.optional(),
 });
 export type AuditListQuery = z.infer<typeof auditListQuerySchema>;
 
-export const auditListItemSchema = z.object({
-  action: z.object({
+export const auditOriginActorSchema = z
+  .object({
+    authMode: z.string().nullable(),
+    email: z.string().nullable(),
+    membershipRoles: z.array(z.string()),
+    userId: z.string().nullable(),
+  })
+  .strict();
+export type AuditOriginActor = z.infer<typeof auditOriginActorSchema>;
+
+export const auditTargetSchema = z
+  .object({
+    displayName: z.string().nullable(),
     provider: z.string().nullable(),
-    requestId: z.string(),
     sourceId: z.string().nullable(),
     sourceKey: z.string(),
-    type: z.enum(CLI_QUERY_ACTION_TYPES),
-  }),
-  actor: z.object({
-    email: z.string(),
-    membershipRoles: z.array(z.string()),
-    userId: z.string(),
-  }),
-  error: z
-    .object({
-      detail: z.string().nullable(),
-      hint: z.string().nullable(),
-    })
-    .nullable(),
-  family: z.literal(AUDIT_FAMILY),
-  id: z.string(),
-  metrics: z.object({
-    elapsedMs: z.number().int().nullable(),
-    retryable: z.boolean().nullable(),
-    rowCount: z.number().int().nullable(),
-  }),
-  // Comment: Audit timestamps stay ISO strings on the wire so TanStack Query
-  // persistence and structural sharing keep operating on JSON-compatible data.
-  occurredAt: z.iso.datetime(),
-  query: z.object({
-    normalizedSql: z.string().nullable(),
-    normalizedSqlChanged: z.boolean(),
-    sql: z.string(),
-  }),
-  state: z.object({
-    lastEventType: z.enum(CLI_QUERY_ACTION_EVENT_TYPES),
-    stage: z.enum(CLI_QUERY_ACTION_STAGES),
-    status: z.enum(CLI_QUERY_ACTION_STATUSES),
-    usagePersistenceStatus: z.enum(CLI_QUERY_USAGE_PERSISTENCE_STATUSES),
-  }),
-});
+    sourceName: z.string().nullable(),
+  })
+  .strict();
+export type AuditTarget = z.infer<typeof auditTargetSchema>;
 
-export const auditListResponseSchema = z.object({
-  families: z.array(z.literal(AUDIT_FAMILY)),
-  items: z.array(auditListItemSchema),
-  nextCursor: z.string().nullable(),
-});
+export const auditQueryActionMetricsSchema = z
+  .object({
+    elapsedMs: z.number().int().nullable(),
+    rowCount: z.number().int().nullable(),
+  })
+  .strict();
+export type AuditQueryActionMetrics = z.infer<
+  typeof auditQueryActionMetricsSchema
+>;
+
+export const auditQueryActionPreviewSchema = z
+  .object({
+    elapsedMs: z.number().int().nullable(),
+    queryText: z.string(),
+    rowCount: z.number().int().nullable(),
+    usageRecordingStatus: z.enum(AUDIT_QUERY_ACTION_USAGE_RECORDING_STATUSES),
+    validatedQuery: z.string().nullable(),
+  })
+  .strict();
+export type AuditQueryActionPreview = z.infer<
+  typeof auditQueryActionPreviewSchema
+>;
+
+export const auditSourceApiActionMetricsSchema = z
+  .object({
+    httpStatus: z.number().int().nullable(),
+    pageCount: z.number().int().nullable(),
+    responseBytes: z.number().int().nullable(),
+  })
+  .strict();
+export type AuditSourceApiActionMetrics = z.infer<
+  typeof auditSourceApiActionMetricsSchema
+>;
+
+export const auditSourceApiActionPreviewSchema = z
+  .object({
+    attemptNumber: z.number().int().nullable(),
+    httpStatus: z.number().int().nullable(),
+    invokeMode: z.enum(AUDIT_SOURCE_API_ACTION_INVOKE_MODES).nullable(),
+    method: z.string().nullable(),
+    operation: z.string().nullable(),
+    pageCount: z.number().int().nullable(),
+    selector: z.string().nullable(),
+  })
+  .strict();
+export type AuditSourceApiActionPreview = z.infer<
+  typeof auditSourceApiActionPreviewSchema
+>;
+
+const auditBaseListItemSchema = z
+  .object({
+    actionName: z.enum(AUDIT_ACTION_NAMES),
+    completedAt: z.iso.datetime().nullable(),
+    familyActionId: z.string(),
+    id: z.string(),
+    originActor: auditOriginActorSchema,
+    originSurface: z.string(),
+    outcome: z.enum(AUDIT_OUTCOMES),
+    startedAt: z.iso.datetime(),
+    subtitle: z.string(),
+    target: auditTargetSchema,
+    title: z.string(),
+    // Comment: Audit timestamps stay ISO strings on the wire so TanStack Query
+    // persistence and structural sharing keep operating on JSON-compatible data.
+    lastEventAt: z.iso.datetime(),
+  })
+  .strict();
+
+export const auditQueryActionListItemSchema = auditBaseListItemSchema
+  .extend({
+    actionName: z.enum(["validate", "execute"]),
+    failureCode: z.enum(AUDIT_QUERY_ACTION_FAILURE_CODES).nullable(),
+    family: z.literal("query_action"),
+    lastEventType: z.enum(AUDIT_QUERY_ACTION_EVENT_TYPES),
+    metrics: auditQueryActionMetricsSchema.nullable(),
+    phase: z.enum(AUDIT_QUERY_ACTION_PHASES),
+    preview: auditQueryActionPreviewSchema.nullable(),
+  })
+  .strict();
+export type AuditQueryActionListItem = z.infer<
+  typeof auditQueryActionListItemSchema
+>;
+
+export const auditSourceApiActionListItemSchema = auditBaseListItemSchema
+  .extend({
+    actionName: z.enum(["describe", "invoke"]),
+    failureCode: z.enum(AUDIT_SOURCE_API_ACTION_FAILURE_CODES).nullable(),
+    family: z.literal("source_api_action"),
+    lastEventType: z.enum(AUDIT_SOURCE_API_ACTION_EVENT_TYPES),
+    metrics: auditSourceApiActionMetricsSchema.nullable(),
+    phase: z.enum(AUDIT_SOURCE_API_ACTION_PHASES),
+    preview: auditSourceApiActionPreviewSchema.nullable(),
+  })
+  .strict();
+export type AuditSourceApiActionListItem = z.infer<
+  typeof auditSourceApiActionListItemSchema
+>;
+
+export const auditListItemSchema = z.discriminatedUnion("family", [
+  auditQueryActionListItemSchema,
+  auditSourceApiActionListItemSchema,
+]);
+
+export const auditProjectedThroughSchema = z
+  .object({
+    queryAction: z.string().nullable(),
+    sourceApiAction: z.string().nullable(),
+  })
+  .strict();
+export type AuditProjectedThrough = z.infer<typeof auditProjectedThroughSchema>;
+
+export const auditListResponseSchema = z
+  .object({
+    families: z.array(z.enum(AUDIT_FAMILIES)),
+    items: z.array(auditListItemSchema),
+    nextCursor: z.string().nullable(),
+    projectedThrough: auditProjectedThroughSchema,
+  })
+  .strict();
 
 export type AuditListItem = z.infer<typeof auditListItemSchema>;
 export type AuditListResponse = z.infer<typeof auditListResponseSchema>;

@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { createStableValueFingerprint } from "../lib/stable-fingerprint";
 import { SourceApiDescriptorVersionMismatchError } from "./errors";
-import {
-  createPreparedSourceApiBinding,
-  finalizePreparedSourceApi,
-  prepareSourceApiDraft,
-} from "./normalize";
+import { finalizePreparedSourceApi, prepareSourceApiDraft } from "./normalize";
 import { createSourceApiRegistry } from "./registry";
 import type { PreparedSourceConnection, SourceApiAdapter } from "./types";
 
@@ -36,15 +33,15 @@ const descriptor = {
   },
 } as const;
 
-describe("createPreparedSourceApiBinding", () => {
+describe("createStableValueFingerprint", () => {
   it("is stable across object key order", () => {
     expect(
-      createPreparedSourceApiBinding({
+      createStableValueFingerprint({
         headers: { b: 2, a: 1 },
         request: { selector: "/pulls" },
       })
     ).toBe(
-      createPreparedSourceApiBinding({
+      createStableValueFingerprint({
         request: { selector: "/pulls" },
         headers: { a: 1, b: 2 },
       })

@@ -37,7 +37,7 @@ use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
 use crate::process_context::ProcessContext;
 use crate::recovery::missing_org_try_next;
-use crate::transport::query::QueryResultWindow;
+use crate::transport::query::QueryRequestWindow;
 use crate::transport::read_controls::ReadRequestControls;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -349,8 +349,8 @@ pub(crate) fn read_controls_from_list_args(read: &ListReadArgs) -> ReadRequestCo
     }
 }
 
-pub(crate) fn query_result_window_from_args(args: &QueryResultWindowArgs) -> QueryResultWindow {
-    QueryResultWindow {
+pub(crate) fn query_result_window_from_args(args: &QueryResultWindowArgs) -> QueryRequestWindow {
+    QueryRequestWindow {
         max_rows: args.max_rows.map(std::num::NonZeroUsize::get),
         max_bytes: args.max_bytes.map(std::num::NonZeroUsize::get),
         cell_max_chars: args.cell_max_chars.map(std::num::NonZeroUsize::get),

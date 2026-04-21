@@ -8,6 +8,7 @@ mod pagination;
 pub(crate) mod query;
 pub(crate) mod query_parameter;
 pub(crate) mod read_controls;
+pub(crate) mod response_decode;
 pub(crate) mod source;
 pub(crate) mod source_api;
 pub(crate) mod source_connect;

@@ -41,8 +41,11 @@ const prepared = {
 describe("source api continuation token", () => {
   it("round-trips prepared state, continuation state, and binary request bodies", () => {
     const token = encodeSourceApiContinuationToken({
+      actionId: "action_123",
       now: new Date("2026-04-10T00:00:00.000Z"),
       prepared,
+      preparedRequestFingerprint: prepared.preparedBinding,
+      resumeFromEventId: "event_123",
       secret: "secret",
       state: {
         cursor: "page_2",
@@ -57,20 +60,26 @@ describe("source api continuation token", () => {
     });
 
     expect(decoded).toEqual({
+      actionId: "action_123",
       expiresAt: "2026-04-10T00:01:00.000Z",
       issuedAt: "2026-04-10T00:00:00.000Z",
       prepared,
+      preparedRequestFingerprint: prepared.preparedBinding,
+      resumeFromEventId: "event_123",
       state: {
         cursor: "page_2",
       },
-      version: 2,
+      version: 3,
     });
   });
 
   it("rejects tampered continuation token signatures", () => {
     const token = encodeSourceApiContinuationToken({
+      actionId: "action_123",
       now: new Date("2026-04-10T00:00:00.000Z"),
       prepared,
+      preparedRequestFingerprint: prepared.preparedBinding,
+      resumeFromEventId: "event_123",
       secret: "secret",
       state: {
         cursor: "page_2",
@@ -99,8 +108,11 @@ describe("source api continuation token", () => {
 
   it("rejects expired continuation tokens", () => {
     const token = encodeSourceApiContinuationToken({
+      actionId: "action_123",
       now: new Date("2026-04-10T00:00:00.000Z"),
       prepared,
+      preparedRequestFingerprint: prepared.preparedBinding,
+      resumeFromEventId: "event_123",
       secret: "secret",
       state: {
         cursor: "page_2",
@@ -126,6 +138,7 @@ describe("source api continuation token", () => {
 
   it("preserves JSON bodies that use the binary sentinel key literally", () => {
     const token = encodeSourceApiContinuationToken({
+      actionId: "action_123",
       now: new Date("2026-04-10T00:00:00.000Z"),
       prepared: {
         ...prepared,
@@ -140,6 +153,8 @@ describe("source api continuation token", () => {
         },
         bodyKind: "json",
       },
+      preparedRequestFingerprint: prepared.preparedBinding,
+      resumeFromEventId: "event_123",
       secret: "secret",
       state: {
         cursor: "page_2",
@@ -169,6 +184,7 @@ describe("source api continuation token", () => {
       JSON.stringify({
         expiresAt: "2026-04-10T00:01:00.000Z",
         issuedAt: "2026-04-10T00:00:00.000Z",
+        actionId: "action_123",
         prepared: {
           ...prepared,
           body: {
@@ -176,10 +192,12 @@ describe("source api continuation token", () => {
             valueBase64Url: "not-valid-base64url!",
           },
         },
+        preparedRequestFingerprint: prepared.preparedBinding,
+        resumeFromEventId: "event_123",
         state: {
           cursor: "page_2",
         },
-        version: 2,
+        version: 3,
       })
     );
     const signature = createHmac("sha256", "secret")

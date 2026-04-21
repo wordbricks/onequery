@@ -1,6 +1,7 @@
-import { base64UrlToUtf8 } from "@onequery/codecs/base64";
+import { base64UrlJsonCodec } from "@onequery/codecs/json";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
+import { z } from "zod";
 
 export const CLI_DEFAULT_PAGE_LIMIT = 50;
 
@@ -31,18 +32,21 @@ type CursorPayload = {
   offset: number;
 };
 
-function parseFailure(message: string): ReadControlsParseError {
-  return new ReadControlsParseError({ message });
-}
+const CursorPayloadSchema = z
+  .object({
+    offset: z.number().int().min(0),
+  })
+  .strict();
 
-function decodeBase64Url(value: string): ParseResult<string> {
-  return Result.try({
-    try: () => base64UrlToUtf8.decode(value),
-    catch: (cause) =>
-      new ReadControlsParseError({
-        cause,
-        message: "cursor is invalid",
-      }),
+const CursorPayloadCodec = base64UrlJsonCodec(CursorPayloadSchema);
+
+function parseFailure(
+  message: string,
+  cause?: unknown
+): ReadControlsParseError {
+  return new ReadControlsParseError({
+    ...(cause === undefined ? {} : { cause }),
+    message,
   });
 }
 
@@ -53,40 +57,16 @@ export function parsePageCursor(
     return Result.ok(0);
   }
 
-  const payloadText = decodeBase64Url(cursor);
-  if (payloadText.isErr()) {
-    return Result.err(payloadText.error);
+  const parsed = CursorPayloadCodec.safeDecode(cursor);
+  if (!parsed.success) {
+    return Result.err(parseFailure("cursor is invalid", parsed.error));
   }
 
-  const parsed = Result.try({
-    try: () => JSON.parse(payloadText.value),
-    catch: (cause) =>
-      new ReadControlsParseError({
-        cause,
-        message: "cursor is invalid",
-      }),
-  });
-  if (parsed.isErr()) {
-    return Result.err(parsed.error);
-  }
-
-  if (
-    typeof parsed.value !== "object" ||
-    parsed.value === null ||
-    !("offset" in parsed.value) ||
-    typeof parsed.value.offset !== "number" ||
-    !Number.isInteger(parsed.value.offset) ||
-    parsed.value.offset < 0
-  ) {
-    return Result.err(parseFailure("cursor is invalid"));
-  }
-
-  return Result.ok(parsed.value.offset);
+  return Result.ok(parsed.data.offset);
 }
 
 export function encodePageCursor(offset: number): string {
-  const payload: CursorPayload = { offset };
-  return base64UrlToUtf8.encode(JSON.stringify(payload));
+  return CursorPayloadCodec.encode({ offset } satisfies CursorPayload);
 }
 
 export function paginateItems<T>(

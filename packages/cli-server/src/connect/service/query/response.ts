@@ -1,7 +1,6 @@
 import {
   buildCliSanitization,
   sanitizeCliRemoteText,
-  sanitizeUndefinedableCliRemoteText,
 } from "../../../transport/sanitization";
 import { QueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
 import { buildCliSource } from "../source/response";
@@ -75,20 +74,14 @@ export function sanitizeQueryExecuteResponse(
 ): ExecuteQueryPayload {
   return {
     ...data,
-    columns: Array.isArray(data.columns)
-      ? data.columns.map((column) => ({
-          ...column,
-          name: sanitizeUndefinedableCliRemoteText(column.name),
-        }))
-      : data.columns,
-    rows: Array.isArray(data.rows)
-      ? data.rows.map((row) => ({
-          ...row,
-          values: Array.isArray(row.values)
-            ? row.values.map(sanitizeCliRemoteText)
-            : row.values,
-        }))
-      : data.rows,
+    columns: data.columns.map((column) => ({
+      ...column,
+      name: sanitizeCliRemoteText(column.name),
+    })),
+    rows: data.rows.map((row) => ({
+      ...row,
+      values: row.values.map(sanitizeCliRemoteText),
+    })),
   };
 }
 

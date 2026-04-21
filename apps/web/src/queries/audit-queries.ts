@@ -24,12 +24,13 @@ async function fetchAuditList(
   search: AuditSearch
 ): Promise<AuditListResponse> {
   const query = {
-    ...(search.actionType ? { actionType: search.actionType } : {}),
+    ...(search.actionName ? { actionName: search.actionName } : {}),
     ...(search.cursor ? { cursor: search.cursor } : {}),
+    ...(search.family ? { family: search.family } : {}),
     limit: `${search.limit}`,
+    ...(search.outcome ? { outcome: search.outcome } : {}),
     ...(search.q ? { q: search.q } : {}),
     ...(search.sourceKey ? { sourceKey: search.sourceKey } : {}),
-    ...(search.status ? { status: search.status } : {}),
   };
 
   const response = await client.api.organizations[":slug"].audit.$get({

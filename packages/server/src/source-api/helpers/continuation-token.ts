@@ -13,14 +13,17 @@ import type {
   SourceApiRequestBody,
 } from "../types";
 
-const SOURCE_API_CONTINUATION_TOKEN_VERSION = 2;
+const SOURCE_API_CONTINUATION_TOKEN_VERSION = 3;
 const DEFAULT_SOURCE_API_CONTINUATION_TOKEN_TTL_MS = 5 * 60_000;
 const CONTINUATION_TOKEN_BINARY_BODY_KEY = "valueBase64Url";
 
 type EncodeSourceApiContinuationTokenInput = {
+  actionId: string;
   prepared: PreparedSourceApi;
+  preparedRequestFingerprint: string;
+  resumeFromEventId: string;
   secret: string | Uint8Array;
-  state: JsonValue;
+  state: JsonValue | null;
   now?: Date;
   ttlMs?: number;
 };
@@ -64,9 +67,12 @@ export function encodeSourceApiContinuationToken(
   const now = input.now ?? new Date();
   const ttlMs = input.ttlMs ?? DEFAULT_SOURCE_API_CONTINUATION_TOKEN_TTL_MS;
   const payload = serializeSourceApiContinuationTokenPayload({
+    actionId: input.actionId,
     expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
     issuedAt: now.toISOString(),
     prepared: input.prepared,
+    preparedRequestFingerprint: input.preparedRequestFingerprint,
+    resumeFromEventId: input.resumeFromEventId,
     state: input.state,
     version: SOURCE_API_CONTINUATION_TOKEN_VERSION,
   });
@@ -96,6 +102,12 @@ export function decodeSourceApiContinuationToken(
   const now = input.now ?? new Date();
   if (Number.isNaN(expiresAt.getTime()) || expiresAt <= now) {
     throw new SourceApiExpiredError("Source API continuation token expired");
+  }
+
+  if (payload.prepared.preparedBinding !== payload.preparedRequestFingerprint) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid source API continuation token"
+    );
   }
 
   return {
@@ -170,10 +182,15 @@ function parseSourceApiContinuationTokenPayload(
   }
 
   return {
+    actionId: readRequiredString(value.actionId),
     expiresAt: readRequiredString(value.expiresAt),
     issuedAt: readRequiredString(value.issuedAt),
     prepared: parsePreparedSourceApi(value.prepared),
-    state: value.state as JsonValue,
+    preparedRequestFingerprint: readRequiredString(
+      value.preparedRequestFingerprint
+    ),
+    resumeFromEventId: readRequiredString(value.resumeFromEventId),
+    state: readNullableJsonValue(value.state),
     version,
   };
 }
@@ -418,6 +435,14 @@ function readOptionalJsonObject(value: unknown): JsonObject | undefined {
   }
 
   return readJsonObject(value);
+}
+
+function readNullableJsonValue(value: unknown): JsonValue | null {
+  if (value === null) {
+    return null;
+  }
+
+  return value as JsonValue;
 }
 
 function readOptionalFiniteNumber(value: unknown): number | undefined {
