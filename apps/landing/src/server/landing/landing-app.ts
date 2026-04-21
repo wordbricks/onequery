@@ -1,13 +1,10 @@
 import { zValidator } from "@hono/zod-validator";
-import type { Hook } from "@hono/zod-validator";
-import type { Context, Env, ValidationTargets } from "hono";
+import type { Context, TypedResponse } from "hono";
 import { Hono } from "hono";
 import { problemDetails, problemDetailsHandler } from "hono-problem-details";
 import { zodProblemHook as createProblemDetailsZodHook } from "hono-problem-details/zod";
 import type { ZodProblemHookOptions } from "hono-problem-details/zod";
 import { z } from "zod";
-import type * as v3 from "zod/v3";
-import type * as v4 from "zod/v4/core";
 
 import {
   createContactNotification,
@@ -42,30 +39,48 @@ export const ContactRequestSchema = z.object({
   message: z.string().min(1, "message is required").max(4000),
 });
 
-type AnyZodSchema = v3.ZodType | v4.$ZodType;
+export type LandingValidationError = {
+  code?: string;
+  field: string;
+  message: string;
+};
 
-function zodProblemHook<
-  T,
-  E extends Env,
-  P extends string,
-  Target extends keyof ValidationTargets = keyof ValidationTargets,
-  Schema extends AnyZodSchema = AnyZodSchema,
->(
-  options?: ZodProblemHookOptions
-): Hook<T, E, P, Target, Record<never, never>, Schema> {
+type LandingProblemResponseBase<Status extends number> = {
+  detail?: string;
+  instance?: string;
+  status: Status;
+  title: string;
+  type: string;
+};
+
+export type LandingValidationProblemResponse =
+  LandingProblemResponseBase<422> & {
+    errors: readonly LandingValidationError[];
+  };
+
+export type LandingInternalProblemResponse = LandingProblemResponseBase<500>;
+
+export type LandingServiceUnavailableProblemResponse =
+  LandingProblemResponseBase<503>;
+
+export type LandingProductUpdatesResponse = {
+  email: string;
+};
+
+function zodProblemHook(options?: ZodProblemHookOptions) {
   const hook = createProblemDetailsZodHook(options);
 
-  return ((result, c) =>
+  return (
+    result: unknown,
+    c: Context
+  ): TypedResponse<LandingValidationProblemResponse, 422, "json"> | undefined =>
     // Comment: upstream 0.4.0 fixes the runtime path for Zod v4, but the
-    // exported hook type is still narrower than @hono/zod-validator's v4 hook.
-    hook(result as Parameters<typeof hook>[0], c as Context)) as Hook<
-    T,
-    E,
-    P,
-    Target,
-    Record<never, never>,
-    Schema
-  >;
+    // exported hook type still widens the response enough to erase RPC output
+    // inference, so we keep the runtime behavior and restore the concrete 422
+    // problem-details response type locally.
+    hook(result as Parameters<typeof hook>[0], c) as
+      | TypedResponse<LandingValidationProblemResponse, 422, "json">
+      | undefined;
 }
 
 function isLoopbackHostname(hostname: string) {
@@ -126,13 +141,17 @@ export interface CreateLandingAppOptions {
   notificationRuntime?: LandingNotificationRuntime;
 }
 
-export function createLandingApp(options: CreateLandingAppOptions = {}) {
-  const notificationRuntime =
-    options.notificationRuntime ?? defaultLandingNotificationRuntime;
-
+function createLandingBaseApp() {
   return new Hono<LandingAppEnv>()
     .basePath("/api")
-    .onError(problemDetailsHandler())
+    .onError(problemDetailsHandler());
+}
+
+function registerLandingRoutes(
+  app: ReturnType<typeof createLandingBaseApp>,
+  notificationRuntime: LandingNotificationRuntime
+) {
+  return app
     .post(
       "/product-updates",
       zValidator("json", ProductUpdatesRequestSchema, zodProblemHook()),
@@ -149,7 +168,10 @@ export function createLandingApp(options: CreateLandingAppOptions = {}) {
         if (result.isErr()) {
           throw notificationProblem(result.error);
         }
-        return c.json({ email: normalizedEmail });
+        return c.json<LandingProductUpdatesResponse, 200>(
+          { email: normalizedEmail },
+          200
+        );
       }
     )
     .post(
@@ -174,9 +196,21 @@ export function createLandingApp(options: CreateLandingAppOptions = {}) {
         if (result.isErr()) {
           throw notificationProblem(result.error);
         }
-        return c.json({});
+        return c.json<Record<never, never>, 200>({}, 200);
       }
     );
 }
 
-export type LandingApp = ReturnType<typeof createLandingApp>;
+const landingAppTypeSurface = registerLandingRoutes(
+  createLandingBaseApp(),
+  defaultLandingNotificationRuntime
+);
+
+export function createLandingApp(options: CreateLandingAppOptions = {}) {
+  const notificationRuntime =
+    options.notificationRuntime ?? defaultLandingNotificationRuntime;
+
+  return registerLandingRoutes(createLandingBaseApp(), notificationRuntime);
+}
+
+export type LandingApp = typeof landingAppTypeSurface;

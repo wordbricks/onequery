@@ -2,6 +2,7 @@ import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
+import type { InferResponseType } from "hono/client";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
 import {
@@ -25,9 +26,9 @@ import {
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
 
-type ProductUpdatesResponseBody = {
-  email: string;
-};
+type ProductUpdatesPost =
+  (typeof landingApiClient.api)["product-updates"]["$post"];
+type ProductUpdatesSuccessResponse = InferResponseType<ProductUpdatesPost, 200>;
 
 class ProductUpdatesSubmissionError extends TaggedError(
   "ProductUpdatesSubmissionError"
@@ -69,22 +70,36 @@ async function submitProductUpdatesRequest(
   }
 
   const response = responseResult.value;
-  if (!response.ok) {
+  if (response.status === 200) {
+    const body: ProductUpdatesSuccessResponse = await response.json();
+    return Result.ok({
+      email: body.email,
+    });
+  }
+
+  if (
+    response.status === 422 ||
+    response.status === 500 ||
+    response.status === 503
+  ) {
+    const body = await response.json();
     return Result.err(
       new ProductUpdatesSubmissionError({
         cause: response,
-        message: await readApiErrorMessage(
-          response,
+        message: readApiErrorMessage(
+          body,
           DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
         ),
       })
     );
   }
 
-  const body = (await response.json()) as ProductUpdatesResponseBody;
-  return Result.ok({
-    email: body.email,
-  });
+  return Result.err(
+    new ProductUpdatesSubmissionError({
+      cause: response,
+      message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
+    })
+  );
 }
 
 async function submitContactRequest(
@@ -106,19 +121,30 @@ async function submitContactRequest(
   }
 
   const response = responseResult.value;
-  if (!response.ok) {
+  if (response.status === 200) {
+    return Result.ok(undefined);
+  }
+
+  if (
+    response.status === 422 ||
+    response.status === 500 ||
+    response.status === 503
+  ) {
+    const body = await response.json();
     return Result.err(
       new ContactSubmissionError({
         cause: response,
-        message: await readApiErrorMessage(
-          response,
-          DEFAULT_CONTACT_ERROR_MESSAGE
-        ),
+        message: readApiErrorMessage(body, DEFAULT_CONTACT_ERROR_MESSAGE),
       })
     );
   }
 
-  return Result.ok(undefined);
+  return Result.err(
+    new ContactSubmissionError({
+      cause: response,
+      message: DEFAULT_CONTACT_ERROR_MESSAGE,
+    })
+  );
 }
 
 function runBestEffort(action: () => void) {

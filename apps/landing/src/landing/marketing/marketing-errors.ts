@@ -1,63 +1,38 @@
-type JsonReadableResponse = {
-  clone: () => {
-    json: () => Promise<unknown>;
-  };
-};
+import type {
+  LandingInternalProblemResponse,
+  LandingServiceUnavailableProblemResponse,
+  LandingValidationProblemResponse,
+} from "../../server/landing/landing-app";
 
-type ProblemDetailsBody = {
-  detail?: unknown;
-  title?: unknown;
-  errors?: unknown;
-};
+export type LandingApiProblemResponse =
+  | LandingInternalProblemResponse
+  | LandingServiceUnavailableProblemResponse
+  | LandingValidationProblemResponse;
 
-function readFirstFieldErrorMessage(errors: unknown): string | null {
-  if (!Array.isArray(errors)) {
-    return null;
-  }
+function readFirstFieldErrorMessage(
+  errors: LandingValidationProblemResponse["errors"]
+): string | null {
+  const firstError = errors[0];
+  return firstError?.message ?? null;
+}
 
-  for (const entry of errors) {
-    if (
-      entry !== null &&
-      typeof entry === "object" &&
-      "message" in entry &&
-      typeof (entry as { message: unknown }).message === "string"
-    ) {
-      return (entry as { message: string }).message;
+export function readApiErrorMessage(
+  response: LandingApiProblemResponse,
+  fallback: string
+): string {
+  if (response.status === 422) {
+    const fieldErrorMessage = readFirstFieldErrorMessage(response.errors);
+    if (fieldErrorMessage) {
+      return fieldErrorMessage;
     }
   }
 
-  return null;
-}
-
-export async function readApiErrorMessage(
-  response: JsonReadableResponse,
-  fallback: string
-): Promise<string> {
-  const cloned = response.clone();
-  let body: unknown;
-  try {
-    body = await cloned.json();
-  } catch {
-    return fallback;
+  if (response.detail && response.detail.length > 0) {
+    return response.detail;
   }
 
-  if (body === null || typeof body !== "object") {
-    return fallback;
-  }
-
-  const { detail, errors, title } = body as ProblemDetailsBody;
-
-  const fieldErrorMessage = readFirstFieldErrorMessage(errors);
-  if (fieldErrorMessage) {
-    return fieldErrorMessage;
-  }
-
-  if (typeof detail === "string" && detail.length > 0) {
-    return detail;
-  }
-
-  if (typeof title === "string" && title.length > 0) {
-    return title;
+  if (response.title.length > 0) {
+    return response.title;
   }
 
   return fallback;
