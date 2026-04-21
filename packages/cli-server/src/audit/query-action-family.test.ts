@@ -161,10 +161,8 @@ describe("query_action family", () => {
       state,
       buildQueryCommand(
         {
-          elapsedMs: 18,
           kind: "succeeded",
           response: queryExecutionResponse,
-          rowCount: 42,
           type: "record_query_execution",
         },
         { actionId: "action_1", causedByEventId: state.lastEventId }

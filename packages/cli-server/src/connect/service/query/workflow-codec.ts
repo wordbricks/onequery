@@ -88,10 +88,8 @@ const StoredQueryValidationResultPayloadSchema = z.discriminatedUnion("kind", [
 const StoredQueryExecutionResultPayloadSchema = z.discriminatedUnion("kind", [
   z
     .object({
-      elapsedMs: z.number().int(),
       kind: z.literal("succeeded"),
       response: CliQuerySuccessResultSchema,
-      rowCount: z.number().int(),
       type: z.literal("record_query_execution"),
     })
     .strict(),
@@ -230,19 +228,16 @@ export function toStoredQueryExecutionResult(
       return {
         detail: parsed.data.detail,
         kind: "query_unavailable",
-        retryable: true,
       };
     case "timed_out":
       return {
         detail: parsed.data.detail,
         kind: "query_timed_out",
-        retryable: true,
       };
     case "failed":
       return {
         detail: parsed.data.detail,
         kind: "query_execution_failed",
-        retryable: false,
       };
   }
 }

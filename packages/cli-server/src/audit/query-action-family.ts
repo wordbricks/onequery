@@ -146,7 +146,7 @@ export type QueryActionCommandPayload =
   | {
       type: "record_query_validation";
       detail: string;
-      hint?: string;
+      hint: string;
       kind: "preparation_failed";
     }
   | {
@@ -156,14 +156,12 @@ export type QueryActionCommandPayload =
   | {
       type: "record_credentials_load";
       detail: string;
-      hint?: string;
+      hint: string;
       kind: "preparation_failed";
     }
   | {
       type: "record_query_execution";
-      elapsedMs: number;
       kind: "succeeded";
-      rowCount: number;
       response: CliQuerySuccessResult;
     }
   | {
@@ -229,7 +227,7 @@ export type QueryActionEvent =
     }
   | {
       detail: string;
-      hint?: string;
+      hint: string;
       type: "query_preparation_failed";
     }
   | {
@@ -305,7 +303,7 @@ export const QueryActionEventSchema = z.discriminatedUnion("type", [
   z
     .object({
       detail: z.string(),
-      hint: z.string().optional(),
+      hint: z.string(),
       type: z.literal("query_preparation_failed"),
     })
     .strict(),
@@ -568,9 +566,7 @@ export function decideQueryAction(
             events: [
               {
                 detail: command.commandPayload.detail,
-                ...(command.commandPayload.hint === undefined
-                  ? {}
-                  : { hint: command.commandPayload.hint }),
+                hint: command.commandPayload.hint,
                 type: "query_preparation_failed",
               },
             ],
@@ -608,9 +604,7 @@ export function decideQueryAction(
             events: [
               {
                 detail: command.commandPayload.detail,
-                ...(command.commandPayload.hint === undefined
-                  ? {}
-                  : { hint: command.commandPayload.hint }),
+                hint: command.commandPayload.hint,
                 type: "query_preparation_failed",
               },
             ],
@@ -642,8 +636,8 @@ export function decideQueryAction(
             ],
             events: [
               {
-                elapsedMs: command.commandPayload.elapsedMs,
-                rowCount: command.commandPayload.rowCount,
+                elapsedMs: command.commandPayload.response.elapsedMs,
+                rowCount: command.commandPayload.response.rowCount,
                 type: "query_executed",
               },
             ],

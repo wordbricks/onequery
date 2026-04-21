@@ -130,7 +130,7 @@ const QueryActionEventPayloadSchema = z.discriminatedUnion("type", [
   z
     .object({
       detail: z.string(),
-      hint: z.string().optional(),
+      hint: z.string(),
       type: z.literal("query_preparation_failed"),
     })
     .strict(),
@@ -839,7 +839,7 @@ function reduceQueryActionRow(
       next.outcome = "failed";
       next.phase = "completed";
       next.preview.errorDetail = payload.detail;
-      next.preview.errorHint = payload.hint ?? null;
+      next.preview.errorHint = payload.hint;
       break;
     case "query_executed":
       next.completedAt = null;

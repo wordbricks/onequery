@@ -182,9 +182,21 @@ async function seedSucceededQueryAction(input: {
     commandId: `${commandBase}-executed`,
     commandInvocationId: `${actionId}:record_query_execution`,
     commandPayloadJson: {
-      elapsedMs: 412,
       kind: "succeeded",
-      rowCount: 12,
+      response: {
+        columns: [],
+        elapsedMs: 412,
+        rowCount: 12,
+        rows: [],
+        source: {
+          displayName: source.displayName,
+          id: source.sourceId,
+          provider: source.provider,
+          sourceKey: source.sourceKey,
+          status: source.sourceStatus,
+        },
+        truncated: false,
+      },
       type: "record_query_execution",
     },
     commandType: "record_query_execution",

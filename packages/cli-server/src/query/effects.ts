@@ -141,7 +141,6 @@ function toCliQueryExecutionFailure(
     return {
       detail: failure.message,
       kind: "query_timed_out",
-      retryable: true,
     };
   }
 
@@ -149,14 +148,12 @@ function toCliQueryExecutionFailure(
     return {
       detail: failure.message,
       kind: "query_unavailable",
-      retryable: true,
     };
   }
 
   return {
     detail: failure.message,
     kind: "query_execution_failed",
-    retryable: false,
   };
 }
 

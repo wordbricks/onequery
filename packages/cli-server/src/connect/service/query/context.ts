@@ -4,22 +4,10 @@ import { resolveQueryResultWindow } from "../../../query/result-window";
 import { requireCliConnectRequestContext } from "../../context";
 import type { CliServiceResult } from "../result";
 import type { CliServiceMethod } from "../types";
-import type { ResolvedCliQueryRequest } from "./types";
-
-type CliQueryRequest = {
-  orgSlug: string;
-  sourceKey: string;
-  query?: {
-    cellMaxChars?: number;
-    maxBytes?: number;
-    maxRows?: number;
-    sql: string;
-    timeoutMs?: number;
-  };
-};
+import type { CliQueryServiceRequest, ResolvedCliQueryRequest } from "./types";
 
 export async function resolveCliQueryRequestState<
-  TRequest extends CliQueryRequest,
+  TRequest extends CliQueryServiceRequest,
 >(
   request: TRequest,
   context: Parameters<CliServiceMethod<"validateQuery">>[1]

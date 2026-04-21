@@ -61,7 +61,7 @@ export function logCliQueryValidationFailure(
         details: buildCliRequestLogDetails(c, {
           source: sourceKey,
           detail: result.detail,
-          hint: result.hint ?? null,
+          hint: result.hint,
           httpStatus: 500,
         }),
       });
@@ -142,7 +142,7 @@ export function logCliQueryExecutionFailure(input: {
         details: buildCliRequestLogDetails(input.c, {
           source: input.sourceKey,
           detail: input.result.detail,
-          hint: input.result.hint ?? null,
+          hint: input.result.hint,
           httpStatus,
           durationMs: input.durationMs,
         }),

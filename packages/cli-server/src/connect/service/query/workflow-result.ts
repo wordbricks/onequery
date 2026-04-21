@@ -17,19 +17,16 @@ export type CliQueryExecutionFailureResult =
       kind: "query_unavailable";
       requestId: string;
       detail: string;
-      retryable: true;
     }
   | {
       kind: "query_timed_out";
       requestId: string;
       detail: string;
-      retryable: true;
     }
   | {
       kind: "query_execution_failed";
       requestId: string;
       detail: string;
-      retryable: false;
     };
 
 export type CliQueryExecutionWorkflowResult =

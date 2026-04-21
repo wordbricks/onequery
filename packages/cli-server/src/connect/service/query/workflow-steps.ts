@@ -29,7 +29,7 @@ import type {
   QueryCredentialsLoadResult,
   QueryExecutionEffectResult,
   QuerySourceLookupResult,
-  QueryWorkflowLoadedState,
+  QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
 } from "./workflow-types";
 
@@ -56,7 +56,7 @@ type UsageDispatch = {
   persistUsage: CliQueryExecutionDispatch["persistUsage"];
 };
 
-export function createInitialQueryWorkflowLoadedState(): QueryWorkflowLoadedState {
+export function createEmptyQueryWorkflowResourceCache(): QueryWorkflowResourceCache {
   return {
     loadedCredentials: null,
     loadedSource: null,
@@ -68,15 +68,15 @@ export async function runQuerySourceLookupStep(input: {
   currentDecision: StoredAcceptedQueryActionDecision;
   db: Database;
   dispatch: SourceLookupDispatch;
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   org: AccessibleCliOrg;
   requestId: string;
   sourceName: string;
 }): Promise<{
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   step: DispatchedQueryActionEffect<"load_source", QuerySourceLookupResult>;
 }> {
-  let loadedSource = input.loadedState.loadedSource;
+  let loadedSource = input.resourceCache.loadedSource;
 
   const step = await dispatchStoredQueryActionEffect<
     "load_source",
@@ -155,8 +155,8 @@ export async function runQuerySourceLookupStep(input: {
   });
 
   return {
-    loadedState: {
-      ...input.loadedState,
+    resourceCache: {
+      ...input.resourceCache,
       loadedSource,
     },
     step,
@@ -243,18 +243,18 @@ export async function runQueryCredentialsLoadStep(input: {
   currentDecision: StoredAcceptedQueryActionDecision;
   db: Database;
   dispatch: CredentialsDispatch;
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   organizationId: string;
   requestId: string;
 }): Promise<{
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   step: DispatchedQueryActionEffect<
     "load_credentials",
     QueryCredentialsLoadResult
   >;
 }> {
-  let loadedCredentials = input.loadedState.loadedCredentials;
-  let loadedSource = input.loadedState.loadedSource;
+  let loadedCredentials = input.resourceCache.loadedCredentials;
+  let loadedSource = input.resourceCache.loadedSource;
 
   const step = await dispatchStoredQueryActionEffect<
     "load_credentials",
@@ -310,7 +310,7 @@ export async function runQueryCredentialsLoadStep(input: {
   });
 
   return {
-    loadedState: {
+    resourceCache: {
       loadedCredentials,
       loadedSource,
     },
@@ -323,22 +323,18 @@ export async function runQueryExecutionStep(input: {
   currentDecision: StoredAcceptedQueryActionDecision;
   db: Database;
   dispatch: ExecutionDispatch;
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   organizationId: string;
   requestId: string;
-  timeoutMs: number | null;
+  timeoutMs: number;
   truncated: boolean;
-}): Promise<{
-  loadedState: QueryWorkflowLoadedState;
-  step: DispatchedQueryActionEffect<
-    "execute_query",
-    QueryExecutionEffectResult
-  >;
-}> {
-  let loadedCredentials = input.loadedState.loadedCredentials;
-  let loadedSource = input.loadedState.loadedSource;
+}): Promise<
+  DispatchedQueryActionEffect<"execute_query", QueryExecutionEffectResult>
+> {
+  let loadedCredentials = input.resourceCache.loadedCredentials;
+  let loadedSource = input.resourceCache.loadedSource;
 
-  const step = await dispatchStoredQueryActionEffect<
+  return dispatchStoredQueryActionEffect<
     "execute_query",
     QueryExecutionEffectResult
   >({
@@ -383,10 +379,8 @@ export async function runQueryExecutionStep(input: {
 
         return {
           commandPayload: {
-            elapsedMs: response.elapsedMs,
             kind: "succeeded",
             response,
-            rowCount: response.rowCount,
             type: "record_query_execution",
           },
           result: {
@@ -407,7 +401,6 @@ export async function runQueryExecutionStep(input: {
             result: {
               detail: executionResult.detail,
               kind: "query_unavailable",
-              retryable: true,
             },
           };
         case "query_timed_out":
@@ -420,7 +413,6 @@ export async function runQueryExecutionStep(input: {
             result: {
               detail: executionResult.detail,
               kind: "query_timed_out",
-              retryable: true,
             },
           };
         case "query_execution_failed":
@@ -433,20 +425,11 @@ export async function runQueryExecutionStep(input: {
             result: {
               detail: executionResult.detail,
               kind: "query_execution_failed",
-              retryable: false,
             },
           };
       }
     },
   });
-
-  return {
-    loadedState: {
-      loadedCredentials,
-      loadedSource,
-    },
-    step,
-  };
 }
 
 export async function runQueryUsagePersistenceStep(input: {

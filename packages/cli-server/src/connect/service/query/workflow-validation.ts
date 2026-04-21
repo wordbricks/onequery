@@ -13,7 +13,6 @@ export async function runCliQueryValidationWorkflowResult(
 ): Promise<CliServiceResult<CliQueryValidationWorkflowResult>> {
   return Result.tryPromise({
     try: async (): Promise<CliQueryValidationWorkflowResult> => {
-      const timeoutMs = input.timeoutMs ?? null;
       const preparation = await runPreparedCliQueryWorkflow({
         actorSnapshot: input.actorSnapshot,
         db: input.db,
@@ -35,7 +34,7 @@ export async function runCliQueryValidationWorkflowResult(
         requestId: input.requestId,
         source: toCliSourceRecord(preparation.prepared.source),
         sourceName: input.sourceName,
-        timeoutMs,
+        timeoutMs: input.timeoutMs,
         truncated: preparation.prepared.truncated,
       };
     },

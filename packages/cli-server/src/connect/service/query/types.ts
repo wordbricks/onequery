@@ -16,7 +16,15 @@ import type {
   CliQueryWorkflowPreparationFailureResult,
 } from "./workflow-result";
 
-type CliQueryRequest = {
+type ValidateQueryResponseMessageInit = MessageInitShape<
+  typeof ValidateQueryResponseSchema
+>;
+type ExecuteQueryResponseMessageInit = MessageInitShape<
+  typeof ExecuteQueryResponseSchema
+>;
+type QuerySourceMessageInit = MessageInitShape<typeof CliSourceSchema>;
+
+export type CliQueryServiceRequest = {
   orgSlug: string;
   sourceKey: string;
   query?: {
@@ -38,16 +46,18 @@ export type CliQueryExecutionSuccess = Extract<
 
 export type CliQueryExecutionFailure = CliQueryExecutionFailureResult;
 
-export type ValidateQueryResponseInit = MessageInitShape<
-  typeof ValidateQueryResponseSchema
->;
-export type ExecuteQueryResponseInit = MessageInitShape<
-  typeof ExecuteQueryResponseSchema
->;
 export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
 
+export type QuerySourceInit = {
+  displayName?: QuerySourceMessageInit["displayName"];
+  provider: QuerySourceMessageInit["provider"];
+  queryable: QuerySourceMessageInit["queryable"];
+  sourceKey: QuerySourceMessageInit["sourceKey"];
+  status: QuerySourceMessageInit["status"];
+};
+
 export type ExecuteQueryColumnMessage = {
-  name?: string;
+  name: string;
   logicalType?: QueryLogicalType;
 };
 
@@ -55,16 +65,28 @@ export type ExecuteQueryRowMessage = {
   values: string[];
 };
 
-export type ExecuteQueryPayload = {
-  source?: CliSourceInit;
-  rowCount?: bigint;
-  elapsedMs?: bigint;
-  columns?: ExecuteQueryColumnMessage[];
-  rows?: ExecuteQueryRowMessage[];
-  truncated?: boolean;
+export type ValidateQueryResponseInit = {
+  declaredResultWindow: NonNullable<
+    ValidateQueryResponseMessageInit["declaredResultWindow"]
+  >;
+  normalizedSql: string;
+  request: NonNullable<ValidateQueryResponseMessageInit["request"]>;
+  source: QuerySourceInit;
+  truncated: boolean;
 };
 
-export type ResolvedCliQueryRequest<TRequest extends CliQueryRequest> = {
+export type ExecuteQueryPayload = {
+  columns: ExecuteQueryColumnMessage[];
+  elapsedMs: bigint;
+  rowCount: bigint;
+  rows: ExecuteQueryRowMessage[];
+  source: QuerySourceInit;
+  truncated: boolean;
+};
+
+export type ExecuteQueryResponseInit = ExecuteQueryResponseMessageInit;
+
+export type ResolvedCliQueryRequest<TRequest extends CliQueryServiceRequest> = {
   authorizedOrg: AuthorizedCliOrgContext;
   c: CliHonoContext;
   query: NonNullable<TRequest["query"]>;

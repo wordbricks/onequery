@@ -36,21 +36,18 @@ export function toCliQueryExecutionFailureResult(input: {
         detail: input.result.detail,
         kind: "query_unavailable",
         requestId: input.requestId,
-        retryable: true,
       };
     case "query_timed_out":
       return {
         detail: input.result.detail,
         kind: "query_timed_out",
         requestId: input.requestId,
-        retryable: true,
       };
     case "query_execution_failed":
       return {
         detail: input.result.detail,
         kind: "query_execution_failed",
         requestId: input.requestId,
-        retryable: false,
       };
   }
 }

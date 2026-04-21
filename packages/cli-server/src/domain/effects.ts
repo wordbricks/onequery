@@ -125,7 +125,7 @@ export type CliExecuteSqlEffect = {
   source: CliQuerySourceRecord;
   credentials: DatabaseCredentials;
   sql: string;
-  clientTimeoutMs: number | null;
+  clientTimeoutMs: number;
 };
 
 export type CliExecuteSqlEffectResult = CliQueryExecutionResult;

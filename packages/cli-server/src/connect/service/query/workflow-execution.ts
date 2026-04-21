@@ -18,7 +18,6 @@ export async function runCliQueryExecutionWorkflowResult(
 ): Promise<CliServiceResult<CliQueryExecutionWorkflowResult>> {
   return Result.tryPromise({
     try: async (): Promise<CliQueryExecutionWorkflowResult> => {
-      const timeoutMs = input.timeoutMs ?? null;
       const preparation = await runPreparedCliQueryWorkflow({
         actorSnapshot: input.actorSnapshot,
         db: input.db,
@@ -34,18 +33,18 @@ export async function runCliQueryExecutionWorkflowResult(
         return preparation.result;
       }
 
-      let loadedState = preparation.prepared.loadedState;
+      let resourceCache = preparation.prepared.resourceCache;
 
       const credentials = await runQueryCredentialsLoadStep({
         actorSnapshot: input.actorSnapshot,
         currentDecision: preparation.prepared.validationDecision,
         db: input.db,
         dispatch: input.dispatch,
-        loadedState,
+        resourceCache,
         organizationId: input.org.id,
         requestId: input.requestId,
       });
-      loadedState = credentials.loadedState;
+      resourceCache = credentials.resourceCache;
 
       if (credentials.step.result.kind === "credentials_invalid") {
         return {
@@ -61,24 +60,23 @@ export async function runCliQueryExecutionWorkflowResult(
         currentDecision: credentials.step.decision,
         db: input.db,
         dispatch: input.dispatch,
-        loadedState,
+        resourceCache,
         organizationId: input.org.id,
         requestId: input.requestId,
-        timeoutMs,
+        timeoutMs: input.timeoutMs,
         truncated: preparation.prepared.truncated,
       });
-      loadedState = execution.loadedState;
 
-      if (execution.step.result.kind !== "succeeded") {
+      if (execution.result.kind !== "succeeded") {
         return toCliQueryExecutionFailureResult({
           requestId: input.requestId,
-          result: execution.step.result,
+          result: execution.result,
         });
       }
 
       const usagePersistence = await runQueryUsagePersistenceStep({
         actorSnapshot: input.actorSnapshot,
-        currentDecision: execution.step.decision,
+        currentDecision: execution.decision,
         db: input.db,
         dispatch: input.dispatch,
         organizationId: input.org.id,
@@ -87,7 +85,7 @@ export async function runCliQueryExecutionWorkflowResult(
 
       return {
         kind: "response_ready",
-        response: execution.step.result.response,
+        response: execution.result.response,
         usagePersistence: usagePersistence.result,
       };
     },

@@ -13,14 +13,14 @@ use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::identifiers::test_org_slug as org_slug;
 use crate::identifiers::test_source_key as source_key;
+use crate::transport::query::DeclaredQueryResultWindow;
 use crate::transport::query::QueryCanonicalRequest;
 use crate::transport::query::QueryColumn;
 use crate::transport::query::QueryRequestPayload;
 use crate::transport::query::QueryResult;
-use crate::transport::query::QueryResultWindow;
+use crate::transport::query::QuerySourceSummary;
 use crate::transport::query::QueryValidationResult;
 use crate::transport::read_controls::PageInfo;
-use crate::transport::source::SourceSummary;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::runner::TransitionProgress;
 
@@ -91,30 +91,30 @@ fn sample_query_payload() -> QueryRequestPayload {
 fn render_query_output_snapshot() {
     let output = render_query_output(
         QueryResult {
-            source: Some(SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+            source: QuerySourceSummary {
+                source_key: "warehouse".to_owned(),
                 display_name: None,
-                provider: Some("postgres".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
-            }),
-            row_count: Some(2),
-            elapsed_ms: Some(428),
-            columns: Some(vec![
+                provider: "postgres".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
+            },
+            row_count: 2,
+            elapsed_ms: 428,
+            columns: vec![
                 QueryColumn {
-                    name: Some("day".to_owned()),
+                    name: "day".to_owned(),
                     logical_type: Some("date".to_owned()),
                 },
                 QueryColumn {
-                    name: Some("signups".to_owned()),
+                    name: "signups".to_owned(),
                     logical_type: Some("int".to_owned()),
                 },
-            ]),
-            rows: Some(vec![
+            ],
+            rows: vec![
                 vec!["2026-03-04".to_owned(), "182".to_owned()],
                 vec!["2026-03-03".to_owned(), "177".to_owned()],
-            ]),
-            truncated: Some(false),
+            ],
+            truncated: false,
             page: PageInfo {
                 next_cursor: None,
                 returned_count: 2,
@@ -134,29 +134,29 @@ fn render_query_output_snapshot() {
 fn render_query_validation_output_snapshot() {
     let output = render_query_validation_output(
         QueryValidationResult {
-            request: Some(QueryCanonicalRequest {
-                sql: Some("SELECT 1".to_owned()),
-                parameters: None,
-                max_rows: Some(100),
-                max_bytes: Some(4096),
-                cell_max_chars: Some(256),
-                timeout_ms: Some(2500),
-            }),
-            normalized_sql: Some("SELECT 1".to_owned()),
-            declared_result_window: Some(QueryResultWindow {
-                max_rows: Some(100),
-                max_bytes: Some(4096),
-                cell_max_chars: Some(256),
-                timeout_ms: Some(2500),
-            }),
-            source: Some(SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+            request: QueryCanonicalRequest {
+                sql: "SELECT 1".to_owned(),
+                parameters: vec![],
+                max_rows: 100,
+                max_bytes: 4096,
+                cell_max_chars: 256,
+                timeout_ms: 2500,
+            },
+            normalized_sql: "SELECT 1".to_owned(),
+            declared_result_window: DeclaredQueryResultWindow {
+                max_rows: 100,
+                max_bytes: 4096,
+                cell_max_chars: 256,
+                timeout_ms: 2500,
+            },
+            source: QuerySourceSummary {
+                source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
-                provider: Some("postgres".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
-            }),
-            truncated: Some(false),
+                provider: "postgres".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
+            },
+            truncated: false,
         },
         &ReadArgs::default(),
     )
@@ -196,18 +196,18 @@ fn effective_query_http_timeout_respects_explicit_payload_timeout() {
 fn render_query_output_renders_no_columns() {
     let output = render_query_output(
         QueryResult {
-            source: Some(SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+            source: QuerySourceSummary {
+                source_key: "warehouse".to_owned(),
                 display_name: None,
-                provider: Some("postgres".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
-            }),
-            row_count: Some(0),
-            elapsed_ms: Some(0),
-            columns: Some(vec![]),
-            rows: Some(vec![]),
-            truncated: Some(false),
+                provider: "postgres".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
+            },
+            row_count: 0,
+            elapsed_ms: 0,
+            columns: vec![],
+            rows: vec![],
+            truncated: false,
             page: PageInfo {
                 next_cursor: None,
                 returned_count: 0,

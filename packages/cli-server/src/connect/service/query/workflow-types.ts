@@ -36,7 +36,7 @@ export type QueryWorkflowRuntimeBaseInput = {
   requestId: string;
   sourceName: string;
   sql: string;
-  timeoutMs: number | null | undefined;
+  timeoutMs: number;
 };
 
 export type CliQueryExecutionWorkflowInput = QueryWorkflowRuntimeBaseInput & {
@@ -109,17 +109,14 @@ export type QueryExecutionEffectResult =
   | {
       detail: string;
       kind: "query_unavailable";
-      retryable: true;
     }
   | {
       detail: string;
       kind: "query_timed_out";
-      retryable: true;
     }
   | {
       detail: string;
       kind: "query_execution_failed";
-      retryable: false;
     };
 
 export type StoredAcceptedQueryActionResultCommand = {
@@ -127,7 +124,7 @@ export type StoredAcceptedQueryActionResultCommand = {
   decision: StoredAcceptedQueryActionDecision;
 };
 
-export type QueryWorkflowLoadedState = {
+export type QueryWorkflowResourceCache = {
   loadedCredentials: DatabaseCredentials | null;
   loadedSource: CliQuerySourceRecord | null;
 };

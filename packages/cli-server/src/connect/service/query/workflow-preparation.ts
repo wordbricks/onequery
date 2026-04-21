@@ -9,13 +9,13 @@ import { toCliQueryPreparationFailureResult } from "./workflow-outcome";
 import type { CliQueryWorkflowPreparationFailureResult } from "./workflow-result";
 import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
 import {
-  createInitialQueryWorkflowLoadedState,
+  createEmptyQueryWorkflowResourceCache,
   runQuerySourceLookupStep,
   runQueryValidationStep,
 } from "./workflow-steps";
 import type {
   CliQueryValidationDispatch,
-  QueryWorkflowLoadedState,
+  QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
 } from "./workflow-types";
 
@@ -25,7 +25,7 @@ type QueryWorkflowPreparationMode = Extract<
 >["type"];
 
 export type PreparedCliQueryWorkflow = {
-  loadedState: QueryWorkflowLoadedState;
+  resourceCache: QueryWorkflowResourceCache;
   normalizedSql: string;
   source: QueryActionSourceDescriptor;
   truncated: boolean;
@@ -56,7 +56,7 @@ export async function runPreparedCliQueryWorkflow(input: {
   sourceName: string;
   sql: string;
 }): Promise<QueryWorkflowPreparationResult> {
-  let loadedState = createInitialQueryWorkflowLoadedState();
+  let resourceCache = createEmptyQueryWorkflowResourceCache();
 
   const startDecision = await storeAcceptedQueryActionCommand({
     actionId: null,
@@ -79,12 +79,12 @@ export async function runPreparedCliQueryWorkflow(input: {
     currentDecision: startDecision,
     db: input.db,
     dispatch: input.dispatch,
-    loadedState,
+    resourceCache,
     org: input.org,
     requestId: input.requestId,
     sourceName: input.sourceName,
   });
-  loadedState = sourceLookup.loadedState;
+  resourceCache = sourceLookup.resourceCache;
 
   if (sourceLookup.step.result.kind !== "queryable_source_loaded") {
     return {
@@ -115,7 +115,7 @@ export async function runPreparedCliQueryWorkflow(input: {
   return {
     kind: "ready",
     prepared: {
-      loadedState,
+      resourceCache,
       normalizedSql: validation.result.normalizedSql,
       source: validation.effect.source,
       truncated: validation.result.truncated,
