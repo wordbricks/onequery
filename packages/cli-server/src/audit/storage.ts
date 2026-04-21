@@ -1301,7 +1301,7 @@ function decodeSourceApiCommittedEvent(
   };
 }
 
-function parseStoredWorkflowValue<Schema extends z.ZodTypeAny>(input: {
+function parseStoredWorkflowValue<Schema extends z.ZodType>(input: {
   actionId?: string;
   entity: string;
   family: WorkflowFamily;
