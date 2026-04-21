@@ -14,11 +14,13 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const CLI_ROOT = path.resolve(__dirname, "..");
+const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 // Comment: resolve the packaged server entry through the runtime package's
 // declared export surface so CLI packaging does not depend on package-private
 // source layout.
 const SERVER_BUNDLE_ENTRYPOINT =
   require.resolve("@onequery/self-host-runtime/packaged-entry");
+const WORKSPACE_SOURCE_CONDITION_NAMES = ["bun", "node", "import", "default"];
 const BUILD_SERVER_BUNDLE_OPTIONS = new Set([
   "--help",
   "-h",
@@ -52,11 +54,18 @@ export async function buildServerBundle({ outdir, targetTriple }) {
 
   try {
     await build({
+      cwd: WORKSPACE_ROOT,
       external(source) {
         return EXTERNAL_SPECIFIERS.has(source);
       },
       input: SERVER_BUNDLE_ENTRYPOINT,
       platform: "node",
+      resolve: {
+        // Comment: release bundling runs from a clean checkout, so prefer Bun's
+        // workspace source exports instead of dist-only package defaults that
+        // may not exist yet for sibling packages like @onequery/installer.
+        conditionNames: WORKSPACE_SOURCE_CONDITION_NAMES,
+      },
       transform: {
         target: "node22",
       },
