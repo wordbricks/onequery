@@ -19,23 +19,22 @@ use crate::transport::pagination::page_info_from_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
+use crate::transport::response_decode::decode_required_bool;
+use crate::transport::response_decode::require_non_empty_text;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceSummary {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) source_key: Option<String>,
+    pub(crate) source_key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) provider: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) queryable: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) status: Option<String>,
+    pub(crate) provider: String,
+    pub(crate) queryable: bool,
+    pub(crate) status: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SourceListPayload {
     #[serde(default)]
     pub(crate) sources: Vec<SourceSummary>,
@@ -43,14 +42,14 @@ pub(crate) struct SourceListPayload {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceTestPayload {
     pub(crate) source: SourceSummary,
     pub(crate) outcome: SourceTestOutcome,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceTestOutcome {
     pub(crate) kind: String,
     pub(crate) message: String,
@@ -134,8 +133,10 @@ async fn fetch_source_page(
             sources: payload
                 .sources
                 .into_iter()
-                .map(source_summary_from_generated)
-                .collect(),
+                .map(|source| {
+                    source_summary_from_generated(source, ErrorStage::Http, request_id.clone())
+                })
+                .collect::<Result<Vec<_>, ApiFailure>>()?,
             page: page_info_from_generated(page),
         },
         request_id,
@@ -167,16 +168,14 @@ pub(crate) async fn get_source_by_key_with_controls(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let source = payload.source.into_option().ok_or_else(|| {
-        decode_failure(
+
+    Ok(ApiSuccess {
+        payload: decode_required_source_summary(
+            payload.source.into_option(),
             ErrorStage::ResolveSource,
             "source get response missing source",
             request_id.clone(),
-        )
-    })?;
-
-    Ok(ApiSuccess {
-        payload: source_summary_from_generated(source),
+        )?,
         request_id,
     })
 }
@@ -205,13 +204,7 @@ pub(crate) async fn test_source(
 
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let source = payload.source.into_option().ok_or_else(|| {
-        decode_failure(
-            ErrorStage::ResolveSource,
-            "source test response missing source",
-            request_id.clone(),
-        )
-    })?;
+    let source = payload.source.into_option();
     let outcome = payload.outcome.ok_or_else(|| {
         decode_failure(
             ErrorStage::ResolveSource,
@@ -243,14 +236,33 @@ pub(crate) async fn test_source(
 
     Ok(ApiSuccess {
         payload: SourceTestPayload {
-            source: source_summary_from_generated(source),
+            source: decode_required_source_summary(
+                source,
+                ErrorStage::ResolveSource,
+                "source test response missing source",
+                request_id.clone(),
+            )?,
             outcome,
         },
         request_id,
     })
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> SourceSummary {
+fn decode_required_source_summary(
+    summary: Option<types::CliSource>,
+    stage: ErrorStage,
+    message: &str,
+    request_id: Option<String>,
+) -> Result<SourceSummary, ApiFailure> {
+    let summary = summary.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
+    source_summary_from_generated(summary, stage, request_id)
+}
+
+pub(crate) fn source_summary_from_generated(
+    summary: types::CliSource,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<SourceSummary, ApiFailure> {
     let types::CliSource {
         source_key,
         display_name,
@@ -260,13 +272,31 @@ pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> Source
         ..
     } = summary;
 
-    SourceSummary {
-        source_key,
-        display_name,
-        provider: provider.map(source_provider_to_str),
-        queryable,
-        status: status.map(source_status_to_str),
-    }
+    Ok(SourceSummary {
+        source_key: require_non_empty_text(
+            source_key,
+            stage,
+            "source response missing source key",
+            request_id.clone(),
+        )?,
+        display_name: display_name.filter(|value| !value.is_empty()),
+        provider: provider.map(source_provider_to_str).ok_or_else(|| {
+            decode_failure(
+                stage,
+                "source response missing provider",
+                request_id.clone(),
+            )
+        })?,
+        queryable: decode_required_bool(
+            queryable,
+            stage,
+            "source response missing queryable flag",
+            request_id.clone(),
+        )?,
+        status: status
+            .map(source_status_to_str)
+            .ok_or_else(|| decode_failure(stage, "source response missing status", request_id))?,
+    })
 }
 
 fn source_test_unsupported_reason_to_str(
@@ -324,18 +354,18 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        source_key: Some("warehouse".to_owned()),
+                        source_key: "warehouse".to_owned(),
                         display_name: None,
-                        provider: Some("postgres".to_owned()),
-                        queryable: Some(true),
-                        status: Some("active".to_owned()),
+                        provider: "postgres".to_owned(),
+                        queryable: true,
+                        status: "active".to_owned(),
                     },
                     SourceSummary {
-                        source_key: Some("github_main".to_owned()),
+                        source_key: "github_main".to_owned(),
                         display_name: None,
-                        provider: Some("github".to_owned()),
-                        queryable: Some(false),
-                        status: Some("active".to_owned()),
+                        provider: "github".to_owned(),
+                        queryable: false,
+                        status: "active".to_owned(),
                     },
                 ],
                 page: PageInfo {
@@ -361,11 +391,11 @@ mod tests {
         assert_eq!(
             parsed,
             SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+                source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
-                provider: Some("mysql".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
+                provider: "mysql".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
             }
         );
     }

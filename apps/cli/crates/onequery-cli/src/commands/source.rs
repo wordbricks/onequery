@@ -588,20 +588,20 @@ fn render_source_list_output(
 
     let source_key_width = sources
         .iter()
-        .map(|source| source.source_key.as_deref().unwrap_or("-").len())
+        .map(|source| source.source_key.len())
         .max()
         .unwrap_or(4)
         .max("SOURCE KEY".len());
     let provider_width = sources
         .iter()
-        .map(|source| source.provider.as_deref().unwrap_or("-").len())
+        .map(|source| source.provider.len())
         .max()
         .unwrap_or(8)
         .max("PROVIDER".len());
     let query_width = "QUERY".len();
     let status_width = sources
         .iter()
-        .map(|source| source.status.as_deref().unwrap_or("-").len())
+        .map(|source| source.status.len())
         .max()
         .unwrap_or(6)
         .max("STATUS".len());
@@ -620,33 +620,17 @@ fn render_source_list_output(
 
     for source in sources {
         let mut row = String::with_capacity(row_capacity);
-        append_padded_cell(
-            &mut row,
-            source.source_key.as_deref().unwrap_or("-"),
-            source_key_width,
-        );
+        append_padded_cell(&mut row, &source.source_key, source_key_width);
+        row.push_str("  ");
+        append_padded_cell(&mut row, &source.provider, provider_width);
         row.push_str("  ");
         append_padded_cell(
             &mut row,
-            source.provider.as_deref().unwrap_or("-"),
-            provider_width,
-        );
-        row.push_str("  ");
-        append_padded_cell(
-            &mut row,
-            if source.queryable.unwrap_or(false) {
-                "yes"
-            } else {
-                "no"
-            },
+            if source.queryable { "yes" } else { "no" },
             query_width,
         );
         row.push_str("  ");
-        append_padded_cell(
-            &mut row,
-            source.status.as_deref().unwrap_or("-"),
-            status_width,
-        );
+        append_padded_cell(&mut row, &source.status, status_width);
         lines.push(row);
     }
 
@@ -673,16 +657,12 @@ fn render_source_show_output(
     }
 
     let mut lines = vec![
-        format!("Source: {}", source.source_key.as_deref().unwrap_or("-")),
-        format!("Provider: {}", source.provider.as_deref().unwrap_or("-")),
-        format!("Status: {}", source.status.as_deref().unwrap_or("-")),
+        format!("Source: {}", &source.source_key),
+        format!("Provider: {}", &source.provider),
+        format!("Status: {}", &source.status),
         format!(
             "Query (v1): {}",
-            if source.queryable.unwrap_or(false) {
-                "yes"
-            } else {
-                "no"
-            }
+            if source.queryable { "yes" } else { "no" }
         ),
     ];
 
@@ -690,10 +670,10 @@ fn render_source_show_output(
         lines.insert(1, format!("Display Name: {display_name}"));
     }
 
-    if source.queryable.unwrap_or(false) {
+    if source.queryable {
         lines.push(format!(
             "Sample query: onequery query exec --source {} --sql \"select 1\"",
-            source.source_key.as_deref().unwrap_or("<source>")
+            &source.source_key
         ));
     }
 
@@ -704,18 +684,9 @@ fn render_source_show_output(
 
 fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput, CliError> {
     let mut lines = vec![
-        format!(
-            "Source: {}",
-            payload.source.source_key.as_deref().unwrap_or("-")
-        ),
-        format!(
-            "Provider: {}",
-            payload.source.provider.as_deref().unwrap_or("-")
-        ),
-        format!(
-            "Status: {}",
-            payload.source.status.as_deref().unwrap_or("-")
-        ),
+        format!("Source: {}", &payload.source.source_key),
+        format!("Provider: {}", &payload.source.provider),
+        format!("Status: {}", &payload.source.status),
     ];
 
     if let Some(display_name) = &payload.source.display_name {
@@ -810,18 +781,18 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        source_key: Some("warehouse".to_owned()),
+                        source_key: "warehouse".to_owned(),
                         display_name: None,
-                        provider: Some("postgres".to_owned()),
-                        queryable: Some(true),
-                        status: Some("active".to_owned()),
+                        provider: "postgres".to_owned(),
+                        queryable: true,
+                        status: "active".to_owned(),
                     },
                     SourceSummary {
-                        source_key: Some("github_main".to_owned()),
+                        source_key: "github_main".to_owned(),
                         display_name: None,
-                        provider: Some("github".to_owned()),
-                        queryable: Some(false),
-                        status: Some("active".to_owned()),
+                        provider: "github".to_owned(),
+                        queryable: false,
+                        status: "active".to_owned(),
                     },
                 ],
                 page: PageInfo {
@@ -838,11 +809,11 @@ mod tests {
     #[test]
     fn render_source_show_output_includes_sample_query_when_queryable() {
         let source = SourceSummary {
-            source_key: Some("warehouse".to_owned()),
+            source_key: "warehouse".to_owned(),
             display_name: Some("Warehouse".to_owned()),
-            provider: Some("postgres".to_owned()),
-            queryable: Some(true),
-            status: Some("active".to_owned()),
+            provider: "postgres".to_owned(),
+            queryable: true,
+            status: "active".to_owned(),
         };
 
         let output = render_source_show_output(source, &ReadArgs::default())
@@ -853,11 +824,11 @@ mod tests {
     #[test]
     fn render_source_show_output_omits_sample_query_when_not_queryable() {
         let source = SourceSummary {
-            source_key: Some("github_main".to_owned()),
+            source_key: "github_main".to_owned(),
             display_name: None,
-            provider: Some("github".to_owned()),
-            queryable: Some(false),
-            status: Some("active".to_owned()),
+            provider: "github".to_owned(),
+            queryable: false,
+            status: "active".to_owned(),
         };
 
         let output = render_source_show_output(source, &ReadArgs::default())
@@ -877,11 +848,11 @@ mod tests {
     fn render_source_test_output_includes_supported_failure_details() {
         let output = render_source_test_output(SourceTestPayload {
             source: SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+                source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
-                provider: Some("postgres".to_owned()),
-                queryable: Some(true),
-                status: Some("error".to_owned()),
+                provider: "postgres".to_owned(),
+                queryable: true,
+                status: "error".to_owned(),
             },
             outcome: SourceTestOutcome {
                 kind: "supported".to_owned(),
@@ -901,11 +872,11 @@ mod tests {
     fn render_source_test_output_includes_unsupported_reason() {
         let output = render_source_test_output(SourceTestPayload {
             source: SourceSummary {
-                source_key: Some("github_prod".to_owned()),
+                source_key: "github_prod".to_owned(),
                 display_name: None,
-                provider: Some("github".to_owned()),
-                queryable: Some(false),
-                status: Some("active".to_owned()),
+                provider: "github".to_owned(),
+                queryable: false,
+                status: "active".to_owned(),
             },
             outcome: SourceTestOutcome {
                 kind: "unsupported".to_owned(),

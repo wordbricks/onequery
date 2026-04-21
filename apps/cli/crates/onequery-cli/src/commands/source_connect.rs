@@ -407,22 +407,12 @@ fn render_source_connect_result_output(
     result: SourceConnectResult,
 ) -> Result<CommandOutput, CliError> {
     let lines = vec![
-        format!(
-            "Source connected: {}",
-            result.source.source_key.as_deref().unwrap_or("-")
-        ),
-        format!(
-            "Provider: {}",
-            result.source.provider.as_deref().unwrap_or("-")
-        ),
-        format!("Status: {}", result.source.status.as_deref().unwrap_or("-")),
+        format!("Source connected: {}", &result.source.source_key),
+        format!("Provider: {}", &result.source.provider),
+        format!("Status: {}", &result.source.status),
         format!(
             "Query (v1): {}",
-            if result.source.queryable.unwrap_or(false) {
-                "yes"
-            } else {
-                "no"
-            }
+            if result.source.queryable { "yes" } else { "no" }
         ),
         format!("Next: {}", result.next_command),
     ];
@@ -524,11 +514,11 @@ mod tests {
     fn render_source_connect_result_output_snapshot() {
         let output = render_source_connect_result_output(SourceConnectResult {
             source: SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+                source_key: "warehouse".to_owned(),
                 display_name: None,
-                provider: Some("postgres".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
+                provider: "postgres".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
             },
             next_command: "onequery source show warehouse".to_owned(),
         })

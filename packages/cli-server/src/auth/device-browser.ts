@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import * as cliBrowserApp from "../app";
 import { buildCliRequestLogDetails, logCliEvent } from "../observability";
+import {
+  readBetterAuthErrorDetail,
+  readBetterAuthErrorStatus,
+} from "./device-transport";
 
 const DEVICE_PAGE_PATH = "/device";
 
@@ -328,24 +332,9 @@ async function callAuthEndpoint(
 
 async function readAuthErrorResponse(response: Response) {
   try {
-    const payload = await response.json();
-
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "error_description" in payload &&
-      typeof payload.error_description === "string"
-    ) {
-      return payload.error_description;
-    }
-
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string"
-    ) {
-      return payload.message;
+    const detail = readBetterAuthErrorDetail(await response.json());
+    if (detail) {
+      return detail;
     }
   } catch {
     // Comment: Better Auth normally returns JSON errors here, but keep a
@@ -390,16 +379,9 @@ function normalizeUserCode(value: string | null | undefined) {
 }
 
 function readAuthErrorDescription(error: unknown) {
-  if (
-    error &&
-    typeof error === "object" &&
-    "body" in error &&
-    error.body &&
-    typeof error.body === "object" &&
-    "error_description" in error.body &&
-    typeof error.body.error_description === "string"
-  ) {
-    return error.body.error_description;
+  const detail = readBetterAuthErrorDetail(error);
+  if (detail) {
+    return detail;
   }
 
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -412,13 +394,9 @@ function readAuthErrorDescription(error: unknown) {
 function readAuthErrorStatus(
   error: unknown
 ): 400 | 401 | 403 | 404 | 409 | 429 | 500 {
-  if (
-    error &&
-    typeof error === "object" &&
-    "status" in error &&
-    typeof error.status === "number"
-  ) {
-    return toDeviceResponseStatus(error.status);
+  const status = readBetterAuthErrorStatus(error);
+  if (status !== null) {
+    return toDeviceResponseStatus(status);
   }
 
   return 400;

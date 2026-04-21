@@ -3,20 +3,27 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliSessionIdentity } from "../../../domain/workflows";
 import { resolveQueryResultWindow } from "../../../query/result-window";
-import type {
-  CliQueryExecutionWorkflowResult,
-  CliQueryValidationWorkflowResult,
-  runCliQueryExecutionWorkflow,
-} from "../../../query/workflow";
 import {
   QueryLogicalType,
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "../../gen/onequery/cli/v1/query_pb";
-import { CliSourceSchema } from "../../gen/onequery/cli/v1/source_pb";
+import type { CliSourceInit } from "../source/types";
 import type { CliHonoContext } from "../types";
+import type {
+  CliQueryExecutionFailureResult,
+  CliQueryExecutionWorkflowResult,
+  CliQueryWorkflowPreparationFailureResult,
+} from "./workflow-result";
 
-type CliQueryRequest = {
+type ValidateQueryResponseMessageInit = MessageInitShape<
+  typeof ValidateQueryResponseSchema
+>;
+type ExecuteQueryResponseMessageInit = MessageInitShape<
+  typeof ExecuteQueryResponseSchema
+>;
+
+export type CliQueryServiceRequest = {
   orgSlug: string;
   sourceKey: string;
   query?: {
@@ -28,31 +35,18 @@ type CliQueryRequest = {
   };
 };
 
-export type CliQueryValidationFailure = Exclude<
-  CliQueryValidationWorkflowResult,
-  { kind: "ready" }
->;
+export type CliQueryValidationFailure =
+  CliQueryWorkflowPreparationFailureResult;
 
 export type CliQueryExecutionSuccess = Extract<
-  Awaited<ReturnType<typeof runCliQueryExecutionWorkflow>>,
-  { kind: "response_ready" }
->;
-
-export type CliQueryExecutionFailure = Exclude<
   CliQueryExecutionWorkflowResult,
   { kind: "response_ready" }
 >;
 
-export type ValidateQueryResponseInit = MessageInitShape<
-  typeof ValidateQueryResponseSchema
->;
-export type ExecuteQueryResponseInit = MessageInitShape<
-  typeof ExecuteQueryResponseSchema
->;
-export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
+export type CliQueryExecutionFailure = CliQueryExecutionFailureResult;
 
 export type ExecuteQueryColumnMessage = {
-  name?: string;
+  name: string;
   logicalType?: QueryLogicalType;
 };
 
@@ -60,16 +54,28 @@ export type ExecuteQueryRowMessage = {
   values: string[];
 };
 
-export type ExecuteQueryPayload = {
-  source?: CliSourceInit;
-  rowCount?: bigint;
-  elapsedMs?: bigint;
-  columns?: ExecuteQueryColumnMessage[];
-  rows?: ExecuteQueryRowMessage[];
-  truncated?: boolean;
+export type ValidateQueryResponseInit = {
+  declaredResultWindow: NonNullable<
+    ValidateQueryResponseMessageInit["declaredResultWindow"]
+  >;
+  normalizedSql: string;
+  request: NonNullable<ValidateQueryResponseMessageInit["request"]>;
+  source: CliSourceInit;
+  truncated: boolean;
 };
 
-export type ResolvedCliQueryRequest<TRequest extends CliQueryRequest> = {
+export type ExecuteQueryPayload = {
+  columns: ExecuteQueryColumnMessage[];
+  elapsedMs: bigint;
+  rowCount: bigint;
+  rows: ExecuteQueryRowMessage[];
+  source: CliSourceInit;
+  truncated: boolean;
+};
+
+export type ExecuteQueryResponseInit = ExecuteQueryResponseMessageInit;
+
+export type ResolvedCliQueryRequest<TRequest extends CliQueryServiceRequest> = {
   authorizedOrg: AuthorizedCliOrgContext;
   c: CliHonoContext;
   query: NonNullable<TRequest["query"]>;

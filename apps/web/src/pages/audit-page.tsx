@@ -1,6 +1,7 @@
 import {
-  CLI_QUERY_ACTION_STATUSES,
-  CLI_QUERY_ACTION_TYPES,
+  AUDIT_ACTION_NAMES,
+  AUDIT_FAMILIES,
+  AUDIT_OUTCOMES,
 } from "@onequery/contracts/audit";
 import { formatDateTime } from "@onequery/datetime/format-date";
 import { Badge } from "@onequery/ui/components/badge";
@@ -56,7 +57,7 @@ function normalizeSearchValue(value: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function truncateSql(value: string, maxLength = 160): string {
+function truncateText(value: string, maxLength = 160): string {
   if (value.length <= maxLength) {
     return value;
   }
@@ -64,69 +65,111 @@ function truncateSql(value: string, maxLength = 160): string {
   return `${value.slice(0, maxLength - 1)}…`;
 }
 
-function getStatusBadgeVariant(status: AuditListItem["state"]["status"]) {
-  if (status === "succeeded") {
+function getOutcomeBadgeVariant(outcome: AuditListItem["outcome"]) {
+  if (outcome === "succeeded") {
     return "secondary" as const;
   }
 
-  if (status === "pending") {
+  if (outcome === "pending") {
     return "outline" as const;
   }
 
   return "destructive" as const;
 }
 
+function getActorLabel(item: AuditListItem) {
+  return item.originActor.email ?? "System";
+}
+
+function getMetricsLabel(item: AuditListItem) {
+  if (item.family === "query_action") {
+    const elapsedLabel =
+      item.metrics?.elapsedMs !== null && item.metrics?.elapsedMs !== undefined
+        ? `${item.metrics.elapsedMs} ms`
+        : null;
+    const rowCountLabel =
+      item.metrics?.rowCount !== null && item.metrics?.rowCount !== undefined
+        ? `${item.metrics.rowCount} rows`
+        : null;
+
+    return [elapsedLabel, rowCountLabel].filter(Boolean).join(" · ");
+  }
+
+  const pageCountLabel =
+    item.metrics?.pageCount !== null && item.metrics?.pageCount !== undefined
+      ? `${item.metrics.pageCount} pages`
+      : null;
+  const statusLabel =
+    item.metrics?.httpStatus !== null && item.metrics?.httpStatus !== undefined
+      ? `HTTP ${item.metrics.httpStatus}`
+      : null;
+
+  return [pageCountLabel, statusLabel].filter(Boolean).join(" · ");
+}
+
+function getDetailLine(item: AuditListItem) {
+  if (item.family === "query_action") {
+    return truncateText(item.preview?.queryText ?? item.subtitle);
+  }
+
+  const requestShape = [item.preview?.method, item.preview?.selector]
+    .filter(Boolean)
+    .join(" ");
+  return truncateText(requestShape || item.subtitle);
+}
+
 function AuditTableRow({ item }: { item: AuditListItem }) {
+  const metricsLabel = getMetricsLabel(item);
+
   return (
     <TableRow>
       <TableCell className="align-top">
-        <div className="min-w-[140px]">
-          <div className="font-medium">{formatDateTime(item.occurredAt)}</div>
-          <div className="text-muted-foreground text-xs mt-1">
-            {item.action.requestId}
+        <div className="min-w-[170px]">
+          <div className="font-medium">{formatDateTime(item.startedAt)}</div>
+          <div className="text-muted-foreground mt-1 text-xs">
+            Started · {formatEnumLabel(item.originSurface)}
           </div>
+          {item.lastEventAt !== item.startedAt ? (
+            <div className="text-muted-foreground mt-1 text-xs">
+              Last event · {formatDateTime(item.lastEventAt)}
+            </div>
+          ) : null}
         </div>
       </TableCell>
       <TableCell className="align-top whitespace-normal">
-        <div className="font-medium">{item.actor.email}</div>
-        <div className="text-muted-foreground text-xs mt-1">
-          {item.actor.membershipRoles.map(formatEnumLabel).join(", ")}
+        <div className="font-medium">{getActorLabel(item)}</div>
+        <div className="text-muted-foreground mt-1 text-xs">
+          {item.originActor.membershipRoles.length > 0
+            ? item.originActor.membershipRoles.map(formatEnumLabel).join(", ")
+            : "No membership roles recorded"}
         </div>
       </TableCell>
-      <TableCell className="align-top whitespace-normal min-w-[360px]">
+      <TableCell className="min-w-[420px] align-top whitespace-normal">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">
-            {formatEnumLabel(item.action.type)}
-          </span>
-          <span className="text-muted-foreground text-xs">
-            on <span className="font-medium">{item.action.sourceKey}</span>
-          </span>
+          <Badge variant="outline">{formatEnumLabel(item.family)}</Badge>
+          <span className="font-medium">{item.title}</span>
         </div>
-        <div className="text-muted-foreground text-xs mt-2 font-mono break-words">
-          {truncateSql(item.query.sql)}
+        <div className="text-muted-foreground mt-2 text-sm">
+          {item.subtitle}
         </div>
-        {item.error ? (
-          <div className="text-destructive text-xs mt-2">
-            {item.error.detail ?? item.error.hint}
-          </div>
-        ) : null}
+        <div className="text-muted-foreground mt-2 text-xs font-mono break-words">
+          {getDetailLine(item)}
+        </div>
       </TableCell>
       <TableCell className="align-top whitespace-normal">
         <div className="flex flex-col gap-2">
-          <Badge variant={getStatusBadgeVariant(item.state.status)}>
-            {formatEnumLabel(item.state.status)}
+          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
+            {formatEnumLabel(item.outcome)}
           </Badge>
           <div className="text-muted-foreground text-xs">
-            {formatEnumLabel(item.state.lastEventType)}
+            {formatEnumLabel(item.phase)}
           </div>
           <div className="text-muted-foreground text-xs">
-            {item.metrics.elapsedMs !== null
-              ? `${item.metrics.elapsedMs} ms`
-              : "No duration"}
-            {item.metrics.rowCount !== null
-              ? ` · ${item.metrics.rowCount} rows`
-              : ""}
+            {formatEnumLabel(item.lastEventType)}
           </div>
+          {metricsLabel ? (
+            <div className="text-muted-foreground text-xs">{metricsLabel}</div>
+          ) : null}
         </div>
       </TableCell>
     </TableRow>
@@ -184,12 +227,13 @@ export function AuditPage() {
         params: { org_slug: organizationSlug },
         replace: true,
         search: {
-          actionType: undefined,
+          actionName: undefined,
           cursor: undefined,
+          family: undefined,
           limit: search.limit,
+          outcome: undefined,
           q: undefined,
           sourceKey: undefined,
-          status: undefined,
         },
         to: "/$org_slug/audit",
       });
@@ -201,23 +245,24 @@ export function AuditPage() {
       <div>
         <h1 className="text-3xl font-bold">Audit</h1>
         <p className="text-muted-foreground mt-2">
-          Organization history for CLI query activity. This v1 surface tracks
-          validate and execute trails in reverse chronological order.
+          One row per audited action across query and source API workflows.
+          Ordered by action start time so pagination stays stable while actions
+          continue to evolve.
         </p>
       </div>
 
       <section className="rounded-xl border p-4">
         <form
-          className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_200px_180px_auto_auto]"
+          className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_180px_180px_180px_auto_auto]"
           onSubmit={handleFilterSubmit}
         >
           <div className="space-y-2">
-            <Label htmlFor="audit-query-search">Search</Label>
+            <Label htmlFor="audit-search">Search</Label>
             <Input
-              id="audit-query-search"
+              id="audit-search"
               value={queryInput}
               onChange={(event) => setQueryInput(event.target.value)}
-              placeholder="Actor email or SQL text"
+              placeholder="Actor, query text, operation, or title"
             />
           </div>
 
@@ -232,27 +277,27 @@ export function AuditPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="audit-status">Status</Label>
+            <Label htmlFor="audit-outcome">Outcome</Label>
             <Select
-              value={search.status ?? "all"}
+              value={search.outcome ?? "all"}
               onValueChange={(value) => {
                 updateAuditSearch({
                   cursor: undefined,
-                  status:
+                  outcome:
                     value && value !== "all"
-                      ? (value as AuditSearch["status"])
+                      ? (value as AuditSearch["outcome"])
                       : undefined,
                 });
               }}
             >
-              <SelectTrigger id="audit-status" className="w-full">
+              <SelectTrigger id="audit-outcome" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {CLI_QUERY_ACTION_STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {formatEnumLabel(status)}
+                <SelectItem value="all">All outcomes</SelectItem>
+                {AUDIT_OUTCOMES.map((outcome) => (
+                  <SelectItem key={outcome} value={outcome}>
+                    {formatEnumLabel(outcome)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -260,27 +305,55 @@ export function AuditPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="audit-action-type">Action</Label>
+            <Label htmlFor="audit-family">Family</Label>
             <Select
-              value={search.actionType ?? "all"}
+              value={search.family ?? "all"}
               onValueChange={(value) => {
                 updateAuditSearch({
-                  actionType:
+                  cursor: undefined,
+                  family:
                     value && value !== "all"
-                      ? (value as AuditSearch["actionType"])
+                      ? (value as AuditSearch["family"])
+                      : undefined,
+                });
+              }}
+            >
+              <SelectTrigger id="audit-family" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All families</SelectItem>
+                {AUDIT_FAMILIES.map((family) => (
+                  <SelectItem key={family} value={family}>
+                    {formatEnumLabel(family)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="audit-action-name">Action</Label>
+            <Select
+              value={search.actionName ?? "all"}
+              onValueChange={(value) => {
+                updateAuditSearch({
+                  actionName:
+                    value && value !== "all"
+                      ? (value as AuditSearch["actionName"])
                       : undefined,
                   cursor: undefined,
                 });
               }}
             >
-              <SelectTrigger id="audit-action-type" className="w-full">
+              <SelectTrigger id="audit-action-name" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All actions</SelectItem>
-                {CLI_QUERY_ACTION_TYPES.map((actionType) => (
-                  <SelectItem key={actionType} value={actionType}>
-                    {formatEnumLabel(actionType)}
+                {AUDIT_ACTION_NAMES.map((actionName) => (
+                  <SelectItem key={actionName} value={actionName}>
+                    {formatEnumLabel(actionName)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -351,7 +424,7 @@ export function AuditPage() {
             </EmptyMedia>
             <EmptyTitle>No audit entries matched these filters</EmptyTitle>
             <EmptyDescription>
-              Try clearing the filters or waiting for new CLI query activity in
+              Try clearing the filters or waiting for new workflow activity in
               this organization.
             </EmptyDescription>
           </EmptyHeader>

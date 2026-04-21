@@ -8,6 +8,7 @@
     "./auth": "./src/auth.ts",
     "./auth/organization-permissions": "./src/auth/organization-permissions.ts",
     "./client": "./src/client.ts",
+    "./lib/stable-fingerprint": "./src/lib/stable-fingerprint.ts",
     "./lib/rate-limit-storage": "./src/lib/rate-limit-storage.ts",
     "./lib/verify-org-access": "./src/lib/verify-org-access.ts",
     "./runtime": "./src/runtime.ts",

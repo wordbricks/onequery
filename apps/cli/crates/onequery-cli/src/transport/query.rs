@@ -28,14 +28,18 @@ use crate::transport::query_parameter::query_request_parameter_to_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
+use crate::transport::response_decode::decode_required_bool;
+use crate::transport::response_decode::decode_required_u32_as_u64;
+use crate::transport::response_decode::decode_required_u32_as_usize;
+use crate::transport::response_decode::decode_required_u64;
+use crate::transport::response_decode::require_non_empty_text;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QueryColumn {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) name: Option<String>,
+    pub(crate) name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) logical_type: Option<String>,
 }
@@ -43,18 +47,12 @@ pub(crate) struct QueryColumn {
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QueryResult {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) source: Option<SourceSummary>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) row_count: Option<usize>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) elapsed_ms: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) columns: Option<Vec<QueryColumn>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) rows: Option<Vec<Vec<String>>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) truncated: Option<bool>,
+    pub(crate) source: SourceSummary,
+    pub(crate) row_count: usize,
+    pub(crate) elapsed_ms: u64,
+    pub(crate) columns: Vec<QueryColumn>,
+    pub(crate) rows: Vec<Vec<String>>,
+    pub(crate) truncated: bool,
     pub(crate) page: PageInfo,
     #[serde(skip)]
     pub(crate) output_metadata: Option<SanitizationMetadata>,
@@ -87,7 +85,7 @@ impl QueryRequestPayload {
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct QueryResultWindow {
+pub(crate) struct QueryRequestWindow {
     pub(crate) max_rows: Option<usize>,
     pub(crate) max_bytes: Option<usize>,
     pub(crate) cell_max_chars: Option<usize>,
@@ -97,33 +95,32 @@ pub(crate) struct QueryResultWindow {
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QueryCanonicalRequest {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) sql: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) parameters: Option<Vec<QueryCanonicalParameter>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) max_rows: Option<usize>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) max_bytes: Option<usize>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) cell_max_chars: Option<usize>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) timeout_ms: Option<u64>,
+    pub(crate) sql: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) parameters: Vec<QueryCanonicalParameter>,
+    pub(crate) max_rows: usize,
+    pub(crate) max_bytes: usize,
+    pub(crate) cell_max_chars: usize,
+    pub(crate) timeout_ms: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DeclaredQueryResultWindow {
+    pub(crate) max_rows: usize,
+    pub(crate) max_bytes: usize,
+    pub(crate) cell_max_chars: usize,
+    pub(crate) timeout_ms: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QueryValidationResult {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) request: Option<QueryCanonicalRequest>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) normalized_sql: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) declared_result_window: Option<QueryResultWindow>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) source: Option<SourceSummary>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) truncated: Option<bool>,
+    pub(crate) request: QueryCanonicalRequest,
+    pub(crate) normalized_sql: String,
+    pub(crate) declared_result_window: DeclaredQueryResultWindow,
+    pub(crate) source: SourceSummary,
+    pub(crate) truncated: bool,
 }
 
 pub(crate) async fn execute_read_only_query_with_controls(
@@ -164,11 +161,7 @@ pub(crate) async fn execute_read_only_query_with_controls(
         )
         .await?;
         total_returned += next_response.payload.page.returned_count;
-        if let Some(rows) = &mut aggregated.rows
-            && let Some(next_rows) = next_response.payload.rows
-        {
-            rows.extend(next_rows);
-        }
+        aggregated.rows.extend(next_response.payload.rows);
         next_cursor = next_response.payload.page.next_cursor;
     }
 
@@ -298,29 +291,51 @@ fn query_result_from_generated(
         decode_failure(
             ErrorStage::ExecuteQuery,
             "query execution response missing page metadata",
-            request_id,
+            request_id.clone(),
         )
     })?;
 
     Ok(QueryResult {
         output_metadata: sanitization_metadata_from_generated(result.sanitization.into_option()),
-        source: Some(source_summary_from_generated(source)),
-        row_count: result
-            .row_count
-            .and_then(|value| usize::try_from(value).ok()),
-        elapsed_ms: result.elapsed_ms,
-        columns: Some(
-            result
-                .columns
-                .into_iter()
-                .map(|column| QueryColumn {
-                    name: non_empty(column.name),
+        source: source_summary_from_generated(
+            source,
+            ErrorStage::ExecuteQuery,
+            request_id.clone(),
+        )?,
+        row_count: decode_required_usize(
+            result.row_count,
+            ErrorStage::ExecuteQuery,
+            "query execution response missing row count",
+            request_id.clone(),
+        )?,
+        elapsed_ms: decode_required_u64(
+            result.elapsed_ms,
+            ErrorStage::ExecuteQuery,
+            "query execution response missing elapsed time",
+            request_id.clone(),
+        )?,
+        columns: result
+            .columns
+            .into_iter()
+            .map(|column| {
+                Ok(QueryColumn {
+                    name: require_non_empty_text(
+                        column.name,
+                        ErrorStage::ExecuteQuery,
+                        "query execution response included a column without a name",
+                        request_id.clone(),
+                    )?,
                     logical_type: column.logical_type.and_then(query_logical_type_to_str),
                 })
-                .collect(),
-        ),
-        rows: Some(result.rows.into_iter().map(|row| row.values).collect()),
-        truncated: result.truncated,
+            })
+            .collect::<Result<Vec<_>, ApiFailure>>()?,
+        rows: result.rows.into_iter().map(|row| row.values).collect(),
+        truncated: decode_required_bool(
+            result.truncated,
+            ErrorStage::ExecuteQuery,
+            "query execution response missing truncated flag",
+            request_id,
+        )?,
         page: page_info_from_generated(page),
     })
 }
@@ -347,59 +362,116 @@ fn query_validation_from_generated(
         decode_failure(
             ErrorStage::ReadQueryInput,
             "query validation response missing source metadata",
-            request_id,
+            request_id.clone(),
         )
     })?;
 
     Ok(QueryValidationResult {
-        request: Some(query_canonical_request_from_generated(request)),
-        normalized_sql: result.normalized_sql,
-        declared_result_window: Some(query_result_window_from_generated(declared_result_window)),
-        source: Some(source_summary_from_generated(source)),
-        truncated: result.truncated,
+        request: query_canonical_request_from_generated(
+            request,
+            ErrorStage::ReadQueryInput,
+            request_id.clone(),
+        )?,
+        normalized_sql: require_non_empty_text(
+            result.normalized_sql,
+            ErrorStage::ReadQueryInput,
+            "query validation response missing normalized SQL",
+            request_id.clone(),
+        )?,
+        declared_result_window: declared_query_result_window_from_generated(
+            declared_result_window,
+            ErrorStage::ReadQueryInput,
+            request_id.clone(),
+        )?,
+        source: source_summary_from_generated(
+            source,
+            ErrorStage::ReadQueryInput,
+            request_id.clone(),
+        )?,
+        truncated: decode_required_bool(
+            result.truncated,
+            ErrorStage::ReadQueryInput,
+            "query validation response missing truncated flag",
+            request_id,
+        )?,
     })
 }
 
 fn query_canonical_request_from_generated(
     request: types::CliQueryCanonicalRequest,
-) -> QueryCanonicalRequest {
-    QueryCanonicalRequest {
-        sql: request.sql,
-        parameters: (!request.parameters.is_empty()).then(|| {
-            request
-                .parameters
-                .into_iter()
-                .map(query_canonical_parameter_from_generated)
-                .collect()
-        }),
-        max_rows: request
-            .max_rows
-            .and_then(|value| usize::try_from(value).ok()),
-        max_bytes: request
-            .max_bytes
-            .and_then(|value| usize::try_from(value).ok()),
-        cell_max_chars: request
-            .cell_max_chars
-            .and_then(|value| usize::try_from(value).ok()),
-        timeout_ms: request.timeout_ms.map(u64::from),
-    }
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<QueryCanonicalRequest, ApiFailure> {
+    Ok(QueryCanonicalRequest {
+        sql: require_non_empty_text(
+            request.sql,
+            stage,
+            "query validation response missing canonical SQL",
+            request_id.clone(),
+        )?,
+        parameters: request
+            .parameters
+            .into_iter()
+            .map(query_canonical_parameter_from_generated)
+            .collect(),
+        max_rows: decode_required_u32_as_usize(
+            request.max_rows,
+            stage,
+            "query validation response missing request maxRows",
+            request_id.clone(),
+        )?,
+        max_bytes: decode_required_u32_as_usize(
+            request.max_bytes,
+            stage,
+            "query validation response missing request maxBytes",
+            request_id.clone(),
+        )?,
+        cell_max_chars: decode_required_u32_as_usize(
+            request.cell_max_chars,
+            stage,
+            "query validation response missing request cellMaxChars",
+            request_id.clone(),
+        )?,
+        timeout_ms: decode_required_u32_as_u64(
+            request.timeout_ms,
+            stage,
+            "query validation response missing request timeoutMs",
+            request_id,
+        )?,
+    })
 }
 
-fn query_result_window_from_generated(
+fn declared_query_result_window_from_generated(
     window: types::CliDeclaredQueryResultWindow,
-) -> QueryResultWindow {
-    QueryResultWindow {
-        max_rows: window
-            .max_rows
-            .and_then(|value| usize::try_from(value).ok()),
-        max_bytes: window
-            .max_bytes
-            .and_then(|value| usize::try_from(value).ok()),
-        cell_max_chars: window
-            .cell_max_chars
-            .and_then(|value| usize::try_from(value).ok()),
-        timeout_ms: window.timeout_ms.map(u64::from),
-    }
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<DeclaredQueryResultWindow, ApiFailure> {
+    Ok(DeclaredQueryResultWindow {
+        max_rows: decode_required_u32_as_usize(
+            window.max_rows,
+            stage,
+            "query validation response missing declared maxRows",
+            request_id.clone(),
+        )?,
+        max_bytes: decode_required_u32_as_usize(
+            window.max_bytes,
+            stage,
+            "query validation response missing declared maxBytes",
+            request_id.clone(),
+        )?,
+        cell_max_chars: decode_required_u32_as_usize(
+            window.cell_max_chars,
+            stage,
+            "query validation response missing declared cellMaxChars",
+            request_id.clone(),
+        )?,
+        timeout_ms: decode_required_u32_as_u64(
+            window.timeout_ms,
+            stage,
+            "query validation response missing declared timeoutMs",
+            request_id,
+        )?,
+    })
 }
 
 fn optional_query_bound(
@@ -429,8 +501,14 @@ fn optional_timeout_ms(value: Option<u64>, stage: ErrorStage) -> Result<Option<u
         .transpose()
 }
 
-fn non_empty(value: Option<String>) -> Option<String> {
-    value.filter(|value| !value.is_empty())
+fn decode_required_usize(
+    value: Option<u64>,
+    stage: ErrorStage,
+    message: &str,
+    request_id: Option<String>,
+) -> Result<usize, ApiFailure> {
+    let value = value.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
+    usize::try_from(value).map_err(|error| decode_failure(stage, error.to_string(), request_id))
 }
 
 #[cfg(test)]
@@ -439,6 +517,11 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
+    use super::DeclaredQueryResultWindow;
+    use super::QueryColumn;
+    use super::QueryRequestPayload;
+    use super::QueryResult;
+    use super::QueryValidationResult;
     use crate::output_metadata::SanitizationMetadata;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
@@ -449,12 +532,6 @@ mod tests {
     use crate::transport::query_parameter::QueryRequestParameterType;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceSummary;
-
-    use super::QueryColumn;
-    use super::QueryRequestPayload;
-    use super::QueryResult;
-    use super::QueryResultWindow;
-    use super::QueryValidationResult;
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -484,21 +561,21 @@ mod tests {
         assert_eq!(
             parsed,
             QueryResult {
-                source: Some(SourceSummary {
-                    source_key: Some("warehouse".to_owned()),
+                source: SourceSummary {
+                    source_key: "warehouse".to_owned(),
                     display_name: None,
-                    provider: Some("postgres".to_owned()),
-                    queryable: Some(true),
-                    status: Some("active".to_owned()),
-                }),
-                row_count: Some(1),
-                elapsed_ms: Some(25),
-                columns: Some(vec![QueryColumn {
-                    name: Some("value".to_owned()),
+                    provider: "postgres".to_owned(),
+                    queryable: true,
+                    status: "active".to_owned(),
+                },
+                row_count: 1,
+                elapsed_ms: 25,
+                columns: vec![QueryColumn {
+                    name: "value".to_owned(),
                     logical_type: Some("number".to_owned()),
-                }]),
-                rows: Some(vec![vec!["42".to_owned()]]),
-                truncated: Some(false),
+                }],
+                rows: vec![vec!["42".to_owned()]],
+                truncated: false,
                 page: PageInfo {
                     next_cursor: None,
                     returned_count: 1,
@@ -544,9 +621,9 @@ mod tests {
         assert_eq!(
             parsed,
             QueryValidationResult {
-                request: Some(super::QueryCanonicalRequest {
-                    sql: Some("SELECT 1".to_owned()),
-                    parameters: Some(vec![
+                request: super::QueryCanonicalRequest {
+                    sql: "SELECT 1".to_owned(),
+                    parameters: vec![
                         QueryCanonicalParameter {
                             parameter_type: QueryCanonicalParameterType::String,
                             value: Some("acme".to_owned()),
@@ -555,27 +632,27 @@ mod tests {
                             parameter_type: QueryCanonicalParameterType::Null,
                             value: None,
                         },
-                    ]),
-                    max_rows: Some(100),
-                    max_bytes: Some(4096),
-                    cell_max_chars: Some(256),
-                    timeout_ms: Some(2500),
-                }),
-                normalized_sql: Some("SELECT 1".to_owned()),
-                declared_result_window: Some(QueryResultWindow {
-                    max_rows: Some(100),
-                    max_bytes: Some(4096),
-                    cell_max_chars: Some(256),
-                    timeout_ms: Some(2500),
-                }),
-                source: Some(SourceSummary {
-                    source_key: Some("warehouse".to_owned()),
+                    ],
+                    max_rows: 100,
+                    max_bytes: 4096,
+                    cell_max_chars: 256,
+                    timeout_ms: 2500,
+                },
+                normalized_sql: "SELECT 1".to_owned(),
+                declared_result_window: DeclaredQueryResultWindow {
+                    max_rows: 100,
+                    max_bytes: 4096,
+                    cell_max_chars: 256,
+                    timeout_ms: 2500,
+                },
+                source: SourceSummary {
+                    source_key: "warehouse".to_owned(),
                     display_name: None,
-                    provider: Some("postgres".to_owned()),
-                    queryable: Some(true),
-                    status: Some("active".to_owned()),
-                }),
-                truncated: Some(false),
+                    provider: "postgres".to_owned(),
+                    queryable: true,
+                    status: "active".to_owned(),
+                },
+                truncated: false,
             }
         );
     }
@@ -707,21 +784,21 @@ mod tests {
         assert_eq!(
             result,
             QueryResult {
-                source: Some(SourceSummary {
-                    source_key: Some("warehouse".to_owned()),
+                source: SourceSummary {
+                    source_key: "warehouse".to_owned(),
                     display_name: None,
-                    provider: Some("postgres".to_owned()),
-                    queryable: Some(true),
-                    status: Some("active".to_owned()),
-                }),
-                row_count: Some(1),
-                elapsed_ms: Some(25),
-                columns: Some(vec![QueryColumn {
-                    name: Some("value".to_owned()),
+                    provider: "postgres".to_owned(),
+                    queryable: true,
+                    status: "active".to_owned(),
+                },
+                row_count: 1,
+                elapsed_ms: 25,
+                columns: vec![QueryColumn {
+                    name: "value".to_owned(),
                     logical_type: Some("number".to_owned()),
-                }]),
-                rows: Some(vec![vec!["42".to_owned()]]),
-                truncated: Some(false),
+                }],
+                rows: vec![vec!["42".to_owned()]],
+                truncated: false,
                 page: PageInfo {
                     next_cursor: None,
                     returned_count: 1,
@@ -791,9 +868,9 @@ mod tests {
         assert_eq!(
             validation,
             QueryValidationResult {
-                request: Some(super::QueryCanonicalRequest {
-                    sql: Some("SELECT 1".to_owned()),
-                    parameters: Some(vec![
+                request: super::QueryCanonicalRequest {
+                    sql: "SELECT 1".to_owned(),
+                    parameters: vec![
                         QueryCanonicalParameter {
                             parameter_type: QueryCanonicalParameterType::String,
                             value: Some("acme".to_owned()),
@@ -802,27 +879,27 @@ mod tests {
                             parameter_type: QueryCanonicalParameterType::Null,
                             value: None,
                         },
-                    ]),
-                    max_rows: Some(100),
-                    max_bytes: Some(4_096),
-                    cell_max_chars: Some(256),
-                    timeout_ms: Some(2_500),
-                }),
-                normalized_sql: Some("SELECT 1".to_owned()),
-                declared_result_window: Some(QueryResultWindow {
-                    max_rows: Some(100),
-                    max_bytes: Some(4_096),
-                    cell_max_chars: Some(256),
-                    timeout_ms: Some(2_500),
-                }),
-                source: Some(SourceSummary {
-                    source_key: Some("warehouse".to_owned()),
+                    ],
+                    max_rows: 100,
+                    max_bytes: 4_096,
+                    cell_max_chars: 256,
+                    timeout_ms: 2_500,
+                },
+                normalized_sql: "SELECT 1".to_owned(),
+                declared_result_window: DeclaredQueryResultWindow {
+                    max_rows: 100,
+                    max_bytes: 4_096,
+                    cell_max_chars: 256,
+                    timeout_ms: 2_500,
+                },
+                source: SourceSummary {
+                    source_key: "warehouse".to_owned(),
                     display_name: None,
-                    provider: Some("postgres".to_owned()),
-                    queryable: Some(true),
-                    status: Some("active".to_owned()),
-                }),
-                truncated: Some(false),
+                    provider: "postgres".to_owned(),
+                    queryable: true,
+                    status: "active".to_owned(),
+                },
+                truncated: false,
             }
         );
     }
@@ -888,6 +965,39 @@ mod tests {
     }
 
     #[test]
+    fn query_result_from_generated_requires_truncated_flag() {
+        let error = super::query_result_from_generated(
+            super::types::ExecuteQueryResponse {
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    queryable: Some(true),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    ..Default::default()
+                }),
+                row_count: Some(1),
+                elapsed_ms: Some(25),
+                page: buffa::MessageField::some(super::types::CliPage {
+                    returned_count: Some(1),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some("req_missing_truncated".to_owned()),
+        )
+        .expect_err("expected missing truncated flag to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ExecuteQuery,
+                message: "query execution response missing truncated flag".to_owned(),
+                request_id: Some("req_missing_truncated".to_owned()),
+            })
+        );
+    }
+
+    #[test]
     fn query_result_from_generated_requires_source_metadata() {
         let error = super::query_result_from_generated(
             super::types::ExecuteQueryResponse {
@@ -908,6 +1018,51 @@ mod tests {
                 stage: ErrorStage::ExecuteQuery,
                 message: "query execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_query_source".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn query_validation_from_generated_requires_truncated_flag() {
+        let error = super::query_validation_from_generated(
+            super::types::ValidateQueryResponse {
+                request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
+                    sql: Some("SELECT 1".to_owned()),
+                    max_rows: Some(100),
+                    max_bytes: Some(4_096),
+                    cell_max_chars: Some(256),
+                    timeout_ms: Some(2_500),
+                    ..Default::default()
+                }),
+                normalized_sql: Some("SELECT 1".to_owned()),
+                declared_result_window: buffa::MessageField::some(
+                    super::types::CliDeclaredQueryResultWindow {
+                        max_rows: Some(100),
+                        max_bytes: Some(4_096),
+                        cell_max_chars: Some(256),
+                        timeout_ms: Some(2_500),
+                        ..Default::default()
+                    },
+                ),
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    queryable: Some(true),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some("req_missing_validation_truncated".to_owned()),
+        )
+        .expect_err("expected missing validation truncated flag to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ReadQueryInput,
+                message: "query validation response missing truncated flag".to_owned(),
+                request_id: Some("req_missing_validation_truncated".to_owned()),
             })
         );
     }

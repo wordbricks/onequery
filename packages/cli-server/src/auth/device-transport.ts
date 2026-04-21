@@ -1,3 +1,4 @@
+import { stringToInt } from "@onequery/codecs/number";
 import { z } from "zod";
 
 import { throwCliProblem } from "../error";
@@ -30,6 +31,24 @@ const BetterAuthDeviceTokenErrorResponseSchema = z
     error_description: z.string().min(1).optional(),
   })
   .meta({ id: "BetterAuthDeviceTokenErrorResponse" });
+
+const BetterAuthErrorPayloadSchema = z
+  .looseObject({
+    error_description: z.string().min(1).optional(),
+    message: z.string().min(1).optional(),
+  })
+  .refine(
+    (value) =>
+      value.error_description !== undefined || value.message !== undefined
+  )
+  .meta({ id: "BetterAuthErrorPayload" });
+
+const BetterAuthErrorContextSchema = z
+  .looseObject({
+    body: BetterAuthErrorPayloadSchema.optional(),
+    status: z.number().int().optional(),
+  })
+  .meta({ id: "BetterAuthErrorContext" });
 
 type BetterAuthDeviceTokenErrorResponse = z.infer<
   typeof BetterAuthDeviceTokenErrorResponseSchema
@@ -84,6 +103,25 @@ export async function readBetterAuthDeviceTokenErrorResponse(
   return BetterAuthDeviceTokenErrorResponseSchema.parse(await response.json());
 }
 
+export function readBetterAuthErrorDetail(value: unknown): string | null {
+  const payload = BetterAuthErrorPayloadSchema.safeParse(value);
+  if (payload.success) {
+    return payload.data.error_description ?? payload.data.message ?? null;
+  }
+
+  const context = BetterAuthErrorContextSchema.safeParse(value);
+  if (context.success) {
+    return readBetterAuthErrorDetail(context.data.body);
+  }
+
+  return null;
+}
+
+export function readBetterAuthErrorStatus(value: unknown): number | null {
+  const context = BetterAuthErrorContextSchema.safeParse(value);
+  return context.success ? (context.data.status ?? null) : null;
+}
+
 export function toCliDeviceAuthProblemDetail(
   payload: BetterAuthDeviceTokenErrorResponse
 ) {
@@ -109,10 +147,10 @@ export function parseRetryAfterMs(response: Response) {
     return;
   }
 
-  const seconds = Number.parseInt(rawValue, 10);
-  if (!Number.isFinite(seconds) || seconds <= 0) {
+  const seconds = stringToInt.safeDecode(rawValue.trim());
+  if (!seconds.success || seconds.data <= 0) {
     return;
   }
 
-  return seconds * 1000;
+  return seconds.data * 1000;
 }

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   createAuthProxyRequest,
   createBearerHeaders,
+  parseRetryAfterMs,
   readBetterAuthDeviceCodeResponse,
+  readBetterAuthErrorDetail,
+  readBetterAuthErrorStatus,
   toCliDeviceAuthProblemDetail,
 } from "./device-transport";
 
@@ -91,5 +94,39 @@ describe("cli device auth transport", () => {
       interval: 5,
       user_code: "ABCD-1234",
     });
+  });
+
+  it("reads Better Auth error details from nested thrown error bodies", () => {
+    expect(
+      readBetterAuthErrorDetail({
+        body: {
+          error_description: "Device code already denied",
+        },
+      })
+    ).toBe("Device code already denied");
+  });
+
+  it("reads Better Auth status codes from thrown errors", () => {
+    expect(readBetterAuthErrorStatus({ status: 429 })).toBe(429);
+  });
+
+  it("parses integer retry-after headers into milliseconds", () => {
+    const response = new Response(null, {
+      headers: {
+        "x-retry-after": " 5 ",
+      },
+    });
+
+    expect(parseRetryAfterMs(response)).toBe(5_000);
+  });
+
+  it("rejects non-integer retry-after headers", () => {
+    const response = new Response(null, {
+      headers: {
+        "x-retry-after": "1.5",
+      },
+    });
+
+    expect(parseRetryAfterMs(response)).toBeUndefined();
   });
 });

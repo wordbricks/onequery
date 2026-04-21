@@ -7,10 +7,6 @@ import { createCliConnectProblemForQueryWorkflowResult } from "../errors";
 import { buildCliPage, parseCliPaginatedReadControls } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import {
-  createCliQueryActionTrailForRequest,
-  createCliQueryWorkflowObserver,
-} from "./action-trail";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryExecutionDispatch } from "./dispatch";
 import {
@@ -34,28 +30,16 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
     );
     const readControls = yield* parseCliPaginatedReadControls(request);
     const startedAtMs = Date.now();
-    const actionTrail = yield* Result.await(
-      createCliQueryActionTrailForRequest({
-        actionType: "execute",
-        authorizedOrg: resolved.authorizedOrg,
-        c: resolved.c,
-        requestId: resolved.requestId,
-        resultWindow: resolved.resultWindow,
-        session: resolved.session,
-        sourceKey: request.sourceKey,
-        sql: resolved.query.sql,
-      })
-    );
-    const observer = createCliQueryWorkflowObserver({
-      actionId: actionTrail.actionId,
-      actionType: "execute",
-      c: resolved.c,
-      sourceKey: request.sourceKey,
-    });
     const result = yield* Result.await(
       runCliQueryExecutionWorkflowResult({
+        actorSnapshot: {
+          authMode: resolved.session.authMode,
+          email: resolved.session.user.email,
+          membershipRoles: [...resolved.authorizedOrg.membershipRoles],
+          userId: resolved.session.user.id,
+        },
+        db: resolved.c.var.storage.db,
         dispatch: createCliQueryExecutionDispatch(resolved.c),
-        observer,
         org: resolved.authorizedOrg.org,
         requestId: resolved.requestId,
         sourceName: request.sourceKey,

@@ -9,7 +9,10 @@ import {
   DataSourceQueryExecutionError,
   executeDatabaseQuery,
 } from "@onequery/server/services/data-source-query/execute-query";
-import { validateAndNormalizeReadOnlyQuery } from "@onequery/server/services/data-source-query/validate-sql";
+import {
+  classifyCliQueryValidationFailure,
+  validateAndNormalizeReadOnlyQuery,
+} from "@onequery/server/services/data-source-query/validate-sql";
 import { Result } from "better-result";
 
 import type {
@@ -32,10 +35,7 @@ export async function runCliValidateQueryEffect(
   );
 
   if (validation.isErr()) {
-    return {
-      detail: validation.error.message,
-      kind: "query_rejected",
-    };
+    return classifyCliQueryValidationFailure(validation.error);
   }
 
   return {
@@ -141,7 +141,6 @@ function toCliQueryExecutionFailure(
     return {
       detail: failure.message,
       kind: "query_timed_out",
-      retryable: true,
     };
   }
 
@@ -149,14 +148,12 @@ function toCliQueryExecutionFailure(
     return {
       detail: failure.message,
       kind: "query_unavailable",
-      retryable: true,
     };
   }
 
   return {
     detail: failure.message,
     kind: "query_execution_failed",
-    retryable: false,
   };
 }
 

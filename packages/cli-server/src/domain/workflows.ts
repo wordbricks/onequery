@@ -121,9 +121,9 @@ export type CliQueryPlanResult =
       kind: "ready";
       requestId: string;
       sourceName: string;
-      source: CliQuerySourceRecord;
+      source: CliSourceRecord;
       normalizedSql: string;
-      timeoutMs: number | null;
+      timeoutMs: number;
       truncated: boolean;
     }
   | {
@@ -148,7 +148,7 @@ export type CliQueryPlanResult =
       kind: "query_preparation_failed";
       requestId: string;
       detail: string;
-      hint?: string;
+      hint: string;
     };
 
 export type CliQueryExecutionResult =
@@ -160,17 +160,14 @@ export type CliQueryExecutionResult =
   | {
       kind: "query_unavailable";
       detail: string;
-      retryable: true;
     }
   | {
       kind: "query_timed_out";
       detail: string;
-      retryable: true;
     }
   | {
       kind: "query_execution_failed";
       detail: string;
-      retryable: false;
     };
 
 export function toCliAuthUserView(

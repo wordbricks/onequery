@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const dateLikeToDate = z.codec(
+  z.union([z.date(), z.iso.datetime()]),
+  z.date(),
+  {
+    decode: (value) => (value instanceof Date ? value : new Date(value)),
+    encode: (date) => date.toISOString(),
+  }
+);
+
 export const isoDatetimeToDate = z.codec(z.iso.datetime(), z.date(), {
   decode: (isoString) => new Date(isoString),
   encode: (date) => date.toISOString(),

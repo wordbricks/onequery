@@ -27,7 +27,7 @@
     "@electric-sql/pglite": "0.4.2",
     "@onequery/base": "workspace:*",
     "@onequery/contracts": "workspace:*",
-    "drizzle-orm": "0.45.1",
+    "drizzle-orm": "0.45.2",
     "pg": "catalog:",
     "postgres": "3.4.8",
     "ulid": "3.0.2",

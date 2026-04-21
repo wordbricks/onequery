@@ -70,4 +70,37 @@ describe("cli session identity", () => {
       },
     });
   });
+
+  it("normalizes Date timestamp objects returned by the auth layer", async () => {
+    const storage = {
+      auth: {
+        api: {
+          getSession: vi.fn().mockResolvedValue({
+            session: {
+              token: "session_token",
+              activeOrganizationId: null,
+              createdAt: new Date("2026-04-20T09:00:00.000Z"),
+              expiresAt: new Date("2026-04-20T10:00:00.000Z"),
+            },
+            user: {
+              id: "user-1",
+              email: "alice@example.com",
+              name: "Alice",
+            },
+          }),
+        },
+      },
+      db: {},
+    } as never;
+
+    await expect(
+      resolveCliSessionIdentity(storage, new Headers())
+    ).resolves.toMatchObject({
+      issuedAt: "2026-04-20T09:00:00.000Z",
+      expiresAt: "2026-04-20T10:00:00.000Z",
+      user: {
+        displayName: "Alice",
+      },
+    });
+  });
 });

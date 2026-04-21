@@ -1,5 +1,6 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { isoDatetimeToDate } from "@onequery/codecs/date";
 import { Result } from "better-result";
 
 import {
@@ -54,12 +55,12 @@ type CliAuthUserInit = {
 };
 
 function timestampFromIsoString(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) {
+  const parsed = isoDatetimeToDate.safeDecode(value);
+  if (!parsed.success) {
     return undefined;
   }
 
-  return timestampFromDate(parsed);
+  return timestampFromDate(parsed.data);
 }
 
 function toCliAuthMode(value: CliSessionIdentity["authMode"]) {
