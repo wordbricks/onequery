@@ -23,16 +23,12 @@ use crate::transport::read_controls::SinglePageReadControls;
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SourceSummary {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) source_key: Option<String>,
+    pub(crate) source_key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) provider: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) queryable: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) status: Option<String>,
+    pub(crate) provider: String,
+    pub(crate) queryable: bool,
+    pub(crate) status: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -134,8 +130,10 @@ async fn fetch_source_page(
             sources: payload
                 .sources
                 .into_iter()
-                .map(source_summary_from_generated)
-                .collect(),
+                .map(|source| {
+                    source_summary_from_generated(source, ErrorStage::Http, request_id.clone())
+                })
+                .collect::<Result<Vec<_>, ApiFailure>>()?,
             page: page_info_from_generated(page),
         },
         request_id,
@@ -176,7 +174,11 @@ pub(crate) async fn get_source_by_key_with_controls(
     })?;
 
     Ok(ApiSuccess {
-        payload: source_summary_from_generated(source),
+        payload: source_summary_from_generated(
+            source,
+            ErrorStage::ResolveSource,
+            request_id.clone(),
+        )?,
         request_id,
     })
 }
@@ -243,14 +245,22 @@ pub(crate) async fn test_source(
 
     Ok(ApiSuccess {
         payload: SourceTestPayload {
-            source: source_summary_from_generated(source),
+            source: source_summary_from_generated(
+                source,
+                ErrorStage::ResolveSource,
+                request_id.clone(),
+            )?,
             outcome,
         },
         request_id,
     })
 }
 
-pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> SourceSummary {
+pub(crate) fn source_summary_from_generated(
+    summary: types::CliSource,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<SourceSummary, ApiFailure> {
     let types::CliSource {
         source_key,
         display_name,
@@ -260,13 +270,31 @@ pub(crate) fn source_summary_from_generated(summary: types::CliSource) -> Source
         ..
     } = summary;
 
-    SourceSummary {
-        source_key,
-        display_name,
-        provider: provider.map(source_provider_to_str),
-        queryable,
-        status: status.map(source_status_to_str),
-    }
+    Ok(SourceSummary {
+        source_key: require_non_empty_text(
+            source_key,
+            stage,
+            "source response missing source key",
+            request_id.clone(),
+        )?,
+        display_name: display_name.filter(|value| !value.is_empty()),
+        provider: provider.map(source_provider_to_str).ok_or_else(|| {
+            decode_failure(
+                stage,
+                "source response missing provider",
+                request_id.clone(),
+            )
+        })?,
+        queryable: decode_required_bool(
+            queryable,
+            stage,
+            "source response missing queryable flag",
+            request_id.clone(),
+        )?,
+        status: status
+            .map(source_status_to_str)
+            .ok_or_else(|| decode_failure(stage, "source response missing status", request_id))?,
+    })
 }
 
 fn source_test_unsupported_reason_to_str(
@@ -282,6 +310,26 @@ fn source_test_unsupported_reason_to_str(
         Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED)
         | None => "unknown".to_owned(),
     }
+}
+
+fn decode_required_bool(
+    value: Option<bool>,
+    stage: ErrorStage,
+    message: &str,
+    request_id: Option<String>,
+) -> Result<bool, ApiFailure> {
+    value.ok_or_else(|| decode_failure(stage, message, request_id))
+}
+
+fn require_non_empty_text(
+    value: Option<String>,
+    stage: ErrorStage,
+    message: &str,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    value
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| decode_failure(stage, message, request_id))
 }
 
 #[cfg(test)]
@@ -324,18 +372,18 @@ mod tests {
             SourceListPayload {
                 sources: vec![
                     SourceSummary {
-                        source_key: Some("warehouse".to_owned()),
+                        source_key: "warehouse".to_owned(),
                         display_name: None,
-                        provider: Some("postgres".to_owned()),
-                        queryable: Some(true),
-                        status: Some("active".to_owned()),
+                        provider: "postgres".to_owned(),
+                        queryable: true,
+                        status: "active".to_owned(),
                     },
                     SourceSummary {
-                        source_key: Some("github_main".to_owned()),
+                        source_key: "github_main".to_owned(),
                         display_name: None,
-                        provider: Some("github".to_owned()),
-                        queryable: Some(false),
-                        status: Some("active".to_owned()),
+                        provider: "github".to_owned(),
+                        queryable: false,
+                        status: "active".to_owned(),
                     },
                 ],
                 page: PageInfo {
@@ -361,11 +409,11 @@ mod tests {
         assert_eq!(
             parsed,
             SourceSummary {
-                source_key: Some("warehouse".to_owned()),
+                source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
-                provider: Some("mysql".to_owned()),
-                queryable: Some(true),
-                status: Some("active".to_owned()),
+                provider: "mysql".to_owned(),
+                queryable: true,
+                status: "active".to_owned(),
             }
         );
     }

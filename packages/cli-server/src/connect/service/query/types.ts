@@ -46,8 +46,6 @@ export type CliQueryExecutionSuccess = Extract<
 
 export type CliQueryExecutionFailure = CliQueryExecutionFailureResult;
 
-export type CliSourceInit = MessageInitShape<typeof CliSourceSchema>;
-
 export type QuerySourceInit = {
   displayName?: QuerySourceMessageInit["displayName"];
   provider: QuerySourceMessageInit["provider"];

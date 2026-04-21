@@ -70,7 +70,6 @@ const StoredQueryValidationResultPayloadSchema = z.discriminatedUnion("kind", [
   z
     .object({
       detail: z.string(),
-      hint: z.string().optional(),
       kind: z.literal("rejected"),
       type: z.literal("record_query_validation"),
     })

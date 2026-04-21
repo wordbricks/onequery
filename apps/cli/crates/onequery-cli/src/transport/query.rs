@@ -19,8 +19,6 @@ use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::query_logical_type_to_str;
-use crate::transport::labels::source_provider_to_str;
-use crate::transport::labels::source_status_to_str;
 use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::query_parameter::QueryCanonicalParameter;
@@ -30,6 +28,8 @@ use crate::transport::query_parameter::query_request_parameter_to_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
+use crate::transport::source::SourceSummary;
+use crate::transport::source::source_summary_from_generated;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -41,19 +41,8 @@ pub(crate) struct QueryColumn {
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct QuerySourceSummary {
-    pub(crate) source_key: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) display_name: Option<String>,
-    pub(crate) provider: String,
-    pub(crate) queryable: bool,
-    pub(crate) status: String,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct QueryResult {
-    pub(crate) source: QuerySourceSummary,
+    pub(crate) source: SourceSummary,
     pub(crate) row_count: usize,
     pub(crate) elapsed_ms: u64,
     pub(crate) columns: Vec<QueryColumn>,
@@ -125,7 +114,7 @@ pub(crate) struct QueryValidationResult {
     pub(crate) request: QueryCanonicalRequest,
     pub(crate) normalized_sql: String,
     pub(crate) declared_result_window: DeclaredQueryResultWindow,
-    pub(crate) source: QuerySourceSummary,
+    pub(crate) source: SourceSummary,
     pub(crate) truncated: bool,
 }
 
@@ -303,7 +292,7 @@ fn query_result_from_generated(
 
     Ok(QueryResult {
         output_metadata: sanitization_metadata_from_generated(result.sanitization.into_option()),
-        source: query_source_summary_from_generated(
+        source: source_summary_from_generated(
             source,
             ErrorStage::ExecuteQuery,
             request_id.clone(),
@@ -389,7 +378,7 @@ fn query_validation_from_generated(
             ErrorStage::ReadQueryInput,
             request_id.clone(),
         )?,
-        source: query_source_summary_from_generated(
+        source: source_summary_from_generated(
             source,
             ErrorStage::ReadQueryInput,
             request_id.clone(),
@@ -477,38 +466,6 @@ fn declared_query_result_window_from_generated(
             "query validation response missing declared timeoutMs",
             request_id,
         )?,
-    })
-}
-
-fn query_source_summary_from_generated(
-    source: types::CliSource,
-    stage: ErrorStage,
-    request_id: Option<String>,
-) -> Result<QuerySourceSummary, ApiFailure> {
-    Ok(QuerySourceSummary {
-        source_key: require_non_empty_text(
-            source.source_key,
-            stage,
-            "query response missing source key",
-            request_id.clone(),
-        )?,
-        display_name: source.display_name.filter(|value| !value.is_empty()),
-        provider: source.provider.map(source_provider_to_str).ok_or_else(|| {
-            decode_failure(
-                stage,
-                "query response missing source provider",
-                request_id.clone(),
-            )
-        })?,
-        queryable: decode_required_bool(
-            source.queryable,
-            stage,
-            "query response missing source queryable flag",
-            request_id.clone(),
-        )?,
-        status: source.status.map(source_status_to_str).ok_or_else(|| {
-            decode_failure(stage, "query response missing source status", request_id)
-        })?,
     })
 }
 
@@ -609,7 +566,6 @@ mod tests {
     use super::QueryColumn;
     use super::QueryRequestPayload;
     use super::QueryResult;
-    use super::QuerySourceSummary;
     use super::QueryValidationResult;
     use crate::output_metadata::SanitizationMetadata;
     use crate::transport::api_failure::ApiFailure;
@@ -620,6 +576,7 @@ mod tests {
     use crate::transport::query_parameter::QueryRequestParameter;
     use crate::transport::query_parameter::QueryRequestParameterType;
     use crate::transport::read_controls::PageInfo;
+    use crate::transport::source::SourceSummary;
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -649,7 +606,7 @@ mod tests {
         assert_eq!(
             parsed,
             QueryResult {
-                source: QuerySourceSummary {
+                source: SourceSummary {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
@@ -733,7 +690,7 @@ mod tests {
                     cell_max_chars: 256,
                     timeout_ms: 2500,
                 },
-                source: QuerySourceSummary {
+                source: SourceSummary {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
@@ -872,7 +829,7 @@ mod tests {
         assert_eq!(
             result,
             QueryResult {
-                source: QuerySourceSummary {
+                source: SourceSummary {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
@@ -980,7 +937,7 @@ mod tests {
                     cell_max_chars: 256,
                     timeout_ms: 2_500,
                 },
-                source: QuerySourceSummary {
+                source: SourceSummary {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),

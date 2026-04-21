@@ -140,7 +140,6 @@ export type QueryActionCommandPayload =
   | {
       type: "record_query_validation";
       detail: string;
-      hint?: string;
       kind: "rejected";
     }
   | {
@@ -219,7 +218,6 @@ export type QueryActionEvent =
     }
   | {
       detail: string;
-      hint?: string;
       type: "query_rejected";
     }
   | {
@@ -291,7 +289,6 @@ export const QueryActionEventSchema = z.discriminatedUnion("type", [
   z
     .object({
       detail: z.string(),
-      hint: z.string().optional(),
       type: z.literal("query_rejected"),
     })
     .strict(),
@@ -554,9 +551,6 @@ export function decideQueryAction(
             events: [
               {
                 detail: command.commandPayload.detail,
-                ...(command.commandPayload.hint === undefined
-                  ? {}
-                  : { hint: command.commandPayload.hint }),
                 type: "query_rejected",
               },
             ],

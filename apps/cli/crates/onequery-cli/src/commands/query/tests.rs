@@ -18,9 +18,9 @@ use crate::transport::query::QueryCanonicalRequest;
 use crate::transport::query::QueryColumn;
 use crate::transport::query::QueryRequestPayload;
 use crate::transport::query::QueryResult;
-use crate::transport::query::QuerySourceSummary;
 use crate::transport::query::QueryValidationResult;
 use crate::transport::read_controls::PageInfo;
+use crate::transport::source::SourceSummary;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::runner::TransitionProgress;
 
@@ -91,7 +91,7 @@ fn sample_query_payload() -> QueryRequestPayload {
 fn render_query_output_snapshot() {
     let output = render_query_output(
         QueryResult {
-            source: QuerySourceSummary {
+            source: SourceSummary {
                 source_key: "warehouse".to_owned(),
                 display_name: None,
                 provider: "postgres".to_owned(),
@@ -149,7 +149,7 @@ fn render_query_validation_output_snapshot() {
                 cell_max_chars: 256,
                 timeout_ms: 2500,
             },
-            source: QuerySourceSummary {
+            source: SourceSummary {
                 source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
                 provider: "postgres".to_owned(),
@@ -196,7 +196,7 @@ fn effective_query_http_timeout_respects_explicit_payload_timeout() {
 fn render_query_output_renders_no_columns() {
     let output = render_query_output(
         QueryResult {
-            source: QuerySourceSummary {
+            source: SourceSummary {
                 source_key: "warehouse".to_owned(),
                 display_name: None,
                 provider: "postgres".to_owned(),

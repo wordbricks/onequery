@@ -851,7 +851,11 @@ fn source_connect_result_from_generated(
     })?;
 
     Ok(SourceConnectResult {
-        source: source_summary_from_generated(source),
+        source: source_summary_from_generated(
+            source,
+            ErrorStage::ResolveSource,
+            request_id.clone(),
+        )?,
         next_command: response.next_command.ok_or_else(|| {
             decode_failure(
                 ErrorStage::ResolveSource,
@@ -917,11 +921,11 @@ mod tests {
             parsed,
             SourceConnectResult {
                 source: SourceSummary {
-                    source_key: Some("warehouse".to_owned()),
+                    source_key: "warehouse".to_owned(),
                     display_name: None,
-                    provider: Some("postgres".to_owned()),
-                    queryable: Some(true),
-                    status: Some("active".to_owned()),
+                    provider: "postgres".to_owned(),
+                    queryable: true,
+                    status: "active".to_owned(),
                 },
                 next_command: "onequery source show warehouse".to_owned(),
             }
