@@ -31,6 +31,10 @@ import {
   runCliQueryExecutionWorkflowResult,
   runCliQueryValidationWorkflowResult,
 } from "./workflow";
+import type {
+  CliQueryExecutionDispatch,
+  CliQueryValidationDispatch,
+} from "./workflow-types";
 
 type ClosableDatabase = {
   $client?: {
@@ -454,6 +458,75 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
+  it("does not replay validateQuery when a reused request id carries different SQL", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const loadSource = vi.fn().mockResolvedValue({
+      kind: "found",
+      source,
+    } satisfies CliLoadSourceEffectResult);
+    const validateQuery = vi.fn(
+      async (
+        input: Parameters<CliQueryValidationDispatch["validateQuery"]>[0]
+      ) => ({
+        kind: "query_ready" as const,
+        normalizedSql: input.sql.toUpperCase(),
+        truncated: false,
+      })
+    );
+
+    const firstResult = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource,
+        validateQuery,
+      },
+      org,
+      requestId: "req-validate-same-id-1",
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+    const secondResult = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource,
+        validateQuery,
+      },
+      org,
+      requestId: "req-validate-same-id-1",
+      sourceName: source.sourceKey,
+      sql: "select 2",
+      timeoutMs: 5_000,
+    });
+
+    expect(unwrapOk(firstResult)).toMatchObject({
+      normalizedSql: "SELECT 1",
+    });
+    expect(unwrapOk(secondResult)).toMatchObject({
+      normalizedSql: "SELECT 2",
+    });
+    expect(loadSource).toHaveBeenCalledTimes(2);
+    expect(validateQuery).toHaveBeenCalledTimes(2);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_validate",
+      "record_source_lookup",
+      "record_query_validation",
+      "start_validate",
+      "record_source_lookup",
+      "record_query_validation",
+    ]);
+  });
+
   it("replays completed executeQuery requests without rerunning the query", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
@@ -543,6 +616,119 @@ describe("query workflow audit runtime", () => {
       .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_execute",
+      "record_source_lookup",
+      "record_query_validation",
+      "record_credentials_load",
+      "record_query_execution",
+      "record_usage_persistence",
+    ]);
+  });
+
+  it("does not replay executeQuery when a reused request id carries a different timeout", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+
+    const executeSql = vi.fn(
+      async (
+        input: Parameters<CliQueryExecutionDispatch["executeSql"]>[0]
+      ) => ({
+        elapsedMs: input.clientTimeoutMs,
+        kind: "succeeded" as const,
+        rows: [{ timeout_ms: input.clientTimeoutMs }],
+      })
+    );
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
+
+    const firstResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: vi.fn().mockResolvedValue({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        } satisfies CliLoadCredentialsEffectResult),
+        loadSource: vi.fn().mockResolvedValue({
+          kind: "found",
+          source,
+        } satisfies CliLoadSourceEffectResult),
+        persistUsage,
+        validateQuery: vi.fn().mockResolvedValue({
+          kind: "query_ready",
+          normalizedSql: "select 42",
+          truncated: false,
+        } satisfies CliValidateQueryEffectResult),
+      },
+      org,
+      requestId: "req-execute-same-id-1",
+      sourceName: source.sourceKey,
+      sql: "select 42",
+      timeoutMs: 1_000,
+    });
+    const secondResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: vi.fn().mockResolvedValue({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        } satisfies CliLoadCredentialsEffectResult),
+        loadSource: vi.fn().mockResolvedValue({
+          kind: "found",
+          source,
+        } satisfies CliLoadSourceEffectResult),
+        persistUsage,
+        validateQuery: vi.fn().mockResolvedValue({
+          kind: "query_ready",
+          normalizedSql: "select 42",
+          truncated: false,
+        } satisfies CliValidateQueryEffectResult),
+      },
+      org,
+      requestId: "req-execute-same-id-1",
+      sourceName: source.sourceKey,
+      sql: "select 42",
+      timeoutMs: 2_000,
+    });
+
+    expect(unwrapOk(firstResult)).toMatchObject({
+      kind: "response_ready",
+      response: {
+        elapsedMs: 1_000,
+      },
+    });
+    expect(unwrapOk(secondResult)).toMatchObject({
+      kind: "response_ready",
+      response: {
+        elapsedMs: 2_000,
+      },
+    });
+    expect(executeSql).toHaveBeenCalledTimes(2);
+    expect(persistUsage).toHaveBeenCalledTimes(2);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_execute",
+      "record_source_lookup",
+      "record_query_validation",
+      "record_credentials_load",
+      "record_query_execution",
+      "record_usage_persistence",
       "start_execute",
       "record_source_lookup",
       "record_query_validation",

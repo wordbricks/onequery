@@ -21,6 +21,7 @@ import {
   buildInitialRequestDescriptor,
   buildResolvedRequestDescriptor,
 } from "./workflow-codec";
+import { buildStartSourceApiExecuteCommandInvocationId } from "./workflow-command-id";
 import {
   ensureCliServiceProblem,
   loadRequiredPreparedSourceApi,
@@ -51,7 +52,13 @@ export async function runStartSourceApiExecuteWorkflowResult(
     try: async () => {
       const preparation = await runPreparedSourceApiWorkflow({
         ...input,
-        commandInvocationId: `source_api_action:${input.requestId}:start_invoke`,
+        commandInvocationId: buildStartSourceApiExecuteCommandInvocationId({
+          draft: input.draft,
+          invokeMode: input.invokeMode,
+          organizationId: input.organizationId,
+          requestId: input.requestId,
+          sourceKey: input.sourceKey,
+        }),
         requestDescriptor: (descriptor) =>
           buildResolvedRequestDescriptor({
             descriptor,

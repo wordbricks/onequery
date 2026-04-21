@@ -1,4 +1,5 @@
 import type { Database } from "@onequery/db/server";
+import { createStableValueFingerprint } from "@onequery/server/lib/stable-fingerprint";
 
 import type {
   QueryActionCommand,
@@ -55,6 +56,7 @@ export async function runPreparedCliQueryWorkflow(input: {
   requestId: string;
   sourceName: string;
   sql: string;
+  timeoutMs: number;
 }): Promise<QueryWorkflowPreparationResult> {
   let resourceCache = createEmptyQueryWorkflowResourceCache();
 
@@ -62,7 +64,14 @@ export async function runPreparedCliQueryWorkflow(input: {
     actionId: null,
     actorSnapshot: input.actorSnapshot,
     causedByEventId: null,
-    commandInvocationId: `query_action:${input.requestId}:${input.mode}`,
+    commandInvocationId: buildStartQueryCommandInvocationId({
+      mode: input.mode,
+      organizationId: input.org.id,
+      requestId: input.requestId,
+      sourceName: input.sourceName,
+      sql: input.sql,
+      timeoutMs: input.timeoutMs,
+    }),
     commandPayload: {
       queryText: input.sql,
       sourceKey: input.sourceName,
@@ -122,4 +131,23 @@ export async function runPreparedCliQueryWorkflow(input: {
       validationDecision: validation.decision,
     },
   };
+}
+
+function buildStartQueryCommandInvocationId(input: {
+  mode: QueryWorkflowPreparationMode;
+  organizationId: string;
+  requestId: string;
+  sourceName: string;
+  sql: string;
+  timeoutMs: number;
+}) {
+  const fingerprint = createStableValueFingerprint({
+    mode: input.mode,
+    organizationId: input.organizationId,
+    sourceName: input.sourceName,
+    sql: input.sql,
+    timeoutMs: input.timeoutMs,
+  });
+
+  return `query_action:${input.requestId}:${input.mode}:${fingerprint}`;
 }

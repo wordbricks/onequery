@@ -22,6 +22,7 @@ export async function runCliQueryValidationWorkflowResult(
         requestId: input.requestId,
         sourceName: input.sourceName,
         sql: input.sql,
+        timeoutMs: input.timeoutMs,
       });
 
       if (preparation.kind !== "ready") {

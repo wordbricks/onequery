@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-
+import { createStableValueFingerprint } from "../lib/stable-fingerprint";
 import {
   SourceApiDescriptorVersionMismatchError,
   SourceApiUnsupportedOperationError,
@@ -53,20 +52,14 @@ export function finalizePreparedSourceApi(
   if (prepared.kind === "http_request") {
     return {
       ...prepared,
-      preparedBinding: createPreparedSourceApiBinding(prepared),
+      preparedBinding: createStableValueFingerprint(prepared),
     } satisfies PreparedHttpSourceApi;
   }
 
   return {
     ...prepared,
-    preparedBinding: createPreparedSourceApiBinding(prepared),
+    preparedBinding: createStableValueFingerprint(prepared),
   } satisfies PreparedStructuredSourceApi;
-}
-
-export function createPreparedSourceApiBinding(value: unknown): string {
-  return createHash("sha256")
-    .update(stableStringify(value))
-    .digest("base64url");
 }
 
 export function createSourceApiPreview(
@@ -117,40 +110,4 @@ export async function prepareSourceApiDraft(input: {
   });
 
   return finalizePreparedSourceApi(prepared);
-}
-
-function stableStringify(value: unknown): string {
-  if (
-    value === null ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return JSON.stringify(value);
-  }
-
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-
-  if (value instanceof Uint8Array) {
-    return `[${Array.from(value).join(",")}]`;
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-
-  if (typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(
-      ([left], [right]) => left.localeCompare(right)
-    );
-    return `{${entries
-      .map(
-        ([key, entryValue]) =>
-          `${JSON.stringify(key)}:${stableStringify(entryValue)}`
-      )
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(String(value));
 }

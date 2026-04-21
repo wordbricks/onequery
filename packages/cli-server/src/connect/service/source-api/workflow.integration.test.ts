@@ -551,6 +551,173 @@ describe("source api workflow audit runtime", () => {
     ]);
   });
 
+  it("does not replay start_describe when a reused request id carries a different source key", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const runCliLoadSourceEffect = vi.fn(
+      async (
+        input: Parameters<
+          SourceApiServiceDependencies["runCliLoadSourceEffect"]
+        >[0]
+      ) => ({
+        kind: "found" as const,
+        source: {
+          ...loadedSource.source,
+          displayName: input.effect.sourceKey,
+          id: `source:${input.effect.sourceKey}`,
+          name: input.effect.sourceKey,
+          sourceKey: input.effect.sourceKey,
+        },
+      })
+    );
+    const describeSourceApi = vi.fn(
+      async (
+        input: Parameters<SourceApiServiceDependencies["describeSourceApi"]>[0]
+      ) => ({
+        ...descriptor,
+        descriptorVersion: `${input.source.sourceKey}-v1`,
+        source: {
+          ...descriptor.source,
+          displayName: input.source.displayName,
+          sourceKey: input.source.sourceKey,
+        },
+      })
+    );
+    const dependencies = createDependencies({
+      describeSourceApi,
+      runCliLoadSourceEffect,
+    });
+
+    const firstResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, "req-describe-same-id-1"),
+      dependencies,
+      sourceKey: "github-prod",
+    });
+    const secondResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, "req-describe-same-id-1"),
+      dependencies,
+      sourceKey: "github-staging",
+    });
+
+    expect(unwrapOk(firstResult)).toMatchObject({
+      descriptorVersion: "github-prod-v1",
+      source: {
+        sourceKey: "github-prod",
+      },
+    });
+    expect(unwrapOk(secondResult)).toMatchObject({
+      descriptorVersion: "github-staging-v1",
+      source: {
+        sourceKey: "github-staging",
+      },
+    });
+    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(4);
+    expect(describeSourceApi).toHaveBeenCalledTimes(2);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_describe",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+      "start_describe",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+    ]);
+  });
+
+  it("does not replay start_invoke when a reused request id carries a different draft payload", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const prepareSourceApiDraft = vi.fn(
+      async (
+        input: Parameters<
+          SourceApiServiceDependencies["prepareSourceApiDraft"]
+        >[0]
+      ) => ({
+        ...previewPrepared,
+        headerNames: input.draft.headers.map((header) => header.name),
+        headers: [...input.draft.headers],
+        preparedBinding: `prepared:${input.draft.headers
+          .map((header) => `${header.name}=${header.value}`)
+          .join("|")}`,
+      })
+    );
+    const dependencies = createDependencies({
+      prepareSourceApiDraft,
+    });
+
+    const firstResult = await runStartSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-start-payload-1"),
+      dependencies,
+      draft: {
+        body: {
+          kind: "none",
+        },
+        headers: [
+          {
+            name: "accept",
+            value: "application/json",
+          },
+        ],
+        operation: "fetch",
+        selector: "/issues",
+      },
+      invokeMode: "preview_only",
+      sourceKey: "github-prod",
+    });
+    const secondResult = await runStartSourceApiExecuteWorkflowResult({
+      ...createWorkflowContext(db, "req-start-payload-1"),
+      dependencies,
+      draft: {
+        body: {
+          kind: "none",
+        },
+        headers: [
+          {
+            name: "x-debug",
+            value: "1",
+          },
+        ],
+        operation: "fetch",
+        selector: "/issues",
+      },
+      invokeMode: "preview_only",
+      sourceKey: "github-prod",
+    });
+
+    expect(unwrapOk(firstResult)).toMatchObject({
+      preview: {
+        headerNames: ["accept"],
+      },
+    });
+    expect(unwrapOk(secondResult)).toMatchObject({
+      preview: {
+        headerNames: ["x-debug"],
+      },
+    });
+    expect(prepareSourceApiDraft).toHaveBeenCalledTimes(2);
+
+    const commandRows = await db
+      .select()
+      .from(workflowCommands)
+      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+
+    expect(commandRows.map((row) => row.commandType)).toEqual([
+      "start_invoke",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+      "record_request_preparation",
+      "start_invoke",
+      "record_source_lookup",
+      "record_descriptor_resolution",
+      "record_request_preparation",
+    ]);
+  });
+
   it("records execute plus resume on the same source_api_action", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
