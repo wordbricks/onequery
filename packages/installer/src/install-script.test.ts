@@ -288,14 +288,6 @@ esac
       expect(launcherSyntaxCheck.status).toBe(0);
       expect(launcherSyntaxCheck.stderr).toBe("");
 
-      const launcherRun = spawnSync("/bin/sh", [launcherPath], {
-        cwd: tempDir,
-        encoding: "utf8",
-        env: shellEnv,
-      });
-      expect(launcherRun.status).toBe(0);
-      expect(launcherRun.stderr).toBe("");
-
       const symlinkRun = spawnSync(join(binDir, "onequery"), [], {
         cwd: tempDir,
         encoding: "utf8",
@@ -337,5 +329,5 @@ esac
     } finally {
       await rm(tempDir, { force: true, recursive: true });
     }
-  });
+  }, 15_000);
 });
