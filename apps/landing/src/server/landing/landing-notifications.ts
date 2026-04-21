@@ -76,6 +76,8 @@ export type LandingNotificationPayload = {
   blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
 };
 
+export type LandingNotificationType = "contact" | "product_updates";
+
 function escapeSlackText(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -141,24 +143,34 @@ export function createContactNotification(input: {
 export async function deliverLandingNotification(
   input: {
     delivery: LandingNotificationDelivery;
+    notificationType: LandingNotificationType;
     payload: LandingNotificationPayload;
   },
   logger: LandingLogger = console
 ): Promise<Result<void, LandingNotificationError>> {
-  const { delivery, payload } = input;
+  const { delivery, notificationType, payload } = input;
 
   if (delivery.kind === "local-dev-null-sink") {
-    logger.info({
-      event: "landing_service.local_notification_fallback",
-      payload,
-    });
+    logger.info(
+      {
+        delivery: delivery.kind,
+        event: "landing.notification.delivered_local",
+        notificationType,
+      },
+      "landing notification routed to local sink"
+    );
     return Result.ok(undefined);
   }
 
   if (delivery.kind === "unconfigured") {
-    logger.error({
-      event: "landing_service.notification_unconfigured",
-    });
+    logger.error(
+      {
+        delivery: delivery.kind,
+        event: "landing.notification.delivery_unconfigured",
+        notificationType,
+      },
+      "landing notification delivery is unconfigured"
+    );
     return Result.err(
       new LandingNotificationConfigurationError({
         message: "Landing ingest is not configured",
@@ -180,11 +192,16 @@ export async function deliverLandingNotification(
       }),
   });
   if (responseResult.isErr()) {
-    logger.error({
-      cause: responseResult.error.cause,
-      event: "landing_service.slack_webhook_request_error",
-      message: responseResult.error.message,
-    });
+    logger.error(
+      {
+        cause: responseResult.error.cause,
+        delivery: delivery.kind,
+        errorMessage: responseResult.error.message,
+        event: "landing.notification.webhook_request_failed",
+        notificationType,
+      },
+      "landing notification webhook request failed"
+    );
     return Result.err(responseResult.error);
   }
 
@@ -199,11 +216,16 @@ export async function deliverLandingNotification(
   );
   // Public lead-capture requests should not leak upstream webhook
   // details back to the browser, so worker errors stay generic.
-  logger.error({
-    event: "landing_service.slack_webhook_error",
-    message: upstream.slice(0, 500),
-    status: response.status,
-  });
+  logger.error(
+    {
+      delivery: delivery.kind,
+      event: "landing.notification.webhook_rejected",
+      notificationType,
+      status: response.status,
+      upstreamBodyPreview: upstream.slice(0, 500),
+    },
+    "landing notification webhook rejected"
+  );
   return Result.err(
     new LandingNotificationResponseError({
       message: "Failed to deliver notification",

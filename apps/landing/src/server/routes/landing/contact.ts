@@ -21,6 +21,7 @@ export const contactRoute = new Hono<LandingAppEnv>().post(
     const result = await deliverLandingNotification(
       {
         delivery: resolveLandingNotificationDeliveryFromContext(c),
+        notificationType: "contact",
         payload: createContactNotification({
           email: normalizedEmail,
           message,

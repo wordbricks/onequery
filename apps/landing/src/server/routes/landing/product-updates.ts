@@ -22,6 +22,7 @@ export const productUpdatesRoute = new Hono<LandingAppEnv>().post(
     const result = await deliverLandingNotification(
       {
         delivery: resolveLandingNotificationDeliveryFromContext(c),
+        notificationType: "product_updates",
         payload: createProductUpdatesNotification(normalizedEmail),
       },
       c.var.logger

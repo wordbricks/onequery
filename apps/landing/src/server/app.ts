@@ -15,6 +15,18 @@ export type {
   LandingServiceUnavailableErrorResponse,
 } from "./routes/landing/shared";
 
+function getLandingRequestLogMethod(logger: LandingLogger, status: number) {
+  if (status >= 500) {
+    return logger.error.bind(logger);
+  }
+
+  if (status >= 400) {
+    return logger.warn.bind(logger);
+  }
+
+  return logger.info.bind(logger);
+}
+
 export const landingApp = new Hono<LandingAppEnv>()
   .basePath("/api")
   .use("*", requestId())
@@ -31,34 +43,23 @@ export const landingApp = new Hono<LandingAppEnv>()
         logger.error(
           {
             err: error,
-            event: "landing.http.request_error",
-            method: c.req.method,
-            path: c.req.path,
+            event: "request.failed",
             status: c.res.status,
           },
-          "landing request error"
+          "request failed"
         );
       },
-      onRequest: (logger, c) => {
-        logger.info(
-          {
-            event: "landing.http.request_started",
-            method: c.req.method,
-            path: c.req.path,
-          },
-          "landing request start"
-        );
-      },
+      onRequest: () => {},
       onResponse: (logger, c, elapsedMs) => {
-        logger.info(
+        const log = getLandingRequestLogMethod(logger, c.res.status);
+
+        log(
           {
-            elapsedMs,
-            event: "landing.http.request_completed",
-            method: c.req.method,
-            path: c.req.path,
+            durationMs: Math.max(0, Math.round(elapsedMs)),
+            event: "request.finished",
             status: c.res.status,
           },
-          "landing request end"
+          "request finished"
         );
       },
     })
