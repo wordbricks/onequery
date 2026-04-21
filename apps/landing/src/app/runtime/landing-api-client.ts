@@ -17,34 +17,12 @@ type LandingRpcApp = ApplyGlobalResponse<
 // `hc` client encodes the prefix from the route table itself.
 export const landingApiClient = hc<LandingRpcApp>("");
 
-export type ProductUpdatesPost =
-  (typeof landingApiClient.api)["product-updates"]["$post"];
-
-export type ContactPost = (typeof landingApiClient.api)["contact"]["$post"];
-
-export type ProductUpdatesSuccessResponse = InferResponseType<
-  ProductUpdatesPost,
-  200
->;
-
-export type ProductUpdatesServiceUnavailableErrorResponse = InferResponseType<
-  ProductUpdatesPost,
-  503
->;
-
-export type ContactServiceUnavailableErrorResponse = InferResponseType<
-  ContactPost,
-  503
->;
-
-export type LandingProblemResponse =
-  | {
-      body: LandingInternalErrorResponse;
-      status: 500;
-    }
-  | {
-      body:
-        | ProductUpdatesServiceUnavailableErrorResponse
-        | ContactServiceUnavailableErrorResponse;
-      status: 503;
-    };
+export type LandingApiErrorResponse =
+  | InferResponseType<
+      (typeof landingApiClient.api)["product-updates"]["$post"],
+      400 | 500 | 503
+    >
+  | InferResponseType<
+      (typeof landingApiClient.api)["contact"]["$post"],
+      400 | 500 | 503
+    >;

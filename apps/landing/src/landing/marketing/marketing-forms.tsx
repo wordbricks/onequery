@@ -4,12 +4,7 @@ import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
-import type {
-  ContactPost,
-  LandingProblemResponse,
-  ProductUpdatesPost,
-  ProductUpdatesSuccessResponse,
-} from "../../app/runtime/landing-api-client";
+import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -21,7 +16,6 @@ import {
   createContactModalMachine,
   readContactModalErrorMessage,
 } from "./contact-modal.machine";
-import { readApiErrorMessage } from "./marketing-errors";
 import {
   DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
   createProductUpdatesMachine,
@@ -52,26 +46,15 @@ type ProductUpdatesSubmissionResult = ResultType<
 
 type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
 
-type ProductUpdatesResponse = Awaited<ReturnType<ProductUpdatesPost>>;
-type ContactResponse = Awaited<ReturnType<ContactPost>>;
-
-async function readProblemResponse(
-  response: ProductUpdatesResponse | ContactResponse
-): Promise<LandingProblemResponse | null> {
-  switch (response.status) {
-    case 500:
-      return {
-        body: await response.json(),
-        status: 500,
-      };
-    case 503:
-      return {
-        body: await response.json(),
-        status: 503,
-      };
-    default:
-      return null;
+function readLandingApiErrorMessage(
+  response: LandingApiErrorResponse,
+  fallback: string
+): string {
+  if (response.message.length) {
+    return response.message;
   }
+
+  return fallback;
 }
 
 async function submitProductUpdatesRequest(
@@ -93,30 +76,21 @@ async function submitProductUpdatesRequest(
   }
 
   const response = responseResult.value;
-  if (response.status === 200) {
-    const body: ProductUpdatesSuccessResponse = await response.json();
+  if (response.ok) {
+    const body = await response.json();
     return Result.ok({
       email: body.email,
     });
   }
 
-  const problemResponse = await readProblemResponse(response);
-  if (problemResponse !== null) {
-    return Result.err(
-      new ProductUpdatesSubmissionError({
-        cause: response,
-        message: readApiErrorMessage(
-          problemResponse,
-          DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-        ),
-      })
-    );
-  }
-
+  const payload: LandingApiErrorResponse = await response.json();
   return Result.err(
     new ProductUpdatesSubmissionError({
       cause: response,
-      message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
+      message: readLandingApiErrorMessage(
+        payload,
+        DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+      ),
     })
   );
 }
@@ -140,27 +114,18 @@ async function submitContactRequest(
   }
 
   const response = responseResult.value;
-  if (response.status === 200) {
+  if (response.ok) {
     return Result.ok(undefined);
   }
 
-  const problemResponse = await readProblemResponse(response);
-  if (problemResponse !== null) {
-    return Result.err(
-      new ContactSubmissionError({
-        cause: response,
-        message: readApiErrorMessage(
-          problemResponse,
-          DEFAULT_CONTACT_ERROR_MESSAGE
-        ),
-      })
-    );
-  }
-
+  const payload: LandingApiErrorResponse = await response.json();
   return Result.err(
     new ContactSubmissionError({
       cause: response,
-      message: DEFAULT_CONTACT_ERROR_MESSAGE,
+      message: readLandingApiErrorMessage(
+        payload,
+        DEFAULT_CONTACT_ERROR_MESSAGE
+      ),
     })
   );
 }

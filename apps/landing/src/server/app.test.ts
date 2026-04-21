@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { landingApp } from "./app";
 import type {
   LandingServiceUnavailableErrorResponse,
+  LandingValidationErrorResponse,
   LandingWorkerBindings,
 } from "./app";
 import {
@@ -106,8 +107,14 @@ describe("landingApp", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      success: false,
+    const body = (await response.json()) as LandingValidationErrorResponse;
+    expect(body).toEqual({
+      code: "validation_error",
+      fieldErrors: {
+        message: ["message is required"],
+        name: ["name is required"],
+      },
+      message: "name is required",
     });
     expect(fetchSpy).not.toHaveBeenCalled();
   });

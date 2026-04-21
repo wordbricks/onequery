@@ -13,6 +13,7 @@ export type {
   LandingInternalErrorResponse,
   LandingProductUpdatesResponse,
   LandingServiceUnavailableErrorResponse,
+  LandingValidationErrorResponse,
 } from "./routes/landing/shared";
 
 function getLandingRequestLogMethod(logger: LandingLogger, status: number) {
