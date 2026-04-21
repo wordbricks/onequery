@@ -1301,14 +1301,14 @@ function decodeSourceApiCommittedEvent(
   };
 }
 
-function parseStoredWorkflowValue<Schema extends z.ZodTypeAny>(input: {
+function parseStoredWorkflowValue<Output>(input: {
   actionId?: string;
   entity: string;
   family: WorkflowFamily;
   repairAnchor?: WorkflowActionRepairAnchor | null;
-  schema: Schema;
+  schema: z.ZodType<Output>;
   value: unknown;
-}): z.infer<Schema> {
+}): Output {
   const parsed = input.schema.safeParse(input.value);
 
   if (parsed.success) {

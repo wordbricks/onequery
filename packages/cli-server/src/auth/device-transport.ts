@@ -33,7 +33,7 @@ const BetterAuthDeviceTokenErrorResponseSchema = z
   .meta({ id: "BetterAuthDeviceTokenErrorResponse" });
 
 const BetterAuthErrorPayloadSchema = z
-  .object({
+  .looseObject({
     error_description: z.string().min(1).optional(),
     message: z.string().min(1).optional(),
   })
@@ -41,15 +41,13 @@ const BetterAuthErrorPayloadSchema = z
     (value) =>
       value.error_description !== undefined || value.message !== undefined
   )
-  .passthrough()
   .meta({ id: "BetterAuthErrorPayload" });
 
 const BetterAuthErrorContextSchema = z
-  .object({
+  .looseObject({
     body: BetterAuthErrorPayloadSchema.optional(),
     status: z.number().int().optional(),
   })
-  .passthrough()
   .meta({ id: "BetterAuthErrorContext" });
 
 type BetterAuthDeviceTokenErrorResponse = z.infer<
