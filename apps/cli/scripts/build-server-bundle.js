@@ -20,7 +20,7 @@ const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 // source layout.
 const SERVER_BUNDLE_ENTRYPOINT =
   require.resolve("@onequery/self-host-runtime/packaged-entry");
-const WORKSPACE_SOURCE_CONDITION_NAMES = ["bun", "node", "import", "default"];
+const WORKSPACE_SOURCE_CONDITION_NAMES = ["module", "bun"];
 const BUILD_SERVER_BUNDLE_OPTIONS = new Set([
   "--help",
   "-h",
@@ -61,9 +61,10 @@ export async function buildServerBundle({ outdir, targetTriple }) {
       input: SERVER_BUNDLE_ENTRYPOINT,
       platform: "node",
       resolve: {
-        // Comment: release bundling runs from a clean checkout, so prefer Bun's
-        // workspace source exports instead of dist-only package defaults that
-        // may not exist yet for sibling packages like @onequery/installer.
+        // Comment: Rolldown already provides the standard node/import/default
+        // conditions for node builds. Keep the implicit `module` condition and
+        // add only Bun's workspace source condition so clean release checkouts
+        // do not depend on sibling dist artifacts like @onequery/installer.
         conditionNames: WORKSPACE_SOURCE_CONDITION_NAMES,
       },
       transform: {
