@@ -1,14 +1,14 @@
 [tools]
-"aqua:bufbuild/buf" = "1.67.0"
-"aqua:casey/just" = "1.48.1"
+"aqua:bufbuild/buf" = "1.68.3"
+"aqua:casey/just" = "1.50.0"
+"aqua:mitsuhiko/insta" = "1.47.2"
 "aqua:orhun/git-cliff" = "2.12.0"
-"aqua:rhysd/actionlint" = "1.7.11"
-"aqua:mitsuhiko/insta" = "1.47.1"
+"aqua:rhysd/actionlint" = "1.7.12"
 "cargo:cargo-expand" = "1.0.121"
-"cargo:cargo-nextest" = "0.9.132"
-"npm:agent-browser" = "0.25.5"
+"cargo:cargo-nextest" = "0.9.133"
 "npm:@antfu/ni" = "30.0.0"
 "npm:@hono/cli" = "0.1.10"
+"npm:agent-browser" = "0.26.0"
 
 [settings]
 npm.bun = true

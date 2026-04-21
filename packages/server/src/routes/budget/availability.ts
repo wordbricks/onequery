@@ -1,5 +1,7 @@
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// Comment: Budget tracking launched on 2026-03-11, so pre-launch spend is
+// intentionally excluded even when a longer reporting window is selected.
 const BUDGET_DATA_AVAILABLE_FROM_ISO = "2026-03-11T00:00:00.000Z";
 
 function startOfUtcDay(value: Date): Date {
@@ -8,14 +10,10 @@ function startOfUtcDay(value: Date): Date {
   );
 }
 
-function addUtcDays(value: Date, days: number): Date {
+export function addUtcDays(value: Date, days: number): Date {
   const next = new Date(value);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
-}
-
-function getBudgetDataAvailableFrom(): Date {
-  return startOfUtcDay(new Date(BUDGET_DATA_AVAILABLE_FROM_ISO));
 }
 
 export function clampBudgetWindow(input: {
@@ -27,7 +25,9 @@ export function clampBudgetWindow(input: {
     windowEndDay,
     -(input.requestedWindowDays - 1)
   );
-  const dataAvailableFrom = getBudgetDataAvailableFrom();
+  const dataAvailableFrom = startOfUtcDay(
+    new Date(BUDGET_DATA_AVAILABLE_FROM_ISO)
+  );
   const windowStart =
     requestedWindowStart.getTime() > dataAvailableFrom.getTime()
       ? requestedWindowStart

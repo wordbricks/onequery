@@ -1,11 +1,10 @@
-import { createClient } from "@connectrpc/connect";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import { landingTransport } from "../../app/runtime/connect-transport";
-import { LandingService } from "../../connect/gen/onequery/landing/v1/landing_pb";
+import { landingApiClient } from "../../app/runtime/landing-api-client";
+import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -17,14 +16,12 @@ import {
   createContactModalMachine,
   readContactModalErrorMessage,
 } from "./contact-modal.machine";
-import { toUserMessage } from "./marketing-errors";
 import {
   DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
   createProductUpdatesMachine,
   readProductUpdatesFeedback,
 } from "./product-updates.machine";
 
-const landingClient = createClient(LandingService, landingTransport);
 const productUpdatesMachine = createProductUpdatesMachine();
 const contactModalMachine = createContactModalMachine();
 
@@ -49,45 +46,88 @@ type ProductUpdatesSubmissionResult = ResultType<
 
 type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
 
+function readLandingApiErrorMessage(
+  response: LandingApiErrorResponse,
+  fallback: string
+): string {
+  if (response.message.length) {
+    return response.message;
+  }
+
+  return fallback;
+}
+
 async function submitProductUpdatesRequest(
   email: string
 ): Promise<ProductUpdatesSubmissionResult> {
   const responseResult = await Result.tryPromise({
     try: () =>
-      landingClient.subscribeProductUpdates({
-        email,
+      landingApiClient.api["product-updates"].$post({
+        json: { email },
       }),
     catch: (cause: unknown) =>
       new ProductUpdatesSubmissionError({
         cause,
-        message: toUserMessage(cause, DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE),
+        message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
       }),
   });
   if (responseResult.isErr()) {
     return Result.err(responseResult.error);
   }
 
-  return Result.ok({
-    email: responseResult.value.email,
-  });
+  const response = responseResult.value;
+  if (response.ok) {
+    const body = await response.json();
+    return Result.ok({
+      email: body.email,
+    });
+  }
+
+  const payload: LandingApiErrorResponse = await response.json();
+  return Result.err(
+    new ProductUpdatesSubmissionError({
+      cause: response,
+      message: readLandingApiErrorMessage(
+        payload,
+        DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+      ),
+    })
+  );
 }
 
 async function submitContactRequest(
   form: ContactForm
 ): Promise<ContactSubmissionResult> {
   const responseResult = await Result.tryPromise({
-    try: () => landingClient.submitContact(form),
+    try: () =>
+      landingApiClient.api.contact.$post({
+        json: form,
+      }),
     catch: (cause: unknown) =>
       new ContactSubmissionError({
         cause,
-        message: toUserMessage(cause, DEFAULT_CONTACT_ERROR_MESSAGE),
+        message: DEFAULT_CONTACT_ERROR_MESSAGE,
       }),
   });
   if (responseResult.isErr()) {
     return Result.err(responseResult.error);
   }
 
-  return Result.ok(undefined);
+  const response = responseResult.value;
+  if (response.ok) {
+    return Result.ok(undefined);
+  }
+
+  const payload: LandingApiErrorResponse = await response.json();
+  return Result.err(
+    new ContactSubmissionError({
+      cause: response,
+      message: readLandingApiErrorMessage(
+        payload,
+        DEFAULT_CONTACT_ERROR_MESSAGE
+      ),
+    })
+  );
 }
 
 function runBestEffort(action: () => void) {
