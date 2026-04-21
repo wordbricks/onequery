@@ -1,10 +1,8 @@
 import { LANDING_API_PREFIX } from "./landing/config/landing-api";
-import { createLandingApp } from "./server/landing/landing-app";
-import type { LandingWorkerBindings } from "./server/landing/landing-app";
+import { landingApp } from "./server/app";
+import type { LandingWorkerBindings } from "./server/app";
 
 type LandingWorkerEnv = CloudflareEnv & LandingWorkerBindings;
-
-const landingApp = createLandingApp();
 
 const worker: ExportedHandler<LandingWorkerEnv> = {
   fetch(

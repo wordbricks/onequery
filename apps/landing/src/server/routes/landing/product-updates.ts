@@ -1,0 +1,38 @@
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
+
+import {
+  createProductUpdatesNotification,
+  deliverLandingNotification,
+} from "../../landing/landing-notifications";
+import type { LandingAppEnv } from "../../types";
+import { ProductUpdatesRequestSchema } from "./schemas";
+import {
+  notificationProblem,
+  resolveLandingNotificationDeliveryFromContext,
+} from "./shared";
+import type { LandingProductUpdatesResponse } from "./shared";
+
+export const productUpdatesRoute = new Hono<LandingAppEnv>().post(
+  "/product-updates",
+  zValidator("json", ProductUpdatesRequestSchema),
+  async (c) => {
+    const { email } = c.req.valid("json");
+    const normalizedEmail = email.toLowerCase();
+    const result = await deliverLandingNotification(
+      {
+        delivery: resolveLandingNotificationDeliveryFromContext(c),
+        payload: createProductUpdatesNotification(normalizedEmail),
+      },
+      c.var.logger
+    );
+    if (result.isErr()) {
+      return notificationProblem(c, result.error);
+    }
+
+    return c.json<LandingProductUpdatesResponse, 200>(
+      { email: normalizedEmail },
+      200
+    );
+  }
+);

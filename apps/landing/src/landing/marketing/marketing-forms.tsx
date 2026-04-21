@@ -4,7 +4,12 @@ import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
-import type { ProductUpdatesSuccessResponse } from "../../app/runtime/landing-api-client";
+import type {
+  ContactPost,
+  LandingProblemResponse,
+  ProductUpdatesPost,
+  ProductUpdatesSuccessResponse,
+} from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -47,6 +52,28 @@ type ProductUpdatesSubmissionResult = ResultType<
 
 type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
 
+type ProductUpdatesResponse = Awaited<ReturnType<ProductUpdatesPost>>;
+type ContactResponse = Awaited<ReturnType<ContactPost>>;
+
+async function readProblemResponse(
+  response: ProductUpdatesResponse | ContactResponse
+): Promise<LandingProblemResponse | null> {
+  switch (response.status) {
+    case 500:
+      return {
+        body: await response.json(),
+        status: 500,
+      };
+    case 503:
+      return {
+        body: await response.json(),
+        status: 503,
+      };
+    default:
+      return null;
+  }
+}
+
 async function submitProductUpdatesRequest(
   email: string
 ): Promise<ProductUpdatesSubmissionResult> {
@@ -73,17 +100,13 @@ async function submitProductUpdatesRequest(
     });
   }
 
-  if (
-    response.status === 422 ||
-    response.status === 500 ||
-    response.status === 503
-  ) {
-    const body = await response.json();
+  const problemResponse = await readProblemResponse(response);
+  if (problemResponse !== null) {
     return Result.err(
       new ProductUpdatesSubmissionError({
         cause: response,
         message: readApiErrorMessage(
-          body,
+          problemResponse,
           DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
         ),
       })
@@ -121,16 +144,15 @@ async function submitContactRequest(
     return Result.ok(undefined);
   }
 
-  if (
-    response.status === 422 ||
-    response.status === 500 ||
-    response.status === 503
-  ) {
-    const body = await response.json();
+  const problemResponse = await readProblemResponse(response);
+  if (problemResponse !== null) {
     return Result.err(
       new ContactSubmissionError({
         cause: response,
-        message: readApiErrorMessage(body, DEFAULT_CONTACT_ERROR_MESSAGE),
+        message: readApiErrorMessage(
+          problemResponse,
+          DEFAULT_CONTACT_ERROR_MESSAGE
+        ),
       })
     );
   }

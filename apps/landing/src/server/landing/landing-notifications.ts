@@ -1,5 +1,7 @@
 import { Result, TaggedError } from "better-result";
 
+import type { LandingLogger } from "./landing-logger";
+
 export const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
 export type LandingNotificationDelivery =
@@ -74,17 +76,6 @@ export type LandingNotificationPayload = {
   blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
 };
 
-type LandingLogger = Pick<typeof console, "error" | "info">;
-export type LandingNotificationRuntime = {
-  logger: LandingLogger;
-  transport: typeof fetch;
-};
-
-export const defaultLandingNotificationRuntime: LandingNotificationRuntime = {
-  logger: console,
-  transport: fetch,
-};
-
 function escapeSlackText(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -152,10 +143,9 @@ export async function deliverLandingNotification(
     delivery: LandingNotificationDelivery;
     payload: LandingNotificationPayload;
   },
-  runtime: LandingNotificationRuntime
+  logger: LandingLogger = console
 ): Promise<Result<void, LandingNotificationError>> {
   const { delivery, payload } = input;
-  const { logger, transport } = runtime;
 
   if (delivery.kind === "local-dev-null-sink") {
     logger.info({
@@ -166,6 +156,9 @@ export async function deliverLandingNotification(
   }
 
   if (delivery.kind === "unconfigured") {
+    logger.error({
+      event: "landing_service.notification_unconfigured",
+    });
     return Result.err(
       new LandingNotificationConfigurationError({
         message: "Landing ingest is not configured",
@@ -175,7 +168,7 @@ export async function deliverLandingNotification(
 
   const responseResult = await Result.tryPromise({
     try: () =>
-      transport(delivery.webhookUrl, {
+      fetch(delivery.webhookUrl, {
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -187,6 +180,11 @@ export async function deliverLandingNotification(
       }),
   });
   if (responseResult.isErr()) {
+    logger.error({
+      cause: responseResult.error.cause,
+      event: "landing_service.slack_webhook_request_error",
+      message: responseResult.error.message,
+    });
     return Result.err(responseResult.error);
   }
 

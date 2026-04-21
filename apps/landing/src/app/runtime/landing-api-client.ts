@@ -3,13 +3,13 @@ import { hc } from "hono/client";
 
 import type {
   LandingApp,
-  LandingInternalProblemResponse,
-} from "../../server/landing/landing-app";
+  LandingInternalErrorResponse,
+} from "../../server/app";
 
 type LandingRpcApp = ApplyGlobalResponse<
   LandingApp,
   {
-    500: { json: LandingInternalProblemResponse };
+    500: { json: LandingInternalErrorResponse };
   }
 >;
 
@@ -22,23 +22,29 @@ export type ProductUpdatesPost =
 
 export type ContactPost = (typeof landingApiClient.api)["contact"]["$post"];
 
-export type LandingProblemStatus = 422 | 500 | 503;
-
 export type ProductUpdatesSuccessResponse = InferResponseType<
   ProductUpdatesPost,
   200
 >;
 
-export type ProductUpdatesProblemResponse = InferResponseType<
+export type ProductUpdatesServiceUnavailableErrorResponse = InferResponseType<
   ProductUpdatesPost,
-  LandingProblemStatus
+  503
 >;
 
-export type ContactProblemResponse = InferResponseType<
+export type ContactServiceUnavailableErrorResponse = InferResponseType<
   ContactPost,
-  LandingProblemStatus
+  503
 >;
 
 export type LandingProblemResponse =
-  | ProductUpdatesProblemResponse
-  | ContactProblemResponse;
+  | {
+      body: LandingInternalErrorResponse;
+      status: 500;
+    }
+  | {
+      body:
+        | ProductUpdatesServiceUnavailableErrorResponse
+        | ContactServiceUnavailableErrorResponse;
+      status: 503;
+    };
