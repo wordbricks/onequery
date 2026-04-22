@@ -6,7 +6,3 @@ Gateway status
 Bootstrapped: yes
 Listen: 127.0.0.1:5656
 Runtime: running
-PGlite directory present: yes
-Log file present: no
-PID file present: no
-Lock file present: yes

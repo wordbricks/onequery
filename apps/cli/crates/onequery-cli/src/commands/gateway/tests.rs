@@ -114,7 +114,7 @@ fn render_gateway_status_output_reports_running_from_lock_lease_snapshot() {
     .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
 
     let state = resolve_runtime_state_with_paths_for_test(
-        paths.clone(),
+        paths,
         GatewayStateAccessMode::ReadOnly,
         "onequery gateway",
     )

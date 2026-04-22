@@ -80,16 +80,6 @@ pub(super) fn render_gateway_status_output(state: &GatewayRuntimeState) -> Comma
             format!("Bootstrapped: {}", yes_no_label(state.bootstrapped)),
             format!("Listen: {listen}"),
             format!("Runtime: {runtime_status}"),
-            format!(
-                "PGlite directory present: {}",
-                yes_no_label(state.pglite_dir_present)
-            ),
-            format!("Log file present: {}", yes_no_label(state.log_file_present)),
-            format!("PID file present: {}", yes_no_label(state.pid_file_present)),
-            format!(
-                "Lock file present: {}",
-                yes_no_label(state.lock_file_present)
-            ),
         ],
         json!({
             "kind": "gateway-status",
@@ -109,7 +99,6 @@ pub(super) fn render_gateway_logs_output(
     let mut lines = vec![
         "Gateway logs".to_owned(),
         format!("Log path: {}", state.paths.server_log_path.display()),
-        format!("Log file present: {}", yes_no_label(state.log_file_present)),
     ];
 
     if preview.lines.is_empty() {
