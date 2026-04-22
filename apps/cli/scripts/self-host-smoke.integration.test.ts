@@ -344,12 +344,15 @@ function summarizeListOrganizationsResponse(
 function summarizeGetOrganizationResponse(
   value: Awaited<ReturnType<CliConnectClient["getOrganization"]>>
 ): JsonObject {
+  // Comment: Connect-generated repeated enum fields in this smoke path are
+  // iterable but do not consistently expose Array.prototype helpers.
   return {
-    capabilities: value.capabilities.map(
+    capabilities: Array.from(
+      value.capabilities,
       (capability) => OrgCapability[capability]
     ),
     name: value.name,
-    roles: [...value.roles],
+    roles: Array.from(value.roles),
     slug: value.slug,
   };
 }

@@ -150,7 +150,7 @@ async function listen(
     return Result.err(readyResult.error);
   }
 
-  return Result.ok(undefined);
+  return readyResult.value;
 }
 
 async function stopNodeServer(
