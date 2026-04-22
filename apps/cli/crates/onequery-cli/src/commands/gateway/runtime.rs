@@ -539,10 +539,9 @@ fn wait_for_background_runtime_start(
             ));
         }
 
-        if runtime_state_matches(
+        if runtime_ready_state_reported_during_startup_poll(
             check.state_path,
             check.expected_pid,
-            RuntimeLifecyclePhase::Ready,
             check.command_line,
         )? && runtime_accepting_connections(check.listen_host, check.listen_port)
         {
@@ -744,15 +743,28 @@ pub(super) fn read_managed_runtime_pid(
     paths: &SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<Option<u32>, CliError> {
-    if let Some(lock_pid) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)?
-        .map(|record| record.pid)
-        .filter(|pid| is_process_running(*pid))
-    {
-        return Ok(Some(lock_pid));
+    let state_path = runtime_state_path(paths.run_dir.as_path());
+    let runtime_state = read_runtime_state_record(state_path.as_path(), command_line)?;
+
+    if let Some(lock_record) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)? {
+        if is_process_running(lock_record.pid)
+            && runtime_record_matches_data_dir(&lock_record.data_dir, paths.data_dir.as_path())
+            && runtime_state_matches_pid(
+                runtime_state.as_ref(),
+                lock_record.pid,
+                paths.data_dir.as_path(),
+            )
+        {
+            return Ok(Some(lock_record.pid));
+        }
     }
 
-    Ok(read_runtime_pid(paths.pid_path.as_path(), command_line)?
-        .filter(|pid| is_process_running(*pid)))
+    Ok(
+        read_runtime_pid(paths.pid_path.as_path(), command_line)?.filter(|pid| {
+            is_process_running(*pid)
+                && runtime_state_matches_pid(runtime_state.as_ref(), *pid, paths.data_dir.as_path())
+        }),
+    )
 }
 
 fn read_runtime_lock_record(
@@ -811,14 +823,45 @@ fn read_runtime_state_record(
         })
 }
 
-fn runtime_state_matches(
+fn read_runtime_state_record_during_startup_poll(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeStateRecord>, CliError> {
+    match read_runtime_state_record(path, command_line) {
+        Ok(record) => Ok(record),
+        Err(_) => {
+            // Comment: startup polling can race the runtime replacing this file,
+            // so malformed reads are retried instead of aborting launch.
+            Ok(None)
+        }
+    }
+}
+
+fn runtime_ready_state_reported_during_startup_poll(
     path: &Path,
     expected_pid: u32,
-    expected_phase: RuntimeLifecyclePhase,
     command_line: &str,
 ) -> Result<bool, CliError> {
-    Ok(read_runtime_state_record(path, command_line)?
-        .is_some_and(|state| state.pid == expected_pid && state.phase == expected_phase))
+    Ok(
+        read_runtime_state_record_during_startup_poll(path, command_line)?.is_some_and(|state| {
+            state.pid == expected_pid && state.phase == RuntimeLifecyclePhase::Ready
+        }),
+    )
+}
+
+fn runtime_record_matches_data_dir(record_data_dir: &str, expected_data_dir: &Path) -> bool {
+    Path::new(record_data_dir) == expected_data_dir
+}
+
+fn runtime_state_matches_pid(
+    state: Option<&RuntimeStateRecord>,
+    expected_pid: u32,
+    expected_data_dir: &Path,
+) -> bool {
+    state.is_some_and(|state| {
+        state.pid == expected_pid
+            && runtime_record_matches_data_dir(&state.data_dir, expected_data_dir)
+    })
 }
 
 fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
@@ -934,5 +977,115 @@ fn exit_signal_label(status: ExitStatus) -> Option<String> {
     {
         let _ = status;
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use pretty_assertions::assert_eq;
+    use tempfile::tempdir;
+
+    use super::RUNTIME_STATE_FILENAME;
+    use super::read_managed_runtime_pid;
+    use super::read_runtime_state_record;
+    use super::runtime_ready_state_reported_during_startup_poll;
+    use crate::config::self_host::SelfHostRuntimePaths;
+
+    fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
+        let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
+        let paths = SelfHostRuntimePaths::for_test(
+            temp_dir.path().join("config").join("self-host"),
+            temp_dir.path().join("data"),
+        );
+
+        fs::create_dir_all(&paths.run_dir)
+            .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
+
+        (temp_dir, paths)
+    }
+
+    #[test]
+    fn startup_poll_treats_malformed_runtime_state_as_retryable() {
+        let (_temp_dir, paths) = test_paths();
+        let state_path = paths.run_dir.join(RUNTIME_STATE_FILENAME);
+
+        fs::write(&state_path, "{\"pid\":")
+            .unwrap_or_else(|error| panic!("expected malformed state write: {error}"));
+
+        assert_eq!(
+            runtime_ready_state_reported_during_startup_poll(
+                state_path.as_path(),
+                4242,
+                "onequery gateway start",
+            )
+            .unwrap_or_else(|error| panic!("expected retryable state read: {error}")),
+            false
+        );
+    }
+
+    #[test]
+    fn strict_runtime_state_reads_still_report_malformed_json() {
+        let (_temp_dir, paths) = test_paths();
+        let state_path = paths.run_dir.join(RUNTIME_STATE_FILENAME);
+
+        fs::write(&state_path, "{\"pid\":")
+            .unwrap_or_else(|error| panic!("expected malformed state write: {error}"));
+
+        let error = read_runtime_state_record(state_path.as_path(), "onequery gateway status")
+            .expect_err("expected malformed runtime state to fail strict reads");
+
+        assert_eq!(error.title.as_str(), "failed to parse runtime state file");
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_ignores_live_lock_without_matching_runtime_state() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.lock_path,
+            format!(
+                "{{\"pid\":{pid},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected lock write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            None
+        );
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_accepts_live_lock_with_matching_runtime_state() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.lock_path,
+            format!(
+                "{{\"pid\":{pid},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected lock write: {error}"));
+        fs::write(
+            paths.run_dir.join(RUNTIME_STATE_FILENAME),
+            format!(
+                "{{\"pid\":{pid},\"phase\":\"ready\",\"updatedAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected state write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            Some(pid)
+        );
     }
 }

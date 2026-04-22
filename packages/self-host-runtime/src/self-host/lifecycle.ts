@@ -4,9 +4,10 @@ import {
   open,
   readFile,
   rm,
+  rename,
   writeFile,
 } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { Result, TaggedError } from "better-result";
@@ -281,7 +282,7 @@ export function attachGracefulShutdownHandlers(args: {
   };
 
   const requestShutdown = (reason: "SIGINT" | "SIGTERM") => {
-    void shutdown(reason, "cleanup_and_exit").catch(() => undefined);
+    void Result.tryPromise(() => shutdown(reason, "cleanup_and_exit"));
   };
 
   processSignals.once("SIGINT", () => {
@@ -337,33 +338,42 @@ async function acquireLock(
     dataDir: paths.dataDir,
   };
 
-  try {
-    await writeNewLock(paths.lockPath, record);
-    return record;
-  } catch (error) {
-    if (!isAlreadyExistsError(error)) {
-      throw error;
-    }
-
-    const existingRecord = await readLockRecord(paths.lockPath);
-    if (
-      existingRecord.isOk() &&
-      options.isProcessRunning(existingRecord.value.pid)
-    ) {
-      await options.logWriter.append(
-        `[runtime] duplicate start blocked pid=${existingRecord.value.pid} dataDir=${paths.dataDir}`
-      );
-      throw new DuplicateRuntimeStartError(paths, existingRecord.value.pid);
-    }
-
-    await options.logWriter.append(
-      `[runtime] removing stale lifecycle lock dataDir=${paths.dataDir} existingPid=${existingRecord.isOk() ? existingRecord.value.pid : "unknown"}`
-    );
-    await removeIfPresent(paths.lockPath);
-    await removeIfPresent(paths.pidPath);
-    await writeNewLock(paths.lockPath, record);
+  const initialWriteResult = await Result.tryPromise(() =>
+    writeNewLock(paths.lockPath, record)
+  );
+  if (initialWriteResult.isOk()) {
     return record;
   }
+
+  if (!isAlreadyExistsError(initialWriteResult.error.cause)) {
+    throw initialWriteResult.error.cause;
+  }
+
+  const existingRecord = await readLockRecord(paths.lockPath);
+  if (
+    existingRecord.isOk() &&
+    options.isProcessRunning(existingRecord.value.pid)
+  ) {
+    await options.logWriter.append(
+      `[runtime] duplicate start blocked pid=${existingRecord.value.pid} dataDir=${paths.dataDir}`
+    );
+    throw new DuplicateRuntimeStartError(paths, existingRecord.value.pid);
+  }
+
+  await options.logWriter.append(
+    `[runtime] removing stale lifecycle lock dataDir=${paths.dataDir} existingPid=${existingRecord.isOk() ? existingRecord.value.pid : "unknown"}`
+  );
+  await removeIfPresent(paths.lockPath);
+  await removeIfPresent(paths.pidPath);
+
+  const replacementWriteResult = await Result.tryPromise(() =>
+    writeNewLock(paths.lockPath, record)
+  );
+  if (replacementWriteResult.isErr()) {
+    throw replacementWriteResult.error.cause;
+  }
+
+  return record;
 }
 
 async function writeNewLock(
@@ -431,12 +441,7 @@ async function readLockRecord(
 }
 
 function defaultIsProcessRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+  return Result.try(() => process.kill(pid, 0)).isOk();
 }
 
 function formatTimestamp(value: Date): string {
@@ -492,16 +497,54 @@ async function writeRuntimeState(
   paths: SelfHostLifecyclePaths,
   record: RuntimeStateRecord
 ): Promise<void> {
-  await writeFile(runtimeStatePath(paths), `${JSON.stringify(record)}\n`, {
-    encoding: "utf8",
-    mode: 0o600,
-  });
+  await replaceFileWithCompleteContents(
+    runtimeStatePath(paths),
+    `${JSON.stringify(record)}\n`,
+    {
+      encoding: "utf8",
+      mode: 0o600,
+    }
+  );
+}
+
+async function replaceFileWithCompleteContents(
+  path: string,
+  contents: string,
+  options: {
+    encoding: "utf8";
+    mode: number;
+  }
+): Promise<void> {
+  const tempPath = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`);
+
+  const writeTempResult = await Result.tryPromise(() =>
+    writeFile(tempPath, contents, options)
+  );
+  if (writeTempResult.isErr()) {
+    throw writeTempResult.error.cause;
+  }
+
+  const initialRenameResult = await Result.tryPromise(() =>
+    rename(tempPath, path)
+  );
+  if (initialRenameResult.isOk()) {
+    return;
+  }
+
+  // Comment: rewrite through a sibling temp file so readers never observe a
+  // truncated JSON document while the runtime updates lifecycle state.
+  await removeIfPresent(path);
+
+  const replacementRenameResult = await Result.tryPromise(() =>
+    rename(tempPath, path)
+  );
+  if (replacementRenameResult.isErr()) {
+    await removeIfPresent(tempPath);
+    throw replacementRenameResult.error.cause;
+  }
 }
 
 async function removeIfPresent(path: string): Promise<void> {
-  try {
-    await rm(path, { force: true });
-  } catch {
-    // Ignore cleanup failures during shutdown; later status/log inspection can surface leftovers.
-  }
+  // Ignore cleanup failures during shutdown; later status/log inspection can surface leftovers.
+  await Result.tryPromise(() => rm(path, { force: true }));
 }
