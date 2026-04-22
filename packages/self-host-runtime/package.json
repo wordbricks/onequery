@@ -27,6 +27,7 @@
     "@onequery/db": "workspace:*",
     "@onequery/installer": "workspace:*",
     "@onequery/server": "workspace:*",
+    "antiox": "0.1.4",
     "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
