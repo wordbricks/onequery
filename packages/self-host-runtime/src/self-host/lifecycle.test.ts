@@ -17,6 +17,7 @@ import {
   acquireRuntimeLifecycleLease,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
+  toLifecyclePathsResult,
 } from "./lifecycle";
 import type { SelfHostLifecyclePaths } from "./lifecycle";
 
@@ -55,7 +56,7 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("blocks a duplicate start for the same data directory while the lock holder is alive", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "onequery-self-host-lifecycle-"));
     tempRoots.push(root);
     const paths = createPaths(root);
     const logWriter = {
@@ -83,7 +84,9 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("replaces a stale lock before acquiring a new lifecycle lease", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-stale-lock-"));
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-stale-lock-")
+    );
     tempRoots.push(root);
     const paths = createPaths(root);
 
@@ -115,7 +118,7 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("records startup and shutdown lifecycle phases in the runtime state file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-state-"));
+    const root = await mkdtemp(join(tmpdir(), "onequery-self-host-state-"));
     tempRoots.push(root);
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
@@ -143,7 +146,7 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("stops the packaged server runtime and removes pid and lock files on SIGTERM", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-signal-"));
+    const root = await mkdtemp(join(tmpdir(), "onequery-self-host-signal-"));
     tempRoots.push(root);
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
@@ -174,7 +177,7 @@ describe("self-host lifecycle lease", () => {
       exitProcess,
       lease,
       logWriter,
-      processSignals: processSignals as unknown as NodeJS.Process,
+      processSignals,
       server,
     });
 
@@ -203,7 +206,9 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("releases the lifecycle lease and exits with failure when server shutdown errors", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-signal-failure-"));
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-signal-failure-")
+    );
     tempRoots.push(root);
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
@@ -222,7 +227,7 @@ describe("self-host lifecycle lease", () => {
     attachGracefulShutdownHandlers({
       exitProcess,
       lease,
-      processSignals: processSignals as unknown as NodeJS.Process,
+      processSignals,
       server,
     });
 
@@ -238,7 +243,7 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("appends lifecycle log lines into the configured server log file", async () => {
-    const root = await mkdtemp(join(tmpdir(), "onequery-bun-log-"));
+    const root = await mkdtemp(join(tmpdir(), "onequery-self-host-log-"));
     tempRoots.push(root);
     const paths = createPaths(root);
 
@@ -251,6 +256,90 @@ describe("self-host lifecycle lease", () => {
     await expect(readFile(paths.serverLogPath, "utf8")).resolves.toContain(
       "2026-03-25T00:00:00.000Z [onequery-server] listening on http://127.0.0.1:5656"
     );
+  });
+
+  it("returns an unmanaged lifecycle-path resolution for workspace-dev launch configs", () => {
+    const result = toLifecyclePathsResult({
+      mode: "workspace-dev",
+      runtimePaths: undefined,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      kind: "unmanaged",
+    });
+  });
+
+  it("returns a self-host lifecycle-path resolution when runtime paths are present", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-path-resolution-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+
+    const result = toLifecyclePathsResult({
+      mode: "self-host",
+      runtimePaths: {
+        backupsDir: join(root, "backups"),
+        dataDir: paths.dataDir,
+        lockPath: paths.lockPath,
+        logsDir: paths.logsDir,
+        pidPath: paths.pidPath,
+        runDir: paths.runDir,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      kind: "self-host",
+      paths: {
+        dataDir: paths.dataDir,
+        lockPath: paths.lockPath,
+        logsDir: paths.logsDir,
+        pidPath: paths.pidPath,
+      },
+    });
+  });
+
+  it("replaces an invalid lock record before acquiring a new lifecycle lease", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-invalid-lock-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+
+    await mkdir(paths.runDir, {
+      recursive: true,
+    });
+    await writeFile(
+      paths.lockPath,
+      JSON.stringify({
+        acquiredAt: "2026-03-25T00:00:00.000Z",
+        dataDir: paths.dataDir,
+        pid: "invalid",
+      })
+    );
+    await writeFile(paths.pidPath, "999\n");
+
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      pid: 555,
+    });
+
+    await expect(readFile(paths.lockPath, "utf8")).resolves.toContain(
+      '"pid":555'
+    );
+
+    await lease.release({
+      reason: "test_cleanup",
+      stopServer: false,
+    });
   });
 });
 

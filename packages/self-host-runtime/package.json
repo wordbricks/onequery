@@ -11,9 +11,9 @@
   },
   "scripts": {
     "build:web": "bun run --cwd ../../apps/web build",
-    "dev": "bun run ../../scripts/run-self-host-runtime.ts --dev",
-    "start": "bun run ../../scripts/run-self-host-smoke.ts serve",
-    "serve": "bun run ../../scripts/run-self-host-smoke.ts serve",
+    "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-runtime.ts --dev",
+    "start": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
+    "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"

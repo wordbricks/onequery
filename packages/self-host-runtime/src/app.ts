@@ -26,7 +26,7 @@ type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
 };
 
-export interface CreateBunAppOptions {
+export interface CreateRuntimeAppOptions {
   enableAuthTestUtils?: boolean;
   runtime: ServerRuntimeConfig;
   spaAssets: SpaAssetBinding;
@@ -37,7 +37,7 @@ function apiLogger(message: string, ...rest: string[]): void {
   console.log("[api]", message, ...rest);
 }
 
-function resolveStorage(input: CreateBunAppOptions): ServerStorage {
+function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   return (
     input.storage ??
     createServerStorage(input.runtime, createMemoryApiRateLimitStorage(), {
@@ -47,7 +47,7 @@ function resolveStorage(input: CreateBunAppOptions): ServerStorage {
 }
 
 // Build the runtime API surface on top of the shared OSS-safe server routes.
-export function createApiApp(input: CreateBunAppOptions) {
+export function createApiApp(input: CreateRuntimeAppOptions) {
   const storage = resolveStorage(input);
 
   return (
@@ -85,7 +85,7 @@ export function createApiApp(input: CreateBunAppOptions) {
   );
 }
 
-export function createApp(input: CreateBunAppOptions) {
+export function createApp(input: CreateRuntimeAppOptions) {
   const apiApp = createApiApp(input);
 
   return (

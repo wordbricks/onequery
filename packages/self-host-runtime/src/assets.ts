@@ -1,5 +1,9 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
+
+import { Result, TaggedError } from "better-result";
+import type { Result as ResultType } from "better-result";
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -16,6 +20,30 @@ type AssetBinding = {
   fetch(request: Request): Promise<Response>;
 };
 
+type AssetRequestPathResolution =
+  | {
+      status: "invalid";
+    }
+  | {
+      path: string;
+      status: "resolved";
+    };
+
+export class SpaBuildOutputMissingError extends TaggedError(
+  "SpaBuildOutputMissingError"
+)<{
+  assetDir: string;
+  expectedPath: string;
+  message: string;
+}>() {}
+
+export type CreateSpaAssetBindingError = SpaBuildOutputMissingError;
+
+export type CreateSpaAssetBindingResult = ResultType<
+  AssetBinding,
+  CreateSpaAssetBindingError
+>;
+
 function hasFileExtension(pathname: string): boolean {
   const lastSlashIndex = pathname.lastIndexOf("/");
   const basename =
@@ -23,12 +51,14 @@ function hasFileExtension(pathname: string): boolean {
   return basename.includes(".");
 }
 
-function resolveAssetRequestPath(pathname: string): string | null {
+function resolveAssetRequestPath(pathname: string): AssetRequestPathResolution {
   let decodedPath: string;
   try {
     decodedPath = decodeURIComponent(pathname);
   } catch {
-    return null;
+    return {
+      status: "invalid",
+    };
   }
   const segments = decodedPath
     .split("/")
@@ -37,17 +67,18 @@ function resolveAssetRequestPath(pathname: string): string | null {
     .filter(Boolean);
 
   if (segments.some((segment) => segment === "." || segment === "..")) {
-    return null;
+    return {
+      status: "invalid",
+    };
   }
 
-  return segments.join("/");
+  return {
+    path: segments.join("/"),
+    status: "resolved",
+  };
 }
 
 function isReadableFile(path: string): boolean {
-  if (!existsSync(path)) {
-    return false;
-  }
-
   try {
     return statSync(path).isFile();
   } catch {
@@ -55,33 +86,26 @@ function isReadableFile(path: string): boolean {
   }
 }
 
-function getContentType(path: string, explicitType?: string): string {
-  if (explicitType && explicitType.length > 0) {
-    return explicitType;
-  }
-
+function getContentType(path: string): string {
   return (
     CONTENT_TYPE_BY_EXTENSION[extname(path).toLowerCase()] ??
     "application/octet-stream"
   );
 }
 
-function createFileResponse(path: string, request: Request): Response {
-  const bunGlobal = globalThis as typeof globalThis & {
-    Bun?: {
-      file(path: string): Blob & { type?: string };
-    };
-  };
-  const bunFile = bunGlobal.Bun?.file(path);
+async function createFileResponse(
+  path: string,
+  request: Request
+): Promise<Response> {
+  const contentType = getContentType(path);
   const body =
     request.method === "HEAD"
       ? null
-      : (bunFile ??
-        new Blob([readFileSync(path)], { type: getContentType(path) }));
+      : new Blob([await readFile(path)], { type: contentType });
 
   return new Response(body, {
     headers: {
-      "content-type": getContentType(path, bunFile?.type),
+      "content-type": contentType,
     },
   });
 }
@@ -90,19 +114,23 @@ export function getDefaultSpaBuildDir(rootDir: string): string {
   return resolve(rootDir, "apps/web/dist");
 }
 
-export function createSpaAssetBinding(options: {
+export function createSpaAssetBindingResult(options: {
   assetDir: string;
-}): AssetBinding {
+}): CreateSpaAssetBindingResult {
   const assetDir = resolve(options.assetDir);
   const spaEntryPath = join(assetDir, "index.html");
 
   if (!isReadableFile(spaEntryPath)) {
-    throw new Error(
-      `SPA build output missing: expected ${spaEntryPath}. Run \`bun run --cwd apps/web build\` before starting the packaged server runtime.`
+    return Result.err(
+      new SpaBuildOutputMissingError({
+        assetDir,
+        expectedPath: spaEntryPath,
+        message: `SPA build output missing: expected ${spaEntryPath}. Build apps/web before starting the packaged server runtime.`,
+      })
     );
   }
 
-  return {
+  return Result.ok({
     async fetch(request) {
       const url = new URL(request.url);
 
@@ -116,23 +144,35 @@ export function createSpaAssetBinding(options: {
       }
 
       const requestPath = resolveAssetRequestPath(url.pathname);
-      if (requestPath === null) {
+      if (requestPath.status === "invalid") {
         return new Response("Not Found", { status: 404 });
       }
 
-      const candidatePath = requestPath
-        ? join(assetDir, requestPath)
+      const candidatePath = requestPath.path
+        ? join(assetDir, requestPath.path)
         : spaEntryPath;
 
-      if (requestPath && isReadableFile(candidatePath)) {
+      if (requestPath.path && isReadableFile(candidatePath)) {
         return createFileResponse(candidatePath, request);
       }
 
-      if (requestPath && hasFileExtension(url.pathname)) {
+      if (requestPath.path && hasFileExtension(url.pathname)) {
         return new Response("Not Found", { status: 404 });
       }
 
       return createFileResponse(spaEntryPath, request);
     },
-  };
+  });
+}
+
+export function createSpaAssetBinding(options: {
+  assetDir: string;
+}): AssetBinding {
+  const assetBinding = createSpaAssetBindingResult(options);
+
+  if (assetBinding.isErr()) {
+    throw assetBinding.error;
+  }
+
+  return assetBinding.value;
 }

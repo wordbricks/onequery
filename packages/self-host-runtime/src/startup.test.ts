@@ -28,7 +28,7 @@ describe("packaged server startup", () => {
   });
 
   it("loads a launch config from the explicit startup argv path", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
     const launchConfig = createWorkspaceDevLaunchConfig({
@@ -38,8 +38,8 @@ describe("packaged server startup", () => {
     writeLaunchConfig(launchConfigPath, launchConfig);
 
     const startupInput = resolveStartupInputFromArgv([
-      "bun",
-      "src/index.ts",
+      "node",
+      "src/node-entry.ts",
       launchConfigPath,
     ]);
 
@@ -47,7 +47,7 @@ describe("packaged server startup", () => {
   });
 
   it("loads a self-host launch config from the explicit startup argv path", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
     const launchConfig = createSelfHostLaunchConfig({
@@ -57,8 +57,8 @@ describe("packaged server startup", () => {
     writeLaunchConfig(launchConfigPath, launchConfig);
 
     const startupInput = resolveStartupInputFromArgv([
-      "bun",
-      "src/index.ts",
+      "node",
+      "src/node-entry.ts",
       launchConfigPath,
     ]);
 
@@ -66,7 +66,7 @@ describe("packaged server startup", () => {
   });
 
   it("does not read repo-local workspace-dev files during self-host startup", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
     // Comment: keep this in self-host mode. A workspace-dev launch config here
@@ -94,7 +94,7 @@ describe("packaged server startup", () => {
   });
 
   it("fails cleanly when the launch config file is missing", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "missing.json");
 
     expect(() =>
@@ -105,7 +105,7 @@ describe("packaged server startup", () => {
   });
 
   it("fails cleanly when the launch config file is malformed", () => {
-    const root = mkdtempSync(join(tmpdir(), "onequery-bun-startup-"));
+    const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
     writeFileSync(launchConfigPath, "{not valid json");
@@ -118,8 +118,8 @@ describe("packaged server startup", () => {
   });
 
   it("fails fast when no launch config path is provided", () => {
-    expect(() => resolveStartupInputFromArgv(["bun", "src/index.ts"])).toThrow(
-      "Missing launch config path"
-    );
+    expect(() =>
+      resolveStartupInputFromArgv(["node", "src/node-entry.ts"])
+    ).toThrow("Missing launch config path");
   });
 });

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,7 @@ import { getDefaultSpaBuildDir } from "@onequery/self-host-runtime/assets";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const selfHostRuntimeDir = resolve(rootDir, "packages", "self-host-runtime");
+const bundledRuntimePath = resolve(selfHostRuntimeDir, "dist", "node-entry.js");
 
 function prependPathEntries(
   entries: readonly string[],
@@ -95,28 +96,87 @@ export function createChildEnv(): NodeJS.ProcessEnv {
 }
 
 export function createRuntimeArgs(launchConfigPath: string): string[] {
-  return ["--watch", "src/bun-entry.ts", launchConfigPath];
+  return ["--watch", bundledRuntimePath, launchConfigPath];
 }
 
-export function main(): void {
+export function createRuntimeBuildArgs(): string[] {
+  // Comment: dev mode still uses Bun for fast incremental bundling, but the
+  // launched self-host runtime process itself runs on Node.
+  return [
+    "build",
+    "--target",
+    "node",
+    "--format",
+    "esm",
+    "--outfile",
+    bundledRuntimePath,
+    "--conditions",
+    "bun",
+    "--watch",
+    "src/node-entry.ts",
+  ];
+}
+
+async function waitForBundledRuntime(
+  buildStartedAtMs: number,
+  builder: ReturnType<typeof spawn>
+): Promise<void> {
+  const timeoutMs = 15_000;
+  const pollIntervalMs = 50;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() <= deadline) {
+    if (builder.exitCode !== null || builder.signalCode !== null) {
+      throw new Error(
+        "Runtime bundle build exited before the Node entry was ready."
+      );
+    }
+
+    try {
+      const bundleStats = statSync(bundledRuntimePath);
+      if (bundleStats.isFile() && bundleStats.mtimeMs >= buildStartedAtMs) {
+        return;
+      }
+    } catch {
+      // Comment: the first watch build has not emitted the bundle yet.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error(
+    `Timed out waiting for bundled self-host runtime entry at ${bundledRuntimePath}.`
+  );
+}
+
+function terminateChild(
+  child: ReturnType<typeof spawn> | null,
+  signal: NodeJS.Signals = "SIGTERM"
+): void {
+  if (child && child.exitCode === null && child.signalCode === null) {
+    child.kill(signal);
+  }
+}
+
+export async function main(): Promise<void> {
   parseRunMode(process.argv.slice(2));
   const launchConfig = writeLaunchConfigFile(createLaunchConfig());
-  const child = spawn("bun", createRuntimeArgs(launchConfig.launchConfigPath), {
+  const buildStartedAtMs = Date.now();
+  const builder = spawn("bun", createRuntimeBuildArgs(), {
     cwd: selfHostRuntimeDir,
     env: createChildEnv(),
     shell: process.platform === "win32",
     stdio: "inherit",
   });
+  let runtime: ReturnType<typeof spawn> | null = null;
+  let finalized = false;
 
-  for (const signal of ["SIGINT", "SIGTERM"] as const) {
-    process.on(signal, () => {
-      if (!child.killed) {
-        child.kill(signal);
-      }
-    });
-  }
+  const finalize = (code: number | null, signal: NodeJS.Signals | null) => {
+    if (finalized) {
+      return;
+    }
+    finalized = true;
 
-  child.on("exit", (code, signal) => {
     rmSync(launchConfig.tempDir, {
       force: true,
       recursive: true,
@@ -128,9 +188,71 @@ export function main(): void {
     }
 
     process.exit(code ?? 1);
+  };
+
+  const forwardSignal = (signal: "SIGINT" | "SIGTERM") => {
+    process.on(signal, () => {
+      terminateChild(runtime, signal);
+      terminateChild(builder, signal);
+    });
+  };
+
+  forwardSignal("SIGINT");
+  forwardSignal("SIGTERM");
+
+  builder.on("exit", (code, signal) => {
+    if (finalized) {
+      return;
+    }
+
+    terminateChild(runtime, signal ?? "SIGTERM");
+    finalize(code, signal);
   });
 
-  child.on("error", (error) => {
+  builder.on("error", (error) => {
+    terminateChild(runtime);
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
+    console.error(
+      `Failed to build Node self-host runtime entry: ${error.message}`
+    );
+    process.exit(1);
+  });
+
+  try {
+    await waitForBundledRuntime(buildStartedAtMs, builder);
+  } catch (error) {
+    terminateChild(builder);
+    rmSync(launchConfig.tempDir, {
+      force: true,
+      recursive: true,
+    });
+
+    if (error instanceof Error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+
+    console.error("Failed to prepare the Node self-host runtime bundle.");
+    process.exit(1);
+  }
+
+  runtime = spawn("node", createRuntimeArgs(launchConfig.launchConfigPath), {
+    cwd: selfHostRuntimeDir,
+    env: createChildEnv(),
+    shell: process.platform === "win32",
+    stdio: "inherit",
+  });
+
+  runtime.on("exit", (code, signal) => {
+    terminateChild(builder, signal ?? "SIGTERM");
+    finalize(code, signal);
+  });
+
+  runtime.on("error", (error) => {
+    terminateChild(builder);
     rmSync(launchConfig.tempDir, {
       force: true,
       recursive: true,
@@ -141,5 +263,5 @@ export function main(): void {
 }
 
 if (import.meta.main) {
-  main();
+  await main();
 }

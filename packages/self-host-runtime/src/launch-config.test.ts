@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { loadLaunchConfigFile } from "./launch-config";
 
 function createTempSpaBuildDir(): string {
-  const assetDir = mkdtempSync(join(tmpdir(), "onequery-bun-spa-test-"));
+  const assetDir = mkdtempSync(join(tmpdir(), "onequery-self-host-spa-test-"));
   writeFileSync(
     join(assetDir, "index.html"),
     "<!doctype html><title>spa</title>"
