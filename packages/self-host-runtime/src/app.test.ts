@@ -3,8 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "./app";
 
-function createTestApp() {
-  const runtime = createTestRuntimeConfig();
+function createTestApp(
+  overrides: Parameters<typeof createTestRuntimeConfig>[0] = {}
+) {
+  const runtime = createTestRuntimeConfig(overrides);
   const spaAssets = {
     fetch: vi.fn(
       async () =>
@@ -113,5 +115,60 @@ describe("runtime app", () => {
       'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
     );
     expect(spaAssets.fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the normal API budget separate from the mounted /api/cli namespace", async () => {
+    console.log = () => {};
+    const { app } = createTestApp({
+      rateLimit: {
+        enabled: true,
+      },
+    });
+    if (!app) {
+      return;
+    }
+
+    for (let index = 0; index < 100; index += 1) {
+      const cliResponse = await app.fetch(
+        new Request("http://local/api/cli/missing")
+      );
+
+      expect(cliResponse.status).toBe(404);
+    }
+
+    const apiResponse = await app.fetch(
+      new Request("http://local/api/missing")
+    );
+
+    expect(apiResponse.status).toBe(404);
+    await expect(apiResponse.text()).resolves.toBe("404 Not Found");
+  });
+
+  it("returns machine-readable JSON when the API rate limit is exceeded", async () => {
+    console.log = () => {};
+    const { app } = createTestApp({
+      rateLimit: {
+        enabled: true,
+      },
+    });
+    if (!app) {
+      return;
+    }
+
+    let lastResponse: Response | null = null;
+    for (let index = 0; index < 101; index += 1) {
+      lastResponse = await app.fetch(new Request("http://local/api/missing"));
+    }
+
+    expect(lastResponse?.status).toBe(429);
+    expect(lastResponse?.headers.get("content-type")).toContain(
+      "application/json"
+    );
+    await expect(lastResponse?.json()).resolves.toMatchObject({
+      error: {
+        code: "rate_limited",
+        message: "Too many requests, please try again later.",
+      },
+    });
   });
 });

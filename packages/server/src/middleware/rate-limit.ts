@@ -51,7 +51,7 @@ function getClientIp(c: {
 function shouldSkipPath(path: string): boolean {
   // Normalize the path to prevent traversal attacks
   const normalizedPath = new URL(path, "http://localhost").pathname;
-  const cliDeviceAuthPrefix = "/api/cli/auth/device-authorizations";
+  const cliRoutePrefix = "/api/cli";
 
   return (
     normalizedPath === "/api/health" ||
@@ -59,8 +59,12 @@ function shouldSkipPath(path: string): boolean {
     normalizedPath.startsWith("/api/webhook/") ||
     normalizedPath === "/api/webhooks" ||
     normalizedPath.startsWith("/api/webhooks/") ||
-    normalizedPath === cliDeviceAuthPrefix ||
-    normalizedPath.startsWith(`${cliDeviceAuthPrefix}/`) ||
+    // Comment: the runtime mounts `/api/cli` alongside the normal `/api`
+    // surface, but the `/api` child app still sees the CLI namespace first.
+    // Skip the full CLI prefix here so Connect traffic cannot spend the normal
+    // control-plane rate-limit budget before the request reaches the CLI route.
+    normalizedPath === cliRoutePrefix ||
+    normalizedPath.startsWith(`${cliRoutePrefix}/`) ||
     normalizedPath === "/api/auth" ||
     normalizedPath.startsWith("/api/auth/")
   );
@@ -88,6 +92,12 @@ export function apiRateLimiter(input: { enabled: boolean }): MiddlewareHandler<{
       middleware = rateLimiter({
         windowMs: 60_000, // 1 minute
         limit: 100,
+        message: {
+          error: {
+            code: "rate_limited",
+            message: "Too many requests, please try again later.",
+          },
+        },
         standardHeaders: "draft-6",
         keyGenerator: (rateLimitContext) => {
           const userId = rateLimitContext.get("session")?.user?.id;

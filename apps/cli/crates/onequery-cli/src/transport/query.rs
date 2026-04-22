@@ -14,13 +14,12 @@ use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
 use crate::transport::api_failure::sanitization_metadata_from_generated;
-use crate::transport::api_failure::try_into_option;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::query_logical_type_to_str;
-use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
+use crate::transport::pagination::page_request_from_controls;
 use crate::transport::query_parameter::QueryCanonicalParameter;
 use crate::transport::query_parameter::QueryRequestParameter;
 use crate::transport::query_parameter::query_canonical_parameter_from_generated;
@@ -182,9 +181,7 @@ async fn fetch_query_page(
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    let cursor: Option<String> =
-        try_into_option(controls.cursor.as_deref(), ErrorStage::ExecuteQuery)?;
-    let limit = optional_page_size(controls.page_size, ErrorStage::ExecuteQuery)?;
+    let page = page_request_from_controls(controls, ErrorStage::ExecuteQuery)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
         .cli()
@@ -192,8 +189,7 @@ async fn fetch_query_page(
             types::ExecuteQueryRequest {
                 org_slug: Some(org_slug),
                 source_key: Some(source_key),
-                limit,
-                cursor,
+                page,
                 query: MessageField::some(query),
                 ..Default::default()
             },

@@ -914,7 +914,9 @@ describe("CLI self-host smoke", () => {
         call: (options) =>
           cliConnectClient.listOrganizations(
             {
-              limit: 1,
+              page: {
+                limit: 1,
+              },
             },
             options
           ),
@@ -1003,8 +1005,10 @@ describe("CLI self-host smoke", () => {
         call: (options) =>
           cliConnectClient.listSources(
             {
-              limit: 1,
               orgSlug: "owner-org",
+              page: {
+                limit: 1,
+              },
             },
             options
           ),

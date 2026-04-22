@@ -8,14 +8,13 @@ use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::response_request_id;
-use crate::transport::api_failure::try_into_option;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::source_provider_to_str;
 use crate::transport::labels::source_status_to_str;
-use crate::transport::pagination::optional_page_size;
 use crate::transport::pagination::page_info_from_generated;
+use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
@@ -101,14 +100,12 @@ async fn fetch_source_page(
     controls: SinglePageReadControls,
 ) -> Result<ApiSuccess<SourceListPayload>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::Http)?;
-    let cursor: Option<String> = try_into_option(controls.cursor.as_deref(), ErrorStage::Http)?;
-    let limit = optional_page_size(controls.page_size, ErrorStage::Http)?;
+    let page = page_request_from_controls(controls, ErrorStage::Http)?;
     let response = match client
         .cli()
         .list_sources(types::ListSourcesRequest {
             org_slug: Some(org_slug),
-            limit,
-            cursor,
+            page,
             ..Default::default()
         })
         .await

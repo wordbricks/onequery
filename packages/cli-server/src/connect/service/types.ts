@@ -19,11 +19,6 @@ export type CliServiceResponse<Name extends CliServiceMethodName> = Awaited<
 
 export type CliHonoContext = Context<CliRouteEnv>;
 
-export type CliPaginatedQueryInput = {
-  limit?: number;
-  cursor?: string;
-};
-
 export type RequireAuthorizedCliOrgInput = {
   c: CliHonoContext;
   action: CliAction;

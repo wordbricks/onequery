@@ -153,6 +153,81 @@ describe("cli connect node integration", () => {
 
     throw new Error("expected validateQuery to reject");
   });
+
+  it("rejects invalid nested pagination requests before the handler runs", async () => {
+    const server = http.createServer(
+      createCliConnectHandler({
+        contextValues(request) {
+          const requestIdHeader = request.headers["x-request-id"];
+          const requestId = Array.isArray(requestIdHeader)
+            ? requestIdHeader[0]
+            : requestIdHeader;
+
+          return createContextValues().set(cliConnectRequestContextKey, {
+            honoContext: null,
+            requestId: requestId ?? "unknown",
+            resolveAuthorizedOrg: async () => {
+              throw new Error("pagination validation should not resolve org");
+            },
+            resolveSession: async () => {
+              throw new Error(
+                "pagination validation should not resolve session"
+              );
+            },
+          } as unknown as CliConnectRequestContext);
+        },
+      })
+    );
+    openServers.add(server);
+    const port = await listen(server);
+    const client = createClient(
+      CliService,
+      createConnectTransport({
+        baseUrl: `http://127.0.0.1:${port}`,
+        httpVersion: "1.1",
+      })
+    );
+
+    try {
+      await client.listOrganizations(
+        {
+          page: {
+            limit: 0,
+          },
+        },
+        {
+          headers: {
+            "x-request-id": "req_cli_page_validation",
+          },
+        }
+      );
+    } catch (error) {
+      const connectError = ConnectError.from(error);
+      const cliDetails = connectError.findDetails(CliErrorDetailSchema);
+      const badRequestDetails = connectError.findDetails(BadRequestSchema);
+
+      expect(connectError.code).toBe(Code.InvalidArgument);
+      expect(cliDetails).toHaveLength(1);
+      expect(cliDetails[0]).toMatchObject({
+        code: ProblemCode.INVALID_REQUEST,
+        hint: "correct the org request and retry",
+        requestId: "req_cli_page_validation",
+        stage: ProblemStage.RESOLVE_ORG,
+        title: "Invalid Request",
+      });
+      expect(badRequestDetails).toHaveLength(1);
+      expect(badRequestDetails[0]?.fieldViolations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            field: "page.limit",
+          }),
+        ])
+      );
+      return;
+    }
+
+    throw new Error("expected listOrganizations to reject");
+  });
 });
 
 function listen(server: http.Server) {

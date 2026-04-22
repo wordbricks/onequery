@@ -9,7 +9,7 @@ import {
   OrgCapability,
   GetOrganizationResponseSchema,
 } from "../gen/onequery/cli/v1/org_pb";
-import { buildCliPage, parseCliPaginatedReadControls } from "./read-controls";
+import { buildCliPage, parseCliPageRequest } from "./read-controls";
 import type { CliResultServiceMethod } from "./result";
 import { liftCliServiceMethod } from "./result";
 
@@ -46,7 +46,7 @@ const handleListOrganizationsImpl: CliResultServiceMethod<
   Result.gen(async function* handleListOrganizationsFlow() {
     const requestContext = requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
-    const readControls = yield* parseCliPaginatedReadControls(request);
+    const readControls = yield* parseCliPageRequest(request.page);
     const session = yield* Result.await(requestContext.resolveSession());
     const organizations = await runCliListVisibleOrgs({
       db: c.var.storage.db,

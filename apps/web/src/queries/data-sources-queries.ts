@@ -104,7 +104,7 @@ export async function createDataSource(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => null);
     const payload = parseApiErrorPayload(error);
     if (payload) {
       throw createApiError(payload);
