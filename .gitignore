@@ -14,6 +14,7 @@ out/
 
 # Turbo
 .turbo/
+**/.turbo/
 
 # Bun (lock file should be committed for reproducible builds)
 

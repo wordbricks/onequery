@@ -139,6 +139,30 @@ Then enable the plugin in `openclaw.json`:
 }
 ```
 
+## Hermes Plugin
+
+Hermes installs plugins from Git repository roots. The OneQuery repository
+includes a root-level Hermes manifest that loads the implementation from
+`packages/hermes-plugin`.
+
+From GitHub:
+
+```bash
+hermes plugins install https://github.com/wordbricks/onequery.git --enable
+```
+
+From a checkout of this repository:
+
+```bash
+hermes plugins install file://$PWD --force --enable
+```
+
+Then start Hermes and load the bundled skill:
+
+```text
+Load skill onequery:internal-data-analysis.
+```
+
 ---
 
 ## Contributing

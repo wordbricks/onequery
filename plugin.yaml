@@ -1,0 +1,12 @@
+name: onequery
+version: 0.1.0
+description: Safe internal data analysis through the OneQuery CLI
+author: Wordbricks
+provides_tools:
+  - onequery_status
+  - onequery_list_sources
+  - onequery_show_source
+  - onequery_validate_query
+  - onequery_execute_query
+provides_hooks:
+  - post_tool_call

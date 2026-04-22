@@ -1,0 +1,34 @@
+{
+  "name": "@onequery/hermes-plugin",
+  "version": "0.0.0",
+  "private": false,
+  "description": "OneQuery Hermes plugin",
+  "keywords": [
+    "hermes",
+    "onequery",
+    "plugin"
+  ],
+  "homepage": "https://github.com/wordbricks/onequery/tree/main/packages/hermes-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/wordbricks/onequery/issues"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wordbricks/onequery.git",
+    "directory": "packages/hermes-plugin"
+  },
+  "files": [
+    "README.md",
+    "plugin.yaml",
+    "__init__.py",
+    "onequery_hermes_plugin",
+    "skills",
+    "examples",
+    "after-install.md"
+  ],
+  "scripts": {
+    "typecheck": "python3 -m py_compile __init__.py onequery_hermes_plugin/*.py",
+    "test": "python3 -m py_compile __init__.py onequery_hermes_plugin/*.py"
+  }
+}
