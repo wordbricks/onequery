@@ -51,7 +51,6 @@ function getClientIp(c: {
 function shouldSkipPath(path: string): boolean {
   // Normalize the path to prevent traversal attacks
   const normalizedPath = new URL(path, "http://localhost").pathname;
-  const cliRoutePrefix = "/api/cli";
 
   return (
     normalizedPath === "/api/health" ||
@@ -59,12 +58,6 @@ function shouldSkipPath(path: string): boolean {
     normalizedPath.startsWith("/api/webhook/") ||
     normalizedPath === "/api/webhooks" ||
     normalizedPath.startsWith("/api/webhooks/") ||
-    // Comment: the runtime mounts `/api/cli` alongside the normal `/api`
-    // surface, but the `/api` child app still sees the CLI namespace first.
-    // Skip the full CLI prefix here so Connect traffic cannot spend the normal
-    // control-plane rate-limit budget before the request reaches the CLI route.
-    normalizedPath === cliRoutePrefix ||
-    normalizedPath.startsWith(`${cliRoutePrefix}/`) ||
     normalizedPath === "/api/auth" ||
     normalizedPath.startsWith("/api/auth/")
   );

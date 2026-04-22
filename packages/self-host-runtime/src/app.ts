@@ -53,17 +53,9 @@ export function createApiApp(input: CreateBunAppOptions) {
   return (
     new Hono()
       .use("*", logger(apiLogger))
-      // The runtime package owns the public `/api` mount and top-level API
-      // composition. Deployment adapters can import this app without redefining
-      // the route graph.
-      .route(
-        API_ROUTE_PREFIX,
-        createServerApi({
-          enableAuthTestUtils: input.enableAuthTestUtils,
-          runtime: input.runtime,
-          storage,
-        })
-      )
+      // Comment: mount the more specific `/api/*` children before the broad
+      // `/api` app so Hono does not run the general control-plane middleware
+      // for CLI or device-authorization requests.
       .route(
         DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
         createDeviceAuthorizationBrowserRoute({
@@ -75,6 +67,17 @@ export function createApiApp(input: CreateBunAppOptions) {
         CLI_API_ROUTE_PREFIX,
         createCliRoute({
           requestPathPrefix: CLI_API_ROUTE_PREFIX,
+          runtime: input.runtime,
+          storage,
+        })
+      )
+      // The runtime package owns the public `/api` mount and top-level API
+      // composition. Deployment adapters can import this app without redefining
+      // the route graph.
+      .route(
+        API_ROUTE_PREFIX,
+        createServerApi({
+          enableAuthTestUtils: input.enableAuthTestUtils,
           runtime: input.runtime,
           storage,
         })

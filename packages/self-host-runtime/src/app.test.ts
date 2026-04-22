@@ -117,7 +117,7 @@ describe("runtime app", () => {
     expect(spaAssets.fetch).not.toHaveBeenCalled();
   });
 
-  it("keeps the normal API budget separate from the mounted /api/cli namespace", async () => {
+  it("keeps actual CLI Connect requests out of the normal API budget", async () => {
     console.log = () => {};
     const { app } = createTestApp({
       rateLimit: {
@@ -130,10 +130,19 @@ describe("runtime app", () => {
 
     for (let index = 0; index < 100; index += 1) {
       const cliResponse = await app.fetch(
-        new Request("http://local/api/cli/missing")
+        new Request(
+          "http://local/api/cli/onequery.cli.v1.CliService/GetSession",
+          {
+            body: "{}",
+            headers: {
+              "content-type": "application/json",
+            },
+            method: "POST",
+          }
+        )
       );
 
-      expect(cliResponse.status).toBe(404);
+      expect(cliResponse.status).not.toBe(429);
     }
 
     const apiResponse = await app.fetch(
