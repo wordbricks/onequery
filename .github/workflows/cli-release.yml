@@ -227,11 +227,26 @@ jobs:
             Copy-Item "dist/vendor/${{ matrix.target }}/server/*" "$outputDir/"
           }
 
+      - name: Pack Windows binaries
+        run: |
+          $stagedDir = "target/${{ matrix.target }}/release/staged-${{ matrix.bundle }}"
+          $archivePath = "target/${{ matrix.target }}/release/windows-binaries-${{ matrix.target }}-${{ matrix.bundle }}.tar"
+
+          # COMMENT: Upload the pre-packed tarball with artifact compression
+          # disabled so Windows ARM releases do not rely on the upload action's
+          # zip/deflate path for the raw CLI executable.
+          if (Test-Path $archivePath) {
+            Remove-Item -Force $archivePath
+          }
+
+          tar.exe -cf $archivePath -C $stagedDir .
+
       - uses: actions/upload-artifact@v6
         with:
           name: windows-binaries-${{ matrix.target }}-${{ matrix.bundle }}
-          path: apps/cli/target/${{ matrix.target }}/release/staged-${{ matrix.bundle }}/*
+          path: apps/cli/target/${{ matrix.target }}/release/windows-binaries-${{ matrix.target }}-${{ matrix.bundle }}.tar
           if-no-files-found: error
+          compression-level: 0
 
   build-windows:
     needs: [tag-check, build-windows-binaries]
@@ -256,11 +271,21 @@ jobs:
           name: windows-binaries-${{ matrix.target }}-primary
           path: apps/cli/target/${{ matrix.target }}/release
 
+      - name: Extract prebuilt Windows primary binaries
+        run: |
+          tar -xf "target/${{ matrix.target }}/release/windows-binaries-${{ matrix.target }}-primary.tar" \
+            -C "target/${{ matrix.target }}/release"
+
       - name: Download prebuilt Windows helper binaries
         uses: actions/download-artifact@v8
         with:
           name: windows-binaries-${{ matrix.target }}-helpers
           path: apps/cli/target/${{ matrix.target }}/release
+
+      - name: Extract prebuilt Windows helper binaries
+        run: |
+          tar -xf "target/${{ matrix.target }}/release/windows-binaries-${{ matrix.target }}-helpers.tar" \
+            -C "target/${{ matrix.target }}/release"
 
       - name: Verify Windows binaries
         run: |
