@@ -4,7 +4,7 @@ import { recordCliHistogramMetric } from "../../../observability";
 import { applyQueryResultWindow } from "../../../query/result-window";
 import { paginateItems } from "../../../read-controls-policy";
 import { createCliConnectProblemForQueryWorkflowResult } from "../errors";
-import { buildCliPage, parseCliPaginatedReadControls } from "../read-controls";
+import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
 import { resolveCliQueryRequestState } from "./context";
@@ -28,7 +28,7 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
     const resolved = yield* Result.await(
       resolveCliQueryRequestState(request, context)
     );
-    const readControls = yield* parseCliPaginatedReadControls(request);
+    const readControls = yield* parseCliPageRequest(request.page);
     const startedAtMs = Date.now();
     const result = yield* Result.await(
       runCliQueryExecutionWorkflowResult({

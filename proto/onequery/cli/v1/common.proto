@@ -10,6 +10,17 @@ message CliPage {
   uint64 returned_count = 2;
 }
 
+// Comment: request pagination lives in a dedicated message so generated
+// clients preserve the "page omitted" vs "page present" boundary explicitly
+// across language runtimes.
+message CliPageRequest {
+  uint32 limit = 1 [
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 100
+  ];
+  string cursor = 2 [(buf.validate.field).string.min_len = 1];
+}
+
 message CliSanitization {
   string profile = 1 [(buf.validate.field).string.min_len = 1];
   repeated string sanitized_paths = 2 [(buf.validate.field).repeated.items.string.min_len = 1];

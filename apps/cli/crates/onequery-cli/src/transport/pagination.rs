@@ -2,8 +2,11 @@ use onequery_cli_core::error::ErrorStage;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::conversion_failure;
+use crate::transport::api_failure::try_into_option;
 use crate::transport::generated::types;
 use crate::transport::read_controls::PageInfo;
+use crate::transport::read_controls::SinglePageReadControls;
+use buffa::MessageField;
 
 pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
     PageInfo {
@@ -30,15 +33,36 @@ pub(crate) fn optional_page_size(
         .transpose()
 }
 
+pub(crate) fn page_request_from_controls(
+    controls: SinglePageReadControls,
+    stage: ErrorStage,
+) -> Result<MessageField<types::CliPageRequest>, ApiFailure> {
+    let cursor = try_into_option(controls.cursor.as_deref(), stage)?;
+    let limit = optional_page_size(controls.page_size, stage)?;
+
+    Ok(match (limit, cursor) {
+        (None, None) => MessageField::none(),
+        (limit, cursor) => MessageField::some(types::CliPageRequest {
+            limit,
+            cursor,
+            ..Default::default()
+        }),
+    })
+}
+
 #[cfg(test)]
 mod tests {
+    use buffa::MessageField;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::api_failure::conversion_failure;
+    use crate::transport::generated::types;
+    use crate::transport::read_controls::SinglePageReadControls;
 
     use super::optional_page_size;
     use super::page_info_from_generated;
+    use super::page_request_from_controls;
 
     #[test]
     fn optional_page_size_rejects_zero() {
@@ -51,6 +75,36 @@ mod tests {
                 ErrorStage::ResolveOrg,
                 "page size must be greater than zero"
             )
+        );
+    }
+
+    #[test]
+    fn page_request_from_controls_omits_page_when_no_controls_are_set() {
+        let page =
+            page_request_from_controls(SinglePageReadControls::default(), ErrorStage::ResolveOrg)
+                .expect("expected empty controls to parse");
+
+        assert_eq!(page, MessageField::none());
+    }
+
+    #[test]
+    fn page_request_from_controls_preserves_explicit_limit_and_cursor() {
+        let page = page_request_from_controls(
+            SinglePageReadControls {
+                page_size: Some(25),
+                cursor: Some("cursor_2".to_owned()),
+            },
+            ErrorStage::ResolveOrg,
+        )
+        .expect("expected explicit controls to parse");
+
+        assert_eq!(
+            page,
+            MessageField::some(types::CliPageRequest {
+                limit: Some(25),
+                cursor: Some("cursor_2".to_owned()),
+                ..Default::default()
+            })
         );
     }
 

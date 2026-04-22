@@ -1,3 +1,4 @@
+import { isFieldSet } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Result } from "better-result";
 
@@ -5,12 +6,23 @@ import {
   CLI_DEFAULT_PAGE_LIMIT,
   parsePageCursor,
 } from "../../read-controls-policy";
-import { CliPageSchema } from "../gen/onequery/cli/v1/common_pb";
+import {
+  CliPageRequestSchema,
+  CliPageSchema,
+} from "../gen/onequery/cli/v1/common_pb";
+import type { CliPageRequest } from "../gen/onequery/cli/v1/common_pb";
 import { cliServiceErr } from "./result";
-import type { CliPaginatedQueryInput } from "./types";
 
-export function parseCliPaginatedReadControls(input: CliPaginatedQueryInput) {
-  const offset = parsePageCursor(input.cursor);
+export function parseCliPageRequest(page: CliPageRequest | undefined) {
+  const cursor =
+    page && isFieldSet(page, CliPageRequestSchema.field.cursor)
+      ? page.cursor
+      : undefined;
+  const limit =
+    page && isFieldSet(page, CliPageRequestSchema.field.limit)
+      ? page.limit
+      : undefined;
+  const offset = parsePageCursor(cursor);
   if (offset.isErr()) {
     return cliServiceErr({
       detail: offset.error.message,
@@ -19,7 +31,7 @@ export function parseCliPaginatedReadControls(input: CliPaginatedQueryInput) {
   }
 
   return Result.ok({
-    limit: input.limit ?? CLI_DEFAULT_PAGE_LIMIT,
+    limit: limit ?? CLI_DEFAULT_PAGE_LIMIT,
     offset: offset.value,
   });
 }

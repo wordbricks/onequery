@@ -116,7 +116,9 @@ function cliRuntimeMiddleware<
 function createCliRouter<
   Variables extends Record<string, unknown> = Record<string, never>,
 >() {
-  return new Hono<CliRouteEnv<Variables>>();
+  return new Hono<CliRouteEnv<Variables>>().notFound((c) =>
+    c.text("404 Not Found", 404)
+  );
 }
 
 export function createCliApp<

@@ -6,11 +6,7 @@ import "buf/validate/validate.proto";
 import "onequery/cli/v1/common.proto";
 
 message ListOrganizationsRequest {
-  uint32 limit = 1 [
-    (buf.validate.field).uint32.gte = 1,
-    (buf.validate.field).uint32.lte = 100
-  ];
-  string cursor = 2 [(buf.validate.field).string.min_len = 1];
+  CliPageRequest page = 1;
 }
 
 message ListOrganizationsResponse {

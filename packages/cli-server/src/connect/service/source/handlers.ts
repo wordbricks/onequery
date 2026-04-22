@@ -27,7 +27,7 @@ import {
   createCliConnectSourceNameConflictProblem,
   createCliConnectSourceNotFoundProblem,
 } from "../errors";
-import { buildCliPage, parseCliPaginatedReadControls } from "../read-controls";
+import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod, CliServiceResult } from "../result";
 import { cliServiceErr, liftCliServiceMethod } from "../result";
 import { fromCliSourceProvider } from "../source-provider";
@@ -60,7 +60,7 @@ const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
         context
       )
     );
-    const readControls = yield* parseCliPaginatedReadControls(request);
+    const readControls = yield* parseCliPageRequest(request.page);
     const sources = await runCliListSourcesEffect({
       db: access.c.var.storage.db,
       effect: {

@@ -51,7 +51,6 @@ function getClientIp(c: {
 function shouldSkipPath(path: string): boolean {
   // Normalize the path to prevent traversal attacks
   const normalizedPath = new URL(path, "http://localhost").pathname;
-  const cliDeviceAuthPrefix = "/api/cli/auth/device-authorizations";
 
   return (
     normalizedPath === "/api/health" ||
@@ -59,8 +58,6 @@ function shouldSkipPath(path: string): boolean {
     normalizedPath.startsWith("/api/webhook/") ||
     normalizedPath === "/api/webhooks" ||
     normalizedPath.startsWith("/api/webhooks/") ||
-    normalizedPath === cliDeviceAuthPrefix ||
-    normalizedPath.startsWith(`${cliDeviceAuthPrefix}/`) ||
     normalizedPath === "/api/auth" ||
     normalizedPath.startsWith("/api/auth/")
   );
@@ -88,6 +85,12 @@ export function apiRateLimiter(input: { enabled: boolean }): MiddlewareHandler<{
       middleware = rateLimiter({
         windowMs: 60_000, // 1 minute
         limit: 100,
+        message: {
+          error: {
+            code: "rate_limited",
+            message: "Too many requests, please try again later.",
+          },
+        },
         standardHeaders: "draft-6",
         keyGenerator: (rateLimitContext) => {
           const userId = rateLimitContext.get("session")?.user?.id;
