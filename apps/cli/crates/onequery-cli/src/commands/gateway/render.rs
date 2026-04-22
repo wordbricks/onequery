@@ -4,9 +4,8 @@ use crate::config::self_host::SelfHostConfig;
 use crate::config::self_host::SelfHostRuntimePaths;
 use crate::output::CommandOutput;
 
-use super::super::is_process_running;
 use super::runtime::LogPreview;
-use super::runtime::read_runtime_pid;
+use super::runtime::read_managed_runtime_pid;
 use super::state::GatewayRuntimeState;
 
 #[cfg(test)]
@@ -81,16 +80,6 @@ pub(super) fn render_gateway_status_output(state: &GatewayRuntimeState) -> Comma
             format!("Bootstrapped: {}", yes_no_label(state.bootstrapped)),
             format!("Listen: {listen}"),
             format!("Runtime: {runtime_status}"),
-            format!(
-                "PGlite directory present: {}",
-                yes_no_label(state.pglite_dir_present)
-            ),
-            format!("Log file present: {}", yes_no_label(state.log_file_present)),
-            format!("PID file present: {}", yes_no_label(state.pid_file_present)),
-            format!(
-                "Lock file present: {}",
-                yes_no_label(state.lock_file_present)
-            ),
         ],
         json!({
             "kind": "gateway-status",
@@ -110,7 +99,6 @@ pub(super) fn render_gateway_logs_output(
     let mut lines = vec![
         "Gateway logs".to_owned(),
         format!("Log path: {}", state.paths.server_log_path.display()),
-        format!("Log file present: {}", yes_no_label(state.log_file_present)),
     ];
 
     if preview.lines.is_empty() {
@@ -159,10 +147,10 @@ fn server_json(config: &SelfHostConfig) -> serde_json::Value {
 }
 
 pub(super) fn runtime_state_json(state: &GatewayRuntimeState) -> serde_json::Value {
-    let running = read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
+    let running = read_managed_runtime_pid(&state.paths, "onequery gateway status")
         .ok()
         .flatten()
-        .is_some_and(is_process_running);
+        .is_some();
     json!({
         "running": running,
         "status": if running {
@@ -182,10 +170,10 @@ pub(super) fn runtime_state_json(state: &GatewayRuntimeState) -> serde_json::Val
 }
 
 fn runtime_status_label(state: &GatewayRuntimeState) -> &'static str {
-    if read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
+    if read_managed_runtime_pid(&state.paths, "onequery gateway status")
         .ok()
         .flatten()
-        .is_some_and(is_process_running)
+        .is_some()
     {
         return "running";
     }

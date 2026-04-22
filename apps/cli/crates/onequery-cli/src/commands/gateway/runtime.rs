@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
@@ -9,8 +10,10 @@ use std::process::Stdio;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Deserialize;
 use serde_json::json;
 
+use crate::config::self_host::SelfHostRuntimePaths;
 use crate::config::self_host::write_self_host_launch_config;
 use crate::local_target::runtime_accepting_connections;
 use crate::local_target::runtime_probe_host;
@@ -37,6 +40,32 @@ use super::state::GatewayStateAccessMode;
 use super::state::resolve_runtime_state;
 
 const MINIMUM_NODE_MAJOR_VERSION: u32 = 22;
+const RUNTIME_STATE_FILENAME: &str = "server.state.json";
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeLockRecord {
+    pid: u32,
+    acquired_at: String,
+    data_dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeStateRecord {
+    pid: u32,
+    phase: RuntimeLifecyclePhase,
+    updated_at: String,
+    data_dir: String,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum RuntimeLifecyclePhase {
+    Starting,
+    Ready,
+    Stopping,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct LogPreview {
@@ -178,11 +207,12 @@ pub(super) fn run_gateway_background(
         )
     })?;
     let child_pid = child.id();
+    let state_path = runtime_state_path(state.paths.run_dir.as_path());
 
     wait_for_background_runtime_start(
         &mut child,
         BackgroundRuntimeStartCheck {
-            pid_path: state.paths.pid_path.as_path(),
+            state_path: state_path.as_path(),
             log_path: state.paths.server_log_path.as_path(),
             expected_pid: child_pid,
             listen_host: &config.server.listen_host,
@@ -224,8 +254,7 @@ fn ensure_runtime_not_running(
     state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let running_pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?
-        .filter(|pid| is_process_running(*pid));
+    let running_pid = read_managed_runtime_pid(&state.paths, command_line)?;
 
     if let Some(pid) = running_pid {
         return Err(CliError::new(
@@ -469,7 +498,7 @@ fn configure_background_process(child: &mut ProcessCommand) {
 }
 
 struct BackgroundRuntimeStartCheck<'a> {
-    pid_path: &'a Path,
+    state_path: &'a Path,
     log_path: &'a Path,
     expected_pid: u32,
     listen_host: &'a str,
@@ -482,17 +511,10 @@ fn wait_for_background_runtime_start(
     child: &mut Child,
     check: BackgroundRuntimeStartCheck<'_>,
 ) -> Result<(), CliError> {
-    // Comment: background start returns only after the runtime rewrites the pid
-    // file with the launched process ID and starts accepting connections, so
-    // `gateway start` does not report success before the packaged runtime has
-    // actually finished its own bootstrap work.
+    // Comment: background start now waits for an explicit runtime-owned ready
+    // state from the launched pid instead of inferring success from whichever
+    // process happens to accept TCP on the configured port.
     for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
-        if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid)
-            && runtime_accepting_connections(check.listen_host, check.listen_port)
-        {
-            return Ok(());
-        }
-
         if let Some(status) = child.try_wait().map_err(|error| {
             CliError::new(
                 "failed while monitoring self-host background start",
@@ -517,6 +539,15 @@ fn wait_for_background_runtime_start(
             ));
         }
 
+        if runtime_ready_state_reported_during_startup_poll(
+            check.state_path,
+            check.expected_pid,
+            check.command_line,
+        )? && runtime_accepting_connections(check.listen_host, check.listen_port)
+        {
+            return Ok(());
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(
             GATEWAY_START_POLL_INTERVAL_MS,
         ));
@@ -524,14 +555,23 @@ fn wait_for_background_runtime_start(
 
     let probe_host = runtime_probe_host(check.listen_host);
 
-    if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid) {
+    let runtime_state = read_runtime_state_record(check.state_path, check.command_line)?;
+
+    if runtime_state
+        .as_ref()
+        .is_some_and(|state| state.pid == check.expected_pid)
+    {
+        let phase = runtime_state
+            .as_ref()
+            .map(|state| runtime_phase_label(state.phase))
+            .unwrap_or("unknown");
         return Err(CliError::new(
             "self-host server did not report startup",
             check.command_line,
             ErrorStage::Internal,
             format!(
-                "{probe_host}:{} did not accept connections after pid {} started",
-                check.listen_port, check.expected_pid
+                "{probe_host}:{} did not accept connections after pid {} reported {phase}",
+                check.listen_port, check.expected_pid,
             ),
             vec![
                 format!("check log file {}", check.log_path.display()),
@@ -545,8 +585,8 @@ fn wait_for_background_runtime_start(
         check.command_line,
         ErrorStage::Internal,
         format!(
-            "pid file {} did not report pid {}",
-            check.pid_path.display(),
+            "runtime state file {} did not report pid {} as ready",
+            check.state_path.display(),
             check.expected_pid
         ),
         vec![
@@ -567,6 +607,14 @@ fn describe_exit_status(status: ExitStatus) -> String {
     )
 }
 
+fn runtime_phase_label(phase: RuntimeLifecyclePhase) -> &'static str {
+    match phase {
+        RuntimeLifecyclePhase::Starting => "starting",
+        RuntimeLifecyclePhase::Ready => "ready",
+        RuntimeLifecyclePhase::Stopping => "stopping",
+    }
+}
+
 fn is_expected_termination(status: ExitStatus) -> bool {
     matches!(
         exit_signal_label(status).as_deref(),
@@ -578,8 +626,7 @@ pub(super) fn stop_runtime(
     state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
-    let pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?;
-    let running_pid = pid.filter(|pid| is_process_running(*pid));
+    let running_pid = read_managed_runtime_pid(&state.paths, command_line)?;
 
     if let Some(pid) = running_pid {
         mark_stop_requested(state.paths.stop_request_path.as_path(), pid, command_line)?;
@@ -689,6 +736,131 @@ pub(super) fn read_runtime_pid(path: &Path, command_line: &str) -> Result<Option
             format!("{error} ({})", path.display()),
             vec!["remove the stale pid file and retry".to_owned()],
         )
+    })
+}
+
+pub(super) fn read_managed_runtime_pid(
+    paths: &SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<Option<u32>, CliError> {
+    let state_path = runtime_state_path(paths.run_dir.as_path());
+    let runtime_state = read_runtime_state_record(state_path.as_path(), command_line)?;
+
+    if let Some(lock_record) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)? {
+        if is_process_running(lock_record.pid)
+            && runtime_record_matches_data_dir(&lock_record.data_dir, paths.data_dir.as_path())
+            && runtime_state_matches_pid(
+                runtime_state.as_ref(),
+                lock_record.pid,
+                paths.data_dir.as_path(),
+            )
+        {
+            return Ok(Some(lock_record.pid));
+        }
+    }
+
+    Ok(
+        read_runtime_pid(paths.pid_path.as_path(), command_line)?.filter(|pid| {
+            is_process_running(*pid)
+                && runtime_state_matches_pid(runtime_state.as_ref(), *pid, paths.data_dir.as_path())
+        }),
+    )
+}
+
+fn read_runtime_lock_record(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeLockRecord>, CliError> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Ok(None);
+    };
+
+    let trimmed = contents.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    serde_json::from_str::<RuntimeLockRecord>(trimmed)
+        .map(Some)
+        .map_err(|error| {
+            CliError::new(
+                "failed to parse runtime lock file",
+                command_line,
+                ErrorStage::LoadConfig,
+                format!("{error} ({})", path.display()),
+                vec!["remove the stale lock file and retry".to_owned()],
+            )
+        })
+}
+
+fn runtime_state_path(run_dir: &Path) -> PathBuf {
+    run_dir.join(RUNTIME_STATE_FILENAME)
+}
+
+fn read_runtime_state_record(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeStateRecord>, CliError> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Ok(None);
+    };
+
+    let trimmed = contents.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    serde_json::from_str::<RuntimeStateRecord>(trimmed)
+        .map(Some)
+        .map_err(|error| {
+            CliError::new(
+                "failed to parse runtime state file",
+                command_line,
+                ErrorStage::LoadConfig,
+                format!("{error} ({})", path.display()),
+                vec!["remove the stale runtime state file and retry".to_owned()],
+            )
+        })
+}
+
+fn read_runtime_state_record_during_startup_poll(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeStateRecord>, CliError> {
+    match read_runtime_state_record(path, command_line) {
+        Ok(record) => Ok(record),
+        Err(_) => {
+            // Comment: startup polling can race the runtime replacing this file,
+            // so malformed reads are retried instead of aborting launch.
+            Ok(None)
+        }
+    }
+}
+
+fn runtime_ready_state_reported_during_startup_poll(
+    path: &Path,
+    expected_pid: u32,
+    command_line: &str,
+) -> Result<bool, CliError> {
+    Ok(
+        read_runtime_state_record_during_startup_poll(path, command_line)?.is_some_and(|state| {
+            state.pid == expected_pid && state.phase == RuntimeLifecyclePhase::Ready
+        }),
+    )
+}
+
+fn runtime_record_matches_data_dir(record_data_dir: &str, expected_data_dir: &Path) -> bool {
+    Path::new(record_data_dir) == expected_data_dir
+}
+
+fn runtime_state_matches_pid(
+    state: Option<&RuntimeStateRecord>,
+    expected_pid: u32,
+    expected_data_dir: &Path,
+) -> bool {
+    state.is_some_and(|state| {
+        state.pid == expected_pid
+            && runtime_record_matches_data_dir(&state.data_dir, expected_data_dir)
     })
 }
 
@@ -805,5 +977,115 @@ fn exit_signal_label(status: ExitStatus) -> Option<String> {
     {
         let _ = status;
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use pretty_assertions::assert_eq;
+    use tempfile::tempdir;
+
+    use super::RUNTIME_STATE_FILENAME;
+    use super::read_managed_runtime_pid;
+    use super::read_runtime_state_record;
+    use super::runtime_ready_state_reported_during_startup_poll;
+    use crate::config::self_host::SelfHostRuntimePaths;
+
+    fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
+        let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
+        let paths = SelfHostRuntimePaths::for_test(
+            temp_dir.path().join("config").join("self-host"),
+            temp_dir.path().join("data"),
+        );
+
+        fs::create_dir_all(&paths.run_dir)
+            .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
+
+        (temp_dir, paths)
+    }
+
+    #[test]
+    fn startup_poll_treats_malformed_runtime_state_as_retryable() {
+        let (_temp_dir, paths) = test_paths();
+        let state_path = paths.run_dir.join(RUNTIME_STATE_FILENAME);
+
+        fs::write(&state_path, "{\"pid\":")
+            .unwrap_or_else(|error| panic!("expected malformed state write: {error}"));
+
+        assert_eq!(
+            runtime_ready_state_reported_during_startup_poll(
+                state_path.as_path(),
+                4242,
+                "onequery gateway start",
+            )
+            .unwrap_or_else(|error| panic!("expected retryable state read: {error}")),
+            false
+        );
+    }
+
+    #[test]
+    fn strict_runtime_state_reads_still_report_malformed_json() {
+        let (_temp_dir, paths) = test_paths();
+        let state_path = paths.run_dir.join(RUNTIME_STATE_FILENAME);
+
+        fs::write(&state_path, "{\"pid\":")
+            .unwrap_or_else(|error| panic!("expected malformed state write: {error}"));
+
+        let error = read_runtime_state_record(state_path.as_path(), "onequery gateway status")
+            .expect_err("expected malformed runtime state to fail strict reads");
+
+        assert_eq!(error.title.as_str(), "failed to parse runtime state file");
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_ignores_live_lock_without_matching_runtime_state() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.lock_path,
+            format!(
+                "{{\"pid\":{pid},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected lock write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            None
+        );
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_accepts_live_lock_with_matching_runtime_state() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.lock_path,
+            format!(
+                "{{\"pid\":{pid},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected lock write: {error}"));
+        fs::write(
+            paths.run_dir.join(RUNTIME_STATE_FILENAME),
+            format!(
+                "{{\"pid\":{pid},\"phase\":\"ready\",\"updatedAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+                paths.data_dir.display()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected state write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            Some(pid)
+        );
     }
 }

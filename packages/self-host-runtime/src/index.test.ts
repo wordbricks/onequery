@@ -11,14 +11,15 @@ import type { DatabasePreparationResult } from "@onequery/db/server";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createStartServer } from "./index";
 import type { StartServerDependencies } from "./index";
-import { loadStartupLaunchConfig } from "./startup";
+import { loadStartupLaunchConfigResult } from "./startup";
 
 function writeLaunchConfigFile(value: unknown): string {
-  const root = mkdtempSync(join(tmpdir(), "onequery-bun-index-test-"));
+  const root = mkdtempSync(join(tmpdir(), "onequery-self-host-index-test-"));
   const launchConfigPath = join(root, "launch.json");
 
   writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
@@ -27,7 +28,7 @@ function writeLaunchConfigFile(value: unknown): string {
 }
 
 function createTempSelfHostRuntimePaths() {
-  const root = mkdtempSync(join(tmpdir(), "onequery-bun-runtime-test-"));
+  const root = mkdtempSync(join(tmpdir(), "onequery-self-host-runtime-test-"));
 
   // Comment: self-host rate-limit storage is filesystem-backed, so this test
   // must not reuse the shared defaults from @onequery/config/testing.
@@ -45,10 +46,12 @@ function createMocks() {
   const createApp: StartServerDependencies["createApp"] = vi.fn(() => ({
     fetch: vi.fn(async () => new Response("ok")),
   }));
-  const createSpaAssetBinding: StartServerDependencies["createSpaAssetBinding"] =
-    vi.fn(() => ({
-      fetch: vi.fn(async () => new Response("ok")),
-    }));
+  const createSpaAssetBindingResult: StartServerDependencies["createSpaAssetBindingResult"] =
+    vi.fn(() =>
+      Result.ok({
+        fetch: vi.fn(async () => new Response("ok")),
+      })
+    );
   const createServerRuntimeConfig: StartServerDependencies["createServerRuntimeConfig"] =
     vi.fn(
       (launchConfig): ServerRuntimeConfig => ({
@@ -94,30 +97,36 @@ function createMocks() {
       (_runtime, apiRateLimitStorage): ServerStorage =>
         ({ apiRateLimitStorage }) as ServerStorage
     );
-  const prepareRuntimeDatabase: StartServerDependencies["prepareRuntimeDatabase"] =
-    vi.fn(
-      async (): Promise<DatabasePreparationResult> => ({
+  const prepareRuntimeDatabaseResult: StartServerDependencies["prepareRuntimeDatabaseResult"] =
+    vi.fn(async () =>
+      Result.ok({
         engine: "postgres",
         mode: "migrate",
-      })
+      } satisfies DatabasePreparationResult)
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
-  const acquireRuntimeLifecycleLease: StartServerDependencies["acquireRuntimeLifecycleLease"] =
-    vi.fn(async () => ({
-      paths: {
-        dataDir: "/tmp/onequery/data",
-        lockPath: "/tmp/onequery/run/server.lock",
-        logsDir: "/tmp/onequery/logs",
-        pidPath: "/tmp/onequery/run/server.pid",
-      },
-      release: releaseLifecycleLease,
-    }));
+  const transitionLifecycleLease = vi.fn(async () => undefined);
+  const acquireRuntimeLifecycleLeaseResult: StartServerDependencies["acquireRuntimeLifecycleLeaseResult"] =
+    vi.fn(async () =>
+      Result.ok({
+        paths: {
+          dataDir: "/tmp/onequery/data",
+          lockPath: "/tmp/onequery/run/server.lock",
+          logsDir: "/tmp/onequery/logs",
+          pidPath: "/tmp/onequery/run/server.pid",
+        },
+        transition: transitionLifecycleLease,
+        release: releaseLifecycleLease,
+      })
+    );
   const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
     vi.fn(async () => undefined);
-  const attachGracefulShutdownHandlers = vi.fn();
-  const toLifecyclePaths: StartServerDependencies["toLifecyclePaths"] = vi.fn(
-    (launchConfig) => launchConfig.runtimePaths
-  );
+  const shutdownController = {
+    dispose: vi.fn(),
+    shutdown: vi.fn(async () => undefined),
+  };
+  const attachGracefulShutdownHandlers: StartServerDependencies["attachGracefulShutdownHandlers"] =
+    vi.fn(() => shutdownController);
   const serve: StartServerDependencies["serve"] = vi.fn(
     ({ hostname, port }) => ({
       hostname,
@@ -127,17 +136,18 @@ function createMocks() {
   );
 
   return {
-    acquireRuntimeLifecycleLease,
+    acquireRuntimeLifecycleLeaseResult,
     appendLifecycleLog,
     attachGracefulShutdownHandlers,
     createApp,
     createServerStorage,
     createServerRuntimeConfig,
-    createSpaAssetBinding,
-    prepareRuntimeDatabase,
+    createSpaAssetBindingResult,
+    prepareRuntimeDatabaseResult,
     releaseLifecycleLease,
+    shutdownController,
+    transitionLifecycleLease,
     serve,
-    toLifecyclePaths,
   };
 }
 
@@ -145,17 +155,17 @@ function createDependencies(
   mocks: ReturnType<typeof createMocks>
 ): StartServerDependencies {
   return {
-    acquireRuntimeLifecycleLease: mocks.acquireRuntimeLifecycleLease,
+    acquireRuntimeLifecycleLeaseResult:
+      mocks.acquireRuntimeLifecycleLeaseResult,
     appendLifecycleLog: mocks.appendLifecycleLog,
     attachGracefulShutdownHandlers: mocks.attachGracefulShutdownHandlers,
     createApp: mocks.createApp,
     createServerStorage: mocks.createServerStorage,
     createServerRuntimeConfig: mocks.createServerRuntimeConfig,
-    createSpaAssetBinding: mocks.createSpaAssetBinding,
-    loadStartupLaunchConfig,
-    prepareRuntimeDatabase: mocks.prepareRuntimeDatabase,
+    createSpaAssetBindingResult: mocks.createSpaAssetBindingResult,
+    loadStartupLaunchConfigResult,
+    prepareRuntimeDatabaseResult: mocks.prepareRuntimeDatabaseResult,
     serve: mocks.serve,
-    toLifecyclePaths: mocks.toLifecyclePaths,
   };
 }
 
@@ -186,7 +196,7 @@ describe("startServer", () => {
         publicOrigin: "http://localhost:4545",
       })
     );
-    expect(mocks.prepareRuntimeDatabase).toHaveBeenCalledWith({
+    expect(mocks.prepareRuntimeDatabaseResult).toHaveBeenCalledWith({
       databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
       migrationsDir: "/tmp/migrations",
     });
@@ -201,7 +211,7 @@ describe("startServer", () => {
       hostname: "127.0.0.1",
       port: 4555,
     });
-    expect(mocks.acquireRuntimeLifecycleLease).not.toHaveBeenCalled();
+    expect(mocks.acquireRuntimeLifecycleLeaseResult).not.toHaveBeenCalled();
   });
 
   it("starts from a serialized self-host launch config file", async () => {
@@ -237,8 +247,13 @@ describe("startServer", () => {
       count: 1,
       firstHitAt: 1_742_861_200_000,
     });
-    expect(mocks.acquireRuntimeLifecycleLease).toHaveBeenCalledWith(
-      runtimePaths,
+    expect(mocks.acquireRuntimeLifecycleLeaseResult).toHaveBeenCalledWith(
+      {
+        dataDir: runtimePaths.dataDir,
+        lockPath: runtimePaths.lockPath,
+        logsDir: runtimePaths.logsDir,
+        pidPath: runtimePaths.pidPath,
+      },
       expect.objectContaining({
         logWriter: expect.objectContaining({
           append: expect.any(Function),
@@ -248,18 +263,54 @@ describe("startServer", () => {
     expect(mocks.attachGracefulShutdownHandlers).toHaveBeenCalledWith(
       expect.objectContaining({
         lease: expect.objectContaining({
+          transition: expect.any(Function),
           release: expect.any(Function),
         }),
         server,
       })
     );
+    expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith("ready");
     expect(mocks.appendLifecycleLog).toHaveBeenCalledWith(
-      runtimePaths,
+      {
+        dataDir: runtimePaths.dataDir,
+        lockPath: runtimePaths.lockPath,
+        logsDir: runtimePaths.logsDir,
+        pidPath: runtimePaths.pidPath,
+      },
       "[onequery-server] listening on http://127.0.0.1:5656"
     );
     expect(server).toMatchObject({
       hostname: "127.0.0.1",
       port: 5656,
+    });
+  });
+
+  it("disposes graceful shutdown handlers when startup cleanup runs after handler attachment", async () => {
+    const runtimePaths = createTempSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+      })
+    );
+    mocks.transitionLifecycleLease.mockRejectedValueOnce(
+      new Error("ready transition failed")
+    );
+
+    await expect(
+      startServer({
+        launchConfigPath,
+      })
+    ).rejects.toMatchObject({
+      _tag: "StartServerWorkflowError",
+      step: "transition_lifecycle_ready",
+    });
+
+    expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.releaseLifecycleLease).toHaveBeenCalledWith({
+      reason: "startup_failure",
+      stopServer: false,
     });
   });
 });

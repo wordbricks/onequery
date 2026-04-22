@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -343,12 +344,15 @@ function summarizeListOrganizationsResponse(
 function summarizeGetOrganizationResponse(
   value: Awaited<ReturnType<CliConnectClient["getOrganization"]>>
 ): JsonObject {
+  // Comment: Connect-generated repeated enum fields in this smoke path are
+  // iterable but do not consistently expose Array.prototype helpers.
   return {
-    capabilities: value.capabilities.map(
+    capabilities: Array.from(
+      value.capabilities,
       (capability) => OrgCapability[capability]
     ),
     name: value.name,
-    roles: [...value.roles],
+    roles: Array.from(value.roles),
     slug: value.slug,
   };
 }
@@ -824,6 +828,141 @@ describe("CLI self-host smoke", () => {
         },
       });
     } finally {
+      runPackagedCliCommand({
+        args: ["gateway", "stop"],
+        env,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("stops the packaged gateway when the pid file is missing but the lock lease remains", async () => {
+    const { baseUrl, env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-missing-gateway-pid-home-");
+    const pidPath = join(homeDir, "data", "run", "server.pid");
+    const lockPath = join(homeDir, "data", "run", "server.lock");
+
+    writeSelfHostConfig(homeDir, port);
+
+    try {
+      const start = runPackagedCliJsonCommand({
+        args: ["gateway", "start"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(start.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-start",
+          processStarted: true,
+        },
+      });
+
+      await waitForBootstrap(baseUrl);
+      rmSync(pidPath);
+
+      const statusWhilePidMissing = runPackagedCliJsonCommand({
+        args: ["gateway", "status"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(statusWhilePidMissing.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-status",
+          runtimeState: {
+            running: true,
+            status: "running",
+          },
+        },
+      });
+
+      const stop = runPackagedCliJsonCommand({
+        args: ["gateway", "stop"],
+        env,
+        stagedBundleRoot,
+      });
+      expect(stop.output).toMatchObject({
+        ok: true,
+        data: {
+          kind: "gateway-stop",
+          stopIssued: true,
+          stoppedPid: expect.any(Number),
+          runtimeState: {
+            running: false,
+            status: "not_running",
+          },
+        },
+      });
+
+      await waitForGatewayShutdown(baseUrl);
+      expect(existsSync(pidPath)).toBe(false);
+      expect(existsSync(lockPath)).toBe(false);
+    } finally {
+      runPackagedCliCommand({
+        args: ["gateway", "stop"],
+        env,
+        stagedBundleRoot,
+      });
+      rmSync(homeDir, {
+        force: true,
+        recursive: true,
+      });
+    }
+  }, 240_000);
+
+  it("fails gateway start when another process already listens on the configured port", async () => {
+    const { env, homeDir, port, stagedBundleRoot } =
+      await prepareSelfHostRuntime("onequery-cli-occupied-gateway-port-home-");
+    const pidPath = join(homeDir, "data", "run", "server.pid");
+    const lockPath = join(homeDir, "data", "run", "server.lock");
+    const logPath = join(homeDir, "data", "logs", "server.log");
+    const portBlocker = createServer();
+
+    writeSelfHostConfig(homeDir, port);
+
+    await new Promise<void>((resolve, reject) => {
+      portBlocker.once("error", reject);
+      portBlocker.listen(port, "127.0.0.1", () => {
+        portBlocker.removeListener("error", reject);
+        resolve();
+      });
+    });
+
+    try {
+      const start = runPackagedCliCommand({
+        args: ["gateway", "start"],
+        env,
+        stagedBundleRoot,
+      });
+      const parsedOutput = parsePackagedCliJsonCommandOutput(start.stdout);
+
+      expect(start.status).not.toBe(0);
+      expect(parsedOutput).toMatchObject({
+        command: "gateway start",
+        error: {
+          title: "self-host server exited during background start",
+        },
+        ok: false,
+      });
+      expect(existsSync(pidPath)).toBe(false);
+      expect(existsSync(lockPath)).toBe(false);
+      expect(readFileSync(logPath, "utf8")).toContain("EADDRINUSE");
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        portBlocker.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve();
+        });
+      });
       runPackagedCliCommand({
         args: ["gateway", "stop"],
         env,

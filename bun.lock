@@ -287,6 +287,7 @@
         "@onequery/db": "workspace:*",
         "@onequery/installer": "workspace:*",
         "@onequery/server": "workspace:*",
+        "antiox": "0.1.4",
         "better-result": "catalog:",
         "hono": "catalog:",
         "hono-problem-details": "catalog:",
@@ -1893,6 +1894,8 @@
     "ansi-styles": ["ansi-styles@4.3.0", "", { "dependencies": { "color-convert": "^2.0.1" } }, "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg=="],
 
     "ansis": ["ansis@4.2.0", "", {}, "sha512-HqZ5rWlFjGiV0tDm3UxxgNRqsOTniqoKZu0pIAfh7TZQMGuZK+hH0drySty0si0QXj1ieop4+SkSfPZBPPkHig=="],
+
+    "antiox": ["antiox@0.1.4", "", {}, "sha512-bJFuRhEeY/97c5eBOfcYBLPHPqGqp4YagLyXoo8Pn1CJdXKbyuNEdnmjuNr3JtVK6+s+N3RVYd62IQWBrVOMEw=="],
 
     "any-base": ["any-base@1.1.0", "", {}, "sha512-uMgjozySS8adZZYePpaWs8cxB9/kdzmpX6SgJZ+wbz1K5eYk5QMYDVJaZKhxyIHUdnnJkfR7SVgStgH7LkGUyg=="],
 

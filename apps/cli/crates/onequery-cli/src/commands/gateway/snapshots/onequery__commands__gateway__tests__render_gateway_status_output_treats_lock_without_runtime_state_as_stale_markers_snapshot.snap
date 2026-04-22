@@ -5,4 +5,4 @@ expression: "output.lines.join(\"\\n\")"
 Gateway status
 Bootstrapped: yes
 Listen: 127.0.0.1:5656
-Runtime: not_running
+Runtime: stale_markers
