@@ -54,6 +54,13 @@ interface RuntimeLockRecord {
   dataDir: string;
 }
 
+interface RuntimeStateRecord {
+  pid: number;
+  phase: RuntimeLifecyclePhase;
+  updatedAt: string;
+  dataDir: string;
+}
+
 interface LifecycleOptions {
   isProcessRunning?: (pid: number) => boolean;
   logWriter?: LifecycleLogWriter;
@@ -66,8 +73,11 @@ interface CleanupOptions {
   stopServer?: boolean;
 }
 
+export type RuntimeLifecyclePhase = "starting" | "ready" | "stopping";
+
 export interface RuntimeLifecycleLease {
   paths: SelfHostLifecyclePaths;
+  transition(phase: RuntimeLifecyclePhase): Promise<void>;
   release(options: CleanupOptions): Promise<void>;
 }
 
@@ -115,6 +125,10 @@ export async function acquireRuntimeLifecycleLease(
 
   await ensureRuntimeDirectories(paths);
   const lockRecord = await acquireLock(paths, resolved);
+  await writeRuntimeState(
+    paths,
+    createRuntimeStateRecord(lockRecord, "starting", resolved.now)
+  );
   await writeFile(paths.pidPath, `${lockRecord.pid}\n`, "utf8");
   await resolved.logWriter.append(
     `[runtime] acquired lifecycle lease pid=${lockRecord.pid} dataDir=${paths.dataDir}`
@@ -124,6 +138,12 @@ export async function acquireRuntimeLifecycleLease(
 
   return {
     paths,
+    async transition(phase) {
+      await writeRuntimeState(
+        paths,
+        createRuntimeStateRecord(lockRecord, phase, resolved.now)
+      );
+    },
     async release({ reason, stopServer }) {
       if (released) {
         return;
@@ -133,6 +153,7 @@ export async function acquireRuntimeLifecycleLease(
       await resolved.logWriter.append(
         `[runtime] releasing lifecycle lease pid=${lockRecord.pid} reason=${reason} stopServer=${stopServer ? "yes" : "no"}`
       );
+      await removeIfPresent(runtimeStatePath(paths));
       await removeIfPresent(paths.pidPath);
       await removeIfPresent(paths.lockPath);
     },
@@ -157,6 +178,17 @@ export function attachGracefulShutdownHandlers(args: {
       `[runtime] graceful shutdown requested reason=${reason}`
     );
 
+    const transitionResult = await Result.tryPromise({
+      try: async () => {
+        await args.lease.transition("stopping");
+      },
+      catch: (cause) =>
+        new RuntimeShutdownError({
+          cause,
+          message: `failed to record runtime shutdown state for ${reason}`,
+          reason,
+        }),
+    });
     const stopResult = await Result.tryPromise({
       try: async () => {
         await args.server.stop(true);
@@ -183,11 +215,12 @@ export function attachGracefulShutdownHandlers(args: {
         }),
     });
 
-    if (stopResult.isOk() && releaseResult.isOk()) {
+    if (transitionResult.isOk() && stopResult.isOk() && releaseResult.isOk()) {
       return Result.ok(undefined);
     }
 
     const causes = [
+      transitionResult.isErr() ? transitionResult.error.cause : null,
       stopResult.isErr() ? stopResult.error.cause : null,
       releaseResult.isErr() ? releaseResult.error.cause : null,
     ].filter((cause): cause is unknown => cause !== null);
@@ -410,6 +443,19 @@ function formatTimestamp(value: Date): string {
   return value.toISOString();
 }
 
+function createRuntimeStateRecord(
+  lockRecord: RuntimeLockRecord,
+  phase: RuntimeLifecyclePhase,
+  now: () => Date
+): RuntimeStateRecord {
+  return {
+    pid: lockRecord.pid,
+    phase,
+    updatedAt: now().toISOString(),
+    dataDir: lockRecord.dataDir,
+  };
+}
+
 export function toLifecyclePaths(
   launchConfig: Pick<ServerLaunchConfig, "mode" | "runtimePaths">
 ): SelfHostLifecyclePaths | null {
@@ -436,6 +482,20 @@ function isAlreadyExistsError(error: unknown): boolean {
     "code" in error &&
     error.code === "EEXIST"
   );
+}
+
+function runtimeStatePath(paths: SelfHostLifecyclePaths): string {
+  return join(dirname(paths.lockPath), "server.state.json");
+}
+
+async function writeRuntimeState(
+  paths: SelfHostLifecyclePaths,
+  record: RuntimeStateRecord
+): Promise<void> {
+  await writeFile(runtimeStatePath(paths), `${JSON.stringify(record)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
 }
 
 async function removeIfPresent(path: string): Promise<void> {

@@ -4,9 +4,8 @@ use crate::config::self_host::SelfHostConfig;
 use crate::config::self_host::SelfHostRuntimePaths;
 use crate::output::CommandOutput;
 
-use super::super::is_process_running;
 use super::runtime::LogPreview;
-use super::runtime::read_runtime_pid;
+use super::runtime::read_managed_runtime_pid;
 use super::state::GatewayRuntimeState;
 
 #[cfg(test)]
@@ -159,10 +158,10 @@ fn server_json(config: &SelfHostConfig) -> serde_json::Value {
 }
 
 pub(super) fn runtime_state_json(state: &GatewayRuntimeState) -> serde_json::Value {
-    let running = read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
+    let running = read_managed_runtime_pid(&state.paths, "onequery gateway status")
         .ok()
         .flatten()
-        .is_some_and(is_process_running);
+        .is_some();
     json!({
         "running": running,
         "status": if running {
@@ -182,10 +181,10 @@ pub(super) fn runtime_state_json(state: &GatewayRuntimeState) -> serde_json::Val
 }
 
 fn runtime_status_label(state: &GatewayRuntimeState) -> &'static str {
-    if read_runtime_pid(state.paths.pid_path.as_path(), "onequery gateway status")
+    if read_managed_runtime_pid(&state.paths, "onequery gateway status")
         .ok()
         .flatten()
-        .is_some_and(is_process_running)
+        .is_some()
     {
         return "running";
     }

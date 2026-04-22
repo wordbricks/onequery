@@ -89,6 +89,44 @@ fn render_gateway_status_output_snapshot() {
 }
 
 #[test]
+fn render_gateway_status_output_reports_running_from_lock_lease_snapshot() {
+    let test_dir =
+        std::env::temp_dir().join(format!("onequery-gateway-lock-status-{}", Uuid::new_v4()));
+    let paths = SelfHostRuntimePaths::for_test(
+        test_dir.join("config").join("self-host"),
+        test_dir.join("data"),
+    );
+
+    resolve_runtime_state_with_paths_for_test(
+        paths.clone(),
+        GatewayStateAccessMode::BootstrapIfMissing,
+        "onequery gateway",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
+    fs::write(
+        &paths.lock_path,
+        format!(
+            "{{\"pid\":{},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\"}}\n",
+            std::process::id(),
+            paths.data_dir.display()
+        ),
+    )
+    .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
+
+    let state = resolve_runtime_state_with_paths_for_test(
+        paths.clone(),
+        GatewayStateAccessMode::ReadOnly,
+        "onequery gateway",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
+    let output = render_gateway_status_output(&state);
+    assert_snapshot!(output.lines.join("\n"));
+
+    fs::remove_dir_all(test_dir)
+        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
+}
+
+#[test]
 fn render_gateway_status_output_omits_dead_log_level_json() {
     let output = render_gateway_status_output(&sample_state());
     let data = output.into_data();

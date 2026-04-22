@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
@@ -9,8 +10,10 @@ use std::process::Stdio;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use serde::Deserialize;
 use serde_json::json;
 
+use crate::config::self_host::SelfHostRuntimePaths;
 use crate::config::self_host::write_self_host_launch_config;
 use crate::local_target::runtime_accepting_connections;
 use crate::local_target::runtime_probe_host;
@@ -37,6 +40,32 @@ use super::state::GatewayStateAccessMode;
 use super::state::resolve_runtime_state;
 
 const MINIMUM_NODE_MAJOR_VERSION: u32 = 22;
+const RUNTIME_STATE_FILENAME: &str = "server.state.json";
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeLockRecord {
+    pid: u32,
+    acquired_at: String,
+    data_dir: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeStateRecord {
+    pid: u32,
+    phase: RuntimeLifecyclePhase,
+    updated_at: String,
+    data_dir: String,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum RuntimeLifecyclePhase {
+    Starting,
+    Ready,
+    Stopping,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct LogPreview {
@@ -178,11 +207,12 @@ pub(super) fn run_gateway_background(
         )
     })?;
     let child_pid = child.id();
+    let state_path = runtime_state_path(state.paths.run_dir.as_path());
 
     wait_for_background_runtime_start(
         &mut child,
         BackgroundRuntimeStartCheck {
-            pid_path: state.paths.pid_path.as_path(),
+            state_path: state_path.as_path(),
             log_path: state.paths.server_log_path.as_path(),
             expected_pid: child_pid,
             listen_host: &config.server.listen_host,
@@ -224,8 +254,7 @@ fn ensure_runtime_not_running(
     state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let running_pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?
-        .filter(|pid| is_process_running(*pid));
+    let running_pid = read_managed_runtime_pid(&state.paths, command_line)?;
 
     if let Some(pid) = running_pid {
         return Err(CliError::new(
@@ -469,7 +498,7 @@ fn configure_background_process(child: &mut ProcessCommand) {
 }
 
 struct BackgroundRuntimeStartCheck<'a> {
-    pid_path: &'a Path,
+    state_path: &'a Path,
     log_path: &'a Path,
     expected_pid: u32,
     listen_host: &'a str,
@@ -482,17 +511,10 @@ fn wait_for_background_runtime_start(
     child: &mut Child,
     check: BackgroundRuntimeStartCheck<'_>,
 ) -> Result<(), CliError> {
-    // Comment: background start returns only after the runtime rewrites the pid
-    // file with the launched process ID and starts accepting connections, so
-    // `gateway start` does not report success before the packaged runtime has
-    // actually finished its own bootstrap work.
+    // Comment: background start now waits for an explicit runtime-owned ready
+    // state from the launched pid instead of inferring success from whichever
+    // process happens to accept TCP on the configured port.
     for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
-        if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid)
-            && runtime_accepting_connections(check.listen_host, check.listen_port)
-        {
-            return Ok(());
-        }
-
         if let Some(status) = child.try_wait().map_err(|error| {
             CliError::new(
                 "failed while monitoring self-host background start",
@@ -517,6 +539,16 @@ fn wait_for_background_runtime_start(
             ));
         }
 
+        if runtime_state_matches(
+            check.state_path,
+            check.expected_pid,
+            RuntimeLifecyclePhase::Ready,
+            check.command_line,
+        )? && runtime_accepting_connections(check.listen_host, check.listen_port)
+        {
+            return Ok(());
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(
             GATEWAY_START_POLL_INTERVAL_MS,
         ));
@@ -524,14 +556,23 @@ fn wait_for_background_runtime_start(
 
     let probe_host = runtime_probe_host(check.listen_host);
 
-    if read_runtime_pid(check.pid_path, check.command_line)? == Some(check.expected_pid) {
+    let runtime_state = read_runtime_state_record(check.state_path, check.command_line)?;
+
+    if runtime_state
+        .as_ref()
+        .is_some_and(|state| state.pid == check.expected_pid)
+    {
+        let phase = runtime_state
+            .as_ref()
+            .map(|state| runtime_phase_label(state.phase))
+            .unwrap_or("unknown");
         return Err(CliError::new(
             "self-host server did not report startup",
             check.command_line,
             ErrorStage::Internal,
             format!(
-                "{probe_host}:{} did not accept connections after pid {} started",
-                check.listen_port, check.expected_pid
+                "{probe_host}:{} did not accept connections after pid {} reported {phase}",
+                check.listen_port, check.expected_pid,
             ),
             vec![
                 format!("check log file {}", check.log_path.display()),
@@ -545,8 +586,8 @@ fn wait_for_background_runtime_start(
         check.command_line,
         ErrorStage::Internal,
         format!(
-            "pid file {} did not report pid {}",
-            check.pid_path.display(),
+            "runtime state file {} did not report pid {} as ready",
+            check.state_path.display(),
             check.expected_pid
         ),
         vec![
@@ -567,6 +608,14 @@ fn describe_exit_status(status: ExitStatus) -> String {
     )
 }
 
+fn runtime_phase_label(phase: RuntimeLifecyclePhase) -> &'static str {
+    match phase {
+        RuntimeLifecyclePhase::Starting => "starting",
+        RuntimeLifecyclePhase::Ready => "ready",
+        RuntimeLifecyclePhase::Stopping => "stopping",
+    }
+}
+
 fn is_expected_termination(status: ExitStatus) -> bool {
     matches!(
         exit_signal_label(status).as_deref(),
@@ -578,8 +627,7 @@ pub(super) fn stop_runtime(
     state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
-    let pid = read_runtime_pid(state.paths.pid_path.as_path(), command_line)?;
-    let running_pid = pid.filter(|pid| is_process_running(*pid));
+    let running_pid = read_managed_runtime_pid(&state.paths, command_line)?;
 
     if let Some(pid) = running_pid {
         mark_stop_requested(state.paths.stop_request_path.as_path(), pid, command_line)?;
@@ -690,6 +738,87 @@ pub(super) fn read_runtime_pid(path: &Path, command_line: &str) -> Result<Option
             vec!["remove the stale pid file and retry".to_owned()],
         )
     })
+}
+
+pub(super) fn read_managed_runtime_pid(
+    paths: &SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<Option<u32>, CliError> {
+    if let Some(lock_pid) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)?
+        .map(|record| record.pid)
+        .filter(|pid| is_process_running(*pid))
+    {
+        return Ok(Some(lock_pid));
+    }
+
+    Ok(read_runtime_pid(paths.pid_path.as_path(), command_line)?
+        .filter(|pid| is_process_running(*pid)))
+}
+
+fn read_runtime_lock_record(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeLockRecord>, CliError> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Ok(None);
+    };
+
+    let trimmed = contents.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    serde_json::from_str::<RuntimeLockRecord>(trimmed)
+        .map(Some)
+        .map_err(|error| {
+            CliError::new(
+                "failed to parse runtime lock file",
+                command_line,
+                ErrorStage::LoadConfig,
+                format!("{error} ({})", path.display()),
+                vec!["remove the stale lock file and retry".to_owned()],
+            )
+        })
+}
+
+fn runtime_state_path(run_dir: &Path) -> PathBuf {
+    run_dir.join(RUNTIME_STATE_FILENAME)
+}
+
+fn read_runtime_state_record(
+    path: &Path,
+    command_line: &str,
+) -> Result<Option<RuntimeStateRecord>, CliError> {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return Ok(None);
+    };
+
+    let trimmed = contents.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    serde_json::from_str::<RuntimeStateRecord>(trimmed)
+        .map(Some)
+        .map_err(|error| {
+            CliError::new(
+                "failed to parse runtime state file",
+                command_line,
+                ErrorStage::LoadConfig,
+                format!("{error} ({})", path.display()),
+                vec!["remove the stale runtime state file and retry".to_owned()],
+            )
+        })
+}
+
+fn runtime_state_matches(
+    path: &Path,
+    expected_pid: u32,
+    expected_phase: RuntimeLifecyclePhase,
+    command_line: &str,
+) -> Result<bool, CliError> {
+    Ok(read_runtime_state_record(path, command_line)?
+        .is_some_and(|state| state.pid == expected_pid && state.phase == expected_phase))
 }
 
 fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {

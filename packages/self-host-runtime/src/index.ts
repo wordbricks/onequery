@@ -198,6 +198,7 @@ export function createStartServer(
           logWriter: lifecycleLogWriter,
           server,
         });
+        await lifecycleLease.transition("ready");
       }
 
       await lifecycleLogWriter.append(

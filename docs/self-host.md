@@ -125,6 +125,7 @@ Files under those roots:
 - `backups/`
 - `run/server.pid`
 - `run/server.lock`
+- `run/server.state.json`
 - `run/launch.json`
 
 The CLI creates these paths on first `onequery gateway` or

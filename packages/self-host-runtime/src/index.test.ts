@@ -102,6 +102,7 @@ function createMocks() {
       })
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
+  const transitionLifecycleLease = vi.fn(async () => undefined);
   const acquireRuntimeLifecycleLease: StartServerDependencies["acquireRuntimeLifecycleLease"] =
     vi.fn(async () => ({
       paths: {
@@ -110,6 +111,7 @@ function createMocks() {
         logsDir: "/tmp/onequery/logs",
         pidPath: "/tmp/onequery/run/server.pid",
       },
+      transition: transitionLifecycleLease,
       release: releaseLifecycleLease,
     }));
   const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
@@ -136,6 +138,7 @@ function createMocks() {
     createSpaAssetBinding,
     prepareRuntimeDatabase,
     releaseLifecycleLease,
+    transitionLifecycleLease,
     serve,
     toLifecyclePaths,
   };
@@ -248,11 +251,13 @@ describe("startServer", () => {
     expect(mocks.attachGracefulShutdownHandlers).toHaveBeenCalledWith(
       expect.objectContaining({
         lease: expect.objectContaining({
+          transition: expect.any(Function),
           release: expect.any(Function),
         }),
         server,
       })
     );
+    expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith("ready");
     expect(mocks.appendLifecycleLog).toHaveBeenCalledWith(
       runtimePaths,
       "[onequery-server] listening on http://127.0.0.1:5656"

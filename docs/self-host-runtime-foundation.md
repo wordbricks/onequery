@@ -49,6 +49,7 @@ The runtime-managed files under those roots are:
 - `backups/`
 - `run/server.pid`
 - `run/server.lock`
+- `run/server.state.json`
 - `run/launch.json`
 
 The self-host secrets file is therefore resolved at:
@@ -117,6 +118,8 @@ The packaged runtime owns the process-local guarantees:
 
 - acquire the runtime lease before accepting requests
 - fail fast if `server.lock` belongs to a live process
+- write `run/server.state.json` transitions so `gateway start` waits for an
+  explicit ready signal from the launched pid
 - replace stale pid and lock markers only when the recorded pid is gone
 - append lifecycle events to `logs/server.log`
 - release pid and lock markers during graceful shutdown or startup failure

@@ -23,6 +23,7 @@ import type { SelfHostLifecyclePaths } from "./lifecycle";
 function createPaths(root: string): SelfHostLifecyclePaths & {
   runDir: string;
   serverLogPath: string;
+  statePath: string;
 } {
   const dataDir = join(root, "data");
   const logsDir = join(dataDir, "logs");
@@ -35,6 +36,7 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
     pidPath: join(runDir, "server.pid"),
     runDir,
     serverLogPath: join(logsDir, "server.log"),
+    statePath: join(runDir, "server.state.json"),
   };
 }
 
@@ -112,6 +114,34 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
+  it("records startup and shutdown lifecycle phases in the runtime state file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "onequery-bun-state-"));
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      now: () => new Date("2026-03-25T00:00:00.000Z"),
+      pid: 333,
+    });
+
+    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+      '"phase":"starting"'
+    );
+
+    await lease.transition("ready");
+
+    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+      '"phase":"ready"'
+    );
+
+    await lease.release({
+      reason: "test_cleanup",
+      stopServer: false,
+    });
+
+    await expect(access(paths.statePath)).rejects.toBeDefined();
+  });
+
   it("stops the packaged server runtime and removes pid and lock files on SIGTERM", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-bun-signal-"));
     tempRoots.push(root);
@@ -157,6 +187,9 @@ describe("self-host lifecycle lease", () => {
     expect(exitProcess).not.toHaveBeenCalled();
     await access(paths.pidPath);
     await access(paths.lockPath);
+    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+      '"phase":"stopping"'
+    );
 
     resolveServerStop();
 
@@ -164,6 +197,7 @@ describe("self-host lifecycle lease", () => {
       expect(exitProcess).toHaveBeenCalledWith(0);
       await expect(access(paths.pidPath)).rejects.toBeDefined();
       await expect(access(paths.lockPath)).rejects.toBeDefined();
+      await expect(access(paths.statePath)).rejects.toBeDefined();
       expect(events).toEqual(["stop:start", "stop:done", "exit:0"]);
     });
   });
@@ -199,6 +233,7 @@ describe("self-host lifecycle lease", () => {
       expect(exitProcess).toHaveBeenCalledWith(1);
       await expect(access(paths.pidPath)).rejects.toBeDefined();
       await expect(access(paths.lockPath)).rejects.toBeDefined();
+      await expect(access(paths.statePath)).rejects.toBeDefined();
     });
   });
 
