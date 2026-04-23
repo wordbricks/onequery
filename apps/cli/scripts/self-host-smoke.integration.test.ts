@@ -297,11 +297,11 @@ function summarizeCliSource(value: {
 }
 
 function summarizeCliQueryParameter(value: {
-  type: QueryParameterType;
+  valueType: QueryParameterType;
   value: string;
 }): JsonObject {
   return {
-    type: QueryParameterType[value.type],
+    valueType: QueryParameterType[value.valueType],
     value: value.value,
   };
 }

@@ -22,7 +22,7 @@ export function toCliSourceProvider(value: ProviderType): SourceProvider {
     case "aws_athena_connector":
       return SourceProvider.AWS_ATHENA_CONNECTOR;
     case "ga":
-      return SourceProvider.GA;
+      return SourceProvider.GOOGLE_ANALYTICS;
     case "amplitude":
       return SourceProvider.AMPLITUDE;
     case "mixpanel":
@@ -56,7 +56,7 @@ export function fromCliSourceProvider(
       return Result.ok("laminar");
     case SourceProvider.AWS_ATHENA_CONNECTOR:
       return Result.ok("aws_athena_connector");
-    case SourceProvider.GA:
+    case SourceProvider.GOOGLE_ANALYTICS:
       return Result.ok("ga");
     case SourceProvider.AMPLITUDE:
       return Result.ok("amplitude");

@@ -203,7 +203,7 @@ pub(crate) fn query_request_parameter_to_generated(
     parameter: QueryRequestParameter,
 ) -> types::CliQueryParameter {
     types::CliQueryParameter {
-        r#type: Some(types::QueryParameterType::from(parameter.parameter_type).into()),
+        value_type: Some(types::QueryParameterType::from(parameter.parameter_type).into()),
         value: parameter.value,
         ..Default::default()
     }
@@ -213,7 +213,7 @@ pub(crate) fn query_canonical_parameter_from_generated(
     parameter: types::CliQueryParameter,
 ) -> QueryCanonicalParameter {
     QueryCanonicalParameter {
-        parameter_type: QueryCanonicalParameterType::from_generated(parameter.r#type),
+        parameter_type: QueryCanonicalParameterType::from_generated(parameter.value_type),
         value: parameter.value,
     }
 }
@@ -267,7 +267,7 @@ mod tests {
     fn query_request_parameter_to_generated_maps_known_surface() {
         assert_eq!(
             types::CliQueryParameter {
-                r#type: Some(types::QueryParameterType::QUERY_PARAMETER_TYPE_BOOLEAN.into(),),
+                value_type: Some(types::QueryParameterType::QUERY_PARAMETER_TYPE_BOOLEAN.into(),),
                 value: Some("true".to_owned()),
                 ..Default::default()
             },

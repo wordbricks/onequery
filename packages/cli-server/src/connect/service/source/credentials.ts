@@ -15,7 +15,7 @@ import {
 import type {
   ConnectSourceAwsAthenaConnectorCredentials,
   ConnectSourceCredentials,
-  ConnectSourceGoogleOAuthCredentials,
+  ConnectSourceGoogleOauthCredentials,
   ConnectSourceMySqlCredentials,
   ConnectSourcePostgresCredentials,
   ConnectSourceServiceAccountCredentials,
@@ -107,7 +107,7 @@ export function parseConnectSourceCredentials(
         provider: "aws_athena_connector",
         credentials: awsAthenaConnectorCredentialsFromMessage(kind.value),
       });
-    case "ga":
+    case "googleAnalytics":
       return googleAnalyticsCredentialsFromMessage(kind.value).map(
         (parsed) => ({
           provider: "ga",
@@ -263,7 +263,7 @@ function bigQueryCredentialsFromMessage(input: {
         case: "oauth";
         value: {
           projectId: string;
-          credentials?: ConnectSourceGoogleOAuthCredentials;
+          credentials?: ConnectSourceGoogleOauthCredentials;
         };
       }
     | {
@@ -338,7 +338,7 @@ function googleAnalyticsCredentialsFromMessage(input: {
         case: "oauth";
         value: {
           propertyId: string;
-          credentials?: ConnectSourceGoogleOAuthCredentials;
+          credentials?: ConnectSourceGoogleOauthCredentials;
         };
       }
     | {

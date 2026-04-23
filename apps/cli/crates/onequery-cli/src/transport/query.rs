@@ -720,14 +720,14 @@ mod tests {
                 sql: Some("select 42".to_owned()),
                 parameters: vec![
                     super::types::CliQueryParameter {
-                        r#type: Some(
+                        value_type: Some(
                             super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING.into(),
                         ),
                         value: Some("acme".to_owned()),
                         ..Default::default()
                     },
                     super::types::CliQueryParameter {
-                        r#type: Some(
+                        value_type: Some(
                             super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
                         ),
                         value: None,
@@ -825,7 +825,7 @@ mod tests {
                     sql: Some("SELECT 1".to_owned()),
                     parameters: vec![
                         super::types::CliQueryParameter {
-                            r#type: Some(
+                            value_type: Some(
                                 super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING
                                     .into(),
                             ),
@@ -833,7 +833,7 @@ mod tests {
                             ..Default::default()
                         },
                         super::types::CliQueryParameter {
-                            r#type: Some(
+                            value_type: Some(
                                 super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
                             ),
                             value: None,

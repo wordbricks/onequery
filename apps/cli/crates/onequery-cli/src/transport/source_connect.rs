@@ -369,9 +369,9 @@ fn connect_source_credentials_from_json(
                 parse_source_connect_credentials(value)?;
 
             Ok(types::ConnectSourceCredentials {
-                kind: Some(types::connect_source_credentials::Kind::Ga(Box::new(
-                    google_analytics_credentials_from_input(input)?,
-                ))),
+                kind: Some(types::connect_source_credentials::Kind::GoogleAnalytics(
+                    Box::new(google_analytics_credentials_from_input(input)?),
+                )),
                 ..Default::default()
             })
         }
@@ -513,7 +513,7 @@ fn big_query_credentials_from_input(
         input.service_account.is_some(),
     )? {
         GoogleAuthMode::Oauth => Some(types::connect_source_big_query_credentials::Auth::Oauth(
-            Box::new(types::ConnectSourceBigQueryOAuthCredentials {
+            Box::new(types::ConnectSourceBigQueryOauthCredentials {
                 project_id: Some(input.project_id),
                 credentials: MessageField::some(google_oauth_credentials_from_input(
                     "bigquery",
@@ -558,7 +558,7 @@ fn google_analytics_credentials_from_input(
     )? {
         GoogleAuthMode::Oauth => Some(
             types::connect_source_google_analytics_credentials::Auth::Oauth(Box::new(
-                types::ConnectSourceGoogleAnalyticsOAuthCredentials {
+                types::ConnectSourceGoogleAnalyticsOauthCredentials {
                     property_id: Some(input.property_id),
                     credentials: MessageField::some(google_oauth_credentials_from_input(
                         "ga",
@@ -626,7 +626,7 @@ fn linear_credentials_from_input(
         };
 
         Some(types::connect_source_linear_credentials::Auth::Oauth(
-            Box::new(types::ConnectSourceLinearOAuthCredentials {
+            Box::new(types::ConnectSourceLinearOauthCredentials {
                 access_token: Some(require_field(
                     input.access_token,
                     "source connect credentials must include `accessToken` for Linear OAuth",
@@ -766,8 +766,8 @@ fn google_oauth_credentials_from_input(
     access_token: Option<String>,
     refresh_token: Option<String>,
     expires_at: Option<u64>,
-) -> Result<types::ConnectSourceGoogleOAuthCredentials, ApiFailure> {
-    Ok(types::ConnectSourceGoogleOAuthCredentials {
+) -> Result<types::ConnectSourceGoogleOauthCredentials, ApiFailure> {
+    Ok(types::ConnectSourceGoogleOauthCredentials {
         access_token: Some(require_field(
             access_token,
             format!("source connect credentials must include `accessToken` for `{provider}` OAuth"),

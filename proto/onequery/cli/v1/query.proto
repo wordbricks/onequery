@@ -129,7 +129,7 @@ message CliQueryCanonicalRequest {
 }
 
 message CliQueryParameter {
-  QueryParameterType type = 1 [
+  QueryParameterType value_type = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true

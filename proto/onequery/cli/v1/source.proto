@@ -213,7 +213,7 @@ message ConnectSourceCredentials {
     ConnectSourceBigQueryCredentials bigquery = 5;
     ConnectSourceLaminarCredentials laminar = 6;
     ConnectSourceAwsAthenaConnectorCredentials aws_athena_connector = 7;
-    ConnectSourceGoogleAnalyticsCredentials ga = 8;
+    ConnectSourceGoogleAnalyticsCredentials google_analytics = 8;
     ConnectSourceAmplitudeCredentials amplitude = 9;
     ConnectSourceMixpanelCredentials mixpanel = 10;
     ConnectSourcePostHogCredentials posthog = 11;
@@ -327,7 +327,7 @@ message ConnectSourceServiceAccountCredentials {
   ];
 }
 
-message ConnectSourceGoogleOAuthCredentials {
+message ConnectSourceGoogleOauthCredentials {
   string access_token = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 8192,
@@ -345,18 +345,18 @@ message ConnectSourceBigQueryCredentials {
   oneof auth {
     option (buf.validate.oneof).required = true;
 
-    ConnectSourceBigQueryOAuthCredentials oauth = 1;
+    ConnectSourceBigQueryOauthCredentials oauth = 1;
     ConnectSourceBigQueryServiceAccountCredentials service_account = 2;
   }
 }
 
-message ConnectSourceBigQueryOAuthCredentials {
+message ConnectSourceBigQueryOauthCredentials {
   string project_id = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
+  ConnectSourceGoogleOauthCredentials credentials = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceBigQueryServiceAccountCredentials {
@@ -410,18 +410,18 @@ message ConnectSourceGoogleAnalyticsCredentials {
   oneof auth {
     option (buf.validate.oneof).required = true;
 
-    ConnectSourceGoogleAnalyticsOAuthCredentials oauth = 1;
+    ConnectSourceGoogleAnalyticsOauthCredentials oauth = 1;
     ConnectSourceGoogleAnalyticsServiceAccountCredentials service_account = 2;
   }
 }
 
-message ConnectSourceGoogleAnalyticsOAuthCredentials {
+message ConnectSourceGoogleAnalyticsOauthCredentials {
   string property_id = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
+  ConnectSourceGoogleOauthCredentials credentials = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceGoogleAnalyticsServiceAccountCredentials {
@@ -542,7 +542,7 @@ message ConnectSourceLinearCredentials {
     option (buf.validate.oneof).required = true;
 
     ConnectSourceLinearApiKeyCredentials api_key = 1;
-    ConnectSourceLinearOAuthCredentials oauth = 2;
+    ConnectSourceLinearOauthCredentials oauth = 2;
   }
 }
 
@@ -554,7 +554,7 @@ message ConnectSourceLinearApiKeyCredentials {
   ];
 }
 
-message ConnectSourceLinearOAuthCredentials {
+message ConnectSourceLinearOauthCredentials {
   string access_token = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 8192,
@@ -611,7 +611,7 @@ enum SourceProvider {
   SOURCE_PROVIDER_BIGQUERY = 5;
   SOURCE_PROVIDER_LAMINAR = 6;
   SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
-  SOURCE_PROVIDER_GA = 8;
+  SOURCE_PROVIDER_GOOGLE_ANALYTICS = 8;
   SOURCE_PROVIDER_AMPLITUDE = 9;
   SOURCE_PROVIDER_MIXPANEL = 10;
   SOURCE_PROVIDER_POSTHOG = 11;
