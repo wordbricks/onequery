@@ -2,11 +2,9 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { TaggedError } from "better-result";
 
-import { CLI_PROBLEM_CATALOG } from "../domain/problems";
-import type {
-  CliConnectCode,
-  CliProblemCatalogEntry,
-  CliProblemKey,
+import {
+  CLI_PROBLEM_CATALOG,
+  createCliUserActionableSupport,
 } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../error";
 import {
@@ -17,7 +15,13 @@ import {
   CliErrorDetailSchema,
   ProblemCode,
   ProblemStage,
+  SupportActionKind,
 } from "./gen/onequery/cli/v1/common_pb";
+
+type CliProblemKey = keyof typeof CLI_PROBLEM_CATALOG;
+type CliProblemCatalogEntry = (typeof CLI_PROBLEM_CATALOG)[CliProblemKey];
+type CliConnectCode = CliProblemCatalogEntry["connectCode"];
+type CliProblemSupport = CliProblemCatalogEntry["support"];
 
 export type CliConnectValidationIssue = {
   field: string;
@@ -63,7 +67,7 @@ export class CliConnectProblem extends TaggedError("CliConnectProblem")<{
 
 type CliConnectErrorProblem = Pick<
   CliProblemCatalogEntry,
-  "code" | "connectCode" | "hint" | "retryable" | "stage" | "title"
+  "code" | "connectCode" | "hint" | "retryable" | "stage" | "support" | "title"
 >;
 
 function toCliConnectCode(code: CliConnectCode): Code {
@@ -103,6 +107,21 @@ function toRetryDelayMessage(retryAfterMs: number) {
   } satisfies MessageInitShape<typeof RetryInfoSchema>["retryDelay"];
 }
 
+function toSupportActionKind(kind: CliProblemSupport["kind"]) {
+  switch (kind) {
+    case "none":
+      return SupportActionKind.NONE;
+    case "retry":
+      return SupportActionKind.RETRY;
+    case "explain":
+      return SupportActionKind.EXPLAIN;
+    case "report_if_reproducible":
+      return SupportActionKind.REPORT_IF_REPRODUCIBLE;
+    case "report_recommended":
+      return SupportActionKind.REPORT_RECOMMENDED;
+  }
+}
+
 function createCliErrorDetail(problem: CliConnectErrorProblem) {
   return {
     desc: CliErrorDetailSchema,
@@ -112,6 +131,11 @@ function createCliErrorDetail(problem: CliConnectErrorProblem) {
       title: problem.title,
       ...(problem.hint ? { hint: problem.hint } : {}),
       retryable: problem.retryable,
+      support: {
+        explainSlug: problem.support.explainSlug,
+        kind: toSupportActionKind(problem.support.kind),
+        reason: problem.support.reason,
+      },
     } satisfies MessageInitShape<typeof CliErrorDetailSchema>,
   };
 }
@@ -161,6 +185,7 @@ export function createCliInvalidRequestConnectError(input: {
       hint: input.hint,
       retryable: false,
       stage: input.stage,
+      support: createCliUserActionableSupport(ProblemCode.INVALID_REQUEST),
       title: "Invalid Request",
     },
     input

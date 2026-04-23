@@ -377,7 +377,7 @@ if should_suggest_report(error) {
 
 - [x] Phase 1: quick UX fix
 - [x] Phase 2: diagnostics command
-- [ ] Phase 3: proto-backed support metadata
+- [x] Phase 3: proto-backed support metadata
 - [ ] Phase 4: explicit issue creation
 
 **Phase 1: quick UX fix**

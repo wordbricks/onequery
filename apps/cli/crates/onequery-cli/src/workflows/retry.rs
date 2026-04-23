@@ -79,6 +79,7 @@ mod tests {
             hint: None,
             request_id: None,
             validation_issues: Vec::new(),
+            support_action: None,
         }));
 
         assert_eq!(directive, RetryDirective::NeedsReauth);

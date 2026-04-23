@@ -83,6 +83,32 @@ impl ErrorStage {
     }
 }
 
+/// Server-provided support action kind for CLI problem responses.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CliSupportActionKind {
+    /// The error is user-actionable without extra support guidance.
+    None,
+    /// Retrying the same command is the primary recovery path.
+    Retry,
+    /// A longer-form explanation is available for this problem code.
+    Explain,
+    /// Reporting is useful when the failure is reproducible.
+    ReportIfReproducible,
+    /// Reporting is recommended because the failure is unexpected.
+    ReportRecommended,
+}
+
+/// Server-provided support guidance attached to a CLI problem response.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CliSupportAction {
+    /// Support guidance kind for the current failure.
+    pub kind: CliSupportActionKind,
+    /// Stable reason string for diagnostics and structured output.
+    pub reason: String,
+    /// Stable slug for future explain surfaces.
+    pub explain_slug: String,
+}
+
 /// Top-level CLI error wrapper.
 ///
 /// The boxed inner payload keeps the public error type small to clone and move while preserving a
@@ -121,6 +147,8 @@ pub struct CliErrorData {
     pub retry_after_ms: Option<u64>,
     /// Structured validation issues returned by the server when available.
     pub validation_issues: Vec<CliValidationIssue>,
+    /// Optional server-provided support guidance for typed API failures.
+    pub support_action: Option<CliSupportAction>,
 }
 
 /// Structured validation issue returned by the CLI API.
@@ -157,6 +185,7 @@ impl CliError {
             retryable: false,
             retry_after_ms: None,
             validation_issues: Vec::new(),
+            support_action: None,
         }))
     }
 
@@ -208,6 +237,24 @@ impl CliError {
         self
     }
 
+    /// Attaches server-provided support guidance when available.
+    pub fn with_support_action(mut self, support_action: Option<CliSupportAction>) -> Self {
+        self.0.support_action = support_action.and_then(|support_action| {
+            let reason = support_action.reason.trim();
+            let explain_slug = support_action.explain_slug.trim();
+            if reason.is_empty() || explain_slug.is_empty() {
+                return None;
+            }
+
+            Some(CliSupportAction {
+                kind: support_action.kind,
+                reason: reason.to_owned(),
+                explain_slug: explain_slug.to_owned(),
+            })
+        });
+        self
+    }
+
     /// Returns the process exit code associated with the error stage.
     pub fn exit_code(&self) -> i32 {
         match self.stage {
@@ -248,6 +295,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::CliError;
+    use super::CliSupportAction;
+    use super::CliSupportActionKind;
     use super::ErrorStage;
 
     #[test]
@@ -296,5 +345,23 @@ mod tests {
                 (ErrorStage::Internal, 10, 10),
             ]
         );
+    }
+
+    #[test]
+    fn with_support_action_drops_blank_strings() {
+        let error = CliError::new(
+            "query failed",
+            "onequery query exec",
+            ErrorStage::ExecuteQuery,
+            "boom",
+            vec![],
+        )
+        .with_support_action(Some(CliSupportAction {
+            kind: CliSupportActionKind::ReportIfReproducible,
+            reason: "   ".to_owned(),
+            explain_slug: "query_execution_failed".to_owned(),
+        }));
+
+        assert_eq!(error.support_action, None);
     }
 }

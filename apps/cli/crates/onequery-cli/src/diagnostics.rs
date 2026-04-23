@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use chrono::DateTime;
 use chrono::Utc;
 use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::CliSupportActionKind;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
@@ -20,53 +21,82 @@ const LAST_ERROR_FILENAME: &str = "last-error.json";
 const REPORTS_DIR_NAME: &str = "reports";
 const DIAGNOSTIC_SCHEMA_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct ReportSuggestion {
-    pub(crate) reason: &'static str,
+    pub(crate) recommended: bool,
+    pub(crate) reason: String,
 }
 
 pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
+    if let Some(support_action) = &error.support_action {
+        match support_action.kind {
+            CliSupportActionKind::ReportIfReproducible => {
+                return Some(ReportSuggestion {
+                    recommended: false,
+                    reason: support_action.reason.clone(),
+                });
+            }
+            CliSupportActionKind::ReportRecommended => {
+                return Some(ReportSuggestion {
+                    recommended: true,
+                    reason: support_action.reason.clone(),
+                });
+            }
+            CliSupportActionKind::None
+            | CliSupportActionKind::Retry
+            | CliSupportActionKind::Explain => return None,
+        }
+    }
+
     if matches!(error.stage, ErrorStage::Internal) {
         return Some(ReportSuggestion {
-            reason: "internal_cli_error",
+            recommended: true,
+            reason: "internal_cli_error".to_owned(),
         });
     }
 
     if matches!(error.stage, ErrorStage::Render) {
         return Some(ReportSuggestion {
-            reason: "render_failure",
+            recommended: true,
+            reason: "render_failure".to_owned(),
         });
     }
 
     match error.code.as_deref() {
         Some("decode_error") => {
             return Some(ReportSuggestion {
-                reason: "unexpected_response_decode_failure",
+                recommended: true,
+                reason: "unexpected_response_decode_failure".to_owned(),
             });
         }
         Some("query_execution_failed") => {
             return Some(ReportSuggestion {
-                reason: "query_execution_failure",
+                recommended: true,
+                reason: "query_execution_failure".to_owned(),
             });
         }
         Some("query_preparation_failed") => {
             return Some(ReportSuggestion {
-                reason: "query_preparation_failure",
+                recommended: true,
+                reason: "query_preparation_failure".to_owned(),
             });
         }
         Some("source_api_describe_failed") => {
             return Some(ReportSuggestion {
-                reason: "source_api_describe_failure",
+                recommended: true,
+                reason: "source_api_describe_failure".to_owned(),
             });
         }
         Some("source_api_execution_failed") => {
             return Some(ReportSuggestion {
-                reason: "source_api_execution_failure",
+                recommended: true,
+                reason: "source_api_execution_failure".to_owned(),
             });
         }
         Some("source_api_preparation_failed") => {
             return Some(ReportSuggestion {
-                reason: "source_api_preparation_failure",
+                recommended: true,
+                reason: "source_api_preparation_failure".to_owned(),
             });
         }
         _ => {}
@@ -74,7 +104,8 @@ pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
 
     if error.status.is_some_and(|status| status >= 500) && !error.retryable {
         return Some(ReportSuggestion {
-            reason: "unexpected_server_failure",
+            recommended: true,
+            reason: "unexpected_server_failure".to_owned(),
         });
     }
 
@@ -130,8 +161,8 @@ impl DiagnosticSnapshot {
     ) -> Self {
         let reportability = match report_suggestion(error) {
             Some(suggestion) => DiagnosticReportability {
-                recommended: true,
-                reason: Some(suggestion.reason.to_owned()),
+                recommended: suggestion.recommended,
+                reason: Some(suggestion.reason),
             },
             None => DiagnosticReportability {
                 recommended: false,
@@ -375,6 +406,8 @@ pub(crate) fn render_report_markdown(
             report.push_str(&format!(" (`{reason}`)"));
         }
         report.push('\n');
+    } else if let Some(reason) = &snapshot.reportability.reason {
+        report.push_str(&format!("- Reporting: if reproducible (`{reason}`)\n"));
     } else {
         report.push_str("- Reporting: not currently recommended\n");
     }
@@ -492,6 +525,8 @@ pub(crate) fn write_report(
 mod tests {
     use chrono::TimeZone;
     use chrono::Utc;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
     use pretty_assertions::assert_eq;
     use std::path::Path;
     use tempfile::tempdir;
@@ -622,5 +657,28 @@ mod tests {
                 "expected markdown to contain {expected:?}, got:\n{rendered}"
             );
         }
+    }
+
+    #[test]
+    fn diagnostic_snapshot_marks_report_if_reproducible_as_not_recommended() {
+        let snapshot = DiagnosticSnapshot::from_error(
+            &sample_error().with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })),
+            Some("query exec"),
+            Utc.with_ymd_and_hms(2026, 4, 23, 3, 12, 11)
+                .single()
+                .expect("expected timestamp"),
+        );
+
+        assert_eq!(
+            snapshot.reportability,
+            DiagnosticReportability {
+                recommended: false,
+                reason: Some("query_execution_failure".to_owned()),
+            }
+        );
     }
 }

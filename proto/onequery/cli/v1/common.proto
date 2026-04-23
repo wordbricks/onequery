@@ -32,6 +32,15 @@ enum ContentFormat {
   CONTENT_FORMAT_MARKDOWN = 1;
 }
 
+enum SupportActionKind {
+  SUPPORT_ACTION_KIND_UNSPECIFIED = 0;
+  SUPPORT_ACTION_KIND_NONE = 1;
+  SUPPORT_ACTION_KIND_RETRY = 2;
+  SUPPORT_ACTION_KIND_EXPLAIN = 3;
+  SUPPORT_ACTION_KIND_REPORT_IF_REPRODUCIBLE = 4;
+  SUPPORT_ACTION_KIND_REPORT_RECOMMENDED = 5;
+}
+
 enum ProblemCode {
   PROBLEM_CODE_UNSPECIFIED = 0;
   PROBLEM_CODE_FORBIDDEN = 1;
@@ -67,6 +76,15 @@ enum ProblemStage {
   PROBLEM_STAGE_RESOLVE_SOURCE = 5;
 }
 
+message CliSupportAction {
+  SupportActionKind kind = 1 [(buf.validate.field).enum = {
+    defined_only: true
+    not_in: [0]
+  }];
+  string reason = 2 [(buf.validate.field).string.min_len = 1];
+  string explain_slug = 3 [(buf.validate.field).string.min_len = 1];
+}
+
 message CliErrorDetail {
   ProblemCode code = 1 [(buf.validate.field).enum = {
     defined_only: true
@@ -80,6 +98,7 @@ message CliErrorDetail {
   string hint = 4 [(buf.validate.field).string.min_len = 1];
   bool retryable = 5;
   string request_id = 6 [(buf.validate.field).string.min_len = 1];
+  CliSupportAction support = 7 [(buf.validate.field).required = true];
 }
 
 // Comment: this message exists to keep generated Connect error-detail schemas

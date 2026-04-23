@@ -667,6 +667,7 @@ mod tests {
                     hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
+                    support_action: None,
                 })
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
@@ -679,6 +680,7 @@ mod tests {
                     hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
+                    support_action: None,
                 })
                 .is_retryable(),
             ],

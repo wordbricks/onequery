@@ -441,7 +441,7 @@ pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> Strin
                 error_body.insert(
                     "report".to_owned(),
                     json!({
-                        "recommended": true,
+                        "recommended": report.recommended,
                         "command": JSON_REPORT_COMMAND,
                         "reason": report.reason,
                     }),
@@ -541,9 +541,14 @@ fn render_text_error(error: &CliError) -> String {
         }
     }
 
-    if report_suggestion(error).is_some() {
+    if let Some(report) = report_suggestion(error) {
+        let report_label = if report.recommended {
+            "Report"
+        } else {
+            "Report if reproducible"
+        };
         lines.push(String::new());
-        lines.push(format!("Report: {TEXT_REPORT_COMMAND}"));
+        lines.push(format!("{report_label}: {TEXT_REPORT_COMMAND}"));
     }
 
     lines.join("\n")
@@ -556,6 +561,8 @@ mod tests {
     use std::sync::atomic::Ordering;
 
     use insta::assert_snapshot;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -639,6 +646,30 @@ mod tests {
             )
             .with_code(Some("decode_error".to_owned()))
             .with_request_id(Some("req_decode".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_report_if_reproducible_error_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "warehouse execution unexpectedly failed",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_code(Some("query_execution_failed".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })),
             EffectiveOutputMode::Text,
         );
 
@@ -780,6 +811,51 @@ mod tests {
                     "retryable": false,
                     "hint": "queries must be read-only",
                     "tryNext": ["retry with a read-only SELECT"],
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn render_error_json_marks_report_if_reproducible_as_not_recommended() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "warehouse execution unexpectedly failed",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_command_path(Some("query exec".to_owned()))
+            .with_code(Some("query_execution_failed".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })),
+            EffectiveOutputMode::Json,
+        );
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered)
+                .expect("expected JSON error envelope"),
+            json!({
+                "ok": false,
+                "command": "query exec",
+                "requestId": "req_query_failure",
+                "error": {
+                    "code": "query_execution_failed",
+                    "title": "query failed",
+                    "stage": "execute_query",
+                    "detail": "warehouse execution unexpectedly failed",
+                    "retryable": false,
+                    "tryNext": ["retry onequery query exec --source warehouse --sql \"select 1\""],
+                    "report": {
+                        "recommended": false,
+                        "command": "onequery doctor report --last --stdout",
+                        "reason": "query_execution_failure",
+                    }
                 }
             })
         );

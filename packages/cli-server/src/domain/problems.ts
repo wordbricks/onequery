@@ -1,6 +1,7 @@
 import {
   ProblemCode,
   ProblemStage,
+  SupportActionKind,
 } from "../connect/gen/onequery/cli/v1/common_pb";
 
 export const CLI_PROBLEM_TYPE_PREFIX = "https://onequery.invalid/problems/cli";
@@ -17,6 +18,19 @@ export type CliConnectCode =
   | "unauthenticated"
   | "unavailable";
 
+export type CliProblemSupportKind =
+  | "none"
+  | "retry"
+  | "explain"
+  | "report_if_reproducible"
+  | "report_recommended";
+
+export type CliProblemSupport = {
+  kind: CliProblemSupportKind;
+  reason: string;
+  explainSlug: string;
+};
+
 export type CliProblemCatalogEntry = {
   type: `${typeof CLI_PROBLEM_TYPE_PREFIX}/${string}`;
   status: number;
@@ -25,6 +39,7 @@ export type CliProblemCatalogEntry = {
   code: ProblemCode;
   stage: ProblemStage;
   retryable: boolean;
+  support: CliProblemSupport;
   hint?: string;
 };
 
@@ -53,6 +68,41 @@ export function cliProblemStageToString(stage: ProblemStage) {
   ).toLowerCase();
 }
 
+export function cliSupportActionKindToString(kind: SupportActionKind) {
+  return requireEnumMemberName(
+    kind,
+    SupportActionKind,
+    "support action kind"
+  ).toLowerCase();
+}
+
+function createCliProblemSupport(
+  code: ProblemCode,
+  kind: CliProblemSupportKind,
+  reason: string
+) {
+  return {
+    explainSlug: cliProblemCodeToString(code),
+    kind,
+    reason,
+  } satisfies CliProblemSupport;
+}
+
+export function createCliUserActionableSupport(code: ProblemCode) {
+  return createCliProblemSupport(code, "none", "user_actionable");
+}
+
+function createCliRetrySupport(code: ProblemCode) {
+  return createCliProblemSupport(code, "retry", "transient");
+}
+
+function createCliReportIfReproducibleSupport(
+  code: ProblemCode,
+  reason: string
+) {
+  return createCliProblemSupport(code, "report_if_reproducible", reason);
+}
+
 function createInvalidRequestProblem(input: {
   stage: ProblemStage;
   type: string;
@@ -66,6 +116,7 @@ function createInvalidRequestProblem(input: {
     code: ProblemCode.INVALID_REQUEST,
     stage: input.stage,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.INVALID_REQUEST),
     hint: input.hint,
   } satisfies CliProblemCatalogEntry;
 }
@@ -79,6 +130,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.FORBIDDEN,
     stage: ProblemStage.RESOLVE_ORG,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.FORBIDDEN),
     hint: "verify org membership and retry",
   },
   AUTH_REQUEST_INVALID: createInvalidRequestProblem({
@@ -109,6 +161,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.LOGIN_DENIED,
     stage: ProblemStage.AUTH,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.LOGIN_DENIED),
     hint: "run `onequery auth login` again",
   },
   LOGIN_RATE_LIMITED: {
@@ -119,6 +172,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.LOGIN_RATE_LIMITED,
     stage: ProblemStage.AUTH,
     retryable: true,
+    support: createCliRetrySupport(ProblemCode.LOGIN_RATE_LIMITED),
     hint: "wait briefly, then retry `onequery auth login`",
   },
   LOGIN_SESSION_EXPIRED: {
@@ -129,6 +183,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.LOGIN_SESSION_EXPIRED,
     stage: ProblemStage.AUTH,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.LOGIN_SESSION_EXPIRED),
     hint: "run `onequery auth login` again",
   },
   MALFORMED_JSON: {
@@ -139,6 +194,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.MALFORMED_JSON,
     stage: ProblemStage.READ_QUERY_INPUT,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.MALFORMED_JSON),
     hint: "correct the request body and retry",
   },
   NOT_LOGGED_IN: {
@@ -149,6 +205,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.NOT_LOGGED_IN,
     stage: ProblemStage.AUTH,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.NOT_LOGGED_IN),
     hint: "login via the OneQuery web app and retry",
   },
   ORG_NOT_FOUND: {
@@ -159,6 +216,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.ORG_NOT_FOUND,
     stage: ProblemStage.RESOLVE_ORG,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.ORG_NOT_FOUND),
     hint: "run `onequery org list`",
   },
   QUERY_EXECUTION_FAILED: {
@@ -169,6 +227,10 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.QUERY_EXECUTION_FAILED,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliReportIfReproducibleSupport(
+      ProblemCode.QUERY_EXECUTION_FAILED,
+      "query_execution_failure"
+    ),
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_TIMED_OUT: {
@@ -179,6 +241,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.QUERY_EXECUTION_TIMED_OUT,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: true,
+    support: createCliRetrySupport(ProblemCode.QUERY_EXECUTION_TIMED_OUT),
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_UNAVAILABLE: {
@@ -189,6 +252,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.QUERY_EXECUTION_UNAVAILABLE,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: true,
+    support: createCliRetrySupport(ProblemCode.QUERY_EXECUTION_UNAVAILABLE),
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_PREPARATION_FAILED: {
@@ -199,6 +263,10 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.QUERY_PREPARATION_FAILED,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliReportIfReproducibleSupport(
+      ProblemCode.QUERY_PREPARATION_FAILED,
+      "query_preparation_failure"
+    ),
     hint: 'retry `onequery query --source <source> --sql "select ..."`',
   },
   QUERY_REJECTED: {
@@ -209,6 +277,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.QUERY_REJECTED,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.QUERY_REJECTED),
     hint: "use a single read-only SELECT query",
   },
   SOURCE_API_DESCRIBE_FAILED: {
@@ -219,6 +288,10 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_DESCRIBE_FAILED,
     stage: ProblemStage.RESOLVE_SOURCE,
     retryable: false,
+    support: createCliReportIfReproducibleSupport(
+      ProblemCode.SOURCE_API_DESCRIBE_FAILED,
+      "source_api_describe_failure"
+    ),
     hint: "retry `onequery api --source <source>`",
   },
   SOURCE_API_EXECUTION_FAILED: {
@@ -229,6 +302,10 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_EXECUTION_FAILED,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliReportIfReproducibleSupport(
+      ProblemCode.SOURCE_API_EXECUTION_FAILED,
+      "source_api_execution_failure"
+    ),
     hint: "retry `onequery api --source <source>`",
   },
   SOURCE_API_FORBIDDEN: {
@@ -239,6 +316,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_FORBIDDEN,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.SOURCE_API_FORBIDDEN),
     hint: "verify source API permissions and retry",
   },
   SOURCE_API_PREPARATION_FAILED: {
@@ -249,6 +327,10 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_PREPARATION_FAILED,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliReportIfReproducibleSupport(
+      ProblemCode.SOURCE_API_PREPARATION_FAILED,
+      "source_api_preparation_failure"
+    ),
     hint: "retry `onequery api --source <source>`",
   },
   SOURCE_API_EXECUTION_STATE_INVALID: {
@@ -259,6 +341,9 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_EXECUTION_STATE_INVALID,
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: false,
+    support: createCliUserActionableSupport(
+      ProblemCode.SOURCE_API_EXECUTION_STATE_INVALID
+    ),
     hint: "rerun the `onequery api` command to refresh source API execution state",
   },
   SOURCE_API_SOURCE_UNAVAILABLE: {
@@ -269,6 +354,9 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_API_SOURCE_UNAVAILABLE,
     stage: ProblemStage.RESOLVE_SOURCE,
     retryable: false,
+    support: createCliUserActionableSupport(
+      ProblemCode.SOURCE_API_SOURCE_UNAVAILABLE
+    ),
     hint: "review source credentials in OneQuery and retry",
   },
   SOURCE_NOT_FOUND: {
@@ -279,6 +367,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_NOT_FOUND,
     stage: ProblemStage.RESOLVE_SOURCE,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.SOURCE_NOT_FOUND),
     hint: "run `onequery source list`",
   },
   SOURCE_NAME_CONFLICT: {
@@ -289,6 +378,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_NAME_CONFLICT,
     stage: ProblemStage.RESOLVE_SOURCE,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.SOURCE_NAME_CONFLICT),
     hint: "choose a different source name and retry",
   },
   SOURCE_NOT_QUERYABLE: {
@@ -299,6 +389,7 @@ export const CLI_PROBLEM_CATALOG = {
     code: ProblemCode.SOURCE_NOT_QUERYABLE,
     stage: ProblemStage.RESOLVE_SOURCE,
     retryable: false,
+    support: createCliUserActionableSupport(ProblemCode.SOURCE_NOT_QUERYABLE),
     hint: "run `onequery source list` and choose a source where QUERY is yes",
   },
 } as const satisfies Record<string, CliProblemCatalogEntry>;

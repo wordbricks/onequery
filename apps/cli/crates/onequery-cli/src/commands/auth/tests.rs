@@ -704,6 +704,14 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
                 hint: Some("run `onequery auth login` again".to_owned()),
                 retryable: Some(false),
                 request_id: Some("req_denied".to_owned()),
+                support: buffa::MessageField::some(generated::types::CliSupportAction {
+                    kind: Some(
+                        generated::types::SupportActionKind::SUPPORT_ACTION_KIND_NONE.into(),
+                    ),
+                    reason: Some("user_actionable".to_owned()),
+                    explain_slug: Some("login_denied".to_owned()),
+                    ..Default::default()
+                }),
                 ..Default::default()
             }
             .encode_to_bytes(),

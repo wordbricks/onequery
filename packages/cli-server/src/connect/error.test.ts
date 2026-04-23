@@ -5,6 +5,7 @@ import {
   CLI_PROBLEM_CATALOG,
   cliProblemCodeToString,
   cliProblemStageToString,
+  cliSupportActionKindToString,
 } from "../domain/problems";
 import type { CliProblemCatalogEntry, CliProblemKey } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../error";
@@ -30,6 +31,11 @@ function summarizeConnectError(error: ConnectError) {
       ...(detail.requestId ? { requestId: detail.requestId } : {}),
       retryable: detail.retryable,
       stage: cliProblemStageToString(detail.stage),
+      support: {
+        explainSlug: detail.support.explainSlug,
+        kind: cliSupportActionKindToString(detail.support.kind),
+        reason: detail.support.reason,
+      },
       title: detail.title,
     })),
     code: Code[error.code],

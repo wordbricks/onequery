@@ -63,6 +63,7 @@ pub(crate) fn present_api_failure(
                         })
                         .collect(),
                 )
+                .with_support_action(problem.support_action.clone())
                 .with_request_id(problem.request_id)
         }
         ApiFailure::Transport(transport) => CliError::new(
@@ -149,6 +150,8 @@ fn humanize_error_code(raw: &str) -> String {
 mod tests {
     use insta::assert_snapshot;
     use onequery_cli_core::error::CliError;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::Value;
@@ -308,6 +311,7 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -351,6 +355,7 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_connect_auth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -394,6 +399,7 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_connect_reauth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -478,6 +484,7 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_problem".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -541,6 +548,49 @@ mod tests {
     }
 
     #[test]
+    fn present_api_failure_preserves_server_support_action() {
+        let error = present_api_failure(
+            ApiFailure::Problem(ApiProblem {
+                title: "Query Execution Failed".to_owned(),
+                detail: "warehouse execution unexpectedly failed".to_owned(),
+                code: types::ProblemCode::PROBLEM_CODE_QUERY_EXECUTION_FAILED,
+                retryable: false,
+                retry_after_ms: None,
+                stage: ErrorStage::ExecuteQuery,
+                hint: Some(
+                    "retry `onequery query --source warehouse --sql \"select ...\"`".to_owned(),
+                ),
+                request_id: Some("req_support".to_owned()),
+                validation_issues: Vec::new(),
+                support_action: Some(CliSupportAction {
+                    kind: CliSupportActionKind::ReportIfReproducible,
+                    reason: "query_execution_failure".to_owned(),
+                    explain_slug: "query_execution_failed".to_owned(),
+                }),
+            }),
+            ApiErrorPresentation {
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
+                title: "query failed",
+                transport_why_prefix: "failed to reach query endpoint",
+                decode_why_prefix: "failed to decode query response",
+                fallback_try_next: vec![
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
+                ],
+                unauthorized_try_next: None,
+            },
+        );
+
+        assert_eq!(
+            error.support_action,
+            Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })
+        );
+    }
+
+    #[test]
     fn present_api_failure_overrides_unauthorized_try_next_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(ApiProblem {
@@ -553,6 +603,7 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_reauth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -598,6 +649,7 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_query_auth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -628,6 +680,7 @@ mod tests {
                 hint: Some("refresh your session and retry".to_owned()),
                 request_id: Some("req_org_auth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery org list",
@@ -656,6 +709,7 @@ mod tests {
                 hint: Some("login via the OneQuery web app and retry".to_owned()),
                 request_id: Some("req_source_auth".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -698,6 +752,7 @@ mod tests {
                         code: "custom".to_owned(),
                     },
                 ],
+                support_action: None,
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source '' --sql \"delete from events\"",

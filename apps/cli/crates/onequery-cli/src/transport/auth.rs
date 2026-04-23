@@ -551,6 +551,7 @@ mod tests {
             hint: None,
             request_id: Some("req_denied".to_owned()),
             validation_issues: Vec::new(),
+            support_action: None,
         })
         .expect("expected denied outcome");
         let expired = interpret_login_poll_problem(ApiProblem {
@@ -563,6 +564,7 @@ mod tests {
             hint: None,
             request_id: Some("req_expired".to_owned()),
             validation_issues: Vec::new(),
+            support_action: None,
         })
         .expect("expected expired outcome");
 
@@ -663,6 +665,7 @@ mod tests {
             hint: None,
             request_id: Some("req_rate_limited".to_owned()),
             validation_issues: Vec::new(),
+            support_action: None,
         })
         .expect_err("expected rate limited failure to remain a problem");
 
@@ -678,6 +681,7 @@ mod tests {
                 hint: None,
                 request_id: Some("req_rate_limited".to_owned()),
                 validation_issues: Vec::new(),
+                support_action: None,
             })
         );
     }
