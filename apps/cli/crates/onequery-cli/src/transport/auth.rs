@@ -191,7 +191,7 @@ fn login_session_from_generated(
         verification_uri_complete: required_auth_string(
             response.verification_complete_url,
             "device authorization start response missing verificationCompleteUrl",
-            request_id.clone(),
+            request_id,
         )?,
         expires_in_sec: u64::try_from(seconds_until_expiry).unwrap_or(0),
     })

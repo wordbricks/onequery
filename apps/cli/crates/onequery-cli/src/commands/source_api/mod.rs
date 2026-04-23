@@ -264,15 +264,15 @@ fn source_api_execution_page_from_result(
             source_key,
         ));
     };
-    let status = u32::try_from(status).map_err(|error| {
-        source_api_error(
+    if !(100..=599).contains(&status) {
+        return Err(source_api_error(
             context,
             "invalid source API execution response",
             ErrorStage::ExecuteQuery,
-            format!("source API {response_kind} response included invalid HTTP status: {error}"),
+            format!("source API {response_kind} response included invalid HTTP status: {status}"),
             source_key,
-        )
-    })?;
+        ));
+    }
     let Some(content_type) = result.content_type else {
         return Err(source_api_error(
             context,
