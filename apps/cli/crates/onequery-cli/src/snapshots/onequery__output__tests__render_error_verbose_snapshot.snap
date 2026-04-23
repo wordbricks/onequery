@@ -1,0 +1,14 @@
+---
+source: crates/onequery-cli/src/output.rs
+expression: rendered
+---
+Error: query failed
+Command: onequery query exec --source warehouse --sql "<excerpt: select ...>"
+Stage: execute_query
+Code: query_rejected
+Why: server rejected write query
+Hint: queries must be read-only
+Try:
+  - retry with a read-only SELECT
+Request ID: req_verbose
+Explain: onequery explain query_rejected
