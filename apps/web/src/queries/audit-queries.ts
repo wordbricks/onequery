@@ -1,6 +1,7 @@
 import {
   auditListResponseSchema,
   auditSearchSchema,
+  sanitizeAuditSearch,
 } from "@onequery/contracts/audit";
 import type {
   AuditListItem,
@@ -23,14 +24,19 @@ async function fetchAuditList(
   slug: string,
   search: AuditSearch
 ): Promise<AuditListResponse> {
+  const normalizedSearch = sanitizeAuditSearch(search);
   const query = {
-    ...(search.actionName ? { actionName: search.actionName } : {}),
-    ...(search.cursor ? { cursor: search.cursor } : {}),
-    ...(search.family ? { family: search.family } : {}),
-    limit: `${search.limit}`,
-    ...(search.outcome ? { outcome: search.outcome } : {}),
-    ...(search.q ? { q: search.q } : {}),
-    ...(search.sourceKey ? { sourceKey: search.sourceKey } : {}),
+    ...(normalizedSearch.actionName
+      ? { actionName: normalizedSearch.actionName }
+      : {}),
+    ...(normalizedSearch.cursor ? { cursor: normalizedSearch.cursor } : {}),
+    ...(normalizedSearch.family ? { family: normalizedSearch.family } : {}),
+    limit: `${normalizedSearch.limit}`,
+    ...(normalizedSearch.outcome ? { outcome: normalizedSearch.outcome } : {}),
+    ...(normalizedSearch.q ? { q: normalizedSearch.q } : {}),
+    ...(normalizedSearch.sourceKey
+      ? { sourceKey: normalizedSearch.sourceKey }
+      : {}),
   };
 
   const response = await client.api.organizations[":slug"].audit.$get({
@@ -51,9 +57,11 @@ export function auditListQueryOptions(
   slug: string,
   search: AuditSearch
 ) {
+  const normalizedSearch = sanitizeAuditSearch(search);
+
   return queryOptions({
-    queryFn: async () => fetchAuditList(slug, search),
-    queryKey: organizationQueryKeys.audit(userId, slug, search),
+    queryFn: async () => fetchAuditList(slug, normalizedSearch),
+    queryKey: organizationQueryKeys.audit(userId, slug, normalizedSearch),
     staleTime: 30 * 1000,
   });
 }

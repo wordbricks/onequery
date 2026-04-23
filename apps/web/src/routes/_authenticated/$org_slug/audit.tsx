@@ -9,7 +9,15 @@ import {
 
 export const Route = createFileRoute("/_authenticated/$org_slug/audit")({
   component: AuditPage,
-  loaderDeps: ({ search }) => search,
+  loaderDeps: ({ search }) => ({
+    actionName: search.actionName,
+    cursor: search.cursor,
+    family: search.family,
+    limit: search.limit,
+    outcome: search.outcome,
+    q: search.q,
+    sourceKey: search.sourceKey,
+  }),
   loader: async ({
     context: { organizationSlug, queryClient, session },
     deps,
