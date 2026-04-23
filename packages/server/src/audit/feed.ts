@@ -14,6 +14,8 @@ import type {
   AuditListResponse,
   AuditOriginActor,
   AuditOutcome,
+  AuditProjectionLag,
+  AuditProjectedThrough,
   AuditQueryActionEventType,
   AuditQueryActionFailureCode,
   AuditQueryActionMetrics,
@@ -336,9 +338,14 @@ type AuditCursor = {
   startedAt: Date;
 };
 
-type AuditFeedCheckpointMap = {
-  queryAction: string | null;
-  sourceApiAction: string | null;
+type AuditProjectionCheckpointSnapshot = {
+  queryAction: bigint | null;
+  sourceApiAction: bigint | null;
+};
+
+type AuditProjectionCheckpointPositions = {
+  queryAction: bigint;
+  sourceApiAction: bigint;
 };
 
 type QueryActionProjectionRow = {
@@ -1163,7 +1170,7 @@ function parseStoredQueryActionRow(
               `invalid query_action action name: ${row.actionName}`
             );
           })(),
-    completedAt: row.completedAt ?? null,
+    completedAt: row.completedAt,
     failureCode:
       row.failureCode === null
         ? null
@@ -1200,7 +1207,7 @@ function parseStoredSourceApiActionRow(
               `invalid source_api_action action name: ${row.actionName}`
             );
           })(),
-    completedAt: row.completedAt ?? null,
+    completedAt: row.completedAt,
     failureCode:
       row.failureCode === null
         ? null
@@ -1612,7 +1619,7 @@ async function advanceSourceApiActionProjectionBatch(db: DatabaseExecutor) {
   return true;
 }
 
-export async function syncAuditFeedProjection(db: Database) {
+export async function syncAuditFeedProjection(db: Database): Promise<void> {
   for (
     let batchIndex = 0;
     batchIndex < AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST;
@@ -1629,13 +1636,39 @@ export async function syncAuditFeedProjection(db: Database) {
       break;
     }
   }
-
-  return loadAuditProjectedThrough(db);
 }
 
-export async function loadAuditProjectedThrough(
+function serializeAuditProjectedThrough(
+  checkpoints: AuditProjectionCheckpointSnapshot
+): AuditProjectedThrough {
+  return {
+    queryAction:
+      checkpoints.queryAction === null
+        ? null
+        : checkpoints.queryAction.toString(),
+    sourceApiAction:
+      checkpoints.sourceApiAction === null
+        ? null
+        : checkpoints.sourceApiAction.toString(),
+  };
+}
+
+function normalizeAuditProjectionCheckpointSnapshot(
+  checkpoints: AuditProjectionCheckpointSnapshot
+): AuditProjectionCheckpointPositions {
+  return {
+    queryAction: checkpoints.queryAction ?? 0n,
+    sourceApiAction: checkpoints.sourceApiAction ?? 0n,
+  };
+}
+
+async function loadAuditProjectionCheckpointSnapshot(
   db: DatabaseExecutor
-): Promise<AuditFeedCheckpointMap> {
+): Promise<AuditProjectionCheckpointSnapshot> {
+  const checkpoints: AuditProjectionCheckpointSnapshot = {
+    queryAction: null,
+    sourceApiAction: null,
+  };
   const rows = await db
     .select({
       family: auditProjectionCheckpoints.family,
@@ -1646,23 +1679,88 @@ export async function loadAuditProjectedThrough(
       eq(auditProjectionCheckpoints.projectionName, AUDIT_FEED_PROJECTION_NAME)
     );
 
-  const checkpoints: AuditFeedCheckpointMap = {
-    queryAction: null,
-    sourceApiAction: null,
-  };
-
   for (const row of rows) {
     if (row.family === "query_action") {
-      checkpoints.queryAction = row.lastCommitPosition.toString();
+      checkpoints.queryAction = row.lastCommitPosition;
       continue;
     }
 
     if (row.family === "source_api_action") {
-      checkpoints.sourceApiAction = row.lastCommitPosition.toString();
+      checkpoints.sourceApiAction = row.lastCommitPosition;
     }
   }
 
   return checkpoints;
+}
+
+async function hasUnprojectedQueryActionEvents(
+  db: DatabaseExecutor,
+  lastCommitPosition: bigint,
+  organizationId: string
+) {
+  const rows = await db
+    .select({ eventId: queryActionEvents.id })
+    .from(queryActionEvents)
+    .innerJoin(
+      workflowCommands,
+      eq(workflowCommands.id, queryActionEvents.commandId)
+    )
+    .where(
+      and(
+        gt(queryActionEvents.commitPosition, lastCommitPosition),
+        eq(workflowCommands.organizationId, organizationId)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
+
+async function hasUnprojectedSourceApiActionEvents(
+  db: DatabaseExecutor,
+  lastCommitPosition: bigint,
+  organizationId: string
+) {
+  const rows = await db
+    .select({ eventId: sourceApiActionEvents.id })
+    .from(sourceApiActionEvents)
+    .innerJoin(
+      workflowCommands,
+      eq(workflowCommands.id, sourceApiActionEvents.commandId)
+    )
+    .where(
+      and(
+        gt(sourceApiActionEvents.commitPosition, lastCommitPosition),
+        eq(workflowCommands.organizationId, organizationId)
+      )
+    )
+    .limit(1);
+
+  return rows.length > 0;
+}
+
+async function loadAuditProjectionLag(
+  db: DatabaseExecutor,
+  checkpoints: AuditProjectionCheckpointPositions,
+  organizationId: string
+): Promise<AuditProjectionLag> {
+  const [queryAction, sourceApiAction] = await Promise.all([
+    hasUnprojectedQueryActionEvents(
+      db,
+      checkpoints.queryAction,
+      organizationId
+    ),
+    hasUnprojectedSourceApiActionEvents(
+      db,
+      checkpoints.sourceApiAction,
+      organizationId
+    ),
+  ]);
+
+  return {
+    queryAction,
+    sourceApiAction,
+  };
 }
 
 function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
@@ -1781,7 +1879,16 @@ export async function listAuditFeedPage(input: {
   organizationId: string;
   query: AuditListQuery;
 }): Promise<AuditListResponse> {
-  const projectedThrough = await syncAuditFeedProjection(input.db);
+  await syncAuditFeedProjection(input.db);
+  const checkpointSnapshot = await loadAuditProjectionCheckpointSnapshot(
+    input.db
+  );
+  const projectedThrough = serializeAuditProjectedThrough(checkpointSnapshot);
+  const projectionLag = await loadAuditProjectionLag(
+    input.db,
+    normalizeAuditProjectionCheckpointSnapshot(checkpointSnapshot),
+    input.organizationId
+  );
   const conditions = [
     eq(auditFeedEntries.organizationId, input.organizationId),
   ];
@@ -1868,6 +1975,7 @@ export async function listAuditFeedPage(input: {
             startedAt: lastRow.startedAt,
           })
         : null,
+    projectionLag,
     projectedThrough,
   });
 }

@@ -1,9 +1,14 @@
 import {
-  AUDIT_ACTION_NAMES,
   AUDIT_FAMILIES,
   AUDIT_OUTCOMES,
+  getAuditActionNamesForFamily,
 } from "@onequery/contracts/audit";
 import { formatDateTime } from "@onequery/datetime/format-date";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@onequery/ui/components/alert";
 import { Badge } from "@onequery/ui/components/badge";
 import { Button } from "@onequery/ui/components/button";
 import {
@@ -31,15 +36,22 @@ import {
   TableRow,
 } from "@onequery/ui/components/table";
 import {
+  IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
   IconHistory,
 } from "@tabler/icons-react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useState } from "react";
 import type { FormEvent } from "react";
 
+import {
+  buildAuditSearchWithDraft,
+  createAuditDraftFilters,
+  getAuditDraftResetKey,
+  hasPendingAuditDraftFilters,
+} from "@/features/audit/audit-filter-state";
 import { auditListQueryOptions } from "@/queries/audit-queries";
 import type { AuditListItem, AuditSearch } from "@/queries/audit-queries";
 
@@ -50,11 +62,6 @@ function formatEnumLabel(value: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function normalizeSearchValue(value: string): string | undefined {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function truncateText(value: string, maxLength = 160): string {
@@ -176,34 +183,69 @@ function AuditTableRow({ item }: { item: AuditListItem }) {
   );
 }
 
-export function AuditPage() {
+function formatLabelList(values: readonly string[]) {
+  if (values.length === 0) {
+    return "";
+  }
+
+  if (values.length === 1) {
+    return values[0] ?? "";
+  }
+
+  return `${values.slice(0, -1).join(", ")} and ${values.at(-1)}`;
+}
+
+function getLaggingAuditFamilyLabels(
+  search: Pick<AuditSearch, "family">,
+  projectionLag: {
+    queryAction: boolean;
+    sourceApiAction: boolean;
+  }
+) {
+  const relevantFamilies = search.family ? [search.family] : AUDIT_FAMILIES;
+
+  return relevantFamilies
+    .filter((family) =>
+      family === "query_action"
+        ? projectionLag.queryAction
+        : projectionLag.sourceApiAction
+    )
+    .map(formatEnumLabel);
+}
+
+function AuditFiltersSection({
+  isFetching,
+  itemCount,
+  nextCursor,
+  organizationSlug,
+  projectionLag,
+  search,
+}: {
+  isFetching: boolean;
+  itemCount: number;
+  nextCursor: string | null;
+  organizationSlug: string;
+  projectionLag: {
+    queryAction: boolean;
+    sourceApiAction: boolean;
+  };
+  search: AuditSearch;
+}) {
   const navigate = useNavigate();
-  const { organizationSlug, session } = routeApi.useRouteContext();
-  const search = routeApi.useSearch();
-  const { data, isFetching } = useSuspenseQuery(
-    auditListQueryOptions(session.user.id, organizationSlug, search)
+  const [draft, setDraft] = useState(() => createAuditDraftFilters(search));
+  const hasPendingDraftFilters = hasPendingAuditDraftFilters(search, draft);
+  const actionNames = getAuditActionNamesForFamily(search.family);
+  const laggingFamilyLabels = getLaggingAuditFamilyLabels(
+    search,
+    projectionLag
   );
-  const [queryInput, setQueryInput] = useState(search.q ?? "");
-  const [sourceKeyInput, setSourceKeyInput] = useState(search.sourceKey ?? "");
 
-  useEffect(() => {
-    setQueryInput(search.q ?? "");
-  }, [search.q]);
-
-  useEffect(() => {
-    setSourceKeyInput(search.sourceKey ?? "");
-  }, [search.sourceKey]);
-
-  function updateAuditSearch(next: Partial<AuditSearch>) {
+  function navigateAuditSearch(next: Partial<AuditSearch>) {
     startTransition(() => {
       void navigate({
         params: { org_slug: organizationSlug },
         replace: true,
-        search: (prev) => ({
-          ...prev,
-          limit: prev.limit,
-          ...next,
-        }),
+        search: buildAuditSearchWithDraft(search, draft, next),
         to: "/$org_slug/audit",
       });
     });
@@ -211,16 +253,14 @@ export function AuditPage() {
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    updateAuditSearch({
-      cursor: undefined,
-      q: normalizeSearchValue(queryInput),
-      sourceKey: normalizeSearchValue(sourceKeyInput),
-    });
+    navigateAuditSearch({ cursor: undefined });
   }
 
   function handleClearFilters() {
-    setQueryInput("");
-    setSourceKeyInput("");
+    setDraft({
+      q: "",
+      sourceKey: "",
+    });
 
     startTransition(() => {
       void navigate({
@@ -241,6 +281,210 @@ export function AuditPage() {
   }
 
   return (
+    <section className="rounded-xl border p-4">
+      <form
+        className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_180px_180px_180px_auto_auto]"
+        onSubmit={handleFilterSubmit}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="audit-search">Search</Label>
+          <Input
+            id="audit-search"
+            value={draft.q}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                q: event.target.value,
+              }))
+            }
+            placeholder="Actor, query text, operation, or title"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="audit-source-key">Source Key</Label>
+          <Input
+            id="audit-source-key"
+            value={draft.sourceKey}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                sourceKey: event.target.value,
+              }))
+            }
+            placeholder="warehouse"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="audit-outcome">Outcome</Label>
+          <Select
+            value={search.outcome ?? "all"}
+            onValueChange={(value) => {
+              navigateAuditSearch({
+                cursor: undefined,
+                outcome:
+                  value && value !== "all"
+                    ? (value as AuditSearch["outcome"])
+                    : undefined,
+              });
+            }}
+          >
+            <SelectTrigger id="audit-outcome" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All outcomes</SelectItem>
+              {AUDIT_OUTCOMES.map((outcome) => (
+                <SelectItem key={outcome} value={outcome}>
+                  {formatEnumLabel(outcome)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="audit-family">Family</Label>
+          <Select
+            value={search.family ?? "all"}
+            onValueChange={(value) => {
+              navigateAuditSearch({
+                cursor: undefined,
+                family:
+                  value && value !== "all"
+                    ? (value as AuditSearch["family"])
+                    : undefined,
+              });
+            }}
+          >
+            <SelectTrigger id="audit-family" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All families</SelectItem>
+              {AUDIT_FAMILIES.map((family) => (
+                <SelectItem key={family} value={family}>
+                  {formatEnumLabel(family)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="audit-action-name">Action</Label>
+          <Select
+            value={search.actionName ?? "all"}
+            onValueChange={(value) => {
+              navigateAuditSearch({
+                actionName:
+                  value && value !== "all"
+                    ? (value as AuditSearch["actionName"])
+                    : undefined,
+                cursor: undefined,
+              });
+            }}
+          >
+            <SelectTrigger id="audit-action-name" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All actions</SelectItem>
+              {actionNames.map((actionName) => (
+                <SelectItem key={actionName} value={actionName}>
+                  {formatEnumLabel(actionName)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-end">
+          <Button
+            type="submit"
+            className="w-full lg:w-auto"
+            disabled={!hasPendingDraftFilters}
+          >
+            Apply
+          </Button>
+        </div>
+
+        <div className="flex items-end">
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full lg:w-auto"
+            onClick={handleClearFilters}
+          >
+            Clear
+          </Button>
+        </div>
+      </form>
+
+      {laggingFamilyLabels.length > 0 ? (
+        <Alert className="mt-4 border-amber-300/60 bg-amber-50/80 text-amber-950">
+          <IconAlertTriangle className="size-4" />
+          <AlertTitle>Audit feed is still catching up</AlertTitle>
+          <AlertDescription>
+            Recent {formatLabelList(laggingFamilyLabels)} events may not appear
+            yet. Refresh again before treating this history as complete.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-muted-foreground text-sm">
+          {itemCount} entries on this page
+          {search.cursor ? " · viewing older results" : " · newest first"}
+          {hasPendingDraftFilters ? " · apply search filters to paginate" : ""}
+          {isFetching ? " · updating" : ""}
+        </p>
+
+        <div className="flex items-center gap-2">
+          {search.cursor ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigateAuditSearch({ cursor: undefined })}
+            >
+              <IconArrowLeft size={16} stroke={2} />
+              Newest
+            </Button>
+          ) : null}
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (!nextCursor || hasPendingDraftFilters) {
+                return;
+              }
+
+              navigateAuditSearch({ cursor: nextCursor });
+            }}
+            // Comment: Audit cursors are tied to the exact applied URL filters,
+            // so the current page token cannot be reused once the text-filter
+            // draft diverges from the route search.
+            disabled={!nextCursor || hasPendingDraftFilters}
+          >
+            Older
+            <IconArrowRight size={16} stroke={2} />
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function AuditPage() {
+  const { organizationSlug, session } = routeApi.useRouteContext();
+  const search = routeApi.useSearch();
+  const { data, isFetching } = useSuspenseQuery(
+    auditListQueryOptions(session.user.id, organizationSlug, search)
+  );
+
+  return (
     <div className="space-y-8 p-8">
       <div>
         <h1 className="text-3xl font-bold">Audit</h1>
@@ -251,170 +495,15 @@ export function AuditPage() {
         </p>
       </div>
 
-      <section className="rounded-xl border p-4">
-        <form
-          className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_180px_180px_180px_auto_auto]"
-          onSubmit={handleFilterSubmit}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="audit-search">Search</Label>
-            <Input
-              id="audit-search"
-              value={queryInput}
-              onChange={(event) => setQueryInput(event.target.value)}
-              placeholder="Actor, query text, operation, or title"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="audit-source-key">Source Key</Label>
-            <Input
-              id="audit-source-key"
-              value={sourceKeyInput}
-              onChange={(event) => setSourceKeyInput(event.target.value)}
-              placeholder="warehouse"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="audit-outcome">Outcome</Label>
-            <Select
-              value={search.outcome ?? "all"}
-              onValueChange={(value) => {
-                updateAuditSearch({
-                  cursor: undefined,
-                  outcome:
-                    value && value !== "all"
-                      ? (value as AuditSearch["outcome"])
-                      : undefined,
-                });
-              }}
-            >
-              <SelectTrigger id="audit-outcome" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All outcomes</SelectItem>
-                {AUDIT_OUTCOMES.map((outcome) => (
-                  <SelectItem key={outcome} value={outcome}>
-                    {formatEnumLabel(outcome)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="audit-family">Family</Label>
-            <Select
-              value={search.family ?? "all"}
-              onValueChange={(value) => {
-                updateAuditSearch({
-                  cursor: undefined,
-                  family:
-                    value && value !== "all"
-                      ? (value as AuditSearch["family"])
-                      : undefined,
-                });
-              }}
-            >
-              <SelectTrigger id="audit-family" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All families</SelectItem>
-                {AUDIT_FAMILIES.map((family) => (
-                  <SelectItem key={family} value={family}>
-                    {formatEnumLabel(family)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="audit-action-name">Action</Label>
-            <Select
-              value={search.actionName ?? "all"}
-              onValueChange={(value) => {
-                updateAuditSearch({
-                  actionName:
-                    value && value !== "all"
-                      ? (value as AuditSearch["actionName"])
-                      : undefined,
-                  cursor: undefined,
-                });
-              }}
-            >
-              <SelectTrigger id="audit-action-name" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All actions</SelectItem>
-                {AUDIT_ACTION_NAMES.map((actionName) => (
-                  <SelectItem key={actionName} value={actionName}>
-                    {formatEnumLabel(actionName)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-end">
-            <Button type="submit" className="w-full lg:w-auto">
-              Apply
-            </Button>
-          </div>
-
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full lg:w-auto"
-              onClick={handleClearFilters}
-            >
-              Clear
-            </Button>
-          </div>
-        </form>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-muted-foreground text-sm">
-            {data.items.length} entries on this page
-            {search.cursor ? " · viewing older results" : " · newest first"}
-            {isFetching ? " · updating" : ""}
-          </p>
-
-          <div className="flex items-center gap-2">
-            {search.cursor ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => updateAuditSearch({ cursor: undefined })}
-              >
-                <IconArrowLeft size={16} stroke={2} />
-                Newest
-              </Button>
-            ) : null}
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (!data.nextCursor) {
-                  return;
-                }
-
-                updateAuditSearch({ cursor: data.nextCursor });
-              }}
-              disabled={!data.nextCursor}
-            >
-              Older
-              <IconArrowRight size={16} stroke={2} />
-            </Button>
-          </div>
-        </div>
-      </section>
+      <AuditFiltersSection
+        key={getAuditDraftResetKey(search)}
+        isFetching={isFetching}
+        itemCount={data.items.length}
+        nextCursor={data.nextCursor}
+        organizationSlug={organizationSlug}
+        projectionLag={data.projectionLag}
+        search={search}
+      />
 
       {data.items.length === 0 ? (
         <Empty className="border">

@@ -88,12 +88,14 @@ async function insertAcceptedWorkflowCommand(input: {
 async function seedSucceededQueryAction(input: {
   actionId: string;
   actorSnapshot: WorkflowActorSnapshot;
+  commitPositionBase?: bigint;
   db: TestDatabase;
   organizationId: string;
   requestId: string;
   startedAt: Date;
 }) {
   const actionId = input.actionId;
+  const commitPositionBase = input.commitPositionBase ?? 0n;
   const eventBase = `${actionId}-event`;
   const commandBase = `${actionId}-command`;
   const source = {
@@ -247,7 +249,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-start`,
-      commitPosition: 1n,
+      commitPosition: commitPositionBase + 1n,
       eventType: "action_received",
       id: `${eventBase}-start`,
       occurredAt: input.startedAt,
@@ -261,7 +263,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-source`,
-      commitPosition: 2n,
+      commitPosition: commitPositionBase + 2n,
       eventType: "source_loaded",
       id: `${eventBase}-source`,
       occurredAt: new Date(input.startedAt.getTime() + 1_000),
@@ -274,7 +276,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-validated`,
-      commitPosition: 3n,
+      commitPosition: commitPositionBase + 3n,
       eventType: "query_validated",
       id: `${eventBase}-validated`,
       occurredAt: new Date(input.startedAt.getTime() + 2_000),
@@ -287,7 +289,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-credentials`,
-      commitPosition: 4n,
+      commitPosition: commitPositionBase + 4n,
       eventType: "credentials_loaded",
       id: `${eventBase}-credentials`,
       occurredAt: new Date(input.startedAt.getTime() + 3_000),
@@ -299,7 +301,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-executed`,
-      commitPosition: 5n,
+      commitPosition: commitPositionBase + 5n,
       eventType: "query_executed",
       id: `${eventBase}-executed`,
       occurredAt: new Date(input.startedAt.getTime() + 4_000),
@@ -313,7 +315,7 @@ async function seedSucceededQueryAction(input: {
     {
       actionId,
       commandId: `${commandBase}-usage`,
-      commitPosition: 6n,
+      commitPosition: commitPositionBase + 6n,
       eventType: "usage_persisted",
       id: `${eventBase}-usage`,
       occurredAt: new Date(input.startedAt.getTime() + 5_000),
@@ -767,6 +769,10 @@ describe("organizations audit route", () => {
       );
       const firstItem = firstPage.items[0];
 
+      expect(firstPage.projectionLag).toEqual({
+        queryAction: false,
+        sourceApiAction: false,
+      });
       expect(firstPage.projectedThrough.queryAction).not.toBeNull();
       expect(firstPage.projectedThrough.sourceApiAction).not.toBeNull();
       expect(firstPage.items).toHaveLength(1);
@@ -879,6 +885,36 @@ describe("organizations audit route", () => {
         target: {
           sourceKey: "billing-api",
         },
+      });
+
+      const sanitizedActionResponse = await client.api.organizations[
+        ":slug"
+      ].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            actionName: "execute",
+            family: "source_api_action",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(sanitizedActionResponse.status).toBe(200);
+
+      const sanitizedActionPage = auditListResponseSchema.parse(
+        await sanitizedActionResponse.json()
+      );
+
+      expect(sanitizedActionPage.items).toHaveLength(1);
+      expect(sanitizedActionPage.items[0]).toMatchObject({
+        actionName: "invoke",
+        family: "source_api_action",
+        familyActionId: `source-api-pending-${runId}`,
       });
 
       const hiddenHintResponse = await client.api.organizations[
@@ -1024,6 +1060,236 @@ describe("organizations audit route", () => {
         }
       );
       expect(missing.status).toBe(404);
+    } finally {
+      await closeDatabase(db as ClosableDatabase);
+    }
+  });
+
+  it("reports when the audit projection is still behind the event log", async () => {
+    const harness = await createRouteIntegrationHarness({
+      databaseUrl: await createPgliteDatabaseUrl("onequery-org-audit-lag-"),
+    });
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { client, db, test } = harness.value;
+    const runId = createRunId();
+    const owner = test.createUser({
+      email: `audit-lag-owner-${runId}@example.com`,
+    });
+    const organization = test.createOrganization({
+      name: `Audit Lag ${runId}`,
+      slug: `audit-lag-${runId}`,
+    });
+
+    await test.saveUser(owner);
+
+    try {
+      await test.saveOrganization(organization);
+      await test.addMember({
+        organizationId: organization.id as string,
+        role: "owner",
+        userId: owner.id,
+      });
+
+      const ownerLogin = await test.login({ userId: owner.id });
+      const ownerCookie = ownerLogin.headers.get("cookie");
+
+      if (!ownerCookie) {
+        throw new Error("Owner login must expose a cookie header");
+      }
+
+      const actorSnapshot: WorkflowActorSnapshot = {
+        authMode: "browser_session",
+        email: owner.email,
+        membershipRoles: ["owner"],
+        userId: owner.id,
+      };
+
+      for (let index = 0; index < 168; index += 1) {
+        const commitPositionBase = BigInt(index) * 6n;
+
+        // Comment: Projection batching keys off commitPosition, so this lag test
+        // must seed monotonically increasing positions instead of the tiny fixed
+        // values the smaller helper scenarios can get away with.
+        await seedSucceededQueryAction({
+          actionId: `query-lag-${runId}-${index}`,
+          actorSnapshot,
+          commitPositionBase,
+          db,
+          organizationId: organization.id as string,
+          requestId: `req-query-lag-${runId}-${index}`,
+          startedAt: new Date(Date.UTC(2026, 2, 27, 8, 0, index)),
+        });
+      }
+
+      const firstResponse = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            limit: "1",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(firstResponse.status).toBe(200);
+
+      const firstPage = auditListResponseSchema.parse(
+        await firstResponse.json()
+      );
+
+      expect(firstPage.projectionLag).toEqual({
+        queryAction: true,
+        sourceApiAction: false,
+      });
+
+      const secondResponse = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: organization.slug as string,
+          },
+          query: {
+            limit: "1",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(secondResponse.status).toBe(200);
+
+      const secondPage = auditListResponseSchema.parse(
+        await secondResponse.json()
+      );
+
+      expect(secondPage.projectionLag).toEqual({
+        queryAction: false,
+        sourceApiAction: false,
+      });
+    } finally {
+      await closeDatabase(db as ClosableDatabase);
+    }
+  });
+
+  it("scopes projection lag to the current organization", async () => {
+    const harness = await createRouteIntegrationHarness({
+      databaseUrl: await createPgliteDatabaseUrl(
+        "onequery-org-audit-lag-scope-"
+      ),
+    });
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { client, db, test } = harness.value;
+    const runId = createRunId();
+    const owner = test.createUser({
+      email: `audit-lag-scope-owner-${runId}@example.com`,
+    });
+    const visibleOrganization = test.createOrganization({
+      name: `Audit Lag Visible ${runId}`,
+      slug: `audit-lag-visible-${runId}`,
+    });
+    const laggingOrganization = test.createOrganization({
+      name: `Audit Lag Hidden ${runId}`,
+      slug: `audit-lag-hidden-${runId}`,
+    });
+
+    await test.saveUser(owner);
+
+    try {
+      await test.saveOrganization(visibleOrganization);
+      await test.saveOrganization(laggingOrganization);
+      await test.addMember({
+        organizationId: visibleOrganization.id as string,
+        role: "owner",
+        userId: owner.id,
+      });
+      await test.addMember({
+        organizationId: laggingOrganization.id as string,
+        role: "owner",
+        userId: owner.id,
+      });
+
+      const ownerLogin = await test.login({ userId: owner.id });
+      const ownerCookie = ownerLogin.headers.get("cookie");
+
+      if (!ownerCookie) {
+        throw new Error("Owner login must expose a cookie header");
+      }
+
+      const actorSnapshot: WorkflowActorSnapshot = {
+        authMode: "browser_session",
+        email: owner.email,
+        membershipRoles: ["owner"],
+        userId: owner.id,
+      };
+
+      await seedSucceededQueryAction({
+        actionId: `query-visible-${runId}`,
+        actorSnapshot,
+        commitPositionBase: 0n,
+        db,
+        organizationId: visibleOrganization.id as string,
+        requestId: `req-query-visible-${runId}`,
+        startedAt: new Date("2026-03-27T08:00:00.000Z"),
+      });
+
+      for (let index = 0; index < 168; index += 1) {
+        const commitPositionBase = 6n + BigInt(index) * 6n;
+
+        // Comment: This second org intentionally exceeds the per-request
+        // projection batch cap so the visible org only stays warning-free when
+        // lag detection is scoped to the requesting organization.
+        await seedSucceededQueryAction({
+          actionId: `query-hidden-${runId}-${index}`,
+          actorSnapshot,
+          commitPositionBase,
+          db,
+          organizationId: laggingOrganization.id as string,
+          requestId: `req-query-hidden-${runId}-${index}`,
+          startedAt: new Date(Date.UTC(2026, 2, 27, 9, 0, index)),
+        });
+      }
+
+      const response = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: visibleOrganization.slug as string,
+          },
+          query: {
+            limit: "1",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(response.status).toBe(200);
+
+      const page = auditListResponseSchema.parse(await response.json());
+
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]).toMatchObject({
+        family: "query_action",
+        familyActionId: `query-visible-${runId}`,
+      });
+      expect(page.projectionLag).toEqual({
+        queryAction: false,
+        sourceApiAction: false,
+      });
     } finally {
       await closeDatabase(db as ClosableDatabase);
     }

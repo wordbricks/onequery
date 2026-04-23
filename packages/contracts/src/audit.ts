@@ -14,8 +14,45 @@ export const AUDIT_ACTION_NAMES = [
 ] as const;
 export type AuditActionName = (typeof AUDIT_ACTION_NAMES)[number];
 
+export const AUDIT_ACTION_NAMES_BY_FAMILY = {
+  query_action: ["validate", "execute"],
+  source_api_action: ["describe", "invoke"],
+} as const satisfies Record<AuditFamily, readonly AuditActionName[]>;
+
 export const AUDIT_OUTCOMES = ["pending", "succeeded", "failed"] as const;
 export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
+
+type AuditSearchFilters = {
+  actionName?: AuditActionName;
+  family?: AuditFamily;
+};
+
+export function getAuditActionNamesForFamily(family?: AuditFamily) {
+  return family ? AUDIT_ACTION_NAMES_BY_FAMILY[family] : AUDIT_ACTION_NAMES;
+}
+
+export function isAuditActionNameCompatibleWithFamily(
+  family: AuditFamily | undefined,
+  actionName: AuditActionName | undefined
+) {
+  if (!family || !actionName) {
+    return true;
+  }
+
+  return (
+    AUDIT_ACTION_NAMES_BY_FAMILY[family] as readonly AuditActionName[]
+  ).includes(actionName);
+}
+
+export function sanitizeAuditSearch<T extends AuditSearchFilters>(
+  search: T
+): T {
+  if (isAuditActionNameCompatibleWithFamily(search.family, search.actionName)) {
+    return search;
+  }
+
+  return { ...search, actionName: undefined } as T;
+}
 
 export const AUDIT_QUERY_ACTION_PHASES = [
   "load_source",
@@ -157,7 +194,7 @@ const outcomeSearchSchema = z.preprocess((value: unknown) => {
   return trimmed.length === 0 ? undefined : trimmed;
 }, z.enum(AUDIT_OUTCOMES));
 
-export const auditSearchSchema = z.object({
+const auditSearchShape = {
   actionName: actionNameSearchSchema.optional(),
   cursor: cursorSearchSchema.optional(),
   family: familySearchSchema.optional(),
@@ -170,10 +207,14 @@ export const auditSearchSchema = z.object({
   outcome: outcomeSearchSchema.optional(),
   q: trimmedSearchStringSchema.optional(),
   sourceKey: trimmedSearchStringSchema.optional(),
-});
+} satisfies z.ZodRawShape;
+
+export const auditSearchSchema = z
+  .object(auditSearchShape)
+  .transform(sanitizeAuditSearch);
 export type AuditSearch = z.infer<typeof auditSearchSchema>;
 
-export const auditListQuerySchema = z.object({
+const auditListQueryShape = {
   actionName: actionNameSearchSchema.optional(),
   cursor: cursorSearchSchema.optional(),
   family: familySearchSchema.optional(),
@@ -186,7 +227,11 @@ export const auditListQuerySchema = z.object({
   outcome: outcomeSearchSchema.optional(),
   q: trimmedSearchStringSchema.optional(),
   sourceKey: trimmedSearchStringSchema.optional(),
-});
+} satisfies z.ZodRawShape;
+
+export const auditListQuerySchema = z
+  .object(auditListQueryShape)
+  .transform(sanitizeAuditSearch);
 export type AuditListQuery = z.infer<typeof auditListQuerySchema>;
 
 export const auditOriginActorSchema = z
@@ -321,11 +366,20 @@ export const auditProjectedThroughSchema = z
   .strict();
 export type AuditProjectedThrough = z.infer<typeof auditProjectedThroughSchema>;
 
+export const auditProjectionLagSchema = z
+  .object({
+    queryAction: z.boolean(),
+    sourceApiAction: z.boolean(),
+  })
+  .strict();
+export type AuditProjectionLag = z.infer<typeof auditProjectionLagSchema>;
+
 export const auditListResponseSchema = z
   .object({
     families: z.array(z.enum(AUDIT_FAMILIES)),
     items: z.array(auditListItemSchema),
     nextCursor: z.string().nullable(),
+    projectionLag: auditProjectionLagSchema,
     projectedThrough: auditProjectedThroughSchema,
   })
   .strict();
