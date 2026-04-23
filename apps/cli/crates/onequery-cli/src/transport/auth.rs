@@ -4,7 +4,7 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
@@ -70,7 +70,7 @@ pub(crate) async fn start_login_session(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -95,7 +95,7 @@ pub(crate) async fn poll_login_session(
         Err(error) => return Err(failure_from_connect(error, ErrorStage::Auth)),
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = login_poll_outcome_from_generated(response.into_owned(), request_id.clone())?;
 
     Ok(ApiSuccess {
@@ -117,7 +117,7 @@ pub(crate) async fn whoami(
             return Err(failure_from_connect(error, ErrorStage::Auth));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
 
     Ok(ApiSuccess {
         payload: whoami_from_generated(response.into_owned(), request_id.clone())?,
@@ -144,7 +144,7 @@ pub(crate) async fn refresh_session(
             return Err(failure_from_connect(error, ErrorStage::Auth));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
 
     Ok(ApiSuccess {
         payload: refreshed_auth_session_from_generated(response.into_owned(), request_id.clone())?,

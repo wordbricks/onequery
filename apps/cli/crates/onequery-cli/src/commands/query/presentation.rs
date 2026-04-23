@@ -68,7 +68,10 @@ pub(super) fn render_query_validation_output(
 
     let mut lines = vec![
         format!("Source: {source_name} ({provider})"),
-        format!("Truncated: {}", if result.truncated { "yes" } else { "no" }),
+        format!(
+            "SQL normalized: {}",
+            if result.sql_normalized { "yes" } else { "no" }
+        ),
         String::new(),
         "Normalized SQL:".to_owned(),
         result.normalized_sql.clone(),

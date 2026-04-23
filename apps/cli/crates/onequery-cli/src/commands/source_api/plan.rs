@@ -5,15 +5,19 @@ use serde_json::Value;
 use crate::cli::ApiArgs;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiDraft;
+use crate::transport::source_api::SourceApiFieldEncoding;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
 use crate::transport::source_api::SourceApiOperationKind;
 use crate::transport::source_api::SourceApiPaginationPolicy;
+use crate::transport::source_api::SourceApiPathCapability;
 use crate::transport::source_api::SourceApiRequestBody;
 use crate::transport::source_api::SourceApiSelectorKind;
 use crate::transport::source_api::proto_json_object_from_json;
 use crate::transport::source_api::proto_json_value_from_json;
+use crate::transport::source_api::source_api_field_policy_has_encoding;
+use crate::transport::source_api::source_api_field_policy_has_path_capability;
 use crate::transport::source_api::source_api_input_mode_or_none;
 use crate::transport::source_api::source_api_operation_kind_or_http_request;
 use crate::transport::source_api::source_api_pagination_policy_or_none;
@@ -109,12 +113,18 @@ pub(super) async fn build_plan(
         &args.raw_fields,
         &args.fields,
         FieldPathPolicy {
-            supports_nested_paths: field_policy
-                .and_then(|policy| policy.supports_nested_paths)
-                .unwrap_or(false),
-            supports_array_paths: field_policy
-                .and_then(|policy| policy.supports_array_paths)
-                .unwrap_or(false),
+            supports_nested_paths: field_policy.is_some_and(|policy| {
+                source_api_field_policy_has_path_capability(
+                    policy,
+                    SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED,
+                )
+            }),
+            supports_array_paths: field_policy.is_some_and(|policy| {
+                source_api_field_policy_has_path_capability(
+                    policy,
+                    SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_ARRAY,
+                )
+            }),
         },
         operation.name.as_deref().unwrap_or_default(),
         &mut reader,
@@ -151,7 +161,7 @@ pub(super) async fn build_plan(
     };
 
     let draft = SourceApiDraft {
-        operation: operation.name.clone(),
+        operation_name: operation.name.clone(),
         descriptor_version: descriptor.descriptor_version.clone(),
         selector,
         method_override: normalized_method_override(args.method.as_deref()),
@@ -320,9 +330,12 @@ fn validate_field_flags(
     let field_policy = operation.field_policy.as_option();
 
     if !args.raw_fields.is_empty()
-        && !field_policy
-            .and_then(|policy| policy.allows_raw_fields)
-            .unwrap_or(false)
+        && !field_policy.is_some_and(|policy| {
+            source_api_field_policy_has_encoding(
+                policy,
+                SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW,
+            )
+        })
     {
         return Err(source_api_parse_error(
             context,
@@ -333,9 +346,12 @@ fn validate_field_flags(
     }
 
     if !args.fields.is_empty()
-        && !field_policy
-            .and_then(|policy| policy.allows_typed_fields)
-            .unwrap_or(false)
+        && !field_policy.is_some_and(|policy| {
+            source_api_field_policy_has_encoding(
+                policy,
+                SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED,
+            )
+        })
     {
         return Err(source_api_parse_error(
             context,
@@ -360,14 +376,11 @@ fn validate_input(
         return Ok(());
     }
 
-    if field_policy
-        .and_then(|policy| policy.accepts_input)
-        .unwrap_or(false)
-        && source_api_input_mode_or_none(
-            field_policy
-                .and_then(|policy| policy.input_mode)
-                .unwrap_or_else(|| 0.into()),
-        ) != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
+    if source_api_input_mode_or_none(
+        field_policy
+            .and_then(|policy| policy.input_mode)
+            .unwrap_or_else(|| 0.into()),
+    ) != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
     {
         return Ok(());
     }
@@ -430,9 +443,10 @@ fn parse_headers(
                 ));
             }
 
+            let normalized_name = name.to_ascii_lowercase();
             if !allowed_header_names
                 .iter()
-                .any(|candidate| candidate == &name.to_ascii_lowercase())
+                .any(|candidate| candidate == &normalized_name)
             {
                 return Err(source_api_parse_error(
                     context,
@@ -443,7 +457,7 @@ fn parse_headers(
             }
 
             Ok(SourceApiHeader {
-                name: Some(name.to_owned()),
+                name: Some(normalized_name),
                 value: Some(header_value.trim().to_owned()),
                 ..Default::default()
             })
@@ -566,6 +580,7 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
     use crate::transport::source_api::SourceApiDescriptor;
+    use crate::transport::source_api::SourceApiFieldEncoding;
     use crate::transport::source_api::SourceApiFieldPolicy;
     use crate::transport::source_api::SourceApiHeader;
     use crate::transport::source_api::SourceApiHeaderPolicy;
@@ -574,6 +589,7 @@ mod tests {
     use crate::transport::source_api::SourceApiOperation;
     use crate::transport::source_api::SourceApiOperationKind;
     use crate::transport::source_api::SourceApiPaginationPolicy;
+    use crate::transport::source_api::SourceApiPathCapability;
     use crate::transport::source_api::SourceApiRequestBody;
     use crate::transport::source_api::SourceApiSelectorKind;
     use crate::transport::source_api::json_from_proto_json_value;
@@ -709,7 +725,6 @@ mod tests {
             },
             &descriptor_with_operation(SourceApiOperation {
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    accepts_input: Some(false),
                     input_mode: Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE.into()),
                     ..SourceApiFieldPolicy::default()
                 }),
@@ -735,9 +750,9 @@ mod tests {
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    allows_typed_fields: Some(true),
-                    supports_nested_paths: Some(false),
-                    supports_array_paths: Some(false),
+                    field_encodings: vec![
+                        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED.into(),
+                    ],
                     ..SourceApiFieldPolicy::default()
                 }),
                 ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
@@ -765,9 +780,12 @@ mod tests {
             &descriptor_with_operation(SourceApiOperation {
                 selector_kind: Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into()),
                 field_policy: MessageField::some(SourceApiFieldPolicy {
-                    allows_typed_fields: Some(true),
-                    supports_nested_paths: Some(true),
-                    supports_array_paths: Some(false),
+                    field_encodings: vec![
+                        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED.into(),
+                    ],
+                    path_capabilities: vec![
+                        SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED.into(),
+                    ],
                     ..SourceApiFieldPolicy::default()
                 }),
                 ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
@@ -804,7 +822,6 @@ mod tests {
                         SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                     ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
-                        accepts_input: Some(true),
                         input_mode: Some(
                             SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT.into(),
                         ),
@@ -852,9 +869,13 @@ mod tests {
                         SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE.into(),
                     ),
                     field_policy: MessageField::some(SourceApiFieldPolicy {
-                        allows_typed_fields: Some(true),
-                        supports_nested_paths: Some(true),
-                        supports_array_paths: Some(true),
+                        field_encodings: vec![
+                            SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED.into(),
+                        ],
+                        path_capabilities: vec![
+                            SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED.into(),
+                            SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_ARRAY.into(),
+                        ],
                         ..SourceApiFieldPolicy::default()
                     }),
                     ..operation(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE)
@@ -942,7 +963,7 @@ mod tests {
                 ..Default::default()
             }),
             descriptor_version: Some("2026-04-09".to_owned()),
-            default_path_operation: Some("fetch".to_owned()),
+            default_path_operation_name: Some("fetch".to_owned()),
             operations: vec![operation],
             examples: Vec::new(),
             notes: Vec::new(),

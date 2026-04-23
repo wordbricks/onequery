@@ -168,10 +168,16 @@ function getCliInvalidRequestDescriptor(methodName: string): {
     case "getsource":
     case "testsource":
     case "describesourceapi":
-    case "executesourceapi":
       return {
         hint: "correct the source request and retry",
         stage: ProblemStage.RESOLVE_SOURCE,
+      };
+    case "previewsourceapi":
+    case "executesourceapi":
+    case "resumesourceapi":
+      return {
+        hint: "correct the source API request and retry",
+        stage: ProblemStage.EXECUTE_QUERY,
       };
     default:
       return {

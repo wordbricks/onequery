@@ -21,13 +21,17 @@ import { createConnectTransport } from "@connectrpc/connect-node";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/auth_pb.js";
-import { CliService } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceService,
+} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
 import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
 import {
   OrgCapability,
   OrganizationRole,
 } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
-import { QueryParameterType } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/query_pb.js";
 import {
   SourceConnectSslMode,
   SourceProvider,
@@ -44,7 +48,12 @@ import {
 
 const STARTUP_TIMEOUT_MS = 120_000;
 const SHUTDOWN_TIMEOUT_MS = 30_000;
-type CliConnectClient = Client<typeof CliService>;
+type CliConnectClient = {
+  auth: Client<typeof CliAuthService>;
+  organization: Client<typeof CliOrganizationService>;
+  query: Client<typeof CliQueryService>;
+  source: Client<typeof CliSourceService>;
+};
 
 let stagedBundleRootPromise: Promise<string> | null = null;
 
@@ -189,14 +198,17 @@ function collectProcessOutput(child: ReturnType<typeof spawn>): {
 function createCliConnectClient(baseUrl: string): CliConnectClient {
   // Comment: smoke coverage should bind to the generated service descriptor so
   // removed or renamed protobuf RPCs fail at compile time instead of drifting.
-  return createClient(
-    CliService,
-    createConnectTransport({
-      baseUrl: `${baseUrl}/api/cli`,
-      httpVersion: "1.1",
-      useHttpGet: true,
-    })
-  );
+  const transport = createConnectTransport({
+    baseUrl: `${baseUrl}/api/cli`,
+    httpVersion: "1.1",
+    useHttpGet: true,
+  });
+  return {
+    auth: createClient(CliAuthService, transport),
+    organization: createClient(CliOrganizationService, transport),
+    query: createClient(CliQueryService, transport),
+    source: createClient(CliSourceService, transport),
+  };
 }
 
 async function callCliConnectRpc<T>(input: {
@@ -248,7 +260,7 @@ async function refreshCliAccessToken(input: {
 }): Promise<string> {
   const refreshResponse = await callCliConnectRpc({
     cookieHeader: input.cookieHeader,
-    call: (options) => input.client.refreshSession({}, options),
+    call: (options) => input.client.auth.refreshSession({}, options),
     requestId: "req_cli_refresh_session_123",
   });
 
@@ -296,18 +308,8 @@ function summarizeCliSource(value: {
   };
 }
 
-function summarizeCliQueryParameter(value: {
-  valueType: QueryParameterType;
-  value: string;
-}): JsonObject {
-  return {
-    valueType: QueryParameterType[value.valueType],
-    value: value.value,
-  };
-}
-
 function summarizeGetSessionResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSession"]>>
+  value: Awaited<ReturnType<CliConnectClient["auth"]["getSession"]>>
 ): JsonObject {
   // Comment: generated protobuf submessages are optional in TypeScript even
   // when this smoke path treats them as required success invariants.
@@ -330,7 +332,9 @@ function summarizeGetSessionResponse(
 }
 
 function summarizeListOrganizationsResponse(
-  value: Awaited<ReturnType<CliConnectClient["listOrganizations"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["organization"]["listOrganizations"]>
+  >
 ): JsonObject {
   const page = requirePresent(
     value.page,
@@ -347,7 +351,9 @@ function summarizeListOrganizationsResponse(
 }
 
 function summarizeGetOrganizationResponse(
-  value: Awaited<ReturnType<CliConnectClient["getOrganization"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["organization"]["getOrganization"]>
+  >
 ): JsonObject {
   // Comment: Connect-generated repeated enum fields in this smoke path are
   // iterable but do not consistently expose Array.prototype helpers.
@@ -363,7 +369,9 @@ function summarizeGetOrganizationResponse(
 }
 
 function summarizeGetSourceConnectGuideResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSourceConnectGuide"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["source"]["getSourceConnectGuide"]>
+  >
 ): JsonObject {
   return {
     command: value.command,
@@ -375,7 +383,7 @@ function summarizeGetSourceConnectGuideResponse(
 }
 
 function summarizeConnectSourceResponse(
-  value: Awaited<ReturnType<CliConnectClient["connectSource"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["connectSource"]>>
 ): JsonObject {
   const source = requirePresent(
     value.source,
@@ -389,7 +397,7 @@ function summarizeConnectSourceResponse(
 }
 
 function summarizeListSourcesResponse(
-  value: Awaited<ReturnType<CliConnectClient["listSources"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["listSources"]>>
 ): JsonObject {
   const page = requirePresent(
     value.page,
@@ -403,7 +411,7 @@ function summarizeListSourcesResponse(
 }
 
 function summarizeGetSourceResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSource"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["getSource"]>>
 ): JsonObject {
   const source = requirePresent(
     value.source,
@@ -416,7 +424,7 @@ function summarizeGetSourceResponse(
 }
 
 function summarizeValidateQueryResponse(
-  value: Awaited<ReturnType<CliConnectClient["validateQuery"]>>
+  value: Awaited<ReturnType<CliConnectClient["query"]["validateQuery"]>>
 ): JsonObject {
   const declaredResultWindow = requirePresent(
     value.declaredResultWindow,
@@ -448,9 +456,6 @@ function summarizeValidateQueryResponse(
       cellMaxChars: request.cellMaxChars,
       maxBytes: request.maxBytes,
       maxRows: request.maxRows,
-      parameters: request.parameters.map((parameter) =>
-        summarizeCliQueryParameter(parameter)
-      ),
       sql: request.sql,
       timeoutMs: durationMs(
         requirePresent(
@@ -460,7 +465,7 @@ function summarizeValidateQueryResponse(
       ),
     },
     source: summarizeCliSource(source),
-    truncated: value.truncated,
+    sqlNormalized: value.sqlNormalized,
   };
 }
 
@@ -1053,7 +1058,7 @@ describe("CLI self-host smoke", () => {
 
       const sessionResponse = await callCliConnectRpc({
         cookieHeader,
-        call: (options) => cliConnectClient.getSession({}, options),
+        call: (options) => cliConnectClient.auth.getSession({}, options),
         requestId: "req_cli_session_123",
       });
       expect(sessionResponse.payload).toMatchObject({
@@ -1066,7 +1071,7 @@ describe("CLI self-host smoke", () => {
       const organizationsResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.listOrganizations(
+          cliConnectClient.organization.listOrganizations(
             {
               page: {
                 limit: 1,
@@ -1086,7 +1091,7 @@ describe("CLI self-host smoke", () => {
       const organizationResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getOrganization(
+          cliConnectClient.organization.getOrganization(
             {
               orgSlug: "owner-org",
             },
@@ -1102,7 +1107,7 @@ describe("CLI self-host smoke", () => {
       const guideResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getSourceConnectGuide(
+          cliConnectClient.source.getSourceConnectGuide(
             {
               orgSlug: "owner-org",
               provider: SourceProvider.POSTGRES,
@@ -1122,7 +1127,7 @@ describe("CLI self-host smoke", () => {
       const connectSourceResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.connectSource(
+          cliConnectClient.source.connectSource(
             {
               credentials: {
                 kind: {
@@ -1157,7 +1162,7 @@ describe("CLI self-host smoke", () => {
       const sourcesResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.listSources(
+          cliConnectClient.source.listSources(
             {
               orgSlug: "owner-org",
               page: {
@@ -1183,7 +1188,7 @@ describe("CLI self-host smoke", () => {
       const sourceResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getSource(
+          cliConnectClient.source.getSource(
             {
               orgSlug: "owner-org",
               sourceKey: "Warehouse",
@@ -1202,7 +1207,7 @@ describe("CLI self-host smoke", () => {
       const validateQueryResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.validateQuery(
+          cliConnectClient.query.validateQuery(
             {
               orgSlug: "owner-org",
               query: {

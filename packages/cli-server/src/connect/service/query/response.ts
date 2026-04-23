@@ -99,9 +99,7 @@ function buildCliQueryColumn(column: {
 }): ExecuteQueryColumnMessage {
   return {
     name: column.name,
-    ...(column.logicalType
-      ? { logicalType: toCliQueryLogicalType(column.logicalType) }
-      : {}),
+    logicalType: toCliQueryLogicalType(column.logicalType),
   };
 }
 
@@ -111,7 +109,7 @@ function buildCliQueryRow(row: readonly string[]): ExecuteQueryRowMessage {
   };
 }
 
-function toCliQueryLogicalType(value: string) {
+function toCliQueryLogicalType(value: string | null) {
   switch (value) {
     case "string":
       return QueryLogicalType.STRING;
@@ -128,6 +126,6 @@ function toCliQueryLogicalType(value: string) {
     case "json":
       return QueryLogicalType.JSON;
     default:
-      return undefined;
+      return QueryLogicalType.UNKNOWN;
   }
 }

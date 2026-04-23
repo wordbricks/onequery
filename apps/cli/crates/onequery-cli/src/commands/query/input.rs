@@ -49,7 +49,6 @@ pub(super) async fn load_query_request_payload(
     ensure_query_payload_has_sql(
         QueryRequestPayload {
             sql,
-            parameters: None,
             max_rows: result_window.max_rows,
             max_bytes: result_window.max_bytes,
             cell_max_chars: result_window.cell_max_chars,

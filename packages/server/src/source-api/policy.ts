@@ -29,7 +29,7 @@ export function finalizeSourceApiPolicyPlan(
       bodyKind,
       bodyPaths,
       headerNames,
-      host: new URL(plan.url).host,
+      host: new URL(plan.url).hostname,
       method,
       selector,
       selectorTemplate: selectorTemplate ?? "/{path}",

@@ -131,7 +131,7 @@ describe("runtime app", () => {
     for (let index = 0; index < 100; index += 1) {
       const cliResponse = await app.fetch(
         new Request(
-          "http://local/api/cli/onequery.cli.v1.CliService/GetSession",
+          "http://local/api/cli/onequery.cli.v1.CliAuthService/GetSession",
           {
             body: "{}",
             headers: {

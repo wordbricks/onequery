@@ -117,6 +117,7 @@ optional_generated_label!(
         types::QueryLogicalType::QUERY_LOGICAL_TYPE_DATETIME => "datetime",
         types::QueryLogicalType::QUERY_LOGICAL_TYPE_ARRAY => "array",
         types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON => "json",
+        types::QueryLogicalType::QUERY_LOGICAL_TYPE_UNKNOWN => "unknown",
     }
 );
 

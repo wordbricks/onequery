@@ -12,7 +12,7 @@ use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::content_format_to_str;
@@ -201,7 +201,7 @@ pub(crate) async fn load_source_connect_guide(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -254,7 +254,7 @@ pub(crate) async fn connect_source(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {

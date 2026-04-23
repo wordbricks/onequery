@@ -7,7 +7,7 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -121,7 +121,7 @@ async fn fetch_source_page(
             return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let page = payload.page.into_option().ok_or_else(|| {
         decode_failure(
@@ -169,7 +169,7 @@ pub(crate) async fn get_source_by_key_with_controls(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -205,7 +205,7 @@ pub(crate) async fn test_source(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let source = payload.source.into_option();
     let outcome = payload.outcome.ok_or_else(|| {

@@ -7,7 +7,7 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -107,7 +107,7 @@ pub(crate) async fn describe_source_api(
             return Err(failure_from_connect(error, ErrorStage::ResolveSource));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     validate_source_api_descriptor(&payload, request_id.clone())?;
 
@@ -141,7 +141,7 @@ pub(crate) async fn preview_source_api(
             return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let payload = preview_source_api_response_from_generated(payload, request_id.clone())?;
 
@@ -175,7 +175,7 @@ pub(crate) async fn execute_source_api(
             return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let payload = execute_source_api_outcome_from_generated(payload, request_id.clone())?;
 
@@ -212,7 +212,7 @@ pub(crate) async fn resume_source_api(
             return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let payload = resume_source_api_outcome_from_generated(payload, request_id.clone())?;
 
@@ -270,6 +270,30 @@ source_api_enum_surface!(
         SourceApiBodyKind::SOURCE_API_BODY_KIND_JSON => "json",
         SourceApiBodyKind::SOURCE_API_BODY_KIND_TEXT => "text",
         SourceApiBodyKind::SOURCE_API_BODY_KIND_BINARY => "binary",
+    }
+);
+
+source_api_enum_surface!(
+    source_api_field_encoding_or_raw,
+    source_api_field_encoding_label,
+    SourceApiFieldEncoding,
+    SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW,
+    SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_UNSPECIFIED,
+    {
+        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW => "raw",
+        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED => "typed",
+    }
+);
+
+source_api_enum_surface!(
+    source_api_path_capability_or_nested,
+    source_api_path_capability_label,
+    SourceApiPathCapability,
+    SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED,
+    SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_UNSPECIFIED,
+    {
+        SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED => "nested",
+        SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_ARRAY => "array",
     }
 );
 
@@ -616,6 +640,7 @@ mod tests {
 
     use super::execute_source_api_outcome_from_generated;
     use super::json_from_proto_json_value;
+    use super::preview_source_api_response_from_generated;
     use super::proto_json_object_from_json;
     use super::proto_json_value_from_json;
     use super::source_api_body_kind_label;
@@ -628,16 +653,9 @@ mod tests {
     use crate::transport::api_failure::ApiFailure;
 
     #[test]
-    fn validate_execute_source_api_outcome_requires_preview() {
-        let error = execute_source_api_outcome_from_generated(
-            types::ExecuteSourceApiResponse {
-                outcome: Some(types::execute_source_api_response::Outcome::PreviewOnly(
-                    Box::new(types::ExecuteSourceApiPreviewOnly {
-                        ..Default::default()
-                    }),
-                )),
-                ..Default::default()
-            },
+    fn validate_preview_source_api_response_requires_preview() {
+        let error = preview_source_api_response_from_generated(
+            types::PreviewSourceApiResponse::default(),
             Some("req_cli_123".to_owned()),
         )
         .expect_err("expected missing preview to fail");
@@ -646,7 +664,7 @@ mod tests {
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ExecuteQuery,
-                message: "source API execution response missing preview".to_owned(),
+                message: "source API preview response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
             })
         );
@@ -695,8 +713,10 @@ mod tests {
                         types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
                     ),
                     field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
-                        allows_raw_fields: Some(true),
-                        allows_typed_fields: Some(true),
+                        field_encodings: vec![
+                            types::SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW.into(),
+                            types::SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED.into(),
+                        ],
                         ..Default::default()
                     }),
                     header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
@@ -726,14 +746,14 @@ mod tests {
         let error = execute_source_api_outcome(
             types::ExecuteSourceApiResponse {
                 outcome: Some(types::execute_source_api_response::Outcome::Completed(
-                    Box::new(types::ExecuteSourceApiCompleted {
+                    Box::new(types::SourceApiExecutionCompleted {
                         preview: buffa::MessageField::some(types::SourceApiPreview {
                             source: buffa::MessageField::some(types::CliSourceApiSource {
                                 source_key: Some("github-prod".to_owned()),
                                 provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
                                 ..Default::default()
                             }),
-                            operation: Some("fetch".to_owned()),
+                            operation_name: Some("fetch".to_owned()),
                             kind: Some(
                                 types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
                                     .into(),
@@ -748,8 +768,8 @@ mod tests {
                             ..Default::default()
                         }),
                         result: buffa::MessageField::some(types::SourceApiExecutionResult {
-                            operation: Some("fetch".to_owned()),
-                            status: Some(200),
+                            operation_name: Some("fetch".to_owned()),
+                            http_status_code: Some(200),
                             content_type: Some("application/json".to_owned()),
                             ..Default::default()
                         }),

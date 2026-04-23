@@ -6,7 +6,6 @@ pub(crate) mod labels;
 pub(crate) mod org;
 mod pagination;
 pub(crate) mod query;
-pub(crate) mod query_parameter;
 pub(crate) mod read_controls;
 pub(crate) mod response_decode;
 pub(crate) mod source;

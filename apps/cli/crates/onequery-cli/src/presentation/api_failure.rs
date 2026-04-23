@@ -74,7 +74,8 @@ pub(crate) fn present_api_failure(
             fallback_try_next,
         )
         .with_code(Some("transport_error".to_owned()))
-        .with_retryable(transport.retryable),
+        .with_retryable(transport.retryable)
+        .with_request_id(transport.request_id),
         ApiFailure::Decode(decode) => CliError::new(
             title,
             command,
@@ -516,6 +517,7 @@ mod tests {
                 stage: ErrorStage::Http,
                 message: "operation timed out".to_owned(),
                 retryable: true,
+                request_id: Some("req_transport".to_owned()),
             }),
             ApiErrorPresentation {
                 command: "onequery org list",

@@ -748,7 +748,7 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
         .recv()
         .expect("expected auth poll workflow to issue exactly one poll request");
     assert!(request.starts_with(
-        "POST /api/cli/onequery.cli.v1.CliService/PollDeviceAuthorization HTTP/1.1\r\n"
+        "POST /api/cli/onequery.cli.v1.CliAuthService/PollDeviceAuthorization HTTP/1.1\r\n"
     ));
 
     assert_eq!(

@@ -93,6 +93,7 @@ mod tests {
                 stage: ErrorStage::Http,
                 message: "timeout".to_owned(),
                 retryable: true,
+                request_id: None,
             })),
             RetryDirective::RetryAllowed
         );

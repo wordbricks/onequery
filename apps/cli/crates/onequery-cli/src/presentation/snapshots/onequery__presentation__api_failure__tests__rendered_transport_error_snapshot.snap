@@ -1,9 +1,11 @@
 ---
 source: crates/onequery-cli/src/presentation/api_failure.rs
+assertion_line: 533
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: org list failed
 Why: failed to reach org list endpoint: operation timed out
 Try:
   - retry onequery org list
+Request ID: req_transport
 Explain: onequery explain transport_error

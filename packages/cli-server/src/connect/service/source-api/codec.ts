@@ -213,7 +213,7 @@ export function buildCliResumeSourceApiResponse(
 
 function copySourceApiHeader(value: Pick<SourceApiHeader, "name" | "value">) {
   return {
-    name: value.name,
+    name: value.name.toLowerCase(),
     value: value.value,
   };
 }

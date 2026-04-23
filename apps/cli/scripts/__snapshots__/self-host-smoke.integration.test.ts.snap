@@ -34,7 +34,7 @@ exports[`CLI self-host smoke > bootstraps a fresh self-host runtime and serves C
     ],
     "name": "Owner Org",
     "roles": [
-      "owner",
+      "OWNER",
     ],
     "slug": "owner-org",
   },
@@ -136,7 +136,6 @@ Example input:
       "cellMaxChars": 256,
       "maxBytes": 4096,
       "maxRows": 100,
-      "parameters": [],
       "sql": "SELECT 1 LIMIT 1000",
       "timeoutMs": 1000,
     },
@@ -146,7 +145,7 @@ Example input:
       "sourceKey": "Warehouse",
       "status": "ACTIVE",
     },
-    "truncated": true,
+    "sqlNormalized": true,
   },
 }
 `;
@@ -196,16 +195,16 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
     "command": "query validate",
     "data": {
       "declaredResultWindow": {
-        "cellMaxChars": 0,
-        "maxBytes": 0,
-        "maxRows": 0,
+        "cellMaxChars": 2000,
+        "maxBytes": 1048576,
+        "maxRows": 100,
         "timeoutMs": 60000,
       },
       "normalizedSql": "SELECT 1 LIMIT 1000",
       "request": {
-        "cellMaxChars": 0,
-        "maxBytes": 0,
-        "maxRows": 0,
+        "cellMaxChars": 2000,
+        "maxBytes": 1048576,
+        "maxRows": 100,
         "sql": "SELECT 1 LIMIT 1000",
         "timeoutMs": 60000,
       },
@@ -215,7 +214,7 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
         "sourceKey": "warehouse-cli",
         "status": "active",
       },
-      "truncated": true,
+      "sqlNormalized": true,
     },
     "ok": true,
     "warnings": [],

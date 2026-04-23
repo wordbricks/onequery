@@ -95,8 +95,8 @@ message SourceApiDraft {
   // Field patches and JSON bodies carry provider-specific JSON. Size and shape
   // limits are enforced by the source API normalization layer.
   oneof body {
-    google.protobuf.Struct field_patch = 6;
-    google.protobuf.Value json_body = 7;
+    google.protobuf.Struct field_patch = 6 [(buf.validate.field).ignore = IGNORE_ALWAYS];
+    google.protobuf.Value json_body = 7 [(buf.validate.field).ignore = IGNORE_ALWAYS];
     string text_body = 8 [(buf.validate.field).string.max_len = 1048576];
     bytes binary_body = 9 [(buf.validate.field).bytes.max_len = 1048576];
   }
@@ -127,7 +127,8 @@ message SourceApiPreview {
   ];
   string host = 6 [
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 253
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).string.address = true
   ];
   string url = 7 [
     (buf.validate.field).string.min_len = 1,
@@ -239,7 +240,7 @@ message SourceApiExecutionResult {
     (buf.validate.field).string.max_len = 255
   ];
   oneof body {
-    google.protobuf.Value json = 7;
+    google.protobuf.Value json = 7 [(buf.validate.field).ignore = IGNORE_ALWAYS];
     string text = 8 [(buf.validate.field).string.max_len = 1048576];
     bytes binary = 9 [(buf.validate.field).bytes.max_len = 1048576];
   }
@@ -420,7 +421,7 @@ message CliSourceApiHeader {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9-]+$"
+    (buf.validate.field).string.pattern = "^[a-z0-9-]+$"
   ];
   string value = 2 [(buf.validate.field).string.max_len = 8192];
 }

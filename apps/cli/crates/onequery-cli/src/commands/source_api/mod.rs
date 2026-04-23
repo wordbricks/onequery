@@ -148,22 +148,12 @@ async fn preview_source_api_execution(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> Result<PreviewedSourceApiExecution, CliError> {
-    let preview_response =
-        source_api::execute_source_api(client, org_slug, source_key, draft, true)
-            .await
-            .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
-    let ExecuteSourceApiOutcome::PreviewOnly { preview } = preview_response.payload else {
-        return Err(source_api_error(
-            context,
-            "invalid source API preview response",
-            ErrorStage::ExecuteQuery,
-            "source API preview response returned an execution outcome",
-            source_key,
-        ));
-    };
+    let preview_response = source_api::preview_source_api(client, org_slug, source_key, draft)
+        .await
+        .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
 
     Ok(PreviewedSourceApiExecution {
-        preview,
+        preview: preview_response.payload,
         request_id: preview_response.request_id,
     })
 }
@@ -179,11 +169,11 @@ async fn execute_source_api_pages(
 ) -> Result<ExecutedSourceApiPages, CliError> {
     let max_pages = execution.max_pages.unwrap_or(u32::MAX);
 
-    let first_response = source_api::execute_source_api(client, org_slug, source_key, draft, false)
+    let first_response = source_api::execute_source_api(client, org_slug, source_key, draft)
         .await
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
     let (preview, first_result, first_continuation_token) =
-        execution_result_from_outcome(first_response.payload, context, source_key, "execution")?;
+        execution_result_from_outcome(first_response.payload);
     let mut request_id = first_response.request_id.clone();
     let mut continuation_token = first_continuation_token.clone();
     let mut pages = vec![source_api_execution_page_from_result(
@@ -209,7 +199,7 @@ async fn execute_source_api_pages(
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
         let (_preview, result, next_continuation_token) =
-            execution_result_from_outcome(response.payload, context, source_key, "resume")?;
+            execution_result_from_outcome(response.payload);
         continuation_token = next_continuation_token.clone();
         pages.push(source_api_execution_page_from_result(
             result,
@@ -229,24 +219,14 @@ async fn execute_source_api_pages(
 
 fn execution_result_from_outcome(
     outcome: ExecuteSourceApiOutcome,
-    context: &CommandContext,
-    source_key: &str,
-    response_kind: &'static str,
-) -> Result<(SourceApiPreview, SourceApiExecutionResult, Option<String>), CliError> {
+) -> (SourceApiPreview, SourceApiExecutionResult, Option<String>) {
     match outcome {
-        ExecuteSourceApiOutcome::PreviewOnly { .. } => Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            format!("source API {response_kind} response returned preview-only outcome"),
-            source_key,
-        )),
-        ExecuteSourceApiOutcome::Completed { preview, result } => Ok((preview, result, None)),
+        ExecuteSourceApiOutcome::Completed { preview, result } => (preview, result, None),
         ExecuteSourceApiOutcome::Continued {
             preview,
             result,
             continuation_token,
-        } => Ok((preview, result, Some(continuation_token))),
+        } => (preview, result, Some(continuation_token)),
     }
 }
 
@@ -266,7 +246,7 @@ fn source_api_execution_page_from_result(
             source_key,
         ));
     };
-    let Some(operation) = result.operation else {
+    let Some(operation) = result.operation_name else {
         return Err(source_api_error(
             context,
             "invalid source API execution response",
@@ -275,7 +255,7 @@ fn source_api_execution_page_from_result(
             source_key,
         ));
     };
-    let Some(status) = result.status else {
+    let Some(status) = result.http_status_code else {
         return Err(source_api_error(
             context,
             "invalid source API execution response",
@@ -284,6 +264,15 @@ fn source_api_execution_page_from_result(
             source_key,
         ));
     };
+    let status = u32::try_from(status).map_err(|error| {
+        source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response included invalid HTTP status: {error}"),
+            source_key,
+        )
+    })?;
     let Some(content_type) = result.content_type else {
         return Err(source_api_error(
             context,

@@ -245,7 +245,7 @@ function createDependencies(
   return {
     buildCliRequestLogDetails: vi.fn(() => ({
       method: "POST",
-      path: "/connectrpc/onequery.cli.v1.CliService/ExecuteSourceApi",
+      path: "/connectrpc/onequery.cli.v1.CliSourceApiService/ExecuteSourceApi",
       requestId: actor.requestId,
     })),
     createSourceApiPreview,

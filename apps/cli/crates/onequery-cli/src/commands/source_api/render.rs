@@ -3,18 +3,29 @@ use crate::output::pretty_json_lines;
 use crate::transport::labels::source_provider_to_str;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
+use crate::transport::source_api::SourceApiFieldEncoding;
 use crate::transport::source_api::SourceApiFieldPolicy;
 use crate::transport::source_api::SourceApiHeader;
+use crate::transport::source_api::SourceApiInputMode;
 use crate::transport::source_api::SourceApiOperation;
+use crate::transport::source_api::SourceApiPatchMode;
+use crate::transport::source_api::SourceApiPathCapability;
 use crate::transport::source_api::SourceApiPreview;
 use crate::transport::source_api::SourceApiResponseBody;
 use crate::transport::source_api::SourceApiSelectorKind;
 use crate::transport::source_api::json_from_proto_json_value;
 use crate::transport::source_api::proto_json_value_from_json;
 use crate::transport::source_api::source_api_body_kind_label;
+use crate::transport::source_api::source_api_field_encoding_label;
+use crate::transport::source_api::source_api_field_policy_has_encoding;
+use crate::transport::source_api::source_api_field_policy_has_path_capability;
 use crate::transport::source_api::source_api_input_mode_label;
+use crate::transport::source_api::source_api_input_mode_or_none;
 use crate::transport::source_api::source_api_operation_kind_label;
 use crate::transport::source_api::source_api_pagination_policy_label;
+use crate::transport::source_api::source_api_patch_mode_label;
+use crate::transport::source_api::source_api_patch_mode_or_none;
+use crate::transport::source_api::source_api_path_capability_label;
 use crate::transport::source_api::source_api_selector_kind_label;
 use crate::transport::source_api::source_api_selector_kind_or_none;
 use base64::Engine;
@@ -55,7 +66,7 @@ pub(super) fn render_descriptor_output(
     if let Some(descriptor_version) = descriptor.descriptor_version.as_deref() {
         lines.push(format!("Descriptor version: {descriptor_version}"));
     }
-    if let Some(default_path_operation) = descriptor.default_path_operation.as_deref() {
+    if let Some(default_path_operation) = descriptor.default_path_operation_name.as_deref() {
         lines.push(format!("Default path operation: {default_path_operation}"));
     }
 
@@ -151,7 +162,7 @@ fn serialize_dry_run_preview(
     }
 
     let mut object = serde_json::Map::new();
-    if let Some(operation) = preview.operation.as_ref() {
+    if let Some(operation) = preview.operation_name.as_ref() {
         object.insert(
             "operation".to_owned(),
             serde_json::Value::String(operation.clone()),
@@ -513,9 +524,9 @@ fn descriptor_json(descriptor: &SourceApiDescriptor) -> Result<serde_json::Value
             serde_json::Value::String(descriptor_version.clone()),
         );
     }
-    if let Some(default_path_operation) = descriptor.default_path_operation.as_ref() {
+    if let Some(default_path_operation) = descriptor.default_path_operation_name.as_ref() {
         object.insert(
-            "defaultPathOperation".to_owned(),
+            "defaultPathOperationName".to_owned(),
             serde_json::Value::String(default_path_operation.clone()),
         );
     }
@@ -558,7 +569,7 @@ fn preview_json(preview: &SourceApiPreview, include_business_metadata: bool) -> 
     if include_business_metadata && let Some(source) = preview.source.as_option() {
         object.insert("source".to_owned(), source_json(source));
     }
-    if let Some(operation) = preview.operation.as_ref() {
+    if let Some(operation) = preview.operation_name.as_ref() {
         object.insert(
             "operation".to_owned(),
             serde_json::Value::String(operation.clone()),
@@ -758,34 +769,32 @@ fn method_policy_json(
 
 fn field_policy_json(policy: &SourceApiFieldPolicy) -> serde_json::Value {
     let mut object = serde_json::Map::new();
-    if let Some(allows_raw_fields) = policy.allows_raw_fields {
+    if !policy.field_encodings.is_empty() {
         object.insert(
-            "allowsRawFields".to_owned(),
-            serde_json::Value::Bool(allows_raw_fields),
+            "fieldEncodings".to_owned(),
+            serde_json::Value::Array(
+                policy
+                    .field_encodings
+                    .iter()
+                    .cloned()
+                    .map(source_api_field_encoding_label)
+                    .map(|value| serde_json::Value::String(value.to_owned()))
+                    .collect(),
+            ),
         );
     }
-    if let Some(allows_typed_fields) = policy.allows_typed_fields {
+    if !policy.path_capabilities.is_empty() {
         object.insert(
-            "allowsTypedFields".to_owned(),
-            serde_json::Value::Bool(allows_typed_fields),
-        );
-    }
-    if let Some(supports_nested_paths) = policy.supports_nested_paths {
-        object.insert(
-            "supportsNestedPaths".to_owned(),
-            serde_json::Value::Bool(supports_nested_paths),
-        );
-    }
-    if let Some(supports_array_paths) = policy.supports_array_paths {
-        object.insert(
-            "supportsArrayPaths".to_owned(),
-            serde_json::Value::Bool(supports_array_paths),
-        );
-    }
-    if let Some(accepts_input) = policy.accepts_input {
-        object.insert(
-            "acceptsInput".to_owned(),
-            serde_json::Value::Bool(accepts_input),
+            "pathCapabilities".to_owned(),
+            serde_json::Value::Array(
+                policy
+                    .path_capabilities
+                    .iter()
+                    .cloned()
+                    .map(source_api_path_capability_label)
+                    .map(|value| serde_json::Value::String(value.to_owned()))
+                    .collect(),
+            ),
         );
     }
     if let Some(input_mode) = policy.input_mode {
@@ -794,10 +803,10 @@ fn field_policy_json(policy: &SourceApiFieldPolicy) -> serde_json::Value {
             serde_json::Value::String(source_api_input_mode_label(input_mode).to_owned()),
         );
     }
-    if let Some(merge_patches) = policy.merge_patches {
+    if let Some(patch_mode) = policy.patch_mode {
         object.insert(
-            "mergePatches".to_owned(),
-            serde_json::Value::Bool(merge_patches),
+            "patchMode".to_owned(),
+            serde_json::Value::String(source_api_patch_mode_label(patch_mode).to_owned()),
         );
     }
     serde_json::Value::Object(object)
@@ -887,12 +896,20 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
     let field_policy = operation.field_policy.as_option();
     let field_modes = [
         field_policy
-            .and_then(|policy| policy.allows_raw_fields)
-            .unwrap_or(false)
+            .is_some_and(|policy| {
+                source_api_field_policy_has_encoding(
+                    policy,
+                    SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW,
+                )
+            })
             .then_some("raw"),
         field_policy
-            .and_then(|policy| policy.allows_typed_fields)
-            .unwrap_or(false)
+            .is_some_and(|policy| {
+                source_api_field_policy_has_encoding(
+                    policy,
+                    SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED,
+                )
+            })
             .then_some("typed"),
     ]
     .into_iter()
@@ -922,19 +939,18 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
         )
     ));
     if field_policy
-        .and_then(|policy| policy.accepts_input)
-        .unwrap_or(false)
+        .map(|policy| source_api_input_mode_or_none(policy.input_mode.unwrap_or_else(|| 0.into())))
+        .unwrap_or(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE)
+        != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
     {
+        let patch_mode = field_policy
+            .map(|policy| {
+                source_api_patch_mode_or_none(policy.patch_mode.unwrap_or_else(|| 0.into()))
+            })
+            .unwrap_or(SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE);
         lines.push(format!(
-            "  field patch merge: {}",
-            if field_policy
-                .and_then(|policy| policy.merge_patches)
-                .unwrap_or(false)
-            {
-                "merge over input"
-            } else {
-                "stay separate from input"
-            }
+            "  field patch mode: {}",
+            source_api_patch_mode_label(patch_mode.into())
         ));
     }
 
@@ -1104,16 +1120,28 @@ fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
 
 fn field_format_examples(policy: &SourceApiFieldPolicy) -> Vec<&'static str> {
     let mut examples = Vec::new();
-    if policy.allows_raw_fields.unwrap_or(false) {
+    if source_api_field_policy_has_encoding(
+        policy,
+        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW,
+    ) {
         examples.push("-f KEY=VALUE");
     }
-    if policy.allows_typed_fields.unwrap_or(false) {
+    if source_api_field_policy_has_encoding(
+        policy,
+        SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED,
+    ) {
         examples.push("-F KEY=VALUE");
     }
-    if policy.supports_nested_paths.unwrap_or(false) {
+    if source_api_field_policy_has_path_capability(
+        policy,
+        SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED,
+    ) {
         examples.push("key[subkey]=value");
     }
-    if policy.supports_array_paths.unwrap_or(false) {
+    if source_api_field_policy_has_path_capability(
+        policy,
+        SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_ARRAY,
+    ) {
         examples.push("key[]=value");
     }
     examples
@@ -1642,7 +1670,7 @@ mod tests {
                 display_name: Some("GitHub Prod".to_owned()),
                 ..Default::default()
             }),
-            operation: Some("fetch".to_owned()),
+            operation_name: Some("fetch".to_owned()),
             kind: Some(SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST.into()),
             method: Some("GET".to_owned()),
             selector: Some("/pulls".to_owned()),

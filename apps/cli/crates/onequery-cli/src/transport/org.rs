@@ -6,7 +6,7 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -57,7 +57,7 @@ pub(crate) async fn get_org_with_controls(
             return Err(failure_from_connect(error, ErrorStage::ResolveOrg));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
 
     Ok(ApiSuccess {
         payload: org_details_from_generated(response.into_owned()),
@@ -113,7 +113,7 @@ async fn fetch_org_page(
             return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let page = payload.page.into_option().ok_or_else(|| {
         decode_failure(

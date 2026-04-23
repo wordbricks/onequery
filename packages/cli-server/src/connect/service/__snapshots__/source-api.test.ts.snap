@@ -115,7 +115,7 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "host": "api.github.com",
       "kind": "HTTP_REQUEST",
       "method": "POST",
-      "operation": "fetch",
+      "operationName": "fetch",
       "paginationPolicy": "NONE",
       "selector": "/issues",
       "source": {
@@ -137,14 +137,14 @@ exports[`source api connect service > binds continuation tokens to execution sta
           "value": "text/plain",
         },
       ],
-      "operation": "fetch",
+      "httpStatusCode": 200,
+      "operationName": "fetch",
       "selector": "/issues",
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
         "sourceKey": "github-prod",
       },
-      "status": 200,
     },
   },
 }
@@ -284,7 +284,7 @@ exports[`source api connect service > describes the source API through the Conne
     },
   },
   "response": {
-    "defaultPathOperation": "fetch",
+    "defaultPathOperationName": "fetch",
     "descriptorVersion": "github-v1",
     "examples": [
       {
@@ -301,13 +301,10 @@ exports[`source api connect service > describes the source API through the Conne
         "description": "Fetch one GitHub API path.",
         "examples": [],
         "fieldPolicy": {
-          "acceptsInput": false,
-          "allowsRawFields": false,
-          "allowsTypedFields": false,
+          "fieldEncodings": [],
           "inputMode": 1,
-          "mergePatches": false,
-          "supportsArrayPaths": false,
-          "supportsNestedPaths": false,
+          "patchMode": 1,
+          "pathCapabilities": [],
         },
         "headerPolicy": {
           "allowedRequestHeaderNames": [
@@ -417,7 +414,7 @@ exports[`source api connect service > executes source API requests through the C
       "host": "api.github.com",
       "kind": "HTTP_REQUEST",
       "method": "POST",
-      "operation": "fetch",
+      "operationName": "fetch",
       "paginationPolicy": "NONE",
       "selector": "/issues",
       "source": {
@@ -439,14 +436,14 @@ exports[`source api connect service > executes source API requests through the C
           "value": "text/plain",
         },
       ],
-      "operation": "fetch",
+      "httpStatusCode": 200,
+      "operationName": "fetch",
       "selector": "/issues",
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
         "sourceKey": "github-prod",
       },
-      "status": 200,
     },
   },
 }
@@ -464,7 +461,7 @@ exports[`source api connect service > preserves JSON source API response bodies 
     "host": "api.github.com",
     "kind": "HTTP_REQUEST",
     "method": "POST",
-    "operation": "fetch",
+    "operationName": "fetch",
     "paginationPolicy": "NONE",
     "selector": "/issues",
     "source": {
@@ -490,14 +487,14 @@ exports[`source api connect service > preserves JSON source API response bodies 
         "value": "text/plain",
       },
     ],
-    "operation": "fetch",
+    "httpStatusCode": 200,
+    "operationName": "fetch",
     "selector": "/issues",
     "source": {
       "displayName": "GitHub Prod",
       "provider": "github",
       "sourceKey": "github-prod",
     },
-    "status": 200,
   },
 }
 `;
@@ -613,7 +610,6 @@ exports[`source api connect service > previews source API execution through the 
     },
   },
   "response": {
-    "continuationToken": null,
     "preview": {
       "bodyKind": "TEXT",
       "bodyPaths": [],
@@ -623,7 +619,7 @@ exports[`source api connect service > previews source API execution through the 
       "host": "api.github.com",
       "kind": "HTTP_REQUEST",
       "method": "POST",
-      "operation": "fetch",
+      "operationName": "fetch",
       "paginationPolicy": "NONE",
       "selector": "/issues",
       "source": {
@@ -633,7 +629,6 @@ exports[`source api connect service > previews source API execution through the 
       },
       "url": "https://api.github.com/issues",
     },
-    "result": null,
   },
 }
 `;
