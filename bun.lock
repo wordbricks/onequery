@@ -261,6 +261,10 @@
         "vitest": "catalog:testing",
       },
     },
+    "packages/hermes-plugin": {
+      "name": "@onequery/hermes-plugin",
+      "version": "0.0.0",
+    },
     "packages/installer": {
       "name": "@onequery/installer",
       "version": "0.0.0",
@@ -1082,6 +1086,8 @@
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
 
     "@onequery/github-rulesets": ["@onequery/github-rulesets@workspace:packages/github-rulesets"],
+
+    "@onequery/hermes-plugin": ["@onequery/hermes-plugin@workspace:packages/hermes-plugin"],
 
     "@onequery/installer": ["@onequery/installer@workspace:packages/installer"],
 
