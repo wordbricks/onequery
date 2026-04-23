@@ -1,7 +1,7 @@
 # OneQuery
 
 <p align="center">
-  <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a>
+  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
 <p align="center">
@@ -9,21 +9,21 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
 </p>
 
-**自托管 OneQuery，连接数据库、分析工具和 API，集中管理凭证，通过 CLI 和 Web UI 运行安全、可审计的查询。**
+**自部署 OneQuery，把数据库、分析工具和 API 接入同一个入口，统一管理凭证，在 CLI 和 Web 上跑安全、可审计的查询。**
 
-一个界面管理整个数据栈，内置安全防护，为团队提供更简洁的工作流。
+一个入口搞定整套数据，内置安全防护，团队协作更顺手。
 
 ---
 
 ## 功能
 
-| | 自托管 | 云端 / 企业版 |
+| | 自部署 | 云端 / 企业版 |
 |---|---|---|
-| **安全查询** | 只读验证、单语句执行 | ✓ |
-| **查询成本限制** | BigQuery、Athena 等预算上限 | ✓ |
+| **安全查询** | 只读校验、单条语句限制 | ✓ |
+| **查询成本控制** | 为 BigQuery、Athena 等设置预算上限 | ✓ |
 | **审计日志** | 完整的查询历史与追踪 | ✓ |
 | **认证 / 组织 / RBAC** | 组织级访问控制 | SSO、SAML |
-| **凭证保险库** | 集中化凭证管理 | ✓ |
+| **凭证保险库** | 凭证集中托管 | ✓ |
 | **连接器** | 15+ 数据源 | ✓ |
 | **自然语言转 SQL** | — | ✓ |
 | **数据洞察** | — | ✓ |
@@ -37,7 +37,7 @@
 curl -fsSL https://onequery.dev/install.sh | sh
 ```
 
-或使用包管理器：
+也可以用包管理器装：
 
 ```bash
 brew install wordbricks/tap/onequery    # Homebrew
@@ -45,20 +45,20 @@ npm install -g @onequery/cli            # npm
 bun add -g @onequery/cli                # Bun
 ```
 
-无需全局安装：`npx @onequery/cli --help` 或 `bunx @onequery/cli --help`。
+不想全局安装也可以直接跑：`npx @onequery/cli --help` 或 `bunx @onequery/cli --help`。
 
 ---
 
 ## 快速开始
 
-### 方式 A：自托管（运行自己的服务器）
+### 方案 A：自己跑一套服务器
 
 ```bash
 onequery gateway start
 onequery auth login
 ```
 
-添加数据源并执行查询：
+接入数据源并查询：
 
 ```bash
 onequery source connect --source postgres \
@@ -66,7 +66,7 @@ onequery source connect --source postgres \
 onequery query execute --source warehouse --sql "select 1"
 ```
 
-### 方式 B：连接到现有服务器
+### 方案 B：连到已有的服务器
 
 ```bash
 onequery config set server https://onequery.example.com
@@ -81,31 +81,31 @@ onequery query execute --source <source-key> --sql "select 1"
 
 PostgreSQL · Supabase · MySQL · MongoDB · BigQuery · AWS Athena · Google Analytics · Amplitude · Mixpanel · PostHog · Sentry · GitHub · Linear · Laminar
 
-运行 `onequery source connect --help` 查看各数据源的配置说明。
+各数据源的接入参数可以跑 `onequery source connect --help` 查看。
 
 ---
 
 ## 文档
 
-| 文档 | 描述 |
+| 文档 | 内容 |
 |----------|-------------|
-| [自托管指南](./docs/self-host.md) | 安装、代理、SMTP、存储、备份、恢复、升级 |
-| [架构设计](./docs/architecture.md) | 系统设计、monorepo 结构、运行时接口 |
-| [CLI 参考](./apps/cli/README.md) | CLI 工作区、配置和运行时行为 |
-| [环境变量与密钥](./docs/env-secrets-management.md) | Web/Server 工作区的本地配置管理流程 |
+| [自部署指南](./docs/self-host.md) | 安装、代理、SMTP、存储、备份、恢复、升级 |
+| [架构设计](./docs/architecture.md) | 系统设计、monorepo 结构、运行时 |
+| [CLI 参考](./apps/cli/README.md) | CLI 工作区、配置与运行时行为 |
+| [环境变量与密钥](./docs/env-secrets-management.md) | Web/Server 工作区的本地配置管理 |
 
 ---
 
 ## Claude Code 插件
 
-`onequery` Claude Code 插件从 Wordbricks 市场安装：
+从 Wordbricks 市场安装 `onequery` Claude Code 插件：
 
 ```bash
 /plugin marketplace add wordbricks/skills
 /plugin install onequery@wordbricks
 ```
 
-对于兼容 skills 的代理，安装 `onequery-cli` skill：
+如果你的 Agent 支持 skills，直接安装 `onequery-cli`：
 
 ```bash
 npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
@@ -113,21 +113,21 @@ npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
 
 ## OpenClaw 插件
 
-通过 npm 安装：
+从 npm 安装：
 
 ```bash
 openclaw plugins install @onequery/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-从本仓库本地安装：
+从本仓库安装：
 
 ```bash
 openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-然后在 `openclaw.json` 中启用插件：
+然后在 `openclaw.json` 里启用：
 
 ```json5
 {
@@ -141,20 +141,19 @@ openclaw plugins enable onequery
 
 ## Hermes
 
-如需在不安装插件的情况下使用 Hermes Agent，请安装独立的
-`onequery-cli` skill：
+不想装插件、直接在 Hermes Agent 里用的话，装独立的 `onequery-cli` skill 就行：
 
 ```bash
 hermes skills install skills-sh/wordbricks/skills/onequery-cli --yes --force
 ```
 
-然后在启动 Hermes 时预加载该 skill：
+启动 Hermes 时把 skill 预加载进去：
 
 ```bash
 hermes chat --skills onequery-cli
 ```
 
-或者在已有 Hermes 会话中加载：
+或者在现有会话里加载：
 
 ```text
 Load skill onequery-cli.
@@ -162,12 +161,21 @@ Load skill onequery-cli.
 
 ---
 
+## 技术栈
+
+撑起 OneQuery 可靠性的两个库：
+
+- [better-result](https://github.com/dmmulroy/better-result)：每个错误都得显式处理，异常不会被悄悄吞掉。
+- [antiox](https://github.com/rivet-dev/antiox)：并发查询、超时、取消都行为可控，不会漏任务、也不会挂住连接。
+
+---
+
 ## 贡献
 
-我们欢迎数据源集成方面的贡献。请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解项目结构和 PR 流程。
+欢迎贡献新的数据源接入。项目结构和 PR 流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ---
 
 ## 许可证
 
-Apache 2.0。详见 [LICENSE](./LICENSE)。
+Apache 2.0，详见 [LICENSE](./LICENSE)。
