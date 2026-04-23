@@ -175,6 +175,14 @@ mod tests {
     use super::present_api_client_build_failure;
     use super::present_api_failure;
 
+    fn user_actionable_support(explain_slug: &str) -> CliSupportAction {
+        CliSupportAction {
+            kind: CliSupportActionKind::None,
+            reason: "user_actionable".to_owned(),
+            explain_slug: explain_slug.to_owned(),
+        }
+    }
+
     fn error_summary(error: &CliError) -> Value {
         json!({
             "title": error.title,
@@ -311,7 +319,7 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_123".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("source_not_found")),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -355,7 +363,7 @@ mod tests {
                 hint: Some("run `onequery auth login`".to_owned()),
                 request_id: Some("req_connect_auth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("not_logged_in")),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -399,7 +407,7 @@ mod tests {
                 hint: Some("run `onequery auth login`".to_owned()),
                 request_id: Some("req_connect_reauth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("not_logged_in")),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -484,7 +492,7 @@ mod tests {
                 hint: Some("run `onequery source list`".to_owned()),
                 request_id: Some("req_problem".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("source_not_found")),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -603,7 +611,7 @@ mod tests {
                 hint: Some("run `onequery auth login`".to_owned()),
                 request_id: Some("req_reauth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("not_logged_in")),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -649,7 +657,7 @@ mod tests {
                 hint: Some("run `onequery auth login`".to_owned()),
                 request_id: Some("req_query_auth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("not_logged_in")),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
@@ -680,7 +688,7 @@ mod tests {
                 hint: Some("refresh your session and retry".to_owned()),
                 request_id: Some("req_org_auth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("forbidden")),
             }),
             ApiErrorPresentation {
                 command: "onequery org list",
@@ -709,7 +717,7 @@ mod tests {
                 hint: Some("run `onequery auth login`".to_owned()),
                 request_id: Some("req_source_auth".to_owned()),
                 validation_issues: Vec::new(),
-                support_action: None,
+                support_action: Some(user_actionable_support("not_logged_in")),
             }),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
@@ -752,7 +760,7 @@ mod tests {
                         code: "custom".to_owned(),
                     },
                 ],
-                support_action: None,
+                support_action: Some(user_actionable_support("invalid_request")),
             }),
             ApiErrorPresentation {
                 command: "onequery query exec --source '' --sql \"delete from events\"",

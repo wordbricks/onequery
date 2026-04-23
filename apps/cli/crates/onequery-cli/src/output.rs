@@ -644,7 +644,12 @@ mod tests {
             )
             .with_code(Some("query_rejected".to_owned()))
             .with_request_id(Some("req_verbose".to_owned()))
-            .with_hint(Some("queries must be read-only".to_owned())),
+            .with_hint(Some("queries must be read-only".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "query_rejected".to_owned(),
+            })),
             EffectiveOutputMode::Text,
             true,
         );
@@ -750,7 +755,30 @@ mod tests {
     }
 
     #[test]
-    fn render_error_with_known_code_adds_explain_hint_snapshot() {
+    fn render_error_with_support_action_adds_explain_hint_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "source failed",
+                "onequery source show warehouse",
+                ErrorStage::ResolveSource,
+                "no source named warehouse exists",
+                vec!["run onequery source list".to_owned()],
+            )
+            .with_code(Some("source_not_found".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "source_not_found".to_owned(),
+            })),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_with_server_code_and_no_support_action_omits_explain_hint() {
         let rendered = render_error(
             &CliError::new(
                 "source failed",
@@ -763,8 +791,7 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
-        crate::test_support::snapshot_settings_with_issue_url_filter()
-            .bind(|| assert_snapshot!(rendered));
+        assert_eq!(rendered.contains("Explain:"), false);
     }
 
     #[test]
@@ -891,7 +918,12 @@ mod tests {
             .with_code(Some("query_rejected".to_owned()))
             .with_status(Some(400))
             .with_request_id(Some("req_123".to_owned()))
-            .with_hint(Some("queries must be read-only".to_owned())),
+            .with_hint(Some("queries must be read-only".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "query_rejected".to_owned(),
+            })),
             EffectiveOutputMode::Json,
         );
 

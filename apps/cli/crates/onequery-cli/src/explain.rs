@@ -399,14 +399,17 @@ pub(crate) fn explain_reference_for_error(error: &CliError) -> Option<(String, S
         .support_action
         .as_ref()
         .and_then(|support_action| ExplainCode::from_str(&support_action.explain_slug, false).ok())
-        .or_else(|| {
-            error
-                .code
-                .as_deref()
-                .and_then(|code| ExplainCode::from_str(code, false).ok())
-        })?;
+        .or_else(|| error.code.as_deref().and_then(local_explain_code))?;
     let slug = code.slug().to_owned();
     Some((slug, code.command()))
+}
+
+fn local_explain_code(code: &str) -> Option<ExplainCode> {
+    match code {
+        "transport_error" => Some(ExplainCode::TransportError),
+        "decode_error" => Some(ExplainCode::DecodeError),
+        _ => None,
+    }
 }
 
 pub(crate) fn report_command_for_explanation(explanation: Explanation) -> Option<&'static str> {
@@ -418,9 +421,14 @@ pub(crate) fn report_command_for_explanation(explanation: Explanation) -> Option
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::CliError;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use super::ExplainCode;
+    use super::explain_reference_for_error;
 
     #[test]
     fn invalid_request_explanation_tracks_all_server_problem_stages() {
@@ -450,5 +458,64 @@ mod tests {
         assert_eq!(transport.http_status, None);
         assert_eq!(decode.stages, transport.stages);
         assert_eq!(decode.http_status, None);
+    }
+
+    #[test]
+    fn explain_reference_for_error_uses_server_support_action_slug() {
+        let error = CliError::new(
+            "source failed",
+            "onequery source show warehouse",
+            ErrorStage::ResolveSource,
+            "no source named warehouse exists",
+            vec!["run onequery source list".to_owned()],
+        )
+        .with_code(Some("source_not_found".to_owned()))
+        .with_support_action(Some(CliSupportAction {
+            kind: CliSupportActionKind::None,
+            reason: "user_actionable".to_owned(),
+            explain_slug: "source_not_found".to_owned(),
+        }));
+
+        assert_eq!(
+            explain_reference_for_error(&error),
+            Some((
+                "source_not_found".to_owned(),
+                "onequery explain source_not_found".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn explain_reference_for_error_keeps_local_decode_error_fallback() {
+        let error = CliError::new(
+            "query failed",
+            "onequery query exec",
+            ErrorStage::ExecuteQuery,
+            "failed to decode query response",
+            vec!["retry onequery query exec".to_owned()],
+        )
+        .with_code(Some("decode_error".to_owned()));
+
+        assert_eq!(
+            explain_reference_for_error(&error),
+            Some((
+                "decode_error".to_owned(),
+                "onequery explain decode_error".to_owned()
+            ))
+        );
+    }
+
+    #[test]
+    fn explain_reference_for_error_does_not_infer_server_problem_codes_without_support_action() {
+        let error = CliError::new(
+            "source failed",
+            "onequery source show warehouse",
+            ErrorStage::ResolveSource,
+            "no source named warehouse exists",
+            vec!["run onequery source list".to_owned()],
+        )
+        .with_code(Some("source_not_found".to_owned()));
+
+        assert_eq!(explain_reference_for_error(&error), None);
     }
 }

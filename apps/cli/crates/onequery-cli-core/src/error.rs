@@ -239,19 +239,7 @@ impl CliError {
 
     /// Attaches server-provided support guidance when available.
     pub fn with_support_action(mut self, support_action: Option<CliSupportAction>) -> Self {
-        self.0.support_action = support_action.and_then(|support_action| {
-            let reason = support_action.reason.trim();
-            let explain_slug = support_action.explain_slug.trim();
-            if reason.is_empty() || explain_slug.is_empty() {
-                return None;
-            }
-
-            Some(CliSupportAction {
-                kind: support_action.kind,
-                reason: reason.to_owned(),
-                explain_slug: explain_slug.to_owned(),
-            })
-        });
+        self.0.support_action = support_action;
         self
     }
 
@@ -348,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    fn with_support_action_drops_blank_strings() {
+    fn with_support_action_preserves_caller_payload_without_normalizing_strings() {
         let error = CliError::new(
             "query failed",
             "onequery query exec",
@@ -358,10 +346,17 @@ mod tests {
         )
         .with_support_action(Some(CliSupportAction {
             kind: CliSupportActionKind::ReportIfReproducible,
-            reason: "   ".to_owned(),
-            explain_slug: "query_execution_failed".to_owned(),
+            reason: "  query_execution_failure  ".to_owned(),
+            explain_slug: "  query_execution_failed  ".to_owned(),
         }));
 
-        assert_eq!(error.support_action, None);
+        assert_eq!(
+            error.support_action,
+            Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "  query_execution_failure  ".to_owned(),
+                explain_slug: "  query_execution_failed  ".to_owned(),
+            })
+        );
     }
 }

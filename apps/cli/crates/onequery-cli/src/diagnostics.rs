@@ -68,44 +68,11 @@ pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
         });
     }
 
-    match error.code.as_deref() {
-        Some("decode_error") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "unexpected_response_decode_failure".to_owned(),
-            });
-        }
-        Some("query_execution_failed") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "query_execution_failure".to_owned(),
-            });
-        }
-        Some("query_preparation_failed") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "query_preparation_failure".to_owned(),
-            });
-        }
-        Some("source_api_describe_failed") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "source_api_describe_failure".to_owned(),
-            });
-        }
-        Some("source_api_execution_failed") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "source_api_execution_failure".to_owned(),
-            });
-        }
-        Some("source_api_preparation_failed") => {
-            return Some(ReportSuggestion {
-                recommended: true,
-                reason: "source_api_preparation_failure".to_owned(),
-            });
-        }
-        _ => {}
+    if matches!(error.code.as_deref(), Some("decode_error")) {
+        return Some(ReportSuggestion {
+            recommended: true,
+            reason: "unexpected_response_decode_failure".to_owned(),
+        });
     }
 
     if error.status.is_some_and(|status| status >= 500) && !error.retryable {
@@ -544,6 +511,7 @@ mod tests {
     use super::load_last_error;
     use super::persist_last_error;
     use super::render_report_markdown;
+    use super::report_suggestion;
     use onequery_cli_core::error::CliError;
     use onequery_cli_core::error::CliValidationIssue;
     use onequery_cli_core::error::ErrorStage;
@@ -686,5 +654,19 @@ mod tests {
                 reason: Some("query_execution_failure".to_owned()),
             }
         );
+    }
+
+    #[test]
+    fn report_suggestion_does_not_infer_server_reportability_from_error_code() {
+        let error = CliError::new(
+            "query failed",
+            "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"",
+            ErrorStage::ExecuteQuery,
+            "warehouse execution unexpectedly failed",
+            vec!["retry onequery query exec --source warehouse".to_owned()],
+        )
+        .with_code(Some("query_execution_failed".to_owned()));
+
+        assert_eq!(report_suggestion(&error), None);
     }
 }

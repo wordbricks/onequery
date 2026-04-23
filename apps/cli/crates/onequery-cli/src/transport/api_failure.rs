@@ -536,6 +536,78 @@ mod tests {
     }
 
     #[test]
+    fn failure_from_connect_rejects_typed_cli_problem_details_without_support_metadata() {
+        let mut error = ConnectError::new(
+            ErrorCode::PermissionDenied,
+            "stored credentials are invalid",
+        );
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_header_fallback"),
+        );
+        error.details.push(error_detail(
+            "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
+            &generated::types::CliErrorDetail {
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
+                title: Some("Not Logged In".to_owned()),
+                hint: Some("run `onequery auth login`".to_owned()),
+                retryable: Some(false),
+                request_id: Some("req_problem".to_owned()),
+                ..Default::default()
+            },
+        ));
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::Internal),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::Internal,
+                message: "server returned CliErrorDetail without support metadata".to_owned(),
+                request_id: Some("req_header_fallback".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_rejects_unrecognized_support_metadata() {
+        let mut error = ConnectError::new(
+            ErrorCode::PermissionDenied,
+            "stored credentials are invalid",
+        );
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_header_fallback"),
+        );
+        error.details.push(error_detail(
+            "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
+            &generated::types::CliErrorDetail {
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
+                title: Some("Not Logged In".to_owned()),
+                hint: Some("run `onequery auth login`".to_owned()),
+                retryable: Some(false),
+                request_id: Some("req_problem".to_owned()),
+                support: buffa::MessageField::some(generated::types::CliSupportAction {
+                    kind: Some(999.into()),
+                    reason: Some("user_actionable".to_owned()),
+                    explain_slug: Some("not_logged_in".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::Internal),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::Internal,
+                message: "server returned invalid CliSupportAction".to_owned(),
+                request_id: Some("req_header_fallback".to_owned()),
+            })
+        );
+    }
+
+    #[test]
     fn failure_from_connect_treats_untyped_transient_errors_as_transport_failures() {
         let mut error = ConnectError::new(ErrorCode::Unavailable, "server temporarily unavailable");
         error.response_headers.insert(
