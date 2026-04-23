@@ -4,7 +4,7 @@ expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Not Logged In
 Why: stored credentials are no longer authorized
-Hint: login via the OneQuery web app and retry
+Hint: run `onequery auth login`
 Try:
   - onequery auth login
 Request ID: req_query_auth

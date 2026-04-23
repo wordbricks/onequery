@@ -20,6 +20,11 @@ describe("cli domain model", () => {
 
   it("keeps CLI problem metadata in the canonical catalog", () => {
     expect({
+      notLoggedIn: {
+        ...CLI_PROBLEM_CATALOG.NOT_LOGGED_IN,
+        code: cliProblemCodeToString(CLI_PROBLEM_CATALOG.NOT_LOGGED_IN.code),
+        stage: cliProblemStageToString(CLI_PROBLEM_CATALOG.NOT_LOGGED_IN.stage),
+      },
       sourceApiExecutionStateInvalid: {
         ...CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID,
         code: cliProblemCodeToString(

@@ -206,7 +206,7 @@ export const CLI_PROBLEM_CATALOG = {
     stage: ProblemStage.AUTH,
     retryable: false,
     support: createCliUserActionableSupport(ProblemCode.NOT_LOGGED_IN),
-    hint: "login via the OneQuery web app and retry",
+    hint: "run `onequery auth login`",
   },
   ORG_NOT_FOUND: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/org-not-found`,
