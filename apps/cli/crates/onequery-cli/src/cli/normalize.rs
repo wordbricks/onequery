@@ -127,7 +127,8 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
 }
 
 // CONTEXT: parse errors still need an output mode before the main clap parse succeeds,
-// so this tiny probe ignores unrelated CLI failures and only extracts `--output`.
+// so this tiny probe ignores unrelated CLI failures and only extracts the global
+// flags needed to render fallback output.
 #[derive(Debug, Parser)]
 #[command(
     name = "onequery",
@@ -135,11 +136,51 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
     disable_version_flag = true,
     ignore_errors = true
 )]
-struct OutputModeProbe {
+struct RenderFallbackProbe {
     #[arg(long, global = true, value_enum)]
     output: Option<RequestedOutputMode>,
+    #[arg(long, global = true)]
+    verbose: bool,
 }
 
 pub(crate) fn requested_output_from_args(args: &[OsString]) -> Option<RequestedOutputMode> {
-    OutputModeProbe::try_parse_from(args).ok()?.output
+    RenderFallbackProbe::try_parse_from(args).ok()?.output
+}
+
+pub(crate) fn requested_verbose_from_args(args: &[OsString]) -> bool {
+    RenderFallbackProbe::try_parse_from(args)
+        .map(|probe| probe.verbose)
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsString;
+
+    use pretty_assertions::assert_eq;
+
+    use crate::output::RequestedOutputMode;
+
+    use super::requested_output_from_args;
+    use super::requested_verbose_from_args;
+
+    fn argv(args: &[&str]) -> Vec<OsString> {
+        args.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn requested_verbose_from_args_detects_the_global_flag() {
+        assert_eq!(
+            requested_verbose_from_args(&argv(&["onequery", "--verbose", "query", "exec"])),
+            true
+        );
+    }
+
+    #[test]
+    fn requested_output_from_args_still_extracts_output_mode() {
+        assert_eq!(
+            requested_output_from_args(&argv(&["onequery", "--output", "json", "doctor"])),
+            Some(RequestedOutputMode::Json)
+        );
+    }
 }

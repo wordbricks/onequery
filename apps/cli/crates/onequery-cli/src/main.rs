@@ -37,6 +37,7 @@ async fn main() {
     let stdout_is_tty = std::io::stdout().is_terminal();
     let fallback_output_mode =
         output::resolve_output_mode(cli::requested_output_from_args(&argv), stdout_is_tty);
+    let fallback_verbose = cli::requested_verbose_from_args(&argv);
     let parse_outcome = cli::parse_invocation_from_with_stdout_tty(&argv, stdout_is_tty);
 
     let invocation = match parse_outcome {
@@ -56,16 +57,25 @@ async fn main() {
                     }
                 }
                 Err(error) => {
-                    emit_failure_and_exit(error, fallback_output_mode, None, true);
+                    emit_failure_and_exit(
+                        error,
+                        fallback_output_mode,
+                        None,
+                        true,
+                        fallback_verbose,
+                    );
                 }
             }
             std::process::exit(0);
         }
-        Err(error) => emit_failure_and_exit(error, fallback_output_mode, None, true),
+        Err(error) => {
+            emit_failure_and_exit(error, fallback_output_mode, None, true, fallback_verbose)
+        }
     };
     let output_mode = invocation.global.output_mode;
     let command_path = invocation.command.command_path();
     let persist_failures = invocation.command.should_persist_failures();
+    let verbose_errors = invocation.global.verbose;
 
     if !invocation.command.requires_runtime() {
         // Comment: `doctor report` must still work when config loading is broken, so
@@ -77,6 +87,7 @@ async fn main() {
                 output_mode,
                 Some(command_path),
                 persist_failures,
+                verbose_errors,
             ),
         };
 
@@ -92,6 +103,7 @@ async fn main() {
                 output_mode,
                 Some(command_path),
                 persist_failures,
+                verbose_errors,
             ),
         }
     }
@@ -106,6 +118,7 @@ async fn main() {
             output_mode,
             Some(command_path),
             persist_failures,
+            verbose_errors,
         ),
     };
     let startup_effects = startup::start(startup::plan(runtime.config.path()));
@@ -124,6 +137,7 @@ async fn main() {
                     output_mode,
                     Some(command_path),
                     persist_failures,
+                    verbose_errors,
                 ),
             }
         }
@@ -132,6 +146,7 @@ async fn main() {
             output_mode,
             Some(command_path),
             persist_failures,
+            verbose_errors,
         ),
     };
     startup_effects.finish().await.report();
@@ -143,12 +158,14 @@ fn emit_failure_and_exit(
     output_mode: output::EffectiveOutputMode,
     command_path: Option<&str>,
     persist_failure: bool,
+    verbose_errors: bool,
 ) -> ! {
     std::process::exit(emit_failure_exit_code(
         error,
         output_mode,
         command_path,
         persist_failure,
+        verbose_errors,
     ));
 }
 
@@ -157,10 +174,13 @@ fn emit_failure_exit_code(
     output_mode: output::EffectiveOutputMode,
     command_path: Option<&str>,
     persist_failure: bool,
+    verbose_errors: bool,
 ) -> i32 {
     persist_failure_if_needed(&error, command_path, persist_failure);
-    if let Err(write_error) = emit_failure(&output::render_error(&error, output_mode), output_mode)
-    {
+    if let Err(write_error) = emit_failure(
+        &output::render_error_with_verbosity(&error, output_mode, verbose_errors),
+        output_mode,
+    ) {
         exit_for_output_error(write_error);
     }
     error.exit_code()

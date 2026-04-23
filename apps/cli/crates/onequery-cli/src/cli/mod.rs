@@ -42,4 +42,5 @@ pub(crate) use model::GlobalOptions;
 pub(crate) use model::Invocation;
 pub(crate) use model::ParseOutcome;
 pub(crate) use normalize::requested_output_from_args;
+pub(crate) use normalize::requested_verbose_from_args;
 pub(crate) use parse::parse_invocation_from_with_stdout_tty;

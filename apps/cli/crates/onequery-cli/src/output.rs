@@ -385,8 +385,16 @@ pub(crate) fn render_output_payload(
 }
 
 pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> String {
+    render_error_with_verbosity(error, mode, false)
+}
+
+pub(crate) fn render_error_with_verbosity(
+    error: &CliError,
+    mode: EffectiveOutputMode,
+    verbose: bool,
+) -> String {
     match mode {
-        EffectiveOutputMode::Text => render_text_error(error),
+        EffectiveOutputMode::Text => render_text_error(error, verbose),
         EffectiveOutputMode::Json => {
             let mut error_body = Map::new();
             if let Some(code) = &error.code {
@@ -513,11 +521,16 @@ fn extract_sanitization(data: &Value) -> Option<Value> {
     }
 }
 
-fn render_text_error(error: &CliError) -> String {
-    let mut lines = vec![
-        format!("Error: {}", error.title),
-        format!("Why: {}", error.why),
-    ];
+fn render_text_error(error: &CliError, verbose: bool) -> String {
+    let mut lines = vec![format!("Error: {}", error.title)];
+    if verbose {
+        lines.push(format!("Command: {}", error.command));
+        lines.push(format!("Stage: {}", error.stage.as_str()));
+        if let Some(code) = &error.code {
+            lines.push(format!("Code: {code}"));
+        }
+    }
+    lines.push(format!("Why: {}", error.why));
 
     if let Some(hint) = &error.hint {
         lines.push(format!("Hint: {hint}"));
@@ -589,6 +602,7 @@ mod tests {
     use super::RenderedOutput;
     use super::RequestedOutputMode;
     use super::render_error;
+    use super::render_error_with_verbosity;
     use super::render_output;
     use super::render_output_payload;
     use super::resolve_output_mode;
@@ -609,6 +623,27 @@ mod tests {
             .with_request_id(Some("req_123".to_owned()))
             .with_hint(Some("queries must be read-only".to_owned())),
             EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_verbose_snapshot() {
+        let rendered = render_error_with_verbosity(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "server rejected write query",
+                vec!["retry with a read-only SELECT".to_owned()],
+            )
+            .with_code(Some("query_rejected".to_owned()))
+            .with_request_id(Some("req_verbose".to_owned()))
+            .with_hint(Some("queries must be read-only".to_owned())),
+            EffectiveOutputMode::Text,
+            true,
         );
 
         crate::test_support::snapshot_settings_with_issue_url_filter()
