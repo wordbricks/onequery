@@ -210,9 +210,9 @@ message ExecuteSourceApiResponse {
   oneof outcome {
     option (buf.validate.oneof).required = true;
 
-    ExecuteSourceApiPreviewOnly preview_only = 4;
-    ExecuteSourceApiCompleted completed = 5;
-    ExecuteSourceApiContinued continued = 6;
+    ExecuteSourceApiPreviewOnly preview_only = 1;
+    ExecuteSourceApiCompleted completed = 2;
+    ExecuteSourceApiContinued continued = 3;
   }
 }
 

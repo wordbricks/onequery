@@ -68,7 +68,7 @@ message CliSource {
 }
 
 message GetSourceResponse {
-  CliSource source = 6 [(buf.validate.field).required = true];
+  CliSource source = 1 [(buf.validate.field).required = true];
 }
 
 message TestSourceRequest {
@@ -100,10 +100,10 @@ message TestSourceSupportedOutcome {
   oneof result {
     option (buf.validate.oneof).required = true;
 
-    TestSourcePassedOutcome passed = 5;
-    TestSourceFailedOutcome failed = 6;
+    TestSourcePassedOutcome passed = 1;
+    TestSourceFailedOutcome failed = 2;
   }
-  google.protobuf.Duration latency = 7 [
+  google.protobuf.Duration latency = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).duration.gte = {}
   ];
@@ -193,13 +193,13 @@ message ConnectSourceRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  string source_key = 3 [
+  string source_key = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  ConnectSourceCredentials credentials = 4 [(buf.validate.field).required = true];
+  ConnectSourceCredentials credentials = 3 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceCredentials {
@@ -395,12 +395,12 @@ message ConnectSourceAwsAthenaConnectorCredentials {
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 1000
   ];
-  string workgroup = 5 [
+  string workgroup = 4 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  google.protobuf.Duration timeout = 6 [
+  google.protobuf.Duration timeout = 5 [
     (buf.validate.field).duration.gt = {},
     (buf.validate.field).duration.lte = {seconds: 120}
   ];
