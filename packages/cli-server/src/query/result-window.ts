@@ -67,19 +67,19 @@ export function applyQueryResultWindow(input: {
   const boundedRows: string[][] = [];
   let usedBytes = 0;
   for (const row of clippedRows) {
-    const rowBytes = textEncoder.encode(JSON.stringify(row)).length;
-    if (boundedRows.length > 0 && usedBytes + rowBytes > input.maxBytes) {
+    const remainingBytes = input.maxBytes - usedBytes;
+    const fittedRow = fitRowWithinBytes(row, remainingBytes);
+    if (fittedRow === null) {
       truncated = true;
       break;
     }
 
-    if (boundedRows.length === 0 && rowBytes > input.maxBytes) {
+    if (!rowsEqual(fittedRow, row)) {
       truncated = true;
-      break;
     }
 
-    boundedRows.push(row);
-    usedBytes += rowBytes;
+    boundedRows.push(fittedRow);
+    usedBytes += rowByteLength(fittedRow);
   }
 
   return {
@@ -88,9 +88,67 @@ export function applyQueryResultWindow(input: {
   };
 }
 
+function fitRowWithinBytes(
+  row: readonly string[],
+  maxBytes: number
+): string[] | null {
+  if (maxBytes <= 0) {
+    return null;
+  }
+
+  if (rowByteLength(row) <= maxBytes) {
+    return [...row];
+  }
+
+  const longestCellLength = row.reduce(
+    (maxLength, cell) => Math.max(maxLength, cell.length),
+    0
+  );
+
+  let low = 0;
+  let high = longestCellLength;
+  let bestFit: string[] | null = null;
+
+  // Comment: query results should stay rectangular so text and JSON consumers
+  // can trust rows to align with the declared columns. When bytes are tight, we
+  // compact cells in place instead of dropping columns or emitting ragged rows.
+  while (low <= high) {
+    const maxChars = Math.floor((low + high) / 2);
+    const candidate = row.map((cell) => truncateCell(cell, maxChars));
+
+    if (rowByteLength(candidate) <= maxBytes) {
+      bestFit = candidate;
+      low = maxChars + 1;
+    } else {
+      high = maxChars - 1;
+    }
+  }
+
+  if (bestFit !== null) {
+    return bestFit;
+  }
+
+  return null;
+}
+
+function rowByteLength(row: readonly string[]): number {
+  return textEncoder.encode(JSON.stringify(row)).length;
+}
+
+function rowsEqual(left: readonly string[], right: readonly string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((cell, index) => cell === right[index])
+  );
+}
+
 function truncateCell(value: string, maxChars: number): string {
   if (value.length <= maxChars) {
     return value;
+  }
+
+  if (maxChars <= 0) {
+    return "";
   }
 
   if (maxChars <= 3) {
