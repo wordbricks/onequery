@@ -2,8 +2,10 @@ import { Result } from "better-result";
 
 import { resolveQueryResultWindow } from "../../../query/result-window";
 import { requireCliConnectRequestContext } from "../../context";
+import type { CliQueryRequest } from "../../gen/onequery/cli/v1/query_pb";
 import type { CliServiceResult } from "../result";
 import type { CliServiceMethod } from "../types";
+import { parseCliQueryRequest } from "./request";
 import type { CliQueryServiceRequest, ResolvedCliQueryRequest } from "./types";
 
 export async function resolveCliQueryRequestState<
@@ -22,7 +24,9 @@ export async function resolveCliQueryRequestState<
         session,
       })
     );
-    const query = request.query as NonNullable<TRequest["query"]>;
+    const query = parseCliQueryRequest(
+      request.query as CliQueryRequest
+    ) as NonNullable<TRequest["query"]>;
 
     return Result.ok({
       authorizedOrg,
