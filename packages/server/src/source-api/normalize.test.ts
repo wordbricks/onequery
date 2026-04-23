@@ -85,6 +85,24 @@ describe("finalizePreparedSourceApi", () => {
     );
   });
 
+  it("normalizes HTTP hosts without ports for proto address validation", () => {
+    const plan = finalizePreparedSourceApi({
+      body: { kind: "none" },
+      descriptorVersion: "github.v1",
+      headers: [],
+      kind: "http_request",
+      method: "GET",
+      operation: "fetch",
+      paginationPolicy: "none",
+      provider: "github",
+      sourceId: "source_id",
+      sourceKey: "github-prod",
+      url: "https://api.github.com:8443/pulls",
+    });
+
+    expect(plan.host).toBe("api.github.com");
+  });
+
   it("derives structured request body paths from the prepared request object", () => {
     const plan = finalizePreparedSourceApi({
       body: {

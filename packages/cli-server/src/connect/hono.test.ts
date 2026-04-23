@@ -21,7 +21,18 @@ describe("cli connect hono routing", () => {
 
     const routes = app.routes.map((route) => `${route.method} ${route.path}`);
 
-    expect(routes).toContain("ALL /onequery.cli.v1.CliService/GetSession");
-    expect(routes).toContain("ALL /onequery.cli.v1.CliService/ExecuteQuery");
+    expect(routes).toContain("ALL /onequery.cli.v1.CliAuthService/GetSession");
+    expect(routes).toContain(
+      "ALL /onequery.cli.v1.CliOrganizationService/ListOrganizations"
+    );
+    expect(routes).toContain(
+      "ALL /onequery.cli.v1.CliSourceService/ListSources"
+    );
+    expect(routes).toContain(
+      "ALL /onequery.cli.v1.CliQueryService/ExecuteQuery"
+    );
+    expect(routes).toContain(
+      "ALL /onequery.cli.v1.CliSourceApiService/DescribeSourceApi"
+    );
   });
 });

@@ -1,4 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
+import type { Duration } from "@bufbuild/protobuf/wkt";
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliSessionIdentity } from "../../../domain/workflows";
@@ -51,7 +52,7 @@ export type ExecuteQueryColumnMessage = {
 };
 
 export type ExecuteQueryRowMessage = {
-  values: string[];
+  displayValues: string[];
 };
 
 export type ValidateQueryResponseInit = {
@@ -61,13 +62,13 @@ export type ValidateQueryResponseInit = {
   normalizedSql: string;
   request: NonNullable<ValidateQueryResponseMessageInit["request"]>;
   source: CliSourceInit;
-  truncated: boolean;
+  sqlNormalized: boolean;
 };
 
 export type ExecuteQueryPayload = {
   columns: ExecuteQueryColumnMessage[];
-  elapsedMs: bigint;
-  rowCount: bigint;
+  elapsed?: Duration;
+  rowCount: number;
   rows: ExecuteQueryRowMessage[];
   source: CliSourceInit;
   truncated: boolean;

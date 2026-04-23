@@ -12,9 +12,11 @@ import type { CliServiceResult } from "../result";
 import type { CliHonoContext, CliServiceMethod } from "../types";
 import {
   buildCliExecuteSourceApiResponse,
+  buildCliPreviewSourceApiResponse,
+  buildCliResumeSourceApiResponse,
   buildSourceApiDraft,
-  isCliSourceApiPreviewOnlyMode,
-  resolveSourceApiExecuteCommand,
+  resolveSourceApiResumeCommand,
+  resolveSourceApiStartCommand,
 } from "./codec";
 import { resolveSourceApiWorkflowContext } from "./context";
 import { resolveSourceApiServiceDependencies } from "./dependencies";
@@ -26,23 +28,43 @@ import {
 } from "./runtime";
 import type {
   ExecuteSourceApiResponseInit,
+  PreviewSourceApiResponseInit,
+  ResumeSourceApiResponseInit,
   SourceApiAccessState,
-  SourceApiExecuteCommand,
+  SourceApiResumeCommand,
+  SourceApiStartCommand,
 } from "./types";
 import {
   runResumeSourceApiExecuteWorkflowResult,
   runStartSourceApiExecuteWorkflowResult,
 } from "./workflow";
 
-type StartSourceApiExecuteCommand = Extract<
-  SourceApiExecuteCommand,
-  { kind: "start" }
->;
+export function createHandlePreviewSourceApi(
+  dependencies: Partial<SourceApiServiceDependencies> = {}
+): CliServiceMethod<"previewSourceApi"> {
+  const resolvedDependencies =
+    resolveSourceApiServiceDependencies(dependencies);
 
-type ResumeSourceApiExecuteCommand = Extract<
-  SourceApiExecuteCommand,
-  { kind: "resume" }
->;
+  const handlePreviewSourceApiImpl: AuthenticatedCliResultServiceMethod<
+    "previewSourceApi"
+  > = async (request, requestContext) =>
+    Result.gen(async function* handlePreviewSourceApiFlow() {
+      const command = yield* resolveSourceApiStartCommand(request);
+      const response = yield* Result.await(
+        handlePreviewSourceApiCommand(
+          {
+            command,
+            requestContext,
+          },
+          resolvedDependencies
+        )
+      );
+
+      return Result.ok(response);
+    });
+
+  return liftAuthenticatedCliServiceMethod(handlePreviewSourceApiImpl);
+}
 
 export function createHandleExecuteSourceApi(
   dependencies: Partial<SourceApiServiceDependencies> = {}
@@ -54,51 +76,62 @@ export function createHandleExecuteSourceApi(
     "executeSourceApi"
   > = async (request, requestContext) =>
     Result.gen(async function* handleExecuteSourceApiFlow() {
-      const command = yield* resolveSourceApiExecuteCommand(request.input);
+      const command = yield* resolveSourceApiStartCommand(request);
+      const response = yield* Result.await(
+        handleExecuteSourceApiCommand(
+          {
+            command,
+            requestContext,
+          },
+          resolvedDependencies
+        )
+      );
 
-      switch (command.kind) {
-        case "start": {
-          const response = yield* Result.await(
-            handleStartSourceApiCommand(
-              {
-                command,
-                requestContext,
-              },
-              resolvedDependencies
-            )
-          );
-
-          return Result.ok(response);
-        }
-        case "resume": {
-          const response = yield* Result.await(
-            handleResumeSourceApiCommand(
-              {
-                command,
-                requestContext,
-              },
-              resolvedDependencies
-            )
-          );
-
-          return Result.ok(response);
-        }
-      }
+      return Result.ok(response);
     });
 
   return liftAuthenticatedCliServiceMethod(handleExecuteSourceApiImpl);
 }
 
-export const handleExecuteSourceApi = createHandleExecuteSourceApi();
+export function createHandleResumeSourceApi(
+  dependencies: Partial<SourceApiServiceDependencies> = {}
+): CliServiceMethod<"resumeSourceApi"> {
+  const resolvedDependencies =
+    resolveSourceApiServiceDependencies(dependencies);
 
-async function handleStartSourceApiCommand(
+  const handleResumeSourceApiImpl: AuthenticatedCliResultServiceMethod<
+    "resumeSourceApi"
+  > = async (request, requestContext) =>
+    Result.gen(async function* handleResumeSourceApiFlow() {
+      const command = yield* resolveSourceApiResumeCommand(request);
+      const response = yield* Result.await(
+        handleResumeSourceApiCommand(
+          {
+            command,
+            requestContext,
+          },
+          resolvedDependencies
+        )
+      );
+
+      return Result.ok(response);
+    });
+
+  return liftAuthenticatedCliServiceMethod(handleResumeSourceApiImpl);
+}
+
+export const handlePreviewSourceApi = createHandlePreviewSourceApi();
+export const handleExecuteSourceApi = createHandleExecuteSourceApi();
+export const handleResumeSourceApi = createHandleResumeSourceApi();
+
+async function handlePreviewSourceApiCommand(
   input: {
-    command: StartSourceApiExecuteCommand;
+    command: SourceApiStartCommand;
     requestContext: AuthenticatedCliConnectRequestContext;
   },
   dependencies: SourceApiServiceDependencies
-): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
-  return Result.gen(async function* handleStartSourceApiCommandFlow() {
+): Promise<CliServiceResult<PreviewSourceApiResponseInit>> {
+  return Result.gen(async function* handlePreviewSourceApiCommandFlow() {
     const workflowContext = yield* Result.await(
       resolveSourceApiWorkflowContext({
         action: "source_api.execute",
@@ -111,34 +144,56 @@ async function handleStartSourceApiCommand(
         ...workflowContext,
         dependencies,
         draft: buildSourceApiDraft(input.command.draft),
-        invokeMode: isCliSourceApiPreviewOnlyMode(input.command.mode)
-          ? "preview_only"
-          : "execute",
+        invokeMode: "preview_only",
         sourceKey: input.command.target.sourceKey,
       })
     );
 
-    if (isCliSourceApiPreviewOnlyMode(input.command.mode)) {
-      dependencies.logCliEvent({
-        details: dependencies.buildCliRequestLogDetails(workflowContext.c, {
-          kind: response.preview.kind,
-          mode: "preview_only",
-          operation: response.preview.operation,
-          orgSlug: workflowContext.orgSlug,
-          provider: response.preview.source.provider,
-          sourceKey: response.preview.source.sourceKey,
-        }),
-        event: "source_api.execute.preview_resolved",
-        level: "info",
-      });
+    dependencies.logCliEvent({
+      details: dependencies.buildCliRequestLogDetails(workflowContext.c, {
+        kind: response.preview.kind,
+        mode: "preview_only",
+        operation: response.preview.operation,
+        orgSlug: workflowContext.orgSlug,
+        provider: response.preview.source.provider,
+        sourceKey: response.preview.source.sourceKey,
+      }),
+      event: "source_api.execute.preview_resolved",
+      level: "info",
+    });
 
-      return Result.ok(
-        buildCliExecuteSourceApiResponse({
-          preview: response.preview,
-        })
-      );
-    }
+    return Result.ok(
+      buildCliPreviewSourceApiResponse({
+        preview: response.preview,
+      })
+    );
+  });
+}
 
+async function handleExecuteSourceApiCommand(
+  input: {
+    command: SourceApiStartCommand;
+    requestContext: AuthenticatedCliConnectRequestContext;
+  },
+  dependencies: SourceApiServiceDependencies
+): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
+  return Result.gen(async function* handleExecuteSourceApiCommandFlow() {
+    const workflowContext = yield* Result.await(
+      resolveSourceApiWorkflowContext({
+        action: "source_api.execute",
+        orgSlug: input.command.target.orgSlug,
+        requestContext: input.requestContext,
+      })
+    );
+    const response = yield* Result.await(
+      runStartSourceApiExecuteWorkflowResult({
+        ...workflowContext,
+        dependencies,
+        draft: buildSourceApiDraft(input.command.draft),
+        invokeMode: "execute",
+        sourceKey: input.command.target.sourceKey,
+      })
+    );
     const result = response.result;
     if (result === undefined) {
       return Result.err(
@@ -164,22 +219,29 @@ async function handleStartSourceApiCommand(
     );
 
     return Result.ok(
-      buildCliExecuteSourceApiResponse({
-        continuationToken: response.continuationToken,
-        preview: response.preview,
-        result,
-      })
+      response.continuationToken
+        ? buildCliExecuteSourceApiResponse({
+            continuationToken: response.continuationToken,
+            kind: "continued",
+            preview: response.preview,
+            result,
+          })
+        : buildCliExecuteSourceApiResponse({
+            kind: "completed",
+            preview: response.preview,
+            result,
+          })
     );
   });
 }
 
 async function handleResumeSourceApiCommand(
   input: {
-    command: ResumeSourceApiExecuteCommand;
+    command: SourceApiResumeCommand;
     requestContext: AuthenticatedCliConnectRequestContext;
   },
   dependencies: SourceApiServiceDependencies
-): Promise<CliServiceResult<ExecuteSourceApiResponseInit>> {
+): Promise<CliServiceResult<ResumeSourceApiResponseInit>> {
   return Result.gen(async function* handleResumeSourceApiCommandFlow() {
     const access = yield* Result.await(
       resolveExecuteSourceApiAccess(input, dependencies)
@@ -239,18 +301,25 @@ async function handleResumeSourceApiCommand(
     );
 
     return Result.ok(
-      buildCliExecuteSourceApiResponse({
-        continuationToken: response.continuationToken,
-        preview: response.preview,
-        result,
-      })
+      response.continuationToken
+        ? buildCliResumeSourceApiResponse({
+            continuationToken: response.continuationToken,
+            kind: "continued",
+            preview: response.preview,
+            result,
+          })
+        : buildCliResumeSourceApiResponse({
+            kind: "completed",
+            preview: response.preview,
+            result,
+          })
     );
   });
 }
 
 async function resolveExecuteSourceApiAccess(
   input: {
-    command: SourceApiExecuteCommand;
+    command: SourceApiResumeCommand;
     requestContext: AuthenticatedCliConnectRequestContext;
   },
   dependencies: Pick<

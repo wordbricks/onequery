@@ -41,7 +41,7 @@ export function buildCliPage(page: {
   returnedCount: number;
 }): MessageInitShape<typeof CliPageSchema> {
   return {
-    returnedCount: BigInt(page.returnedCount),
+    returnedCount: page.returnedCount,
     ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}),
   };
 }

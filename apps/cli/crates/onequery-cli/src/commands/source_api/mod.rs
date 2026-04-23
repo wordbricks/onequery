@@ -15,7 +15,9 @@ use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::recovery::auth_login_try_next;
 use crate::recovery::command_then_retry_try_next;
 use crate::transport::source_api;
+use crate::transport::source_api::ExecuteSourceApiOutcome;
 use crate::transport::source_api::SourceApiDraft;
+use crate::transport::source_api::SourceApiExecutionResult;
 use crate::transport::source_api::SourceApiHeader;
 use crate::transport::source_api::SourceApiPreview;
 use crate::transport::source_api::SourceApiResponseBody;
@@ -146,22 +148,12 @@ async fn preview_source_api_execution(
     args: &ApiArgs,
     context: &CommandContext,
 ) -> Result<PreviewedSourceApiExecution, CliError> {
-    let preview_response =
-        source_api::execute_source_api(client, org_slug, source_key, draft, true)
-            .await
-            .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
-    let Some(preview) = preview_response.payload.preview.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API preview response",
-            ErrorStage::ExecuteQuery,
-            "source API preview response did not include a preview",
-            source_key,
-        ));
-    };
+    let preview_response = source_api::preview_source_api(client, org_slug, source_key, draft)
+        .await
+        .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
 
     Ok(PreviewedSourceApiExecution {
-        preview,
+        preview: preview_response.payload,
         request_id: preview_response.request_id,
     })
 }
@@ -177,75 +169,20 @@ async fn execute_source_api_pages(
 ) -> Result<ExecutedSourceApiPages, CliError> {
     let max_pages = execution.max_pages.unwrap_or(u32::MAX);
 
-    let first_response = source_api::execute_source_api(client, org_slug, source_key, draft, false)
+    let first_response = source_api::execute_source_api(client, org_slug, source_key, draft)
         .await
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
-    let Some(preview) = first_response.payload.preview.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include a preview",
-            source_key,
-        ));
-    };
-    let Some(first_page) = first_response.payload.result.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include a result",
-            source_key,
-        ));
-    };
+    let (preview, first_result, first_continuation_token) =
+        execution_result_from_outcome(first_response.payload);
     let mut request_id = first_response.request_id.clone();
-    let mut continuation_token = first_response.payload.continuation_token.clone();
-    let Some(first_source) = first_page.source.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include source metadata",
-            source_key,
-        ));
-    };
-    let Some(first_operation_name) = first_page.operation else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include an operation name",
-            source_key,
-        ));
-    };
-    let Some(first_status) = first_page.status else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include an HTTP status",
-            source_key,
-        ));
-    };
-    let Some(first_content_type) = first_page.content_type else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include a content type",
-            source_key,
-        ));
-    };
-    let mut pages = vec![SourceApiExecutionPage {
-        body: first_page.body,
-        content_type: first_content_type,
-        continuation_token: first_response.payload.continuation_token,
-        headers: first_page.headers,
-        operation: first_operation_name,
-        selector: first_page.selector,
-        source: first_source,
-        status: first_status,
-    }];
+    let mut continuation_token = first_continuation_token.clone();
+    let mut pages = vec![source_api_execution_page_from_result(
+        first_result,
+        first_continuation_token,
+        context,
+        source_key,
+        "execution",
+    )?];
 
     while execution.paginate && (pages.len() as u32) < max_pages {
         let Some(continuation_token_value) = continuation_token else {
@@ -261,68 +198,100 @@ async fn execute_source_api_pages(
         .await
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
-        continuation_token = response.payload.continuation_token.clone();
-        let Some(page) = response.payload.result.into_option() else {
-            return Err(source_api_error(
-                context,
-                "invalid source API execution response",
-                ErrorStage::ExecuteQuery,
-                "source API resume response did not include a result",
-                source_key,
-            ));
-        };
-        let Some(source) = page.source.into_option() else {
-            return Err(source_api_error(
-                context,
-                "invalid source API execution response",
-                ErrorStage::ExecuteQuery,
-                "source API resume response did not include source metadata",
-                source_key,
-            ));
-        };
-        let Some(operation_name) = page.operation else {
-            return Err(source_api_error(
-                context,
-                "invalid source API execution response",
-                ErrorStage::ExecuteQuery,
-                "source API resume response did not include an operation name",
-                source_key,
-            ));
-        };
-        let Some(status) = page.status else {
-            return Err(source_api_error(
-                context,
-                "invalid source API execution response",
-                ErrorStage::ExecuteQuery,
-                "source API resume response did not include an HTTP status",
-                source_key,
-            ));
-        };
-        let Some(content_type) = page.content_type else {
-            return Err(source_api_error(
-                context,
-                "invalid source API execution response",
-                ErrorStage::ExecuteQuery,
-                "source API resume response did not include a content type",
-                source_key,
-            ));
-        };
-        pages.push(SourceApiExecutionPage {
-            body: page.body,
-            content_type,
-            continuation_token: response.payload.continuation_token,
-            headers: page.headers,
-            operation: operation_name,
-            selector: page.selector,
-            source,
-            status,
-        });
+        let (_preview, result, next_continuation_token) =
+            execution_result_from_outcome(response.payload);
+        continuation_token = next_continuation_token.clone();
+        pages.push(source_api_execution_page_from_result(
+            result,
+            next_continuation_token,
+            context,
+            source_key,
+            "resume",
+        )?);
     }
 
     Ok(ExecutedSourceApiPages {
         pages,
         preview,
         request_id,
+    })
+}
+
+fn execution_result_from_outcome(
+    outcome: ExecuteSourceApiOutcome,
+) -> (SourceApiPreview, SourceApiExecutionResult, Option<String>) {
+    match outcome {
+        ExecuteSourceApiOutcome::Completed { preview, result } => (preview, result, None),
+        ExecuteSourceApiOutcome::Continued {
+            preview,
+            result,
+            continuation_token,
+        } => (preview, result, Some(continuation_token)),
+    }
+}
+
+fn source_api_execution_page_from_result(
+    result: SourceApiExecutionResult,
+    continuation_token: Option<String>,
+    context: &CommandContext,
+    source_key: &str,
+    response_kind: &'static str,
+) -> Result<SourceApiExecutionPage, CliError> {
+    let Some(source) = result.source.into_option() else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response did not include source metadata"),
+            source_key,
+        ));
+    };
+    let Some(operation) = result.operation_name else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response did not include an operation name"),
+            source_key,
+        ));
+    };
+    let Some(status) = result.http_status_code else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response did not include an HTTP status"),
+            source_key,
+        ));
+    };
+    if !(100..=599).contains(&status) {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response included invalid HTTP status: {status}"),
+            source_key,
+        ));
+    }
+    let Some(content_type) = result.content_type else {
+        return Err(source_api_error(
+            context,
+            "invalid source API execution response",
+            ErrorStage::ExecuteQuery,
+            format!("source API {response_kind} response did not include a content type"),
+            source_key,
+        ));
+    };
+
+    Ok(SourceApiExecutionPage {
+        body: result.body,
+        content_type,
+        continuation_token,
+        headers: result.headers,
+        operation,
+        selector: result.selector,
+        source,
+        status,
     })
 }
 

@@ -7,7 +7,7 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
@@ -18,8 +18,8 @@ use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
-use crate::transport::response_decode::decode_required_bool;
 use crate::transport::response_decode::require_non_empty_text;
+use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -48,18 +48,24 @@ pub(crate) struct SourceTestPayload {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct SourceTestOutcome {
-    pub(crate) kind: String,
-    pub(crate) message: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) success: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) error: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) latency_ms: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) reason: Option<String>,
+#[serde(rename_all = "camelCase", tag = "kind", deny_unknown_fields)]
+pub(crate) enum SourceTestOutcome {
+    Supported {
+        result: SourceTestSupportedResult,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        latency_ms: Option<u64>,
+    },
+    Unsupported {
+        message: String,
+        reason: String,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum SourceTestSupportedResult {
+    Passed { message: String },
+    Failed { message: String, error: String },
 }
 
 pub(crate) async fn list_sources_with_controls(
@@ -102,7 +108,7 @@ async fn fetch_source_page(
     let org_slug: String = try_into_value(org, ErrorStage::Http)?;
     let page = page_request_from_controls(controls, ErrorStage::Http)?;
     let response = match client
-        .cli()
+        .source()
         .list_sources(types::ListSourcesRequest {
             org_slug: Some(org_slug),
             page,
@@ -115,7 +121,7 @@ async fn fetch_source_page(
             return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let page = payload.page.into_option().ok_or_else(|| {
         decode_failure(
@@ -149,7 +155,7 @@ pub(crate) async fn get_source_by_key_with_controls(
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
     let response = match client
-        .cli()
+        .source()
         .get_source(types::GetSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
@@ -163,7 +169,7 @@ pub(crate) async fn get_source_by_key_with_controls(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -185,7 +191,7 @@ pub(crate) async fn test_source(
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
     let response = match client
-        .cli()
+        .source()
         .test_source(types::TestSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
@@ -199,7 +205,7 @@ pub(crate) async fn test_source(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let source = payload.source.into_option();
     let outcome = payload.outcome.ok_or_else(|| {
@@ -211,24 +217,76 @@ pub(crate) async fn test_source(
     })?;
 
     let outcome = match outcome {
-        types::test_source_response::Outcome::Supported(supported) => SourceTestOutcome {
-            kind: "supported".to_owned(),
-            message: supported.message.unwrap_or_default(),
-            success: supported.success,
-            error: supported.error,
-            latency_ms: supported.latency_ms,
-            reason: None,
-        },
-        types::test_source_response::Outcome::Unsupported(unsupported) => SourceTestOutcome {
-            kind: "unsupported".to_owned(),
-            message: unsupported.message.unwrap_or_default(),
-            success: None,
-            error: None,
-            latency_ms: None,
-            reason: unsupported
-                .reason
-                .map(source_test_unsupported_reason_to_str),
-        },
+        types::test_source_response::Outcome::Supported(supported) => {
+            let latency_ms = required_duration_ms(
+                supported.latency,
+                ErrorStage::ResolveSource,
+                "source test supported response missing latency",
+                request_id.clone(),
+            )?;
+            let result = supported.result.ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::ResolveSource,
+                    "source test supported response missing result",
+                    request_id.clone(),
+                )
+            })?;
+
+            match result {
+                types::test_source_supported_outcome::Result::Passed(passed) => {
+                    SourceTestOutcome::Supported {
+                        result: SourceTestSupportedResult::Passed {
+                            message: require_non_empty_text(
+                                passed.message,
+                                ErrorStage::ResolveSource,
+                                "source test passed response missing message",
+                                request_id.clone(),
+                            )?,
+                        },
+                        latency_ms: Some(latency_ms),
+                    }
+                }
+                types::test_source_supported_outcome::Result::Failed(failed) => {
+                    SourceTestOutcome::Supported {
+                        result: SourceTestSupportedResult::Failed {
+                            message: require_non_empty_text(
+                                failed.message,
+                                ErrorStage::ResolveSource,
+                                "source test failed response missing message",
+                                request_id.clone(),
+                            )?,
+                            error: require_non_empty_text(
+                                failed.error,
+                                ErrorStage::ResolveSource,
+                                "source test failed response missing error",
+                                request_id.clone(),
+                            )?,
+                        },
+                        latency_ms: Some(latency_ms),
+                    }
+                }
+            }
+        }
+        types::test_source_response::Outcome::Unsupported(unsupported) => {
+            SourceTestOutcome::Unsupported {
+                message: require_non_empty_text(
+                    unsupported.message,
+                    ErrorStage::ResolveSource,
+                    "source test unsupported response missing message",
+                    request_id.clone(),
+                )?,
+                reason: source_test_unsupported_reason_to_str(
+                    unsupported.reason.ok_or_else(|| {
+                        decode_failure(
+                            ErrorStage::ResolveSource,
+                            "source test unsupported response missing reason",
+                            request_id.clone(),
+                        )
+                    })?,
+                    request_id.clone(),
+                )?,
+            }
+        }
     };
 
     Ok(ApiSuccess {
@@ -264,7 +322,7 @@ pub(crate) fn source_summary_from_generated(
         source_key,
         display_name,
         provider,
-        queryable,
+        query_support,
         status,
         ..
     } = summary;
@@ -284,30 +342,44 @@ pub(crate) fn source_summary_from_generated(
                 request_id.clone(),
             )
         })?,
-        queryable: decode_required_bool(
-            queryable,
-            stage,
-            "source response missing queryable flag",
-            request_id.clone(),
-        )?,
+        queryable: source_query_support_to_bool(query_support, stage, request_id.clone())?,
         status: status
             .map(source_status_to_str)
             .ok_or_else(|| decode_failure(stage, "source response missing status", request_id))?,
     })
 }
 
+fn source_query_support_to_bool(
+    value: Option<EnumValue<types::SourceQuerySupport>>,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<bool, ApiFailure> {
+    match value.and_then(|value| value.as_known()) {
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED) => Ok(true),
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_NOT_SUPPORTED) => Ok(false),
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_UNSPECIFIED) | None => Err(
+            decode_failure(stage, "source response missing query support", request_id),
+        ),
+    }
+}
+
 fn source_test_unsupported_reason_to_str(
     value: EnumValue<types::SourceTestUnsupportedReason>,
-) -> String {
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
     match value.as_known() {
         Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_OAUTH) => {
-            "oauth".to_owned()
+            Ok("oauth".to_owned())
         }
         Some(
             types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_NOT_IMPLEMENTED,
-        ) => "not_implemented".to_owned(),
+        ) => Ok("not_implemented".to_owned()),
         Some(types::SourceTestUnsupportedReason::SOURCE_TEST_UNSUPPORTED_REASON_UNSPECIFIED)
-        | None => "unknown".to_owned(),
+        | None => Err(decode_failure(
+            ErrorStage::ResolveSource,
+            "source test unsupported response has invalid reason",
+            request_id,
+        )),
     }
 }
 

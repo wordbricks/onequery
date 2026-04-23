@@ -500,7 +500,10 @@ mod tests {
                 runtime.auth_session.access_token().map(ToOwned::to_owned),
             ),
             (
-                Some("POST /api/cli/onequery.cli.v1.CliService/RefreshSession HTTP/1.1".to_owned()),
+                Some(
+                    "POST /api/cli/onequery.cli.v1.CliAuthService/RefreshSession HTTP/1.1"
+                        .to_owned()
+                ),
                 Some("req_refresh_123".to_owned()),
                 json!({
                     "accessTokenRedacted": true,

@@ -1,4 +1,6 @@
 import { isFieldSet } from "@bufbuild/protobuf";
+import { durationMs, timestampDate, timestampMs } from "@bufbuild/protobuf/wkt";
+import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { Credentials } from "@onequery/db/server";
 import { Result } from "better-result";
 
@@ -13,7 +15,7 @@ import {
 import type {
   ConnectSourceAwsAthenaConnectorCredentials,
   ConnectSourceCredentials,
-  ConnectSourceGoogleOAuthCredentials,
+  ConnectSourceGoogleOauthCredentials,
   ConnectSourceMySqlCredentials,
   ConnectSourcePostgresCredentials,
   ConnectSourceServiceAccountCredentials,
@@ -105,7 +107,7 @@ export function parseConnectSourceCredentials(
         provider: "aws_athena_connector",
         credentials: awsAthenaConnectorCredentialsFromMessage(kind.value),
       });
-    case "ga":
+    case "googleAnalytics":
       return googleAnalyticsCredentialsFromMessage(kind.value).map(
         (parsed) => ({
           provider: "ga",
@@ -237,12 +239,13 @@ function awsAthenaConnectorCredentialsFromMessage(
   )
     ? input.maxRows
     : undefined;
-  const timeoutMs = isFieldSet(
-    input,
-    ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeoutMs
-  )
-    ? input.timeoutMs
-    : undefined;
+  const timeoutMs =
+    isFieldSet(
+      input,
+      ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
+    ) && input.timeout
+      ? durationMs(input.timeout)
+      : undefined;
 
   return {
     type: "aws_athena_connector",
@@ -260,7 +263,7 @@ function bigQueryCredentialsFromMessage(input: {
         case: "oauth";
         value: {
           projectId: string;
-          credentials?: ConnectSourceGoogleOAuthCredentials;
+          credentials?: ConnectSourceGoogleOauthCredentials;
         };
       }
     | {
@@ -283,7 +286,7 @@ function bigQueryCredentialsFromMessage(input: {
         return Result.err(credentials.error);
       }
 
-      const expiresAt = numberFromUInt64(
+      const expiresAt = timestampMillisFromMessage(
         credentials.value.expiresAt,
         "bigquery.expiresAt"
       );
@@ -335,7 +338,7 @@ function googleAnalyticsCredentialsFromMessage(input: {
         case: "oauth";
         value: {
           propertyId: string;
-          credentials?: ConnectSourceGoogleOAuthCredentials;
+          credentials?: ConnectSourceGoogleOauthCredentials;
         };
       }
     | {
@@ -358,7 +361,7 @@ function googleAnalyticsCredentialsFromMessage(input: {
         return Result.err(credentials.error);
       }
 
-      const expiresAt = numberFromUInt64(
+      const expiresAt = timestampMillisFromMessage(
         credentials.value.expiresAt,
         "ga.expiresAt"
       );
@@ -412,7 +415,7 @@ function linearCredentialsFromMessage(input: {
         value: {
           accessToken: string;
           appUserId?: string;
-          expiresAt?: string;
+          expiresAt?: Timestamp;
           linearOrganizationId: string;
           linearOrganizationName?: string;
           refreshToken?: string;
@@ -428,7 +431,15 @@ function linearCredentialsFromMessage(input: {
         type: "linear",
         apiKey: input.auth.value.apiKey,
       });
-    case "oauth":
+    case "oauth": {
+      const expiresAt = optionalTimestampIsoString(
+        input.auth.value.expiresAt,
+        "linear.expiresAt"
+      );
+      if (expiresAt.isErr()) {
+        return Result.err(expiresAt.error);
+      }
+
       return Result.ok({
         type: "linear",
         accessToken: input.auth.value.accessToken,
@@ -436,9 +447,7 @@ function linearCredentialsFromMessage(input: {
         ...(input.auth.value.appUserId
           ? { appUserId: input.auth.value.appUserId }
           : {}),
-        ...(input.auth.value.expiresAt
-          ? { expiresAt: input.auth.value.expiresAt }
-          : {}),
+        ...(expiresAt.value ? { expiresAt: expiresAt.value } : {}),
         ...(input.auth.value.linearOrganizationName
           ? { linearOrganizationName: input.auth.value.linearOrganizationName }
           : {}),
@@ -450,6 +459,7 @@ function linearCredentialsFromMessage(input: {
           ? { tokenType: input.auth.value.tokenType }
           : {}),
       });
+    }
     default:
       return cliServiceErr({
         detail: "linear credentials must choose one auth mode",
@@ -483,18 +493,43 @@ function requirePresent<T>(
   });
 }
 
-function numberFromUInt64(
-  value: bigint,
+function timestampMillisFromMessage(
+  value: Timestamp | undefined,
   field: string
 ): CliServiceResult<number> {
-  if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+  const timestamp = requirePresent(value, `${field} is required`);
+  if (timestamp.isErr()) {
+    return Result.err(timestamp.error);
+  }
+
+  const valueMs = timestampMs(timestamp.value);
+  if (!Number.isSafeInteger(valueMs) || valueMs < 0) {
     return cliServiceErr({
       detail: `${field} exceeds the supported numeric range`,
       key: "SOURCE_REQUEST_INVALID",
     });
   }
 
-  return Result.ok(Number(value));
+  return Result.ok(valueMs);
+}
+
+function optionalTimestampIsoString(
+  value: Timestamp | undefined,
+  field: string
+): CliServiceResult<string | undefined> {
+  if (!value) {
+    return Result.ok(undefined);
+  }
+
+  const date = timestampDate(value);
+  if (!Number.isFinite(date.getTime())) {
+    return cliServiceErr({
+      detail: `${field} exceeds the supported date range`,
+      key: "SOURCE_REQUEST_INVALID",
+    });
+  }
+
+  return Result.ok(date.toISOString());
 }
 
 function sslModeFromMessage(

@@ -8,23 +8,25 @@ import "onequery/cli/v1/query.proto";
 import "onequery/cli/v1/source.proto";
 import "onequery/cli/v1/source_api.proto";
 
-service CliService {
-  rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
-  rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);
+service CliAuthService {
   rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc RefreshSession(RefreshSessionRequest) returns (RefreshSessionResponse);
   rpc StartDeviceAuthorization(StartDeviceAuthorizationRequest) returns (StartDeviceAuthorizationResponse);
   rpc PollDeviceAuthorization(PollDeviceAuthorizationRequest) returns (PollDeviceAuthorizationResponse);
+}
+
+service CliOrganizationService {
   rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+}
+
+service CliSourceService {
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
@@ -36,6 +38,18 @@ service CliService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc TestSource(TestSourceRequest) returns (TestSourceResponse);
+}
+
+service CliSourceApiService {
+  rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc PreviewSourceApi(PreviewSourceApiRequest) returns (PreviewSourceApiResponse);
+  rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);
+  rpc ResumeSourceApi(ResumeSourceApiRequest) returns (ResumeSourceApiResponse);
+}
+
+service CliQueryService {
   rpc ValidateQuery(ValidateQueryRequest) returns (ValidateQueryResponse);
   rpc ExecuteQuery(ExecuteQueryRequest) returns (ExecuteQueryResponse);
 }

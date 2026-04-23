@@ -1,4 +1,4 @@
-import { fromJson, toJson } from "@bufbuild/protobuf";
+import { fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
@@ -18,10 +18,13 @@ import { Result } from "better-result";
 
 import {
   SourceApiBodyKind,
-  SourceApiExecuteMode,
+  SourceApiFieldEncoding,
   SourceApiInputMode,
   SourceApiOperationKind,
   SourceApiPaginationPolicy,
+  SourceApiPatchMode,
+  SourceApiPathCapability,
+  SourceApiDraftSchema,
   SourceApiSelectorKind,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { SourceApiDraft as CliSourceApiDraft } from "../../gen/onequery/cli/v1/source_api_pb";
@@ -29,59 +32,57 @@ import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
 import { toCliSourceProvider } from "../source-provider";
 import type {
-  CliExecuteSourceApiInput,
+  CliExecuteSourceApiRequest,
+  CliPreviewSourceApiRequest,
+  CliResumeSourceApiRequest,
   CliSourceApiExecutionResultInit,
   CliSourceApiPreviewInit,
   DescribeSourceApiResponseInit,
   ExecuteSourceApiResponseInit,
-  SourceApiExecuteCommand,
+  PreviewSourceApiResponseInit,
+  ResumeSourceApiResponseInit,
+  SourceApiResumeCommand,
+  SourceApiStartCommand,
   SourceApiTarget,
 } from "./types";
 
-export function resolveSourceApiExecuteCommand(
-  input: CliExecuteSourceApiInput
-): CliServiceResult<SourceApiExecuteCommand> {
-  switch (input.case) {
-    case "start":
-      if (!input.value.target) {
-        return cliServiceErr({
-          detail: "source API request missing target payload",
-          key: "SOURCE_REQUEST_INVALID",
-        });
-      }
-
-      if (input.value.draft) {
-        return Result.ok({
-          draft: input.value.draft,
-          kind: "start",
-          mode: input.value.mode,
-          target: buildSourceApiTarget(input.value.target),
-        });
-      }
-
-      return cliServiceErr({
-        detail: "source API request missing draft payload",
-        key: "SOURCE_REQUEST_INVALID",
-      });
-    case "resume":
-      if (!input.value.target) {
-        return cliServiceErr({
-          detail: "source API request missing target payload",
-          key: "SOURCE_REQUEST_INVALID",
-        });
-      }
-
-      return Result.ok({
-        continuationToken: input.value.continuationToken,
-        kind: "resume",
-        target: buildSourceApiTarget(input.value.target),
-      });
-    case undefined:
-      return cliServiceErr({
-        detail: "source API request missing execution input",
-        key: "SOURCE_REQUEST_INVALID",
-      });
+export function resolveSourceApiStartCommand(
+  input: CliPreviewSourceApiRequest | CliExecuteSourceApiRequest
+): CliServiceResult<SourceApiStartCommand> {
+  if (!input.target) {
+    return cliServiceErr({
+      detail: "source API request missing target payload",
+      key: "SOURCE_REQUEST_INVALID",
+    });
   }
+
+  if (!input.draft) {
+    return cliServiceErr({
+      detail: "source API request missing draft payload",
+      key: "SOURCE_REQUEST_INVALID",
+    });
+  }
+
+  return Result.ok({
+    draft: input.draft,
+    target: buildSourceApiTarget(input.target),
+  });
+}
+
+export function resolveSourceApiResumeCommand(
+  input: CliResumeSourceApiRequest
+): CliServiceResult<SourceApiResumeCommand> {
+  if (!input.target) {
+    return cliServiceErr({
+      detail: "source API request missing target payload",
+      key: "SOURCE_REQUEST_INVALID",
+    });
+  }
+
+  return Result.ok({
+    continuationToken: input.continuationToken,
+    target: buildSourceApiTarget(input.target),
+  });
 }
 
 function buildSourceApiTarget(input: {
@@ -94,23 +95,23 @@ function buildSourceApiTarget(input: {
   };
 }
 
-export function isCliSourceApiPreviewOnlyMode(
-  value: SourceApiExecuteMode
-): boolean {
-  return value === SourceApiExecuteMode.PREVIEW_ONLY;
-}
-
 export function buildSourceApiDraft(
   request: CliSourceApiDraft
 ): SourceApiDraft {
+  const payload = buildSourceApiDraftPayload(request.body);
+
   return {
-    body: buildSourceApiRequestBody(request.body),
+    body: payload.body,
     descriptorVersion: request.descriptorVersion,
-    fieldPatch: request.fieldPatch,
+    ...(payload.fieldPatch ? { fieldPatch: payload.fieldPatch } : {}),
     headers: request.headers.map(copySourceApiHeader),
-    methodOverride: request.methodOverride,
-    operation: request.operation,
-    selector: request.selector,
+    ...(isFieldSet(request, SourceApiDraftSchema.field.methodOverride)
+      ? { methodOverride: request.methodOverride }
+      : {}),
+    operation: request.operationName,
+    ...(isFieldSet(request, SourceApiDraftSchema.field.selector)
+      ? { selector: request.selector }
+      : {}),
   };
 }
 
@@ -118,58 +119,143 @@ export function buildCliDescribeSourceApiResponse(
   value: SourceApiDescriptor
 ): DescribeSourceApiResponseInit {
   return {
-    defaultPathOperation: value.defaultPathOperation,
     descriptorVersion: value.descriptorVersion,
     examples: value.examples.map(buildCliSourceApiExample),
     notes: [...value.notes],
     operations: value.operations.map(buildCliSourceApiOperation),
     source: buildCliSourceApiSource(value.source),
+    ...(value.defaultPathOperation
+      ? { defaultPathOperationName: value.defaultPathOperation }
+      : {}),
   };
 }
 
-export function buildCliExecuteSourceApiResponse(input: {
-  continuationToken?: string;
+type CliExecuteSourceApiResponseInput =
+  | {
+      kind: "completed";
+      preview: SourceApiPreview;
+      result: SourceApiExecutionResult;
+    }
+  | {
+      continuationToken: string;
+      kind: "continued";
+      preview: SourceApiPreview;
+      result: SourceApiExecutionResult;
+    };
+
+export function buildCliPreviewSourceApiResponse(input: {
   preview: SourceApiPreview;
-  result?: SourceApiExecutionResult;
-}): ExecuteSourceApiResponseInit {
+}): PreviewSourceApiResponseInit {
   return {
-    continuationToken: input.continuationToken,
     preview: buildCliSourceApiPreview(input.preview),
-    result: input.result
-      ? buildCliSourceApiExecutionResult(input.result)
-      : undefined,
   };
+}
+
+export function buildCliExecuteSourceApiResponse(
+  input: CliExecuteSourceApiResponseInput
+): ExecuteSourceApiResponseInit {
+  const preview = buildCliSourceApiPreview(input.preview);
+
+  switch (input.kind) {
+    case "completed":
+      return {
+        outcome: {
+          case: "completed",
+          value: {
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
+    case "continued":
+      return {
+        outcome: {
+          case: "continued",
+          value: {
+            continuationToken: input.continuationToken,
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
+  }
+}
+
+export function buildCliResumeSourceApiResponse(
+  input: CliExecuteSourceApiResponseInput
+): ResumeSourceApiResponseInit {
+  const preview = buildCliSourceApiPreview(input.preview);
+
+  switch (input.kind) {
+    case "completed":
+      return {
+        outcome: {
+          case: "completed",
+          value: {
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
+    case "continued":
+      return {
+        outcome: {
+          case: "continued",
+          value: {
+            continuationToken: input.continuationToken,
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
+  }
 }
 
 function copySourceApiHeader(value: Pick<SourceApiHeader, "name" | "value">) {
   return {
-    name: value.name,
+    name: value.name.toLowerCase(),
     value: value.value,
   };
 }
 
-function buildSourceApiRequestBody(
-  body: CliSourceApiDraft["body"]
-): SourceApiRequestBody {
+function buildSourceApiDraftPayload(body: CliSourceApiDraft["body"]): {
+  body: SourceApiRequestBody;
+  fieldPatch?: SourceApiDraft["fieldPatch"];
+} {
   switch (body.case) {
+    case "fieldPatch":
+      return {
+        body: {
+          kind: "none",
+        },
+        fieldPatch: body.value,
+      };
     case "jsonBody":
       return {
-        kind: "json",
-        value: toJson(ValueSchema, body.value),
+        body: {
+          kind: "json",
+          value: toJson(ValueSchema, body.value),
+        },
       };
     case "textBody":
       return {
-        kind: "text",
-        value: body.value,
+        body: {
+          kind: "text",
+          value: body.value,
+        },
       };
     case "binaryBody":
       return {
-        kind: "binary",
-        value: body.value,
+        body: {
+          kind: "binary",
+          value: body.value,
+        },
       };
     case undefined:
       return {
-        kind: "none",
+        body: {
+          kind: "none",
+        },
       };
   }
 }
@@ -180,11 +266,11 @@ function buildCliSourceApiPreview(
   return {
     bodyKind: toCliSourceApiBodyKind(value.bodyKind),
     bodyPaths: [...value.bodyPaths],
-    headerNames: [...value.headerNames],
+    headerNames: lowerUniqueStrings(value.headerNames),
     host: value.host,
     kind: toCliSourceApiOperationKind(value.kind),
     method: value.method,
-    operation: value.operation,
+    operationName: value.operation,
     paginationPolicy: toCliSourceApiPaginationPolicy(value.paginationPolicy),
     source: buildCliSourceApiSource(value.source),
     selector: value.selector,
@@ -199,10 +285,10 @@ function buildCliSourceApiExecutionResult(
     body: buildCliSourceApiResponseBody(value.body),
     contentType: value.contentType,
     headers: value.headers.map(copySourceApiHeader),
-    operation: value.operation,
+    operationName: value.operation,
     selector: value.selector,
     source: buildCliSourceApiSource(value.source),
-    status: value.status,
+    httpStatusCode: value.status,
   };
 }
 
@@ -212,7 +298,9 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
     examples: value.examples.map(buildCliSourceApiExample),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
-      allowedRequestHeaderNames: [...value.headerPolicy.allowedRequestHeaders],
+      allowedRequestHeaderNames: lowerUniqueStrings(
+        value.headerPolicy.allowedRequestHeaders
+      ),
     },
     kind: toCliSourceApiOperationKind(value.kind),
     methodPolicy: {
@@ -230,14 +318,31 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
 
 function buildCliSourceApiFieldPolicy(value: SourceApiFieldPolicy) {
   return {
-    acceptsInput: value.acceptsInput,
-    allowsRawFields: value.allowsRawFields,
-    allowsTypedFields: value.allowsTypedFields,
+    fieldEncodings: [
+      ...(value.allowsRawFields ? [SourceApiFieldEncoding.RAW] : []),
+      ...(value.allowsTypedFields ? [SourceApiFieldEncoding.TYPED] : []),
+    ],
     inputMode: toCliSourceApiInputMode(value.inputMode),
-    mergePatches: value.mergePatches,
-    supportsArrayPaths: value.supportsArrayPaths,
-    supportsNestedPaths: value.supportsNestedPaths,
+    patchMode: toCliSourceApiPatchMode(value),
+    pathCapabilities: [
+      ...(value.supportsNestedPaths ? [SourceApiPathCapability.NESTED] : []),
+      ...(value.supportsArrayPaths ? [SourceApiPathCapability.ARRAY] : []),
+    ],
   };
+}
+
+function toCliSourceApiPatchMode(value: SourceApiFieldPolicy) {
+  if (!value.allowsRawFields && !value.allowsTypedFields) {
+    return SourceApiPatchMode.NONE;
+  }
+
+  return value.mergePatches
+    ? SourceApiPatchMode.MERGE
+    : SourceApiPatchMode.SEPARATE;
+}
+
+function lowerUniqueStrings(values: readonly string[]) {
+  return [...new Set(values.map((value) => value.toLowerCase()))];
 }
 
 function buildCliSourceApiExample(

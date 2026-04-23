@@ -65,7 +65,7 @@ insta = { workspace = true, features = ["filters"] }
 [build-dependencies]
 buffa = { workspace = true, features = ["json"] }
 buffa-codegen = { workspace = true }
-connectrpc-codegen = { workspace = true }
+connectrpc-build = { workspace = true }
 
 [lints]
 workspace = true

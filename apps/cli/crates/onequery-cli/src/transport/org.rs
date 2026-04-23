@@ -6,11 +6,12 @@ use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::org_capability_to_str;
+use crate::transport::labels::org_role_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
@@ -44,7 +45,7 @@ pub(crate) async fn get_org_with_controls(
 ) -> Result<ApiSuccess<OrgDetails>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ResolveOrg)?;
     let response = match client
-        .cli()
+        .organization()
         .get_organization(types::GetOrganizationRequest {
             org_slug: Some(org_slug),
             ..Default::default()
@@ -56,7 +57,7 @@ pub(crate) async fn get_org_with_controls(
             return Err(failure_from_connect(error, ErrorStage::ResolveOrg));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
 
     Ok(ApiSuccess {
         payload: org_details_from_generated(response.into_owned()),
@@ -100,7 +101,7 @@ async fn fetch_org_page(
 ) -> Result<ApiSuccess<OrgListPayload>, ApiFailure> {
     let page = page_request_from_controls(controls, ErrorStage::Http)?;
     let response = match client
-        .cli()
+        .organization()
         .list_organizations(types::ListOrganizationsRequest {
             page,
             ..Default::default()
@@ -112,7 +113,7 @@ async fn fetch_org_page(
             return Err(failure_from_connect(error, ErrorStage::Http));
         }
     };
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
     let page = payload.page.into_option().ok_or_else(|| {
         decode_failure(
@@ -162,7 +163,7 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
     OrgDetails {
         slug,
         name,
-        roles: Some(roles),
+        roles: Some(roles.into_iter().map(org_role_to_str).collect()),
         capabilities: Some(
             capabilities
                 .into_iter()
@@ -207,7 +208,10 @@ mod tests {
         let details = org_details_from_generated(types::GetOrganizationResponse {
             slug: Some("acme".to_owned()),
             name: Some("Acme".to_owned()),
-            roles: vec!["member".to_owned(), "admin".to_owned()],
+            roles: vec![
+                types::OrganizationRole::ORGANIZATION_ROLE_MEMBER.into(),
+                types::OrganizationRole::ORGANIZATION_ROLE_ADMIN.into(),
+            ],
             capabilities: vec![
                 types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into(),
                 types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),

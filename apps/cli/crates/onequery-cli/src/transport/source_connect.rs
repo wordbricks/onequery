@@ -12,13 +12,16 @@ use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
-use crate::transport::api_failure::response_request_id;
+use crate::transport::api_failure::success_response_request_id;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::content_format_to_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
 use crate::transport::source_connect_provider::SourceConnectProvider;
+use crate::transport::well_known::optional_duration_from_ms;
+use crate::transport::well_known::timestamp_from_epoch_ms;
+use crate::transport::well_known::timestamp_from_rfc3339;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -184,7 +187,7 @@ pub(crate) async fn load_source_connect_guide(
         crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
 
     let response = match client
-        .cli()
+        .source()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
             org_slug: Some(org_slug),
             provider: Some(types::SourceProvider::from(source).into()),
@@ -198,7 +201,7 @@ pub(crate) async fn load_source_connect_guide(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -236,7 +239,7 @@ pub(crate) async fn connect_source(
     let credentials = connect_source_credentials_from_json(source, credentials)?;
 
     let response = match client
-        .cli()
+        .source()
         .connect_source(types::ConnectSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
@@ -251,7 +254,7 @@ pub(crate) async fn connect_source(
         }
     };
 
-    let request_id = response_request_id(response.headers());
+    let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
 
     Ok(ApiSuccess {
@@ -350,7 +353,10 @@ fn connect_source_credentials_from_json(
                         connector_id: Some(input.connector_id),
                         database: Some(input.database),
                         max_rows: input.max_rows,
-                        timeout_ms: input.timeout_ms,
+                        timeout: optional_duration_from_ms(
+                            input.timeout_ms.map(u64::from),
+                            ErrorStage::ResolveSource,
+                        )?,
                         workgroup: input.workgroup,
                         ..Default::default()
                     }),
@@ -363,9 +369,9 @@ fn connect_source_credentials_from_json(
                 parse_source_connect_credentials(value)?;
 
             Ok(types::ConnectSourceCredentials {
-                kind: Some(types::connect_source_credentials::Kind::Ga(Box::new(
-                    google_analytics_credentials_from_input(input)?,
-                ))),
+                kind: Some(types::connect_source_credentials::Kind::GoogleAnalytics(
+                    Box::new(google_analytics_credentials_from_input(input)?),
+                )),
                 ..Default::default()
             })
         }
@@ -507,7 +513,7 @@ fn big_query_credentials_from_input(
         input.service_account.is_some(),
     )? {
         GoogleAuthMode::Oauth => Some(types::connect_source_big_query_credentials::Auth::Oauth(
-            Box::new(types::ConnectSourceBigQueryOAuthCredentials {
+            Box::new(types::ConnectSourceBigQueryOauthCredentials {
                 project_id: Some(input.project_id),
                 credentials: MessageField::some(google_oauth_credentials_from_input(
                     "bigquery",
@@ -552,7 +558,7 @@ fn google_analytics_credentials_from_input(
     )? {
         GoogleAuthMode::Oauth => Some(
             types::connect_source_google_analytics_credentials::Auth::Oauth(Box::new(
-                types::ConnectSourceGoogleAnalyticsOAuthCredentials {
+                types::ConnectSourceGoogleAnalyticsOauthCredentials {
                     property_id: Some(input.property_id),
                     credentials: MessageField::some(google_oauth_credentials_from_input(
                         "ga",
@@ -610,14 +616,23 @@ fn linear_credentials_from_input(
             }),
         ))
     } else if has_oauth_fields {
+        let expires_at = match input.expires_at {
+            Some(value) => timestamp_from_rfc3339(
+                value.as_str(),
+                ErrorStage::ResolveSource,
+                "source connect credentials.expiresAt",
+            )?,
+            None => MessageField::none(),
+        };
+
         Some(types::connect_source_linear_credentials::Auth::Oauth(
-            Box::new(types::ConnectSourceLinearOAuthCredentials {
+            Box::new(types::ConnectSourceLinearOauthCredentials {
                 access_token: Some(require_field(
                     input.access_token,
                     "source connect credentials must include `accessToken` for Linear OAuth",
                 )?),
                 app_user_id: input.app_user_id,
-                expires_at: input.expires_at,
+                expires_at,
                 linear_organization_id: Some(require_field(
                     input.linear_organization_id,
                     "source connect credentials must include `linearOrganizationId` for Linear OAuth",
@@ -751,8 +766,8 @@ fn google_oauth_credentials_from_input(
     access_token: Option<String>,
     refresh_token: Option<String>,
     expires_at: Option<u64>,
-) -> Result<types::ConnectSourceGoogleOAuthCredentials, ApiFailure> {
-    Ok(types::ConnectSourceGoogleOAuthCredentials {
+) -> Result<types::ConnectSourceGoogleOauthCredentials, ApiFailure> {
+    Ok(types::ConnectSourceGoogleOauthCredentials {
         access_token: Some(require_field(
             access_token,
             format!("source connect credentials must include `accessToken` for `{provider}` OAuth"),
@@ -763,10 +778,15 @@ fn google_oauth_credentials_from_input(
                 "source connect credentials must include `refreshToken` for `{provider}` OAuth"
             ),
         )?),
-        expires_at: Some(require_field(
-            expires_at,
-            format!("source connect credentials must include `expiresAt` for `{provider}` OAuth"),
-        )?),
+        expires_at: timestamp_from_epoch_ms(
+            require_field(
+                expires_at,
+                format!(
+                    "source connect credentials must include `expiresAt` for `{provider}` OAuth"
+                ),
+            )?,
+            ErrorStage::ResolveSource,
+        )?,
         ..Default::default()
     })
 }

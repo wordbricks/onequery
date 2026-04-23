@@ -1,12 +1,10 @@
 use std::collections::VecDeque;
 use std::fs;
 use std::io::Read;
-use std::io::Write;
 use std::net::TcpListener;
 use std::path::PathBuf;
 use std::sync::mpsc;
 
-use base64::Engine;
 use buffa::Message;
 use insta::assert_snapshot;
 use onequery_cli_core::error::CliError;
@@ -20,6 +18,7 @@ use crate::cli::ReadArgs;
 use crate::commands::ResolvedOrgSource;
 use crate::commands::Runtime;
 use crate::commands::auth_session::PersistedLoginNextStep;
+use crate::commands::test_support::write_proto_response;
 use crate::config::AppConfig;
 use crate::config::ConfigStore;
 use crate::config::default_base_url;
@@ -694,36 +693,19 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
             .send(request)
             .expect("expected login poll request receiver");
 
-        let cli_error_detail = base64::engine::general_purpose::STANDARD_NO_PAD.encode(
-            generated::types::CliErrorDetail {
-                code: Some(generated::types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED.into()),
-                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
-                title: Some("Login Denied".to_owned()),
-                hint: Some("run `onequery auth login` again".to_owned()),
-                retryable: Some(false),
-                request_id: Some("req_denied".to_owned()),
-                support: buffa::MessageField::some(generated::types::CliSupportAction {
-                    kind: Some(
-                        generated::types::SupportActionKind::SUPPORT_ACTION_KIND_NONE.into(),
-                    ),
-                    reason: Some("user_actionable".to_owned()),
-                    explain_slug: Some("login_denied".to_owned()),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }
-            .encode_to_bytes(),
-        );
-        let response_body = format!(
-            r#"{{"code":"permission_denied","message":"device authorization was denied","details":[{{"type":"type.googleapis.com/onequery.cli.v1.CliErrorDetail","value":"{cli_error_detail}"}}]}}"#
-        );
-        let response = format!(
-            "HTTP/1.1 403 Forbidden\r\ncontent-type: application/json\r\ncontent-length: {}\r\nx-request-id: req_denied\r\nconnection: close\r\n\r\n{}",
-            response_body.len(),
-            response_body
-        );
-        stream
-            .write_all(response.as_bytes())
+        let response_body = generated::types::PollDeviceAuthorizationResponse {
+            outcome: Some(
+                generated::types::poll_device_authorization_response::Outcome::Denied(Box::new(
+                    generated::types::CliDeniedDeviceAuthorization {
+                        reason: Some("device authorization was denied".to_owned()),
+                        ..Default::default()
+                    },
+                )),
+            ),
+            ..Default::default()
+        }
+        .encode_to_bytes();
+        write_proto_response(&mut stream, "req_denied", &response_body)
             .expect("expected login poll response write");
     });
 
@@ -754,7 +736,6 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
                 verification_uri: "https://example.test/device".to_owned(),
                 verification_uri_complete: "https://example.test/device?user_code=ABCD1234"
                     .to_owned(),
-                poll_interval_ms: 1_000,
                 expires_in_sec: 180,
             },
         },
@@ -767,7 +748,7 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
         .recv()
         .expect("expected auth poll workflow to issue exactly one poll request");
     assert!(request.starts_with(
-        "POST /api/cli/onequery.cli.v1.CliService/PollDeviceAuthorization HTTP/1.1\r\n"
+        "POST /api/cli/onequery.cli.v1.CliAuthService/PollDeviceAuthorization HTTP/1.1\r\n"
     ));
 
     assert_eq!(
@@ -1215,7 +1196,6 @@ fn sample_login_session() -> LoginSession {
         user_code: "ABCD1234".to_owned(),
         verification_uri: "https://example.test/device".to_owned(),
         verification_uri_complete: "https://example.test/device?user_code=ABCD1234".to_owned(),
-        poll_interval_ms: 1_000,
         expires_in_sec: 180,
     }
 }

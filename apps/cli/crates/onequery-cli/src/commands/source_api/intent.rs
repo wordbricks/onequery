@@ -53,7 +53,7 @@ pub(super) fn resolve_intent(
     };
 
     if let Some(selector) = infer_selector_target(target, descriptor) {
-        let Some(operation) = descriptor.default_path_operation.as_deref() else {
+        let Some(operation) = descriptor.default_path_operation_name.as_deref() else {
             return Err(source_api_parse_error(
                 context,
                 "source API operation is required",
@@ -366,7 +366,7 @@ mod tests {
                 ..Default::default()
             }),
             descriptor_version: Some("2026-04-09".to_owned()),
-            default_path_operation: Some("fetch".to_owned()),
+            default_path_operation_name: Some("fetch".to_owned()),
             operations: if operation_name.is_empty() {
                 Vec::new()
             } else {
@@ -383,7 +383,7 @@ mod tests {
 
     fn descriptor_without_default_path_operation() -> SourceApiDescriptor {
         SourceApiDescriptor {
-            default_path_operation: None,
+            default_path_operation_name: None,
             ..descriptor()
         }
     }

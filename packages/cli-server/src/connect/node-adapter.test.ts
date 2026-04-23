@@ -1,6 +1,9 @@
 import http from "node:http";
 
-import { MethodOptions_IdempotencyLevel } from "@bufbuild/protobuf/wkt";
+import {
+  durationFromMs,
+  MethodOptions_IdempotencyLevel,
+} from "@bufbuild/protobuf/wkt";
 import {
   Code,
   createClient,
@@ -13,7 +16,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CliConnectRequestContext } from "./context";
 import { cliConnectRequestContextKey } from "./context";
 import { BadRequestSchema } from "./gen/google/rpc/error_details_pb";
-import { CliService } from "./gen/onequery/cli/v1/cli_pb";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceApiService,
+  CliSourceService,
+} from "./gen/onequery/cli/v1/cli_pb";
 import {
   CliErrorDetailSchema,
   ProblemCode,
@@ -39,42 +48,51 @@ describe("cli connect node integration", () => {
     });
 
     expect(requestPaths).toContain(
-      "/api/cli/onequery.cli.v1.CliService/GetSession"
+      "/api/cli/onequery.cli.v1.CliAuthService/GetSession"
     );
     expect(requestPaths).toContain(
-      "/api/cli/onequery.cli.v1.CliService/ExecuteQuery"
+      "/api/cli/onequery.cli.v1.CliOrganizationService/ListOrganizations"
+    );
+    expect(requestPaths).toContain(
+      "/api/cli/onequery.cli.v1.CliSourceService/ListSources"
+    );
+    expect(requestPaths).toContain(
+      "/api/cli/onequery.cli.v1.CliQueryService/ExecuteQuery"
+    );
+    expect(requestPaths).toContain(
+      "/api/cli/onequery.cli.v1.CliSourceApiService/DescribeSourceApi"
     );
   });
 
   it("marks the safe read RPCs as side-effect free", () => {
-    expect(CliService.method.describeSourceApi.idempotency).toBe(
+    expect(CliSourceApiService.method.describeSourceApi.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.getSession.idempotency).toBe(
+    expect(CliAuthService.method.getSession.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.listOrganizations.idempotency).toBe(
+    expect(CliOrganizationService.method.listOrganizations.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.getOrganization.idempotency).toBe(
+    expect(CliOrganizationService.method.getOrganization.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.listSources.idempotency).toBe(
+    expect(CliSourceService.method.listSources.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.getSourceConnectGuide.idempotency).toBe(
+    expect(CliSourceService.method.getSourceConnectGuide.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.getSource.idempotency).toBe(
+    expect(CliSourceService.method.getSource.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
-    expect(CliService.method.refreshSession.idempotency).toBe(
+    expect(CliAuthService.method.refreshSession.idempotency).toBe(
       MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
     );
-    expect(CliService.method.connectSource.idempotency).toBe(
+    expect(CliSourceService.method.connectSource.idempotency).toBe(
       MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
     );
-    expect(CliService.method.executeQuery.idempotency).toBe(
+    expect(CliQueryService.method.executeQuery.idempotency).toBe(
       MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
     );
   });
@@ -104,7 +122,7 @@ describe("cli connect node integration", () => {
     openServers.add(server);
     const port = await listen(server);
     const client = createClient(
-      CliService,
+      CliQueryService,
       createConnectTransport({
         baseUrl: `http://127.0.0.1:${port}`,
         httpVersion: "1.1",
@@ -120,7 +138,7 @@ describe("cli connect node integration", () => {
             maxBytes: 1024,
             maxRows: 10,
             sql: "select 1",
-            timeoutMs: 1000,
+            timeout: durationFromMs(1000),
           },
           sourceKey: "source-1",
         },
@@ -160,6 +178,85 @@ describe("cli connect node integration", () => {
     throw new Error("expected validateQuery to reject");
   });
 
+  it("normalizes source api validation failures at execute stage", async () => {
+    const server = http.createServer(
+      createCliConnectHandler({
+        contextValues(request) {
+          const requestIdHeader = request.headers["x-request-id"];
+          const requestId = Array.isArray(requestIdHeader)
+            ? requestIdHeader[0]
+            : requestIdHeader;
+
+          return createContextValues().set(cliConnectRequestContextKey, {
+            honoContext: null,
+            requestId: requestId ?? "unknown",
+            resolveAuthorizedOrg: async () => {
+              throw new Error("source api validation should not resolve org");
+            },
+            resolveSession: async () => {
+              throw new Error(
+                "source api validation should not resolve session"
+              );
+            },
+          } as unknown as CliConnectRequestContext);
+        },
+      })
+    );
+    openServers.add(server);
+    const port = await listen(server);
+    const client = createClient(
+      CliSourceApiService,
+      createConnectTransport({
+        baseUrl: `http://127.0.0.1:${port}`,
+        httpVersion: "1.1",
+      })
+    );
+
+    try {
+      await client.previewSourceApi(
+        {
+          draft: {
+            descriptorVersion: "2026-04-23",
+            operationName: "fetch",
+          },
+          target: {
+            orgSlug: "Bad!",
+            sourceKey: "source-1",
+          },
+        },
+        {
+          headers: {
+            "x-request-id": "req_cli_source_api_validation",
+          },
+        }
+      );
+    } catch (error) {
+      const connectError = ConnectError.from(error);
+      const cliDetails = connectError.findDetails(CliErrorDetailSchema);
+      const badRequestDetails = connectError.findDetails(BadRequestSchema);
+
+      expect(connectError.code).toBe(Code.InvalidArgument);
+      expect(cliDetails).toHaveLength(1);
+      expect(cliDetails[0]).toMatchObject({
+        code: ProblemCode.INVALID_REQUEST,
+        hint: "correct the source API request and retry",
+        requestId: "req_cli_source_api_validation",
+        stage: ProblemStage.EXECUTE_QUERY,
+        support: {
+          explainSlug: "invalid_request",
+          kind: SupportActionKind.NONE,
+          reason: "user_actionable",
+        },
+        title: "Invalid Request",
+      });
+      expect(badRequestDetails).toHaveLength(1);
+      expect(badRequestDetails[0]?.fieldViolations.length).toBeGreaterThan(0);
+      return;
+    }
+
+    throw new Error("expected previewSourceApi to reject");
+  });
+
   it("rejects invalid nested pagination requests before the handler runs", async () => {
     const server = http.createServer(
       createCliConnectHandler({
@@ -187,7 +284,7 @@ describe("cli connect node integration", () => {
     openServers.add(server);
     const port = await listen(server);
     const client = createClient(
-      CliService,
+      CliOrganizationService,
       createConnectTransport({
         baseUrl: `http://127.0.0.1:${port}`,
         httpVersion: "1.1",

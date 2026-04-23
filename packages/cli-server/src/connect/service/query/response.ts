@@ -1,3 +1,5 @@
+import { durationFromMs } from "@bufbuild/protobuf/wkt";
+
 import {
   buildCliSanitization,
   sanitizeCliRemoteText,
@@ -14,7 +16,6 @@ import type {
 export function buildQueryValidateResponse(response: {
   request: {
     sql: string;
-    parameters: readonly unknown[];
     maxRows: number;
     maxBytes: number;
     cellMaxChars: number;
@@ -28,26 +29,25 @@ export function buildQueryValidateResponse(response: {
     timeoutMs: number;
   };
   source: Parameters<typeof buildCliSource>[0];
-  truncated: boolean;
+  sqlNormalized: boolean;
 }): ValidateQueryResponseInit {
   return {
     request: {
       sql: response.request.sql,
-      parameters: [],
       maxRows: response.request.maxRows,
       maxBytes: response.request.maxBytes,
       cellMaxChars: response.request.cellMaxChars,
-      timeoutMs: response.request.timeoutMs,
+      timeout: durationFromMs(response.request.timeoutMs),
     },
     normalizedSql: response.normalizedSql,
     declaredResultWindow: {
       maxRows: response.declaredResultWindow.maxRows,
       maxBytes: response.declaredResultWindow.maxBytes,
       cellMaxChars: response.declaredResultWindow.cellMaxChars,
-      timeoutMs: response.declaredResultWindow.timeoutMs,
+      timeout: durationFromMs(response.declaredResultWindow.timeoutMs),
     },
     source: buildCliSource(response.source),
-    truncated: response.truncated,
+    sqlNormalized: response.sqlNormalized,
   };
 }
 
@@ -61,8 +61,8 @@ export function buildQueryExecuteResponse(response: {
 }): ExecuteQueryPayload {
   return {
     source: buildCliSource(response.source),
-    rowCount: BigInt(response.rowCount),
-    elapsedMs: BigInt(response.elapsedMs),
+    rowCount: response.rowCount,
+    elapsed: durationFromMs(response.elapsedMs),
     columns: response.columns.map(buildCliQueryColumn),
     rows: response.rows.map(buildCliQueryRow),
     truncated: response.truncated,
@@ -80,7 +80,7 @@ export function sanitizeQueryExecuteResponse(
     })),
     rows: data.rows.map((row) => ({
       ...row,
-      values: row.values.map(sanitizeCliRemoteText),
+      displayValues: row.displayValues.map(sanitizeCliRemoteText),
     })),
   };
 }
@@ -88,7 +88,7 @@ export function sanitizeQueryExecuteResponse(
 export function buildQueryExecuteSanitization(hasRows: boolean) {
   return buildCliSanitization(
     hasRows
-      ? ["$.columns[*].name", "$.rows[*].values[*]"]
+      ? ["$.columns[*].name", "$.rows[*].displayValues[*]"]
       : ["$.columns[*].name"]
   );
 }
@@ -99,19 +99,17 @@ function buildCliQueryColumn(column: {
 }): ExecuteQueryColumnMessage {
   return {
     name: column.name,
-    ...(column.logicalType
-      ? { logicalType: toCliQueryLogicalType(column.logicalType) }
-      : {}),
+    logicalType: toCliQueryLogicalType(column.logicalType),
   };
 }
 
 function buildCliQueryRow(row: readonly string[]): ExecuteQueryRowMessage {
   return {
-    values: [...row],
+    displayValues: [...row],
   };
 }
 
-function toCliQueryLogicalType(value: string) {
+function toCliQueryLogicalType(value: string | null) {
   switch (value) {
     case "string":
       return QueryLogicalType.STRING;
@@ -128,6 +126,6 @@ function toCliQueryLogicalType(value: string) {
     case "json":
       return QueryLogicalType.JSON;
     default:
-      return undefined;
+      return QueryLogicalType.UNKNOWN;
   }
 }

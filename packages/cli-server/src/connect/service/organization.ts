@@ -8,6 +8,7 @@ import { requireCliConnectRequestContext } from "../context";
 import {
   OrgCapability,
   GetOrganizationResponseSchema,
+  OrganizationRole,
 } from "../gen/onequery/cli/v1/org_pb";
 import { buildCliPage, parseCliPageRequest } from "./read-controls";
 import type { CliResultServiceMethod } from "./result";
@@ -37,6 +38,19 @@ function toCliOrgCapability(
       return OrgCapability.SOURCE_API_EXECUTE;
     case "query.execute":
       return OrgCapability.QUERY_EXECUTE;
+  }
+}
+
+function toCliOrganizationRole(
+  value: AuthorizedCliOrgContext["membershipRoles"][number]
+) {
+  switch (value) {
+    case "owner":
+      return OrganizationRole.OWNER;
+    case "admin":
+      return OrganizationRole.ADMIN;
+    case "member":
+      return OrganizationRole.MEMBER;
   }
 }
 
@@ -92,7 +106,7 @@ function buildCliOrganizationDetails(
   return {
     slug: authorizedOrg.org.slug,
     name: authorizedOrg.org.name,
-    roles: authorizedOrg.membershipRoles.map((role) => role),
+    roles: authorizedOrg.membershipRoles.map(toCliOrganizationRole),
     capabilities: authorizedOrg.capabilities.map(toCliOrgCapability),
   } satisfies GetOrganizationResponseInit;
 }

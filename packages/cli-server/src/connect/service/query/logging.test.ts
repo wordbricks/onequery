@@ -6,7 +6,7 @@ describe("query logging", () => {
   const buildCliRequestLogDetails = vi.fn(
     (_c: unknown, extra: Record<string, unknown> = {}) => ({
       method: "POST",
-      path: "/connectrpc/onequery.cli.v1.CliService/ExecuteQuery",
+      path: "/connectrpc/onequery.cli.v1.CliQueryService/ExecuteQuery",
       requestId: "req-query-log-1",
       ...extra,
     })
@@ -37,7 +37,7 @@ describe("query logging", () => {
     expect(logCliEvent).toHaveBeenCalledWith({
       details: {
         method: "POST",
-        path: "/connectrpc/onequery.cli.v1.CliService/ExecuteQuery",
+        path: "/connectrpc/onequery.cli.v1.CliQueryService/ExecuteQuery",
         provider: "postgres",
         requestId: "req-query-log-1",
         source: "warehouse",
@@ -70,7 +70,7 @@ describe("query logging", () => {
     expect(logCliEvent).toHaveBeenCalledWith({
       details: {
         method: "POST",
-        path: "/connectrpc/onequery.cli.v1.CliService/ExecuteQuery",
+        path: "/connectrpc/onequery.cli.v1.CliQueryService/ExecuteQuery",
         durationMs: 42,
         provider: "postgres",
         queryElapsedMs: 18,

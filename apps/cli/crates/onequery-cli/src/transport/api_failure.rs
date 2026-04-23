@@ -78,6 +78,7 @@ pub(crate) struct TransportFailure {
     pub(crate) stage: ErrorStage,
     pub(crate) message: String,
     pub(crate) retryable: bool,
+    pub(crate) request_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -133,6 +134,7 @@ pub(crate) fn failure_from_connect(error: ConnectError, stage: ErrorStage) -> Ap
                 stage,
                 message: connect_error_message(&error),
                 retryable: true,
+                request_id,
             })
         }
         Ok(None) => decode_failure(stage, untyped_connect_error_message(&error), request_id),
@@ -142,6 +144,12 @@ pub(crate) fn failure_from_connect(error: ConnectError, stage: ErrorStage) -> Ap
 
 pub(crate) fn response_request_id(headers: &HeaderMap) -> Option<String> {
     header_value(headers, REQUEST_ID_HEADER)
+}
+
+pub(crate) fn success_response_request_id<T>(
+    response: &connectrpc::client::UnaryResponse<T>,
+) -> Option<String> {
+    response_request_id(response.headers()).or_else(|| response_request_id(response.trailers()))
 }
 
 pub(crate) fn try_into_value<T, V>(value: V, stage: ErrorStage) -> Result<T, ApiFailure>
@@ -622,6 +630,27 @@ mod tests {
                 stage: ErrorStage::Http,
                 message: "server temporarily unavailable".to_owned(),
                 retryable: true,
+                request_id: Some("req_unavailable".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_preserves_trailer_request_id_on_untyped_transient_errors() {
+        let mut error = ConnectError::new(ErrorCode::Unavailable, "server temporarily unavailable");
+        error.trailers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_trailer"),
+        );
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::Http),
+            ApiFailure::Transport(TransportFailure {
+                kind: TransportFailureKind::SendRequest,
+                stage: ErrorStage::Http,
+                message: "server temporarily unavailable".to_owned(),
+                retryable: true,
+                request_id: Some("req_trailer".to_owned()),
             })
         );
     }

@@ -14,19 +14,28 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import type { JsonObject } from "@bufbuild/protobuf";
+import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
 import type { CallOptions, Client } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/auth_pb.js";
-import { CliService } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceService,
+} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
 import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
-import { OrgCapability } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
-import { QueryParameterType } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/query_pb.js";
+import {
+  OrgCapability,
+  OrganizationRole,
+} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
 import {
   SourceConnectSslMode,
   SourceProvider,
+  SourceQuerySupport,
   SourceStatus,
 } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/source_pb.js";
 import {
@@ -39,7 +48,12 @@ import {
 
 const STARTUP_TIMEOUT_MS = 120_000;
 const SHUTDOWN_TIMEOUT_MS = 30_000;
-type CliConnectClient = Client<typeof CliService>;
+type CliConnectClient = {
+  auth: Client<typeof CliAuthService>;
+  organization: Client<typeof CliOrganizationService>;
+  query: Client<typeof CliQueryService>;
+  source: Client<typeof CliSourceService>;
+};
 
 let stagedBundleRootPromise: Promise<string> | null = null;
 
@@ -184,14 +198,17 @@ function collectProcessOutput(child: ReturnType<typeof spawn>): {
 function createCliConnectClient(baseUrl: string): CliConnectClient {
   // Comment: smoke coverage should bind to the generated service descriptor so
   // removed or renamed protobuf RPCs fail at compile time instead of drifting.
-  return createClient(
-    CliService,
-    createConnectTransport({
-      baseUrl: `${baseUrl}/api/cli`,
-      httpVersion: "1.1",
-      useHttpGet: true,
-    })
-  );
+  const transport = createConnectTransport({
+    baseUrl: `${baseUrl}/api/cli`,
+    httpVersion: "1.1",
+    useHttpGet: true,
+  });
+  return {
+    auth: createClient(CliAuthService, transport),
+    organization: createClient(CliOrganizationService, transport),
+    query: createClient(CliQueryService, transport),
+    source: createClient(CliSourceService, transport),
+  };
 }
 
 async function callCliConnectRpc<T>(input: {
@@ -243,7 +260,7 @@ async function refreshCliAccessToken(input: {
 }): Promise<string> {
   const refreshResponse = await callCliConnectRpc({
     cookieHeader: input.cookieHeader,
-    call: (options) => input.client.refreshSession({}, options),
+    call: (options) => input.client.auth.refreshSession({}, options),
     requestId: "req_cli_refresh_session_123",
   });
 
@@ -267,7 +284,7 @@ function requirePresent<T>(
 
 function summarizeCliPage(value: {
   nextCursor: string;
-  returnedCount: bigint;
+  returnedCount: number;
 }): JsonObject {
   return {
     ...(value.nextCursor ? { nextCursor: value.nextCursor } : {}),
@@ -278,31 +295,21 @@ function summarizeCliPage(value: {
 function summarizeCliSource(value: {
   displayName?: string;
   provider: SourceProvider;
-  queryable: boolean;
+  querySupport: SourceQuerySupport;
   sourceKey: string;
   status: SourceStatus;
 }): JsonObject {
   return {
     ...(value.displayName ? { displayName: value.displayName } : {}),
     provider: SourceProvider[value.provider],
-    queryable: value.queryable,
+    queryable: value.querySupport === SourceQuerySupport.SUPPORTED,
     sourceKey: value.sourceKey,
     status: SourceStatus[value.status],
   };
 }
 
-function summarizeCliQueryParameter(value: {
-  type: QueryParameterType;
-  value: string;
-}): JsonObject {
-  return {
-    type: QueryParameterType[value.type],
-    value: value.value,
-  };
-}
-
 function summarizeGetSessionResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSession"]>>
+  value: Awaited<ReturnType<CliConnectClient["auth"]["getSession"]>>
 ): JsonObject {
   // Comment: generated protobuf submessages are optional in TypeScript even
   // when this smoke path treats them as required success invariants.
@@ -325,7 +332,9 @@ function summarizeGetSessionResponse(
 }
 
 function summarizeListOrganizationsResponse(
-  value: Awaited<ReturnType<CliConnectClient["listOrganizations"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["organization"]["listOrganizations"]>
+  >
 ): JsonObject {
   const page = requirePresent(
     value.page,
@@ -342,7 +351,9 @@ function summarizeListOrganizationsResponse(
 }
 
 function summarizeGetOrganizationResponse(
-  value: Awaited<ReturnType<CliConnectClient["getOrganization"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["organization"]["getOrganization"]>
+  >
 ): JsonObject {
   // Comment: Connect-generated repeated enum fields in this smoke path are
   // iterable but do not consistently expose Array.prototype helpers.
@@ -352,13 +363,15 @@ function summarizeGetOrganizationResponse(
       (capability) => OrgCapability[capability]
     ),
     name: value.name,
-    roles: Array.from(value.roles),
+    roles: Array.from(value.roles, (role) => OrganizationRole[role]),
     slug: value.slug,
   };
 }
 
 function summarizeGetSourceConnectGuideResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSourceConnectGuide"]>>
+  value: Awaited<
+    ReturnType<CliConnectClient["source"]["getSourceConnectGuide"]>
+  >
 ): JsonObject {
   return {
     command: value.command,
@@ -370,7 +383,7 @@ function summarizeGetSourceConnectGuideResponse(
 }
 
 function summarizeConnectSourceResponse(
-  value: Awaited<ReturnType<CliConnectClient["connectSource"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["connectSource"]>>
 ): JsonObject {
   const source = requirePresent(
     value.source,
@@ -384,7 +397,7 @@ function summarizeConnectSourceResponse(
 }
 
 function summarizeListSourcesResponse(
-  value: Awaited<ReturnType<CliConnectClient["listSources"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["listSources"]>>
 ): JsonObject {
   const page = requirePresent(
     value.page,
@@ -398,7 +411,7 @@ function summarizeListSourcesResponse(
 }
 
 function summarizeGetSourceResponse(
-  value: Awaited<ReturnType<CliConnectClient["getSource"]>>
+  value: Awaited<ReturnType<CliConnectClient["source"]["getSource"]>>
 ): JsonObject {
   const source = requirePresent(
     value.source,
@@ -411,7 +424,7 @@ function summarizeGetSourceResponse(
 }
 
 function summarizeValidateQueryResponse(
-  value: Awaited<ReturnType<CliConnectClient["validateQuery"]>>
+  value: Awaited<ReturnType<CliConnectClient["query"]["validateQuery"]>>
 ): JsonObject {
   const declaredResultWindow = requirePresent(
     value.declaredResultWindow,
@@ -431,21 +444,28 @@ function summarizeValidateQueryResponse(
       cellMaxChars: declaredResultWindow.cellMaxChars,
       maxBytes: declaredResultWindow.maxBytes,
       maxRows: declaredResultWindow.maxRows,
-      timeoutMs: declaredResultWindow.timeoutMs,
+      timeoutMs: durationMs(
+        requirePresent(
+          declaredResultWindow.timeout,
+          "ValidateQueryResponse.declaredResultWindow.timeout must be present"
+        )
+      ),
     },
     normalizedSql: value.normalizedSql,
     request: {
       cellMaxChars: request.cellMaxChars,
       maxBytes: request.maxBytes,
       maxRows: request.maxRows,
-      parameters: request.parameters.map((parameter) =>
-        summarizeCliQueryParameter(parameter)
-      ),
       sql: request.sql,
-      timeoutMs: request.timeoutMs,
+      timeoutMs: durationMs(
+        requirePresent(
+          request.timeout,
+          "ValidateQueryResponse.request.timeout must be present"
+        )
+      ),
     },
     source: summarizeCliSource(source),
-    truncated: value.truncated,
+    sqlNormalized: value.sqlNormalized,
   };
 }
 
@@ -1038,7 +1058,7 @@ describe("CLI self-host smoke", () => {
 
       const sessionResponse = await callCliConnectRpc({
         cookieHeader,
-        call: (options) => cliConnectClient.getSession({}, options),
+        call: (options) => cliConnectClient.auth.getSession({}, options),
         requestId: "req_cli_session_123",
       });
       expect(sessionResponse.payload).toMatchObject({
@@ -1051,7 +1071,7 @@ describe("CLI self-host smoke", () => {
       const organizationsResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.listOrganizations(
+          cliConnectClient.organization.listOrganizations(
             {
               page: {
                 limit: 1,
@@ -1064,14 +1084,14 @@ describe("CLI self-host smoke", () => {
       expect(organizationsResponse.payload).toMatchObject({
         organizations: [{ slug: "owner-org" }],
         page: {
-          returnedCount: 1n,
+          returnedCount: 1,
         },
       });
 
       const organizationResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getOrganization(
+          cliConnectClient.organization.getOrganization(
             {
               orgSlug: "owner-org",
             },
@@ -1087,7 +1107,7 @@ describe("CLI self-host smoke", () => {
       const guideResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getSourceConnectGuide(
+          cliConnectClient.source.getSourceConnectGuide(
             {
               orgSlug: "owner-org",
               provider: SourceProvider.POSTGRES,
@@ -1107,7 +1127,7 @@ describe("CLI self-host smoke", () => {
       const connectSourceResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.connectSource(
+          cliConnectClient.source.connectSource(
             {
               credentials: {
                 kind: {
@@ -1134,7 +1154,7 @@ describe("CLI self-host smoke", () => {
         source: {
           sourceKey: "Warehouse",
           provider: SourceProvider.POSTGRES,
-          queryable: true,
+          querySupport: SourceQuerySupport.SUPPORTED,
           status: SourceStatus.ACTIVE,
         },
       });
@@ -1142,7 +1162,7 @@ describe("CLI self-host smoke", () => {
       const sourcesResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.listSources(
+          cliConnectClient.source.listSources(
             {
               orgSlug: "owner-org",
               page: {
@@ -1161,14 +1181,14 @@ describe("CLI self-host smoke", () => {
           },
         ],
         page: {
-          returnedCount: 1n,
+          returnedCount: 1,
         },
       });
 
       const sourceResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.getSource(
+          cliConnectClient.source.getSource(
             {
               orgSlug: "owner-org",
               sourceKey: "Warehouse",
@@ -1179,7 +1199,7 @@ describe("CLI self-host smoke", () => {
       });
       expect(sourceResponse.payload).toMatchObject({
         source: {
-          queryable: true,
+          querySupport: SourceQuerySupport.SUPPORTED,
           sourceKey: "Warehouse",
         },
       });
@@ -1187,7 +1207,7 @@ describe("CLI self-host smoke", () => {
       const validateQueryResponse = await callCliConnectRpc({
         cookieHeader,
         call: (options) =>
-          cliConnectClient.validateQuery(
+          cliConnectClient.query.validateQuery(
             {
               orgSlug: "owner-org",
               query: {
@@ -1195,7 +1215,7 @@ describe("CLI self-host smoke", () => {
                 maxBytes: 4096,
                 maxRows: 100,
                 sql: "select 1",
-                timeoutMs: 1000,
+                timeout: durationFromMs(1000),
               },
               sourceKey: "Warehouse",
             },

@@ -79,7 +79,6 @@ fn sample_query_input() -> QueryInputArgs {
 fn sample_query_payload() -> QueryRequestPayload {
     QueryRequestPayload {
         sql: "select 1".to_owned(),
-        parameters: None,
         max_rows: None,
         max_bytes: None,
         cell_max_chars: None,
@@ -136,7 +135,6 @@ fn render_query_validation_output_snapshot() {
         QueryValidationResult {
             request: QueryCanonicalRequest {
                 sql: "SELECT 1".to_owned(),
-                parameters: vec![],
                 max_rows: 100,
                 max_bytes: 4096,
                 cell_max_chars: 256,
@@ -156,7 +154,7 @@ fn render_query_validation_output_snapshot() {
                 queryable: true,
                 status: "active".to_owned(),
             },
-            truncated: false,
+            sql_normalized: false,
         },
         &ReadArgs::default(),
     )

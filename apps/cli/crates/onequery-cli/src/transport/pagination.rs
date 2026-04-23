@@ -13,7 +13,7 @@ pub(crate) fn page_info_from_generated(page: types::CliPage) -> PageInfo {
         next_cursor: page.next_cursor,
         returned_count: page
             .returned_count
-            .map(|count| usize::try_from(count).unwrap_or(usize::MAX))
+            .and_then(|count| usize::try_from(count).ok())
             .unwrap_or_default(),
     }
 }

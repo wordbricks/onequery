@@ -34,22 +34,29 @@ import { cliConnectRequestContextKey } from "../context";
 import { createCliConnectProblem } from "../error";
 import {
   SourceApiBodyKind,
-  SourceApiExecuteMode,
   SourceApiOperationKind,
   SourceApiPaginationPolicy,
   DescribeSourceApiRequestSchema,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequestSchema,
   ExecuteSourceApiResponseSchema,
+  PreviewSourceApiRequestSchema,
+  PreviewSourceApiResponseSchema,
+  ResumeSourceApiRequestSchema,
+  ResumeSourceApiResponseSchema,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import type {
   DescribeSourceApiResponse,
   ExecuteSourceApiResponse,
+  PreviewSourceApiResponse,
+  ResumeSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
+  createHandlePreviewSourceApi,
+  createHandleResumeSourceApi,
 } from "./source-api";
 
 function summarizeCliSourceProvider(provider: SourceProvider): string {
@@ -320,7 +327,7 @@ async function createHarness() {
     buildCliRequestLogDetails: vi.fn(
       (_: unknown, details?: Record<string, unknown>) => ({
         method: "POST",
-        path: "/connectrpc/onequery.cli.v1.CliService/ExecuteSourceApi",
+        path: "/connectrpc/onequery.cli.v1.CliSourceApiService/ExecuteSourceApi",
         requestId: "req_cli_123",
         ...(details ?? {}),
       })
@@ -352,6 +359,8 @@ async function createHarness() {
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
+    handlePreviewSourceApi: createHandlePreviewSourceApi(dependencies),
+    handleResumeSourceApi: createHandleResumeSourceApi(dependencies),
     rootDir,
     requestContext,
   };
@@ -604,16 +613,11 @@ function createResumeExecuteSourceApiRequest(
     sourceKey?: string;
   } = {}
 ) {
-  return create(ExecuteSourceApiRequestSchema, {
-    input: {
-      case: "resume",
-      value: {
-        continuationToken: input.continuationToken ?? "continuation_1",
-        target: {
-          orgSlug: input.orgSlug ?? "acme",
-          sourceKey: input.sourceKey ?? "github-prod",
-        },
-      },
+  return create(ResumeSourceApiRequestSchema, {
+    continuationToken: input.continuationToken ?? "continuation_1",
+    target: {
+      orgSlug: input.orgSlug ?? "acme",
+      sourceKey: input.sourceKey ?? "github-prod",
     },
   });
 }
@@ -639,7 +643,7 @@ function summarizeDescribeSourceApiResponse(
   response: DescribeSourceApiResponse
 ) {
   return {
-    defaultPathOperation: response.defaultPathOperation ?? null,
+    defaultPathOperationName: response.defaultPathOperationName ?? null,
     descriptorVersion: response.descriptorVersion,
     examples: response.examples,
     notes: response.notes,
@@ -658,8 +662,36 @@ function summarizeDescribeSourceApiResponse(
 }
 
 function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
-  const preview = response.preview;
-  const result = response.result;
+  return summarizeSourceApiOutcome(response);
+}
+
+function summarizeResumeSourceApiResponse(response: ResumeSourceApiResponse) {
+  return summarizeSourceApiOutcome(response);
+}
+
+function summarizePreviewSourceApiResponse(response: PreviewSourceApiResponse) {
+  return {
+    preview: summarizeSourceApiPreview(response.preview),
+  };
+}
+
+function summarizeSourceApiOutcome(
+  response: ExecuteSourceApiResponse | ResumeSourceApiResponse
+) {
+  const preview =
+    response.outcome.case === "completed" ||
+    response.outcome.case === "continued"
+      ? response.outcome.value.preview
+      : undefined;
+  const result =
+    response.outcome.case === "completed" ||
+    response.outcome.case === "continued"
+      ? response.outcome.value.result
+      : undefined;
+  const continuationToken =
+    response.outcome.case === "continued"
+      ? response.outcome.value.continuationToken
+      : undefined;
   const body =
     result?.body.case === "json"
       ? {
@@ -679,33 +711,14 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
           : null;
 
   return {
-    continuationToken: response.continuationToken ?? null,
-    preview: preview
-      ? {
-          bodyKind: SourceApiBodyKind[preview.bodyKind],
-          bodyPaths: preview.bodyPaths,
-          headerNames: preview.headerNames,
-          host: preview.host ?? null,
-          kind: SourceApiOperationKind[preview.kind],
-          method: preview.method ?? null,
-          operation: preview.operation,
-          paginationPolicy: SourceApiPaginationPolicy[preview.paginationPolicy],
-          source: preview.source
-            ? {
-                ...preview.source,
-                provider: summarizeCliSourceProvider(preview.source.provider),
-              }
-            : null,
-          selector: preview.selector ?? null,
-          url: preview.url ?? null,
-        }
-      : null,
+    continuationToken: continuationToken ?? null,
+    preview: preview ? summarizeSourceApiPreview(preview) : null,
     result: result
       ? {
           body,
           contentType: result.contentType,
           headers: result.headers,
-          operation: result.operation,
+          operationName: result.operationName,
           selector: result.selector ?? null,
           source: result.source
             ? {
@@ -713,10 +726,35 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
                 provider: summarizeCliSourceProvider(result.source.provider),
               }
             : null,
-          status: result.status,
+          httpStatusCode: result.httpStatusCode,
         }
       : null,
   };
+}
+
+function summarizeSourceApiPreview(
+  preview: PreviewSourceApiResponse["preview"] | undefined
+) {
+  return preview
+    ? {
+        bodyKind: SourceApiBodyKind[preview.bodyKind],
+        bodyPaths: preview.bodyPaths,
+        headerNames: preview.headerNames,
+        host: preview.host ?? null,
+        kind: SourceApiOperationKind[preview.kind],
+        method: preview.method ?? null,
+        operationName: preview.operationName,
+        paginationPolicy: SourceApiPaginationPolicy[preview.paginationPolicy],
+        source: preview.source
+          ? {
+              ...preview.source,
+              provider: summarizeCliSourceProvider(preview.source.provider),
+            }
+          : null,
+        selector: preview.selector ?? null,
+        url: preview.url ?? null,
+      }
+    : null;
 }
 
 describe("source api connect service", { timeout: 15_000 }, () => {
@@ -792,41 +830,34 @@ describe("source api connect service", { timeout: 15_000 }, () => {
 
   it("previews source API execution through the Connect handler", async () => {
     const harness = await createTrackedHarness();
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
+    const request = create(PreviewSourceApiRequestSchema, {
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        body: {
+          case: "fieldPatch",
+          value: {
+            perPage: 50,
           },
-          draft: {
-            body: {
-              case: "textBody",
-              value: "body text",
-            },
-            descriptorVersion: "github-v1",
-            fieldPatch: {
-              perPage: 50,
-            },
-            headers: [
-              {
-                name: "accept",
-                value: "application/json",
-              },
-            ],
-            methodOverride: "POST",
-            operation: "fetch",
-            selector: "/issues",
-          },
-          mode: SourceApiExecuteMode.PREVIEW_ONLY,
         },
+        descriptorVersion: "github-v1",
+        headers: [
+          {
+            name: "accept",
+            value: "application/json",
+          },
+        ],
+        methodOverride: "POST",
+        operationName: "fetch",
+        selector: "/issues",
       },
     });
 
     const response = create(
-      ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(
+      PreviewSourceApiResponseSchema,
+      await harness.handlePreviewSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       )
@@ -840,39 +871,33 @@ describe("source api connect service", { timeout: 15_000 }, () => {
         harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null,
       requireAuthorizedOrgCall:
         harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
-      response: summarizeExecuteSourceApiResponse(response),
+      response: summarizePreviewSourceApiResponse(response),
     }).toMatchSnapshot();
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
     const harness = await createTrackedHarness();
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
-          },
-          draft: {
-            body: {
-              case: "jsonBody",
-              value: fromJson(ValueSchema, {
-                filter: {
-                  state: "open",
-                },
-                limit: 25,
-              }),
+    const request = create(PreviewSourceApiRequestSchema, {
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        body: {
+          case: "jsonBody",
+          value: fromJson(ValueSchema, {
+            filter: {
+              state: "open",
             },
-            descriptorVersion: "github-v1",
-            operation: "fetch",
-          },
-          mode: SourceApiExecuteMode.PREVIEW_ONLY,
+            limit: 25,
+          }),
         },
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
       },
     });
 
-    await harness.handleExecuteSourceApi(
+    await harness.handlePreviewSourceApi(
       request,
       createHandlerContext(harness.requestContext)
     );
@@ -885,20 +910,14 @@ describe("source api connect service", { timeout: 15_000 }, () => {
   it("executes source API requests through the Connect handler", async () => {
     const harness = await createTrackedHarness();
     const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
-          },
-          draft: {
-            descriptorVersion: "github-v1",
-            operation: "fetch",
-            selector: "/issues",
-          },
-          mode: SourceApiExecuteMode.EXECUTE,
-        },
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
+        selector: "/issues",
       },
     });
 
@@ -938,19 +957,13 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     });
 
     const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
-          },
-          draft: {
-            descriptorVersion: "github-v1",
-            operation: "fetch",
-          },
-          mode: SourceApiExecuteMode.EXECUTE,
-        },
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
       },
     });
 
@@ -985,8 +998,8 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     const response = create(
-      ExecuteSourceApiResponseSchema,
-      await harness.handleExecuteSourceApi(
+      ResumeSourceApiResponseSchema,
+      await harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       )
@@ -1016,7 +1029,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
       executePreparedSourceApiCall:
         harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
         null,
-      response: summarizeExecuteSourceApiResponse(response),
+      response: summarizeResumeSourceApiResponse(response),
     }).toMatchSnapshot();
   });
 
@@ -1032,7 +1045,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),
@@ -1059,7 +1072,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),
@@ -1082,7 +1095,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),
@@ -1111,7 +1124,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),
@@ -1134,19 +1147,13 @@ describe("source api connect service", { timeout: 15_000 }, () => {
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
-          },
-          draft: {
-            descriptorVersion: "github-v1",
-            operation: "fetch",
-          },
-          mode: SourceApiExecuteMode.EXECUTE,
-        },
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
       },
     });
 
@@ -1172,19 +1179,13 @@ describe("source api connect service", { timeout: 15_000 }, () => {
       )
     );
     const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          target: {
-            orgSlug: "acme",
-            sourceKey: "github-prod",
-          },
-          draft: {
-            descriptorVersion: "github-v1",
-            operation: "fetch",
-          },
-          mode: SourceApiExecuteMode.EXECUTE,
-        },
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
       },
     });
 
@@ -1210,14 +1211,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
         })
       )
     );
-    const request = create(ExecuteSourceApiRequestSchema, {
-      input: {
-        case: "start",
-        value: {
-          mode: SourceApiExecuteMode.EXECUTE,
-        },
-      },
-    });
+    const request = create(ExecuteSourceApiRequestSchema);
 
     await expectConnectError(
       harness.handleExecuteSourceApi(
@@ -1253,7 +1247,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const request = createResumeExecuteSourceApiRequest();
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),
@@ -1285,7 +1279,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     });
 
     await expectConnectError(
-      harness.handleExecuteSourceApi(
+      harness.handleResumeSourceApi(
         request,
         createHandlerContext(harness.requestContext)
       ),

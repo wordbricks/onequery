@@ -10,5 +10,14 @@
 
 include!(concat!(env!("OUT_DIR"), "/_connectrpc.rs"));
 
-pub(crate) type Client = onequery::cli::v1::CliServiceClient<connectrpc::client::HttpClient>;
+pub(crate) type AuthClient =
+    onequery::cli::v1::CliAuthServiceClient<connectrpc::client::HttpClient>;
+pub(crate) type OrganizationClient =
+    onequery::cli::v1::CliOrganizationServiceClient<connectrpc::client::HttpClient>;
+pub(crate) type SourceClient =
+    onequery::cli::v1::CliSourceServiceClient<connectrpc::client::HttpClient>;
+pub(crate) type SourceApiClient =
+    onequery::cli::v1::CliSourceApiServiceClient<connectrpc::client::HttpClient>;
+pub(crate) type QueryClient =
+    onequery::cli::v1::CliQueryServiceClient<connectrpc::client::HttpClient>;
 pub(crate) use onequery::cli::v1 as types;

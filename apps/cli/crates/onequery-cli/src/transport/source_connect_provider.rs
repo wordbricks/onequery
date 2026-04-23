@@ -135,7 +135,7 @@ source_connect_providers! {
     },
     Ga => {
         label: "ga",
-        generated: SOURCE_PROVIDER_GA,
+        generated: SOURCE_PROVIDER_GOOGLE_ANALYTICS,
     },
     Amplitude => {
         label: "amplitude",

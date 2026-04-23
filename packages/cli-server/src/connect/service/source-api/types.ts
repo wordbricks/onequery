@@ -6,11 +6,16 @@ import type {
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type {
-  SourceApiExecuteMode,
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequest,
   ExecuteSourceApiResponseSchema,
+  PreviewSourceApiRequest,
+  PreviewSourceApiResponseSchema,
+  ResumeSourceApiRequest,
+  ResumeSourceApiResponseSchema,
+  SourceApiExecutionResultSchema,
   SourceApiDraft as CliSourceApiDraft,
+  SourceApiPreviewSchema,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { CliHonoContext } from "../types";
 
@@ -20,11 +25,17 @@ export type DescribeSourceApiResponseInit = MessageInitShape<
 export type ExecuteSourceApiResponseInit = MessageInitShape<
   typeof ExecuteSourceApiResponseSchema
 >;
-export type CliSourceApiPreviewInit = NonNullable<
-  ExecuteSourceApiResponseInit["preview"]
+export type PreviewSourceApiResponseInit = MessageInitShape<
+  typeof PreviewSourceApiResponseSchema
 >;
-export type CliSourceApiExecutionResultInit = NonNullable<
-  ExecuteSourceApiResponseInit["result"]
+export type ResumeSourceApiResponseInit = MessageInitShape<
+  typeof ResumeSourceApiResponseSchema
+>;
+export type CliSourceApiPreviewInit = MessageInitShape<
+  typeof SourceApiPreviewSchema
+>;
+export type CliSourceApiExecutionResultInit = MessageInitShape<
+  typeof SourceApiExecutionResultSchema
 >;
 
 export type SourceApiConnectFailurePhase =
@@ -33,25 +44,24 @@ export type SourceApiConnectFailurePhase =
   | "prepare"
   | "execute";
 
-export type CliExecuteSourceApiInput = ExecuteSourceApiRequest["input"];
+export type CliExecuteSourceApiRequest = ExecuteSourceApiRequest;
+export type CliPreviewSourceApiRequest = PreviewSourceApiRequest;
+export type CliResumeSourceApiRequest = ResumeSourceApiRequest;
 
 export type SourceApiTarget = {
   orgSlug: string;
   sourceKey: string;
 };
 
-export type SourceApiExecuteCommand =
-  | {
-      kind: "start";
-      target: SourceApiTarget;
-      draft: CliSourceApiDraft;
-      mode: SourceApiExecuteMode;
-    }
-  | {
-      kind: "resume";
-      target: SourceApiTarget;
-      continuationToken: string;
-    };
+export type SourceApiStartCommand = {
+  target: SourceApiTarget;
+  draft: CliSourceApiDraft;
+};
+
+export type SourceApiResumeCommand = {
+  target: SourceApiTarget;
+  continuationToken: string;
+};
 
 export type SourceApiAccessState = {
   actor: SourceApiActorContext;
