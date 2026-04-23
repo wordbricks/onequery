@@ -111,7 +111,6 @@ async function seedSucceededQueryAction(input: {
     commandPayloadJson: {
       queryText: "select * from customers",
       sourceKey: source.sourceKey,
-      type: "start_execute",
     },
     commandType: "start_execute",
     createdAt: input.startedAt,
@@ -130,7 +129,6 @@ async function seedSucceededQueryAction(input: {
     commandPayloadJson: {
       kind: "found",
       source,
-      type: "record_source_lookup",
     },
     commandType: "record_source_lookup",
     createdAt: new Date(input.startedAt.getTime() + 1_000),
@@ -148,7 +146,6 @@ async function seedSucceededQueryAction(input: {
     commandInvocationId: `${actionId}:record_query_validation`,
     commandPayloadJson: {
       kind: "accepted",
-      type: "record_query_validation",
       validatedQuery: "select * from customers",
     },
     commandType: "record_query_validation",
@@ -167,7 +164,6 @@ async function seedSucceededQueryAction(input: {
     commandInvocationId: `${actionId}:record_credentials_load`,
     commandPayloadJson: {
       kind: "loaded",
-      type: "record_credentials_load",
     },
     commandType: "record_credentials_load",
     createdAt: new Date(input.startedAt.getTime() + 3_000),
@@ -199,7 +195,6 @@ async function seedSucceededQueryAction(input: {
         },
         truncated: false,
       },
-      type: "record_query_execution",
     },
     commandType: "record_query_execution",
     createdAt: new Date(input.startedAt.getTime() + 4_000),
@@ -217,7 +212,6 @@ async function seedSucceededQueryAction(input: {
     commandInvocationId: `${actionId}:record_usage_persistence`,
     commandPayloadJson: {
       kind: "succeeded",
-      type: "record_usage_persistence",
     },
     commandType: "record_usage_persistence",
     createdAt: new Date(input.startedAt.getTime() + 5_000),
@@ -256,7 +250,6 @@ async function seedSucceededQueryAction(input: {
       payloadJson: {
         queryMode: "execute",
         queryText: "select * from customers",
-        type: "action_received",
       },
       sequence: 1,
     },
@@ -269,7 +262,6 @@ async function seedSucceededQueryAction(input: {
       occurredAt: new Date(input.startedAt.getTime() + 1_000),
       payloadJson: {
         source,
-        type: "source_loaded",
       },
       sequence: 2,
     },
@@ -281,7 +273,6 @@ async function seedSucceededQueryAction(input: {
       id: `${eventBase}-validated`,
       occurredAt: new Date(input.startedAt.getTime() + 2_000),
       payloadJson: {
-        type: "query_validated",
         validatedQuery: "select * from customers",
       },
       sequence: 3,
@@ -293,9 +284,7 @@ async function seedSucceededQueryAction(input: {
       eventType: "credentials_loaded",
       id: `${eventBase}-credentials`,
       occurredAt: new Date(input.startedAt.getTime() + 3_000),
-      payloadJson: {
-        type: "credentials_loaded",
-      },
+      payloadJson: {},
       sequence: 4,
     },
     {
@@ -308,7 +297,6 @@ async function seedSucceededQueryAction(input: {
       payloadJson: {
         elapsedMs: 412,
         rowCount: 12,
-        type: "query_executed",
       },
       sequence: 5,
     },
@@ -319,15 +307,13 @@ async function seedSucceededQueryAction(input: {
       eventType: "usage_persisted",
       id: `${eventBase}-usage`,
       occurredAt: new Date(input.startedAt.getTime() + 5_000),
-      payloadJson: {
-        type: "usage_persisted",
-      },
+      payloadJson: {},
       sequence: 6,
     },
   ]);
 }
 
-async function seedRejectedQueryAction(input: {
+async function seedQueryPreparationFailedAction(input: {
   actionId: string;
   actorSnapshot: WorkflowActorSnapshot;
   db: TestDatabase;
@@ -353,9 +339,8 @@ async function seedRejectedQueryAction(input: {
     commandId: `${commandBase}-start`,
     commandInvocationId: `${actionId}:start_validate`,
     commandPayloadJson: {
-      queryText: "delete from rejected_accounts",
+      queryText: "select from",
       sourceKey: source.sourceKey,
-      type: "start_validate",
     },
     commandType: "start_validate",
     createdAt: input.startedAt,
@@ -374,7 +359,6 @@ async function seedRejectedQueryAction(input: {
     commandPayloadJson: {
       kind: "found",
       source,
-      type: "record_source_lookup",
     },
     commandType: "record_source_lookup",
     createdAt: new Date(input.startedAt.getTime() + 1_000),
@@ -388,13 +372,12 @@ async function seedRejectedQueryAction(input: {
   await insertAcceptedWorkflowCommand({
     actionId,
     actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-rejected`,
+    commandId: `${commandBase}-preparation-failed`,
     commandInvocationId: `${actionId}:record_query_validation`,
     commandPayloadJson: {
-      detail: "unsafe mutation",
-      hint: "remove write statements",
-      kind: "rejected",
-      type: "record_query_validation",
+      detail: "query preparation failed",
+      hint: "add a table name",
+      kind: "preparation_failed",
     },
     commandType: "record_query_validation",
     createdAt: new Date(input.startedAt.getTime() + 2_000),
@@ -407,15 +390,15 @@ async function seedRejectedQueryAction(input: {
 
   await input.db.insert(queryActions).values({
     completedAt: new Date(input.startedAt.getTime() + 2_000),
-    failureCode: "query_rejected",
+    failureCode: "query_preparation_failed",
     id: actionId,
-    lastEventId: `${eventBase}-rejected`,
+    lastEventId: `${eventBase}-preparation-failed`,
     lastEventSequence: 3,
     organizationId: input.organizationId,
     outcome: "failed",
     phase: "completed",
     queryMode: "validate",
-    queryText: "delete from rejected_accounts",
+    queryText: "select from",
     sourceDescriptorJson: source,
     startedAt: input.startedAt,
     usageRecordingStatus: "not_started",
@@ -432,8 +415,7 @@ async function seedRejectedQueryAction(input: {
       occurredAt: input.startedAt,
       payloadJson: {
         queryMode: "validate",
-        queryText: "delete from rejected_accounts",
-        type: "action_received",
+        queryText: "select from",
       },
       sequence: 1,
     },
@@ -446,21 +428,19 @@ async function seedRejectedQueryAction(input: {
       occurredAt: new Date(input.startedAt.getTime() + 1_000),
       payloadJson: {
         source,
-        type: "source_loaded",
       },
       sequence: 2,
     },
     {
       actionId,
-      commandId: `${commandBase}-rejected`,
+      commandId: `${commandBase}-preparation-failed`,
       commitPosition: 9n,
-      eventType: "query_rejected",
-      id: `${eventBase}-rejected`,
+      eventType: "query_preparation_failed",
+      id: `${eventBase}-preparation-failed`,
       occurredAt: new Date(input.startedAt.getTime() + 2_000),
       payloadJson: {
-        detail: "unsafe mutation",
-        hint: "remove write statements",
-        type: "query_rejected",
+        detail: "query preparation failed",
+        hint: "add a table name",
       },
       sequence: 3,
     },
@@ -488,7 +468,6 @@ async function seedPendingSourceApiAction(input: {
       invokeMode: "execute",
       requestDescriptor,
       sourceKey: sourceApiDescriptor.sourceKey,
-      type: "start_invoke",
     },
     commandType: "start_invoke",
     createdAt: input.startedAt,
@@ -507,7 +486,6 @@ async function seedPendingSourceApiAction(input: {
     commandPayloadJson: {
       kind: "found",
       source: sourceApiDescriptor,
-      type: "record_source_lookup",
     },
     commandType: "record_source_lookup",
     createdAt: new Date(input.startedAt.getTime() + 1_000),
@@ -526,7 +504,6 @@ async function seedPendingSourceApiAction(input: {
     commandPayloadJson: {
       kind: "resolved",
       requestDescriptor,
-      type: "record_descriptor_resolution",
     },
     commandType: "record_descriptor_resolution",
     createdAt: new Date(input.startedAt.getTime() + 2_000),
@@ -545,7 +522,6 @@ async function seedPendingSourceApiAction(input: {
     commandPayloadJson: {
       kind: "prepared",
       preparedRequestFingerprint: "billing-api:customers:v1",
-      type: "record_request_preparation",
     },
     commandType: "record_request_preparation",
     createdAt: new Date(input.startedAt.getTime() + 3_000),
@@ -566,7 +542,6 @@ async function seedPendingSourceApiAction(input: {
       detail: "429 rate limited by upstream",
       kind: "retryable_failure",
       pageIndex: 0,
-      type: "record_page_fetch",
     },
     commandType: "record_page_fetch",
     createdAt: new Date("2026-03-27T11:00:00.000Z"),
@@ -610,7 +585,6 @@ async function seedPendingSourceApiAction(input: {
         invokeMode: "execute",
         requestDescriptor,
         requestKind: "invoke",
-        type: "action_received",
       },
       sequence: 1,
     },
@@ -623,7 +597,6 @@ async function seedPendingSourceApiAction(input: {
       occurredAt: new Date(input.startedAt.getTime() + 1_000),
       payloadJson: {
         source: sourceApiDescriptor,
-        type: "source_loaded",
       },
       sequence: 2,
     },
@@ -636,7 +609,6 @@ async function seedPendingSourceApiAction(input: {
       occurredAt: new Date(input.startedAt.getTime() + 2_000),
       payloadJson: {
         requestDescriptor,
-        type: "descriptor_resolved",
       },
       sequence: 3,
     },
@@ -649,7 +621,6 @@ async function seedPendingSourceApiAction(input: {
       occurredAt: new Date(input.startedAt.getTime() + 3_000),
       payloadJson: {
         preparedRequestFingerprint: "billing-api:customers:v1",
-        type: "request_prepared",
       },
       sequence: 4,
     },
@@ -666,7 +637,6 @@ async function seedPendingSourceApiAction(input: {
         failureCode: null,
         kind: "retryable_failure",
         pageIndex: 0,
-        type: "page_fetch_failed",
       },
       sequence: 5,
     },
@@ -728,12 +698,12 @@ describe("organizations audit route", () => {
         startedAt: new Date("2026-03-27T10:00:00.000Z"),
       });
 
-      await seedRejectedQueryAction({
-        actionId: `query-rejected-${runId}`,
+      await seedQueryPreparationFailedAction({
+        actionId: `query-preparation-failed-${runId}`,
         actorSnapshot,
         db,
         organizationId: organization.id as string,
-        requestId: `req-query-rejected-${runId}`,
+        requestId: `req-query-preparation-failed-${runId}`,
         startedAt: new Date("2026-03-27T09:00:00.000Z"),
       });
 
@@ -925,7 +895,7 @@ describe("organizations audit route", () => {
             slug: organization.slug as string,
           },
           query: {
-            q: "remove write statements",
+            q: "add a table name",
           },
         },
         {
@@ -969,7 +939,7 @@ describe("organizations audit route", () => {
       expect(rebuilt.items.map((item) => item.id)).toEqual([
         `query_action:query-success-${runId}`,
         `source_api_action:source-api-pending-${runId}`,
-        `query_action:query-rejected-${runId}`,
+        `query_action:query-preparation-failed-${runId}`,
       ]);
     } finally {
       await closeDatabase(db as ClosableDatabase);
