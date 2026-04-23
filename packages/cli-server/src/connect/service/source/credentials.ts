@@ -1,14 +1,21 @@
+import { isFieldSet } from "@bufbuild/protobuf";
 import type { Credentials } from "@onequery/db/server";
 import { Result } from "better-result";
 
 import {
+  ConnectSourceAwsAthenaConnectorCredentialsSchema,
+  ConnectSourceMySqlCredentialsSchema,
+  ConnectSourcePostgresCredentialsSchema,
   SourceConnectAmplitudeRegion,
   SourceConnectMixpanelRegion,
   SourceConnectSslMode,
 } from "../../gen/onequery/cli/v1/source_pb";
 import type {
+  ConnectSourceAwsAthenaConnectorCredentials,
   ConnectSourceCredentials,
   ConnectSourceGoogleOAuthCredentials,
+  ConnectSourceMySqlCredentials,
+  ConnectSourcePostgresCredentials,
   ConnectSourceServiceAccountCredentials,
 } from "../../gen/onequery/cli/v1/source_pb";
 import { cliServiceErr } from "../result";
@@ -96,18 +103,7 @@ export function parseConnectSourceCredentials(
     case "awsAthenaConnector":
       return Result.ok({
         provider: "aws_athena_connector",
-        credentials: {
-          type: "aws_athena_connector",
-          connectorId: kind.value.connectorId,
-          database: kind.value.database,
-          ...(kind.value.maxRows !== undefined
-            ? { maxRows: kind.value.maxRows }
-            : {}),
-          ...(kind.value.timeoutMs !== undefined
-            ? { timeoutMs: kind.value.timeoutMs }
-            : {}),
-          ...(kind.value.workgroup ? { workgroup: kind.value.workgroup } : {}),
-        },
+        credentials: awsAthenaConnectorCredentialsFromMessage(kind.value),
       });
     case "ga":
       return googleAnalyticsCredentialsFromMessage(kind.value).map(
@@ -192,44 +188,70 @@ export function parseConnectSourceCredentials(
   }
 }
 
-function postgresCredentialsFromMessage(input: {
-  database: string;
-  host: string;
-  password: string;
-  port?: number;
-  sslMode?: SourceConnectSslMode;
-  username: string;
-}) {
+function postgresCredentialsFromMessage(
+  input: ConnectSourcePostgresCredentials
+) {
+  // Comment: generated Connect request messages expose absent edition scalars as
+  // zero-valued properties, so use `isFieldSet()` anywhere "unset" should fall
+  // back to a transport default instead of meaning the numeric zero.
+  const port = isFieldSet(
+    input,
+    ConnectSourcePostgresCredentialsSchema.field.port
+  )
+    ? input.port
+    : undefined;
   const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
 
   return {
     database: input.database,
     host: input.host,
     password: input.password,
-    port: input.port ?? 5432,
+    port: port ?? 5432,
     sslMode,
     username: input.username,
   };
 }
 
-function mySqlCredentialsFromMessage(input: {
-  database: string;
-  host: string;
-  password: string;
-  port?: number;
-  sslMode?: SourceConnectSslMode;
-  username: string;
-}) {
+function mySqlCredentialsFromMessage(input: ConnectSourceMySqlCredentials) {
+  const port = isFieldSet(input, ConnectSourceMySqlCredentialsSchema.field.port)
+    ? input.port
+    : undefined;
   const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
 
   return {
     database: input.database,
     host: input.host,
     password: input.password,
-    port: input.port ?? 3306,
+    port: port ?? 3306,
     sslMode,
     username: input.username,
   };
+}
+
+function awsAthenaConnectorCredentialsFromMessage(
+  input: ConnectSourceAwsAthenaConnectorCredentials
+) {
+  const maxRows = isFieldSet(
+    input,
+    ConnectSourceAwsAthenaConnectorCredentialsSchema.field.maxRows
+  )
+    ? input.maxRows
+    : undefined;
+  const timeoutMs = isFieldSet(
+    input,
+    ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeoutMs
+  )
+    ? input.timeoutMs
+    : undefined;
+
+  return {
+    type: "aws_athena_connector",
+    connectorId: input.connectorId,
+    database: input.database,
+    ...(maxRows !== undefined ? { maxRows } : {}),
+    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+    ...(input.workgroup ? { workgroup: input.workgroup } : {}),
+  } satisfies Credentials;
 }
 
 function bigQueryCredentialsFromMessage(input: {

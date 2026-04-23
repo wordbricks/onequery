@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { applyQueryResultWindow } from "./result-window";
+import {
+  applyQueryResultWindow,
+  resolveQueryResultWindow,
+} from "./result-window";
 
 const textEncoder = new TextEncoder();
 const rowsByteLength = (rows: readonly (readonly string[])[]) =>
   textEncoder.encode(JSON.stringify(rows)).length;
 
 describe("applyQueryResultWindow", () => {
+  it("treats zero-valued protobuf query bounds as omitted and restores defaults", () => {
+    expect(
+      resolveQueryResultWindow({
+        cellMaxChars: 0,
+        maxBytes: 0,
+        maxRows: 0,
+        timeoutMs: 0,
+      })
+    ).toEqual({
+      cellMaxChars: 2000,
+      maxBytes: 1_048_576,
+      maxRows: 100,
+      timeoutMs: 30_000,
+    });
+  });
+
   it("keeps the first row aligned with the declared columns when bytes are tight", () => {
     const result = applyQueryResultWindow({
       cellMaxChars: 512,

@@ -61,11 +61,34 @@ export function resolveQueryResultWindow(
   input: CliQueryResultWindow
 ): Required<CliQueryResultWindow> {
   return {
-    cellMaxChars: input.cellMaxChars ?? CLI_DEFAULT_QUERY_CELL_MAX_CHARS,
-    maxBytes: input.maxBytes ?? CLI_DEFAULT_QUERY_MAX_BYTES,
-    maxRows: input.maxRows ?? CLI_DEFAULT_QUERY_MAX_ROWS,
-    timeoutMs: input.timeoutMs ?? CLI_DEFAULT_QUERY_TIMEOUT_MS,
+    // Comment: protobuf scalar request fields can lose "unset" presence and
+    // arrive at the Connect handler as `0`. The wire contract already rejects
+    // non-positive bounds, so treat them as omitted and apply the documented
+    // defaults instead of producing empty previews.
+    cellMaxChars: positiveQueryWindowValueOrDefault(
+      input.cellMaxChars,
+      CLI_DEFAULT_QUERY_CELL_MAX_CHARS
+    ),
+    maxBytes: positiveQueryWindowValueOrDefault(
+      input.maxBytes,
+      CLI_DEFAULT_QUERY_MAX_BYTES
+    ),
+    maxRows: positiveQueryWindowValueOrDefault(
+      input.maxRows,
+      CLI_DEFAULT_QUERY_MAX_ROWS
+    ),
+    timeoutMs: positiveQueryWindowValueOrDefault(
+      input.timeoutMs,
+      CLI_DEFAULT_QUERY_TIMEOUT_MS
+    ),
   };
+}
+
+function positiveQueryWindowValueOrDefault(
+  value: number | undefined,
+  defaultValue: number
+) {
+  return value !== undefined && value > 0 ? value : defaultValue;
 }
 
 export function applyQueryResultWindow(input: {
