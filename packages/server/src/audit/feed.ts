@@ -1682,11 +1682,6 @@ async function hasUnprojectedQueryActionEvents(
   lastCommitPosition: bigint | null,
   organizationId: string
 ) {
-  const conditions = [
-    gt(queryActionEvents.commitPosition, lastCommitPosition ?? 0n),
-    eq(workflowCommands.organizationId, organizationId),
-  ];
-
   const rows = await db
     .select({ eventId: queryActionEvents.id })
     .from(queryActionEvents)
@@ -1694,8 +1689,12 @@ async function hasUnprojectedQueryActionEvents(
       workflowCommands,
       eq(workflowCommands.id, queryActionEvents.commandId)
     )
-    .where(and(...conditions))
-    .orderBy(asc(queryActionEvents.commitPosition))
+    .where(
+      and(
+        gt(queryActionEvents.commitPosition, lastCommitPosition ?? 0n),
+        eq(workflowCommands.organizationId, organizationId)
+      )
+    )
     .limit(1);
 
   return rows.length > 0;
@@ -1706,11 +1705,6 @@ async function hasUnprojectedSourceApiActionEvents(
   lastCommitPosition: bigint | null,
   organizationId: string
 ) {
-  const conditions = [
-    gt(sourceApiActionEvents.commitPosition, lastCommitPosition ?? 0n),
-    eq(workflowCommands.organizationId, organizationId),
-  ];
-
   const rows = await db
     .select({ eventId: sourceApiActionEvents.id })
     .from(sourceApiActionEvents)
@@ -1718,8 +1712,12 @@ async function hasUnprojectedSourceApiActionEvents(
       workflowCommands,
       eq(workflowCommands.id, sourceApiActionEvents.commandId)
     )
-    .where(and(...conditions))
-    .orderBy(asc(sourceApiActionEvents.commitPosition))
+    .where(
+      and(
+        gt(sourceApiActionEvents.commitPosition, lastCommitPosition ?? 0n),
+        eq(workflowCommands.organizationId, organizationId)
+      )
+    )
     .limit(1);
 
   return rows.length > 0;
@@ -1730,28 +1728,23 @@ async function loadAuditProjectionLag(
   checkpoints: AuditFeedCheckpointPositionMap,
   organizationId: string
 ): Promise<AuditProjectionLag> {
-  const queryAction = await hasUnprojectedQueryActionEvents(
-    db,
-    checkpoints.queryAction,
-    organizationId
-  );
-  const sourceApiAction = await hasUnprojectedSourceApiActionEvents(
-    db,
-    checkpoints.sourceApiAction,
-    organizationId
-  );
+  const [queryAction, sourceApiAction] = await Promise.all([
+    hasUnprojectedQueryActionEvents(
+      db,
+      checkpoints.queryAction,
+      organizationId
+    ),
+    hasUnprojectedSourceApiActionEvents(
+      db,
+      checkpoints.sourceApiAction,
+      organizationId
+    ),
+  ]);
 
   return {
     queryAction,
     sourceApiAction,
   };
-}
-
-export async function loadAuditProjectedThrough(
-  db: DatabaseExecutor
-): Promise<AuditFeedCheckpointMap> {
-  const checkpoints = await loadAuditProjectionCheckpointPositions(db);
-  return serializeAuditProjectedThrough(checkpoints);
 }
 
 function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
