@@ -186,6 +186,7 @@ pub(crate) struct SourceConnectArgs {
 #[command(arg_required_else_help = true)]
 pub(crate) enum DoctorSubcommand {
     /// Create a redacted diagnostic report from the latest saved failure.
+    #[command(arg_required_else_help = true)]
     Report(DoctorReportArgs),
 }
 

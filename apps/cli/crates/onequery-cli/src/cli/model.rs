@@ -197,6 +197,7 @@ onequery api [OPTIONS] --source <SOURCE_KEY>
        onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
     Api(ApiArgs),
     /// Explain a stable CLI error code.
+    #[command(arg_required_else_help = true)]
     Explain(ExplainArgs),
     /// Inspect local CLI state and diagnostics.
     #[command(subcommand)]
