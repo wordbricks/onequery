@@ -211,14 +211,34 @@ pub(crate) async fn test_source(
     })?;
 
     let outcome = match outcome {
-        types::test_source_response::Outcome::Supported(supported) => SourceTestOutcome {
-            kind: "supported".to_owned(),
-            message: supported.message.unwrap_or_default(),
-            success: supported.success,
-            error: supported.error,
-            latency_ms: supported.latency_ms,
-            reason: None,
-        },
+        types::test_source_response::Outcome::Supported(supported) => {
+            let result = supported.result.ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::ResolveSource,
+                    "source test supported response missing result",
+                    request_id.clone(),
+                )
+            })?;
+
+            match result {
+                types::test_source_supported_outcome::Result::Passed(passed) => SourceTestOutcome {
+                    kind: "supported".to_owned(),
+                    message: passed.message.unwrap_or_default(),
+                    success: Some(true),
+                    error: None,
+                    latency_ms: supported.latency_ms,
+                    reason: None,
+                },
+                types::test_source_supported_outcome::Result::Failed(failed) => SourceTestOutcome {
+                    kind: "supported".to_owned(),
+                    message: failed.message.unwrap_or_default(),
+                    success: Some(false),
+                    error: failed.error,
+                    latency_ms: supported.latency_ms,
+                    reason: None,
+                },
+            }
+        }
         types::test_source_response::Outcome::Unsupported(unsupported) => SourceTestOutcome {
             kind: "unsupported".to_owned(),
             message: unsupported.message.unwrap_or_default(),

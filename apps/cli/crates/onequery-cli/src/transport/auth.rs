@@ -254,6 +254,22 @@ fn login_poll_outcome_from_generated(
                 )?,
             })
         }
+        Some(types::poll_device_authorization_response::Outcome::Denied(_denied)) => {
+            Ok(LoginPollOutcome::Denied)
+        }
+        Some(types::poll_device_authorization_response::Outcome::Expired(_expired)) => {
+            Ok(LoginPollOutcome::Expired)
+        }
+        Some(types::poll_device_authorization_response::Outcome::RateLimited(rate_limited)) => {
+            let _poll_after_ms = rate_limited.poll_after_ms.ok_or_else(|| {
+                decode_failure(
+                    ErrorStage::Auth,
+                    "device authorization poll response missing pollAfterMs",
+                    request_id.clone(),
+                )
+            })?;
+            Ok(LoginPollOutcome::SlowDown)
+        }
         None => Err(decode_failure(
             ErrorStage::Auth,
             "device authorization poll response missing outcome",
@@ -536,6 +552,63 @@ mod tests {
             LoginPollOutcome::Authorized {
                 access_token: "pat_123".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn login_poll_outcome_from_generated_maps_terminal_and_rate_limited_outcomes() {
+        let denied = types::PollDeviceAuthorizationResponse {
+            outcome: Some(types::poll_device_authorization_response::Outcome::Denied(
+                Box::new(types::CliDeniedDeviceAuthorization {
+                    state: Some("denied".to_owned()),
+                    reason: Some("device authorization was denied".to_owned()),
+                    ..Default::default()
+                }),
+            )),
+            ..Default::default()
+        };
+        let expired = types::PollDeviceAuthorizationResponse {
+            outcome: Some(types::poll_device_authorization_response::Outcome::Expired(
+                Box::new(types::CliExpiredDeviceAuthorization {
+                    state: Some("expired".to_owned()),
+                    reason: Some("device authorization session expired".to_owned()),
+                    ..Default::default()
+                }),
+            )),
+            ..Default::default()
+        };
+        let rate_limited = types::PollDeviceAuthorizationResponse {
+            outcome: Some(
+                types::poll_device_authorization_response::Outcome::RateLimited(Box::new(
+                    types::CliRateLimitedDeviceAuthorization {
+                        state: Some("rate_limited".to_owned()),
+                        poll_after_ms: Some(10_000),
+                        reason: Some("slow down".to_owned()),
+                        ..Default::default()
+                    },
+                )),
+            ),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            [
+                login_poll_outcome_from_generated(denied, 5_000, Some("req_denied".to_owned()))
+                    .expect("expected denied outcome"),
+                login_poll_outcome_from_generated(expired, 5_000, Some("req_expired".to_owned()))
+                    .expect("expected expired outcome"),
+                login_poll_outcome_from_generated(
+                    rate_limited,
+                    5_000,
+                    Some("req_rate_limited".to_owned()),
+                )
+                .expect("expected rate limited outcome"),
+            ],
+            [
+                LoginPollOutcome::Denied,
+                LoginPollOutcome::Expired,
+                LoginPollOutcome::SlowDown,
+            ]
         );
     }
 

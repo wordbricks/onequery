@@ -201,9 +201,10 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
       if (payload.error === "slow_down") {
         return Result.ok({
           outcome: {
-            case: "pending",
+            case: "rateLimited",
             value: {
-              state: "pending",
+              reason: toCliDeviceAuthProblemDetail(payload),
+              state: "rate_limited",
               pollAfterMs: slowedDeviceAuthorizationPollAfterMs(),
             },
           },
@@ -213,23 +214,37 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
       }
 
       if (payload.error === "access_denied") {
-        return cliServiceErr({
-          detail:
-            payload.error_description === undefined
-              ? "device authorization was denied"
-              : toCliDeviceAuthProblemDetail(payload),
-          key: "LOGIN_DENIED",
-        });
+        return Result.ok({
+          outcome: {
+            case: "denied",
+            value: {
+              reason:
+                payload.error_description === undefined
+                  ? "device authorization was denied"
+                  : toCliDeviceAuthProblemDetail(payload),
+              state: "denied",
+            },
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
       }
 
       if (payload.error === "expired_token") {
-        return cliServiceErr({
-          detail:
-            payload.error_description === undefined
-              ? "device authorization session expired"
-              : toCliDeviceAuthProblemDetail(payload),
-          key: "LOGIN_SESSION_EXPIRED",
-        });
+        return Result.ok({
+          outcome: {
+            case: "expired",
+            value: {
+              reason:
+                payload.error_description === undefined
+                  ? "device authorization session expired"
+                  : toCliDeviceAuthProblemDetail(payload),
+              state: "expired",
+            },
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
       }
 
       return cliServiceErr({
@@ -239,11 +254,20 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
     }
 
     if (response.status === 429) {
-      return cliServiceErr({
-        detail: "device authorization polling was rate-limited",
-        key: "LOGIN_RATE_LIMITED",
-        retryAfterMs: parseRetryAfterMs(response),
-      });
+      return Result.ok({
+        outcome: {
+          case: "rateLimited",
+          value: {
+            reason: "device authorization polling was rate-limited",
+            state: "rate_limited",
+            pollAfterMs:
+              parseRetryAfterMs(response) ??
+              slowedDeviceAuthorizationPollAfterMs(),
+          },
+        },
+      } satisfies MessageInitShape<
+        typeof PollDeviceAuthorizationResponseSchema
+      >);
     }
 
     throw new Error(

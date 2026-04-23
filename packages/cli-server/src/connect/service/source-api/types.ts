@@ -10,7 +10,9 @@ import type {
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequest,
   ExecuteSourceApiResponseSchema,
+  SourceApiExecutionResultSchema,
   SourceApiDraft as CliSourceApiDraft,
+  SourceApiPreviewSchema,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { CliHonoContext } from "../types";
 
@@ -20,11 +22,11 @@ export type DescribeSourceApiResponseInit = MessageInitShape<
 export type ExecuteSourceApiResponseInit = MessageInitShape<
   typeof ExecuteSourceApiResponseSchema
 >;
-export type CliSourceApiPreviewInit = NonNullable<
-  ExecuteSourceApiResponseInit["preview"]
+export type CliSourceApiPreviewInit = MessageInitShape<
+  typeof SourceApiPreviewSchema
 >;
-export type CliSourceApiExecutionResultInit = NonNullable<
-  ExecuteSourceApiResponseInit["result"]
+export type CliSourceApiExecutionResultInit = MessageInitShape<
+  typeof SourceApiExecutionResultSchema
 >;
 
 export type SourceApiConnectFailurePhase =

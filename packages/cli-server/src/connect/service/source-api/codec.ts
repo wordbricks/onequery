@@ -132,12 +132,40 @@ export function buildCliExecuteSourceApiResponse(input: {
   preview: SourceApiPreview;
   result?: SourceApiExecutionResult;
 }): ExecuteSourceApiResponseInit {
+  const preview = buildCliSourceApiPreview(input.preview);
+
+  if (!input.result) {
+    return {
+      outcome: {
+        case: "previewOnly",
+        value: { preview },
+      },
+    };
+  }
+
+  const result = buildCliSourceApiExecutionResult(input.result);
+
+  if (input.continuationToken) {
+    return {
+      outcome: {
+        case: "continued",
+        value: {
+          continuationToken: input.continuationToken,
+          preview,
+          result,
+        },
+      },
+    };
+  }
+
   return {
-    continuationToken: input.continuationToken,
-    preview: buildCliSourceApiPreview(input.preview),
-    result: input.result
-      ? buildCliSourceApiExecutionResult(input.result)
-      : undefined,
+    outcome: {
+      case: "completed",
+      value: {
+        preview,
+        result,
+      },
+    },
   };
 }
 

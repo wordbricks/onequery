@@ -88,10 +88,21 @@ export function buildTestSourceResponse(input: {
     response.outcome = {
       case: "supported",
       value: {
-        ...(input.outcome.error ? { error: input.outcome.error } : {}),
         latencyMs: BigInt(input.outcome.latencyMs),
-        message: input.outcome.message,
-        success: input.outcome.success,
+        result: input.outcome.success
+          ? {
+              case: "passed",
+              value: {
+                message: input.outcome.message,
+              },
+            }
+          : {
+              case: "failed",
+              value: {
+                error: input.outcome.error ?? input.outcome.message,
+                message: input.outcome.message,
+              },
+            },
       },
     };
     return response;

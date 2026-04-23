@@ -658,8 +658,21 @@ function summarizeDescribeSourceApiResponse(
 }
 
 function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
-  const preview = response.preview;
-  const result = response.result;
+  const preview =
+    response.outcome.case === "previewOnly" ||
+    response.outcome.case === "completed" ||
+    response.outcome.case === "continued"
+      ? response.outcome.value.preview
+      : undefined;
+  const result =
+    response.outcome.case === "completed" ||
+    response.outcome.case === "continued"
+      ? response.outcome.value.result
+      : undefined;
+  const continuationToken =
+    response.outcome.case === "continued"
+      ? response.outcome.value.continuationToken
+      : undefined;
   const body =
     result?.body.case === "json"
       ? {
@@ -679,7 +692,7 @@ function summarizeExecuteSourceApiResponse(response: ExecuteSourceApiResponse) {
           : null;
 
   return {
-    continuationToken: response.continuationToken ?? null,
+    continuationToken: continuationToken ?? null,
     preview: preview
       ? {
           bodyKind: SourceApiBodyKind[preview.bodyKind],

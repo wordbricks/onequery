@@ -150,15 +150,7 @@ async fn preview_source_api_execution(
         source_api::execute_source_api(client, org_slug, source_key, draft, true)
             .await
             .map_err(|failure| present_source_api_preview_failure(failure, args, context))?;
-    let Some(preview) = preview_response.payload.preview.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API preview response",
-            ErrorStage::ExecuteQuery,
-            "source API preview response did not include a preview",
-            source_key,
-        ));
-    };
+    let preview = preview_response.payload.preview;
 
     Ok(PreviewedSourceApiExecution {
         preview,
@@ -180,16 +172,9 @@ async fn execute_source_api_pages(
     let first_response = source_api::execute_source_api(client, org_slug, source_key, draft, false)
         .await
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
-    let Some(preview) = first_response.payload.preview.into_option() else {
-        return Err(source_api_error(
-            context,
-            "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
-            "source API execution response did not include a preview",
-            source_key,
-        ));
-    };
-    let Some(first_page) = first_response.payload.result.into_option() else {
+    let first_payload = first_response.payload;
+    let preview = first_payload.preview;
+    let Some(first_page) = first_payload.result else {
         return Err(source_api_error(
             context,
             "invalid source API execution response",
@@ -199,7 +184,7 @@ async fn execute_source_api_pages(
         ));
     };
     let mut request_id = first_response.request_id.clone();
-    let mut continuation_token = first_response.payload.continuation_token.clone();
+    let mut continuation_token = first_payload.continuation_token.clone();
     let Some(first_source) = first_page.source.into_option() else {
         return Err(source_api_error(
             context,
@@ -239,7 +224,7 @@ async fn execute_source_api_pages(
     let mut pages = vec![SourceApiExecutionPage {
         body: first_page.body,
         content_type: first_content_type,
-        continuation_token: first_response.payload.continuation_token,
+        continuation_token: first_payload.continuation_token,
         headers: first_page.headers,
         operation: first_operation_name,
         selector: first_page.selector,
@@ -261,8 +246,9 @@ async fn execute_source_api_pages(
         .await
         .map_err(|failure| present_source_api_execute_failure(failure, args, context))?;
         request_id = response.request_id.clone();
-        continuation_token = response.payload.continuation_token.clone();
-        let Some(page) = response.payload.result.into_option() else {
+        let payload = response.payload;
+        continuation_token = payload.continuation_token.clone();
+        let Some(page) = payload.result else {
             return Err(source_api_error(
                 context,
                 "invalid source API execution response",
@@ -310,7 +296,7 @@ async fn execute_source_api_pages(
         pages.push(SourceApiExecutionPage {
             body: page.body,
             content_type,
-            continuation_token: response.payload.continuation_token,
+            continuation_token: payload.continuation_token,
             headers: page.headers,
             operation: operation_name,
             selector: page.selector,

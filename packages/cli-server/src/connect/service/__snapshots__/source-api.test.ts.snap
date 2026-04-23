@@ -410,7 +410,7 @@ exports[`source api connect service > executes source API requests through the C
     },
   },
   "response": {
-    "continuationToken": "",
+    "continuationToken": null,
     "preview": {
       "bodyKind": "TEXT",
       "bodyPaths": [],
@@ -457,7 +457,7 @@ exports[`source api connect service > executes source API requests through the C
 
 exports[`source api connect service > preserves JSON source API response bodies through the Connect handler 1`] = `
 {
-  "continuationToken": "",
+  "continuationToken": null,
   "preview": {
     "bodyKind": "TEXT",
     "bodyPaths": [],
@@ -617,7 +617,7 @@ exports[`source api connect service > previews source API execution through the 
     },
   },
   "response": {
-    "continuationToken": "",
+    "continuationToken": null,
     "preview": {
       "bodyKind": "TEXT",
       "bodyPaths": [],

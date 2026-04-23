@@ -11,6 +11,7 @@ use crate::transport::api_failure::response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
+use crate::transport::response_decode::require_non_empty_text;
 
 pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
 pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
@@ -33,8 +34,15 @@ pub(crate) type SourceApiDraft = types::SourceApiDraft;
 pub(crate) type SourceApiTarget = types::SourceApiTarget;
 pub(crate) type SourceApiRequestBody = types::source_api_draft::Body;
 pub(crate) type SourceApiPreview = types::SourceApiPreview;
-pub(crate) type ExecuteSourceApiResult = types::ExecuteSourceApiResponse;
+pub(crate) type SourceApiExecutionResult = types::SourceApiExecutionResult;
 pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body;
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct ExecuteSourceApiResult {
+    pub(crate) preview: SourceApiPreview,
+    pub(crate) result: Option<SourceApiExecutionResult>,
+    pub(crate) continuation_token: Option<String>,
+}
 
 macro_rules! source_api_enum_surface {
     (
@@ -140,7 +148,7 @@ pub(crate) async fn execute_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    validate_execute_source_api_result(&payload, request_id.clone())?;
+    let payload = execute_source_api_result_from_generated(payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -182,7 +190,7 @@ pub(crate) async fn resume_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    validate_execute_source_api_result(&payload, request_id.clone())?;
+    let payload = execute_source_api_result_from_generated(payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -398,19 +406,75 @@ fn validate_required_operation_message(
     ))
 }
 
-fn validate_execute_source_api_result(
-    value: &ExecuteSourceApiResult,
+fn execute_source_api_result_from_generated(
+    value: types::ExecuteSourceApiResponse,
     request_id: Option<String>,
-) -> Result<(), ApiFailure> {
-    if !value.preview.is_set() {
-        return Err(decode_failure(
+) -> Result<ExecuteSourceApiResult, ApiFailure> {
+    match value.outcome {
+        Some(types::execute_source_api_response::Outcome::PreviewOnly(preview_only)) => {
+            Ok(ExecuteSourceApiResult {
+                preview: required_source_api_preview(
+                    preview_only.preview,
+                    "source API execution response missing preview",
+                    request_id,
+                )?,
+                result: None,
+                continuation_token: None,
+            })
+        }
+        Some(types::execute_source_api_response::Outcome::Completed(completed)) => {
+            Ok(ExecuteSourceApiResult {
+                preview: required_source_api_preview(
+                    completed.preview,
+                    "source API execution response missing preview",
+                    request_id.clone(),
+                )?,
+                result: Some(required_source_api_execution_result(
+                    completed.result,
+                    "source API execution response missing result",
+                    request_id,
+                )?),
+                continuation_token: None,
+            })
+        }
+        Some(types::execute_source_api_response::Outcome::Continued(continued)) => {
+            Ok(ExecuteSourceApiResult {
+                preview: required_source_api_preview(
+                    continued.preview,
+                    "source API execution response missing preview",
+                    request_id.clone(),
+                )?,
+                result: Some(required_source_api_execution_result(
+                    continued.result,
+                    "source API execution response missing result",
+                    request_id.clone(),
+                )?),
+                continuation_token: Some(require_non_empty_text(
+                    continued.continuation_token,
+                    ErrorStage::ExecuteQuery,
+                    "source API execution response missing continuation token",
+                    request_id,
+                )?),
+            })
+        }
+        None => Err(decode_failure(
             ErrorStage::ExecuteQuery,
-            "source API execution response missing preview",
+            "source API execution response missing outcome",
             request_id,
-        ));
+        )),
     }
+}
 
-    if !value.preview.source.is_set() {
+fn required_source_api_preview(
+    preview: MessageField<SourceApiPreview>,
+    message: &'static str,
+    request_id: Option<String>,
+) -> Result<SourceApiPreview, ApiFailure> {
+    let preview = preview
+        .into_option()
+        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
+
+    if !preview.source.is_set() {
         return Err(decode_failure(
             ErrorStage::ExecuteQuery,
             "source API execution response missing preview source metadata",
@@ -418,11 +482,19 @@ fn validate_execute_source_api_result(
         ));
     }
 
-    if value.result.is_set() {
-        if value.result.source.is_set() {
-            return Ok(());
-        }
+    Ok(preview)
+}
 
+fn required_source_api_execution_result(
+    result: MessageField<SourceApiExecutionResult>,
+    message: &'static str,
+    request_id: Option<String>,
+) -> Result<SourceApiExecutionResult, ApiFailure> {
+    let result = result
+        .into_option()
+        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
+
+    if !result.source.is_set() {
         return Err(decode_failure(
             ErrorStage::ExecuteQuery,
             "source API execution response missing source metadata",
@@ -430,7 +502,7 @@ fn validate_execute_source_api_result(
         ));
     }
 
-    Ok(())
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -439,6 +511,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
+    use super::execute_source_api_result_from_generated;
     use super::json_from_proto_json_value;
     use super::proto_json_object_from_json;
     use super::proto_json_value_from_json;
@@ -449,13 +522,17 @@ mod tests {
     use super::source_api_selector_kind_label;
     use super::source_api_selector_kind_or_none;
     use super::types;
-    use super::validate_execute_source_api_result;
     use crate::transport::api_failure::ApiFailure;
 
     #[test]
     fn validate_execute_source_api_result_requires_preview() {
-        let error = validate_execute_source_api_result(
-            &types::ExecuteSourceApiResponse {
+        let error = execute_source_api_result_from_generated(
+            types::ExecuteSourceApiResponse {
+                outcome: Some(types::execute_source_api_response::Outcome::PreviewOnly(
+                    Box::new(types::ExecuteSourceApiPreviewOnly {
+                        ..Default::default()
+                    }),
+                )),
                 ..Default::default()
             },
             Some("req_cli_123".to_owned()),
@@ -526,30 +603,38 @@ mod tests {
     #[test]
     fn validate_execute_source_api_result_requires_source() {
         let error = execute_source_api_result(
-            &types::ExecuteSourceApiResponse {
-                preview: buffa::MessageField::some(types::SourceApiPreview {
-                    source: buffa::MessageField::some(types::CliSourceApiSource {
-                        source_key: Some("github-prod".to_owned()),
-                        provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
+            types::ExecuteSourceApiResponse {
+                outcome: Some(types::execute_source_api_response::Outcome::Completed(
+                    Box::new(types::ExecuteSourceApiCompleted {
+                        preview: buffa::MessageField::some(types::SourceApiPreview {
+                            source: buffa::MessageField::some(types::CliSourceApiSource {
+                                source_key: Some("github-prod".to_owned()),
+                                provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
+                                ..Default::default()
+                            }),
+                            operation: Some("fetch".to_owned()),
+                            kind: Some(
+                                types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+                                    .into(),
+                            ),
+                            body_kind: Some(
+                                types::SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE.into(),
+                            ),
+                            pagination_policy: Some(
+                                types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE
+                                    .into(),
+                            ),
+                            ..Default::default()
+                        }),
+                        result: buffa::MessageField::some(types::SourceApiExecutionResult {
+                            operation: Some("fetch".to_owned()),
+                            status: Some(200),
+                            content_type: Some("application/json".to_owned()),
+                            ..Default::default()
+                        }),
                         ..Default::default()
                     }),
-                    operation: Some("fetch".to_owned()),
-                    kind: Some(
-                        types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
-                            .into(),
-                    ),
-                    body_kind: Some(types::SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE.into()),
-                    pagination_policy: Some(
-                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
-                    ),
-                    ..Default::default()
-                }),
-                result: buffa::MessageField::some(types::SourceApiExecutionResult {
-                    operation: Some("fetch".to_owned()),
-                    status: Some(200),
-                    content_type: Some("application/json".to_owned()),
-                    ..Default::default()
-                }),
+                )),
                 ..Default::default()
             },
             Some("req_missing_source".to_owned()),
@@ -687,9 +772,9 @@ mod tests {
     }
 
     fn execute_source_api_result(
-        value: &types::ExecuteSourceApiResponse,
+        value: types::ExecuteSourceApiResponse,
         request_id: Option<String>,
-    ) -> Result<(), ApiFailure> {
-        super::validate_execute_source_api_result(value, request_id)
+    ) -> Result<super::ExecuteSourceApiResult, ApiFailure> {
+        super::execute_source_api_result_from_generated(value, request_id)
     }
 }
