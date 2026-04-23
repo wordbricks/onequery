@@ -10,5 +10,4 @@ Request ID: req_decode
 Try:
   - retry onequery query exec --source warehouse --sql "select 1"
 
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
+Report: onequery doctor report --last

@@ -373,6 +373,13 @@ if should_suggest_report(error) {
 
 ## Migration plan
 
+### Task status
+
+- [x] Phase 1: quick UX fix
+- [ ] Phase 2: diagnostics command
+- [ ] Phase 3: proto-backed support metadata
+- [ ] Phase 4: explicit issue creation
+
 **Phase 1: quick UX fix**
 
 Remove the unconditional GitHub URL. Add `tryNext` to JSON. Add the report hint only for clearly reportable errors.
@@ -401,4 +408,3 @@ The net effect: normal errors become smaller, agent-friendly JSON becomes more u
 [2]: https://git-scm.com/docs/git-bugreport "Git - git-bugreport Documentation"
 [3]: https://cli.github.com/manual/gh_issue_create "GitHub CLI | Take GitHub to the command line"
 [4]: https://rustc-dev-guide.rust-lang.org/diagnostics/error-codes.html "Error codes - Rust Compiler Development Guide"
-

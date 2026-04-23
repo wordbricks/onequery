@@ -8,6 +8,3 @@ Stage: load_config
 Why: XDG_CONFIG_HOME points to /Users/alice/.config-missing, but that path does not exist
 Try:
   - set XDG_CONFIG_HOME or HOME to a valid directory
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>

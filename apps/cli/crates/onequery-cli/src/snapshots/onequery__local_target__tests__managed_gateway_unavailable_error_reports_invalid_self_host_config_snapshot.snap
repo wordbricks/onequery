@@ -13,6 +13,3 @@ unknown field `log_level`, expected one of `listen_host`, `port`, `public_origin
  (<CONFIG_PATH>)
 Try:
   - remove or fix <CONFIG_PATH>
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>

@@ -380,6 +380,70 @@ pub(crate) fn render_output_payload(
     }
 }
 
+const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
+const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --stdout";
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct ReportSuggestion {
+    reason: &'static str,
+}
+
+fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
+    if matches!(error.stage, ErrorStage::Internal) {
+        return Some(ReportSuggestion {
+            reason: "internal_cli_error",
+        });
+    }
+
+    if matches!(error.stage, ErrorStage::Render) {
+        return Some(ReportSuggestion {
+            reason: "render_failure",
+        });
+    }
+
+    match error.code.as_deref() {
+        Some("decode_error") => {
+            return Some(ReportSuggestion {
+                reason: "unexpected_response_decode_failure",
+            });
+        }
+        Some("query_execution_failed") => {
+            return Some(ReportSuggestion {
+                reason: "query_execution_failure",
+            });
+        }
+        Some("query_preparation_failed") => {
+            return Some(ReportSuggestion {
+                reason: "query_preparation_failure",
+            });
+        }
+        Some("source_api_describe_failed") => {
+            return Some(ReportSuggestion {
+                reason: "source_api_describe_failure",
+            });
+        }
+        Some("source_api_execution_failed") => {
+            return Some(ReportSuggestion {
+                reason: "source_api_execution_failure",
+            });
+        }
+        Some("source_api_preparation_failed") => {
+            return Some(ReportSuggestion {
+                reason: "source_api_preparation_failure",
+            });
+        }
+        _ => {}
+    }
+
+    if error.status.is_some_and(|status| status >= 500) && !error.retryable {
+        return Some(ReportSuggestion {
+            reason: "unexpected_server_failure",
+        });
+    }
+
+    None
+}
+
 pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> String {
     match mode {
         EffectiveOutputMode::Text => render_text_error(error),
@@ -421,6 +485,28 @@ pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> Strin
             }
             if let Some(retry_after_ms) = error.retry_after_ms {
                 error_body.insert("retryAfterMs".to_owned(), json!(retry_after_ms));
+            }
+            if !error.try_next.is_empty() {
+                error_body.insert(
+                    "tryNext".to_owned(),
+                    Value::Array(
+                        error
+                            .try_next
+                            .iter()
+                            .map(|step| Value::String(step.clone()))
+                            .collect(),
+                    ),
+                );
+            }
+            if let Some(report) = report_suggestion(error) {
+                error_body.insert(
+                    "report".to_owned(),
+                    json!({
+                        "recommended": true,
+                        "command": JSON_REPORT_COMMAND,
+                        "reason": report.reason,
+                    }),
+                );
             }
 
             let mut envelope = Map::new();
@@ -516,12 +602,10 @@ fn render_text_error(error: &CliError) -> String {
         }
     }
 
-    // Surfacing a pre-filled GitHub issue URL on every text error lets users
-    // report bugs without manually rebuilding the trace. JSON output stays
-    // clean for scripting.
-    lines.push(String::new());
-    lines.push("Think this is a bug? Report it with the error already filled in:".to_owned());
-    lines.push(format!("  {}", crate::issue_report::build_issue_url(error)));
+    if report_suggestion(error).is_some() {
+        lines.push(String::new());
+        lines.push(format!("Report: {TEXT_REPORT_COMMAND}"));
+    }
 
     lines.join("\n")
 }
@@ -597,6 +681,25 @@ mod tests {
                 "XDG_CONFIG_HOME points to /Users/alice/.config-missing, but that path does not exist",
                 vec!["set XDG_CONFIG_HOME or HOME to a valid directory".to_owned()],
             ),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_reportable_error_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "failed to decode query response",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_code(Some("decode_error".to_owned()))
+            .with_request_id(Some("req_decode".to_owned())),
             EffectiveOutputMode::Text,
         );
 
@@ -737,6 +840,7 @@ mod tests {
                     "detail": "server rejected write query",
                     "retryable": false,
                     "hint": "queries must be read-only",
+                    "tryNext": ["retry with a read-only SELECT"],
                 }
             })
         );
@@ -907,9 +1011,24 @@ mod tests {
             EffectiveOutputMode::Json,
         );
 
-        assert_snapshot!(
-            rendered,
-            @r#"{"error":{"detail":"boom","retryable":false,"stage":"render","title":"failed to render command output"},"ok":false}"#
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered)
+                .expect("expected JSON render failure"),
+            json!({
+                "ok": false,
+                "error": {
+                    "title": "failed to render command output",
+                    "stage": "render",
+                    "detail": "boom",
+                    "retryable": false,
+                    "tryNext": ["retry onequery query"],
+                    "report": {
+                        "recommended": true,
+                        "command": "onequery doctor report --last --stdout",
+                        "reason": "render_failure",
+                    }
+                }
+            })
         );
     }
 }

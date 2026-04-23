@@ -8,6 +8,3 @@ Stage: http
 Why: failed to reach org list endpoint: operation timed out
 Try:
   - retry onequery org list
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>

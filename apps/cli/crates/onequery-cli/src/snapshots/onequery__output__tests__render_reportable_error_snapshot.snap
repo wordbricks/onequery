@@ -5,9 +5,9 @@ expression: rendered
 Error: query failed
 Command: onequery query exec --source warehouse --sql "<excerpt: select ...>"
 Stage: execute_query
-Why: server rejected write query
-Request ID: req_123
-Hint: queries must be read-only
+Why: failed to decode query response
+Request ID: req_decode
 Try:
-  - retry with a read-only SELECT
-  - run onequery source show warehouse
+  - retry onequery query exec --source warehouse --sql "select 1"
+
+Report: onequery doctor report --last

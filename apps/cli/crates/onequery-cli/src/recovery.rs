@@ -159,19 +159,16 @@ mod tests {
             assert_snapshot!(
                 render_error(&error, EffectiveOutputMode::Text),
                 @r#"
-Error: not logged in
-Command: onequery query exec --source warehouse --sql "select 1"
-Stage: auth
-Why: no OneQuery token was found in the environment or local auth store.
-Try:
-  - onequery gateway start
-  - onequery gateway status
-  - onequery auth login
-  - onequery auth import --input <path|->
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
-"#
+            Error: not logged in
+            Command: onequery query exec --source warehouse --sql "select 1"
+            Stage: auth
+            Why: no OneQuery token was found in the environment or local auth store.
+            Try:
+              - onequery gateway start
+              - onequery gateway status
+              - onequery auth login
+              - onequery auth import --input <path|->
+            "#
             );
         });
     }
@@ -198,17 +195,14 @@ Think this is a bug? Report it with the error already filled in:
             assert_snapshot!(
                 render_error(&error, EffectiveOutputMode::Text),
                 @r#"
-Error: not logged in
-Command: onequery query exec --source warehouse --sql "select 1"
-Stage: auth
-Why: no OneQuery token was found in the environment or local auth store.
-Try:
-  - onequery auth login
-  - onequery auth import --input <path|->
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
-"#
+            Error: not logged in
+            Command: onequery query exec --source warehouse --sql "select 1"
+            Stage: auth
+            Why: no OneQuery token was found in the environment or local auth store.
+            Try:
+              - onequery auth login
+              - onequery auth import --input <path|->
+            "#
             );
         });
     }

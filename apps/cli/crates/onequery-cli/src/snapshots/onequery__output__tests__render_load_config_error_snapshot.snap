@@ -8,6 +8,3 @@ Stage: load_config
 Why: expected newline, found a string at line 2 column 14 (/Users/alice/.config/onequery/config.toml)
 Try:
   - remove or fix /Users/alice/.config/onequery/config.toml
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>

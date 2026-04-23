@@ -98,17 +98,14 @@ fn login_denied_error_snapshot_uses_canonical_retry_command() {
     crate::test_support::snapshot_settings_with_issue_url_filter().bind(|| {
         assert_snapshot!(
             render_error(&error, EffectiveOutputMode::Text),
-            @r#"
-Error: login denied
-Command: onequery auth login
-Stage: auth
-Why: browser authorization was denied before token exchange completed
-Try:
-  - onequery auth login
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
-"#
+            @"
+        Error: login denied
+        Command: onequery auth login
+        Stage: auth
+        Why: browser authorization was denied before token exchange completed
+        Try:
+          - onequery auth login
+        "
         );
     });
 }
