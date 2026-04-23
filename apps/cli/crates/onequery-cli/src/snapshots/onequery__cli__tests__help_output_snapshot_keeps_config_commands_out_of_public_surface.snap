@@ -17,6 +17,7 @@ Commands:
   gateway  Run the self-host gateway in foreground by default or manage the background lifecycle
   upgrade  Upgrade this published CLI installation in place
   api      Describe or execute a connected source API
+  doctor   Inspect local CLI state and diagnostics
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -30,3 +31,6 @@ Global Options:
       --timeout <SECONDS>        Override the request timeout in seconds for this invocation
       --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
       --verbose                  Emit workflow progress and retry tracing to stderr
+
+Support:
+  onequery doctor report --last     Create a redacted diagnostic report

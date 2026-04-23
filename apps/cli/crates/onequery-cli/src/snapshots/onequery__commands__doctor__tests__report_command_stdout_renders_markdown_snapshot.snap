@@ -1,0 +1,76 @@
+---
+source: crates/onequery-cli/src/commands/doctor.rs
+expression: rendered
+---
+<!-- Redacted OneQuery CLI diagnostic report. Review before sharing. -->
+
+# OneQuery CLI Diagnostic Report
+
+## Summary
+
+- Generated at: `2026-04-23T03:12:11+00:00`
+- CLI version: `0.0.0`
+- Command path: `query exec`
+- Request ID: `req_123`
+- Error code: `decode_error`
+- Error stage: `execute_query`
+- Exit code: `6`
+- Reporting: recommended (`unexpected_response_decode_failure`)
+
+## Command
+
+```text
+onequery query exec --source warehouse --sql "<excerpt: select 1>"
+```
+
+## Error
+
+- Title: query failed
+- Detail: failed to decode query response
+- HTTP status: `502`
+- Retryable: no
+- Hint: the API returned an unexpected payload
+
+### Try Next
+
+- retry onequery query exec --source warehouse
+
+## Environment
+
+- OS: `macos`
+- Arch: `aarch64`
+- Diagnostics snapshot: `<tmp>/onequery-data/last-error.json`
+
+## Redacted Diagnostics JSON
+
+```json
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-04-23T03:12:11Z",
+  "cliVersion": "0.0.0",
+  "commandPath": "query exec",
+  "commandLineSanitized": "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"",
+  "exitCode": 6,
+  "requestId": "req_123",
+  "error": {
+    "code": "decode_error",
+    "stage": "execute_query",
+    "title": "query failed",
+    "detail": "failed to decode query response",
+    "status": 502,
+    "retryable": false,
+    "hint": "the API returned an unexpected payload",
+    "tryNext": [
+      "retry onequery query exec --source warehouse"
+    ]
+  },
+  "reportability": {
+    "recommended": true,
+    "reason": "unexpected_response_decode_failure"
+  },
+  "environment": {
+    "os": "macos",
+    "arch": "aarch64"
+  }
+}
+```

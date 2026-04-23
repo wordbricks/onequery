@@ -1,0 +1,13 @@
+---
+source: crates/onequery-cli/src/commands/doctor.rs
+expression: pretty
+---
+{
+  "command": "doctor report",
+  "data": {
+    "diagnosticsPath": "<tmp>/onequery-data/last-error.json",
+    "reportPath": "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
+  },
+  "ok": true,
+  "warnings": []
+}

@@ -23,6 +23,8 @@ use super::Command;
 use super::ConfigCommand;
 use super::ConfigKey;
 use super::ConfigSetKey;
+use super::DoctorReportArgs;
+use super::DoctorSubcommand;
 use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
@@ -99,6 +101,11 @@ fn api_help_output_snapshot_targets_api_surface() {
 #[test]
 fn gateway_help_output_snapshot_targets_gateway_surface() {
     assert_snapshot!(rendered_display(&["onequery", "gateway", "--help"]));
+}
+
+#[test]
+fn doctor_help_output_snapshot_targets_diagnostics_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "doctor", "--help"]));
 }
 
 #[test]
@@ -273,6 +280,69 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
         invocation.command,
         Command::Debug(super::DebugSubcommand::Config)
     ));
+}
+
+#[test]
+fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
+    for (stdout_is_tty, args, expected_output_mode, expected_command) in [
+        (
+            true,
+            &["onequery", "doctor", "report", "--last"][..],
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: false,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last"][..],
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: false,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last", "--stdout"][..],
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                last: true,
+                stdout: true,
+                json: false,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--last", "--json"][..],
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: true,
+            },
+        ),
+    ] {
+        let ParseOutcome::Invocation(invocation) =
+            super::parse::parse_invocation_from_with_stdout_tty(&argv(args), stdout_is_tty)
+                .expect("expected invocation output")
+        else {
+            panic!("expected invocation output");
+        };
+        let invocation = *invocation;
+
+        assert_eq!(invocation.global.output_mode, expected_output_mode);
+        assert_eq!(invocation.command.command_path(), "doctor report");
+        match invocation.command {
+            Command::Doctor(DoctorSubcommand::Report(actual_command)) => {
+                assert_eq!(actual_command, expected_command);
+            }
+            other => panic!("expected doctor report command, got {other:?}"),
+        }
+    }
 }
 
 #[test]

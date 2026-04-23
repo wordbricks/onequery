@@ -20,6 +20,8 @@ use super::args::ApiArgs;
 use super::args::AuthSubcommand;
 use super::args::BackupArgs;
 use super::args::DebugSubcommand;
+use super::args::DoctorReportArgs;
+use super::args::DoctorSubcommand;
 use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
@@ -30,6 +32,8 @@ use super::args::parse_request_id;
 use super::args::parse_trimmed_non_empty;
 
 const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
+const CLI_AFTER_HELP: &str =
+    "Support:\n  onequery doctor report --last     Create a redacted diagnostic report";
 
 #[derive(Debug)]
 pub(crate) enum ParseOutcome {
@@ -42,6 +46,7 @@ pub(crate) enum ParseOutcome {
     name = "onequery",
     version,
     about = "OneQuery CLI",
+    after_help = CLI_AFTER_HELP,
     propagate_version = true,
     help_expected = true
 )]
@@ -59,7 +64,10 @@ impl Cli {
         stdout_is_tty: bool,
     ) -> Result<Invocation, CliError> {
         let Cli { global, command } = self;
-        let global = global.into_global_options(&raw_command, stdout_is_tty)?;
+        let mut global = global.into_global_options(&raw_command, stdout_is_tty)?;
+        if let Some(output_mode) = command.output_override() {
+            global.output_mode = output_mode;
+        }
 
         Ok(Invocation {
             raw_command,
@@ -189,6 +197,9 @@ onequery api [OPTIONS] --source <SOURCE_KEY>
        onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
     Api(ApiArgs),
     /// Inspect local CLI state and diagnostics.
+    #[command(subcommand)]
+    Doctor(DoctorSubcommand),
+    /// Inspect local CLI state and diagnostics.
     #[command(hide = true, subcommand)]
     Debug(DebugSubcommand),
 }
@@ -220,9 +231,30 @@ impl Command {
             Self::Gateway(args) => args.command_path(),
             Self::Upgrade => "upgrade",
             Self::Api(_) => "api",
+            Self::Doctor(DoctorSubcommand::Report(_)) => "doctor report",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
         }
+    }
+
+    pub(crate) fn output_override(&self) -> Option<EffectiveOutputMode> {
+        match self {
+            Self::Doctor(DoctorSubcommand::Report(DoctorReportArgs { stdout: true, .. })) => {
+                Some(EffectiveOutputMode::Text)
+            }
+            Self::Doctor(DoctorSubcommand::Report(DoctorReportArgs { json: true, .. })) => {
+                Some(EffectiveOutputMode::Json)
+            }
+            _ => None,
+        }
+    }
+
+    pub(crate) fn requires_runtime(&self) -> bool {
+        !matches!(self, Self::Doctor(_))
+    }
+
+    pub(crate) fn should_persist_failures(&self) -> bool {
+        !matches!(self, Self::Doctor(_))
     }
 }
 

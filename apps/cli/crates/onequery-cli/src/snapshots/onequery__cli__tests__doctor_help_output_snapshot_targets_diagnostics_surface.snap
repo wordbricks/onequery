@@ -1,0 +1,23 @@
+---
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"doctor\", \"--help\"])"
+---
+Inspect local CLI state and diagnostics
+
+Usage: onequery doctor [OPTIONS] <COMMAND>
+
+Commands:
+  report  Create a redacted diagnostic report from the latest saved failure
+  help    Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+Global Options:
+      --org <ORG_SLUG>           Override the active org for this invocation
+  -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
+      --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
+      --timeout <SECONDS>        Override the request timeout in seconds for this invocation
+      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --verbose                  Emit workflow progress and retry tracing to stderr

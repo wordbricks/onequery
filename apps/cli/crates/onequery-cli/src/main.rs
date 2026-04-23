@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod config;
 mod credentials;
+mod diagnostics;
 mod identifiers;
 #[cfg(test)]
 mod issue_report;
@@ -24,6 +25,7 @@ mod workflows;
 use std::io::IsTerminal;
 use std::io::Write;
 
+use chrono::Utc;
 use commands::Runtime;
 
 // Comment: the CLI does not need a work-stealing runtime; an explicit current-thread executor
@@ -54,42 +56,57 @@ async fn main() {
                     }
                 }
                 Err(error) => {
-                    if let Err(write_error) = emit_failure(
-                        &output::render_error(&error, fallback_output_mode),
-                        fallback_output_mode,
-                    ) {
-                        exit_for_output_error(write_error);
-                    }
-                    std::process::exit(error.exit_code());
+                    emit_failure_and_exit(error, fallback_output_mode, None, true);
                 }
             }
             std::process::exit(0);
         }
-        Err(error) => {
-            if let Err(write_error) = emit_failure(
-                &output::render_error(&error, fallback_output_mode),
-                fallback_output_mode,
-            ) {
-                exit_for_output_error(write_error);
-            }
-            std::process::exit(error.exit_code());
-        }
+        Err(error) => emit_failure_and_exit(error, fallback_output_mode, None, true),
     };
     let output_mode = invocation.global.output_mode;
+    let command_path = invocation.command.command_path();
+    let persist_failures = invocation.command.should_persist_failures();
+
+    if !invocation.command.requires_runtime() {
+        // Comment: `doctor report` must still work when config loading is broken, so
+        // diagnostics commands bypass `Runtime::load` and read the saved snapshot directly.
+        let command_output = match commands::execute_without_runtime(&invocation) {
+            Ok(command_output) => command_output.with_command(command_path),
+            Err(error) => emit_failure_and_exit(
+                error.with_command_path(Some(command_path.to_owned())),
+                output_mode,
+                Some(command_path),
+                persist_failures,
+            ),
+        };
+
+        match output::render_output_payload(command_output, output_mode, stdout_is_tty) {
+            Ok(rendered) => {
+                if let Err(error) = emit_success(rendered) {
+                    exit_for_output_error(error);
+                }
+                std::process::exit(0);
+            }
+            Err(error) => emit_failure_and_exit(
+                error.with_command_path(Some(command_path.to_owned())),
+                output_mode,
+                Some(command_path),
+                persist_failures,
+            ),
+        }
+    }
 
     let mut runtime = match Runtime::load(
         invocation.global.raw_config_overrides.clone(),
         config::TypedConfigOverrides::from_request_timeout_sec(invocation.global.timeout_sec),
     ) {
         Ok(runtime) => runtime,
-        Err(error) => {
-            if let Err(write_error) =
-                emit_failure(&output::render_error(&error, output_mode), output_mode)
-            {
-                exit_for_output_error(write_error);
-            }
-            std::process::exit(error.exit_code());
-        }
+        Err(error) => emit_failure_and_exit(
+            error.with_command_path(Some(command_path.to_owned())),
+            output_mode,
+            Some(command_path),
+            persist_failures,
+        ),
     };
     let startup_effects = startup::start(startup::plan(runtime.config.path()));
 
@@ -102,27 +119,76 @@ async fn main() {
                     }
                     0
                 }
-                Err(error) => {
-                    if let Err(write_error) =
-                        emit_failure(&output::render_error(&error, output_mode), output_mode)
-                    {
-                        exit_for_output_error(write_error);
-                    }
-                    error.exit_code()
-                }
+                Err(error) => emit_failure_exit_code(
+                    error.with_command_path(Some(command_path.to_owned())),
+                    output_mode,
+                    Some(command_path),
+                    persist_failures,
+                ),
             }
         }
-        Err(error) => {
-            if let Err(write_error) =
-                emit_failure(&output::render_error(&error, output_mode), output_mode)
-            {
-                exit_for_output_error(write_error);
-            }
-            error.exit_code()
-        }
+        Err(error) => emit_failure_exit_code(
+            error.with_command_path(Some(command_path.to_owned())),
+            output_mode,
+            Some(command_path),
+            persist_failures,
+        ),
     };
     startup_effects.finish().await.report();
     std::process::exit(exit_code);
+}
+
+fn emit_failure_and_exit(
+    error: onequery_cli_core::error::CliError,
+    output_mode: output::EffectiveOutputMode,
+    command_path: Option<&str>,
+    persist_failure: bool,
+) -> ! {
+    std::process::exit(emit_failure_exit_code(
+        error,
+        output_mode,
+        command_path,
+        persist_failure,
+    ));
+}
+
+fn emit_failure_exit_code(
+    error: onequery_cli_core::error::CliError,
+    output_mode: output::EffectiveOutputMode,
+    command_path: Option<&str>,
+    persist_failure: bool,
+) -> i32 {
+    persist_failure_if_needed(&error, command_path, persist_failure);
+    if let Err(write_error) = emit_failure(&output::render_error(&error, output_mode), output_mode)
+    {
+        exit_for_output_error(write_error);
+    }
+    error.exit_code()
+}
+
+fn persist_failure_if_needed(
+    error: &onequery_cli_core::error::CliError,
+    command_path: Option<&str>,
+    persist_failure: bool,
+) {
+    if !persist_failure {
+        return;
+    }
+
+    let command_line = error.command.as_str();
+    let paths = match diagnostics::DiagnosticsPaths::resolve(command_line) {
+        Ok(paths) => paths,
+        Err(persist_error) => {
+            tracing::info!(error = %persist_error, "diagnostic persistence path resolution failed");
+            return;
+        }
+    };
+
+    if let Err(persist_error) =
+        diagnostics::persist_last_error(&paths, command_line, error, command_path, Utc::now())
+    {
+        tracing::info!(error = %persist_error, "diagnostic persistence failed");
+    }
 }
 
 fn emit_success(rendered: output::RenderedOutput) -> std::io::Result<()> {

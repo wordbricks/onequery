@@ -8,6 +8,9 @@ use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::diagnostics::JSON_REPORT_COMMAND;
+use crate::diagnostics::TEXT_REPORT_COMMAND;
+use crate::diagnostics::report_suggestion;
 use crate::output_metadata::SanitizationMetadata;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
@@ -378,70 +381,6 @@ pub(crate) fn render_output_payload(
         }
         EffectiveOutputMode::Json => Ok(RenderedOutput::Text(render_output(output, mode))),
     }
-}
-
-const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
-const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --stdout";
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct ReportSuggestion {
-    reason: &'static str,
-}
-
-fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
-    if matches!(error.stage, ErrorStage::Internal) {
-        return Some(ReportSuggestion {
-            reason: "internal_cli_error",
-        });
-    }
-
-    if matches!(error.stage, ErrorStage::Render) {
-        return Some(ReportSuggestion {
-            reason: "render_failure",
-        });
-    }
-
-    match error.code.as_deref() {
-        Some("decode_error") => {
-            return Some(ReportSuggestion {
-                reason: "unexpected_response_decode_failure",
-            });
-        }
-        Some("query_execution_failed") => {
-            return Some(ReportSuggestion {
-                reason: "query_execution_failure",
-            });
-        }
-        Some("query_preparation_failed") => {
-            return Some(ReportSuggestion {
-                reason: "query_preparation_failure",
-            });
-        }
-        Some("source_api_describe_failed") => {
-            return Some(ReportSuggestion {
-                reason: "source_api_describe_failure",
-            });
-        }
-        Some("source_api_execution_failed") => {
-            return Some(ReportSuggestion {
-                reason: "source_api_execution_failure",
-            });
-        }
-        Some("source_api_preparation_failed") => {
-            return Some(ReportSuggestion {
-                reason: "source_api_preparation_failure",
-            });
-        }
-        _ => {}
-    }
-
-    if error.status.is_some_and(|status| status >= 500) && !error.retryable {
-        return Some(ReportSuggestion {
-            reason: "unexpected_server_failure",
-        });
-    }
-
-    None
 }
 
 pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> String {

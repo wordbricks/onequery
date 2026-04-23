@@ -3,6 +3,7 @@ mod auth_session;
 mod backup;
 mod config_cmd;
 mod debug;
+mod doctor;
 mod gateway;
 mod json_input;
 mod org;
@@ -257,7 +258,24 @@ where
         }
         Command::Upgrade => upgrade::execute(context, runtime).await,
         Command::Api(api_args) => source_api::execute(&api_args, context, runtime).await,
+        Command::Doctor(_) => Err(CliError::internal(
+            context.command_line.clone(),
+            "doctor commands must run without a loaded runtime",
+        )),
         Command::Debug(debug_command) => debug::execute(&debug_command, context, runtime).await,
+    }
+}
+
+pub(crate) fn execute_without_runtime(invocation: &Invocation) -> Result<CommandOutput, CliError> {
+    match &invocation.command {
+        Command::Doctor(command) => doctor::execute(command, &invocation.raw_command),
+        _ => Err(CliError::internal(
+            invocation.raw_command.clone(),
+            format!(
+                "command `{}` unexpectedly bypassed runtime loading",
+                invocation.command.command_path()
+            ),
+        )),
     }
 }
 

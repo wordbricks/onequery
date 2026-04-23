@@ -181,6 +181,26 @@ pub(crate) struct SourceConnectArgs {
     pub input: Option<String>,
 }
 
+#[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
+#[command(arg_required_else_help = true)]
+pub(crate) enum DoctorSubcommand {
+    /// Create a redacted diagnostic report from the latest saved failure.
+    Report(DoctorReportArgs),
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct DoctorReportArgs {
+    /// Use the latest saved diagnostics snapshot.
+    #[arg(long, required = true)]
+    pub last: bool,
+    /// Print the generated Markdown report to stdout instead of writing a file.
+    #[arg(long, conflicts_with = "json")]
+    pub stdout: bool,
+    /// Emit structured JSON metadata for the generated report.
+    #[arg(long, conflicts_with = "stdout")]
+    pub json: bool,
+}
+
 #[derive(Debug, Clone, Args, Default, Eq, PartialEq)]
 pub(crate) struct ReadArgs {
     /// Project only the requested response fields.

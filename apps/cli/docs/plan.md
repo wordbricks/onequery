@@ -376,7 +376,7 @@ if should_suggest_report(error) {
 ### Task status
 
 - [x] Phase 1: quick UX fix
-- [ ] Phase 2: diagnostics command
+- [x] Phase 2: diagnostics command
 - [ ] Phase 3: proto-backed support metadata
 - [ ] Phase 4: explicit issue creation
 
