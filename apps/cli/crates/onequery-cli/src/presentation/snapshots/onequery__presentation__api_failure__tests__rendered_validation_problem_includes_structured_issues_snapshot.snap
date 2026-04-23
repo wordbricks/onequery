@@ -3,16 +3,12 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Invalid Request
-Command: onequery query exec --source '' --sql "delete from events"
-Stage: execute_query
 Why: request body contains invalid fields
-Request ID: req_validation
 Hint: correct the request and retry
 Validation:
   - source: source is required (too_small)
   - sql: query must be read-only (custom)
 Try:
   - correct the request and retry
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
+Request ID: req_validation
+Explain: onequery explain invalid_request

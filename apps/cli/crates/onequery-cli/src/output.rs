@@ -1,6 +1,5 @@
 use std::fmt;
 
-use clap::ValueEnum;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde::Serialize;
@@ -8,19 +7,28 @@ use serde_json::Map;
 use serde_json::Value;
 use serde_json::json;
 
+use crate::diagnostics::JSON_REPORT_COMMAND;
+use crate::diagnostics::TEXT_REPORT_COMMAND;
+use crate::diagnostics::report_suggestion;
+use crate::explain::explain_reference_for_error;
 use crate::output_metadata::SanitizationMetadata;
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-#[value(rename_all = "lower")]
-pub(crate) enum RequestedOutputMode {
-    Text,
-    Json,
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum EffectiveOutputMode {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum StdoutTarget {
+    Tty,
+    NonTty,
+}
+
+impl StdoutTarget {
+    pub(crate) const fn from_is_terminal(is_terminal: bool) -> Self {
+        if is_terminal { Self::Tty } else { Self::NonTty }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -285,14 +293,13 @@ pub(crate) fn render_separator_row(widths: &[usize]) -> String {
 }
 
 pub(crate) fn resolve_output_mode(
-    requested: Option<RequestedOutputMode>,
-    stdout_is_tty: bool,
+    requested_mode: Option<EffectiveOutputMode>,
+    stdout_target: StdoutTarget,
 ) -> EffectiveOutputMode {
-    match requested {
-        Some(RequestedOutputMode::Text) => EffectiveOutputMode::Text,
-        Some(RequestedOutputMode::Json) => EffectiveOutputMode::Json,
-        None if stdout_is_tty => EffectiveOutputMode::Text,
-        None => EffectiveOutputMode::Json,
+    match (requested_mode, stdout_target) {
+        (Some(requested_mode), _) => requested_mode,
+        (None, StdoutTarget::Tty) => EffectiveOutputMode::Text,
+        (None, StdoutTarget::NonTty) => EffectiveOutputMode::Json,
     }
 }
 
@@ -381,8 +388,16 @@ pub(crate) fn render_output_payload(
 }
 
 pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> String {
+    render_error_with_verbosity(error, mode, false)
+}
+
+pub(crate) fn render_error_with_verbosity(
+    error: &CliError,
+    mode: EffectiveOutputMode,
+    verbose: bool,
+) -> String {
     match mode {
-        EffectiveOutputMode::Text => render_text_error(error),
+        EffectiveOutputMode::Text => render_text_error(error, verbose),
         EffectiveOutputMode::Json => {
             let mut error_body = Map::new();
             if let Some(code) = &error.code {
@@ -421,6 +436,37 @@ pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> Strin
             }
             if let Some(retry_after_ms) = error.retry_after_ms {
                 error_body.insert("retryAfterMs".to_owned(), json!(retry_after_ms));
+            }
+            if !error.try_next.is_empty() {
+                error_body.insert(
+                    "tryNext".to_owned(),
+                    Value::Array(
+                        error
+                            .try_next
+                            .iter()
+                            .map(|step| Value::String(step.clone()))
+                            .collect(),
+                    ),
+                );
+            }
+            if let Some((code, command)) = explain_reference_for_error(error) {
+                error_body.insert(
+                    "explain".to_owned(),
+                    json!({
+                        "code": code,
+                        "command": command,
+                    }),
+                );
+            }
+            if let Some(report) = report_suggestion(error) {
+                error_body.insert(
+                    "report".to_owned(),
+                    json!({
+                        "recommended": report.recommended,
+                        "command": JSON_REPORT_COMMAND,
+                        "reason": report.reason,
+                    }),
+                );
             }
 
             let mut envelope = Map::new();
@@ -478,17 +524,16 @@ fn extract_sanitization(data: &Value) -> Option<Value> {
     }
 }
 
-fn render_text_error(error: &CliError) -> String {
-    let mut lines = vec![
-        format!("Error: {}", error.title),
-        format!("Command: {}", error.command),
-        format!("Stage: {}", error.stage.as_str()),
-        format!("Why: {}", error.why),
-    ];
-
-    if let Some(request_id) = &error.request_id {
-        lines.push(format!("Request ID: {request_id}"));
+fn render_text_error(error: &CliError, verbose: bool) -> String {
+    let mut lines = vec![format!("Error: {}", error.title)];
+    if verbose {
+        lines.push(format!("Command: {}", error.command));
+        lines.push(format!("Stage: {}", error.stage.as_str()));
+        if let Some(code) = &error.code {
+            lines.push(format!("Code: {code}"));
+        }
     }
+    lines.push(format!("Why: {}", error.why));
 
     if let Some(hint) = &error.hint {
         lines.push(format!("Hint: {hint}"));
@@ -516,12 +561,26 @@ fn render_text_error(error: &CliError) -> String {
         }
     }
 
-    // Surfacing a pre-filled GitHub issue URL on every text error lets users
-    // report bugs without manually rebuilding the trace. JSON output stays
-    // clean for scripting.
-    lines.push(String::new());
-    lines.push("Think this is a bug? Report it with the error already filled in:".to_owned());
-    lines.push(format!("  {}", crate::issue_report::build_issue_url(error)));
+    if let Some(request_id) = &error.request_id {
+        lines.push(format!("Request ID: {request_id}"));
+    }
+
+    if let Some((code, command)) = explain_reference_for_error(error) {
+        lines.push(format!("Explain: {command}"));
+        if error.code.as_deref() != Some(code.as_str()) {
+            lines.push(format!("Explain code: {code}"));
+        }
+    }
+
+    if let Some(report) = report_suggestion(error) {
+        let report_label = if report.recommended {
+            "Report"
+        } else {
+            "Report if reproducible"
+        };
+        lines.push(String::new());
+        lines.push(format!("{report_label}: {TEXT_REPORT_COMMAND}"));
+    }
 
     lines.join("\n")
 }
@@ -533,6 +592,8 @@ mod tests {
     use std::sync::atomic::Ordering;
 
     use insta::assert_snapshot;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -542,8 +603,9 @@ mod tests {
     use super::CommandOutput;
     use super::EffectiveOutputMode;
     use super::RenderedOutput;
-    use super::RequestedOutputMode;
+    use super::StdoutTarget;
     use super::render_error;
+    use super::render_error_with_verbosity;
     use super::render_output;
     use super::render_output_payload;
     use super::resolve_output_mode;
@@ -568,6 +630,51 @@ mod tests {
 
         crate::test_support::snapshot_settings_with_issue_url_filter()
             .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_verbose_snapshot() {
+        let rendered = render_error_with_verbosity(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "server rejected write query",
+                vec!["retry with a read-only SELECT".to_owned()],
+            )
+            .with_code(Some("query_rejected".to_owned()))
+            .with_request_id(Some("req_verbose".to_owned()))
+            .with_hint(Some("queries must be read-only".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "query_rejected".to_owned(),
+            })),
+            EffectiveOutputMode::Text,
+            true,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_text_error_keeps_default_surface_compact() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "server rejected write query",
+                vec!["retry with a read-only SELECT".to_owned()],
+            )
+            .with_code(Some("query_rejected".to_owned()))
+            .with_request_id(Some("req_compact".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        assert_eq!(rendered.contains("Command:"), false);
+        assert_eq!(rendered.contains("Stage:"), false);
     }
 
     #[test]
@@ -605,29 +712,122 @@ mod tests {
     }
 
     #[test]
-    fn resolve_output_mode_uses_explicit_text_when_stdout_is_not_a_tty() {
+    fn render_reportable_error_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "failed to decode query response",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_code(Some("decode_error".to_owned()))
+            .with_request_id(Some("req_decode".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_report_if_reproducible_error_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "warehouse execution unexpectedly failed",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_code(Some("query_execution_failed".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_with_support_action_adds_explain_hint_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "source failed",
+                "onequery source show warehouse",
+                ErrorStage::ResolveSource,
+                "no source named warehouse exists",
+                vec!["run onequery source list".to_owned()],
+            )
+            .with_code(Some("source_not_found".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "source_not_found".to_owned(),
+            })),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_with_server_code_and_no_support_action_omits_explain_hint() {
+        let rendered = render_error(
+            &CliError::new(
+                "source failed",
+                "onequery source show warehouse",
+                ErrorStage::ResolveSource,
+                "no source named warehouse exists",
+                vec!["run onequery source list".to_owned()],
+            )
+            .with_code(Some("source_not_found".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        assert_eq!(rendered.contains("Explain:"), false);
+    }
+
+    #[test]
+    fn resolve_output_mode_uses_explicit_json_when_requested() {
+        for stdout_target in [StdoutTarget::Tty, StdoutTarget::NonTty] {
+            assert_eq!(
+                resolve_output_mode(Some(EffectiveOutputMode::Json), stdout_target),
+                EffectiveOutputMode::Json
+            );
+        }
+    }
+
+    #[test]
+    fn resolve_output_mode_uses_explicit_text_when_requested() {
+        for stdout_target in [StdoutTarget::Tty, StdoutTarget::NonTty] {
+            assert_eq!(
+                resolve_output_mode(Some(EffectiveOutputMode::Text), stdout_target),
+                EffectiveOutputMode::Text
+            );
+        }
+    }
+
+    #[test]
+    fn resolve_output_mode_defaults_to_text_when_stdout_is_a_tty() {
         assert_eq!(
-            resolve_output_mode(Some(RequestedOutputMode::Text), false),
+            resolve_output_mode(None, StdoutTarget::Tty),
             EffectiveOutputMode::Text
         );
     }
 
     #[test]
-    fn resolve_output_mode_uses_explicit_json_when_stdout_is_a_tty() {
+    fn resolve_output_mode_defaults_to_json_when_stdout_is_not_a_tty() {
         assert_eq!(
-            resolve_output_mode(Some(RequestedOutputMode::Json), true),
+            resolve_output_mode(None, StdoutTarget::NonTty),
             EffectiveOutputMode::Json
         );
-    }
-
-    #[test]
-    fn resolve_output_mode_defaults_to_text_when_stdout_is_a_tty() {
-        assert_eq!(resolve_output_mode(None, true), EffectiveOutputMode::Text);
-    }
-
-    #[test]
-    fn resolve_output_mode_defaults_to_json_when_stdout_is_not_a_tty() {
-        assert_eq!(resolve_output_mode(None, false), EffectiveOutputMode::Json);
     }
 
     #[test]
@@ -718,7 +918,12 @@ mod tests {
             .with_code(Some("query_rejected".to_owned()))
             .with_status(Some(400))
             .with_request_id(Some("req_123".to_owned()))
-            .with_hint(Some("queries must be read-only".to_owned())),
+            .with_hint(Some("queries must be read-only".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::None,
+                reason: "user_actionable".to_owned(),
+                explain_slug: "query_rejected".to_owned(),
+            })),
             EffectiveOutputMode::Json,
         );
 
@@ -737,6 +942,60 @@ mod tests {
                     "detail": "server rejected write query",
                     "retryable": false,
                     "hint": "queries must be read-only",
+                    "tryNext": ["retry with a read-only SELECT"],
+                    "explain": {
+                        "code": "query_rejected",
+                        "command": "onequery explain query_rejected",
+                    },
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn render_error_json_marks_report_if_reproducible_as_not_recommended() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "warehouse execution unexpectedly failed",
+                vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+            )
+            .with_command_path(Some("query exec".to_owned()))
+            .with_code(Some("query_execution_failed".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned()))
+            .with_support_action(Some(CliSupportAction {
+                kind: CliSupportActionKind::ReportIfReproducible,
+                reason: "query_execution_failure".to_owned(),
+                explain_slug: "query_execution_failed".to_owned(),
+            })),
+            EffectiveOutputMode::Json,
+        );
+
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered)
+                .expect("expected JSON error envelope"),
+            json!({
+                "ok": false,
+                "command": "query exec",
+                "requestId": "req_query_failure",
+                "error": {
+                    "code": "query_execution_failed",
+                    "title": "query failed",
+                    "stage": "execute_query",
+                    "detail": "warehouse execution unexpectedly failed",
+                    "retryable": false,
+                    "tryNext": ["retry onequery query exec --source warehouse --sql \"select 1\""],
+                    "explain": {
+                        "code": "query_execution_failed",
+                        "command": "onequery explain query_execution_failed",
+                    },
+                    "report": {
+                        "recommended": false,
+                        "command": "onequery doctor report --last --json",
+                        "reason": "query_execution_failure",
+                    }
                 }
             })
         );
@@ -907,9 +1166,24 @@ mod tests {
             EffectiveOutputMode::Json,
         );
 
-        assert_snapshot!(
-            rendered,
-            @r#"{"error":{"detail":"boom","retryable":false,"stage":"render","title":"failed to render command output"},"ok":false}"#
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&rendered)
+                .expect("expected JSON render failure"),
+            json!({
+                "ok": false,
+                "error": {
+                    "title": "failed to render command output",
+                    "stage": "render",
+                    "detail": "boom",
+                    "retryable": false,
+                    "tryNext": ["retry onequery query"],
+                    "report": {
+                        "recommended": true,
+                        "command": "onequery doctor report --last --json",
+                        "reason": "render_failure",
+                    }
+                }
+            })
         );
     }
 }

@@ -3,40 +3,40 @@
 set -euo pipefail
 
 # ── JSON output mode ─────────────────────────────────────────────────────────
-# Any command supports --output json for machine-readable output.
-# When stdout is not a TTY, JSON is the default.
+# Any command supports --json for machine-readable output.
+# When stdout is not a TTY, JSON is the default; use --text to force text.
 
-onequery auth whoami --output json
+onequery auth whoami --json
 
-onequery org list --output json
+onequery org list --json
 
-onequery source list --output json
+onequery source list --json
 
-onequery config get api.server_url --output json
+onequery config get api.server_url --json
 
 # ── Pipe to jq ───────────────────────────────────────────────────────────────
 # Extract specific fields from JSON output.
-onequery source list --output json | jq '.sources[].key'
+onequery source list --json | jq '.sources[].key'
 
-onequery org list --output json | jq '.orgs[] | {slug, name}'
+onequery org list --json | jq '.orgs[] | {slug, name}'
 
 # ── Scripting patterns ───────────────────────────────────────────────────────
 # Check if a source exists before querying.
-if onequery source show warehouse --output json 2>/dev/null; then
+if onequery source show warehouse --json 2>/dev/null; then
   onequery query exec --source warehouse --sql "SELECT 1"
 fi
 
 # Iterate over sources.
-for key in $(onequery source list --output json | jq -r '.sources[].key'); do
+for key in $(onequery source list --json | jq -r '.sources[].key'); do
   echo "Source: $key"
-  onequery source show "$key" --output json
+  onequery source show "$key" --json
 done
 
 # ── Verbose mode ─────────────────────────────────────────────────────────────
 # Add --verbose to emit workflow tracing on stderr while keeping stdout clean.
 onequery query exec --source warehouse \
   --sql "SELECT 1" \
-  --output json \
+  --json \
   --verbose 2>debug.log
 
 # ── Request ID tracing ───────────────────────────────────────────────────────

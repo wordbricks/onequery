@@ -15,10 +15,10 @@ pub(crate) fn lock_tracing_subscriber() -> MutexGuard<'static, ()> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
-/// Returns insta settings that collapse the long pre-filled GitHub issue URL
-/// from text error renderings to a stable `<REPORT_URL>` placeholder. The URL
-/// payload is covered by `issue_report::tests`, so error-rendering snapshots
-/// only need to confirm the line is present and correctly positioned.
+/// Returns insta settings that collapse any explicit GitHub issue draft URL to
+/// a stable `<REPORT_URL>` placeholder. The URL payload is covered by
+/// `issue_report::tests`, so higher-level snapshots only need to confirm that a
+/// report or issue affordance was rendered in the right place.
 pub(crate) fn snapshot_settings_with_issue_url_filter() -> insta::Settings {
     let mut settings = insta::Settings::clone_current();
     settings.add_filter(

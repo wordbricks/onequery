@@ -1,0 +1,11 @@
+---
+source: crates/onequery-cli/src/commands/doctor.rs
+expression: rendered
+---
+Created diagnostic report:
+  <tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md
+
+Create a GitHub issue with:
+  gh issue create -R wordbricks/onequery --label "bug" --label "cli" --title "[cli] decode_error" --body-file "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
+
+Review it before sharing.

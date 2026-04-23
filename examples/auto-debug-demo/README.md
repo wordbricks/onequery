@@ -63,7 +63,7 @@ sequenceDiagram
 ### Phase 1: Find the errors in the database
 
 ```bash
-onequery query exec --source demo-app-db --output json \
+onequery query exec --source demo-app-db --json \
   --sql "SELECT error_type, message, COUNT(*) AS occurrences
          FROM error_logs
          GROUP BY error_type, message
@@ -86,7 +86,7 @@ Three errors, same message. The code references a column called `completed_at`
 but does that column exist?
 
 ```bash
-onequery query exec --source demo-app-db --output json \
+onequery query exec --source demo-app-db --json \
   --sql "SELECT column_name, data_type
          FROM information_schema.columns
          WHERE table_name = 'todos'
@@ -112,7 +112,7 @@ Same CLI, different source:
 
 ```bash
 onequery api --source demo-github \
-  "/repos/$GITHUB_REPO/contents/src/routes/todos.ts" --output json
+  "/repos/$GITHUB_REPO/contents/src/routes/todos.ts" --json
 ```
 
 The agent finds the bug in the `PATCH` handler:

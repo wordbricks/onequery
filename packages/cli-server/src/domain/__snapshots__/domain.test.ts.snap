@@ -2,6 +2,21 @@
 
 exports[`cli domain model > keeps CLI problem metadata in the canonical catalog 1`] = `
 {
+  "notLoggedIn": {
+    "code": "not_logged_in",
+    "connectCode": "unauthenticated",
+    "hint": "run \`onequery auth login\`",
+    "retryable": false,
+    "stage": "auth",
+    "status": 401,
+    "support": {
+      "explainSlug": "not_logged_in",
+      "kind": "none",
+      "reason": "user_actionable",
+    },
+    "title": "Not Logged In",
+    "type": "https://onequery.invalid/problems/cli/not-logged-in",
+  },
   "sourceApiExecutionStateInvalid": {
     "code": "source_api_execution_state_invalid",
     "connectCode": "failed_precondition",
@@ -9,6 +24,11 @@ exports[`cli domain model > keeps CLI problem metadata in the canonical catalog 
     "retryable": false,
     "stage": "execute_query",
     "status": 410,
+    "support": {
+      "explainSlug": "source_api_execution_state_invalid",
+      "kind": "none",
+      "reason": "user_actionable",
+    },
     "title": "Source API Execution State Invalid",
     "type": "https://onequery.invalid/problems/cli/source-api-execution-state-invalid",
   },
@@ -19,6 +39,11 @@ exports[`cli domain model > keeps CLI problem metadata in the canonical catalog 
     "retryable": false,
     "stage": "resolve_source",
     "status": 404,
+    "support": {
+      "explainSlug": "source_not_found",
+      "kind": "none",
+      "reason": "user_actionable",
+    },
     "title": "Source Not Found",
     "type": "https://onequery.invalid/problems/cli/source-not-found",
   },

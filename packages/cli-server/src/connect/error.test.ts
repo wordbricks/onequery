@@ -5,6 +5,7 @@ import {
   CLI_PROBLEM_CATALOG,
   cliProblemCodeToString,
   cliProblemStageToString,
+  cliSupportActionKindToString,
 } from "../domain/problems";
 import type { CliProblemCatalogEntry, CliProblemKey } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../error";
@@ -24,14 +25,25 @@ function summarizeConnectError(error: ConnectError) {
         reason: violation.reason,
       })),
     })),
-    cliDetails: error.findDetails(CliErrorDetailSchema).map((detail) => ({
-      code: cliProblemCodeToString(detail.code),
-      ...(detail.hint ? { hint: detail.hint } : {}),
-      ...(detail.requestId ? { requestId: detail.requestId } : {}),
-      retryable: detail.retryable,
-      stage: cliProblemStageToString(detail.stage),
-      title: detail.title,
-    })),
+    cliDetails: error.findDetails(CliErrorDetailSchema).map((detail) => {
+      const support = detail.support
+        ? {
+            explainSlug: detail.support.explainSlug,
+            kind: cliSupportActionKindToString(detail.support.kind),
+            reason: detail.support.reason,
+          }
+        : undefined;
+
+      return {
+        code: cliProblemCodeToString(detail.code),
+        ...(detail.hint ? { hint: detail.hint } : {}),
+        ...(detail.requestId ? { requestId: detail.requestId } : {}),
+        retryable: detail.retryable,
+        stage: cliProblemStageToString(detail.stage),
+        ...(support ? { support } : {}),
+        title: detail.title,
+      };
+    }),
     code: Code[error.code],
     metadata: Object.fromEntries(error.metadata.entries()),
     rawMessage: error.rawMessage,

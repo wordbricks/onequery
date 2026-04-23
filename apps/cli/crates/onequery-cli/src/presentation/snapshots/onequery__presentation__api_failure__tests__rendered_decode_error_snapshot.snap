@@ -3,12 +3,10 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: query failed
-Command: onequery query exec --source warehouse --sql "select 1"
-Stage: execute_query
 Why: failed to decode query response: expected value at line 1 column 1
-Request ID: req_decode
 Try:
   - retry onequery query exec --source warehouse --sql "select 1"
+Request ID: req_decode
+Explain: onequery explain decode_error
 
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
+Report: onequery doctor report --last

@@ -4,6 +4,8 @@ use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
 use http::HeaderMap;
+use onequery_cli_core::error::CliSupportAction;
+use onequery_cli_core::error::CliSupportActionKind;
 use onequery_cli_core::error::ErrorStage;
 
 use crate::output_metadata::SanitizationMetadata;
@@ -49,6 +51,7 @@ pub(crate) struct ApiProblem {
     pub(crate) hint: Option<String>,
     pub(crate) request_id: Option<String>,
     pub(crate) validation_issues: Vec<ApiValidationIssue>,
+    pub(crate) support_action: Option<CliSupportAction>,
 }
 
 impl ApiProblem {
@@ -103,6 +106,7 @@ pub(crate) fn conversion_failure(stage: ErrorStage, message: impl Into<String>) 
         hint: None,
         request_id: None,
         validation_issues: Vec::new(),
+        support_action: None,
     })
 }
 
@@ -238,6 +242,14 @@ fn parse_connect_problem_details(
         .stage
         .and_then(cli_problem_stage_to_error_stage)
         .ok_or_else(|| "server returned invalid ProblemStage".to_owned())?;
+    let support_action = cli_error
+        .support
+        .into_option()
+        .ok_or_else(|| "server returned CliErrorDetail without support metadata".to_owned())
+        .and_then(|support_action| {
+            support_action_from_generated(support_action)
+                .ok_or_else(|| "server returned invalid CliSupportAction".to_owned())
+        })?;
 
     Ok(Some(ApiProblem {
         title,
@@ -249,6 +261,7 @@ fn parse_connect_problem_details(
         hint: non_empty(cli_error.hint),
         request_id: non_empty(cli_error.request_id).or(request_id),
         validation_issues: parsed.validation_issues,
+        support_action: Some(support_action),
     }))
 }
 
@@ -302,6 +315,45 @@ fn cli_problem_stage_to_error_stage(
         Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_ORG) => Some(ErrorStage::ResolveOrg),
         Some(types::ProblemStage::PROBLEM_STAGE_RESOLVE_SOURCE) => Some(ErrorStage::ResolveSource),
         Some(types::ProblemStage::PROBLEM_STAGE_UNSPECIFIED) | None => None,
+    }
+}
+
+fn support_action_from_generated(
+    support_action: types::CliSupportAction,
+) -> Option<CliSupportAction> {
+    let kind = support_action
+        .kind
+        .and_then(known_cli_support_action_kind)?;
+    let reason = non_empty(support_action.reason)?;
+    let explain_slug = non_empty(support_action.explain_slug)?;
+
+    Some(CliSupportAction {
+        kind,
+        reason,
+        explain_slug,
+    })
+}
+
+fn known_cli_support_action_kind(
+    kind: buffa::EnumValue<types::SupportActionKind>,
+) -> Option<CliSupportActionKind> {
+    match kind.as_known() {
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_NONE) => {
+            Some(CliSupportActionKind::None)
+        }
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_RETRY) => {
+            Some(CliSupportActionKind::Retry)
+        }
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_EXPLAIN) => {
+            Some(CliSupportActionKind::Explain)
+        }
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_REPORT_IF_REPRODUCIBLE) => {
+            Some(CliSupportActionKind::ReportIfReproducible)
+        }
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_REPORT_RECOMMENDED) => {
+            Some(CliSupportActionKind::ReportRecommended)
+        }
+        Some(types::SupportActionKind::SUPPORT_ACTION_KIND_UNSPECIFIED) | None => None,
     }
 }
 
@@ -378,6 +430,8 @@ mod tests {
     use buffa::Message;
     use connectrpc::ConnectError;
     use connectrpc::ErrorCode;
+    use onequery_cli_core::error::CliSupportAction;
+    use onequery_cli_core::error::CliSupportActionKind;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
@@ -422,6 +476,14 @@ mod tests {
                 hint: Some("wait briefly, then retry `onequery auth login`".to_owned()),
                 retryable: Some(true),
                 request_id: Some("req_problem".to_owned()),
+                support: buffa::MessageField::some(generated::types::CliSupportAction {
+                    kind: Some(
+                        generated::types::SupportActionKind::SUPPORT_ACTION_KIND_RETRY.into(),
+                    ),
+                    reason: Some("transient".to_owned()),
+                    explain_slug: Some("login_rate_limited".to_owned()),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
         ));
@@ -464,6 +526,83 @@ mod tests {
                     message: "must be a hostname".to_owned(),
                     code: "invalid_string".to_owned(),
                 }],
+                support_action: Some(CliSupportAction {
+                    kind: CliSupportActionKind::Retry,
+                    reason: "transient".to_owned(),
+                    explain_slug: "login_rate_limited".to_owned(),
+                }),
+            })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_rejects_typed_cli_problem_details_without_support_metadata() {
+        let mut error = ConnectError::new(
+            ErrorCode::PermissionDenied,
+            "stored credentials are invalid",
+        );
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_header_fallback"),
+        );
+        error.details.push(error_detail(
+            "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
+            &generated::types::CliErrorDetail {
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
+                title: Some("Not Logged In".to_owned()),
+                hint: Some("run `onequery auth login`".to_owned()),
+                retryable: Some(false),
+                request_id: Some("req_problem".to_owned()),
+                ..Default::default()
+            },
+        ));
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::Internal),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::Internal,
+                message: "server returned CliErrorDetail without support metadata".to_owned(),
+                request_id: Some("req_header_fallback".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn failure_from_connect_rejects_unrecognized_support_metadata() {
+        let mut error = ConnectError::new(
+            ErrorCode::PermissionDenied,
+            "stored credentials are invalid",
+        );
+        error.response_headers.insert(
+            "x-request-id",
+            http::HeaderValue::from_static("req_header_fallback"),
+        );
+        error.details.push(error_detail(
+            "type.googleapis.com/onequery.cli.v1.CliErrorDetail",
+            &generated::types::CliErrorDetail {
+                code: Some(generated::types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN.into()),
+                stage: Some(generated::types::ProblemStage::PROBLEM_STAGE_AUTH.into()),
+                title: Some("Not Logged In".to_owned()),
+                hint: Some("run `onequery auth login`".to_owned()),
+                retryable: Some(false),
+                request_id: Some("req_problem".to_owned()),
+                support: buffa::MessageField::some(generated::types::CliSupportAction {
+                    kind: Some(999.into()),
+                    reason: Some("user_actionable".to_owned()),
+                    explain_slug: Some("not_logged_in".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+
+        assert_eq!(
+            failure_from_connect(error, ErrorStage::Internal),
+            ApiFailure::Decode(super::DecodeFailure {
+                stage: ErrorStage::Internal,
+                message: "server returned invalid CliSupportAction".to_owned(),
+                request_id: Some("req_header_fallback".to_owned()),
             })
         );
     }

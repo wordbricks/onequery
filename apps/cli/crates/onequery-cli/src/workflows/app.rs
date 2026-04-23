@@ -267,6 +267,7 @@ mod tests {
                 raw_config_overrides: Vec::new(),
                 request_id: None,
                 timeout_sec: None,
+                requested_output_mode: None,
                 output_mode: crate::output::EffectiveOutputMode::Text,
                 verbose: false,
             },

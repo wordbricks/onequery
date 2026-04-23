@@ -98,17 +98,12 @@ fn login_denied_error_snapshot_uses_canonical_retry_command() {
     crate::test_support::snapshot_settings_with_issue_url_filter().bind(|| {
         assert_snapshot!(
             render_error(&error, EffectiveOutputMode::Text),
-            @r#"
-Error: login denied
-Command: onequery auth login
-Stage: auth
-Why: browser authorization was denied before token exchange completed
-Try:
-  - onequery auth login
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
-"#
+            @"
+        Error: login denied
+        Why: browser authorization was denied before token exchange completed
+        Try:
+          - onequery auth login
+        "
         );
     });
 }
@@ -707,6 +702,14 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
                 hint: Some("run `onequery auth login` again".to_owned()),
                 retryable: Some(false),
                 request_id: Some("req_denied".to_owned()),
+                support: buffa::MessageField::some(generated::types::CliSupportAction {
+                    kind: Some(
+                        generated::types::SupportActionKind::SUPPORT_ACTION_KIND_NONE.into(),
+                    ),
+                    reason: Some("user_actionable".to_owned()),
+                    explain_slug: Some("login_denied".to_owned()),
+                    ..Default::default()
+                }),
                 ..Default::default()
             }
             .encode_to_bytes(),

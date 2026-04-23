@@ -8,6 +8,7 @@ use clap::Args;
 use clap::Subcommand;
 use clap::ValueHint;
 
+use crate::explain::ExplainCode;
 use crate::identifiers::OrgSlug;
 use crate::identifiers::RequestId;
 use crate::identifiers::SourceKey;
@@ -179,6 +180,41 @@ pub(crate) struct SourceConnectArgs {
     /// Create one source from an inline JSON payload.
     #[arg(long, value_parser = parse_trimmed_non_empty, value_name = "JSON")]
     pub input: Option<String>,
+}
+
+#[derive(Debug, Clone, Subcommand, Eq, PartialEq)]
+#[command(arg_required_else_help = true)]
+pub(crate) enum DoctorSubcommand {
+    /// Create a redacted diagnostic report from the latest saved failure.
+    #[command(arg_required_else_help = true)]
+    Report(DoctorReportArgs),
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+#[group(id = "doctor_report_selector", required = true, multiple = false)]
+pub(crate) struct DoctorReportSelectorArgs {
+    /// Use the latest saved diagnostics snapshot.
+    #[arg(long)]
+    pub last: bool,
+    /// Use the latest saved diagnostics snapshot when it matches this request ID.
+    #[arg(long, value_name = "REQUEST_ID", value_parser = parse_request_id)]
+    pub request_id: Option<RequestId>,
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct DoctorReportArgs {
+    #[command(flatten)]
+    pub selector: DoctorReportSelectorArgs,
+    /// Open a GitHub issue draft in the browser after writing the report file.
+    #[arg(long, conflicts_with = "text")]
+    pub open: bool,
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct ExplainArgs {
+    /// Explain this stable CLI error code.
+    #[arg(value_name = "CODE", value_enum)]
+    pub code: ExplainCode,
 }
 
 #[derive(Debug, Clone, Args, Default, Eq, PartialEq)]

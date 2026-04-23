@@ -17,6 +17,8 @@ Commands:
   gateway  Run the self-host gateway in foreground by default or manage the background lifecycle
   upgrade  Upgrade this published CLI installation in place
   api      Describe or execute a connected source API
+  explain  Explain a stable CLI error code
+  doctor   Inspect local CLI state and diagnostics
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -28,5 +30,10 @@ Global Options:
   -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
       --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
       --timeout <SECONDS>        Override the request timeout in seconds for this invocation
-      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --json                     Emit machine-readable JSON output
+      --text                     Emit human-readable text output
       --verbose                  Emit workflow progress and retry tracing to stderr
+
+Support:
+  onequery doctor report --last     Create a redacted diagnostic report
+  onequery explain <code>           Explain a stable error code

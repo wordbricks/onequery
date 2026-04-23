@@ -9,11 +9,11 @@ use onequery_cli_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
+use crate::explain::ExplainCode;
 use crate::identifiers::test_org_slug;
 use crate::identifiers::test_request_id;
 use crate::identifiers::test_source_key;
 use crate::output::EffectiveOutputMode;
-use crate::output::RequestedOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
 use super::ApiArgs;
@@ -23,6 +23,10 @@ use super::Command;
 use super::ConfigCommand;
 use super::ConfigKey;
 use super::ConfigSetKey;
+use super::DoctorReportArgs;
+use super::DoctorReportSelectorArgs;
+use super::DoctorSubcommand;
+use super::ExplainArgs;
 use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
@@ -99,6 +103,33 @@ fn api_help_output_snapshot_targets_api_surface() {
 #[test]
 fn gateway_help_output_snapshot_targets_gateway_surface() {
     assert_snapshot!(rendered_display(&["onequery", "gateway", "--help"]));
+}
+
+#[test]
+fn doctor_help_output_snapshot_targets_diagnostics_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "doctor", "--help"]));
+}
+
+#[test]
+fn bare_doctor_report_renders_help_snapshot() {
+    assert_snapshot!(rendered_display(&["onequery", "doctor", "report"]));
+}
+
+#[test]
+fn explain_help_output_snapshot_targets_support_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "explain", "--help"]));
+}
+
+#[test]
+fn bare_explain_renders_help_snapshot() {
+    assert_snapshot!(rendered_display(&["onequery", "explain"]));
+}
+
+#[test]
+fn doctor_report_help_output_snapshot_targets_issue_creation_surface() {
+    assert_snapshot!(rendered_display(&[
+        "onequery", "doctor", "report", "--help"
+    ]));
 }
 
 #[test]
@@ -216,14 +247,26 @@ fn parse_invocation_accepts_config_get_keys() {
 }
 
 #[test]
+fn parse_invocation_accepts_explain_codes() {
+    let invocation = parse_invocation(&["onequery", "explain", "query_rejected"]);
+
+    assert_eq!(invocation.command.command_path(), "explain");
+    match invocation.command {
+        Command::Explain(ExplainArgs { code }) => {
+            assert_eq!(code, ExplainCode::QueryRejected);
+        }
+        other => panic!("expected explain command, got {other:?}"),
+    }
+}
+
+#[test]
 fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_output_mode() {
     let invocation = parse_invocation(&[
         "onequery",
         "backup",
         "--archive-path",
         "/tmp/onequery-backup.tar.gz",
-        "--output",
-        "json",
+        "--json",
     ]);
 
     match invocation.command {
@@ -235,6 +278,10 @@ fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_
             assert_eq!(
                 archive_path,
                 Some(PathBuf::from("/tmp/onequery-backup.tar.gz"))
+            );
+            assert_eq!(
+                invocation.global.requested_output_mode,
+                Some(EffectiveOutputMode::Json)
             );
             assert_eq!(invocation.global.output_mode, EffectiveOutputMode::Json);
         }
@@ -273,6 +320,171 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
         invocation.command,
         Command::Debug(super::DebugSubcommand::Config)
     ));
+}
+
+#[test]
+fn parse_invocation_accepts_doctor_report_and_global_output_overrides() {
+    for (
+        stdout_is_tty,
+        args,
+        expected_requested_output_mode,
+        expected_output_mode,
+        expected_command,
+    ) in [
+        (
+            true,
+            &["onequery", "doctor", "report", "--last"][..],
+            None,
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: false,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last"][..],
+            None,
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: false,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last", "--text"][..],
+            Some(EffectiveOutputMode::Text),
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: false,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--last", "--json"][..],
+            Some(EffectiveOutputMode::Json),
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: false,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--last", "--open"][..],
+            None,
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: true,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last", "--open", "--json"][..],
+            Some(EffectiveOutputMode::Json),
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                open: true,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--request-id", "req_123"][..],
+            None,
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: false,
+                    request_id: Some(test_request_id("req_123")),
+                },
+                open: false,
+            },
+        ),
+    ] {
+        let ParseOutcome::Invocation(invocation) =
+            super::parse::parse_invocation_from_with_stdout_tty(&argv(args), stdout_is_tty)
+                .expect("expected invocation output")
+        else {
+            panic!("expected invocation output");
+        };
+        let invocation = *invocation;
+
+        assert_eq!(
+            invocation.global.requested_output_mode,
+            expected_requested_output_mode
+        );
+        assert_eq!(invocation.global.output_mode, expected_output_mode);
+        assert_eq!(invocation.command.command_path(), "doctor report");
+        match invocation.command {
+            Command::Doctor(DoctorSubcommand::Report(actual_command)) => {
+                assert_eq!(actual_command, expected_command);
+            }
+            other => panic!("expected doctor report command, got {other:?}"),
+        }
+    }
+}
+
+#[test]
+fn parse_invocation_rejects_doctor_report_text_and_open_together() {
+    let error = parse_error(&["onequery", "doctor", "report", "--last", "--text", "--open"]);
+
+    assert_eq!(error.title, "invalid command");
+    assert!(
+        error
+            .why
+            .contains("the argument '--text' cannot be used with '--open'")
+            || error
+                .why
+                .contains("the argument '--open' cannot be used with '--text'"),
+        "expected clap conflict message, got {}",
+        error.why
+    );
+}
+
+#[test]
+fn parse_invocation_rejects_doctor_report_last_and_request_id_together() {
+    let error = parse_error(&[
+        "onequery",
+        "doctor",
+        "report",
+        "--last",
+        "--request-id",
+        "req_123",
+    ]);
+
+    assert_eq!(error.title, "invalid command");
+    assert!(
+        error
+            .why
+            .contains("the argument '--last' cannot be used with '--request-id <REQUEST_ID>'")
+            || error
+                .why
+                .contains("the argument '--request-id <REQUEST_ID>' cannot be used with '--last'"),
+        "expected clap conflict message, got {}",
+        error.why
+    );
 }
 
 #[test]
@@ -572,18 +784,23 @@ fn parse_invocation_accepts_auth_session_refresh() {
 }
 
 #[test]
-fn requested_output_from_args_reads_long_flag_syntax() {
+fn requested_output_mode_from_args_detects_global_output_flags_anywhere() {
     for (args, expected) in [
+        (&["onequery", "--json"][..], Some(EffectiveOutputMode::Json)),
         (
-            &["onequery", "--output", "json"][..],
-            Some(RequestedOutputMode::Json),
+            &["onequery", "doctor", "report", "--json"][..],
+            Some(EffectiveOutputMode::Json),
         ),
         (
-            &["onequery", "--output=text"][..],
-            Some(RequestedOutputMode::Text),
+            &["onequery", "doctor", "report", "--text"][..],
+            Some(EffectiveOutputMode::Text),
         ),
+        (&["onequery", "org", "list"][..], None),
     ] {
-        assert_eq!(super::requested_output_from_args(&argv(args)), expected);
+        assert_eq!(
+            super::requested_output_mode_from_args(&argv(args)),
+            expected
+        );
     }
 }
 

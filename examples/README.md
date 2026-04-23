@@ -331,7 +331,7 @@ onequery source list --timeout 10
 ### JSON output with origin metadata
 
 ```bash
-onequery config get api.server_url --output json
+onequery config get api.server_url --json
 ```
 
 ---
@@ -413,35 +413,35 @@ onequery api --source github-org /user --silent -i
 Machine-readable JSON output for pipelines.
 ([script](./07-json-output.sh))
 
-Any command supports `--output json`. When stdout is not a TTY, JSON is the
-default.
+Any command supports `--json` and `--text`. When stdout is not a TTY, JSON is
+the default; use `--text` to force human-readable output.
 
 ```bash
-onequery auth whoami --output json
-onequery org list --output json
-onequery source list --output json
-onequery config get api.server_url --output json
+onequery auth whoami --json
+onequery org list --json
+onequery source list --json
+onequery config get api.server_url --json
 ```
 
 ### Pipe to jq
 
 ```bash
-onequery source list --output json | jq '.sources[].key'
-onequery org list --output json | jq '.orgs[] | {slug, name}'
+onequery source list --json | jq '.sources[].key'
+onequery org list --json | jq '.orgs[] | {slug, name}'
 ```
 
 ### Scripting patterns
 
 ```bash
 # Check if a source exists before querying
-if onequery source show warehouse --output json 2>/dev/null; then
+if onequery source show warehouse --json 2>/dev/null; then
   onequery query exec --source warehouse --sql "SELECT 1"
 fi
 
 # Iterate over sources
-for key in $(onequery source list --output json | jq -r '.sources[].key'); do
+for key in $(onequery source list --json | jq -r '.sources[].key'); do
   echo "Source: $key"
-  onequery source show "$key" --output json
+  onequery source show "$key" --json
 done
 ```
 
@@ -450,7 +450,7 @@ done
 ```bash
 # --verbose emits workflow tracing on stderr while keeping stdout clean
 onequery query exec --source warehouse \
-  --sql "SELECT 1" --output json --verbose 2>debug.log
+  --sql "SELECT 1" --json --verbose 2>debug.log
 
 # --request-id attaches a caller-supplied ID for audit log tracing
 onequery query exec --source warehouse \

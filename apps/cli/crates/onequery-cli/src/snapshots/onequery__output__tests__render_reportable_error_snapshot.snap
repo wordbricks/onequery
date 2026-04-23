@@ -1,0 +1,12 @@
+---
+source: crates/onequery-cli/src/output.rs
+expression: rendered
+---
+Error: query failed
+Why: failed to decode query response
+Try:
+  - retry onequery query exec --source warehouse --sql "select 1"
+Request ID: req_decode
+Explain: onequery explain decode_error
+
+Report: onequery doctor report --last

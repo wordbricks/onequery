@@ -1,0 +1,12 @@
+---
+source: crates/onequery-cli/src/output.rs
+expression: rendered
+---
+Error: query failed
+Why: warehouse execution unexpectedly failed
+Try:
+  - retry onequery query exec --source warehouse --sql "select 1"
+Request ID: req_query_failure
+Explain: onequery explain query_execution_failed
+
+Report if reproducible: onequery doctor report --last

@@ -1,8 +1,7 @@
+use std::ffi::OsStr;
 use std::ffi::OsString;
 
-use clap::Parser;
-
-use crate::output::RequestedOutputMode;
+use crate::output::EffectiveOutputMode;
 
 pub(super) fn normalize_command_line(args: &[OsString]) -> String {
     let mut normalized = vec!["onequery".to_owned()];
@@ -126,20 +125,64 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
     (excerpt, characters.next().is_some())
 }
 
-// CONTEXT: parse errors still need an output mode before the main clap parse succeeds,
-// so this tiny probe ignores unrelated CLI failures and only extracts `--output`.
-#[derive(Debug, Parser)]
-#[command(
-    name = "onequery",
-    disable_help_flag = true,
-    disable_version_flag = true,
-    ignore_errors = true
-)]
-struct OutputModeProbe {
-    #[arg(long, global = true, value_enum)]
-    output: Option<RequestedOutputMode>,
+pub(crate) fn requested_output_mode_from_args(args: &[OsString]) -> Option<EffectiveOutputMode> {
+    args.iter()
+        .skip(1)
+        .take_while(|arg| arg.as_os_str() != OsStr::new("--"))
+        .fold(None, |requested_output_mode, arg| {
+            if arg.as_os_str() == OsStr::new("--json") {
+                Some(EffectiveOutputMode::Json)
+            } else if arg.as_os_str() == OsStr::new("--text") {
+                Some(EffectiveOutputMode::Text)
+            } else {
+                requested_output_mode
+            }
+        })
 }
 
-pub(crate) fn requested_output_from_args(args: &[OsString]) -> Option<RequestedOutputMode> {
-    OutputModeProbe::try_parse_from(args).ok()?.output
+pub(crate) fn requested_verbose_from_args(args: &[OsString]) -> bool {
+    args.iter()
+        .skip(1)
+        .take_while(|arg| arg.as_os_str() != OsStr::new("--"))
+        .any(|arg| arg.as_os_str() == OsStr::new("--verbose"))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsString;
+
+    use pretty_assertions::assert_eq;
+
+    use crate::output::EffectiveOutputMode;
+
+    use super::requested_output_mode_from_args;
+    use super::requested_verbose_from_args;
+
+    fn argv(args: &[&str]) -> Vec<OsString> {
+        args.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn requested_verbose_from_args_detects_the_global_flag() {
+        assert_eq!(
+            requested_verbose_from_args(&argv(&["onequery", "--verbose", "query", "exec"])),
+            true
+        );
+    }
+
+    #[test]
+    fn requested_output_mode_from_args_detects_the_global_flag() {
+        assert_eq!(
+            requested_output_mode_from_args(&argv(&["onequery", "--json", "doctor"])),
+            Some(EffectiveOutputMode::Json)
+        );
+        assert_eq!(
+            requested_output_mode_from_args(&argv(&["onequery", "doctor", "--text"])),
+            Some(EffectiveOutputMode::Text)
+        );
+        assert_eq!(
+            requested_output_mode_from_args(&argv(&["onequery", "--json", "--", "--text",])),
+            Some(EffectiveOutputMode::Json)
+        );
+    }
 }

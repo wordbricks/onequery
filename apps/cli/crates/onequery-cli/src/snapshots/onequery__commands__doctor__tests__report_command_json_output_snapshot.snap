@@ -1,0 +1,15 @@
+---
+source: crates/onequery-cli/src/commands/doctor.rs
+expression: pretty
+---
+{
+  "command": "doctor report",
+  "data": {
+    "diagnosticsPath": "<tmp>/onequery-data/last-error.json",
+    "githubCommand": "gh issue create -R wordbricks/onequery --label \"bug\" --label \"cli\" --title \"[cli] decode_error\" --body-file \"<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md\"",
+    "openedBrowser": false,
+    "reportPath": "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
+  },
+  "ok": true,
+  "warnings": []
+}

@@ -1,0 +1,25 @@
+---
+source: crates/onequery-cli/src/commands/explain.rs
+expression: pretty
+---
+{
+  "command": "explain",
+  "data": {
+    "code": "query_execution_failed",
+    "httpStatus": 500,
+    "reportCommand": "onequery doctor report --last",
+    "retryable": false,
+    "stage": "execute_query",
+    "summary": "The query reached execution, but the backing source or service failed unexpectedly.",
+    "support": {
+      "kind": "report_if_reproducible",
+      "reason": "query_execution_failure"
+    },
+    "title": "Query Execution Failed",
+    "tryNext": [
+      "retry onequery query exec --source <source> --sql \"select ...\""
+    ]
+  },
+  "ok": true,
+  "warnings": []
+}

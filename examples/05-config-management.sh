@@ -37,4 +37,4 @@ onequery source list --timeout 10
 
 # ── Config in JSON mode ─────────────────────────────────────────────────────
 # JSON output includes origin metadata (which layer set the value).
-onequery config get api.server_url --output json
+onequery config get api.server_url --json

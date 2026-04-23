@@ -746,17 +746,16 @@ pub(super) fn read_managed_runtime_pid(
     let state_path = runtime_state_path(paths.run_dir.as_path());
     let runtime_state = read_runtime_state_record(state_path.as_path(), command_line)?;
 
-    if let Some(lock_record) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)? {
-        if is_process_running(lock_record.pid)
-            && runtime_record_matches_data_dir(&lock_record.data_dir, paths.data_dir.as_path())
-            && runtime_state_matches_pid(
-                runtime_state.as_ref(),
-                lock_record.pid,
-                paths.data_dir.as_path(),
-            )
-        {
-            return Ok(Some(lock_record.pid));
-        }
+    if let Some(lock_record) = read_runtime_lock_record(paths.lock_path.as_path(), command_line)?
+        && is_process_running(lock_record.pid)
+        && runtime_record_matches_data_dir(&lock_record.data_dir, paths.data_dir.as_path())
+        && runtime_state_matches_pid(
+            runtime_state.as_ref(),
+            lock_record.pid,
+            paths.data_dir.as_path(),
+        )
+    {
+        return Ok(Some(lock_record.pid));
     }
 
     Ok(

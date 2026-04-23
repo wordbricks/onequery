@@ -36,7 +36,7 @@ fn run_api_json_with_startup_refresh_failure(extra_args: &[&str]) -> Output {
     let temp_dir =
         tempfile::tempdir().unwrap_or_else(|error| panic!("failed to create tempdir: {error}"));
     let mut command = Command::new(env!("CARGO_BIN_EXE_onequery"));
-    command.args(["--output", "json"]);
+    command.arg("--json");
     command.args(extra_args);
     command.args([
         "--timeout",

@@ -1,0 +1,9 @@
+---
+source: crates/onequery-cli/src/commands/doctor.rs
+expression: rendered
+---
+Error: failed to open GitHub issue draft
+Why: could not open browser automatically (launch denied)
+Try:
+  - gh issue create -R wordbricks/onequery --label "bug" --label "cli" --title "[cli] decode_error" --body-file "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
+  - review <tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md and paste it into a new GitHub issue

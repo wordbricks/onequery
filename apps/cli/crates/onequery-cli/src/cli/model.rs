@@ -12,7 +12,6 @@ use crate::config::RawCliConfigOverrides;
 use crate::identifiers::OrgSlug;
 use crate::identifiers::RequestId;
 use crate::output::EffectiveOutputMode;
-use crate::output::RequestedOutputMode;
 use crate::output::TerminalOutput;
 use crate::output::resolve_output_mode;
 
@@ -20,6 +19,8 @@ use super::args::ApiArgs;
 use super::args::AuthSubcommand;
 use super::args::BackupArgs;
 use super::args::DebugSubcommand;
+use super::args::DoctorSubcommand;
+use super::args::ExplainArgs;
 use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
@@ -30,6 +31,7 @@ use super::args::parse_request_id;
 use super::args::parse_trimmed_non_empty;
 
 const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
+const CLI_AFTER_HELP: &str = "Support:\n  onequery doctor report --last     Create a redacted diagnostic report\n  onequery explain <code>           Explain a stable error code";
 
 #[derive(Debug)]
 pub(crate) enum ParseOutcome {
@@ -42,6 +44,7 @@ pub(crate) enum ParseOutcome {
     name = "onequery",
     version,
     about = "OneQuery CLI",
+    after_help = CLI_AFTER_HELP,
     propagate_version = true,
     help_expected = true
 )]
@@ -100,12 +103,33 @@ struct GlobalArgs {
         value_parser = parse_non_zero_u64
     )]
     timeout_sec: Option<NonZeroU64>,
-    /// Choose text or JSON output.
-    #[arg(global = true, long, value_enum)]
-    output: Option<RequestedOutputMode>,
+    #[command(flatten)]
+    output_mode: GlobalOutputModeArgs,
     /// Emit workflow progress and retry tracing to stderr.
     #[arg(global = true, long)]
     verbose: bool,
+}
+
+#[derive(Debug, Clone, Copy, Args, Default)]
+#[group(id = "output_mode", multiple = false)]
+struct GlobalOutputModeArgs {
+    /// Emit machine-readable JSON output.
+    #[arg(global = true, long)]
+    json: bool,
+    /// Emit human-readable text output.
+    #[arg(global = true, long)]
+    text: bool,
+}
+
+impl GlobalOutputModeArgs {
+    const fn requested_output_mode(self) -> Option<EffectiveOutputMode> {
+        match (self.json, self.text) {
+            (true, false) => Some(EffectiveOutputMode::Json),
+            (false, true) => Some(EffectiveOutputMode::Text),
+            (false, false) => None,
+            (true, true) => None,
+        }
+    }
 }
 
 impl GlobalArgs {
@@ -128,12 +152,18 @@ impl GlobalArgs {
                 )
             })?;
 
+        let requested_output_mode = self.output_mode.requested_output_mode();
+
         Ok(GlobalOptions {
             org: self.org_override,
             raw_config_overrides,
             request_id: self.request_id,
             timeout_sec: self.timeout_sec.map(NonZeroU64::get),
-            output_mode: resolve_output_mode(self.output, stdout_is_tty),
+            requested_output_mode,
+            output_mode: resolve_output_mode(
+                requested_output_mode,
+                crate::output::StdoutTarget::from_is_terminal(stdout_is_tty),
+            ),
             verbose: self.verbose,
         })
     }
@@ -152,6 +182,7 @@ pub(crate) struct GlobalOptions {
     pub raw_config_overrides: RawCliConfigOverrides,
     pub request_id: Option<RequestId>,
     pub timeout_sec: Option<u64>,
+    pub requested_output_mode: Option<EffectiveOutputMode>,
     pub output_mode: EffectiveOutputMode,
     pub verbose: bool,
 }
@@ -188,6 +219,12 @@ onequery api [OPTIONS] --source <SOURCE_KEY>
        onequery api [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
        onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
     Api(ApiArgs),
+    /// Explain a stable CLI error code.
+    #[command(arg_required_else_help = true)]
+    Explain(ExplainArgs),
+    /// Inspect local CLI state and diagnostics.
+    #[command(subcommand)]
+    Doctor(DoctorSubcommand),
     /// Inspect local CLI state and diagnostics.
     #[command(hide = true, subcommand)]
     Debug(DebugSubcommand),
@@ -220,9 +257,19 @@ impl Command {
             Self::Gateway(args) => args.command_path(),
             Self::Upgrade => "upgrade",
             Self::Api(_) => "api",
+            Self::Explain(_) => "explain",
+            Self::Doctor(DoctorSubcommand::Report(_)) => "doctor report",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
         }
+    }
+
+    pub(crate) fn requires_runtime(&self) -> bool {
+        !matches!(self, Self::Doctor(_) | Self::Explain(_))
+    }
+
+    pub(crate) fn should_persist_failures(&self) -> bool {
+        !matches!(self, Self::Doctor(_) | Self::Explain(_))
     }
 }
 

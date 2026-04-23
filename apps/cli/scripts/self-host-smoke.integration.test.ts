@@ -581,7 +581,7 @@ function runPackagedCliCommand(input: {
   stdout: string;
 } {
   const cliPath = resolveStagedCliPath(input.stagedBundleRoot);
-  const result = spawnSync(cliPath, ["--output", "json", ...input.args], {
+  const result = spawnSync(cliPath, ["--json", ...input.args], {
     cwd: cliRootDir,
     encoding: "utf8",
     env: createBundledRuntimeEnv(input.stagedBundleRoot, input.env),

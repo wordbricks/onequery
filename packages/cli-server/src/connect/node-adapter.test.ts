@@ -18,6 +18,7 @@ import {
   CliErrorDetailSchema,
   ProblemCode,
   ProblemStage,
+  SupportActionKind,
 } from "./gen/onequery/cli/v1/common_pb";
 import {
   createCliConnectHandler,
@@ -141,6 +142,11 @@ describe("cli connect node integration", () => {
         hint: "correct the query input and retry",
         requestId: "req_cli_validation",
         stage: ProblemStage.READ_QUERY_INPUT,
+        support: {
+          explainSlug: "invalid_request",
+          kind: SupportActionKind.NONE,
+          reason: "user_actionable",
+        },
         title: "Invalid Request",
       });
       expect(badRequestDetails).toHaveLength(1);
@@ -213,6 +219,11 @@ describe("cli connect node integration", () => {
         hint: "correct the org request and retry",
         requestId: "req_cli_page_validation",
         stage: ProblemStage.RESOLVE_ORG,
+        support: {
+          explainSlug: "invalid_request",
+          kind: SupportActionKind.NONE,
+          reason: "user_actionable",
+        },
         title: "Invalid Request",
       });
       expect(badRequestDetails).toHaveLength(1);

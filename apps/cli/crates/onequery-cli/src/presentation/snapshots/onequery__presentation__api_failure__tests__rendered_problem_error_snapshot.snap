@@ -3,13 +3,9 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Source Not Found
-Command: onequery source show warehouse
-Stage: resolve_source
 Why: no source named "warehouse" exists
-Request ID: req_problem
 Hint: run `onequery source list`
 Try:
   - run `onequery source list`
-
-Think this is a bug? Report it with the error already filled in:
-  <REPORT_URL>
+Request ID: req_problem
+Explain: onequery explain source_not_found
