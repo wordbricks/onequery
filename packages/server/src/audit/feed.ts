@@ -1169,7 +1169,7 @@ function parseStoredQueryActionRow(
               `invalid query_action action name: ${row.actionName}`
             );
           })(),
-    completedAt: row.completedAt ?? null,
+    completedAt: row.completedAt,
     failureCode:
       row.failureCode === null
         ? null
@@ -1206,7 +1206,7 @@ function parseStoredSourceApiActionRow(
               `invalid source_api_action action name: ${row.actionName}`
             );
           })(),
-    completedAt: row.completedAt ?? null,
+    completedAt: row.completedAt,
     failureCode:
       row.failureCode === null
         ? null
@@ -1641,8 +1641,14 @@ function serializeAuditProjectedThrough(
   checkpoints: AuditFeedCheckpointPositionMap
 ): AuditFeedCheckpointMap {
   return {
-    queryAction: checkpoints.queryAction?.toString() ?? null,
-    sourceApiAction: checkpoints.sourceApiAction?.toString() ?? null,
+    queryAction:
+      checkpoints.queryAction === null
+        ? null
+        : checkpoints.queryAction.toString(),
+    sourceApiAction:
+      checkpoints.sourceApiAction === null
+        ? null
+        : checkpoints.sourceApiAction.toString(),
   };
 }
 
@@ -1679,7 +1685,7 @@ async function loadAuditProjectionCheckpointPositions(
 
 async function hasUnprojectedQueryActionEvents(
   db: DatabaseExecutor,
-  lastCommitPosition: bigint | null,
+  lastCommitPosition: bigint,
   organizationId: string
 ) {
   const rows = await db
@@ -1691,7 +1697,7 @@ async function hasUnprojectedQueryActionEvents(
     )
     .where(
       and(
-        gt(queryActionEvents.commitPosition, lastCommitPosition ?? 0n),
+        gt(queryActionEvents.commitPosition, lastCommitPosition),
         eq(workflowCommands.organizationId, organizationId)
       )
     )
@@ -1702,7 +1708,7 @@ async function hasUnprojectedQueryActionEvents(
 
 async function hasUnprojectedSourceApiActionEvents(
   db: DatabaseExecutor,
-  lastCommitPosition: bigint | null,
+  lastCommitPosition: bigint,
   organizationId: string
 ) {
   const rows = await db
@@ -1714,7 +1720,7 @@ async function hasUnprojectedSourceApiActionEvents(
     )
     .where(
       and(
-        gt(sourceApiActionEvents.commitPosition, lastCommitPosition ?? 0n),
+        gt(sourceApiActionEvents.commitPosition, lastCommitPosition),
         eq(workflowCommands.organizationId, organizationId)
       )
     )
@@ -1728,15 +1734,14 @@ async function loadAuditProjectionLag(
   checkpoints: AuditFeedCheckpointPositionMap,
   organizationId: string
 ): Promise<AuditProjectionLag> {
+  const queryActionCheckpoint = checkpoints.queryAction ?? 0n;
+  const sourceApiActionCheckpoint = checkpoints.sourceApiAction ?? 0n;
+
   const [queryAction, sourceApiAction] = await Promise.all([
-    hasUnprojectedQueryActionEvents(
-      db,
-      checkpoints.queryAction,
-      organizationId
-    ),
+    hasUnprojectedQueryActionEvents(db, queryActionCheckpoint, organizationId),
     hasUnprojectedSourceApiActionEvents(
       db,
-      checkpoints.sourceApiAction,
+      sourceApiActionCheckpoint,
       organizationId
     ),
   ]);

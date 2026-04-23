@@ -23,8 +23,8 @@ export const AUDIT_OUTCOMES = ["pending", "succeeded", "failed"] as const;
 export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
 
 type AuditSearchFilters = {
-  actionName?: AuditActionName | undefined;
-  family?: AuditFamily | undefined;
+  actionName?: AuditActionName;
+  family?: AuditFamily;
 };
 
 export function getAuditActionNamesForFamily(family?: AuditFamily) {
