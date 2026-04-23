@@ -1,3 +1,4 @@
+// Source metadata, testing, and connection messages for the CLI API.
 edition = "2023";
 
 package onequery.cli.v1;
@@ -7,43 +8,54 @@ import "onequery/cli/v1/common.proto";
 
 message ListSourcesRequest {
   string org_slug = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   CliPageRequest page = 2;
 }
 
 message ListSourcesResponse {
-  repeated CliSource sources = 1;
+  repeated CliSource sources = 1 [(buf.validate.field).repeated.max_items = 100];
   CliPage page = 2 [(buf.validate.field).required = true];
 }
 
 message GetSourceRequest {
   string org_slug = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   string source_key = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
 }
 
 message CliSource {
   string source_key = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
   string display_name = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   SourceProvider provider = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   bool queryable = 4;
   SourceStatus status = 5 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
@@ -58,11 +70,15 @@ message GetSourceResponse {
 
 message TestSourceRequest {
   string org_slug = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   string source_key = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
 }
@@ -78,54 +94,108 @@ message TestSourceResponse {
 }
 
 message TestSourceSupportedOutcome {
-  bool success = 1;
-  string message = 2 [(buf.validate.field).string.min_len = 1];
-  string error = 3 [
+  reserved 1 to 3;
+  reserved success, message, error;
+
+  uint64 latency_ms = 4;
+  oneof result {
+    option (buf.validate.oneof).required = true;
+
+    TestSourcePassedOutcome passed = 5;
+    TestSourceFailedOutcome failed = 6;
+  }
+}
+
+message TestSourcePassedOutcome {
+  string message = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+}
+
+message TestSourceFailedOutcome {
+  string message = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  string error = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 2048,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  uint64 latency_ms = 4;
 }
 
 message TestSourceUnsupportedOutcome {
   SourceTestUnsupportedReason reason = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  string message = 2 [(buf.validate.field).string.min_len = 1];
+  string message = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
 }
 
 message GetSourceConnectGuideRequest {
   string org_slug = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   SourceProvider provider = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
 }
 
 message GetSourceConnectGuideResponse {
-  string title = 1 [(buf.validate.field).string.min_len = 1];
-  string description = 2 [(buf.validate.field).string.min_len = 1];
+  string title = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 160
+  ];
+  string description = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024
+  ];
   ContentFormat format = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  string content = 4 [(buf.validate.field).string.min_len = 1];
-  string command = 5 [(buf.validate.field).string.min_len = 1];
+  string content = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 65536
+  ];
+  string command = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192
+  ];
 }
 
 message ConnectSourceRequest {
   string org_slug = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   reserved 2;
   reserved source;
   string source_key = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
   ConnectSourceCredentials credentials = 4 [(buf.validate.field).required = true];
@@ -155,14 +225,17 @@ message ConnectSourceCredentials {
 message ConnectSourcePostgresCredentials {
   string database = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string host = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string password = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   uint32 port = 4 [
@@ -175,6 +248,7 @@ message ConnectSourcePostgresCredentials {
   ];
   string username = 6 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -182,14 +256,17 @@ message ConnectSourcePostgresCredentials {
 message ConnectSourceMySqlCredentials {
   string database = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string host = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string password = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   uint32 port = 4 [
@@ -202,6 +279,7 @@ message ConnectSourceMySqlCredentials {
   ];
   string username = 6 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -209,14 +287,18 @@ message ConnectSourceMySqlCredentials {
 message ConnectSourceMongoDbCredentials {
   string connection_string = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "^mongodb(\\+srv)?://"
   ];
   string database = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   repeated string databases = 3 [
+    (buf.validate.field).repeated.max_items = 100,
     (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 255,
     (buf.validate.field).repeated.items.string.pattern = "\\S"
   ];
 }
@@ -224,6 +306,7 @@ message ConnectSourceMongoDbCredentials {
 message ConnectSourceServiceAccountCredentials {
   string project_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string client_email = 2 [
@@ -232,10 +315,12 @@ message ConnectSourceServiceAccountCredentials {
   ];
   string private_key = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string private_key_id = 4 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -243,10 +328,12 @@ message ConnectSourceServiceAccountCredentials {
 message ConnectSourceGoogleOAuthCredentials {
   string access_token = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string refresh_token = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   uint64 expires_at = 3 [
@@ -267,6 +354,7 @@ message ConnectSourceBigQueryCredentials {
 message ConnectSourceBigQueryOAuthCredentials {
   string project_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
@@ -275,15 +363,20 @@ message ConnectSourceBigQueryOAuthCredentials {
 message ConnectSourceBigQueryServiceAccountCredentials {
   string project_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   ConnectSourceServiceAccountCredentials service_account = 2 [(buf.validate.field).required = true];
 }
 
 message ConnectSourceLaminarCredentials {
-  string api_base_url = 1 [(buf.validate.field).string.uri = true];
+  string api_base_url = 1 [
+    (buf.validate.field).string.max_len = 2048,
+    (buf.validate.field).string.uri = true
+  ];
   string api_key = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -291,16 +384,19 @@ message ConnectSourceLaminarCredentials {
 message ConnectSourceAwsAthenaConnectorCredentials {
   string connector_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string database = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   uint32 max_rows = 3 [(buf.validate.field).uint32.gte = 1];
   uint32 timeout_ms = 4 [(buf.validate.field).uint32.gte = 1];
   string workgroup = 5 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -317,6 +413,7 @@ message ConnectSourceGoogleAnalyticsCredentials {
 message ConnectSourceGoogleAnalyticsOAuthCredentials {
   string property_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   ConnectSourceGoogleOAuthCredentials credentials = 2 [(buf.validate.field).required = true];
@@ -325,6 +422,7 @@ message ConnectSourceGoogleAnalyticsOAuthCredentials {
 message ConnectSourceGoogleAnalyticsServiceAccountCredentials {
   string property_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   ConnectSourceServiceAccountCredentials service_account = 2 [(buf.validate.field).required = true];
@@ -333,6 +431,7 @@ message ConnectSourceGoogleAnalyticsServiceAccountCredentials {
 message ConnectSourceAmplitudeCredentials {
   string api_key = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   SourceConnectAmplitudeRegion region = 2 [
@@ -341,6 +440,7 @@ message ConnectSourceAmplitudeCredentials {
   ];
   string secret_key = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -348,6 +448,7 @@ message ConnectSourceAmplitudeCredentials {
 message ConnectSourceMixpanelCredentials {
   string project_id = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   SourceConnectMixpanelRegion region = 2 [
@@ -356,14 +457,17 @@ message ConnectSourceMixpanelCredentials {
   ];
   string secret = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string username = 4 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string workspace_id = 5 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -371,30 +475,39 @@ message ConnectSourceMixpanelCredentials {
 message ConnectSourcePostHogCredentials {
   string host_url = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 2048,
     (buf.validate.field).string.uri = true
   ];
   string personal_api_key = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string project_id = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
 
 message ConnectSourceSentryCredentials {
-  string api_base_url = 1 [(buf.validate.field).string.uri = true];
+  string api_base_url = 1 [
+    (buf.validate.field).string.max_len = 2048,
+    (buf.validate.field).string.uri = true
+  ];
   string auth_token = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string organization_slug = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string project_slug = 4 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -402,14 +515,18 @@ message ConnectSourceSentryCredentials {
 message ConnectSourceGitHubCredentials {
   string access_token = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string installation_id = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   repeated string repositories = 3 [
+    (buf.validate.field).repeated.max_items = 1000,
     (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 255,
     (buf.validate.field).repeated.items.string.pattern = "\\S"
   ];
 }
@@ -426,6 +543,7 @@ message ConnectSourceLinearCredentials {
 message ConnectSourceLinearApiKeyCredentials {
   string api_key = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
@@ -433,41 +551,53 @@ message ConnectSourceLinearApiKeyCredentials {
 message ConnectSourceLinearOAuthCredentials {
   string access_token = 1 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string app_user_id = 2 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string expires_at = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string linear_organization_id = 4 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string linear_organization_name = 5 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string refresh_token = 6 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string scope = 7 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024,
     (buf.validate.field).string.pattern = "\\S"
   ];
   string token_type = 8 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64,
     (buf.validate.field).string.pattern = "\\S"
   ];
 }
 
 message ConnectSourceResponse {
   CliSource source = 1 [(buf.validate.field).required = true];
-  string next_command = 2 [(buf.validate.field).string.min_len = 1];
+  string next_command = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192
+  ];
 }
 
 enum SourceProvider {

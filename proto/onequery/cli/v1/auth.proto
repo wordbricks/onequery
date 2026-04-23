@@ -1,3 +1,4 @@
+// Authentication and device authorization messages for the CLI API.
 edition = "2023";
 
 package onequery.cli.v1;
@@ -9,12 +10,14 @@ message GetSessionRequest {}
 
 message GetSessionResponse {
   AuthMode auth_mode = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 2 [(buf.validate.field).required = true];
   string active_org_slug = 3 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   google.protobuf.Timestamp issued_at = 4;
@@ -25,16 +28,20 @@ message RefreshSessionRequest {}
 
 message RefreshSessionResponse {
   string access_token = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   AuthMode auth_mode = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 3 [(buf.validate.field).required = true];
   string active_org_slug = 4 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   google.protobuf.Timestamp issued_at = 5;
@@ -44,14 +51,28 @@ message RefreshSessionResponse {
 message StartDeviceAuthorizationRequest {}
 
 message StartDeviceAuthorizationResponse {
-  string state = 1 [(buf.validate.field).string.min_len = 1];
-  string device_code = 2 [(buf.validate.field).string.min_len = 1];
-  string user_code = 3 [(buf.validate.field).string.min_len = 1];
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
+  string device_code = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  string user_code = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 64
+  ];
   string verification_url = 4 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.uri = true
   ];
   string verification_complete_url = 5 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.uri = true
   ];
@@ -60,7 +81,11 @@ message StartDeviceAuthorizationResponse {
 }
 
 message PollDeviceAuthorizationRequest {
-  string device_code = 1 [(buf.validate.field).string.min_len = 1];
+  string device_code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
 }
 
 message PollDeviceAuthorizationResponse {
@@ -69,40 +94,101 @@ message PollDeviceAuthorizationResponse {
 
     CliPendingDeviceAuthorization pending = 1;
     CliAuthorizedDeviceAuthorization authorized = 2;
+    CliDeniedDeviceAuthorization denied = 3;
+    CliExpiredDeviceAuthorization expired = 4;
+    CliRateLimitedDeviceAuthorization rate_limited = 5;
   }
 }
 
 message CliAuthUser {
-  string id = 1 [(buf.validate.field).string.min_len = 1];
+  string id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
   string email = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.email = true
   ];
-  string display_name = 3 [(buf.validate.field).string.min_len = 1];
+  string display_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
 }
 
 message CliPendingDeviceAuthorization {
-  string state = 1 [(buf.validate.field).string.min_len = 1];
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
   uint32 poll_after_ms = 2 [(buf.validate.field).uint32.gte = 1];
 }
 
 message CliAuthorizedDeviceAuthorization {
-  string state = 1 [(buf.validate.field).string.min_len = 1];
-  string access_token = 2 [
+  string state = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
+  string access_token = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
     (buf.validate.field).string.pattern = "\\S"
   ];
   AuthMode auth_mode = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
   CliAuthUser user = 4 [(buf.validate.field).required = true];
   string active_org_slug = 5 [
     (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
   google.protobuf.Timestamp issued_at = 6;
   google.protobuf.Timestamp expires_at = 7;
+}
+
+message CliDeniedDeviceAuthorization {
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
+  string reason = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+}
+
+message CliExpiredDeviceAuthorization {
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
+  string reason = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+}
+
+message CliRateLimitedDeviceAuthorization {
+  string state = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 32
+  ];
+  uint32 poll_after_ms = 2 [(buf.validate.field).uint32.gte = 1];
+  string reason = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
 }
 
 enum AuthMode {
