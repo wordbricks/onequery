@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./app": "./src/app.ts",
+    "./audit/feed": "./src/audit/feed.ts",
     "./auth": "./src/auth.ts",
     "./auth/organization-permissions": "./src/auth/organization-permissions.ts",
     "./client": "./src/client.ts",

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/$org_slug/audit")({
     context: { organizationSlug, queryClient, session },
     deps,
   }) => {
-    await queryClient.ensureQueryData(
+    await queryClient.fetchQuery(
       auditListQueryOptions(session.user.id, organizationSlug, deps)
     );
   },
