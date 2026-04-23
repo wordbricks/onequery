@@ -1,5 +1,7 @@
 import {
   AUDIT_FAMILIES,
+  AUDIT_QUERY_ACTION_EVENT_TYPES,
+  AUDIT_SOURCE_API_ACTION_EVENT_TYPES,
   auditListResponseSchema,
   auditOriginActorSchema,
   auditQueryActionMetricsSchema,
@@ -55,22 +57,12 @@ const AUDIT_FEED_PROJECTION_NAME = "audit_feed_entries";
 const AUDIT_PROJECTION_BATCH_SIZE = 200;
 const AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST = 5;
 
-const QueryActionStartCommandPayloadSchema = z.discriminatedUnion("type", [
-  z
-    .object({
-      queryText: z.string(),
-      sourceKey: z.string(),
-      type: z.literal("start_validate"),
-    })
-    .strict(),
-  z
-    .object({
-      queryText: z.string(),
-      sourceKey: z.string(),
-      type: z.literal("start_execute"),
-    })
-    .strict(),
-]);
+const QueryActionStartCommandPayloadSchema = z
+  .object({
+    queryText: z.string(),
+    sourceKey: z.string(),
+  })
+  .strict();
 
 const QueryActionSourceDescriptorSchema = z
   .object({
@@ -84,95 +76,76 @@ const QueryActionSourceDescriptorSchema = z
   })
   .strict();
 
-const QueryActionEventPayloadSchema = z.discriminatedUnion("type", [
-  z
+const QueryActionEventTypeSchema = z.enum(AUDIT_QUERY_ACTION_EVENT_TYPES);
+
+const QueryActionEventPayloadSchemas = {
+  action_received: z
     .object({
       queryMode: z.enum(["validate", "execute"]),
       queryText: z.string(),
-      type: z.literal("action_received"),
     })
     .strict(),
-  z
-    .object({
-      source: QueryActionSourceDescriptorSchema,
-      type: z.literal("source_loaded"),
-    })
-    .strict(),
-  z
-    .object({
-      sourceKey: z.string(),
-      type: z.literal("source_not_found"),
-    })
-    .strict(),
-  z
-    .object({
-      provider: z.string(),
-      sourceStatus: z.string(),
-      type: z.literal("source_not_queryable"),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("query_validated"),
-      validatedQuery: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      hint: z.string().optional(),
-      type: z.literal("query_rejected"),
-    })
-    .strict(),
-  z
-    .object({
-      type: z.literal("credentials_loaded"),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      hint: z.string(),
-      type: z.literal("query_preparation_failed"),
-    })
-    .strict(),
-  z
+  credentials_loaded: z.object({}).strict(),
+  query_executed: z
     .object({
       elapsedMs: z.number().int(),
       rowCount: z.number().int(),
-      type: z.literal("query_executed"),
     })
     .strict(),
-  z
+  query_execution_failed: z
     .object({
       detail: z.string(),
-      type: z.literal("query_unavailable"),
     })
     .strict(),
-  z
+  query_preparation_failed: z
     .object({
       detail: z.string(),
-      type: z.literal("query_timed_out"),
+      hint: z.string(),
     })
     .strict(),
-  z
+  query_rejected: z
     .object({
       detail: z.string(),
-      type: z.literal("query_execution_failed"),
     })
     .strict(),
-  z
-    .object({
-      type: z.literal("usage_persisted"),
-    })
-    .strict(),
-  z
+  query_timed_out: z
     .object({
       detail: z.string(),
-      type: z.literal("usage_persist_failed"),
     })
     .strict(),
-]);
+  query_unavailable: z
+    .object({
+      detail: z.string(),
+    })
+    .strict(),
+  query_validated: z
+    .object({
+      validatedQuery: z.string(),
+    })
+    .strict(),
+  source_loaded: z
+    .object({
+      source: QueryActionSourceDescriptorSchema,
+    })
+    .strict(),
+  source_not_found: z
+    .object({
+      sourceKey: z.string(),
+    })
+    .strict(),
+  source_not_queryable: z
+    .object({
+      provider: z.string(),
+      sourceStatus: z.string(),
+    })
+    .strict(),
+  usage_persist_failed: z
+    .object({
+      detail: z.string(),
+    })
+    .strict(),
+  usage_persisted: z.object({}).strict(),
+} satisfies Record<AuditQueryActionEventType, z.ZodType>;
 
 const SourceApiRequestDescriptorSchema = z
   .object({
@@ -185,11 +158,10 @@ const SourceApiRequestDescriptorSchema = z
   })
   .strict();
 
-const SourceApiStartCommandPayloadSchema = z.discriminatedUnion("type", [
+const SourceApiStartCommandPayloadSchema = z.union([
   z
     .object({
       sourceKey: z.string(),
-      type: z.literal("start_describe"),
     })
     .strict(),
   z
@@ -197,7 +169,6 @@ const SourceApiStartCommandPayloadSchema = z.discriminatedUnion("type", [
       invokeMode: z.enum(["preview_only", "execute"]),
       requestDescriptor: SourceApiRequestDescriptorSchema,
       sourceKey: z.string(),
-      type: z.literal("start_invoke"),
     })
     .strict(),
 ]);
@@ -211,71 +182,28 @@ const SourceApiSourceDescriptorSchema = z
   })
   .strict();
 
-const SourceApiEventPayloadSchema = z.discriminatedUnion("type", [
-  z
+const SourceApiEventTypeSchema = z.enum(AUDIT_SOURCE_API_ACTION_EVENT_TYPES);
+
+const SourceApiEventPayloadSchemas = {
+  action_received: z
     .object({
       invokeMode: z.enum(["preview_only", "execute"]).nullable(),
       requestDescriptor: SourceApiRequestDescriptorSchema.nullable(),
       requestKind: z.enum(["describe", "invoke"]),
-      type: z.literal("action_received"),
     })
     .strict(),
-  z
-    .object({
-      source: SourceApiSourceDescriptorSchema,
-      type: z.literal("source_loaded"),
-    })
-    .strict(),
-  z
-    .object({
-      sourceKey: z.string(),
-      type: z.literal("source_not_found"),
-    })
-    .strict(),
-  z
-    .object({
-      requestDescriptor: SourceApiRequestDescriptorSchema.nullable(),
-      type: z.literal("descriptor_resolved"),
-    })
-    .strict(),
-  z
+  descriptor_resolution_failed: z
     .object({
       detail: z.string(),
       failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
-      type: z.literal("descriptor_resolution_failed"),
     })
     .strict(),
-  z
+  descriptor_resolved: z
     .object({
-      preparedRequestFingerprint: z.string(),
-      type: z.literal("request_prepared"),
+      requestDescriptor: SourceApiRequestDescriptorSchema.nullable(),
     })
     .strict(),
-  z
-    .object({
-      detail: z.string(),
-      failureCode: z.enum(["invalid_request", "permission_denied"]),
-      type: z.literal("request_preparation_failed"),
-    })
-    .strict(),
-  z
-    .object({
-      attemptNumber: z.number().int(),
-      type: z.literal("resume_requested"),
-    })
-    .strict(),
-  z
-    .object({
-      attemptNumber: z.number().int(),
-      contentType: z.string().nullable(),
-      hasContinuation: z.boolean(),
-      httpStatus: z.number().int(),
-      pageIndex: z.number().int(),
-      responseBytes: z.number().int().nullable(),
-      type: z.literal("page_fetch_succeeded"),
-    })
-    .strict(),
-  z
+  page_fetch_failed: z
     .object({
       attemptNumber: z.number().int(),
       detail: z.string(),
@@ -289,10 +217,45 @@ const SourceApiEventPayloadSchema = z.discriminatedUnion("type", [
         .nullable(),
       kind: z.enum(["retryable_failure", "terminal_failure"]),
       pageIndex: z.number().int(),
-      type: z.literal("page_fetch_failed"),
     })
     .strict(),
-]);
+  page_fetch_succeeded: z
+    .object({
+      attemptNumber: z.number().int(),
+      contentType: z.string().nullable(),
+      hasContinuation: z.boolean(),
+      httpStatus: z.number().int(),
+      pageIndex: z.number().int(),
+      responseBytes: z.number().int().nullable(),
+    })
+    .strict(),
+  request_preparation_failed: z
+    .object({
+      detail: z.string(),
+      failureCode: z.enum(["invalid_request", "permission_denied"]),
+    })
+    .strict(),
+  request_prepared: z
+    .object({
+      preparedRequestFingerprint: z.string(),
+    })
+    .strict(),
+  resume_requested: z
+    .object({
+      attemptNumber: z.number().int(),
+    })
+    .strict(),
+  source_loaded: z
+    .object({
+      source: SourceApiSourceDescriptorSchema,
+    })
+    .strict(),
+  source_not_found: z
+    .object({
+      sourceKey: z.string(),
+    })
+    .strict(),
+} satisfies Record<AuditSourceApiActionEventType, z.ZodType>;
 
 // Comment: projection rows retain richer preview state than the public feed
 // contract exposes, so storage and API schemas stay separate here.
@@ -422,6 +385,18 @@ type SourceApiActionEventRecord = {
   surface: WorkflowSurface;
 };
 
+type EventPayloadFromSchemas<TSchemas extends Record<string, z.ZodType>> = {
+  [TType in keyof TSchemas & string]: z.infer<TSchemas[TType]> & {
+    type: TType;
+  };
+}[keyof TSchemas & string];
+type QueryActionEventPayload = EventPayloadFromSchemas<
+  typeof QueryActionEventPayloadSchemas
+>;
+type SourceApiEventPayload = EventPayloadFromSchemas<
+  typeof SourceApiEventPayloadSchemas
+>;
+
 type AuditProjectionRow =
   | QueryActionProjectionRow
   | SourceApiActionProjectionRow;
@@ -534,6 +509,32 @@ function normalizeOriginActor(
   actorSnapshotJson: WorkflowActorSnapshotJson
 ): AuditOriginActor {
   return auditOriginActorSchema.parse(actorSnapshotJson);
+}
+
+function parseQueryActionEventPayload(
+  record: QueryActionEventRecord
+): QueryActionEventPayload {
+  const eventType = QueryActionEventTypeSchema.parse(record.eventType);
+  const payload = QueryActionEventPayloadSchemas[eventType].parse(
+    record.payloadJson
+  );
+
+  // Comment: workflow storage keeps transition truth in event_type and strips
+  // the duplicated discriminator out of payload_json.
+  return { ...payload, type: eventType } as QueryActionEventPayload;
+}
+
+function parseSourceApiEventPayload(
+  record: SourceApiActionEventRecord
+): SourceApiEventPayload {
+  const eventType = SourceApiEventTypeSchema.parse(record.eventType);
+  const payload = SourceApiEventPayloadSchemas[eventType].parse(
+    record.payloadJson
+  );
+
+  // Comment: workflow storage keeps transition truth in event_type and strips
+  // the duplicated discriminator out of payload_json.
+  return { ...payload, type: eventType } as SourceApiEventPayload;
 }
 
 function normalizeQueryActionMetrics(
@@ -711,7 +712,7 @@ function finalizeSourceApiActionRow(
 function createQueryActionRowFromStart(
   record: QueryActionEventRecord
 ): QueryActionProjectionRow {
-  const payload = QueryActionEventPayloadSchema.parse(record.payloadJson);
+  const payload = parseQueryActionEventPayload(record);
   if (payload.type !== "action_received") {
     throw new Error(
       `query_action ${record.actionId} projection started from ${payload.type}`
@@ -766,7 +767,7 @@ function reduceQueryActionRow(
     return row;
   }
 
-  const payload = QueryActionEventPayloadSchema.parse(record.payloadJson);
+  const payload = parseQueryActionEventPayload(record);
   const next = {
     ...row,
     completedAt: row.completedAt,
@@ -830,7 +831,7 @@ function reduceQueryActionRow(
       next.outcome = "failed";
       next.phase = "completed";
       next.preview.errorDetail = payload.detail;
-      next.preview.errorHint = payload.hint ?? null;
+      next.preview.errorHint = null;
       break;
     case "credentials_loaded":
       next.completedAt = null;
@@ -912,7 +913,7 @@ function reduceQueryActionRow(
 function createSourceApiActionRowFromStart(
   record: SourceApiActionEventRecord
 ): SourceApiActionProjectionRow {
-  const payload = SourceApiEventPayloadSchema.parse(record.payloadJson);
+  const payload = parseSourceApiEventPayload(record);
   if (payload.type !== "action_received") {
     throw new Error(
       `source_api_action ${record.actionId} projection started from ${payload.type}`
@@ -981,7 +982,7 @@ function reduceSourceApiActionRow(
     return row;
   }
 
-  const payload = SourceApiEventPayloadSchema.parse(record.payloadJson);
+  const payload = parseSourceApiEventPayload(record);
   const next = {
     ...row,
     completedAt: row.completedAt,
