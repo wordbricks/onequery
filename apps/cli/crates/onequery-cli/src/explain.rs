@@ -63,14 +63,28 @@ impl ExplainSupportKind {
 pub(crate) struct Explanation {
     pub(crate) code: ExplainCode,
     pub(crate) title: &'static str,
-    pub(crate) stage: &'static str,
-    pub(crate) http_status: u16,
+    pub(crate) stages: &'static [&'static str],
+    pub(crate) http_status: Option<u16>,
     pub(crate) retryable: bool,
     pub(crate) support_kind: ExplainSupportKind,
     pub(crate) support_reason: &'static str,
     pub(crate) summary: &'static str,
     pub(crate) try_next: &'static [&'static str],
 }
+
+const AUTH_STAGE: &[&str] = &["auth"];
+const AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES: &[&str] =
+    &["auth", "resolve_org", "resolve_source", "execute_query"];
+const EXECUTE_QUERY_STAGE: &[&str] = &["execute_query"];
+const INVALID_REQUEST_STAGES: &[&str] = &[
+    "auth",
+    "resolve_source",
+    "read_query_input",
+    "execute_query",
+];
+const READ_QUERY_INPUT_STAGE: &[&str] = &["read_query_input"];
+const RESOLVE_ORG_STAGE: &[&str] = &["resolve_org"];
+const RESOLVE_SOURCE_STAGE: &[&str] = &["resolve_source"];
 
 impl ExplainCode {
     pub(crate) fn slug(self) -> &'static str {
@@ -113,8 +127,8 @@ impl ExplainCode {
             Self::Forbidden => Explanation {
                 code: self,
                 title: "Forbidden",
-                stage: "resolve_org",
-                http_status: 403,
+                stages: RESOLVE_ORG_STAGE,
+                http_status: Some(403),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -124,8 +138,8 @@ impl ExplainCode {
             Self::InvalidRequest => Explanation {
                 code: self,
                 title: "Invalid Request",
-                stage: "execute_query",
-                http_status: 422,
+                stages: INVALID_REQUEST_STAGES,
+                http_status: Some(422),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -135,8 +149,8 @@ impl ExplainCode {
             Self::LoginDenied => Explanation {
                 code: self,
                 title: "Login Denied",
-                stage: "auth",
-                http_status: 403,
+                stages: AUTH_STAGE,
+                http_status: Some(403),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -146,8 +160,8 @@ impl ExplainCode {
             Self::LoginRateLimited => Explanation {
                 code: self,
                 title: "Login Rate Limited",
-                stage: "auth",
-                http_status: 429,
+                stages: AUTH_STAGE,
+                http_status: Some(429),
                 retryable: true,
                 support_kind: ExplainSupportKind::Retry,
                 support_reason: "transient",
@@ -157,8 +171,8 @@ impl ExplainCode {
             Self::LoginSessionExpired => Explanation {
                 code: self,
                 title: "Login Session Expired",
-                stage: "auth",
-                http_status: 410,
+                stages: AUTH_STAGE,
+                http_status: Some(410),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -168,8 +182,8 @@ impl ExplainCode {
             Self::MalformedJson => Explanation {
                 code: self,
                 title: "Malformed JSON",
-                stage: "read_query_input",
-                http_status: 400,
+                stages: READ_QUERY_INPUT_STAGE,
+                http_status: Some(400),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -179,8 +193,8 @@ impl ExplainCode {
             Self::NotLoggedIn => Explanation {
                 code: self,
                 title: "Not Logged In",
-                stage: "auth",
-                http_status: 401,
+                stages: AUTH_STAGE,
+                http_status: Some(401),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -190,8 +204,8 @@ impl ExplainCode {
             Self::OrgNotFound => Explanation {
                 code: self,
                 title: "Organization Not Found",
-                stage: "resolve_org",
-                http_status: 404,
+                stages: RESOLVE_ORG_STAGE,
+                http_status: Some(404),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -201,8 +215,8 @@ impl ExplainCode {
             Self::TransportError => Explanation {
                 code: self,
                 title: "Transport Error",
-                stage: "http",
-                http_status: 503,
+                stages: AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES,
+                http_status: None,
                 retryable: true,
                 support_kind: ExplainSupportKind::Retry,
                 support_reason: "transient",
@@ -212,8 +226,8 @@ impl ExplainCode {
             Self::DecodeError => Explanation {
                 code: self,
                 title: "Decode Error",
-                stage: "execute_query",
-                http_status: 502,
+                stages: AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES,
+                http_status: None,
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportRecommended,
                 support_reason: "unexpected_response_decode_failure",
@@ -225,8 +239,8 @@ impl ExplainCode {
             Self::QueryExecutionFailed => Explanation {
                 code: self,
                 title: "Query Execution Failed",
-                stage: "execute_query",
-                http_status: 500,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
                 support_reason: "query_execution_failure",
@@ -236,8 +250,8 @@ impl ExplainCode {
             Self::QueryExecutionTimedOut => Explanation {
                 code: self,
                 title: "Query Execution Timed Out",
-                stage: "execute_query",
-                http_status: 504,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(504),
                 retryable: true,
                 support_kind: ExplainSupportKind::Retry,
                 support_reason: "transient",
@@ -247,8 +261,8 @@ impl ExplainCode {
             Self::QueryExecutionUnavailable => Explanation {
                 code: self,
                 title: "Query Execution Unavailable",
-                stage: "execute_query",
-                http_status: 503,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(503),
                 retryable: true,
                 support_kind: ExplainSupportKind::Retry,
                 support_reason: "transient",
@@ -258,8 +272,8 @@ impl ExplainCode {
             Self::QueryPreparationFailed => Explanation {
                 code: self,
                 title: "Query Preparation Failed",
-                stage: "execute_query",
-                http_status: 500,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
                 support_reason: "query_preparation_failure",
@@ -269,8 +283,8 @@ impl ExplainCode {
             Self::QueryRejected => Explanation {
                 code: self,
                 title: "Query Rejected",
-                stage: "execute_query",
-                http_status: 400,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(400),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -280,8 +294,8 @@ impl ExplainCode {
             Self::SourceApiDescribeFailed => Explanation {
                 code: self,
                 title: "Source API Describe Failed",
-                stage: "resolve_source",
-                http_status: 500,
+                stages: RESOLVE_SOURCE_STAGE,
+                http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
                 support_reason: "source_api_describe_failure",
@@ -291,8 +305,8 @@ impl ExplainCode {
             Self::SourceApiExecutionFailed => Explanation {
                 code: self,
                 title: "Source API Execution Failed",
-                stage: "execute_query",
-                http_status: 500,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
                 support_reason: "source_api_execution_failure",
@@ -302,8 +316,8 @@ impl ExplainCode {
             Self::SourceApiForbidden => Explanation {
                 code: self,
                 title: "Source API Forbidden",
-                stage: "execute_query",
-                http_status: 403,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(403),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -313,8 +327,8 @@ impl ExplainCode {
             Self::SourceApiPreparationFailed => Explanation {
                 code: self,
                 title: "Source API Preparation Failed",
-                stage: "execute_query",
-                http_status: 500,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
                 support_reason: "source_api_preparation_failure",
@@ -324,8 +338,8 @@ impl ExplainCode {
             Self::SourceApiExecutionStateInvalid => Explanation {
                 code: self,
                 title: "Source API Execution State Invalid",
-                stage: "execute_query",
-                http_status: 410,
+                stages: EXECUTE_QUERY_STAGE,
+                http_status: Some(410),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -335,8 +349,8 @@ impl ExplainCode {
             Self::SourceApiSourceUnavailable => Explanation {
                 code: self,
                 title: "Source API Source Unavailable",
-                stage: "resolve_source",
-                http_status: 410,
+                stages: RESOLVE_SOURCE_STAGE,
+                http_status: Some(410),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -346,8 +360,8 @@ impl ExplainCode {
             Self::SourceNotFound => Explanation {
                 code: self,
                 title: "Source Not Found",
-                stage: "resolve_source",
-                http_status: 404,
+                stages: RESOLVE_SOURCE_STAGE,
+                http_status: Some(404),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -357,8 +371,8 @@ impl ExplainCode {
             Self::SourceNameConflict => Explanation {
                 code: self,
                 title: "Source Name Conflict",
-                stage: "resolve_source",
-                http_status: 409,
+                stages: RESOLVE_SOURCE_STAGE,
+                http_status: Some(409),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -368,8 +382,8 @@ impl ExplainCode {
             Self::SourceNotQueryable => Explanation {
                 code: self,
                 title: "Source Not Queryable",
-                stage: "resolve_source",
-                http_status: 400,
+                stages: RESOLVE_SOURCE_STAGE,
+                http_status: Some(400),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
@@ -400,4 +414,41 @@ pub(crate) fn report_command_for_explanation(explanation: Explanation) -> Option
         .support_kind
         .report_label()
         .map(|_| TEXT_REPORT_COMMAND)
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::ExplainCode;
+
+    #[test]
+    fn invalid_request_explanation_tracks_all_server_problem_stages() {
+        let explanation = ExplainCode::InvalidRequest.explanation();
+
+        assert_eq!(
+            explanation.stages,
+            &[
+                "auth",
+                "resolve_source",
+                "read_query_input",
+                "execute_query"
+            ]
+        );
+        assert_eq!(explanation.http_status, Some(422));
+    }
+
+    #[test]
+    fn local_transport_and_decode_explanations_do_not_claim_fixed_http_statuses() {
+        let transport = ExplainCode::TransportError.explanation();
+        let decode = ExplainCode::DecodeError.explanation();
+
+        assert_eq!(
+            transport.stages,
+            &["auth", "resolve_org", "resolve_source", "execute_query"]
+        );
+        assert_eq!(transport.http_status, None);
+        assert_eq!(decode.stages, transport.stages);
+        assert_eq!(decode.http_status, None);
+    }
 }
