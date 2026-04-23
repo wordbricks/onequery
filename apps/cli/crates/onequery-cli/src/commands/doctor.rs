@@ -111,7 +111,6 @@ where
             "reportPath": report_path.display().to_string(),
             "diagnosticsPath": paths.last_error_path.display().to_string(),
             "githubCommand": issue_draft.github_command,
-            "issueUrl": issue_draft.issue_url,
             "openedBrowser": args.open,
         }),
     ))
@@ -398,10 +397,17 @@ mod tests {
             output.with_command("doctor report"),
             EffectiveOutputMode::Json,
         );
-        let pretty = serde_json::to_string_pretty(
-            &serde_json::from_str::<serde_json::Value>(&rendered).expect("expected JSON output"),
-        )
-        .expect("expected pretty JSON");
+        let parsed =
+            serde_json::from_str::<serde_json::Value>(&rendered).expect("expected JSON output");
+        let pretty = serde_json::to_string_pretty(&parsed).expect("expected pretty JSON");
+        assert_eq!(
+            parsed
+                .get("data")
+                .and_then(serde_json::Value::as_object)
+                .and_then(|data| data.get("issueUrl")),
+            None,
+            "doctor report JSON should keep browser draft URLs out of structured output"
+        );
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
