@@ -7,6 +7,7 @@ import { createCliConnectProblemForQueryWorkflowResult } from "../errors";
 import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
+import { syncCliQueryAuditFeedProjection } from "./audit-projection";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryExecutionDispatch } from "./dispatch";
 import {
@@ -30,23 +31,28 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
     );
     const readControls = yield* parseCliPageRequest(request.page);
     const startedAtMs = Date.now();
-    const result = yield* Result.await(
-      runCliQueryExecutionWorkflowResult({
-        actorSnapshot: {
-          authMode: resolved.session.authMode,
-          email: resolved.session.user.email,
-          membershipRoles: [...resolved.authorizedOrg.membershipRoles],
-          userId: resolved.session.user.id,
-        },
-        db: resolved.c.var.storage.db,
-        dispatch: createCliQueryExecutionDispatch(resolved.c),
-        org: resolved.authorizedOrg.org,
-        requestId: resolved.requestId,
-        sourceName: request.sourceKey,
-        sql: resolved.query.sql,
-        timeoutMs: resolved.resultWindow.timeoutMs,
-      })
-    );
+    const workflowResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot: {
+        authMode: resolved.session.authMode,
+        email: resolved.session.user.email,
+        membershipRoles: [...resolved.authorizedOrg.membershipRoles],
+        userId: resolved.session.user.id,
+      },
+      db: resolved.c.var.storage.db,
+      dispatch: createCliQueryExecutionDispatch(resolved.c),
+      org: resolved.authorizedOrg.org,
+      requestId: resolved.requestId,
+      sourceName: request.sourceKey,
+      sql: resolved.query.sql,
+      timeoutMs: resolved.resultWindow.timeoutMs,
+    });
+
+    await syncCliQueryAuditFeedProjection({
+      c: resolved.c,
+      sourceKey: request.sourceKey,
+    });
+
+    const result = yield* workflowResult;
     const durationMs = Math.max(0, Date.now() - startedAtMs);
 
     recordCliHistogramMetric({

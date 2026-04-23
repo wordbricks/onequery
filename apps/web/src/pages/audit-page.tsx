@@ -10,7 +10,7 @@ import {
   AlertTitle,
 } from "@onequery/ui/components/alert";
 import { Badge } from "@onequery/ui/components/badge";
-import { Button } from "@onequery/ui/components/button";
+import { Button, buttonVariants } from "@onequery/ui/components/button";
 import {
   Empty,
   EmptyDescription,
@@ -36,10 +36,16 @@ import {
   TableRow,
 } from "@onequery/ui/components/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@onequery/ui/components/tooltip";
+import {
   IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
   IconHistory,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
@@ -217,6 +223,7 @@ function AuditFiltersSection({
   isFetching,
   itemCount,
   nextCursor,
+  onRefresh,
   organizationSlug,
   projectionLag,
   search,
@@ -224,6 +231,7 @@ function AuditFiltersSection({
   isFetching: boolean;
   itemCount: number;
   nextCursor: string | null;
+  onRefresh: () => void;
   organizationSlug: string;
   projectionLag: {
     queryAction: boolean;
@@ -428,7 +436,7 @@ function AuditFiltersSection({
           <AlertTitle>Audit feed is still catching up</AlertTitle>
           <AlertDescription>
             Recent {formatLabelList(laggingFamilyLabels)} events may not appear
-            yet. Refresh again before treating this history as complete.
+            yet. This page will refresh while the feed catches up.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -442,6 +450,23 @@ function AuditFiltersSection({
         </p>
 
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              aria-label="Refresh audit feed"
+              className={buttonVariants({ size: "icon", variant: "outline" })}
+              disabled={isFetching}
+              onClick={onRefresh}
+              type="button"
+            >
+              <IconRefresh
+                className={isFetching ? "animate-spin" : undefined}
+                size={16}
+                stroke={2}
+              />
+            </TooltipTrigger>
+            <TooltipContent>Refresh audit feed</TooltipContent>
+          </Tooltip>
+
           {search.cursor ? (
             <Button
               type="button"
@@ -480,7 +505,7 @@ function AuditFiltersSection({
 export function AuditPage() {
   const { organizationSlug, session } = routeApi.useRouteContext();
   const search = routeApi.useSearch();
-  const { data, isFetching } = useSuspenseQuery(
+  const { data, isFetching, refetch } = useSuspenseQuery(
     auditListQueryOptions(session.user.id, organizationSlug, search)
   );
 
@@ -500,6 +525,9 @@ export function AuditPage() {
         isFetching={isFetching}
         itemCount={data.items.length}
         nextCursor={data.nextCursor}
+        onRefresh={() => {
+          void refetch();
+        }}
         organizationSlug={organizationSlug}
         projectionLag={data.projectionLag}
         search={search}
