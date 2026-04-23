@@ -180,8 +180,10 @@ mod tests {
     use pretty_assertions::assert_eq;
     use tempfile::tempdir;
 
+    use crate::diagnostics::DiagnosticEnvironment;
+    use crate::diagnostics::DiagnosticErrorSnapshot;
+    use crate::diagnostics::DiagnosticReportability;
     use crate::diagnostics::DiagnosticSnapshot;
-    use crate::diagnostics::persist_last_error;
     use crate::identifiers::test_request_id;
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
@@ -244,36 +246,53 @@ mod tests {
         })
     }
 
-    fn sample_error() -> onequery_cli_core::error::CliError {
-        onequery_cli_core::error::CliError::new(
-            "query failed",
-            "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"",
-            onequery_cli_core::error::ErrorStage::ExecuteQuery,
-            "failed to decode query response",
-            vec!["retry onequery query exec --source warehouse".to_owned()],
-        )
-        .with_command_path(Some("query exec".to_owned()))
-        .with_code(Some("decode_error".to_owned()))
-        .with_status(Some(502))
-        .with_request_id(Some("req_123".to_owned()))
-        .with_hint(Some("the API returned an unexpected payload".to_owned()))
-    }
-
     fn seed_snapshot(paths: &DiagnosticsPaths) -> DiagnosticSnapshot {
-        let created_at = Utc
-            .with_ymd_and_hms(2026, 4, 23, 3, 12, 11)
-            .single()
-            .expect("expected timestamp");
-        let error = sample_error();
-        persist_last_error(
-            paths,
-            "onequery query exec",
-            &error,
-            Some("query exec"),
-            created_at,
-        )
-        .expect("expected diagnostics persistence");
-        DiagnosticSnapshot::from_error(&error, Some("query exec"), created_at)
+        let snapshot = DiagnosticSnapshot {
+            schema_version: 1,
+            created_at: Utc
+                .with_ymd_and_hms(2026, 4, 23, 3, 12, 11)
+                .single()
+                .expect("expected timestamp"),
+            cli_version: env!("CARGO_PKG_VERSION").to_owned(),
+            command_path: Some("query exec".to_owned()),
+            command_line_sanitized:
+                "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"".to_owned(),
+            exit_code: 6,
+            request_id: Some("req_123".to_owned()),
+            error: DiagnosticErrorSnapshot {
+                code: Some("decode_error".to_owned()),
+                stage: "execute_query".to_owned(),
+                title: "query failed".to_owned(),
+                detail: "failed to decode query response".to_owned(),
+                status: Some(502),
+                retryable: false,
+                retry_after_ms: None,
+                hint: Some("the API returned an unexpected payload".to_owned()),
+                try_next: vec!["retry onequery query exec --source warehouse".to_owned()],
+                validation_issues: Vec::new(),
+            },
+            reportability: DiagnosticReportability {
+                recommended: true,
+                reason: Some("unexpected_response_decode_failure".to_owned()),
+            },
+            // Comment: report snapshots pin a synthetic environment so CI runners and
+            // developer machines do not rewrite them based on host OS or architecture.
+            environment: DiagnosticEnvironment {
+                os: "macos".to_owned(),
+                arch: "aarch64".to_owned(),
+            },
+        };
+        let diagnostics_dir = paths
+            .last_error_path
+            .parent()
+            .expect("expected diagnostics directory");
+        let serialized =
+            serde_json::to_string_pretty(&snapshot).expect("expected diagnostics serialization");
+
+        std::fs::create_dir_all(diagnostics_dir).expect("expected diagnostics directory");
+        std::fs::write(&paths.last_error_path, serialized).expect("expected diagnostics write");
+
+        snapshot
     }
 
     #[test]
