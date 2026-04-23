@@ -205,11 +205,8 @@ pub(crate) struct DoctorReportSelectorArgs {
 pub(crate) struct DoctorReportArgs {
     #[command(flatten)]
     pub selector: DoctorReportSelectorArgs,
-    /// Print the generated Markdown report to stdout instead of writing a file.
-    #[arg(long, conflicts_with = "json")]
-    pub stdout: bool,
     /// Open a GitHub issue draft in the browser after writing the report file.
-    #[arg(long, conflicts_with = "stdout")]
+    #[arg(long, conflicts_with = "text")]
     pub open: bool,
 }
 

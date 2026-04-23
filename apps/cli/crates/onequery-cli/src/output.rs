@@ -19,6 +19,18 @@ pub(crate) enum EffectiveOutputMode {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum StdoutTarget {
+    Tty,
+    NonTty,
+}
+
+impl StdoutTarget {
+    pub(crate) const fn from_is_terminal(is_terminal: bool) -> Self {
+        if is_terminal { Self::Tty } else { Self::NonTty }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum RenderedOutput {
     Text(String),
@@ -281,13 +293,13 @@ pub(crate) fn render_separator_row(widths: &[usize]) -> String {
 }
 
 pub(crate) fn resolve_output_mode(
-    requested_json: bool,
-    stdout_is_tty: bool,
+    requested_mode: Option<EffectiveOutputMode>,
+    stdout_target: StdoutTarget,
 ) -> EffectiveOutputMode {
-    match (requested_json, stdout_is_tty) {
-        (true, _) => EffectiveOutputMode::Json,
-        (false, true) => EffectiveOutputMode::Text,
-        (false, false) => EffectiveOutputMode::Json,
+    match (requested_mode, stdout_target) {
+        (Some(requested_mode), _) => requested_mode,
+        (None, StdoutTarget::Tty) => EffectiveOutputMode::Text,
+        (None, StdoutTarget::NonTty) => EffectiveOutputMode::Json,
     }
 }
 
@@ -591,6 +603,7 @@ mod tests {
     use super::CommandOutput;
     use super::EffectiveOutputMode;
     use super::RenderedOutput;
+    use super::StdoutTarget;
     use super::render_error;
     use super::render_error_with_verbosity;
     use super::render_output;
@@ -756,22 +769,38 @@ mod tests {
 
     #[test]
     fn resolve_output_mode_uses_explicit_json_when_requested() {
-        for stdout_is_tty in [true, false] {
+        for stdout_target in [StdoutTarget::Tty, StdoutTarget::NonTty] {
             assert_eq!(
-                resolve_output_mode(true, stdout_is_tty),
+                resolve_output_mode(Some(EffectiveOutputMode::Json), stdout_target),
                 EffectiveOutputMode::Json
             );
         }
     }
 
     #[test]
+    fn resolve_output_mode_uses_explicit_text_when_requested() {
+        for stdout_target in [StdoutTarget::Tty, StdoutTarget::NonTty] {
+            assert_eq!(
+                resolve_output_mode(Some(EffectiveOutputMode::Text), stdout_target),
+                EffectiveOutputMode::Text
+            );
+        }
+    }
+
+    #[test]
     fn resolve_output_mode_defaults_to_text_when_stdout_is_a_tty() {
-        assert_eq!(resolve_output_mode(false, true), EffectiveOutputMode::Text);
+        assert_eq!(
+            resolve_output_mode(None, StdoutTarget::Tty),
+            EffectiveOutputMode::Text
+        );
     }
 
     #[test]
     fn resolve_output_mode_defaults_to_json_when_stdout_is_not_a_tty() {
-        assert_eq!(resolve_output_mode(false, false), EffectiveOutputMode::Json);
+        assert_eq!(
+            resolve_output_mode(None, StdoutTarget::NonTty),
+            EffectiveOutputMode::Json
+        );
     }
 
     #[test]
@@ -932,7 +961,7 @@ mod tests {
                     },
                     "report": {
                         "recommended": false,
-                        "command": "onequery doctor report --last --stdout",
+                        "command": "onequery doctor report --last --json",
                         "reason": "query_execution_failure",
                     }
                 }
@@ -1118,7 +1147,7 @@ mod tests {
                     "tryNext": ["retry onequery query"],
                     "report": {
                         "recommended": true,
-                        "command": "onequery doctor report --last --stdout",
+                        "command": "onequery doctor report --last --json",
                         "reason": "render_failure",
                     }
                 }

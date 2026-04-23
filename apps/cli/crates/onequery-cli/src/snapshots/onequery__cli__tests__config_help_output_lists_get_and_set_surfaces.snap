@@ -21,4 +21,5 @@ Global Options:
       --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
       --timeout <SECONDS>        Override the request timeout in seconds for this invocation
       --json                     Emit machine-readable JSON output
+      --text                     Emit human-readable text output
       --verbose                  Emit workflow progress and retry tracing to stderr

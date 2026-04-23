@@ -19,7 +19,6 @@ use super::args::ApiArgs;
 use super::args::AuthSubcommand;
 use super::args::BackupArgs;
 use super::args::DebugSubcommand;
-use super::args::DoctorReportArgs;
 use super::args::DoctorSubcommand;
 use super::args::ExplainArgs;
 use super::args::OrgSubcommand;
@@ -63,10 +62,7 @@ impl Cli {
         stdout_is_tty: bool,
     ) -> Result<Invocation, CliError> {
         let Cli { global, command } = self;
-        let mut global = global.into_global_options(&raw_command, stdout_is_tty)?;
-        if let Some(output_mode) = command.output_override() {
-            global.output_mode = output_mode;
-        }
+        let global = global.into_global_options(&raw_command, stdout_is_tty)?;
 
         Ok(Invocation {
             raw_command,
@@ -107,12 +103,33 @@ struct GlobalArgs {
         value_parser = parse_non_zero_u64
     )]
     timeout_sec: Option<NonZeroU64>,
-    /// Emit machine-readable JSON output.
-    #[arg(global = true, long)]
-    json: bool,
+    #[command(flatten)]
+    output_mode: GlobalOutputModeArgs,
     /// Emit workflow progress and retry tracing to stderr.
     #[arg(global = true, long)]
     verbose: bool,
+}
+
+#[derive(Debug, Clone, Copy, Args, Default)]
+#[group(id = "output_mode", multiple = false)]
+struct GlobalOutputModeArgs {
+    /// Emit machine-readable JSON output.
+    #[arg(global = true, long)]
+    json: bool,
+    /// Emit human-readable text output.
+    #[arg(global = true, long)]
+    text: bool,
+}
+
+impl GlobalOutputModeArgs {
+    const fn requested_output_mode(self) -> Option<EffectiveOutputMode> {
+        match (self.json, self.text) {
+            (true, false) => Some(EffectiveOutputMode::Json),
+            (false, true) => Some(EffectiveOutputMode::Text),
+            (false, false) => None,
+            (true, true) => None,
+        }
+    }
 }
 
 impl GlobalArgs {
@@ -135,12 +152,18 @@ impl GlobalArgs {
                 )
             })?;
 
+        let requested_output_mode = self.output_mode.requested_output_mode();
+
         Ok(GlobalOptions {
             org: self.org_override,
             raw_config_overrides,
             request_id: self.request_id,
             timeout_sec: self.timeout_sec.map(NonZeroU64::get),
-            output_mode: resolve_output_mode(self.json, stdout_is_tty),
+            requested_output_mode,
+            output_mode: resolve_output_mode(
+                requested_output_mode,
+                crate::output::StdoutTarget::from_is_terminal(stdout_is_tty),
+            ),
             verbose: self.verbose,
         })
     }
@@ -159,6 +182,7 @@ pub(crate) struct GlobalOptions {
     pub raw_config_overrides: RawCliConfigOverrides,
     pub request_id: Option<RequestId>,
     pub timeout_sec: Option<u64>,
+    pub requested_output_mode: Option<EffectiveOutputMode>,
     pub output_mode: EffectiveOutputMode,
     pub verbose: bool,
 }
@@ -237,15 +261,6 @@ impl Command {
             Self::Doctor(DoctorSubcommand::Report(_)) => "doctor report",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
-        }
-    }
-
-    pub(crate) fn output_override(&self) -> Option<EffectiveOutputMode> {
-        match self {
-            Self::Doctor(DoctorSubcommand::Report(DoctorReportArgs { stdout: true, .. })) => {
-                Some(EffectiveOutputMode::Text)
-            }
-            _ => None,
         }
     }
 

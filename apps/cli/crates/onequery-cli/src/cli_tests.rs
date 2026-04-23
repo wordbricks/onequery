@@ -279,6 +279,10 @@ fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_
                 archive_path,
                 Some(PathBuf::from("/tmp/onequery-backup.tar.gz"))
             );
+            assert_eq!(
+                invocation.global.requested_output_mode,
+                Some(EffectiveOutputMode::Json)
+            );
             assert_eq!(invocation.global.output_mode, EffectiveOutputMode::Json);
         }
         other => panic!("expected backup command, got {other:?}"),
@@ -319,96 +323,102 @@ fn parse_invocation_accepts_hidden_debug_subcommand() {
 }
 
 #[test]
-fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
-    for (stdout_is_tty, args, expected_output_mode, expected_command) in [
+fn parse_invocation_accepts_doctor_report_and_global_output_overrides() {
+    for (
+        stdout_is_tty,
+        args,
+        expected_requested_output_mode,
+        expected_output_mode,
+        expected_command,
+    ) in [
         (
             true,
             &["onequery", "doctor", "report", "--last"][..],
+            None,
             EffectiveOutputMode::Text,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: false,
             },
         ),
         (
             false,
             &["onequery", "doctor", "report", "--last"][..],
+            None,
             EffectiveOutputMode::Json,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: false,
             },
         ),
         (
             false,
-            &["onequery", "doctor", "report", "--last", "--stdout"][..],
+            &["onequery", "doctor", "report", "--last", "--text"][..],
+            Some(EffectiveOutputMode::Text),
             EffectiveOutputMode::Text,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: true,
                 open: false,
             },
         ),
         (
             true,
             &["onequery", "doctor", "report", "--last", "--json"][..],
+            Some(EffectiveOutputMode::Json),
             EffectiveOutputMode::Json,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: false,
             },
         ),
         (
             true,
             &["onequery", "doctor", "report", "--last", "--open"][..],
+            None,
             EffectiveOutputMode::Text,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: true,
             },
         ),
         (
             false,
             &["onequery", "doctor", "report", "--last", "--open", "--json"][..],
+            Some(EffectiveOutputMode::Json),
             EffectiveOutputMode::Json,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: true,
             },
         ),
         (
             true,
             &["onequery", "doctor", "report", "--request-id", "req_123"][..],
+            None,
             EffectiveOutputMode::Text,
             DoctorReportArgs {
                 selector: DoctorReportSelectorArgs {
                     last: false,
                     request_id: Some(test_request_id("req_123")),
                 },
-                stdout: false,
                 open: false,
             },
         ),
@@ -421,6 +431,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
         };
         let invocation = *invocation;
 
+        assert_eq!(
+            invocation.global.requested_output_mode,
+            expected_requested_output_mode
+        );
         assert_eq!(invocation.global.output_mode, expected_output_mode);
         assert_eq!(invocation.command.command_path(), "doctor report");
         match invocation.command {
@@ -433,19 +447,17 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
 }
 
 #[test]
-fn parse_invocation_rejects_doctor_report_stdout_and_open_together() {
-    let error = parse_error(&[
-        "onequery", "doctor", "report", "--last", "--stdout", "--open",
-    ]);
+fn parse_invocation_rejects_doctor_report_text_and_open_together() {
+    let error = parse_error(&["onequery", "doctor", "report", "--last", "--text", "--open"]);
 
     assert_eq!(error.title, "invalid command");
     assert!(
         error
             .why
-            .contains("the argument '--stdout' cannot be used with '--open'")
+            .contains("the argument '--text' cannot be used with '--open'")
             || error
                 .why
-                .contains("the argument '--open' cannot be used with '--stdout'"),
+                .contains("the argument '--open' cannot be used with '--text'"),
         "expected clap conflict message, got {}",
         error.why
     );
@@ -772,13 +784,23 @@ fn parse_invocation_accepts_auth_session_refresh() {
 }
 
 #[test]
-fn requested_json_from_args_detects_global_json_anywhere() {
+fn requested_output_mode_from_args_detects_global_output_flags_anywhere() {
     for (args, expected) in [
-        (&["onequery", "--json"][..], true),
-        (&["onequery", "doctor", "report", "--json"][..], true),
-        (&["onequery", "org", "list"][..], false),
+        (&["onequery", "--json"][..], Some(EffectiveOutputMode::Json)),
+        (
+            &["onequery", "doctor", "report", "--json"][..],
+            Some(EffectiveOutputMode::Json),
+        ),
+        (
+            &["onequery", "doctor", "report", "--text"][..],
+            Some(EffectiveOutputMode::Text),
+        ),
+        (&["onequery", "org", "list"][..], None),
     ] {
-        assert_eq!(super::requested_json_from_args(&argv(args)), expected);
+        assert_eq!(
+            super::requested_output_mode_from_args(&argv(args)),
+            expected
+        );
     }
 }
 

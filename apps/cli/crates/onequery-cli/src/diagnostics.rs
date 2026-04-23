@@ -15,7 +15,7 @@ use crate::config::data_dir;
 use crate::path_utils;
 
 pub(crate) const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
-pub(crate) const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --stdout";
+pub(crate) const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --json";
 
 const LAST_ERROR_FILENAME: &str = "last-error.json";
 const REPORTS_DIR_NAME: &str = "reports";

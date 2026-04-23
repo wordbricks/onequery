@@ -413,8 +413,8 @@ onequery api --source github-org /user --silent -i
 Machine-readable JSON output for pipelines.
 ([script](./07-json-output.sh))
 
-Any command supports `--json`. When stdout is not a TTY, JSON is the
-default.
+Any command supports `--json` and `--text`. When stdout is not a TTY, JSON is
+the default; use `--text` to force human-readable output.
 
 ```bash
 onequery auth whoami --json

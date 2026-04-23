@@ -4,7 +4,7 @@ set -euo pipefail
 
 # ── JSON output mode ─────────────────────────────────────────────────────────
 # Any command supports --json for machine-readable output.
-# When stdout is not a TTY, JSON is the default.
+# When stdout is not a TTY, JSON is the default; use --text to force text.
 
 onequery auth whoami --json
 

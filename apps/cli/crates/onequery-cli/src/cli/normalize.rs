@@ -1,6 +1,8 @@
 use std::ffi::OsStr;
 use std::ffi::OsString;
 
+use crate::output::EffectiveOutputMode;
+
 pub(super) fn normalize_command_line(args: &[OsString]) -> String {
     let mut normalized = vec!["onequery".to_owned()];
     if args.is_empty() {
@@ -123,11 +125,19 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
     (excerpt, characters.next().is_some())
 }
 
-pub(crate) fn requested_json_from_args(args: &[OsString]) -> bool {
+pub(crate) fn requested_output_mode_from_args(args: &[OsString]) -> Option<EffectiveOutputMode> {
     args.iter()
         .skip(1)
         .take_while(|arg| arg.as_os_str() != OsStr::new("--"))
-        .any(|arg| arg.as_os_str() == OsStr::new("--json"))
+        .fold(None, |requested_output_mode, arg| {
+            if arg.as_os_str() == OsStr::new("--json") {
+                Some(EffectiveOutputMode::Json)
+            } else if arg.as_os_str() == OsStr::new("--text") {
+                Some(EffectiveOutputMode::Text)
+            } else {
+                requested_output_mode
+            }
+        })
 }
 
 pub(crate) fn requested_verbose_from_args(args: &[OsString]) -> bool {
@@ -143,7 +153,9 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    use super::requested_json_from_args;
+    use crate::output::EffectiveOutputMode;
+
+    use super::requested_output_mode_from_args;
     use super::requested_verbose_from_args;
 
     fn argv(args: &[&str]) -> Vec<OsString> {
@@ -159,10 +171,18 @@ mod tests {
     }
 
     #[test]
-    fn requested_json_from_args_detects_the_global_flag() {
+    fn requested_output_mode_from_args_detects_the_global_flag() {
         assert_eq!(
-            requested_json_from_args(&argv(&["onequery", "--json", "doctor"])),
-            true
+            requested_output_mode_from_args(&argv(&["onequery", "--json", "doctor"])),
+            Some(EffectiveOutputMode::Json)
+        );
+        assert_eq!(
+            requested_output_mode_from_args(&argv(&["onequery", "doctor", "--text"])),
+            Some(EffectiveOutputMode::Text)
+        );
+        assert_eq!(
+            requested_output_mode_from_args(&argv(&["onequery", "--json", "--", "--text",])),
+            Some(EffectiveOutputMode::Json)
         );
     }
 }

@@ -38,5 +38,8 @@ Global Options:
       --json
           Emit machine-readable JSON output
 
+      --text
+          Emit human-readable text output
+
       --verbose
           Emit workflow progress and retry tracing to stderr

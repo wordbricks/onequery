@@ -274,7 +274,11 @@ where
 pub(crate) fn execute_without_runtime(invocation: &Invocation) -> Result<CommandOutput, CliError> {
     match &invocation.command {
         Command::Explain(args) => explain::execute(args),
-        Command::Doctor(command) => doctor::execute(command, &invocation.raw_command),
+        Command::Doctor(command) => doctor::execute(
+            command,
+            &invocation.raw_command,
+            invocation.global.requested_output_mode,
+        ),
         _ => Err(CliError::internal(
             invocation.raw_command.clone(),
             format!(

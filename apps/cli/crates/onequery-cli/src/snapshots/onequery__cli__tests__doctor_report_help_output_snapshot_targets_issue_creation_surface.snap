@@ -9,7 +9,6 @@ Usage: onequery doctor report [OPTIONS] <--last|--request-id <REQUEST_ID>>
 Options:
       --last                     Use the latest saved diagnostics snapshot
       --request-id <REQUEST_ID>  Use the latest saved diagnostics snapshot when it matches this request ID
-      --stdout                   Print the generated Markdown report to stdout instead of writing a file
       --open                     Open a GitHub issue draft in the browser after writing the report file
   -h, --help                     Print help
   -V, --version                  Print version
@@ -19,4 +18,5 @@ Global Options:
   -c, --config <KEY=VALUE>  Apply a raw config override for this invocation using `key=value`
       --timeout <SECONDS>   Override the request timeout in seconds for this invocation
       --json                Emit machine-readable JSON output
+      --text                Emit human-readable text output
       --verbose             Emit workflow progress and retry tracing to stderr

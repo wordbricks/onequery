@@ -13,16 +13,19 @@ use crate::diagnostics::render_report_markdown;
 use crate::diagnostics::write_report;
 use crate::issue_report::build_issue_draft;
 use crate::output::CommandOutput;
+use crate::output::EffectiveOutputMode;
 use crate::platform::BrowserLauncher;
 use crate::platform::SystemBrowserLauncher;
 
 pub(crate) fn execute(
     command: &DoctorSubcommand,
     command_line: &str,
+    requested_output_mode: Option<EffectiveOutputMode>,
 ) -> Result<CommandOutput, CliError> {
     execute_with_clock_and_browser(
         command,
         command_line,
+        requested_output_mode,
         &DiagnosticsPaths::resolve(command_line)?,
         Utc::now(),
         &SystemBrowserLauncher,
@@ -32,6 +35,7 @@ pub(crate) fn execute(
 fn execute_with_clock_and_browser<B>(
     command: &DoctorSubcommand,
     command_line: &str,
+    requested_output_mode: Option<EffectiveOutputMode>,
     paths: &DiagnosticsPaths,
     now: DateTime<Utc>,
     browser: &B,
@@ -40,13 +44,21 @@ where
     B: BrowserLauncher,
 {
     match command {
-        DoctorSubcommand::Report(args) => execute_report(args, command_line, paths, now, browser),
+        DoctorSubcommand::Report(args) => execute_report(
+            args,
+            command_line,
+            requested_output_mode,
+            paths,
+            now,
+            browser,
+        ),
     }
 }
 
 fn execute_report<B>(
     args: &DoctorReportArgs,
     command_line: &str,
+    requested_output_mode: Option<EffectiveOutputMode>,
     paths: &DiagnosticsPaths,
     now: DateTime<Utc>,
     browser: &B,
@@ -56,7 +68,7 @@ where
 {
     let snapshot = load_selected_snapshot(args, paths, command_line)?;
 
-    if args.stdout {
+    if requested_output_mode == Some(EffectiveOutputMode::Text) {
         let report = render_report_markdown(&snapshot, &paths.last_error_path, command_line)?;
         return Ok(CommandOutput::structured(
             Vec::new(),
@@ -228,7 +240,6 @@ mod tests {
                 last: true,
                 request_id: None,
             },
-            stdout: false,
             open: false,
         })
     }
@@ -279,6 +290,7 @@ mod tests {
         let output = execute_with_clock_and_browser(
             &sample_command(),
             "onequery doctor report --last",
+            None,
             &paths,
             now,
             &browser,
@@ -336,10 +348,10 @@ mod tests {
                     last: true,
                     request_id: None,
                 },
-                stdout: true,
                 open: false,
             }),
-            "onequery doctor report --last --stdout",
+            "onequery doctor report --last --text",
+            Some(EffectiveOutputMode::Text),
             &paths,
             now,
             &browser,
@@ -380,10 +392,10 @@ mod tests {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: false,
             }),
             "onequery doctor report --last --json",
+            Some(EffectiveOutputMode::Json),
             &paths,
             now,
             &browser,
@@ -435,10 +447,10 @@ mod tests {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: true,
             }),
             "onequery doctor report --last --open",
+            None,
             &paths,
             now,
             &browser,
@@ -486,10 +498,10 @@ mod tests {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: true,
             }),
             "onequery doctor report --last --open",
+            None,
             &paths,
             now,
             &browser,
@@ -532,10 +544,10 @@ mod tests {
                     last: true,
                     request_id: None,
                 },
-                stdout: false,
                 open: true,
             }),
             "onequery doctor report --last --open",
+            None,
             &paths,
             now,
             &browser,
@@ -576,10 +588,10 @@ mod tests {
                     last: false,
                     request_id: Some(test_request_id("req_123")),
                 },
-                stdout: false,
                 open: false,
             }),
             "onequery doctor report --request-id req_123",
+            None,
             &paths,
             now,
             &browser,
@@ -619,10 +631,10 @@ mod tests {
                     last: false,
                     request_id: Some(test_request_id("req_missing")),
                 },
-                stdout: false,
                 open: false,
             }),
             "onequery doctor report --request-id req_missing",
+            None,
             &paths,
             now,
             &browser,
