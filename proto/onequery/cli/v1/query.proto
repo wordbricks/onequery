@@ -54,8 +54,6 @@ message ExecuteQueryRequest {
 }
 
 message ExecuteQueryResponse {
-  reserved elapsed_ms;
-
   CliSource source = 1 [(buf.validate.field).required = true];
   uint32 row_count = 2 [
     (buf.validate.field).required = true,
@@ -73,8 +71,6 @@ message ExecuteQueryResponse {
 }
 
 message CliQueryRequest {
-  reserved timeout_ms;
-
   string sql = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -103,8 +99,6 @@ message CliQueryRequest {
 }
 
 message CliQueryCanonicalRequest {
-  reserved timeout_ms;
-
   string sql = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -144,8 +138,6 @@ message CliQueryParameter {
 }
 
 message CliDeclaredQueryResultWindow {
-  reserved timeout_ms;
-
   uint32 max_rows = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
@@ -181,9 +173,6 @@ message CliQueryColumn {
 }
 
 message CliQueryRow {
-  reserved 1;
-  reserved values;
-
   repeated string display_values = 2 [
     (buf.validate.field).repeated.max_items = 512,
     (buf.validate.field).repeated.items.string.max_len = 8000

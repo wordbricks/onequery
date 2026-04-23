@@ -204,14 +204,9 @@ message SourceApiExecutionResult {
     string text = 8 [(buf.validate.field).string.max_len = 1048576];
     bytes binary = 9 [(buf.validate.field).bytes.max_len = 1048576];
   }
-  reserved 10;
-  reserved request_id;
 }
 
 message ExecuteSourceApiResponse {
-  reserved 1 to 3;
-  reserved preview, result, continuation_token;
-
   oneof outcome {
     option (buf.validate.oneof).required = true;
 

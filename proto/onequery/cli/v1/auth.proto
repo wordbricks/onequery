@@ -52,9 +52,6 @@ message RefreshSessionResponse {
 message StartDeviceAuthorizationRequest {}
 
 message StartDeviceAuthorizationResponse {
-  reserved 1;
-  reserved state;
-
   string device_code = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -121,9 +118,6 @@ message CliAuthUser {
 }
 
 message CliPendingDeviceAuthorization {
-  reserved 1, 2;
-  reserved state, poll_after_ms;
-
   google.protobuf.Duration poll_after = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).duration.gt = {}
@@ -131,9 +125,6 @@ message CliPendingDeviceAuthorization {
 }
 
 message CliAuthorizedDeviceAuthorization {
-  reserved 1;
-  reserved state;
-
   string access_token = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -156,9 +147,6 @@ message CliAuthorizedDeviceAuthorization {
 }
 
 message CliDeniedDeviceAuthorization {
-  reserved 1;
-  reserved state;
-
   string reason = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
@@ -166,9 +154,6 @@ message CliDeniedDeviceAuthorization {
 }
 
 message CliExpiredDeviceAuthorization {
-  reserved 1;
-  reserved state;
-
   string reason = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
@@ -176,9 +161,6 @@ message CliExpiredDeviceAuthorization {
 }
 
 message CliRateLimitedDeviceAuthorization {
-  reserved 1, 2;
-  reserved state, poll_after_ms;
-
   string reason = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512

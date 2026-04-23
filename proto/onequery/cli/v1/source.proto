@@ -68,9 +68,6 @@ message CliSource {
 }
 
 message GetSourceResponse {
-  reserved 1 to 5;
-  reserved name, display_name, provider, queryable, status;
-
   CliSource source = 6 [(buf.validate.field).required = true];
 }
 
@@ -100,9 +97,6 @@ message TestSourceResponse {
 }
 
 message TestSourceSupportedOutcome {
-  reserved 1 to 4;
-  reserved success, message, error, latency_ms;
-
   oneof result {
     option (buf.validate.oneof).required = true;
 
@@ -199,8 +193,6 @@ message ConnectSourceRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  reserved 2;
-  reserved source;
   string source_key = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -389,9 +381,6 @@ message ConnectSourceLaminarCredentials {
 }
 
 message ConnectSourceAwsAthenaConnectorCredentials {
-  reserved 4;
-  reserved timeout_ms;
-
   string connector_id = 1 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
