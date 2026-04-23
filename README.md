@@ -1,7 +1,7 @@
 # OneQuery
 
 <p align="center">
-  <a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.zh-TW.md">繁體中文</a>
+  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
 <p align="center">
@@ -159,6 +159,15 @@ Or load it inside an existing Hermes session:
 ```text
 Load skill onequery-cli.
 ```
+
+---
+
+## Built With
+
+Two libraries that make OneQuery more reliable:
+
+- [better-result](https://github.com/dmmulroy/better-result): Forces every failure to be handled explicitly, so errors never silently slip through.
+- [antiox](https://github.com/rivet-dev/antiox): Keeps concurrent queries, timeouts, and cancellations predictable, with no leaked tasks or hanging connections.
 
 ---
 
