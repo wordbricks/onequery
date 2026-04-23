@@ -6,7 +6,7 @@ through the `onequery` CLI without receiving direct database credentials.
 The plugin is intentionally CLI-only. Hermes calls local plugin tools, the
 plugin calls `onequery` with argv-based subprocess execution, and OneQuery
 enforces auth, org/source access, query validation, read-only controls, and
-audit history.
+source API permissions, and audit history.
 
 ## Install
 
@@ -43,8 +43,10 @@ ask for the next step.
 - `onequery_status`: Check local CLI availability, auth identity, and current org.
 - `onequery_list_sources`: List sources in a OneQuery org.
 - `onequery_show_source`: Show provider/status/query support for one source.
-- `onequery_validate_query`: Validate a read-only single-statement SQL query.
+- `onequery_validate_query`: Ask OneQuery to validate a SQL query.
 - `onequery_execute_query`: Execute a bounded read-only SQL query with request-id tracking.
+- `onequery_api_describe`: Describe a connected source API.
+- `onequery_api_call`: Call a connected source API through `onequery api`.
 
 ## Demo Prompt
 
@@ -65,9 +67,6 @@ expected report shape for an enterprise activation-rate investigation.
 - All source access goes through OneQuery CLI.
 - `org` and `source` are explicit tool parameters.
 - Query execution requires `purpose` and `time_bound`.
-- Write/DDL keywords are blocked before OneQuery is called.
-- Multiple statements are blocked.
-- `select *` is blocked by default.
-- PII-like column names are blocked unless explicitly approved.
+- SQL policy, read-only validation, source API permissions, and audit behavior are owned by OneQuery.
 - Query execution defaults to `maxRows=200`, `maxBytes=50000`, `cellMaxChars=500`.
-
+- Source API calls support `dry_run`, headers, fields, request bodies over stdin, pagination controls, and `jq` selection through `onequery api`.

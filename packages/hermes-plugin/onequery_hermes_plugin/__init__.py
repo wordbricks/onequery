@@ -71,6 +71,18 @@ def register(ctx):
         schema=schemas.ONEQUERY_EXECUTE_QUERY,
         handler=tools.onequery_execute_query,
     )
+    ctx.register_tool(
+        name="onequery_api_describe",
+        toolset="onequery",
+        schema=schemas.ONEQUERY_API_DESCRIBE,
+        handler=tools.onequery_api_describe,
+    )
+    ctx.register_tool(
+        name="onequery_api_call",
+        toolset="onequery",
+        schema=schemas.ONEQUERY_API_CALL,
+        handler=tools.onequery_api_call,
+    )
 
     ctx.register_hook("post_tool_call", _on_post_tool_call)
     ctx.register_command(
@@ -92,4 +104,3 @@ def _result_ok(result):
         return bool(json.loads(result).get("ok"))
     except Exception:
         return False
-

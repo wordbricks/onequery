@@ -8,5 +8,7 @@ provides_tools:
   - onequery_show_source
   - onequery_validate_query
   - onequery_execute_query
+  - onequery_api_describe
+  - onequery_api_call
 provides_hooks:
   - post_tool_call

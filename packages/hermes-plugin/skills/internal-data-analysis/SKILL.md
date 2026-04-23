@@ -16,10 +16,11 @@ data that should be accessed through OneQuery.
 - Resolve org and source before writing SQL.
 - Run `onequery_show_source` before query validation.
 - Run `onequery_validate_query` before `onequery_execute_query`.
-- Keep SQL read-only and single-statement.
+- Let OneQuery validate and enforce SQL policy; do not pre-screen SQL in Hermes.
 - Prefer aggregate queries before row samples.
 - Include a clear `purpose`, `time_bound`, and `request_id` for execution.
 - Include org, source, request id, and query purpose in the final answer.
+- Use `onequery_api_describe` before `onequery_api_call` when the task needs a connected source API rather than SQL.
 
 ## Workflow
 
@@ -31,17 +32,16 @@ data that should be accessed through OneQuery.
 6. Draft the smallest useful SQL query with explicit date bounds.
 7. Call `onequery_validate_query`.
 8. If validation passes, call `onequery_execute_query`.
-9. Synthesize results with evidence and state any remaining uncertainty.
+9. For source API tasks, call `onequery_api_describe`, then call `onequery_api_call` with the smallest operation target and request body that answers the question.
+10. Synthesize results with evidence and state any remaining uncertainty.
 
 ## Safety Defaults
 
 - Use `max_rows` no higher than 200 unless the user explicitly asks for more.
 - Use `max_bytes` no higher than 50000 unless needed.
-- Do not use `select *` unless the user explicitly approves it.
-- Do not include PII-like fields such as email, phone, name, token, session,
-  cookie, address, or IP address unless explicitly approved.
-- If the analysis needs sensitive fields, first propose a redacted or aggregate
-  alternative.
+- Prefer `dry_run` first for unfamiliar source API calls.
+- Prefer aggregate or scoped source API operations before broad list calls.
+- If sensitive fields may be involved, ask OneQuery to validate the request path and prefer redacted or aggregate alternatives.
 
 ## Final Answer Shape
 
@@ -52,4 +52,3 @@ Return:
 - Root-cause candidates ordered by confidence
 - Gaps or blocked access
 - Next smallest query if more evidence is needed
-

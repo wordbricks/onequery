@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import time
@@ -16,21 +15,6 @@ _MAX_ROWS_CAP = 1000
 _DEFAULT_MAX_ROWS = 200
 _DEFAULT_MAX_BYTES = 50000
 _DEFAULT_CELL_MAX_CHARS = 500
-
-_FORBIDDEN_SQL = re.compile(
-    r"\b("
-    r"insert|update|delete|drop|alter|truncate|create|replace|grant|revoke|"
-    r"merge|call|copy|load|unload|vacuum|analyze|attach|detach|pragma"
-    r")\b",
-    re.IGNORECASE,
-)
-_SENSITIVE_COLUMNS = re.compile(
-    r"\b("
-    r"email|phone|name|address|ip_address|user_agent|ssn|tax_id|card|"
-    r"token|secret|password|api_key|session|cookie"
-    r")\b",
-    re.IGNORECASE,
-)
 
 
 def onequery_status(args, **kwargs):
@@ -45,8 +29,8 @@ def onequery_status(args, **kwargs):
             }
         )
 
-    whoami = _run_onequery(["auth", "whoami"], timeout=30)
-    current_org = _run_onequery(["org", "current"], timeout=30)
+    whoami = _run_onequery(["--output", "json", "auth", "whoami"], timeout=30)
+    current_org = _run_onequery(["--output", "json", "org", "current"], timeout=30)
     return _json(
         {
             "ok": whoami["ok"] and current_org["ok"],
@@ -63,7 +47,7 @@ def onequery_list_sources(args, **kwargs):
     org = _required_string(args, "org")
     if not org["ok"]:
         return _json(org)
-    return _json(_run_onequery(["--org", org["value"], "source", "list"]))
+    return _json(_run_onequery(["--org", org["value"], "--output", "json", "source", "list"]))
 
 
 def onequery_show_source(args, **kwargs):
@@ -73,7 +57,15 @@ def onequery_show_source(args, **kwargs):
         return _json(parsed)
     return _json(
         _run_onequery(
-            ["--org", parsed["values"]["org"], "source", "show", parsed["values"]["source"]]
+            [
+                "--org",
+                parsed["values"]["org"],
+                "--output",
+                "json",
+                "source",
+                "show",
+                parsed["values"]["source"],
+            ]
         )
     )
 
@@ -84,25 +76,19 @@ def onequery_validate_query(args, **kwargs):
     if not parsed["ok"]:
         return _json(parsed)
 
-    policy = _check_sql_policy(
-        parsed["values"]["sql"],
-        allow_select_star=bool(args.get("allow_select_star")),
-        allow_sensitive_columns=bool(args.get("allow_sensitive_columns")),
-    )
-    if not policy["ok"]:
-        return _json(policy)
-
     return _json(
         _run_onequery(
             [
                 "--org",
                 parsed["values"]["org"],
+                "--output",
+                "json",
                 "query",
                 "validate",
                 "--source",
                 parsed["values"]["source"],
                 "--sql",
-                policy["sql"],
+                parsed["values"]["sql"],
             ]
         )
     )
@@ -113,14 +99,6 @@ def onequery_execute_query(args, **kwargs):
     parsed = _required_many(args, ["org", "source", "sql", "purpose", "time_bound"])
     if not parsed["ok"]:
         return _json(parsed)
-
-    policy = _check_sql_policy(
-        parsed["values"]["sql"],
-        allow_select_star=bool(args.get("allow_select_star")),
-        allow_sensitive_columns=bool(args.get("allow_sensitive_columns")),
-    )
-    if not policy["ok"]:
-        return _json(policy)
 
     max_rows = _bounded_int(args.get("max_rows"), _DEFAULT_MAX_ROWS, 1, _MAX_ROWS_CAP)
     max_bytes = _bounded_int(args.get("max_bytes"), _DEFAULT_MAX_BYTES, 1, 5_000_000)
@@ -133,12 +111,14 @@ def onequery_execute_query(args, **kwargs):
         [
             "--org",
             parsed["values"]["org"],
+            "--output",
+            "json",
             "query",
             "exec",
             "--source",
             parsed["values"]["source"],
             "--sql",
-            policy["sql"],
+            parsed["values"]["sql"],
             "--max-rows",
             str(max_rows),
             "--max-bytes",
@@ -165,6 +145,67 @@ def onequery_execute_query(args, **kwargs):
     return _json(result)
 
 
+def onequery_api_describe(args, **kwargs):
+    """Describe a connected source API through OneQuery."""
+    parsed = _required_many(args, ["org", "source"])
+    if not parsed["ok"]:
+        return _json(parsed)
+
+    command = _global_args(parsed["values"]["org"], args.get("request_id"))
+    command.extend(["api", "--source", parsed["values"]["source"]])
+    return _json(_run_onequery(command))
+
+
+def onequery_api_call(args, **kwargs):
+    """Call a connected source API through OneQuery."""
+    parsed = _required_many(args, ["org", "source"])
+    if not parsed["ok"]:
+        return _json(parsed)
+
+    command = _global_args(parsed["values"]["org"], args.get("request_id"))
+    command.extend(["api", "--source", parsed["values"]["source"]])
+
+    optional_target = _optional_string(args, "target")
+    if optional_target:
+        command.append(optional_target)
+    _append_option(command, "--op", _optional_string(args, "operation"))
+    _append_option(command, "--method", _optional_string(args, "method"))
+    _append_repeated(command, "--header", args.get("headers"))
+    _append_repeated(command, "--raw-field", args.get("raw_fields"))
+    _append_repeated(command, "--field", args.get("fields"))
+    if args.get("paginate"):
+        command.append("--paginate")
+    if args.get("slurp"):
+        command.append("--slurp")
+    max_pages = _optional_int(args.get("max_pages"), 1, 1000)
+    if max_pages is not None:
+        command.extend(["--max-pages", str(max_pages)])
+    if args.get("include"):
+        command.append("--include")
+    if args.get("silent"):
+        command.append("--silent")
+    _append_option(command, "--jq", _optional_string(args, "jq"))
+    if args.get("dry_run"):
+        command.append("--dry-run")
+
+    stdin = args.get("input")
+    if isinstance(stdin, str):
+        command.extend(["--input", "-"])
+    else:
+        stdin = None
+
+    result = _run_onequery(command, timeout=_DEFAULT_TIMEOUT_SECONDS, stdin=stdin)
+    result.update(
+        {
+            "request_id": _extract_request_id(command),
+            "target": optional_target,
+            "operation": _optional_string(args, "operation"),
+            "dry_run": bool(args.get("dry_run")),
+        }
+    )
+    return _json(result)
+
+
 def _onequery_bin():
     configured = os.environ.get("ONEQUERY_BIN")
     if configured:
@@ -172,7 +213,7 @@ def _onequery_bin():
     return shutil.which("onequery")
 
 
-def _run_onequery(arguments, timeout=_DEFAULT_TIMEOUT_SECONDS):
+def _run_onequery(arguments, timeout=_DEFAULT_TIMEOUT_SECONDS, stdin=None):
     cli = _onequery_bin()
     if not cli:
         return {
@@ -187,6 +228,7 @@ def _run_onequery(arguments, timeout=_DEFAULT_TIMEOUT_SECONDS):
             command,
             check=False,
             capture_output=True,
+            input=stdin,
             text=True,
             timeout=timeout,
         )
@@ -218,58 +260,18 @@ def _run_onequery(arguments, timeout=_DEFAULT_TIMEOUT_SECONDS):
     }
 
 
-def _check_sql_policy(sql, allow_select_star=False, allow_sensitive_columns=False):
-    if not isinstance(sql, str) or not sql.strip():
-        return {"ok": False, "error": "sql is required"}
-
-    normalized = sql.strip()
-    without_trailing = normalized.rstrip(";").strip()
-    scrubbed = _strip_sql_comments(without_trailing)
-    lowered = scrubbed.lower().lstrip()
-
-    if ";" in without_trailing:
-        return {
-            "ok": False,
-            "error": "Policy blocked query: multiple SQL statements are not allowed",
-        }
-    if not (lowered.startswith("select ") or lowered.startswith("with ")):
-        return {
-            "ok": False,
-            "error": "Policy blocked query: only SELECT or WITH read-only SQL is allowed",
-        }
-    forbidden = _FORBIDDEN_SQL.search(scrubbed)
-    if forbidden:
-        return {
-            "ok": False,
-            "error": "Policy blocked query: forbidden SQL keyword",
-            "keyword": forbidden.group(1).lower(),
-        }
-    if not allow_select_star and re.search(r"select\s+\*", scrubbed, re.IGNORECASE):
-        return {
-            "ok": False,
-            "error": "Policy blocked query: SELECT * requires explicit approval",
-        }
-    sensitive = sorted(set(m.group(1).lower() for m in _SENSITIVE_COLUMNS.finditer(scrubbed)))
-    if sensitive and not allow_sensitive_columns:
-        return {
-            "ok": False,
-            "error": "Policy blocked query: sensitive column-like terms require explicit approval",
-            "sensitive_terms": sensitive,
-        }
-
-    return {"ok": True, "sql": without_trailing, "policy_warnings": []}
-
-
-def _strip_sql_comments(sql):
-    no_block_comments = re.sub(r"/\*.*?\*/", " ", sql, flags=re.DOTALL)
-    return re.sub(r"--.*?$", " ", no_block_comments, flags=re.MULTILINE)
-
-
 def _required_string(args, key):
     value = args.get(key) if isinstance(args, dict) else None
     if not isinstance(value, str) or not value.strip():
         return {"ok": False, "error": "%s is required" % key}
     return {"ok": True, "value": value.strip()}
+
+
+def _optional_string(args, key):
+    value = args.get(key) if isinstance(args, dict) else None
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
 
 
 def _required_many(args, keys):
@@ -290,6 +292,44 @@ def _bounded_int(value, default, lower, upper):
     return max(lower, min(number, upper))
 
 
+def _optional_int(value, lower, upper):
+    if value is None:
+        return None
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return max(lower, min(number, upper))
+
+
+def _append_option(command, flag, value):
+    if value:
+        command.extend([flag, value])
+
+
+def _append_repeated(command, flag, values):
+    if not isinstance(values, list):
+        return
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            command.extend([flag, value.strip()])
+
+
+def _global_args(org, request_id):
+    command = ["--org", org, "--output", "json"]
+    actual_request_id = _request_id(request_id)
+    command.extend(["--request-id", actual_request_id])
+    return command
+
+
+def _extract_request_id(command):
+    try:
+        index = command.index("--request-id")
+        return command[index + 1]
+    except (ValueError, IndexError):
+        return None
+
+
 def _request_id(value):
     if isinstance(value, str) and value.strip():
         return value.strip()
@@ -308,7 +348,7 @@ def _try_parse_json(value):
 def _redacted_command(command):
     redacted = []
     skip_value = False
-    secret_flags = {"--token", "--password", "--secret", "--api-key"}
+    secret_flags = {"--token", "--password", "--secret", "--api-key", "--header"}
     for part in command:
         if skip_value:
             redacted.append("<redacted>")
@@ -330,4 +370,3 @@ def _status_recovery(whoami, current_org):
 
 def _json(value):
     return json.dumps(value, sort_keys=True)
-
