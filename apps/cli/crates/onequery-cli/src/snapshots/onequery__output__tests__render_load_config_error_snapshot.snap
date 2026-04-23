@@ -3,8 +3,6 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: failed to parse config file
-Command: onequery auth whoami
-Stage: load_config
 Why: expected newline, found a string at line 2 column 14 (/Users/alice/.config/onequery/config.toml)
 Try:
   - remove or fix /Users/alice/.config/onequery/config.toml

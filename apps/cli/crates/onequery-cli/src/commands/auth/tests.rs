@@ -100,8 +100,6 @@ fn login_denied_error_snapshot_uses_canonical_retry_command() {
             render_error(&error, EffectiveOutputMode::Text),
             @"
         Error: login denied
-        Command: onequery auth login
-        Stage: auth
         Why: browser authorization was denied before token exchange completed
         Try:
           - onequery auth login

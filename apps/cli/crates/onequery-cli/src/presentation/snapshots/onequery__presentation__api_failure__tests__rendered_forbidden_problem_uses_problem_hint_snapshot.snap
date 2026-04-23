@@ -3,11 +3,9 @@ source: crates/onequery-cli/src/presentation/api_failure.rs
 expression: "render_error(&error, EffectiveOutputMode::Text)"
 ---
 Error: Forbidden
-Command: onequery org list
-Stage: resolve_org
 Why: this account can no longer access the org list
-Request ID: req_org_auth
 Hint: refresh your session and retry
 Try:
   - refresh your session and retry
+Request ID: req_org_auth
 Explain: onequery explain forbidden

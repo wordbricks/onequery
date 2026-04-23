@@ -3,8 +3,6 @@ source: crates/onequery-cli/src/local_target.rs
 expression: rendered
 ---
 Error: failed to parse self-host config
-Command: onequery auth login
-Stage: load_config
 Why: TOML parse error at line 4, column 1
   |
 4 | log_level = "debug"

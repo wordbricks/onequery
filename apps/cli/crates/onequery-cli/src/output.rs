@@ -516,14 +516,8 @@ fn extract_sanitization(data: &Value) -> Option<Value> {
 fn render_text_error(error: &CliError) -> String {
     let mut lines = vec![
         format!("Error: {}", error.title),
-        format!("Command: {}", error.command),
-        format!("Stage: {}", error.stage.as_str()),
         format!("Why: {}", error.why),
     ];
-
-    if let Some(request_id) = &error.request_id {
-        lines.push(format!("Request ID: {request_id}"));
-    }
 
     if let Some(hint) = &error.hint {
         lines.push(format!("Hint: {hint}"));
@@ -549,6 +543,10 @@ fn render_text_error(error: &CliError) -> String {
         for suggestion in &error.try_next {
             lines.push(format!("  - {suggestion}"));
         }
+    }
+
+    if let Some(request_id) = &error.request_id {
+        lines.push(format!("Request ID: {request_id}"));
     }
 
     if let Some((code, command)) = explain_reference_for_error(error) {
@@ -615,6 +613,25 @@ mod tests {
 
         crate::test_support::snapshot_settings_with_issue_url_filter()
             .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_text_error_keeps_default_surface_compact() {
+        let rendered = render_error(
+            &CliError::new(
+                "query failed",
+                "onequery query exec --source warehouse --sql \"<excerpt: select ...>\"",
+                ErrorStage::ExecuteQuery,
+                "server rejected write query",
+                vec!["retry with a read-only SELECT".to_owned()],
+            )
+            .with_code(Some("query_rejected".to_owned()))
+            .with_request_id(Some("req_compact".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        assert_eq!(rendered.contains("Command:"), false);
+        assert_eq!(rendered.contains("Stage:"), false);
     }
 
     #[test]

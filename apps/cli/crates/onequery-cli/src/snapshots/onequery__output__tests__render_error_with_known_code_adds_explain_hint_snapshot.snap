@@ -3,8 +3,6 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: source failed
-Command: onequery source show warehouse
-Stage: resolve_source
 Why: no source named warehouse exists
 Try:
   - run onequery source list
