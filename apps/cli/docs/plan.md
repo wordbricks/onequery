@@ -379,6 +379,7 @@ if should_suggest_report(error) {
 - [x] Phase 2: diagnostics command
 - [x] Phase 3: proto-backed support metadata
 - [x] Phase 4: explicit issue creation
+- [x] Phase 5: explain command
 
 **Phase 1: quick UX fix**
 
@@ -401,6 +402,11 @@ onequery doctor report --last --open
 ```
 
 or print a `gh issue create --body-file ...` command. Never print the giant pre-filled URL in normal command results.
+
+**Phase 5: explain command**
+
+Add `onequery explain <code>` as a clap-native offline support surface, link known rendered
+errors to it, and keep the shared problem-hint copy aligned with the current command tree.
 
 The net effect: normal errors become smaller, agent-friendly JSON becomes more useful, bug reporting remains easy, and GitHub issue links only appear after an explicit diagnostic/report action.
 

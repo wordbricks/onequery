@@ -3,6 +3,7 @@ mod commands;
 mod config;
 mod credentials;
 mod diagnostics;
+mod explain;
 mod identifiers;
 mod issue_report;
 mod local_target;

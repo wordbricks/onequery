@@ -1,0 +1,14 @@
+---
+source: crates/onequery-cli/src/commands/explain.rs
+expression: "render_output(output.with_command(\"explain\"), EffectiveOutputMode::Text,)"
+---
+Code: query_rejected
+Title: Query Rejected
+Stage: execute_query
+HTTP Status: 400
+Retryable: no
+Support kind: none
+Reason: user_actionable
+Summary: The query was understood, but policy or capability checks refused to run it.
+Try:
+  - use a single read-only SELECT query

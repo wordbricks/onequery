@@ -10,3 +10,4 @@ Request ID: req_problem
 Hint: run `onequery source list`
 Try:
   - run `onequery source list`
+Explain: onequery explain source_not_found

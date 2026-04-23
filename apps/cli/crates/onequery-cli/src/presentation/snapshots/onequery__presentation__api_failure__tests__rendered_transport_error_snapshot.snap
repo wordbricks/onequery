@@ -8,3 +8,4 @@ Stage: http
 Why: failed to reach org list endpoint: operation timed out
 Try:
   - retry onequery org list
+Explain: onequery explain transport_error

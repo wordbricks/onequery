@@ -22,6 +22,7 @@ use super::args::BackupArgs;
 use super::args::DebugSubcommand;
 use super::args::DoctorReportArgs;
 use super::args::DoctorSubcommand;
+use super::args::ExplainArgs;
 use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
@@ -32,8 +33,7 @@ use super::args::parse_request_id;
 use super::args::parse_trimmed_non_empty;
 
 const GATEWAY_AFTER_HELP: &str = "Without a subcommand, `onequery gateway` runs in foreground.\nUse `onequery gateway start` to run the managed gateway in background.";
-const CLI_AFTER_HELP: &str =
-    "Support:\n  onequery doctor report --last     Create a redacted diagnostic report";
+const CLI_AFTER_HELP: &str = "Support:\n  onequery doctor report --last     Create a redacted diagnostic report\n  onequery explain <code>           Explain a stable error code";
 
 #[derive(Debug)]
 pub(crate) enum ParseOutcome {
@@ -196,6 +196,8 @@ onequery api [OPTIONS] --source <SOURCE_KEY>
        onequery api [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
        onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
     Api(ApiArgs),
+    /// Explain a stable CLI error code.
+    Explain(ExplainArgs),
     /// Inspect local CLI state and diagnostics.
     #[command(subcommand)]
     Doctor(DoctorSubcommand),
@@ -231,6 +233,7 @@ impl Command {
             Self::Gateway(args) => args.command_path(),
             Self::Upgrade => "upgrade",
             Self::Api(_) => "api",
+            Self::Explain(_) => "explain",
             Self::Doctor(DoctorSubcommand::Report(_)) => "doctor report",
             Self::Debug(DebugSubcommand::Config) => "debug config",
             Self::Debug(DebugSubcommand::AuthSession) => "debug auth-session",
@@ -250,11 +253,11 @@ impl Command {
     }
 
     pub(crate) fn requires_runtime(&self) -> bool {
-        !matches!(self, Self::Doctor(_))
+        !matches!(self, Self::Doctor(_) | Self::Explain(_))
     }
 
     pub(crate) fn should_persist_failures(&self) -> bool {
-        !matches!(self, Self::Doctor(_))
+        !matches!(self, Self::Doctor(_) | Self::Explain(_))
     }
 }
 

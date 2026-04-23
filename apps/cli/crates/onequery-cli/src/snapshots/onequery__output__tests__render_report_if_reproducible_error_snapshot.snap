@@ -9,5 +9,6 @@ Why: warehouse execution unexpectedly failed
 Request ID: req_query_failure
 Try:
   - retry onequery query exec --source warehouse --sql "select 1"
+Explain: onequery explain query_execution_failed
 
 Report if reproducible: onequery doctor report --last

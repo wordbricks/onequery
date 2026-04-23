@@ -9,6 +9,7 @@ use onequery_cli_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
+use crate::explain::ExplainCode;
 use crate::identifiers::test_org_slug;
 use crate::identifiers::test_request_id;
 use crate::identifiers::test_source_key;
@@ -25,6 +26,7 @@ use super::ConfigKey;
 use super::ConfigSetKey;
 use super::DoctorReportArgs;
 use super::DoctorSubcommand;
+use super::ExplainArgs;
 use super::GatewayCommand;
 use super::ListReadArgs;
 use super::PaginationArgs;
@@ -106,6 +108,11 @@ fn gateway_help_output_snapshot_targets_gateway_surface() {
 #[test]
 fn doctor_help_output_snapshot_targets_diagnostics_surface() {
     assert_snapshot!(rendered_display(&["onequery", "doctor", "--help"]));
+}
+
+#[test]
+fn explain_help_output_snapshot_targets_support_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "explain", "--help"]));
 }
 
 #[test]
@@ -226,6 +233,19 @@ fn parse_invocation_accepts_config_get_keys() {
             }
             other => panic!("expected config get command, got {other:?}"),
         }
+    }
+}
+
+#[test]
+fn parse_invocation_accepts_explain_codes() {
+    let invocation = parse_invocation(&["onequery", "explain", "query_rejected"]);
+
+    assert_eq!(invocation.command.command_path(), "explain");
+    match invocation.command {
+        Command::Explain(ExplainArgs { code }) => {
+            assert_eq!(code, ExplainCode::QueryRejected);
+        }
+        other => panic!("expected explain command, got {other:?}"),
     }
 }
 

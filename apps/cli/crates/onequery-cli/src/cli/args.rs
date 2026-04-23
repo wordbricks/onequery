@@ -8,6 +8,7 @@ use clap::Args;
 use clap::Subcommand;
 use clap::ValueHint;
 
+use crate::explain::ExplainCode;
 use crate::identifiers::OrgSlug;
 use crate::identifiers::RequestId;
 use crate::identifiers::SourceKey;
@@ -202,6 +203,13 @@ pub(crate) struct DoctorReportArgs {
     /// Open a GitHub issue draft in the browser after writing the report file.
     #[arg(long, conflicts_with = "stdout")]
     pub open: bool,
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct ExplainArgs {
+    /// Explain this stable CLI error code.
+    #[arg(value_name = "CODE", value_enum)]
+    pub code: ExplainCode,
 }
 
 #[derive(Debug, Clone, Args, Default, Eq, PartialEq)]

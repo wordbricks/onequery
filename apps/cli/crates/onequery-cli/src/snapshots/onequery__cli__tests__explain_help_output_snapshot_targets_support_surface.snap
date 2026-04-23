@@ -1,0 +1,22 @@
+---
+source: crates/onequery-cli/src/cli/../cli_tests.rs
+expression: "rendered_display(&[\"onequery\", \"explain\", \"--help\"])"
+---
+Explain a stable CLI error code
+
+Usage: onequery explain [OPTIONS] <CODE>
+
+Arguments:
+  <CODE>  Explain this stable CLI error code [possible values: forbidden, invalid_request, login_denied, login_rate_limited, login_session_expired, malformed_json, not_logged_in, org_not_found, transport_error, decode_error, query_execution_failed, query_execution_timed_out, query_execution_unavailable, query_preparation_failed, query_rejected, source_api_describe_failed, source_api_execution_failed, source_api_forbidden, source_api_preparation_failed, source_api_execution_state_invalid, source_api_source_unavailable, source_not_found, source_name_conflict, source_not_queryable]
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+Global Options:
+      --org <ORG_SLUG>           Override the active org for this invocation
+  -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
+      --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
+      --timeout <SECONDS>        Override the request timeout in seconds for this invocation
+      --output <OUTPUT>          Choose text or JSON output [possible values: text, json]
+      --verbose                  Emit workflow progress and retry tracing to stderr

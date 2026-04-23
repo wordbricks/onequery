@@ -11,6 +11,7 @@ use serde_json::json;
 use crate::diagnostics::JSON_REPORT_COMMAND;
 use crate::diagnostics::TEXT_REPORT_COMMAND;
 use crate::diagnostics::report_suggestion;
+use crate::explain::explain_reference_for_error;
 use crate::output_metadata::SanitizationMetadata;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
@@ -437,6 +438,15 @@ pub(crate) fn render_error(error: &CliError, mode: EffectiveOutputMode) -> Strin
                     ),
                 );
             }
+            if let Some((code, command)) = explain_reference_for_error(error) {
+                error_body.insert(
+                    "explain".to_owned(),
+                    json!({
+                        "code": code,
+                        "command": command,
+                    }),
+                );
+            }
             if let Some(report) = report_suggestion(error) {
                 error_body.insert(
                     "report".to_owned(),
@@ -538,6 +548,13 @@ fn render_text_error(error: &CliError) -> String {
         lines.push("Try:".to_owned());
         for suggestion in &error.try_next {
             lines.push(format!("  - {suggestion}"));
+        }
+    }
+
+    if let Some((code, command)) = explain_reference_for_error(error) {
+        lines.push(format!("Explain: {command}"));
+        if error.code.as_deref() != Some(code.as_str()) {
+            lines.push(format!("Explain code: {code}"));
         }
     }
 
@@ -670,6 +687,24 @@ mod tests {
                 reason: "query_execution_failure".to_owned(),
                 explain_slug: "query_execution_failed".to_owned(),
             })),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::test_support::snapshot_settings_with_issue_url_filter()
+            .bind(|| assert_snapshot!(rendered));
+    }
+
+    #[test]
+    fn render_error_with_known_code_adds_explain_hint_snapshot() {
+        let rendered = render_error(
+            &CliError::new(
+                "source failed",
+                "onequery source show warehouse",
+                ErrorStage::ResolveSource,
+                "no source named warehouse exists",
+                vec!["run onequery source list".to_owned()],
+            )
+            .with_code(Some("source_not_found".to_owned())),
             EffectiveOutputMode::Text,
         );
 
@@ -811,6 +846,10 @@ mod tests {
                     "retryable": false,
                     "hint": "queries must be read-only",
                     "tryNext": ["retry with a read-only SELECT"],
+                    "explain": {
+                        "code": "query_rejected",
+                        "command": "onequery explain query_rejected",
+                    },
                 }
             })
         );
@@ -851,6 +890,10 @@ mod tests {
                     "detail": "warehouse execution unexpectedly failed",
                     "retryable": false,
                     "tryNext": ["retry onequery query exec --source warehouse --sql \"select 1\""],
+                    "explain": {
+                        "code": "query_execution_failed",
+                        "command": "onequery explain query_execution_failed",
+                    },
                     "report": {
                         "recommended": false,
                         "command": "onequery doctor report --last --stdout",

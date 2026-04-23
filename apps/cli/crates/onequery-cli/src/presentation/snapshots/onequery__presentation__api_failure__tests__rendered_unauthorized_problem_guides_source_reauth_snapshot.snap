@@ -10,3 +10,4 @@ Request ID: req_source_auth
 Hint: login via the OneQuery web app and retry
 Try:
   - onequery auth login
+Explain: onequery explain not_logged_in

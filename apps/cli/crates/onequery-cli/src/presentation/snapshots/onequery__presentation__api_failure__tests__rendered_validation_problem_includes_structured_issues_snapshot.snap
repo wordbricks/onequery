@@ -13,3 +13,4 @@ Validation:
   - sql: query must be read-only (custom)
 Try:
   - correct the request and retry
+Explain: onequery explain invalid_request

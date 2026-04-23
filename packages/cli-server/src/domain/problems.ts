@@ -231,7 +231,7 @@ export const CLI_PROBLEM_CATALOG = {
       ProblemCode.QUERY_EXECUTION_FAILED,
       "query_execution_failure"
     ),
-    hint: 'retry `onequery query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query exec --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_TIMED_OUT: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-timed-out`,
@@ -242,7 +242,7 @@ export const CLI_PROBLEM_CATALOG = {
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: true,
     support: createCliRetrySupport(ProblemCode.QUERY_EXECUTION_TIMED_OUT),
-    hint: 'retry `onequery query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query exec --source <source> --sql "select ..."`',
   },
   QUERY_EXECUTION_UNAVAILABLE: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-execution-unavailable`,
@@ -253,7 +253,7 @@ export const CLI_PROBLEM_CATALOG = {
     stage: ProblemStage.EXECUTE_QUERY,
     retryable: true,
     support: createCliRetrySupport(ProblemCode.QUERY_EXECUTION_UNAVAILABLE),
-    hint: 'retry `onequery query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query exec --source <source> --sql "select ..."`',
   },
   QUERY_PREPARATION_FAILED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-preparation-failed`,
@@ -267,7 +267,7 @@ export const CLI_PROBLEM_CATALOG = {
       ProblemCode.QUERY_PREPARATION_FAILED,
       "query_preparation_failure"
     ),
-    hint: 'retry `onequery query --source <source> --sql "select ..."`',
+    hint: 'retry `onequery query exec --source <source> --sql "select ..."`',
   },
   QUERY_REJECTED: {
     type: `${CLI_PROBLEM_TYPE_PREFIX}/query-rejected`,
