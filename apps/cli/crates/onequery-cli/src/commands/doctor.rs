@@ -54,7 +54,7 @@ fn execute_report<B>(
 where
     B: BrowserLauncher,
 {
-    let snapshot = load_last_error(paths, command_line)?;
+    let snapshot = load_selected_snapshot(args, paths, command_line)?;
 
     if args.stdout {
         let report = render_report_markdown(&snapshot, &paths.last_error_path, command_line)?;
@@ -115,6 +115,48 @@ where
     ))
 }
 
+fn load_selected_snapshot(
+    args: &DoctorReportArgs,
+    paths: &DiagnosticsPaths,
+    command_line: &str,
+) -> Result<crate::diagnostics::DiagnosticSnapshot, CliError> {
+    let snapshot = load_last_error(paths, command_line)?;
+    if args.selector.last {
+        return Ok(snapshot);
+    }
+
+    let Some(request_id) = args.selector.request_id.as_ref() else {
+        return Err(CliError::internal(
+            command_line,
+            "doctor report selector group accepted an impossible state",
+        ));
+    };
+
+    // Comment: diagnostics currently persist one redacted snapshot, so request-id selection
+    // validates the saved snapshot instead of searching a historical store.
+    if snapshot.request_id.as_deref() == Some(request_id.as_str()) {
+        return Ok(snapshot);
+    }
+
+    let why = match snapshot.request_id.as_deref() {
+        Some(saved_request_id) => format!(
+            "saved diagnostics request ID `{saved_request_id}` does not match `{request_id}`"
+        ),
+        None => "the saved diagnostics snapshot does not include a request ID".to_owned(),
+    };
+
+    Err(CliError::new(
+        "diagnostic report unavailable",
+        command_line,
+        ErrorStage::LoadConfig,
+        why,
+        vec![
+            "run the failing command again to capture a fresh snapshot".to_owned(),
+            format!("retry {}", crate::diagnostics::TEXT_REPORT_COMMAND),
+        ],
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
@@ -127,6 +169,7 @@ mod tests {
 
     use crate::diagnostics::DiagnosticSnapshot;
     use crate::diagnostics::persist_last_error;
+    use crate::identifiers::test_request_id;
     use crate::output::EffectiveOutputMode;
     use crate::output::render_output;
     use crate::platform::BrowserLaunchError;
@@ -137,6 +180,7 @@ mod tests {
     use super::DoctorReportArgs;
     use super::DoctorSubcommand;
     use super::execute_with_clock_and_browser;
+    use crate::cli::DoctorReportSelectorArgs;
 
     #[derive(Debug)]
     struct RecordingBrowser {
@@ -178,7 +222,10 @@ mod tests {
 
     fn sample_command() -> DoctorSubcommand {
         DoctorSubcommand::Report(DoctorReportArgs {
-            last: true,
+            selector: DoctorReportSelectorArgs {
+                last: true,
+                request_id: None,
+            },
             stdout: false,
             json: false,
             open: false,
@@ -284,7 +331,10 @@ mod tests {
 
         let output = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: true,
                 json: false,
                 open: false,
@@ -326,7 +376,10 @@ mod tests {
 
         let output = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: true,
                 open: false,
@@ -372,7 +425,10 @@ mod tests {
 
         let output = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: false,
                 open: true,
@@ -421,7 +477,10 @@ mod tests {
 
         let error = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: false,
                 open: true,
@@ -443,6 +502,94 @@ mod tests {
             error.try_next[0].starts_with("gh issue create -R wordbricks/onequery"),
             "expected gh issue fallback command, got {}",
             error.try_next[0]
+        );
+    }
+
+    #[test]
+    fn report_command_accepts_matching_request_id_selector() {
+        let temp_dir = tempdir().expect("failed to create tempdir");
+        let paths = DiagnosticsPaths::for_test(temp_dir.path().join("onequery-data"));
+        let now = Utc
+            .with_ymd_and_hms(2026, 4, 23, 3, 20, 0)
+            .single()
+            .expect("expected timestamp");
+        let browser = RecordingBrowser::succeed();
+
+        seed_snapshot(&paths);
+
+        let output = execute_with_clock_and_browser(
+            &DoctorSubcommand::Report(DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: false,
+                    request_id: Some(test_request_id("req_123")),
+                },
+                stdout: false,
+                json: false,
+                open: false,
+            }),
+            "onequery doctor report --request-id req_123",
+            &paths,
+            now,
+            &browser,
+        )
+        .expect("expected matching request ID to select the saved snapshot");
+
+        assert_eq!(
+            output
+                .into_data()
+                .get("reportPath")
+                .and_then(serde_json::Value::as_str),
+            Some(
+                temp_dir
+                    .path()
+                    .join("onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md")
+                    .to_string_lossy()
+                    .as_ref()
+            )
+        );
+    }
+
+    #[test]
+    fn report_command_rejects_mismatched_request_id_selector() {
+        let temp_dir = tempdir().expect("failed to create tempdir");
+        let paths = DiagnosticsPaths::for_test(temp_dir.path().join("onequery-data"));
+        let now = Utc
+            .with_ymd_and_hms(2026, 4, 23, 3, 20, 0)
+            .single()
+            .expect("expected timestamp");
+        let browser = RecordingBrowser::succeed();
+
+        seed_snapshot(&paths);
+
+        let error = execute_with_clock_and_browser(
+            &DoctorSubcommand::Report(DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: false,
+                    request_id: Some(test_request_id("req_missing")),
+                },
+                stdout: false,
+                json: false,
+                open: false,
+            }),
+            "onequery doctor report --request-id req_missing",
+            &paths,
+            now,
+            &browser,
+        )
+        .expect_err("expected request ID mismatch to reject the saved snapshot");
+
+        assert_eq!(error.title, "diagnostic report unavailable");
+        assert_eq!(error.stage, ErrorStage::LoadConfig);
+        assert_eq!(
+            error.why,
+            "saved diagnostics request ID `req_123` does not match `req_missing`"
+        );
+        assert_eq!(
+            error.try_next,
+            vec![
+                "run the failing command again to capture a fresh snapshot".to_owned(),
+                "retry onequery doctor report --last".to_owned(),
+            ]
         );
     }
 }

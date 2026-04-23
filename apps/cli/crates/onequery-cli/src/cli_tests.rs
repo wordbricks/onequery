@@ -25,6 +25,7 @@ use super::ConfigCommand;
 use super::ConfigKey;
 use super::ConfigSetKey;
 use super::DoctorReportArgs;
+use super::DoctorReportSelectorArgs;
 use super::DoctorSubcommand;
 use super::ExplainArgs;
 use super::GatewayCommand;
@@ -317,7 +318,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last"][..],
             EffectiveOutputMode::Text,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: false,
                 open: false,
@@ -328,7 +332,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last"][..],
             EffectiveOutputMode::Json,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: false,
                 open: false,
@@ -339,7 +346,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last", "--stdout"][..],
             EffectiveOutputMode::Text,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: true,
                 json: false,
                 open: false,
@@ -350,7 +360,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last", "--json"][..],
             EffectiveOutputMode::Json,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: true,
                 open: false,
@@ -361,7 +374,10 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last", "--open"][..],
             EffectiveOutputMode::Text,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: false,
                 open: true,
@@ -372,10 +388,27 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             &["onequery", "doctor", "report", "--last", "--open", "--json"][..],
             EffectiveOutputMode::Json,
             DoctorReportArgs {
-                last: true,
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
                 stdout: false,
                 json: true,
                 open: true,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--request-id", "req_123"][..],
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: false,
+                    request_id: Some(test_request_id("req_123")),
+                },
+                stdout: false,
+                json: false,
+                open: false,
             },
         ),
     ] {
@@ -412,6 +445,30 @@ fn parse_invocation_rejects_doctor_report_stdout_and_open_together() {
             || error
                 .why
                 .contains("the argument '--open' cannot be used with '--stdout'"),
+        "expected clap conflict message, got {}",
+        error.why
+    );
+}
+
+#[test]
+fn parse_invocation_rejects_doctor_report_last_and_request_id_together() {
+    let error = parse_error(&[
+        "onequery",
+        "doctor",
+        "report",
+        "--last",
+        "--request-id",
+        "req_123",
+    ]);
+
+    assert_eq!(error.title, "invalid command");
+    assert!(
+        error
+            .why
+            .contains("the argument '--last' cannot be used with '--request-id <REQUEST_ID>'")
+            || error
+                .why
+                .contains("the argument '--request-id <REQUEST_ID>' cannot be used with '--last'"),
         "expected clap conflict message, got {}",
         error.why
     );

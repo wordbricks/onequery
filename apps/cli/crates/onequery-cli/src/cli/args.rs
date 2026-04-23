@@ -190,10 +190,20 @@ pub(crate) enum DoctorSubcommand {
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
-pub(crate) struct DoctorReportArgs {
+#[group(id = "doctor_report_selector", required = true, multiple = false)]
+pub(crate) struct DoctorReportSelectorArgs {
     /// Use the latest saved diagnostics snapshot.
-    #[arg(long, required = true)]
+    #[arg(long)]
     pub last: bool,
+    /// Use the latest saved diagnostics snapshot when it matches this request ID.
+    #[arg(long, value_name = "REQUEST_ID", value_parser = parse_request_id)]
+    pub request_id: Option<RequestId>,
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct DoctorReportArgs {
+    #[command(flatten)]
+    pub selector: DoctorReportSelectorArgs,
     /// Print the generated Markdown report to stdout instead of writing a file.
     #[arg(long, group = "doctor_report_destination")]
     pub stdout: bool,

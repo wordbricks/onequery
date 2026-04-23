@@ -15,6 +15,8 @@ pub(crate) use args::AuthSubcommand;
 pub(crate) use args::BackupArgs;
 pub(crate) use args::DebugSubcommand;
 pub(crate) use args::DoctorReportArgs;
+#[cfg(test)]
+pub(crate) use args::DoctorReportSelectorArgs;
 pub(crate) use args::DoctorSubcommand;
 pub(crate) use args::ExplainArgs;
 pub(crate) use args::ListReadArgs;
