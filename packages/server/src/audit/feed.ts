@@ -15,6 +15,7 @@ import type {
   AuditOriginActor,
   AuditOutcome,
   AuditProjectionLag,
+  AuditProjectedThrough,
   AuditQueryActionEventType,
   AuditQueryActionFailureCode,
   AuditQueryActionMetrics,
@@ -337,14 +338,14 @@ type AuditCursor = {
   startedAt: Date;
 };
 
-type AuditFeedCheckpointMap = {
-  queryAction: string | null;
-  sourceApiAction: string | null;
-};
-
-type AuditFeedCheckpointPositionMap = {
+type AuditProjectionCheckpointSnapshot = {
   queryAction: bigint | null;
   sourceApiAction: bigint | null;
+};
+
+type AuditProjectionCheckpointPositions = {
+  queryAction: bigint;
+  sourceApiAction: bigint;
 };
 
 type QueryActionProjectionRow = {
@@ -1638,8 +1639,8 @@ export async function syncAuditFeedProjection(db: Database): Promise<void> {
 }
 
 function serializeAuditProjectedThrough(
-  checkpoints: AuditFeedCheckpointPositionMap
-): AuditFeedCheckpointMap {
+  checkpoints: AuditProjectionCheckpointSnapshot
+): AuditProjectedThrough {
   return {
     queryAction:
       checkpoints.queryAction === null
@@ -1652,10 +1653,19 @@ function serializeAuditProjectedThrough(
   };
 }
 
-async function loadAuditProjectionCheckpointPositions(
+function normalizeAuditProjectionCheckpointSnapshot(
+  checkpoints: AuditProjectionCheckpointSnapshot
+): AuditProjectionCheckpointPositions {
+  return {
+    queryAction: checkpoints.queryAction ?? 0n,
+    sourceApiAction: checkpoints.sourceApiAction ?? 0n,
+  };
+}
+
+async function loadAuditProjectionCheckpointSnapshot(
   db: DatabaseExecutor
-): Promise<AuditFeedCheckpointPositionMap> {
-  const checkpoints: AuditFeedCheckpointPositionMap = {
+): Promise<AuditProjectionCheckpointSnapshot> {
+  const checkpoints: AuditProjectionCheckpointSnapshot = {
     queryAction: null,
     sourceApiAction: null,
   };
@@ -1731,17 +1741,18 @@ async function hasUnprojectedSourceApiActionEvents(
 
 async function loadAuditProjectionLag(
   db: DatabaseExecutor,
-  checkpoints: AuditFeedCheckpointPositionMap,
+  checkpoints: AuditProjectionCheckpointPositions,
   organizationId: string
 ): Promise<AuditProjectionLag> {
-  const queryActionCheckpoint = checkpoints.queryAction ?? 0n;
-  const sourceApiActionCheckpoint = checkpoints.sourceApiAction ?? 0n;
-
   const [queryAction, sourceApiAction] = await Promise.all([
-    hasUnprojectedQueryActionEvents(db, queryActionCheckpoint, organizationId),
+    hasUnprojectedQueryActionEvents(
+      db,
+      checkpoints.queryAction,
+      organizationId
+    ),
     hasUnprojectedSourceApiActionEvents(
       db,
-      sourceApiActionCheckpoint,
+      checkpoints.sourceApiAction,
       organizationId
     ),
   ]);
@@ -1869,11 +1880,13 @@ export async function listAuditFeedPage(input: {
   query: AuditListQuery;
 }): Promise<AuditListResponse> {
   await syncAuditFeedProjection(input.db);
-  const checkpoints = await loadAuditProjectionCheckpointPositions(input.db);
-  const projectedThrough = serializeAuditProjectedThrough(checkpoints);
+  const checkpointSnapshot = await loadAuditProjectionCheckpointSnapshot(
+    input.db
+  );
+  const projectedThrough = serializeAuditProjectedThrough(checkpointSnapshot);
   const projectionLag = await loadAuditProjectionLag(
     input.db,
-    checkpoints,
+    normalizeAuditProjectionCheckpointSnapshot(checkpointSnapshot),
     input.organizationId
   );
   const conditions = [
