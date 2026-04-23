@@ -81,8 +81,10 @@ where
                     format!("could not open browser automatically ({open_error})"),
                     vec![
                         issue_draft.github_command.clone(),
-                        "open the generated report manually and paste it into a new GitHub issue"
-                            .to_owned(),
+                        format!(
+                            "review {} and paste it into a new GitHub issue",
+                            report_path.display()
+                        ),
                     ],
                 )
             })?;
@@ -171,6 +173,7 @@ mod tests {
     use crate::diagnostics::persist_last_error;
     use crate::identifiers::test_request_id;
     use crate::output::EffectiveOutputMode;
+    use crate::output::render_error;
     use crate::output::render_output;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
@@ -496,13 +499,63 @@ mod tests {
         assert_eq!(error.stage, ErrorStage::Internal);
         assert_eq!(
             error.try_next[1],
-            "open the generated report manually and paste it into a new GitHub issue"
+            format!(
+                "review {} and paste it into a new GitHub issue",
+                temp_dir
+                    .path()
+                    .join("onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md")
+                    .display()
+            )
         );
         assert!(
             error.try_next[0].starts_with("gh issue create -R wordbricks/onequery"),
             "expected gh issue fallback command, got {}",
             error.try_next[0]
         );
+    }
+
+    #[test]
+    fn report_command_open_failure_renders_report_path_in_error_output_snapshot() {
+        let temp_dir = tempdir().expect("failed to create tempdir");
+        let paths = DiagnosticsPaths::for_test(temp_dir.path().join("onequery-data"));
+        let now = Utc
+            .with_ymd_and_hms(2026, 4, 23, 3, 20, 0)
+            .single()
+            .expect("expected timestamp");
+        seed_snapshot(&paths);
+        let browser = RecordingBrowser::fail("launch denied");
+
+        let error = execute_with_clock_and_browser(
+            &DoctorSubcommand::Report(DoctorReportArgs {
+                selector: DoctorReportSelectorArgs {
+                    last: true,
+                    request_id: None,
+                },
+                stdout: false,
+                json: false,
+                open: true,
+            }),
+            "onequery doctor report --last --open",
+            &paths,
+            now,
+            &browser,
+        )
+        .expect_err("expected browser launch error");
+
+        let rendered = render_error(
+            &error.with_command_path(Some("doctor report".to_owned())),
+            EffectiveOutputMode::Text,
+        );
+
+        crate::commands::with_command_snapshot_path(|| {
+            insta::with_settings!({
+                filters => [
+                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>")
+                ]
+            }, {
+                assert_snapshot!(rendered);
+            });
+        });
     }
 
     #[test]

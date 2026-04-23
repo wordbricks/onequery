@@ -28,6 +28,12 @@ pub(crate) struct ReportSuggestion {
 }
 
 pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
+    // Comment: `doctor report` is already the explicit reporting surface, so
+    // adding another report hint there is recursive noise rather than guidance.
+    if error.command_path.as_deref() == Some("doctor report") {
+        return None;
+    }
+
     if let Some(support_action) = &error.support_action {
         match support_action.kind {
             CliSupportActionKind::ReportIfReproducible => {
