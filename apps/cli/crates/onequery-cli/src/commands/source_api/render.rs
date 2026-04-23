@@ -1076,9 +1076,9 @@ fn render_response_stdout_bytes(
 
 fn binary_tty_render_error() -> CliError {
     source_api_render_error(
-        "binary source API responses require non-TTY stdout; pipe the output or use `--output json`",
+        "binary source API responses require non-TTY stdout; pipe the output or use `--json`",
         vec![
-            "retry onequery api --output json ...".to_owned(),
+            "retry onequery api --json ...".to_owned(),
             "pipe stdout to a file or another command".to_owned(),
         ],
     )
@@ -1608,7 +1608,7 @@ mod tests {
 
         assert_eq!(
             error.why,
-            "binary source API responses require non-TTY stdout; pipe the output or use `--output json`"
+            "binary source API responses require non-TTY stdout; pipe the output or use `--json`"
         );
     }
 

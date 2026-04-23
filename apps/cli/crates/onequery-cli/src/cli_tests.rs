@@ -14,7 +14,6 @@ use crate::identifiers::test_org_slug;
 use crate::identifiers::test_request_id;
 use crate::identifiers::test_source_key;
 use crate::output::EffectiveOutputMode;
-use crate::output::RequestedOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
 use super::ApiArgs;
@@ -267,8 +266,7 @@ fn parse_invocation_accepts_backup_archive_path_without_conflicting_with_global_
         "backup",
         "--archive-path",
         "/tmp/onequery-backup.tar.gz",
-        "--output",
-        "json",
+        "--json",
     ]);
 
     match invocation.command {
@@ -333,7 +331,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: false,
-                json: false,
                 open: false,
             },
         ),
@@ -347,7 +344,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: false,
-                json: false,
                 open: false,
             },
         ),
@@ -361,7 +357,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: true,
-                json: false,
                 open: false,
             },
         ),
@@ -375,7 +370,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: false,
-                json: true,
                 open: false,
             },
         ),
@@ -389,7 +383,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: false,
-                json: false,
                 open: true,
             },
         ),
@@ -403,7 +396,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: None,
                 },
                 stdout: false,
-                json: true,
                 open: true,
             },
         ),
@@ -417,7 +409,6 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                     request_id: Some(test_request_id("req_123")),
                 },
                 stdout: false,
-                json: false,
                 open: false,
             },
         ),
@@ -781,18 +772,13 @@ fn parse_invocation_accepts_auth_session_refresh() {
 }
 
 #[test]
-fn requested_output_from_args_reads_long_flag_syntax() {
+fn requested_json_from_args_detects_global_json_anywhere() {
     for (args, expected) in [
-        (
-            &["onequery", "--output", "json"][..],
-            Some(RequestedOutputMode::Json),
-        ),
-        (
-            &["onequery", "--output=text"][..],
-            Some(RequestedOutputMode::Text),
-        ),
+        (&["onequery", "--json"][..], true),
+        (&["onequery", "doctor", "report", "--json"][..], true),
+        (&["onequery", "org", "list"][..], false),
     ] {
-        assert_eq!(super::requested_output_from_args(&argv(args)), expected);
+        assert_eq!(super::requested_json_from_args(&argv(args)), expected);
     }
 }
 

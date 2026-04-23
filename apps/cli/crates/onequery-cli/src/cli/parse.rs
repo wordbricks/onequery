@@ -16,7 +16,7 @@ use onequery_cli_core::error::ErrorStage;
 use super::model::Cli;
 use super::model::ParseOutcome;
 use super::normalize::normalize_command_line;
-use super::normalize::requested_output_from_args;
+use super::normalize::requested_json_from_args;
 
 #[cfg(test)]
 pub(super) fn parse_invocation_from(args: &[OsString]) -> Result<ParseOutcome, CliError> {
@@ -28,7 +28,7 @@ pub(crate) fn parse_invocation_from_with_stdout_tty(
     stdout_is_tty: bool,
 ) -> Result<ParseOutcome, CliError> {
     let raw_command = normalize_command_line(args);
-    let requested_output = requested_output_from_args(args);
+    let requested_json = requested_json_from_args(args);
 
     match Cli::try_parse_from(args) {
         Ok(cli) => Ok(ParseOutcome::Invocation(Box::new(
@@ -37,7 +37,7 @@ pub(crate) fn parse_invocation_from_with_stdout_tty(
         Err(parse_error) => match parse_error.kind() {
             ErrorKind::DisplayHelp | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => {
                 render_help_parse_outcome(
-                    resolve_output_mode(requested_output, stdout_is_tty),
+                    resolve_output_mode(requested_json, stdout_is_tty),
                     parse_error.to_string(),
                 )
             }

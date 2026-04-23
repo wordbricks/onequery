@@ -1,6 +1,5 @@
 use std::fmt;
 
-use clap::ValueEnum;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde::Serialize;
@@ -13,13 +12,6 @@ use crate::diagnostics::TEXT_REPORT_COMMAND;
 use crate::diagnostics::report_suggestion;
 use crate::explain::explain_reference_for_error;
 use crate::output_metadata::SanitizationMetadata;
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-#[value(rename_all = "lower")]
-pub(crate) enum RequestedOutputMode {
-    Text,
-    Json,
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum EffectiveOutputMode {
@@ -289,14 +281,13 @@ pub(crate) fn render_separator_row(widths: &[usize]) -> String {
 }
 
 pub(crate) fn resolve_output_mode(
-    requested: Option<RequestedOutputMode>,
+    requested_json: bool,
     stdout_is_tty: bool,
 ) -> EffectiveOutputMode {
-    match requested {
-        Some(RequestedOutputMode::Text) => EffectiveOutputMode::Text,
-        Some(RequestedOutputMode::Json) => EffectiveOutputMode::Json,
-        None if stdout_is_tty => EffectiveOutputMode::Text,
-        None => EffectiveOutputMode::Json,
+    match (requested_json, stdout_is_tty) {
+        (true, _) => EffectiveOutputMode::Json,
+        (false, true) => EffectiveOutputMode::Text,
+        (false, false) => EffectiveOutputMode::Json,
     }
 }
 
@@ -600,7 +591,6 @@ mod tests {
     use super::CommandOutput;
     use super::EffectiveOutputMode;
     use super::RenderedOutput;
-    use super::RequestedOutputMode;
     use super::render_error;
     use super::render_error_with_verbosity;
     use super::render_output;
@@ -765,29 +755,23 @@ mod tests {
     }
 
     #[test]
-    fn resolve_output_mode_uses_explicit_text_when_stdout_is_not_a_tty() {
-        assert_eq!(
-            resolve_output_mode(Some(RequestedOutputMode::Text), false),
-            EffectiveOutputMode::Text
-        );
-    }
-
-    #[test]
-    fn resolve_output_mode_uses_explicit_json_when_stdout_is_a_tty() {
-        assert_eq!(
-            resolve_output_mode(Some(RequestedOutputMode::Json), true),
-            EffectiveOutputMode::Json
-        );
+    fn resolve_output_mode_uses_explicit_json_when_requested() {
+        for stdout_is_tty in [true, false] {
+            assert_eq!(
+                resolve_output_mode(true, stdout_is_tty),
+                EffectiveOutputMode::Json
+            );
+        }
     }
 
     #[test]
     fn resolve_output_mode_defaults_to_text_when_stdout_is_a_tty() {
-        assert_eq!(resolve_output_mode(None, true), EffectiveOutputMode::Text);
+        assert_eq!(resolve_output_mode(false, true), EffectiveOutputMode::Text);
     }
 
     #[test]
     fn resolve_output_mode_defaults_to_json_when_stdout_is_not_a_tty() {
-        assert_eq!(resolve_output_mode(None, false), EffectiveOutputMode::Json);
+        assert_eq!(resolve_output_mode(false, false), EffectiveOutputMode::Json);
     }
 
     #[test]

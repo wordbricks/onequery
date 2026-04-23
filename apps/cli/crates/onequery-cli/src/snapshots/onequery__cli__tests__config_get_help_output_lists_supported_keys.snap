@@ -35,10 +35,8 @@ Global Options:
       --timeout <SECONDS>
           Override the request timeout in seconds for this invocation
 
-      --output <OUTPUT>
-          Choose text or JSON output
-          
-          [possible values: text, json]
+      --json
+          Emit machine-readable JSON output
 
       --verbose
           Emit workflow progress and retry tracing to stderr

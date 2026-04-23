@@ -47,7 +47,7 @@ skill.
 - The plugin adds no custom agent tools and has no plugin-specific runtime
   config.
 - The bundled `onequery-openclaw` skill teaches the agent to run
-  `onequery ... --output json` directly via `exec`.
+  `onequery ... --json` directly via `exec`.
 - The skill keeps the same workflow as before: resolve auth and org context,
   inspect sources, validate unfamiliar SQL first, then execute bounded
   read-only queries.

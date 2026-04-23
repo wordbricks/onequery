@@ -12,7 +12,6 @@ use crate::config::RawCliConfigOverrides;
 use crate::identifiers::OrgSlug;
 use crate::identifiers::RequestId;
 use crate::output::EffectiveOutputMode;
-use crate::output::RequestedOutputMode;
 use crate::output::TerminalOutput;
 use crate::output::resolve_output_mode;
 
@@ -108,9 +107,9 @@ struct GlobalArgs {
         value_parser = parse_non_zero_u64
     )]
     timeout_sec: Option<NonZeroU64>,
-    /// Choose text or JSON output.
-    #[arg(global = true, long, value_enum)]
-    output: Option<RequestedOutputMode>,
+    /// Emit machine-readable JSON output.
+    #[arg(global = true, long)]
+    json: bool,
     /// Emit workflow progress and retry tracing to stderr.
     #[arg(global = true, long)]
     verbose: bool,
@@ -141,7 +140,7 @@ impl GlobalArgs {
             raw_config_overrides,
             request_id: self.request_id,
             timeout_sec: self.timeout_sec.map(NonZeroU64::get),
-            output_mode: resolve_output_mode(self.output, stdout_is_tty),
+            output_mode: resolve_output_mode(self.json, stdout_is_tty),
             verbose: self.verbose,
         })
     }
@@ -245,9 +244,6 @@ impl Command {
         match self {
             Self::Doctor(DoctorSubcommand::Report(DoctorReportArgs { stdout: true, .. })) => {
                 Some(EffectiveOutputMode::Text)
-            }
-            Self::Doctor(DoctorSubcommand::Report(DoctorReportArgs { json: true, .. })) => {
-                Some(EffectiveOutputMode::Json)
             }
             _ => None,
         }

@@ -1,8 +1,5 @@
+use std::ffi::OsStr;
 use std::ffi::OsString;
-
-use clap::Parser;
-
-use crate::output::RequestedOutputMode;
 
 pub(super) fn normalize_command_line(args: &[OsString]) -> String {
     let mut normalized = vec!["onequery".to_owned()];
@@ -126,31 +123,18 @@ fn excerpt(raw: &str, limit: usize) -> (String, bool) {
     (excerpt, characters.next().is_some())
 }
 
-// CONTEXT: parse errors still need an output mode before the main clap parse succeeds,
-// so this tiny probe ignores unrelated CLI failures and only extracts the global
-// flags needed to render fallback output.
-#[derive(Debug, Parser)]
-#[command(
-    name = "onequery",
-    disable_help_flag = true,
-    disable_version_flag = true,
-    ignore_errors = true
-)]
-struct RenderFallbackProbe {
-    #[arg(long, global = true, value_enum)]
-    output: Option<RequestedOutputMode>,
-    #[arg(long, global = true)]
-    verbose: bool,
-}
-
-pub(crate) fn requested_output_from_args(args: &[OsString]) -> Option<RequestedOutputMode> {
-    RenderFallbackProbe::try_parse_from(args).ok()?.output
+pub(crate) fn requested_json_from_args(args: &[OsString]) -> bool {
+    args.iter()
+        .skip(1)
+        .take_while(|arg| arg.as_os_str() != OsStr::new("--"))
+        .any(|arg| arg.as_os_str() == OsStr::new("--json"))
 }
 
 pub(crate) fn requested_verbose_from_args(args: &[OsString]) -> bool {
-    RenderFallbackProbe::try_parse_from(args)
-        .map(|probe| probe.verbose)
-        .unwrap_or(false)
+    args.iter()
+        .skip(1)
+        .take_while(|arg| arg.as_os_str() != OsStr::new("--"))
+        .any(|arg| arg.as_os_str() == OsStr::new("--verbose"))
 }
 
 #[cfg(test)]
@@ -159,9 +143,7 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
-    use crate::output::RequestedOutputMode;
-
-    use super::requested_output_from_args;
+    use super::requested_json_from_args;
     use super::requested_verbose_from_args;
 
     fn argv(args: &[&str]) -> Vec<OsString> {
@@ -177,10 +159,10 @@ mod tests {
     }
 
     #[test]
-    fn requested_output_from_args_still_extracts_output_mode() {
+    fn requested_json_from_args_detects_the_global_flag() {
         assert_eq!(
-            requested_output_from_args(&argv(&["onequery", "--output", "json", "doctor"])),
-            Some(RequestedOutputMode::Json)
+            requested_json_from_args(&argv(&["onequery", "--json", "doctor"])),
+            true
         );
     }
 }

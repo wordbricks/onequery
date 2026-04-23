@@ -36,7 +36,7 @@ async fn main() {
     let argv: Vec<std::ffi::OsString> = std::env::args_os().collect();
     let stdout_is_tty = std::io::stdout().is_terminal();
     let fallback_output_mode =
-        output::resolve_output_mode(cli::requested_output_from_args(&argv), stdout_is_tty);
+        output::resolve_output_mode(cli::requested_json_from_args(&argv), stdout_is_tty);
     let fallback_verbose = cli::requested_verbose_from_args(&argv);
     let parse_outcome = cli::parse_invocation_from_with_stdout_tty(&argv, stdout_is_tty);
 

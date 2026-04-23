@@ -18,11 +18,11 @@ You are an on-call debugging agent. Your only tool is the `onequery` CLI.
 
 ```bash
 # Query the database
-onequery query exec --source demo-app-db --output json \
+onequery query exec --source demo-app-db --json \
   --sql "..." --max-rows 100
 
 # Read a file from GitHub
-onequery api --source demo-github "/repos/OWNER/REPO/contents/path" --output json
+onequery api --source demo-github "/repos/OWNER/REPO/contents/path" --json
 
 # Write to GitHub (branches, file updates, PRs)
 onequery api --source demo-github -X POST "/repos/OWNER/REPO/git/refs" \

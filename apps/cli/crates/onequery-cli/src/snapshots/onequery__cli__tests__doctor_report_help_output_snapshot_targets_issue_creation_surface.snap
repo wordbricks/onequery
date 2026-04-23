@@ -10,7 +10,6 @@ Options:
       --last                     Use the latest saved diagnostics snapshot
       --request-id <REQUEST_ID>  Use the latest saved diagnostics snapshot when it matches this request ID
       --stdout                   Print the generated Markdown report to stdout instead of writing a file
-      --json                     Emit structured JSON metadata for the generated report
       --open                     Open a GitHub issue draft in the browser after writing the report file
   -h, --help                     Print help
   -V, --version                  Print version
@@ -19,5 +18,5 @@ Global Options:
       --org <ORG_SLUG>      Override the active org for this invocation
   -c, --config <KEY=VALUE>  Apply a raw config override for this invocation using `key=value`
       --timeout <SECONDS>   Override the request timeout in seconds for this invocation
-      --output <OUTPUT>     Choose text or JSON output [possible values: text, json]
+      --json                Emit machine-readable JSON output
       --verbose             Emit workflow progress and retry tracing to stderr
