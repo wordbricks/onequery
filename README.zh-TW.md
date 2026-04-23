@@ -139,6 +139,27 @@ openclaw plugins enable onequery
 }
 ```
 
+## Hermes
+
+如需在不安裝外掛的情況下使用 Hermes Agent，請安裝獨立的
+`onequery-cli` skill：
+
+```bash
+hermes skills install skills-sh/wordbricks/skills/onequery-cli --yes --force
+```
+
+然後在啟動 Hermes 時預先載入該 skill：
+
+```bash
+hermes chat --skills onequery-cli
+```
+
+或者在既有 Hermes 工作階段中載入：
+
+```text
+Load skill onequery-cli.
+```
+
 ---
 
 ## 貢獻
