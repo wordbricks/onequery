@@ -1,5 +1,5 @@
 ---
-name: no-use-effect
+name: react-no-use-effect
 description: |
   Enforce the no-useEffect rule when writing or reviewing React code.
   Activate when writing React components, refactoring existing useEffect calls,
