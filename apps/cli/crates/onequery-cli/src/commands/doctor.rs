@@ -3,6 +3,7 @@ use chrono::Utc;
 use serde_json::json;
 
 use onequery_cli_core::error::CliError;
+use onequery_cli_core::error::ErrorStage;
 
 use crate::cli::DoctorReportArgs;
 use crate::cli::DoctorSubcommand;
@@ -10,37 +11,49 @@ use crate::diagnostics::DiagnosticsPaths;
 use crate::diagnostics::load_last_error;
 use crate::diagnostics::render_report_markdown;
 use crate::diagnostics::write_report;
+use crate::issue_report::build_issue_draft;
 use crate::output::CommandOutput;
+use crate::platform::BrowserLauncher;
+use crate::platform::SystemBrowserLauncher;
 
 pub(crate) fn execute(
     command: &DoctorSubcommand,
     command_line: &str,
 ) -> Result<CommandOutput, CliError> {
-    execute_with_clock(
+    execute_with_clock_and_browser(
         command,
         command_line,
         &DiagnosticsPaths::resolve(command_line)?,
         Utc::now(),
+        &SystemBrowserLauncher,
     )
 }
 
-fn execute_with_clock(
+fn execute_with_clock_and_browser<B>(
     command: &DoctorSubcommand,
     command_line: &str,
     paths: &DiagnosticsPaths,
     now: DateTime<Utc>,
-) -> Result<CommandOutput, CliError> {
+    browser: &B,
+) -> Result<CommandOutput, CliError>
+where
+    B: BrowserLauncher,
+{
     match command {
-        DoctorSubcommand::Report(args) => execute_report(args, command_line, paths, now),
+        DoctorSubcommand::Report(args) => execute_report(args, command_line, paths, now, browser),
     }
 }
 
-fn execute_report(
+fn execute_report<B>(
     args: &DoctorReportArgs,
     command_line: &str,
     paths: &DiagnosticsPaths,
     now: DateTime<Utc>,
-) -> Result<CommandOutput, CliError> {
+    browser: &B,
+) -> Result<CommandOutput, CliError>
+where
+    B: BrowserLauncher,
+{
     let snapshot = load_last_error(paths, command_line)?;
 
     if args.stdout {
@@ -55,22 +68,57 @@ fn execute_report(
     }
 
     let report_path = write_report(paths, command_line, &snapshot, now)?;
+    let issue_draft = build_issue_draft(&snapshot, &report_path);
+
+    if args.open {
+        browser
+            .open_url(issue_draft.issue_url.as_str())
+            .map_err(|open_error| {
+                CliError::new(
+                    "failed to open GitHub issue draft",
+                    command_line,
+                    ErrorStage::Internal,
+                    format!("could not open browser automatically ({open_error})"),
+                    vec![
+                        issue_draft.github_command.clone(),
+                        "open the generated report manually and paste it into a new GitHub issue"
+                            .to_owned(),
+                    ],
+                )
+            })?;
+    }
+
+    let mut lines = vec![
+        "Created diagnostic report:".to_owned(),
+        format!("  {}", report_path.display()),
+        String::new(),
+        "Create a GitHub issue with:".to_owned(),
+        format!("  {}", issue_draft.github_command),
+    ];
+    if args.open {
+        lines.push(String::new());
+        lines.push("Opened a GitHub issue draft in your browser.".to_owned());
+        lines.push("Paste the report contents before submitting.".to_owned());
+    }
+    lines.push(String::new());
+    lines.push("Review it before sharing.".to_owned());
+
     Ok(CommandOutput::structured(
-        vec![
-            "Created diagnostic report:".to_owned(),
-            format!("  {}", report_path.display()),
-            String::new(),
-            "Review it before sharing.".to_owned(),
-        ],
+        lines,
         json!({
             "reportPath": report_path.display().to_string(),
             "diagnosticsPath": paths.last_error_path.display().to_string(),
+            "githubCommand": issue_draft.github_command,
+            "issueUrl": issue_draft.issue_url,
+            "openedBrowser": args.open,
         }),
     ))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+
     use chrono::TimeZone;
     use chrono::Utc;
     use insta::assert_snapshot;
@@ -81,17 +129,59 @@ mod tests {
     use crate::diagnostics::persist_last_error;
     use crate::output::EffectiveOutputMode;
     use crate::output::render_output;
+    use crate::platform::BrowserLaunchError;
+    use crate::platform::BrowserLauncher;
+    use onequery_cli_core::error::ErrorStage;
 
     use super::DiagnosticsPaths;
     use super::DoctorReportArgs;
     use super::DoctorSubcommand;
-    use super::execute_with_clock;
+    use super::execute_with_clock_and_browser;
+
+    #[derive(Debug)]
+    struct RecordingBrowser {
+        urls: RefCell<Vec<String>>,
+        failure: Option<String>,
+    }
+
+    impl RecordingBrowser {
+        fn succeed() -> Self {
+            Self {
+                urls: RefCell::new(Vec::new()),
+                failure: None,
+            }
+        }
+
+        fn fail(message: &str) -> Self {
+            Self {
+                urls: RefCell::new(Vec::new()),
+                failure: Some(message.to_owned()),
+            }
+        }
+
+        fn urls(&self) -> Vec<String> {
+            self.urls.borrow().clone()
+        }
+    }
+
+    impl BrowserLauncher for RecordingBrowser {
+        fn open_url(&self, url: &str) -> Result<(), BrowserLaunchError> {
+            self.urls.borrow_mut().push(url.to_owned());
+            match &self.failure {
+                Some(message) => Err(BrowserLaunchError::Open {
+                    message: message.clone(),
+                }),
+                None => Ok(()),
+            }
+        }
+    }
 
     fn sample_command() -> DoctorSubcommand {
         DoctorSubcommand::Report(DoctorReportArgs {
             last: true,
             stdout: false,
             json: false,
+            open: false,
         })
     }
 
@@ -136,12 +226,14 @@ mod tests {
             .single()
             .expect("expected timestamp");
         let snapshot = seed_snapshot(&paths);
+        let browser = RecordingBrowser::succeed();
 
-        let output = execute_with_clock(
+        let output = execute_with_clock_and_browser(
             &sample_command(),
             "onequery doctor report --last",
             &paths,
             now,
+            &browser,
         )
         .expect("expected report output");
 
@@ -176,6 +268,7 @@ mod tests {
                 assert_snapshot!(rendered);
             });
         });
+        assert_eq!(browser.urls(), Vec::<String>::new());
     }
 
     #[test]
@@ -187,16 +280,19 @@ mod tests {
             .single()
             .expect("expected timestamp");
         seed_snapshot(&paths);
+        let browser = RecordingBrowser::succeed();
 
-        let output = execute_with_clock(
+        let output = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
                 last: true,
                 stdout: true,
                 json: false,
+                open: false,
             }),
             "onequery doctor report --last --stdout",
             &paths,
             now,
+            &browser,
         )
         .expect("expected report output");
 
@@ -214,6 +310,7 @@ mod tests {
                 assert_snapshot!(rendered);
             });
         });
+        assert_eq!(browser.urls(), Vec::<String>::new());
     }
 
     #[test]
@@ -225,16 +322,19 @@ mod tests {
             .single()
             .expect("expected timestamp");
         seed_snapshot(&paths);
+        let browser = RecordingBrowser::succeed();
 
-        let output = execute_with_clock(
+        let output = execute_with_clock_and_browser(
             &DoctorSubcommand::Report(DoctorReportArgs {
                 last: true,
                 stdout: false,
                 json: true,
+                open: false,
             }),
             "onequery doctor report --last --json",
             &paths,
             now,
+            &browser,
         )
         .expect("expected report output");
 
@@ -256,5 +356,93 @@ mod tests {
                 assert_snapshot!(pretty);
             });
         });
+        assert_eq!(browser.urls(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn report_command_open_opens_browser_and_text_output_snapshot() {
+        let temp_dir = tempdir().expect("failed to create tempdir");
+        let paths = DiagnosticsPaths::for_test(temp_dir.path().join("onequery-data"));
+        let now = Utc
+            .with_ymd_and_hms(2026, 4, 23, 3, 20, 0)
+            .single()
+            .expect("expected timestamp");
+        seed_snapshot(&paths);
+        let browser = RecordingBrowser::succeed();
+
+        let output = execute_with_clock_and_browser(
+            &DoctorSubcommand::Report(DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: false,
+                open: true,
+            }),
+            "onequery doctor report --last --open",
+            &paths,
+            now,
+            &browser,
+        )
+        .expect("expected report output");
+
+        let rendered = output.lines.join("\n");
+        let opened_urls = browser.urls();
+
+        crate::commands::with_command_snapshot_path(|| {
+            insta::with_settings!({
+                filters => [
+                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>"),
+                    (r"https://github\\.com/wordbricks/onequery/issues/new\\?\\S+", "<ISSUE_URL>")
+                ]
+            }, {
+                assert_snapshot!(rendered);
+            });
+        });
+
+        assert_eq!(opened_urls.len(), 1);
+        assert!(
+            opened_urls[0].starts_with("https://github.com/wordbricks/onequery/issues/new?"),
+            "expected GitHub new issue URL, got {}",
+            opened_urls[0]
+        );
+        assert!(opened_urls[0].contains("title=%5Bcli%5D+decode_error"));
+        assert!(opened_urls[0].contains("labels=bug%2Ccli"));
+    }
+
+    #[test]
+    fn report_command_open_failure_returns_github_cli_fallback() {
+        let temp_dir = tempdir().expect("failed to create tempdir");
+        let paths = DiagnosticsPaths::for_test(temp_dir.path().join("onequery-data"));
+        let now = Utc
+            .with_ymd_and_hms(2026, 4, 23, 3, 20, 0)
+            .single()
+            .expect("expected timestamp");
+        seed_snapshot(&paths);
+        let browser = RecordingBrowser::fail("launch denied");
+
+        let error = execute_with_clock_and_browser(
+            &DoctorSubcommand::Report(DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: false,
+                open: true,
+            }),
+            "onequery doctor report --last --open",
+            &paths,
+            now,
+            &browser,
+        )
+        .expect_err("expected browser launch error");
+
+        assert_eq!(error.title, "failed to open GitHub issue draft");
+        assert_eq!(error.stage, ErrorStage::Internal);
+        assert_eq!(
+            error.try_next[1],
+            "open the generated report manually and paste it into a new GitHub issue"
+        );
+        assert!(
+            error.try_next[0].starts_with("gh issue create -R wordbricks/onequery"),
+            "expected gh issue fallback command, got {}",
+            error.try_next[0]
+        );
     }
 }

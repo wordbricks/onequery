@@ -109,6 +109,13 @@ fn doctor_help_output_snapshot_targets_diagnostics_surface() {
 }
 
 #[test]
+fn doctor_report_help_output_snapshot_targets_issue_creation_surface() {
+    assert_snapshot!(rendered_display(&[
+        "onequery", "doctor", "report", "--help"
+    ]));
+}
+
+#[test]
 fn upgrade_help_output_snapshot_targets_upgrade_surface() {
     assert_snapshot!(rendered_display(&["onequery", "upgrade", "--help"]));
 }
@@ -293,6 +300,7 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                 last: true,
                 stdout: false,
                 json: false,
+                open: false,
             },
         ),
         (
@@ -303,6 +311,7 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                 last: true,
                 stdout: false,
                 json: false,
+                open: false,
             },
         ),
         (
@@ -313,6 +322,7 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                 last: true,
                 stdout: true,
                 json: false,
+                open: false,
             },
         ),
         (
@@ -323,6 +333,29 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
                 last: true,
                 stdout: false,
                 json: true,
+                open: false,
+            },
+        ),
+        (
+            true,
+            &["onequery", "doctor", "report", "--last", "--open"][..],
+            EffectiveOutputMode::Text,
+            DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: false,
+                open: true,
+            },
+        ),
+        (
+            false,
+            &["onequery", "doctor", "report", "--last", "--open", "--json"][..],
+            EffectiveOutputMode::Json,
+            DoctorReportArgs {
+                last: true,
+                stdout: false,
+                json: true,
+                open: true,
             },
         ),
     ] {
@@ -343,6 +376,25 @@ fn parse_invocation_accepts_doctor_report_and_local_output_overrides() {
             other => panic!("expected doctor report command, got {other:?}"),
         }
     }
+}
+
+#[test]
+fn parse_invocation_rejects_doctor_report_stdout_and_open_together() {
+    let error = parse_error(&[
+        "onequery", "doctor", "report", "--last", "--stdout", "--open",
+    ]);
+
+    assert_eq!(error.title, "invalid command");
+    assert!(
+        error
+            .why
+            .contains("the argument '--stdout' cannot be used with '--open'")
+            || error
+                .why
+                .contains("the argument '--open' cannot be used with '--stdout'"),
+        "expected clap conflict message, got {}",
+        error.why
+    );
 }
 
 #[test]

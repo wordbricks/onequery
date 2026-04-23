@@ -194,11 +194,14 @@ pub(crate) struct DoctorReportArgs {
     #[arg(long, required = true)]
     pub last: bool,
     /// Print the generated Markdown report to stdout instead of writing a file.
-    #[arg(long, conflicts_with = "json")]
+    #[arg(long, group = "doctor_report_destination")]
     pub stdout: bool,
     /// Emit structured JSON metadata for the generated report.
-    #[arg(long, conflicts_with = "stdout")]
+    #[arg(long, group = "doctor_report_destination")]
     pub json: bool,
+    /// Open a GitHub issue draft in the browser after writing the report file.
+    #[arg(long, conflicts_with = "stdout")]
+    pub open: bool,
 }
 
 #[derive(Debug, Clone, Args, Default, Eq, PartialEq)]

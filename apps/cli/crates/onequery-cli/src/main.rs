@@ -4,7 +4,6 @@ mod config;
 mod credentials;
 mod diagnostics;
 mod identifiers;
-#[cfg(test)]
 mod issue_report;
 mod local_target;
 mod output;

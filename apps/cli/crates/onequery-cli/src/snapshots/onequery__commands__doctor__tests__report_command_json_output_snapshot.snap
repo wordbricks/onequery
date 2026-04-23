@@ -6,6 +6,9 @@ expression: pretty
   "command": "doctor report",
   "data": {
     "diagnosticsPath": "<tmp>/onequery-data/last-error.json",
+    "githubCommand": "gh issue create -R wordbricks/onequery --label \"bug\" --label \"cli\" --title \"[cli] decode_error\" --body-file \"<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md\"",
+    "issueUrl": "https://github.com/wordbricks/onequery/issues/new?labels=bug%2Ccli&title=%5Bcli%5D+decode_error&body=%3C%21--+Generated+by+%60onequery+doctor+report+--last+--open%60.+--%3E%0A%0APaste+the+redacted+diagnostic+report+below+before+submitting.%0A",
+    "openedBrowser": false,
     "reportPath": "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
   },
   "ok": true,
