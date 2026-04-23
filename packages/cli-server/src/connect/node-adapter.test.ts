@@ -1,6 +1,9 @@
 import http from "node:http";
 
-import { MethodOptions_IdempotencyLevel } from "@bufbuild/protobuf/wkt";
+import {
+  durationFromMs,
+  MethodOptions_IdempotencyLevel,
+} from "@bufbuild/protobuf/wkt";
 import {
   Code,
   createClient,
@@ -120,7 +123,7 @@ describe("cli connect node integration", () => {
             maxBytes: 1024,
             maxRows: 10,
             sql: "select 1",
-            timeoutMs: 1000,
+            timeout: durationFromMs(1000),
           },
           sourceKey: "source-1",
         },

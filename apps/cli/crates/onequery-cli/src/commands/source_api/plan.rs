@@ -1,6 +1,5 @@
 use std::num::NonZeroU32;
 
-use buffa::MessageField;
 use serde_json::Value;
 
 use crate::cli::ApiArgs;
@@ -136,6 +135,20 @@ pub(super) async fn build_plan(
         })
         .transpose()?;
     let body = load_request_body(args, operation, &mut reader, context, source_key).await?;
+    let body = match (field_patch, body) {
+        (Some(field_patch), None) => Some(SourceApiRequestBody::FieldPatch(Box::new(field_patch))),
+        (None, body) => body,
+        (Some(_), Some(_)) => {
+            return Err(source_api_parse_error(
+                context,
+                "source API input is ambiguous",
+                format!(
+                    "operation `{operation_name}` cannot combine `--input` with field patch flags"
+                ),
+                source_key,
+            ));
+        }
+    };
 
     let draft = SourceApiDraft {
         operation: operation.name.clone(),
@@ -143,9 +156,6 @@ pub(super) async fn build_plan(
         selector,
         method_override: normalized_method_override(args.method.as_deref()),
         headers,
-        field_patch: field_patch
-            .map(MessageField::some)
-            .unwrap_or_else(MessageField::none),
         body,
         ..Default::default()
     };
@@ -855,21 +865,21 @@ mod tests {
             .expect("expected typed field patch to build a draft"),
         );
 
-        assert_eq!(
-            serde_json::to_value(
-                draft
-                    .field_patch
-                    .as_option()
-                    .expect("expected field patch to be present")
-            )
-            .expect("expected generated protobuf Struct to serialize"),
-            json!({
-                "params": {
-                    "limit": 25.0,
-                    "labels": ["bug", "feature"],
-                }
-            })
-        );
+        match draft.body {
+            Some(SourceApiRequestBody::FieldPatch(value)) => {
+                assert_eq!(
+                    serde_json::to_value(value.as_ref())
+                        .expect("expected generated protobuf Struct to serialize"),
+                    json!({
+                        "params": {
+                            "limit": 25.0,
+                            "labels": ["bug", "feature"],
+                        }
+                    })
+                );
+            }
+            other => panic!("expected field patch body, got {other:?}"),
+        }
     }
 
     fn context() -> CommandContext {

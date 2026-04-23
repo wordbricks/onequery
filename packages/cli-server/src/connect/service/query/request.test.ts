@@ -1,4 +1,5 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
+import { durationFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 
 import { CliQueryRequestSchema } from "../../gen/onequery/cli/v1/query_pb";
@@ -13,7 +14,7 @@ describe("parseCliQueryRequest", () => {
     expect(request.maxRows).toBe(0);
     expect(request.maxBytes).toBe(0);
     expect(request.cellMaxChars).toBe(0);
-    expect(request.timeoutMs).toBe(0);
+    expect(request.timeout).toBeUndefined();
     expect(isFieldSet(request, CliQueryRequestSchema.field.maxRows)).toBe(
       false
     );
@@ -23,7 +24,7 @@ describe("parseCliQueryRequest", () => {
     expect(isFieldSet(request, CliQueryRequestSchema.field.cellMaxChars)).toBe(
       false
     );
-    expect(isFieldSet(request, CliQueryRequestSchema.field.timeoutMs)).toBe(
+    expect(isFieldSet(request, CliQueryRequestSchema.field.timeout)).toBe(
       false
     );
 
@@ -38,7 +39,7 @@ describe("parseCliQueryRequest", () => {
       cellMaxChars: 256,
       maxBytes: 4096,
       maxRows: 50,
-      timeoutMs: 2_500,
+      timeout: durationFromMs(2_500),
     });
 
     expect(isFieldSet(request, CliQueryRequestSchema.field.maxRows)).toBe(true);
@@ -48,9 +49,7 @@ describe("parseCliQueryRequest", () => {
     expect(isFieldSet(request, CliQueryRequestSchema.field.cellMaxChars)).toBe(
       true
     );
-    expect(isFieldSet(request, CliQueryRequestSchema.field.timeoutMs)).toBe(
-      true
-    );
+    expect(isFieldSet(request, CliQueryRequestSchema.field.timeout)).toBe(true);
 
     expect(parseCliQueryRequest(request)).toEqual({
       sql: "select 1",

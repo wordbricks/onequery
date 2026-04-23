@@ -697,7 +697,6 @@ async fn poll_login_effect_device_denial_posts_to_the_device_authorization_poll_
             outcome: Some(
                 generated::types::poll_device_authorization_response::Outcome::Denied(Box::new(
                     generated::types::CliDeniedDeviceAuthorization {
-                        state: Some("denied".to_owned()),
                         reason: Some("device authorization was denied".to_owned()),
                         ..Default::default()
                     },

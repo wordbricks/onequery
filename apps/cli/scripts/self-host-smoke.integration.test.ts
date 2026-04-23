@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import type { JsonObject } from "@bufbuild/protobuf";
+import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
 import type { CallOptions, Client } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
@@ -22,11 +23,15 @@ import { afterAll, describe, expect, it } from "vitest";
 import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/auth_pb.js";
 import { CliService } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
 import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
-import { OrgCapability } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
+import {
+  OrgCapability,
+  OrganizationRole,
+} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
 import { QueryParameterType } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/query_pb.js";
 import {
   SourceConnectSslMode,
   SourceProvider,
+  SourceQuerySupport,
   SourceStatus,
 } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/source_pb.js";
 import {
@@ -267,7 +272,7 @@ function requirePresent<T>(
 
 function summarizeCliPage(value: {
   nextCursor: string;
-  returnedCount: bigint;
+  returnedCount: number;
 }): JsonObject {
   return {
     ...(value.nextCursor ? { nextCursor: value.nextCursor } : {}),
@@ -278,14 +283,14 @@ function summarizeCliPage(value: {
 function summarizeCliSource(value: {
   displayName?: string;
   provider: SourceProvider;
-  queryable: boolean;
+  querySupport: SourceQuerySupport;
   sourceKey: string;
   status: SourceStatus;
 }): JsonObject {
   return {
     ...(value.displayName ? { displayName: value.displayName } : {}),
     provider: SourceProvider[value.provider],
-    queryable: value.queryable,
+    queryable: value.querySupport === SourceQuerySupport.SUPPORTED,
     sourceKey: value.sourceKey,
     status: SourceStatus[value.status],
   };
@@ -352,7 +357,7 @@ function summarizeGetOrganizationResponse(
       (capability) => OrgCapability[capability]
     ),
     name: value.name,
-    roles: Array.from(value.roles),
+    roles: Array.from(value.roles, (role) => OrganizationRole[role]),
     slug: value.slug,
   };
 }
@@ -431,7 +436,12 @@ function summarizeValidateQueryResponse(
       cellMaxChars: declaredResultWindow.cellMaxChars,
       maxBytes: declaredResultWindow.maxBytes,
       maxRows: declaredResultWindow.maxRows,
-      timeoutMs: declaredResultWindow.timeoutMs,
+      timeoutMs: durationMs(
+        requirePresent(
+          declaredResultWindow.timeout,
+          "ValidateQueryResponse.declaredResultWindow.timeout must be present"
+        )
+      ),
     },
     normalizedSql: value.normalizedSql,
     request: {
@@ -442,7 +452,12 @@ function summarizeValidateQueryResponse(
         summarizeCliQueryParameter(parameter)
       ),
       sql: request.sql,
-      timeoutMs: request.timeoutMs,
+      timeoutMs: durationMs(
+        requirePresent(
+          request.timeout,
+          "ValidateQueryResponse.request.timeout must be present"
+        )
+      ),
     },
     source: summarizeCliSource(source),
     truncated: value.truncated,
@@ -1064,7 +1079,7 @@ describe("CLI self-host smoke", () => {
       expect(organizationsResponse.payload).toMatchObject({
         organizations: [{ slug: "owner-org" }],
         page: {
-          returnedCount: 1n,
+          returnedCount: 1,
         },
       });
 
@@ -1134,7 +1149,7 @@ describe("CLI self-host smoke", () => {
         source: {
           sourceKey: "Warehouse",
           provider: SourceProvider.POSTGRES,
-          queryable: true,
+          querySupport: SourceQuerySupport.SUPPORTED,
           status: SourceStatus.ACTIVE,
         },
       });
@@ -1161,7 +1176,7 @@ describe("CLI self-host smoke", () => {
           },
         ],
         page: {
-          returnedCount: 1n,
+          returnedCount: 1,
         },
       });
 
@@ -1179,7 +1194,7 @@ describe("CLI self-host smoke", () => {
       });
       expect(sourceResponse.payload).toMatchObject({
         source: {
-          queryable: true,
+          querySupport: SourceQuerySupport.SUPPORTED,
           sourceKey: "Warehouse",
         },
       });
@@ -1195,7 +1210,7 @@ describe("CLI self-host smoke", () => {
                 maxBytes: 4096,
                 maxRows: 100,
                 sql: "select 1",
-                timeoutMs: 1000,
+                timeout: durationFromMs(1000),
               },
               sourceKey: "Warehouse",
             },

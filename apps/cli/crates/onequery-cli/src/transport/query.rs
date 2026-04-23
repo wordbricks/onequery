@@ -28,12 +28,12 @@ use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
 use crate::transport::response_decode::decode_required_bool;
-use crate::transport::response_decode::decode_required_u32_as_u64;
 use crate::transport::response_decode::decode_required_u32_as_usize;
-use crate::transport::response_decode::decode_required_u64;
 use crate::transport::response_decode::require_non_empty_text;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
+use crate::transport::well_known::optional_duration_from_ms;
+use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -267,7 +267,7 @@ fn query_request_from_payload(
         max_rows: optional_query_bound(payload.max_rows, ErrorStage::ReadQueryInput)?,
         max_bytes: optional_query_bound(payload.max_bytes, ErrorStage::ReadQueryInput)?,
         cell_max_chars: optional_query_bound(payload.cell_max_chars, ErrorStage::ReadQueryInput)?,
-        timeout_ms: optional_timeout_ms(payload.timeout_ms, ErrorStage::ReadQueryInput)?,
+        timeout: optional_query_timeout(payload.timeout_ms, ErrorStage::ReadQueryInput)?,
         ..Default::default()
     })
 }
@@ -298,14 +298,14 @@ fn query_result_from_generated(
             ErrorStage::ExecuteQuery,
             request_id.clone(),
         )?,
-        row_count: decode_required_usize(
+        row_count: decode_required_u32_as_usize(
             result.row_count,
             ErrorStage::ExecuteQuery,
             "query execution response missing row count",
             request_id.clone(),
         )?,
-        elapsed_ms: decode_required_u64(
-            result.elapsed_ms,
+        elapsed_ms: required_duration_ms(
+            result.elapsed,
             ErrorStage::ExecuteQuery,
             "query execution response missing elapsed time",
             request_id.clone(),
@@ -325,7 +325,11 @@ fn query_result_from_generated(
                 })
             })
             .collect::<Result<Vec<_>, ApiFailure>>()?,
-        rows: result.rows.into_iter().map(|row| row.values).collect(),
+        rows: result
+            .rows
+            .into_iter()
+            .map(|row| row.display_values)
+            .collect(),
         truncated: decode_required_bool(
             result.truncated,
             ErrorStage::ExecuteQuery,
@@ -428,10 +432,10 @@ fn query_canonical_request_from_generated(
             "query validation response missing request cellMaxChars",
             request_id.clone(),
         )?,
-        timeout_ms: decode_required_u32_as_u64(
-            request.timeout_ms,
+        timeout_ms: required_duration_ms(
+            request.timeout,
             stage,
-            "query validation response missing request timeoutMs",
+            "query validation response missing request timeout",
             request_id,
         )?,
     })
@@ -461,10 +465,10 @@ fn declared_query_result_window_from_generated(
             "query validation response missing declared cellMaxChars",
             request_id.clone(),
         )?,
-        timeout_ms: decode_required_u32_as_u64(
-            window.timeout_ms,
+        timeout_ms: required_duration_ms(
+            window.timeout,
             stage,
-            "query validation response missing declared timeoutMs",
+            "query validation response missing declared timeout",
             request_id,
         )?,
     })
@@ -485,26 +489,18 @@ fn optional_query_bound(
         .transpose()
 }
 
-fn optional_timeout_ms(value: Option<u64>, stage: ErrorStage) -> Result<Option<u32>, ApiFailure> {
-    value
-        .map(|value| {
-            let value = u32::try_from(value)
-                .map_err(|error| conversion_failure(stage, error.to_string()))?;
-            (value > 0)
-                .then_some(value)
-                .ok_or_else(|| conversion_failure(stage, "timeout must be greater than zero"))
-        })
-        .transpose()
-}
-
-fn decode_required_usize(
+fn optional_query_timeout(
     value: Option<u64>,
     stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<usize, ApiFailure> {
-    let value = value.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
-    usize::try_from(value).map_err(|error| decode_failure(stage, error.to_string(), request_id))
+) -> Result<MessageField<buffa_types::google::protobuf::Duration>, ApiFailure> {
+    if matches!(value, Some(0)) {
+        return Err(conversion_failure(
+            stage,
+            "timeout must be greater than zero",
+        ));
+    }
+
+    optional_duration_from_ms(value, stage)
 }
 
 #[cfg(test)]
@@ -528,6 +524,15 @@ mod tests {
     use crate::transport::query_parameter::QueryRequestParameterType;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceSummary;
+
+    fn duration_ms(value: u64) -> buffa_types::google::protobuf::Duration {
+        buffa_types::google::protobuf::Duration {
+            seconds: i64::try_from(value / 1_000).expect("test duration seconds fit in i64"),
+            nanos: i32::try_from((value % 1_000) * 1_000_000)
+                .expect("test duration nanos fit in i32"),
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn query_result_deserializes_canonical_shape() {
@@ -732,7 +737,7 @@ mod tests {
                 max_rows: Some(100),
                 max_bytes: Some(4_096),
                 cell_max_chars: Some(256),
-                timeout_ms: Some(2_500),
+                timeout: buffa::MessageField::some(duration_ms(2_500)),
                 ..Default::default()
             }
         );
@@ -745,12 +750,14 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    queryable: Some(true),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
                 row_count: Some(1),
-                elapsed_ms: Some(25),
+                elapsed: buffa::MessageField::some(duration_ms(25)),
                 columns: vec![super::types::CliQueryColumn {
                     name: Some("value".to_owned()),
                     logical_type: Some(
@@ -759,7 +766,7 @@ mod tests {
                     ..Default::default()
                 }],
                 rows: vec![super::types::CliQueryRow {
-                    values: vec!["42".to_owned()],
+                    display_values: vec!["42".to_owned()],
                     ..Default::default()
                 }],
                 truncated: Some(false),
@@ -836,7 +843,7 @@ mod tests {
                     max_rows: Some(100),
                     max_bytes: Some(4_096),
                     cell_max_chars: Some(256),
-                    timeout_ms: Some(2_500),
+                    timeout: buffa::MessageField::some(duration_ms(2_500)),
                     ..Default::default()
                 }),
                 normalized_sql: Some("SELECT 1".to_owned()),
@@ -845,14 +852,16 @@ mod tests {
                         max_rows: Some(100),
                         max_bytes: Some(4_096),
                         cell_max_chars: Some(256),
-                        timeout_ms: Some(2_500),
+                        timeout: buffa::MessageField::some(duration_ms(2_500)),
                         ..Default::default()
                     },
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    queryable: Some(true),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
@@ -941,7 +950,9 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    queryable: Some(true),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
@@ -969,12 +980,14 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    queryable: Some(true),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
                 row_count: Some(1),
-                elapsed_ms: Some(25),
+                elapsed: buffa::MessageField::some(duration_ms(25)),
                 page: buffa::MessageField::some(super::types::CliPage {
                     returned_count: Some(1),
                     ..Default::default()
@@ -1029,7 +1042,7 @@ mod tests {
                     max_rows: Some(100),
                     max_bytes: Some(4_096),
                     cell_max_chars: Some(256),
-                    timeout_ms: Some(2_500),
+                    timeout: buffa::MessageField::some(duration_ms(2_500)),
                     ..Default::default()
                 }),
                 normalized_sql: Some("SELECT 1".to_owned()),
@@ -1038,14 +1051,16 @@ mod tests {
                         max_rows: Some(100),
                         max_bytes: Some(4_096),
                         cell_max_chars: Some(256),
-                        timeout_ms: Some(2_500),
+                        timeout: buffa::MessageField::some(duration_ms(2_500)),
                         ..Default::default()
                     },
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    queryable: Some(true),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),

@@ -753,19 +753,13 @@ mod tests {
     #[test]
     fn generated_source_api_transport_types_keep_wkt_payloads_as_truth() {
         let draft = types::SourceApiDraft {
-            field_patch: buffa::MessageField::some(
+            body: Some(types::source_api_draft::Body::FieldPatch(Box::new(
                 proto_json_object_from_json(json!({
                     "params": {
                         "state": "open"
                     }
                 }))
                 .expect("expected JSON object to encode as protobuf Struct"),
-            ),
-            body: Some(types::source_api_draft::Body::JsonBody(Box::new(
-                proto_json_value_from_json(json!({
-                    "limit": 25
-                }))
-                .expect("expected JSON value to encode as protobuf Value"),
             ))),
             ..Default::default()
         };
@@ -777,12 +771,6 @@ mod tests {
                 "params": {
                     "state": "open"
                 }
-            }))
-        );
-        assert_eq!(
-            draft_json.get("jsonBody"),
-            Some(&json!({
-                "limit": 25.0
             }))
         );
         assert!(draft_json.get("requestId").is_none());

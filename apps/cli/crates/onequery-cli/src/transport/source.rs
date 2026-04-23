@@ -18,8 +18,8 @@ use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
-use crate::transport::response_decode::decode_required_bool;
 use crate::transport::response_decode::require_non_empty_text;
+use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -218,6 +218,12 @@ pub(crate) async fn test_source(
 
     let outcome = match outcome {
         types::test_source_response::Outcome::Supported(supported) => {
+            let latency_ms = required_duration_ms(
+                supported.latency,
+                ErrorStage::ResolveSource,
+                "source test supported response missing latency",
+                request_id.clone(),
+            )?;
             let result = supported.result.ok_or_else(|| {
                 decode_failure(
                     ErrorStage::ResolveSource,
@@ -237,7 +243,7 @@ pub(crate) async fn test_source(
                                 request_id.clone(),
                             )?,
                         },
-                        latency_ms: supported.latency_ms,
+                        latency_ms: Some(latency_ms),
                     }
                 }
                 types::test_source_supported_outcome::Result::Failed(failed) => {
@@ -256,7 +262,7 @@ pub(crate) async fn test_source(
                                 request_id.clone(),
                             )?,
                         },
-                        latency_ms: supported.latency_ms,
+                        latency_ms: Some(latency_ms),
                     }
                 }
             }
@@ -316,7 +322,7 @@ pub(crate) fn source_summary_from_generated(
         source_key,
         display_name,
         provider,
-        queryable,
+        query_support,
         status,
         ..
     } = summary;
@@ -336,16 +342,25 @@ pub(crate) fn source_summary_from_generated(
                 request_id.clone(),
             )
         })?,
-        queryable: decode_required_bool(
-            queryable,
-            stage,
-            "source response missing queryable flag",
-            request_id.clone(),
-        )?,
+        queryable: source_query_support_to_bool(query_support, stage, request_id.clone())?,
         status: status
             .map(source_status_to_str)
             .ok_or_else(|| decode_failure(stage, "source response missing status", request_id))?,
     })
+}
+
+fn source_query_support_to_bool(
+    value: Option<EnumValue<types::SourceQuerySupport>>,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<bool, ApiFailure> {
+    match value.and_then(|value| value.as_known()) {
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED) => Ok(true),
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_NOT_SUPPORTED) => Ok(false),
+        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_UNSPECIFIED) | None => Err(
+            decode_failure(stage, "source response missing query support", request_id),
+        ),
+    }
 }
 
 fn source_test_unsupported_reason_to_str(

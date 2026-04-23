@@ -1,4 +1,5 @@
 import { isFieldSet } from "@bufbuild/protobuf";
+import { durationMs } from "@bufbuild/protobuf/wkt";
 
 import { CliQueryRequestSchema } from "../../gen/onequery/cli/v1/query_pb";
 import type { CliQueryRequest } from "../../gen/onequery/cli/v1/query_pb";
@@ -19,9 +20,10 @@ export function parseCliQueryRequest(query: CliQueryRequest) {
   const maxRows = isFieldSet(query, CliQueryRequestSchema.field.maxRows)
     ? query.maxRows
     : undefined;
-  const timeoutMs = isFieldSet(query, CliQueryRequestSchema.field.timeoutMs)
-    ? query.timeoutMs
-    : undefined;
+  const timeoutMs =
+    isFieldSet(query, CliQueryRequestSchema.field.timeout) && query.timeout
+      ? durationMs(query.timeout)
+      : undefined;
 
   return {
     sql: query.sql,

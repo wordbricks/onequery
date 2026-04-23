@@ -4,6 +4,7 @@ edition = "2023";
 package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 message GetSessionRequest {}
@@ -31,7 +32,7 @@ message RefreshSessionResponse {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 8192,
-    (buf.validate.field).string.pattern = "\\S"
+    (buf.validate.field).string.pattern = "^\\S+$"
   ];
   AuthMode auth_mode = 2 [
     (buf.validate.field).required = true,
@@ -51,11 +52,9 @@ message RefreshSessionResponse {
 message StartDeviceAuthorizationRequest {}
 
 message StartDeviceAuthorizationResponse {
-  string state = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
+  reserved 1;
+  reserved state;
+
   string device_code = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -76,7 +75,10 @@ message StartDeviceAuthorizationResponse {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.uri = true
   ];
-  uint32 poll_after_ms = 6 [(buf.validate.field).uint32.gte = 1];
+  google.protobuf.Duration poll_after = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {}
+  ];
   google.protobuf.Timestamp expires_at = 7 [(buf.validate.field).required = true];
 }
 
@@ -119,25 +121,24 @@ message CliAuthUser {
 }
 
 message CliPendingDeviceAuthorization {
-  string state = 1 [
+  reserved 1, 2;
+  reserved state, poll_after_ms;
+
+  google.protobuf.Duration poll_after = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
+    (buf.validate.field).duration.gt = {}
   ];
-  uint32 poll_after_ms = 2 [(buf.validate.field).uint32.gte = 1];
 }
 
 message CliAuthorizedDeviceAuthorization {
-  string state = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
+  reserved 1;
+  reserved state;
+
   string access_token = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 8192,
-    (buf.validate.field).string.pattern = "\\S"
+    (buf.validate.field).string.pattern = "^\\S+$"
   ];
   AuthMode auth_mode = 3 [
     (buf.validate.field).required = true,
@@ -155,11 +156,9 @@ message CliAuthorizedDeviceAuthorization {
 }
 
 message CliDeniedDeviceAuthorization {
-  string state = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
+  reserved 1;
+  reserved state;
+
   string reason = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
@@ -167,11 +166,9 @@ message CliDeniedDeviceAuthorization {
 }
 
 message CliExpiredDeviceAuthorization {
-  string state = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
+  reserved 1;
+  reserved state;
+
   string reason = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
@@ -179,15 +176,16 @@ message CliExpiredDeviceAuthorization {
 }
 
 message CliRateLimitedDeviceAuthorization {
-  string state = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 32
-  ];
-  uint32 poll_after_ms = 2 [(buf.validate.field).uint32.gte = 1];
+  reserved 1, 2;
+  reserved state, poll_after_ms;
+
   string reason = 3 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
+  ];
+  google.protobuf.Duration poll_after = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {}
   ];
 }
 

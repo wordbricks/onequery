@@ -4,6 +4,7 @@ edition = "2023";
 package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
 import "onequery/cli/v1/common.proto";
 import "onequery/cli/v1/source.proto";
 
@@ -32,7 +33,7 @@ message ValidateQueryResponse {
   ];
   CliDeclaredQueryResultWindow declared_result_window = 3 [(buf.validate.field).required = true];
   CliSource source = 4 [(buf.validate.field).required = true];
-  bool truncated = 5;
+  bool truncated = 5 [(buf.validate.field).required = true];
 }
 
 message ExecuteQueryRequest {
@@ -53,17 +54,27 @@ message ExecuteQueryRequest {
 }
 
 message ExecuteQueryResponse {
+  reserved elapsed_ms;
+
   CliSource source = 1 [(buf.validate.field).required = true];
-  uint64 row_count = 2;
-  uint64 elapsed_ms = 3;
+  uint32 row_count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.lte = 1000
+  ];
+  google.protobuf.Duration elapsed = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gte = {}
+  ];
   repeated CliQueryColumn columns = 4 [(buf.validate.field).repeated.max_items = 512];
   repeated CliQueryRow rows = 5 [(buf.validate.field).repeated.max_items = 100];
-  bool truncated = 6;
+  bool truncated = 6 [(buf.validate.field).required = true];
   CliPage page = 7 [(buf.validate.field).required = true];
   CliSanitization sanitization = 8;
 }
 
 message CliQueryRequest {
+  reserved timeout_ms;
+
   string sql = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -85,13 +96,15 @@ message CliQueryRequest {
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 8000
   ];
-  uint32 timeout_ms = 6 [
-    (buf.validate.field).uint32.gte = 1,
-    (buf.validate.field).uint32.lte = 120000
+  google.protobuf.Duration timeout = 6 [
+    (buf.validate.field).duration.gt = {},
+    (buf.validate.field).duration.lte = {seconds: 120}
   ];
 }
 
 message CliQueryCanonicalRequest {
+  reserved timeout_ms;
+
   string sql = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -100,20 +113,24 @@ message CliQueryCanonicalRequest {
   ];
   repeated CliQueryParameter parameters = 2 [(buf.validate.field).repeated.max_items = 0];
   uint32 max_rows = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 1000
   ];
   uint32 max_bytes = 4 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 4194304
   ];
   uint32 cell_max_chars = 5 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 8000
   ];
-  uint32 timeout_ms = 6 [
-    (buf.validate.field).uint32.gte = 1,
-    (buf.validate.field).uint32.lte = 120000
+  google.protobuf.Duration timeout = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {},
+    (buf.validate.field).duration.lte = {seconds: 120}
   ];
 }
 
@@ -127,21 +144,27 @@ message CliQueryParameter {
 }
 
 message CliDeclaredQueryResultWindow {
+  reserved timeout_ms;
+
   uint32 max_rows = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 1000
   ];
   uint32 max_bytes = 2 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 4194304
   ];
   uint32 cell_max_chars = 3 [
+    (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 8000
   ];
-  uint32 timeout_ms = 4 [
-    (buf.validate.field).uint32.gte = 1,
-    (buf.validate.field).uint32.lte = 120000
+  google.protobuf.Duration timeout = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {},
+    (buf.validate.field).duration.lte = {seconds: 120}
   ];
 }
 
@@ -158,7 +181,10 @@ message CliQueryColumn {
 }
 
 message CliQueryRow {
-  repeated string values = 1 [
+  reserved 1;
+  reserved values;
+
+  repeated string display_values = 2 [
     (buf.validate.field).repeated.max_items = 512,
     (buf.validate.field).repeated.items.string.max_len = 8000
   ];

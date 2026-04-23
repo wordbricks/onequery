@@ -12,15 +12,6 @@ pub(crate) fn decode_required_bool(
     value.ok_or_else(|| decode_failure(stage, message, request_id))
 }
 
-pub(crate) fn decode_required_u64(
-    value: Option<u64>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<u64, ApiFailure> {
-    value.ok_or_else(|| decode_failure(stage, message, request_id))
-}
-
 pub(crate) fn decode_required_u32_as_usize(
     value: Option<u32>,
     stage: ErrorStage,
@@ -29,17 +20,6 @@ pub(crate) fn decode_required_u32_as_usize(
 ) -> Result<usize, ApiFailure> {
     let value = value.ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
     usize::try_from(value).map_err(|error| decode_failure(stage, error.to_string(), request_id))
-}
-
-pub(crate) fn decode_required_u32_as_u64(
-    value: Option<u32>,
-    stage: ErrorStage,
-    message: &str,
-    request_id: Option<String>,
-) -> Result<u64, ApiFailure> {
-    value
-        .map(u64::from)
-        .ok_or_else(|| decode_failure(stage, message, request_id))
 }
 
 pub(crate) fn require_non_empty_text(

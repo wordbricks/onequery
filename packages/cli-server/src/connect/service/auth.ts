@@ -1,5 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
-import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import { durationFromMs, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { isoDatetimeToDate } from "@onequery/codecs/date";
 import { Result } from "better-result";
 
@@ -113,14 +113,15 @@ const handleStartDeviceAuthorizationImpl: CliResultServiceMethod<
     const expiresInSec = payload.expires_in ?? CLI_DEFAULT_LOGIN_TIMEOUT_SEC;
 
     return Result.ok({
-      state: "pending",
       deviceCode: payload.device_code,
       userCode: payload.user_code,
       ...buildDeviceVerificationUrls(
         c.var.runtime.auth.baseURL,
         payload.user_code
       ),
-      pollAfterMs: deviceAuthorizationPollAfterMs(payload.interval),
+      pollAfter: durationFromMs(
+        deviceAuthorizationPollAfterMs(payload.interval)
+      ),
       expiresAt: timestampFromDate(new Date(Date.now() + expiresInSec * 1000)),
     });
   }
@@ -189,8 +190,7 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
           outcome: {
             case: "pending",
             value: {
-              state: "pending",
-              pollAfterMs: CLI_DEFAULT_POLL_AFTER_MS,
+              pollAfter: durationFromMs(CLI_DEFAULT_POLL_AFTER_MS),
             },
           },
         } satisfies MessageInitShape<
@@ -204,8 +204,7 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
             case: "rateLimited",
             value: {
               reason: toCliDeviceAuthProblemDetail(payload),
-              state: "rate_limited",
-              pollAfterMs: slowedDeviceAuthorizationPollAfterMs(),
+              pollAfter: durationFromMs(slowedDeviceAuthorizationPollAfterMs()),
             },
           },
         } satisfies MessageInitShape<
@@ -222,7 +221,6 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
                 payload.error_description === undefined
                   ? "device authorization was denied"
                   : toCliDeviceAuthProblemDetail(payload),
-              state: "denied",
             },
           },
         } satisfies MessageInitShape<
@@ -239,7 +237,6 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
                 payload.error_description === undefined
                   ? "device authorization session expired"
                   : toCliDeviceAuthProblemDetail(payload),
-              state: "expired",
             },
           },
         } satisfies MessageInitShape<
@@ -259,10 +256,10 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
           case: "rateLimited",
           value: {
             reason: "device authorization polling was rate-limited",
-            state: "rate_limited",
-            pollAfterMs:
+            pollAfter: durationFromMs(
               parseRetryAfterMs(response) ??
-              slowedDeviceAuthorizationPollAfterMs(),
+                slowedDeviceAuthorizationPollAfterMs()
+            ),
           },
         },
       } satisfies MessageInitShape<
@@ -335,7 +332,6 @@ function buildAuthorizedDeviceAuthorizationResponse(input: {
   session: CliSessionIdentity;
 }): CliAuthorizedDeviceAuthorizationInit {
   return {
-    state: "authorized",
     accessToken: input.accessToken,
     authMode: toCliAuthMode(input.session.authMode),
     user: buildCliAuthUser(input.session.user),

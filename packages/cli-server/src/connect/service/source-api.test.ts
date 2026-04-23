@@ -815,13 +815,12 @@ describe("source api connect service", { timeout: 15_000 }, () => {
           },
           draft: {
             body: {
-              case: "textBody",
-              value: "body text",
+              case: "fieldPatch",
+              value: {
+                perPage: 50,
+              },
             },
             descriptorVersion: "github-v1",
-            fieldPatch: {
-              perPage: 50,
-            },
             headers: [
               {
                 name: "accept",

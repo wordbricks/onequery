@@ -9,6 +9,7 @@ use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::generated::types;
+use crate::transport::well_known::required_duration_ms;
 use onequery_cli_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
@@ -164,13 +165,12 @@ fn login_session_from_generated(
         .signed_duration_since(chrono::Utc::now())
         .num_seconds()
         .max(0);
-    let _poll_after_ms = response.poll_after_ms.ok_or_else(|| {
-        decode_failure(
-            ErrorStage::Auth,
-            "device authorization start response missing pollAfterMs",
-            request_id.clone(),
-        )
-    })?;
+    let _poll_after_ms = required_duration_ms(
+        response.poll_after,
+        ErrorStage::Auth,
+        "device authorization start response missing pollAfter",
+        request_id.clone(),
+    )?;
 
     Ok(LoginSession {
         device_code: required_auth_string(
@@ -205,8 +205,8 @@ fn login_poll_outcome_from_generated(
         Some(types::poll_device_authorization_response::Outcome::Pending(pending)) => {
             Ok(LoginPollOutcome::Pending {
                 poll_after_ms: required_poll_after_ms(
-                    pending.poll_after_ms,
-                    "device authorization poll response missing pollAfterMs",
+                    pending.poll_after,
+                    "device authorization poll response missing pollAfter",
                     request_id,
                 )?,
             })
@@ -229,8 +229,8 @@ fn login_poll_outcome_from_generated(
         Some(types::poll_device_authorization_response::Outcome::RateLimited(rate_limited)) => {
             Ok(LoginPollOutcome::RateLimited {
                 poll_after_ms: required_poll_after_ms(
-                    rate_limited.poll_after_ms,
-                    "device authorization poll response missing pollAfterMs",
+                    rate_limited.poll_after,
+                    "device authorization poll response missing pollAfter",
                     request_id,
                 )?,
             })
@@ -244,13 +244,11 @@ fn login_poll_outcome_from_generated(
 }
 
 fn required_poll_after_ms(
-    value: Option<u32>,
+    value: buffa::MessageField<buffa_types::google::protobuf::Duration>,
     missing_message: &str,
     request_id: Option<String>,
 ) -> Result<u64, ApiFailure> {
-    value
-        .map(u64::from)
-        .ok_or_else(|| decode_failure(ErrorStage::Auth, missing_message, request_id))
+    required_duration_ms(value, ErrorStage::Auth, missing_message, request_id)
 }
 
 fn whoami_from_generated(
@@ -420,6 +418,15 @@ mod tests {
         }
     }
 
+    fn duration_ms(value: u64) -> buffa_types::google::protobuf::Duration {
+        buffa_types::google::protobuf::Duration {
+            seconds: i64::try_from(value / 1_000).expect("test duration seconds fit in i64"),
+            nanos: i32::try_from((value % 1_000) * 1_000_000)
+                .expect("test duration nanos fit in i32"),
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn auth_mode_from_generated_maps_known_values_to_cli_strings() {
         assert_eq!(
@@ -447,7 +454,7 @@ mod tests {
             verification_complete_url: Some(
                 "https://example.test/device?user_code=ABCD1234".to_owned(),
             ),
-            poll_after_ms: Some(5_000),
+            poll_after: buffa::MessageField::some(duration_ms(5_000)),
             expires_at: buffa::MessageField::some(timestamp(4_102_444_800)),
             ..Default::default()
         };
@@ -474,7 +481,7 @@ mod tests {
         let pending = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
                 Box::new(types::CliPendingDeviceAuthorization {
-                    poll_after_ms: Some(5_000),
+                    poll_after: buffa::MessageField::some(duration_ms(5_000)),
                     ..Default::default()
                 }),
             )),
@@ -518,7 +525,6 @@ mod tests {
         let denied = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Denied(
                 Box::new(types::CliDeniedDeviceAuthorization {
-                    state: Some("denied".to_owned()),
                     reason: Some("device authorization was denied".to_owned()),
                     ..Default::default()
                 }),
@@ -528,7 +534,6 @@ mod tests {
         let expired = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Expired(
                 Box::new(types::CliExpiredDeviceAuthorization {
-                    state: Some("expired".to_owned()),
                     reason: Some("device authorization session expired".to_owned()),
                     ..Default::default()
                 }),
@@ -539,8 +544,7 @@ mod tests {
             outcome: Some(
                 types::poll_device_authorization_response::Outcome::RateLimited(Box::new(
                     types::CliRateLimitedDeviceAuthorization {
-                        state: Some("rate_limited".to_owned()),
-                        poll_after_ms: Some(10_000),
+                        poll_after: buffa::MessageField::some(duration_ms(10_000)),
                         reason: Some("slow down".to_owned()),
                         ..Default::default()
                     },

@@ -11,6 +11,7 @@ use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::labels::org_capability_to_str;
+use crate::transport::labels::org_role_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
@@ -162,7 +163,7 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
     OrgDetails {
         slug,
         name,
-        roles: Some(roles),
+        roles: Some(roles.into_iter().map(org_role_to_str).collect()),
         capabilities: Some(
             capabilities
                 .into_iter()
@@ -207,7 +208,10 @@ mod tests {
         let details = org_details_from_generated(types::GetOrganizationResponse {
             slug: Some("acme".to_owned()),
             name: Some("Acme".to_owned()),
-            roles: vec!["member".to_owned(), "admin".to_owned()],
+            roles: vec![
+                types::OrganizationRole::ORGANIZATION_ROLE_MEMBER.into(),
+                types::OrganizationRole::ORGANIZATION_ROLE_ADMIN.into(),
+            ],
             capabilities: vec![
                 types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into(),
                 types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),

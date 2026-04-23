@@ -1,6 +1,9 @@
+import { durationFromMs } from "@bufbuild/protobuf/wkt";
+
 import { getCliQueryableDatabaseProviderType } from "../../../source/model";
 import { ContentFormat } from "../../gen/onequery/cli/v1/common_pb";
 import {
+  SourceQuerySupport,
   SourceStatus,
   SourceTestUnsupportedReason,
 } from "../../gen/onequery/cli/v1/source_pb";
@@ -34,9 +37,11 @@ export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
   const response: CliSourceInit = {
     sourceKey: source.sourceKey,
     provider: toCliSourceProvider(source.provider),
-    queryable:
-      getCliQueryableDatabaseProviderType(source.provider, source.status) !==
-      null,
+    querySupport:
+      getCliQueryableDatabaseProviderType(source.provider, source.status) ===
+      null
+        ? SourceQuerySupport.NOT_SUPPORTED
+        : SourceQuerySupport.SUPPORTED,
     status: toCliSourceStatus(source.status),
   };
 
@@ -88,7 +93,7 @@ export function buildTestSourceResponse(input: {
     response.outcome = {
       case: "supported",
       value: {
-        latencyMs: BigInt(input.outcome.latencyMs),
+        latency: durationFromMs(input.outcome.latencyMs),
         result: input.outcome.success
           ? {
               case: "passed",

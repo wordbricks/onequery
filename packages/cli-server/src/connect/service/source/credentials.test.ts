@@ -1,4 +1,5 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
+import { durationFromMs } from "@bufbuild/protobuf/wkt";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -93,7 +94,7 @@ describe("parseConnectSourceCredentials", () => {
     });
 
     expect(athena.maxRows).toBe(0);
-    expect(athena.timeoutMs).toBe(0);
+    expect(athena.timeout).toBeUndefined();
     expect(
       isFieldSet(
         athena,
@@ -103,7 +104,7 @@ describe("parseConnectSourceCredentials", () => {
     expect(
       isFieldSet(
         athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeoutMs
+        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
       )
     ).toBe(false);
 
@@ -133,7 +134,7 @@ describe("parseConnectSourceCredentials", () => {
       connectorId: "athena-connector",
       database: "analytics",
       maxRows: 500,
-      timeoutMs: 15_000,
+      timeout: durationFromMs(15_000),
       workgroup: "primary",
     });
 
@@ -146,7 +147,7 @@ describe("parseConnectSourceCredentials", () => {
     expect(
       isFieldSet(
         athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeoutMs
+        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
       )
     ).toBe(true);
 

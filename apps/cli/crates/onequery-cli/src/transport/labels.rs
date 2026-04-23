@@ -94,6 +94,17 @@ generated_label!(
     }
 );
 
+generated_label!(
+    org_role_to_str,
+    types::OrganizationRole,
+    types::OrganizationRole::ORGANIZATION_ROLE_UNSPECIFIED,
+    {
+        types::OrganizationRole::ORGANIZATION_ROLE_OWNER => "owner",
+        types::OrganizationRole::ORGANIZATION_ROLE_ADMIN => "admin",
+        types::OrganizationRole::ORGANIZATION_ROLE_MEMBER => "member",
+    }
+);
+
 optional_generated_label!(
     query_logical_type_to_str,
     types::QueryLogicalType,
@@ -115,6 +126,7 @@ mod tests {
 
     use super::content_format_to_str;
     use super::org_capability_to_str;
+    use super::org_role_to_str;
     use super::query_logical_type_to_str;
     use super::source_provider_to_str;
     use super::source_status_to_str;
@@ -173,6 +185,18 @@ mod tests {
                 "source_api.execute".to_owned(),
                 "query.execute".to_owned(),
             ]
+        );
+    }
+
+    #[test]
+    fn org_role_to_str_maps_known_values() {
+        assert_eq!(
+            [
+                org_role_to_str(types::OrganizationRole::ORGANIZATION_ROLE_OWNER.into()),
+                org_role_to_str(types::OrganizationRole::ORGANIZATION_ROLE_ADMIN.into()),
+                org_role_to_str(types::OrganizationRole::ORGANIZATION_ROLE_MEMBER.into()),
+            ],
+            ["owner".to_owned(), "admin".to_owned(), "member".to_owned()]
         );
     }
 

@@ -19,6 +19,9 @@ use crate::transport::labels::content_format_to_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
 use crate::transport::source_connect_provider::SourceConnectProvider;
+use crate::transport::well_known::optional_duration_from_ms;
+use crate::transport::well_known::timestamp_from_epoch_ms;
+use crate::transport::well_known::timestamp_from_rfc3339;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -350,7 +353,10 @@ fn connect_source_credentials_from_json(
                         connector_id: Some(input.connector_id),
                         database: Some(input.database),
                         max_rows: input.max_rows,
-                        timeout_ms: input.timeout_ms,
+                        timeout: optional_duration_from_ms(
+                            input.timeout_ms.map(u64::from),
+                            ErrorStage::ResolveSource,
+                        )?,
                         workgroup: input.workgroup,
                         ..Default::default()
                     }),
@@ -610,6 +616,15 @@ fn linear_credentials_from_input(
             }),
         ))
     } else if has_oauth_fields {
+        let expires_at = match input.expires_at {
+            Some(value) => timestamp_from_rfc3339(
+                value.as_str(),
+                ErrorStage::ResolveSource,
+                "source connect credentials.expiresAt",
+            )?,
+            None => MessageField::none(),
+        };
+
         Some(types::connect_source_linear_credentials::Auth::Oauth(
             Box::new(types::ConnectSourceLinearOAuthCredentials {
                 access_token: Some(require_field(
@@ -617,7 +632,7 @@ fn linear_credentials_from_input(
                     "source connect credentials must include `accessToken` for Linear OAuth",
                 )?),
                 app_user_id: input.app_user_id,
-                expires_at: input.expires_at,
+                expires_at,
                 linear_organization_id: Some(require_field(
                     input.linear_organization_id,
                     "source connect credentials must include `linearOrganizationId` for Linear OAuth",
@@ -763,10 +778,15 @@ fn google_oauth_credentials_from_input(
                 "source connect credentials must include `refreshToken` for `{provider}` OAuth"
             ),
         )?),
-        expires_at: Some(require_field(
-            expires_at,
-            format!("source connect credentials must include `expiresAt` for `{provider}` OAuth"),
-        )?),
+        expires_at: timestamp_from_epoch_ms(
+            require_field(
+                expires_at,
+                format!(
+                    "source connect credentials must include `expiresAt` for `{provider}` OAuth"
+                ),
+            )?,
+            ErrorStage::ResolveSource,
+        )?,
         ..Default::default()
     })
 }

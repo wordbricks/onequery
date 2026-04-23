@@ -231,11 +231,8 @@ exports[`source api connect service > converts protobuf JSON draft bodies into c
       },
     },
     "descriptorVersion": "github-v1",
-    "fieldPatch": undefined,
     "headers": [],
-    "methodOverride": "",
     "operation": "fetch",
-    "selector": "",
   },
   "source": {
     "credentials": {
@@ -578,8 +575,7 @@ exports[`source api connect service > previews source API execution through the 
     },
     "draft": {
       "body": {
-        "kind": "text",
-        "value": "body text",
+        "kind": "none",
       },
       "descriptorVersion": "github-v1",
       "fieldPatch": {

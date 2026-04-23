@@ -20,7 +20,7 @@ import { file_onequery_cli_v1_common } from "./common_pb.js";
  * Describes the file onequery/cli/v1/org.proto.
  */
 export const file_onequery_cli_v1_org: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiSQoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0Ei0KBHBhZ2UYASABKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZVJlcXVlc3QilQEKGUxpc3RPcmdhbml6YXRpb25zUmVzcG9uc2USSAoNb3JnYW5pemF0aW9ucxgBIAMoCzInLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdhbml6YXRpb25TdW1tYXJ5Qgi6SAWSAQIQZBIuCgRwYWdlGAIgASgLMhgub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VCBrpIA8gBASJVChZHZXRPcmdhbml6YXRpb25SZXF1ZXN0EjsKCG9yZ19zbHVnGAEgASgJQim6SCbIAQFyIRABGP8BMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJCLZAQoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USNwoEc2x1ZxgBIAEoCUIpukgmyAEBciEQARj/ATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSGwoEbmFtZRgCIAEoCUINukgKyAEBcgUQARj/ARIfCgVyb2xlcxgDIAMoCUIQukgNkgEKECAiBnIEEAEYQBJHCgxjYXBhYmlsaXRpZXMYBCADKA4yHi5vbmVxdWVyeS5jbGkudjEuT3JnQ2FwYWJpbGl0eUIRukgOkgELECAiB4IBBBABIAAibgoWQ2xpT3JnYW5pemF0aW9uU3VtbWFyeRI3CgRzbHVnGAEgASgJQim6SCbIAQFyIRABGP8BMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBIbCgRuYW1lGAIgASgJQg26SArIAQFyBRABGP8BKr0CCg1PcmdDYXBhYmlsaXR5Eh4KGk9SR19DQVBBQklMSVRZX1VOU1BFQ0lGSUVEEAASGwoXT1JHX0NBUEFCSUxJVFlfT1JHX0xJU1QQARIbChdPUkdfQ0FQQUJJTElUWV9PUkdfUkVBRBACEiEKHU9SR19DQVBBQklMSVRZX1NPVVJDRV9DT05ORUNUEAMSHgoaT1JHX0NBUEFCSUxJVFlfU09VUkNFX0xJU1QQBBIeChpPUkdfQ0FQQUJJTElUWV9TT1VSQ0VfUkVBRBAFEiAKHE9SR19DQVBBQklMSVRZX1FVRVJZX0VYRUNVVEUQBhImCiJPUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQVBJX0RFU0NSSUJFEAcSJQohT1JHX0NBUEFCSUxJVFlfU09VUkNFX0FQSV9FWEVDVVRFEAhiCGVkaXRpb25zcOgH",
+  "ChlvbmVxdWVyeS9jbGkvdjEvb3JnLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiSQoYTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0Ei0KBHBhZ2UYASABKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZVJlcXVlc3QilQEKGUxpc3RPcmdhbml6YXRpb25zUmVzcG9uc2USSAoNb3JnYW5pemF0aW9ucxgBIAMoCzInLm9uZXF1ZXJ5LmNsaS52MS5DbGlPcmdhbml6YXRpb25TdW1tYXJ5Qgi6SAWSAQIQZBIuCgRwYWdlGAIgASgLMhgub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VCBrpIA8gBASJVChZHZXRPcmdhbml6YXRpb25SZXF1ZXN0EjsKCG9yZ19zbHVnGAEgASgJQim6SCbIAQFyIRABGP8BMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJCKBAgoXR2V0T3JnYW5pemF0aW9uUmVzcG9uc2USNwoEc2x1ZxgBIAEoCUIpukgmyAEBciEQARj/ATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSGwoEbmFtZRgCIAEoCUINukgKyAEBcgUQARj/ARJFCgVyb2xlcxgDIAMoDjIhLm9uZXF1ZXJ5LmNsaS52MS5Pcmdhbml6YXRpb25Sb2xlQhO6SBCSAQ0QIBgBIgeCAQQQASAAEkkKDGNhcGFiaWxpdGllcxgEIAMoDjIeLm9uZXF1ZXJ5LmNsaS52MS5PcmdDYXBhYmlsaXR5QhO6SBCSAQ0QIBgBIgeCAQQQASAAIm4KFkNsaU9yZ2FuaXphdGlvblN1bW1hcnkSNwoEc2x1ZxgBIAEoCUIpukgmyAEBciEQARj/ATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSGwoEbmFtZRgCIAEoCUINukgKyAEBcgUQARj/ASq9AgoNT3JnQ2FwYWJpbGl0eRIeChpPUkdfQ0FQQUJJTElUWV9VTlNQRUNJRklFRBAAEhsKF09SR19DQVBBQklMSVRZX09SR19MSVNUEAESGwoXT1JHX0NBUEFCSUxJVFlfT1JHX1JFQUQQAhIhCh1PUkdfQ0FQQUJJTElUWV9TT1VSQ0VfQ09OTkVDVBADEh4KGk9SR19DQVBBQklMSVRZX1NPVVJDRV9MSVNUEAQSHgoaT1JHX0NBUEFCSUxJVFlfU09VUkNFX1JFQUQQBRIgChxPUkdfQ0FQQUJJTElUWV9RVUVSWV9FWEVDVVRFEAYSJgoiT1JHX0NBUEFCSUxJVFlfU09VUkNFX0FQSV9ERVNDUklCRRAHEiUKIU9SR19DQVBBQklMSVRZX1NPVVJDRV9BUElfRVhFQ1VURRAIKo0BChBPcmdhbml6YXRpb25Sb2xlEiEKHU9SR0FOSVpBVElPTl9ST0xFX1VOU1BFQ0lGSUVEEAASGwoXT1JHQU5JWkFUSU9OX1JPTEVfT1dORVIQARIbChdPUkdBTklaQVRJT05fUk9MRV9BRE1JThACEhwKGE9SR0FOSVpBVElPTl9ST0xFX01FTUJFUhADYghlZGl0aW9uc3DoBw",
   [file_buf_validate_validate, file_onequery_cli_v1_common]
 );
 
@@ -99,9 +99,9 @@ export type GetOrganizationResponse =
     name: string;
 
     /**
-     * @generated from field: repeated string roles = 3;
+     * @generated from field: repeated onequery.cli.v1.OrganizationRole roles = 3;
      */
-    roles: string[];
+    roles: OrganizationRole[];
 
     /**
      * @generated from field: repeated onequery.cli.v1.OrgCapability capabilities = 4;
@@ -194,3 +194,34 @@ export enum OrgCapability {
  */
 export const OrgCapabilitySchema: GenEnum<OrgCapability> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_org, 0);
+
+/**
+ * @generated from enum onequery.cli.v1.OrganizationRole
+ */
+export enum OrganizationRole {
+  /**
+   * @generated from enum value: ORGANIZATION_ROLE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ORGANIZATION_ROLE_OWNER = 1;
+   */
+  OWNER = 1,
+
+  /**
+   * @generated from enum value: ORGANIZATION_ROLE_ADMIN = 2;
+   */
+  ADMIN = 2,
+
+  /**
+   * @generated from enum value: ORGANIZATION_ROLE_MEMBER = 3;
+   */
+  MEMBER = 3,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.OrganizationRole.
+ */
+export const OrganizationRoleSchema: GenEnum<OrganizationRole> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_org, 1);

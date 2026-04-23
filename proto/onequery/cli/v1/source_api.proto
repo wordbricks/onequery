@@ -37,6 +37,7 @@ message DescribeSourceApiResponse {
   repeated CliSourceApiOperation operations = 4 [(buf.validate.field).repeated.max_items = 100];
   repeated CliSourceApiExample examples = 5 [(buf.validate.field).repeated.max_items = 20];
   repeated string notes = 6 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 20,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 512
@@ -82,8 +83,8 @@ message SourceApiDraft {
   repeated CliSourceApiHeader headers = 5 [(buf.validate.field).repeated.max_items = 64];
   // Field patches and JSON bodies carry provider-specific JSON. Size and shape
   // limits are enforced by the source API normalization layer.
-  google.protobuf.Struct field_patch = 6;
   oneof body {
+    google.protobuf.Struct field_patch = 6;
     google.protobuf.Value json_body = 7;
     string text_body = 8 [(buf.validate.field).string.max_len = 1048576];
     bytes binary_body = 9 [(buf.validate.field).bytes.max_len = 1048576];
@@ -123,6 +124,7 @@ message SourceApiPreview {
     (buf.validate.field).string.uri = true
   ];
   repeated string header_names = 8 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 64,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 128,
@@ -134,6 +136,7 @@ message SourceApiPreview {
     (buf.validate.field).enum.defined_only = true
   ];
   repeated string body_paths = 10 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 100,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 512
@@ -298,6 +301,7 @@ message CliSourceApiOperation {
   ];
   repeated CliSourceApiExample examples = 11 [(buf.validate.field).repeated.max_items = 20];
   repeated string notes = 12 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 20,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 512
@@ -312,6 +316,7 @@ message CliSourceApiMethodPolicy {
     (buf.validate.field).string.pattern = "^[A-Z]+$"
   ];
   repeated string allowed_methods = 2 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.min_items = 1,
     (buf.validate.field).repeated.max_items = 16,
     (buf.validate.field).repeated.items.string.min_len = 1,
@@ -343,6 +348,7 @@ enum SourceApiInputMode {
 
 message CliSourceApiHeaderPolicy {
   repeated string allowed_request_header_names = 1 [
+    (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 64,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 128,

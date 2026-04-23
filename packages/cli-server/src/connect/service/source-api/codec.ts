@@ -1,4 +1,4 @@
-import { fromJson, toJson } from "@bufbuild/protobuf";
+import { fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
@@ -22,6 +22,7 @@ import {
   SourceApiInputMode,
   SourceApiOperationKind,
   SourceApiPaginationPolicy,
+  SourceApiDraftSchema,
   SourceApiSelectorKind,
 } from "../../gen/onequery/cli/v1/source_api_pb";
 import type { SourceApiDraft as CliSourceApiDraft } from "../../gen/onequery/cli/v1/source_api_pb";
@@ -103,14 +104,20 @@ export function isCliSourceApiPreviewOnlyMode(
 export function buildSourceApiDraft(
   request: CliSourceApiDraft
 ): SourceApiDraft {
+  const payload = buildSourceApiDraftPayload(request.body);
+
   return {
-    body: buildSourceApiRequestBody(request.body),
+    body: payload.body,
     descriptorVersion: request.descriptorVersion,
-    fieldPatch: request.fieldPatch,
+    ...(payload.fieldPatch ? { fieldPatch: payload.fieldPatch } : {}),
     headers: request.headers.map(copySourceApiHeader),
-    methodOverride: request.methodOverride,
+    ...(isFieldSet(request, SourceApiDraftSchema.field.methodOverride)
+      ? { methodOverride: request.methodOverride }
+      : {}),
     operation: request.operation,
-    selector: request.selector,
+    ...(isFieldSet(request, SourceApiDraftSchema.field.selector)
+      ? { selector: request.selector }
+      : {}),
   };
 }
 
@@ -188,28 +195,44 @@ function copySourceApiHeader(value: Pick<SourceApiHeader, "name" | "value">) {
   };
 }
 
-function buildSourceApiRequestBody(
-  body: CliSourceApiDraft["body"]
-): SourceApiRequestBody {
+function buildSourceApiDraftPayload(body: CliSourceApiDraft["body"]): {
+  body: SourceApiRequestBody;
+  fieldPatch?: SourceApiDraft["fieldPatch"];
+} {
   switch (body.case) {
+    case "fieldPatch":
+      return {
+        body: {
+          kind: "none",
+        },
+        fieldPatch: body.value,
+      };
     case "jsonBody":
       return {
-        kind: "json",
-        value: toJson(ValueSchema, body.value),
+        body: {
+          kind: "json",
+          value: toJson(ValueSchema, body.value),
+        },
       };
     case "textBody":
       return {
-        kind: "text",
-        value: body.value,
+        body: {
+          kind: "text",
+          value: body.value,
+        },
       };
     case "binaryBody":
       return {
-        kind: "binary",
-        value: body.value,
+        body: {
+          kind: "binary",
+          value: body.value,
+        },
       };
     case undefined:
       return {
-        kind: "none",
+        body: {
+          kind: "none",
+        },
       };
   }
 }
