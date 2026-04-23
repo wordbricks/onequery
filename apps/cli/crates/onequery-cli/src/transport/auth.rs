@@ -60,7 +60,7 @@ pub(crate) async fn start_login_session(
     client: &UnauthenticatedApiClient,
 ) -> Result<ApiSuccess<LoginSession>, ApiFailure> {
     let response = match client
-        .cli()
+        .auth()
         .start_device_authorization(types::StartDeviceAuthorizationRequest::default())
         .await
     {
@@ -90,7 +90,7 @@ pub(crate) async fn poll_login_session(
         )?),
         ..Default::default()
     };
-    let response = match client.cli().poll_device_authorization(body).await {
+    let response = match client.auth().poll_device_authorization(body).await {
         Ok(response) => response,
         Err(error) => return Err(failure_from_connect(error, ErrorStage::Auth)),
     };
@@ -108,7 +108,7 @@ pub(crate) async fn whoami(
     client: &AuthenticatedApiClient,
 ) -> Result<ApiSuccess<WhoAmI>, ApiFailure> {
     let response = match client
-        .cli()
+        .auth()
         .get_session(types::GetSessionRequest::default())
         .await
     {
@@ -135,7 +135,7 @@ pub(crate) async fn refresh_session(
     client: &AuthenticatedApiClient,
 ) -> Result<ApiSuccess<RefreshedAuthSession>, ApiFailure> {
     let response = match client
-        .cli()
+        .auth()
         .refresh_session(types::RefreshSessionRequest::default())
         .await
     {

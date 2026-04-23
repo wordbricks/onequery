@@ -187,7 +187,7 @@ pub(crate) async fn load_source_connect_guide(
         crate::transport::api_failure::try_into_value(org_slug, ErrorStage::ResolveSource)?;
 
     let response = match client
-        .cli()
+        .source()
         .get_source_connect_guide(types::GetSourceConnectGuideRequest {
             org_slug: Some(org_slug),
             provider: Some(types::SourceProvider::from(source).into()),
@@ -239,7 +239,7 @@ pub(crate) async fn connect_source(
     let credentials = connect_source_credentials_from_json(source, credentials)?;
 
     let response = match client
-        .cli()
+        .source()
         .connect_source(types::ConnectSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),

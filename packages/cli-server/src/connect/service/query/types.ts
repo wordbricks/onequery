@@ -62,7 +62,7 @@ export type ValidateQueryResponseInit = {
   normalizedSql: string;
   request: NonNullable<ValidateQueryResponseMessageInit["request"]>;
   source: CliSourceInit;
-  truncated: boolean;
+  sqlNormalized: boolean;
 };
 
 export type ExecuteQueryPayload = {

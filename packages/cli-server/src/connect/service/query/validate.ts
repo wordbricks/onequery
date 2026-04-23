@@ -54,7 +54,6 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
       buildQueryValidateResponse({
         request: {
           sql: result.normalizedSql,
-          parameters: [],
           maxRows: resolved.resultWindow.maxRows,
           maxBytes: resolved.resultWindow.maxBytes,
           cellMaxChars: resolved.resultWindow.cellMaxChars,
@@ -68,7 +67,7 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
           timeoutMs: resolved.resultWindow.timeoutMs,
         },
         source: result.source,
-        truncated: result.truncated,
+        sqlNormalized: result.truncated,
       })
     );
   });

@@ -45,7 +45,7 @@ pub(crate) async fn get_org_with_controls(
 ) -> Result<ApiSuccess<OrgDetails>, ApiFailure> {
     let org_slug: String = try_into_value(org, ErrorStage::ResolveOrg)?;
     let response = match client
-        .cli()
+        .organization()
         .get_organization(types::GetOrganizationRequest {
             org_slug: Some(org_slug),
             ..Default::default()
@@ -101,7 +101,7 @@ async fn fetch_org_page(
 ) -> Result<ApiSuccess<OrgListPayload>, ApiFailure> {
     let page = page_request_from_controls(controls, ErrorStage::Http)?;
     let response = match client
-        .cli()
+        .organization()
         .list_organizations(types::ListOrganizationsRequest {
             page,
             ..Default::default()

@@ -94,10 +94,13 @@ enum ProblemStage {
 }
 
 message CliSupportAction {
-  SupportActionKind kind = 1 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  SupportActionKind kind = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
   string reason = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -110,14 +113,20 @@ message CliSupportAction {
 }
 
 message CliErrorDetail {
-  ProblemCode code = 1 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
-  ProblemStage stage = 2 [(buf.validate.field).enum = {
-    defined_only: true
-    not_in: [0]
-  }];
+  ProblemCode code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
+  ProblemStage stage = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
   string title = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,

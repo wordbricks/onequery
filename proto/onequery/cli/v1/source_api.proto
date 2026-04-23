@@ -23,16 +23,27 @@ message DescribeSourceApiRequest {
 }
 
 message DescribeSourceApiResponse {
+  option (buf.validate.message).cel = {
+    id: "source_api_operation_names_unique"
+    message: "operation names must be unique"
+    expression: "this.operations.map(operation, operation.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "source_api_default_path_operation_name_exists"
+    message: "default_path_operation_name must reference an operation"
+    expression: "!has(this.default_path_operation_name) || this.operations.exists(operation, operation.name == this.default_path_operation_name)"
+  };
+
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
   string descriptor_version = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128
   ];
-  string default_path_operation = 3 [
-    (buf.validate.field).required = true,
+  string default_path_operation_name = 3 [
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   repeated CliSourceApiOperation operations = 4 [(buf.validate.field).repeated.max_items = 100];
   repeated CliSourceApiExample examples = 5 [(buf.validate.field).repeated.max_items = 20];
@@ -60,7 +71,7 @@ message SourceApiTarget {
 }
 
 message SourceApiDraft {
-  string operation = 1 [
+  string operation_name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128,
@@ -93,7 +104,7 @@ message SourceApiDraft {
 
 message SourceApiPreview {
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
-  string operation = 2 [
+  string operation_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128,
@@ -128,7 +139,7 @@ message SourceApiPreview {
     (buf.validate.field).repeated.max_items = 64,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 128,
-    (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z0-9-]+$"
   ];
   SourceApiBodyKind body_kind = 9 [
     (buf.validate.field).required = true,
@@ -148,17 +159,30 @@ message SourceApiPreview {
   ];
 }
 
-message StartSourceApiExecution {
+message PreviewSourceApiRequest {
   SourceApiTarget target = 1 [(buf.validate.field).required = true];
   SourceApiDraft draft = 2 [(buf.validate.field).required = true];
-  SourceApiExecuteMode mode = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
 }
 
-message ResumeSourceApiExecution {
+message PreviewSourceApiResponse {
+  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
+}
+
+message ExecuteSourceApiRequest {
+  SourceApiTarget target = 1 [(buf.validate.field).required = true];
+  SourceApiDraft draft = 2 [(buf.validate.field).required = true];
+}
+
+message ExecuteSourceApiResponse {
+  oneof outcome {
+    option (buf.validate.oneof).required = true;
+
+    SourceApiExecutionCompleted completed = 1;
+    SourceApiExecutionContinued continued = 2;
+  }
+}
+
+message ResumeSourceApiRequest {
   SourceApiTarget target = 1 [(buf.validate.field).required = true];
   string continuation_token = 2 [
     (buf.validate.field).required = true,
@@ -167,18 +191,33 @@ message ResumeSourceApiExecution {
   ];
 }
 
-message ExecuteSourceApiRequest {
-  oneof input {
+message ResumeSourceApiResponse {
+  oneof outcome {
     option (buf.validate.oneof).required = true;
 
-    StartSourceApiExecution start = 1;
-    ResumeSourceApiExecution resume = 2;
+    SourceApiExecutionCompleted completed = 1;
+    SourceApiExecutionContinued continued = 2;
   }
+}
+
+message SourceApiExecutionCompleted {
+  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
+  SourceApiExecutionResult result = 2 [(buf.validate.field).required = true];
+}
+
+message SourceApiExecutionContinued {
+  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
+  SourceApiExecutionResult result = 2 [(buf.validate.field).required = true];
+  string continuation_token = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
 }
 
 message SourceApiExecutionResult {
   CliSourceApiSource source = 1 [(buf.validate.field).required = true];
-  string operation = 2 [
+  string operation_name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128,
@@ -188,7 +227,7 @@ message SourceApiExecutionResult {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 4096
   ];
-  uint32 status = 4 [
+  uint32 http_status_code = 4 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 100,
     (buf.validate.field).uint32.lte = 599
@@ -204,35 +243,6 @@ message SourceApiExecutionResult {
     string text = 8 [(buf.validate.field).string.max_len = 1048576];
     bytes binary = 9 [(buf.validate.field).bytes.max_len = 1048576];
   }
-}
-
-message ExecuteSourceApiResponse {
-  oneof outcome {
-    option (buf.validate.oneof).required = true;
-
-    ExecuteSourceApiPreviewOnly preview_only = 1;
-    ExecuteSourceApiCompleted completed = 2;
-    ExecuteSourceApiContinued continued = 3;
-  }
-}
-
-message ExecuteSourceApiPreviewOnly {
-  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
-}
-
-message ExecuteSourceApiCompleted {
-  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
-  SourceApiExecutionResult result = 2 [(buf.validate.field).required = true];
-}
-
-message ExecuteSourceApiContinued {
-  SourceApiPreview preview = 1 [(buf.validate.field).required = true];
-  SourceApiExecutionResult result = 2 [(buf.validate.field).required = true];
-  string continuation_token = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
-  ];
 }
 
 message CliSourceApiSource {
@@ -304,6 +314,12 @@ message CliSourceApiOperation {
 }
 
 message CliSourceApiMethodPolicy {
+  option (buf.validate.message).cel = {
+    id: "source_api_default_method_allowed"
+    message: "default_method must be one of allowed_methods"
+    expression: "this.allowed_methods.exists(method, method == this.default_method)"
+  };
+
   string default_method = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -321,17 +337,40 @@ message CliSourceApiMethodPolicy {
 }
 
 message CliSourceApiFieldPolicy {
-  bool allows_raw_fields = 1;
-  bool allows_typed_fields = 2;
-  bool supports_nested_paths = 3;
-  bool supports_array_paths = 4;
-  bool accepts_input = 5;
-  SourceApiInputMode input_mode = 6 [
+  repeated SourceApiFieldEncoding field_encodings = 1 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items.enum.not_in = 0,
+    (buf.validate.field).repeated.items.enum.defined_only = true
+  ];
+  repeated SourceApiPathCapability path_capabilities = 2 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items.enum.not_in = 0,
+    (buf.validate.field).repeated.items.enum.defined_only = true
+  ];
+  SourceApiInputMode input_mode = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  bool merge_patches = 7;
+  SourceApiPatchMode patch_mode = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+enum SourceApiFieldEncoding {
+  SOURCE_API_FIELD_ENCODING_UNSPECIFIED = 0;
+  SOURCE_API_FIELD_ENCODING_RAW = 1;
+  SOURCE_API_FIELD_ENCODING_TYPED = 2;
+}
+
+enum SourceApiPathCapability {
+  SOURCE_API_PATH_CAPABILITY_UNSPECIFIED = 0;
+  SOURCE_API_PATH_CAPABILITY_NESTED = 1;
+  SOURCE_API_PATH_CAPABILITY_ARRAY = 2;
 }
 
 enum SourceApiInputMode {
@@ -341,13 +380,20 @@ enum SourceApiInputMode {
   SOURCE_API_INPUT_MODE_REQUEST_BODY = 3;
 }
 
+enum SourceApiPatchMode {
+  SOURCE_API_PATCH_MODE_UNSPECIFIED = 0;
+  SOURCE_API_PATCH_MODE_NONE = 1;
+  SOURCE_API_PATCH_MODE_SEPARATE = 2;
+  SOURCE_API_PATCH_MODE_MERGE = 3;
+}
+
 message CliSourceApiHeaderPolicy {
   repeated string allowed_request_header_names = 1 [
     (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.max_items = 64,
     (buf.validate.field).repeated.items.string.min_len = 1,
     (buf.validate.field).repeated.items.string.max_len = 128,
-    (buf.validate.field).repeated.items.string.pattern = "^[A-Za-z0-9-]+$"
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z0-9-]+$"
   ];
 }
 
@@ -396,12 +442,6 @@ enum SourceApiPaginationPolicy {
   SOURCE_API_PAGINATION_POLICY_UNSPECIFIED = 0;
   SOURCE_API_PAGINATION_POLICY_NONE = 1;
   SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
-}
-
-enum SourceApiExecuteMode {
-  SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
-  SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
-  SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
 }
 
 enum SourceApiBodyKind {

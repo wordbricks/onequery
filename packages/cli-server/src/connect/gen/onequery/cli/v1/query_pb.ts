@@ -24,7 +24,7 @@ import { file_onequery_cli_v1_source } from "./source_pb.js";
  * Describes the file onequery/cli/v1/query.proto.
  */
 export const file_onequery_cli_v1_query: GenFile /*@__PURE__*/ = fileDesc(
-  "ChtvbmVxdWVyeS9jbGkvdjEvcXVlcnkucHJvdG8SD29uZXF1ZXJ5LmNsaS52MSLmAQoUVmFsaWRhdGVRdWVyeVJlcXVlc3QSOwoIb3JnX3NsdWcYASABKAlCKbpIJsgBAXIhEAEY/wEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElgKCnNvdXJjZV9rZXkYAiABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjcKBXF1ZXJ5GAMgASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5UmVxdWVzdEIGukgDyAEBIqkCChVWYWxpZGF0ZVF1ZXJ5UmVzcG9uc2USQgoHcmVxdWVzdBgBIAEoCzIpLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeUNhbm9uaWNhbFJlcXVlc3RCBrpIA8gBARImCg5ub3JtYWxpemVkX3NxbBgCIAEoCUIOukgLyAEBcgYQARiAgBASVQoWZGVjbGFyZWRfcmVzdWx0X3dpbmRvdxgDIAEoCzItLm9uZXF1ZXJ5LmNsaS52MS5DbGlEZWNsYXJlZFF1ZXJ5UmVzdWx0V2luZG93Qga6SAPIAQESMgoGc291cmNlGAQgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEhkKCXRydW5jYXRlZBgFIAEoCEIGukgDyAEBIpQCChNFeGVjdXRlUXVlcnlSZXF1ZXN0EjsKCG9yZ19zbHVnGAEgASgJQim6SCbIAQFyIRABGP8BMhpeW2EtejAtOV0rKD86LVthLXowLTldKykqJBJYCgpzb3VyY2Vfa2V5GAIgASgJQkS6SEHIAQFyPBABGP8BMjVeW0EtWmEtejAtOV1bQS1aYS16MC05Ll8tXSpbQS1aYS16MC05XSR8XltBLVphLXowLTldJBItCgRwYWdlGAMgASgLMh8ub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VSZXF1ZXN0EjcKBXF1ZXJ5GAQgASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5UmVxdWVzdEIGukgDyAEBIpkDChRFeGVjdXRlUXVlcnlSZXNwb25zZRIyCgZzb3VyY2UYASABKAsyGi5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQga6SAPIAQESHgoJcm93X2NvdW50GAIgASgNQgu6SAjIAQEqAxjoBxI3CgdlbGFwc2VkGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uQgu6SAjIAQGqAQIyABI7Cgdjb2x1bW5zGAQgAygLMh8ub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5Q29sdW1uQgm6SAaSAQMQgAQSNAoEcm93cxgFIAMoCzIcLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeVJvd0IIukgFkgECEGQSGQoJdHJ1bmNhdGVkGAYgASgIQga6SAPIAQESLgoEcGFnZRgHIAEoCzIYLm9uZXF1ZXJ5LmNsaS52MS5DbGlQYWdlQga6SAPIAQESNgoMc2FuaXRpemF0aW9uGAggASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVNhbml0aXphdGlvbiKRAgoPQ2xpUXVlcnlSZXF1ZXN0Eh8KA3NxbBgBIAEoCUISukgPyAEBcgoQARiAgBAyAlxTEkAKCnBhcmFtZXRlcnMYAiADKAsyIi5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlQYXJhbWV0ZXJCCLpIBZIBAhAAEhwKCG1heF9yb3dzGAMgASgNQgq6SAcqBRjoBygBEh8KCW1heF9ieXRlcxgEIAEoDUIMukgJKgcYgICAAigBEiIKDmNlbGxfbWF4X2NoYXJzGAUgASgNQgq6SAcqBRjAPigBEjgKB3RpbWVvdXQYBiABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CDLpICaoBBiICCHgqACKmAgoYQ2xpUXVlcnlDYW5vbmljYWxSZXF1ZXN0Eh8KA3NxbBgBIAEoCUISukgPyAEBcgoQARiAgBAyAlxTEkAKCnBhcmFtZXRlcnMYAiADKAsyIi5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlQYXJhbWV0ZXJCCLpIBZIBAhAAEh8KCG1heF9yb3dzGAMgASgNQg26SArIAQEqBRjoBygBEiIKCW1heF9ieXRlcxgEIAEoDUIPukgMyAEBKgcYgICAAigBEiUKDmNlbGxfbWF4X2NoYXJzGAUgASgNQg26SArIAQEqBRjAPigBEjsKB3RpbWVvdXQYBiABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CD7pIDMgBAaoBBiICCHgqACJ0ChFDbGlRdWVyeVBhcmFtZXRlchJGCgp2YWx1ZV90eXBlGAEgASgOMiMub25lcXVlcnkuY2xpLnYxLlF1ZXJ5UGFyYW1ldGVyVHlwZUINukgKyAEBggEEEAEgABIXCgV2YWx1ZRgCIAEoCUIIukgFcgMYgEAixwEKHENsaURlY2xhcmVkUXVlcnlSZXN1bHRXaW5kb3cSHwoIbWF4X3Jvd3MYASABKA1CDbpICsgBASoFGOgHKAESIgoJbWF4X2J5dGVzGAIgASgNQg+6SAzIAQEqBxiAgIACKAESJQoOY2VsbF9tYXhfY2hhcnMYAyABKA1CDbpICsgBASoFGMA+KAESOwoHdGltZW91dBgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbkIPukgMyAEBqgEGIgIIeCoAInIKDkNsaVF1ZXJ5Q29sdW1uEhsKBG5hbWUYASABKAlCDbpICsgBAXIFEAEYgAQSQwoMbG9naWNhbF90eXBlGAIgASgOMiEub25lcXVlcnkuY2xpLnYxLlF1ZXJ5TG9naWNhbFR5cGVCCrpIB4IBBBABIAAiNwoLQ2xpUXVlcnlSb3cSKAoOZGlzcGxheV92YWx1ZXMYASADKAlCELpIDZIBChCABCIFcgMYwD4qvQEKElF1ZXJ5UGFyYW1ldGVyVHlwZRIkCiBRVUVSWV9QQVJBTUVURVJfVFlQRV9VTlNQRUNJRklFRBAAEh8KG1FVRVJZX1BBUkFNRVRFUl9UWVBFX1NUUklORxABEh8KG1FVRVJZX1BBUkFNRVRFUl9UWVBFX05VTUJFUhACEiAKHFFVRVJZX1BBUkFNRVRFUl9UWVBFX0JPT0xFQU4QAxIdChlRVUVSWV9QQVJBTUVURVJfVFlQRV9OVUxMEAQqjwIKEFF1ZXJ5TG9naWNhbFR5cGUSIgoeUVVFUllfTE9HSUNBTF9UWVBFX1VOU1BFQ0lGSUVEEAASHQoZUVVFUllfTE9HSUNBTF9UWVBFX1NUUklORxABEh0KGVFVRVJZX0xPR0lDQUxfVFlQRV9OVU1CRVIQAhIeChpRVUVSWV9MT0dJQ0FMX1RZUEVfQk9PTEVBThADEh0KGVFVRVJZX0xPR0lDQUxfVFlQRV9CSUdJTlQQBBIfChtRVUVSWV9MT0dJQ0FMX1RZUEVfREFURVRJTUUQBRIcChhRVUVSWV9MT0dJQ0FMX1RZUEVfQVJSQVkQBhIbChdRVUVSWV9MT0dJQ0FMX1RZUEVfSlNPThAHYghlZGl0aW9uc3DoBw",
+  "ChtvbmVxdWVyeS9jbGkvdjEvcXVlcnkucHJvdG8SD29uZXF1ZXJ5LmNsaS52MSLmAQoUVmFsaWRhdGVRdWVyeVJlcXVlc3QSOwoIb3JnX3NsdWcYASABKAlCKbpIJsgBAXIhEAEY/wEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElgKCnNvdXJjZV9rZXkYAiABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEjcKBXF1ZXJ5GAMgASgLMiAub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5UmVxdWVzdEIGukgDyAEBIq4CChVWYWxpZGF0ZVF1ZXJ5UmVzcG9uc2USQgoHcmVxdWVzdBgBIAEoCzIpLm9uZXF1ZXJ5LmNsaS52MS5DbGlRdWVyeUNhbm9uaWNhbFJlcXVlc3RCBrpIA8gBARImCg5ub3JtYWxpemVkX3NxbBgCIAEoCUIOukgLyAEBcgYQARiAgBASVQoWZGVjbGFyZWRfcmVzdWx0X3dpbmRvdxgDIAEoCzItLm9uZXF1ZXJ5LmNsaS52MS5DbGlEZWNsYXJlZFF1ZXJ5UmVzdWx0V2luZG93Qga6SAPIAQESMgoGc291cmNlGAQgASgLMhoub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUIGukgDyAEBEh4KDnNxbF9ub3JtYWxpemVkGAUgASgIQga6SAPIAQEilAIKE0V4ZWN1dGVRdWVyeVJlcXVlc3QSOwoIb3JnX3NsdWcYASABKAlCKbpIJsgBAXIhEAEY/wEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElgKCnNvdXJjZV9rZXkYAiABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEi0KBHBhZ2UYAyABKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUGFnZVJlcXVlc3QSNwoFcXVlcnkYBCABKAsyIC5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlSZXF1ZXN0Qga6SAPIAQEimQMKFEV4ZWN1dGVRdWVyeVJlc3BvbnNlEjIKBnNvdXJjZRgBIAEoCzIaLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VCBrpIA8gBARIeCglyb3dfY291bnQYAiABKA1CC7pICMgBASoDGOgHEjcKB2VsYXBzZWQYAyABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CC7pICMgBAaoBAjIAEjsKB2NvbHVtbnMYBCADKAsyHy5vbmVxdWVyeS5jbGkudjEuQ2xpUXVlcnlDb2x1bW5CCbpIBpIBAxCABBI0CgRyb3dzGAUgAygLMhwub25lcXVlcnkuY2xpLnYxLkNsaVF1ZXJ5Um93Qgi6SAWSAQIQZBIZCgl0cnVuY2F0ZWQYBiABKAhCBrpIA8gBARIuCgRwYWdlGAcgASgLMhgub25lcXVlcnkuY2xpLnYxLkNsaVBhZ2VCBrpIA8gBARI2CgxzYW5pdGl6YXRpb24YCCABKAsyIC5vbmVxdWVyeS5jbGkudjEuQ2xpU2FuaXRpemF0aW9uIs8BCg9DbGlRdWVyeVJlcXVlc3QSHwoDc3FsGAEgASgJQhK6SA/IAQFyChABGICAEDICXFMSHAoIbWF4X3Jvd3MYAiABKA1CCrpIByoFGOgHKAESHwoJbWF4X2J5dGVzGAMgASgNQgy6SAkqBxiAgIACKAESIgoOY2VsbF9tYXhfY2hhcnMYBCABKA1CCrpIByoFGMA+KAESOAoHdGltZW91dBgFIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbkIMukgJqgEGIgIIeCoAIuQBChhDbGlRdWVyeUNhbm9uaWNhbFJlcXVlc3QSHwoDc3FsGAEgASgJQhK6SA/IAQFyChABGICAEDICXFMSHwoIbWF4X3Jvd3MYAiABKA1CDbpICsgBASoFGOgHKAESIgoJbWF4X2J5dGVzGAMgASgNQg+6SAzIAQEqBxiAgIACKAESJQoOY2VsbF9tYXhfY2hhcnMYBCABKA1CDbpICsgBASoFGMA+KAESOwoHdGltZW91dBgFIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbkIPukgMyAEBqgEGIgIIeCoAIscBChxDbGlEZWNsYXJlZFF1ZXJ5UmVzdWx0V2luZG93Eh8KCG1heF9yb3dzGAEgASgNQg26SArIAQEqBRjoBygBEiIKCW1heF9ieXRlcxgCIAEoDUIPukgMyAEBKgcYgICAAigBEiUKDmNlbGxfbWF4X2NoYXJzGAMgASgNQg26SArIAQEqBRjAPigBEjsKB3RpbWVvdXQYBCABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CD7pIDMgBAaoBBiICCHgqACJ1Cg5DbGlRdWVyeUNvbHVtbhIbCgRuYW1lGAEgASgJQg26SArIAQFyBRABGIAEEkYKDGxvZ2ljYWxfdHlwZRgCIAEoDjIhLm9uZXF1ZXJ5LmNsaS52MS5RdWVyeUxvZ2ljYWxUeXBlQg26SArIAQGCAQQQASAAIjcKC0NsaVF1ZXJ5Um93EigKDmRpc3BsYXlfdmFsdWVzGAEgAygJQhC6SA2SAQoQgAQiBXIDGMA+Kq8CChBRdWVyeUxvZ2ljYWxUeXBlEiIKHlFVRVJZX0xPR0lDQUxfVFlQRV9VTlNQRUNJRklFRBAAEh0KGVFVRVJZX0xPR0lDQUxfVFlQRV9TVFJJTkcQARIdChlRVUVSWV9MT0dJQ0FMX1RZUEVfTlVNQkVSEAISHgoaUVVFUllfTE9HSUNBTF9UWVBFX0JPT0xFQU4QAxIdChlRVUVSWV9MT0dJQ0FMX1RZUEVfQklHSU5UEAQSHwobUVVFUllfTE9HSUNBTF9UWVBFX0RBVEVUSU1FEAUSHAoYUVVFUllfTE9HSUNBTF9UWVBFX0FSUkFZEAYSGwoXUVVFUllfTE9HSUNBTF9UWVBFX0pTT04QBxIeChpRVUVSWV9MT0dJQ0FMX1RZUEVfVU5LTk9XThAIYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_google_protobuf_duration,
@@ -87,9 +87,9 @@ export type ValidateQueryResponse =
     source?: CliSource;
 
     /**
-     * @generated from field: bool truncated = 5;
+     * @generated from field: bool sql_normalized = 5;
      */
-    truncated: boolean;
+    sqlNormalized: boolean;
   };
 
 /**
@@ -195,30 +195,22 @@ export type CliQueryRequest = Message<"onequery.cli.v1.CliQueryRequest"> & {
   sql: string;
 
   /**
-   * Query parameters are intentionally disabled for the CLI surface until
-   * placeholder binding semantics are designed end-to-end.
-   *
-   * @generated from field: repeated onequery.cli.v1.CliQueryParameter parameters = 2;
-   */
-  parameters: CliQueryParameter[];
-
-  /**
-   * @generated from field: uint32 max_rows = 3;
+   * @generated from field: uint32 max_rows = 2;
    */
   maxRows: number;
 
   /**
-   * @generated from field: uint32 max_bytes = 4;
+   * @generated from field: uint32 max_bytes = 3;
    */
   maxBytes: number;
 
   /**
-   * @generated from field: uint32 cell_max_chars = 5;
+   * @generated from field: uint32 cell_max_chars = 4;
    */
   cellMaxChars: number;
 
   /**
-   * @generated from field: google.protobuf.Duration timeout = 6;
+   * @generated from field: google.protobuf.Duration timeout = 5;
    */
   timeout?: Duration;
 };
@@ -241,27 +233,22 @@ export type CliQueryCanonicalRequest =
     sql: string;
 
     /**
-     * @generated from field: repeated onequery.cli.v1.CliQueryParameter parameters = 2;
-     */
-    parameters: CliQueryParameter[];
-
-    /**
-     * @generated from field: uint32 max_rows = 3;
+     * @generated from field: uint32 max_rows = 2;
      */
     maxRows: number;
 
     /**
-     * @generated from field: uint32 max_bytes = 4;
+     * @generated from field: uint32 max_bytes = 3;
      */
     maxBytes: number;
 
     /**
-     * @generated from field: uint32 cell_max_chars = 5;
+     * @generated from field: uint32 cell_max_chars = 4;
      */
     cellMaxChars: number;
 
     /**
-     * @generated from field: google.protobuf.Duration timeout = 6;
+     * @generated from field: google.protobuf.Duration timeout = 5;
      */
     timeout?: Duration;
   };
@@ -272,28 +259,6 @@ export type CliQueryCanonicalRequest =
  */
 export const CliQueryCanonicalRequestSchema: GenMessage<CliQueryCanonicalRequest> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_query, 5);
-
-/**
- * @generated from message onequery.cli.v1.CliQueryParameter
- */
-export type CliQueryParameter = Message<"onequery.cli.v1.CliQueryParameter"> & {
-  /**
-   * @generated from field: onequery.cli.v1.QueryParameterType value_type = 1;
-   */
-  valueType: QueryParameterType;
-
-  /**
-   * @generated from field: string value = 2;
-   */
-  value: string;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliQueryParameter.
- * Use `create(CliQueryParameterSchema)` to create a new message.
- */
-export const CliQueryParameterSchema: GenMessage<CliQueryParameter> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_query, 6);
 
 /**
  * @generated from message onequery.cli.v1.CliDeclaredQueryResultWindow
@@ -326,7 +291,7 @@ export type CliDeclaredQueryResultWindow =
  * Use `create(CliDeclaredQueryResultWindowSchema)` to create a new message.
  */
 export const CliDeclaredQueryResultWindowSchema: GenMessage<CliDeclaredQueryResultWindow> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_query, 7);
+  messageDesc(file_onequery_cli_v1_query, 6);
 
 /**
  * @generated from message onequery.cli.v1.CliQueryColumn
@@ -348,7 +313,7 @@ export type CliQueryColumn = Message<"onequery.cli.v1.CliQueryColumn"> & {
  * Use `create(CliQueryColumnSchema)` to create a new message.
  */
 export const CliQueryColumnSchema: GenMessage<CliQueryColumn> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_query, 8);
+  messageDesc(file_onequery_cli_v1_query, 7);
 
 /**
  * @generated from message onequery.cli.v1.CliQueryRow
@@ -365,43 +330,7 @@ export type CliQueryRow = Message<"onequery.cli.v1.CliQueryRow"> & {
  * Use `create(CliQueryRowSchema)` to create a new message.
  */
 export const CliQueryRowSchema: GenMessage<CliQueryRow> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_query, 9);
-
-/**
- * @generated from enum onequery.cli.v1.QueryParameterType
- */
-export enum QueryParameterType {
-  /**
-   * @generated from enum value: QUERY_PARAMETER_TYPE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: QUERY_PARAMETER_TYPE_STRING = 1;
-   */
-  STRING = 1,
-
-  /**
-   * @generated from enum value: QUERY_PARAMETER_TYPE_NUMBER = 2;
-   */
-  NUMBER = 2,
-
-  /**
-   * @generated from enum value: QUERY_PARAMETER_TYPE_BOOLEAN = 3;
-   */
-  BOOLEAN = 3,
-
-  /**
-   * @generated from enum value: QUERY_PARAMETER_TYPE_NULL = 4;
-   */
-  NULL = 4,
-}
-
-/**
- * Describes the enum onequery.cli.v1.QueryParameterType.
- */
-export const QueryParameterTypeSchema: GenEnum<QueryParameterType> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_query, 0);
+  messageDesc(file_onequery_cli_v1_query, 8);
 
 /**
  * @generated from enum onequery.cli.v1.QueryLogicalType
@@ -446,10 +375,15 @@ export enum QueryLogicalType {
    * @generated from enum value: QUERY_LOGICAL_TYPE_JSON = 7;
    */
   JSON = 7,
+
+  /**
+   * @generated from enum value: QUERY_LOGICAL_TYPE_UNKNOWN = 8;
+   */
+  UNKNOWN = 8,
 }
 
 /**
  * Describes the enum onequery.cli.v1.QueryLogicalType.
  */
 export const QueryLogicalTypeSchema: GenEnum<QueryLogicalType> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_query, 1);
+  enumDesc(file_onequery_cli_v1_query, 0);

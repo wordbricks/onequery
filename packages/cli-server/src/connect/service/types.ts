@@ -3,9 +3,19 @@ import type { Context } from "hono";
 
 import type { CliRouteEnv } from "../../app";
 import type { CliAction } from "../../authorization";
-import { CliService } from "../gen/onequery/cli/v1/cli_pb";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceApiService,
+  CliSourceService,
+} from "../gen/onequery/cli/v1/cli_pb";
 
-type CliServiceImplementation = ServiceImpl<typeof CliService>;
+type CliServiceImplementation = ServiceImpl<typeof CliAuthService> &
+  ServiceImpl<typeof CliOrganizationService> &
+  ServiceImpl<typeof CliSourceService> &
+  ServiceImpl<typeof CliSourceApiService> &
+  ServiceImpl<typeof CliQueryService>;
 
 export type CliServiceMethodName = keyof CliServiceImplementation;
 

@@ -16,10 +16,13 @@ use crate::transport::response_decode::require_non_empty_text;
 pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
 pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
 
+pub(crate) type SourceApiFieldEncoding = types::SourceApiFieldEncoding;
 pub(crate) type SourceApiInputMode = types::SourceApiInputMode;
 pub(crate) type SourceApiOperationKind = types::SourceApiOperationKind;
 pub(crate) type SourceApiSelectorKind = types::SourceApiSelectorKind;
 pub(crate) type SourceApiPaginationPolicy = types::SourceApiPaginationPolicy;
+pub(crate) type SourceApiPatchMode = types::SourceApiPatchMode;
+pub(crate) type SourceApiPathCapability = types::SourceApiPathCapability;
 pub(crate) type SourceApiBodyKind = types::SourceApiBodyKind;
 pub(crate) type SourceApiProvider = types::SourceProvider;
 pub(crate) type SourceApiSource = types::CliSourceApiSource;
@@ -39,9 +42,6 @@ pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ExecuteSourceApiOutcome {
-    PreviewOnly {
-        preview: SourceApiPreview,
-    },
     Completed {
         preview: SourceApiPreview,
         result: SourceApiExecutionResult,
@@ -94,7 +94,7 @@ pub(crate) async fn describe_source_api(
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
     let response = match client
-        .cli()
+        .source_api()
         .describe_source_api(types::DescribeSourceApiRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
@@ -117,35 +117,55 @@ pub(crate) async fn describe_source_api(
     })
 }
 
+pub(crate) async fn preview_source_api(
+    client: &AuthenticatedApiClient,
+    org: &str,
+    source_key: &str,
+    draft: &SourceApiDraft,
+) -> Result<ApiSuccess<SourceApiPreview>, ApiFailure> {
+    let response = match client
+        .source_api()
+        .preview_source_api(types::PreviewSourceApiRequest {
+            target: MessageField::some(source_api_target(
+                org,
+                source_key,
+                ErrorStage::ExecuteQuery,
+            )?),
+            draft: MessageField::some(draft.clone()),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+        }
+    };
+    let request_id = response_request_id(response.headers());
+    let payload = response.into_owned();
+    let payload = preview_source_api_response_from_generated(payload, request_id.clone())?;
+
+    Ok(ApiSuccess {
+        payload,
+        request_id,
+    })
+}
+
 pub(crate) async fn execute_source_api(
     client: &AuthenticatedApiClient,
     org: &str,
     source_key: &str,
     draft: &SourceApiDraft,
-    preview_only: bool,
 ) -> Result<ApiSuccess<ExecuteSourceApiOutcome>, ApiFailure> {
     let response = match client
-        .cli()
+        .source_api()
         .execute_source_api(types::ExecuteSourceApiRequest {
-            input: Some(types::execute_source_api_request::Input::Start(Box::new(
-                types::StartSourceApiExecution {
-                    target: MessageField::some(source_api_target(
-                        org,
-                        source_key,
-                        ErrorStage::ExecuteQuery,
-                    )?),
-                    draft: MessageField::some(draft.clone()),
-                    mode: Some(
-                        if preview_only {
-                            types::SourceApiExecuteMode::SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY
-                        } else {
-                            types::SourceApiExecuteMode::SOURCE_API_EXECUTE_MODE_EXECUTE
-                        }
-                        .into(),
-                    ),
-                    ..Default::default()
-                },
-            ))),
+            target: MessageField::some(source_api_target(
+                org,
+                source_key,
+                ErrorStage::ExecuteQuery,
+            )?),
+            draft: MessageField::some(draft.clone()),
             ..Default::default()
         })
         .await
@@ -172,22 +192,17 @@ pub(crate) async fn resume_source_api(
     continuation_token: &str,
 ) -> Result<ApiSuccess<ExecuteSourceApiOutcome>, ApiFailure> {
     let response = match client
-        .cli()
-        .execute_source_api(types::ExecuteSourceApiRequest {
-            input: Some(types::execute_source_api_request::Input::Resume(Box::new(
-                types::ResumeSourceApiExecution {
-                    target: MessageField::some(source_api_target(
-                        org,
-                        source_key,
-                        ErrorStage::ExecuteQuery,
-                    )?),
-                    continuation_token: Some(try_into_value(
-                        continuation_token,
-                        ErrorStage::ExecuteQuery,
-                    )?),
-                    ..Default::default()
-                },
-            ))),
+        .source_api()
+        .resume_source_api(types::ResumeSourceApiRequest {
+            target: MessageField::some(source_api_target(
+                org,
+                source_key,
+                ErrorStage::ExecuteQuery,
+            )?),
+            continuation_token: Some(try_into_value(
+                continuation_token,
+                ErrorStage::ExecuteQuery,
+            )?),
             ..Default::default()
         })
         .await
@@ -199,7 +214,7 @@ pub(crate) async fn resume_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let payload = execute_source_api_outcome_from_generated(payload, request_id.clone())?;
+    let payload = resume_source_api_outcome_from_generated(payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -270,6 +285,39 @@ source_api_enum_surface!(
         SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY => "request body",
     }
 );
+
+source_api_enum_surface!(
+    source_api_patch_mode_or_none,
+    source_api_patch_mode_label,
+    SourceApiPatchMode,
+    SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE,
+    SourceApiPatchMode::SOURCE_API_PATCH_MODE_UNSPECIFIED,
+    {
+        SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE => "none",
+        SourceApiPatchMode::SOURCE_API_PATCH_MODE_SEPARATE => "separate",
+        SourceApiPatchMode::SOURCE_API_PATCH_MODE_MERGE => "merge",
+    }
+);
+
+pub(crate) fn source_api_field_policy_has_encoding(
+    policy: &SourceApiFieldPolicy,
+    encoding: SourceApiFieldEncoding,
+) -> bool {
+    policy
+        .field_encodings
+        .iter()
+        .any(|value| value.as_known() == Some(encoding))
+}
+
+pub(crate) fn source_api_field_policy_has_path_capability(
+    policy: &SourceApiFieldPolicy,
+    capability: SourceApiPathCapability,
+) -> bool {
+    policy
+        .path_capabilities
+        .iter()
+        .any(|value| value.as_known() == Some(capability))
+}
 
 pub(crate) fn proto_json_value_from_json(
     value: JsonValue,
@@ -420,15 +468,6 @@ fn execute_source_api_outcome_from_generated(
     request_id: Option<String>,
 ) -> Result<ExecuteSourceApiOutcome, ApiFailure> {
     match value.outcome {
-        Some(types::execute_source_api_response::Outcome::PreviewOnly(preview_only)) => {
-            Ok(ExecuteSourceApiOutcome::PreviewOnly {
-                preview: required_source_api_preview(
-                    preview_only.preview,
-                    "source API execution response missing preview",
-                    request_id,
-                )?,
-            })
-        }
         Some(types::execute_source_api_response::Outcome::Completed(completed)) => {
             Ok(ExecuteSourceApiOutcome::Completed {
                 preview: required_source_api_preview(
@@ -469,6 +508,64 @@ fn execute_source_api_outcome_from_generated(
             request_id,
         )),
     }
+}
+
+fn resume_source_api_outcome_from_generated(
+    value: types::ResumeSourceApiResponse,
+    request_id: Option<String>,
+) -> Result<ExecuteSourceApiOutcome, ApiFailure> {
+    match value.outcome {
+        Some(types::resume_source_api_response::Outcome::Completed(completed)) => {
+            Ok(ExecuteSourceApiOutcome::Completed {
+                preview: required_source_api_preview(
+                    completed.preview,
+                    "source API execution response missing preview",
+                    request_id.clone(),
+                )?,
+                result: required_source_api_execution_result(
+                    completed.result,
+                    "source API execution response missing result",
+                    request_id,
+                )?,
+            })
+        }
+        Some(types::resume_source_api_response::Outcome::Continued(continued)) => {
+            Ok(ExecuteSourceApiOutcome::Continued {
+                preview: required_source_api_preview(
+                    continued.preview,
+                    "source API execution response missing preview",
+                    request_id.clone(),
+                )?,
+                result: required_source_api_execution_result(
+                    continued.result,
+                    "source API execution response missing result",
+                    request_id.clone(),
+                )?,
+                continuation_token: require_non_empty_text(
+                    continued.continuation_token,
+                    ErrorStage::ExecuteQuery,
+                    "source API execution response missing continuation token",
+                    request_id,
+                )?,
+            })
+        }
+        None => Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "source API execution response missing outcome",
+            request_id,
+        )),
+    }
+}
+
+fn preview_source_api_response_from_generated(
+    value: types::PreviewSourceApiResponse,
+    request_id: Option<String>,
+) -> Result<SourceApiPreview, ApiFailure> {
+    required_source_api_preview(
+        value.preview,
+        "source API preview response missing preview",
+        request_id,
+    )
 }
 
 fn required_source_api_preview(

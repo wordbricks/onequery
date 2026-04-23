@@ -16,7 +16,6 @@ import type {
 export function buildQueryValidateResponse(response: {
   request: {
     sql: string;
-    parameters: readonly unknown[];
     maxRows: number;
     maxBytes: number;
     cellMaxChars: number;
@@ -30,12 +29,11 @@ export function buildQueryValidateResponse(response: {
     timeoutMs: number;
   };
   source: Parameters<typeof buildCliSource>[0];
-  truncated: boolean;
+  sqlNormalized: boolean;
 }): ValidateQueryResponseInit {
   return {
     request: {
       sql: response.request.sql,
-      parameters: [],
       maxRows: response.request.maxRows,
       maxBytes: response.request.maxBytes,
       cellMaxChars: response.request.cellMaxChars,
@@ -49,7 +47,7 @@ export function buildQueryValidateResponse(response: {
       timeout: durationFromMs(response.declaredResultWindow.timeoutMs),
     },
     source: buildCliSource(response.source),
-    truncated: response.truncated,
+    sqlNormalized: response.sqlNormalized,
   };
 }
 

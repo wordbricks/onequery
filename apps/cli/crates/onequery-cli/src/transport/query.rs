@@ -20,10 +20,6 @@ use crate::transport::generated::types;
 use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
-use crate::transport::query_parameter::QueryCanonicalParameter;
-use crate::transport::query_parameter::QueryRequestParameter;
-use crate::transport::query_parameter::query_canonical_parameter_from_generated;
-use crate::transport::query_parameter::query_request_parameter_to_generated;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
@@ -62,8 +58,6 @@ pub(crate) struct QueryResult {
 pub(crate) struct QueryRequestPayload {
     pub(crate) sql: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) parameters: Option<Vec<QueryRequestParameter>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) max_rows: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) max_bytes: Option<usize>,
@@ -95,8 +89,6 @@ pub(crate) struct QueryRequestWindow {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct QueryCanonicalRequest {
     pub(crate) sql: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub(crate) parameters: Vec<QueryCanonicalParameter>,
     pub(crate) max_rows: usize,
     pub(crate) max_bytes: usize,
     pub(crate) cell_max_chars: usize,
@@ -119,7 +111,7 @@ pub(crate) struct QueryValidationResult {
     pub(crate) normalized_sql: String,
     pub(crate) declared_result_window: DeclaredQueryResultWindow,
     pub(crate) source: SourceSummary,
-    pub(crate) truncated: bool,
+    pub(crate) sql_normalized: bool,
 }
 
 pub(crate) async fn execute_read_only_query_with_controls(
@@ -184,7 +176,7 @@ async fn fetch_query_page(
     let page = page_request_from_controls(controls, ErrorStage::ExecuteQuery)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
-        .cli()
+        .query()
         .execute_query_with_options(
             types::ExecuteQueryRequest {
                 org_slug: Some(org_slug),
@@ -223,7 +215,7 @@ pub(crate) async fn validate_read_only_query_with_controls(
     let source_key: String = try_into_value(source_key, ErrorStage::ReadQueryInput)?;
     let query = query_request_from_payload(payload)?;
     let response = match client
-        .cli()
+        .query()
         .validate_query_with_options(
             types::ValidateQueryRequest {
                 org_slug: Some(org_slug),
@@ -257,13 +249,6 @@ fn query_request_from_payload(
             payload.sql.as_str(),
             ErrorStage::ReadQueryInput,
         )?),
-        parameters: payload
-            .parameters
-            .clone()
-            .unwrap_or_default()
-            .into_iter()
-            .map(query_request_parameter_to_generated)
-            .collect(),
         max_rows: optional_query_bound(payload.max_rows, ErrorStage::ReadQueryInput)?,
         max_bytes: optional_query_bound(payload.max_bytes, ErrorStage::ReadQueryInput)?,
         cell_max_chars: optional_query_bound(payload.cell_max_chars, ErrorStage::ReadQueryInput)?,
@@ -388,10 +373,10 @@ fn query_validation_from_generated(
             ErrorStage::ReadQueryInput,
             request_id.clone(),
         )?,
-        truncated: decode_required_bool(
-            result.truncated,
+        sql_normalized: decode_required_bool(
+            result.sql_normalized,
             ErrorStage::ReadQueryInput,
-            "query validation response missing truncated flag",
+            "query validation response missing SQL normalization flag",
             request_id,
         )?,
     })
@@ -409,11 +394,6 @@ fn query_canonical_request_from_generated(
             "query validation response missing canonical SQL",
             request_id.clone(),
         )?,
-        parameters: request
-            .parameters
-            .into_iter()
-            .map(query_canonical_parameter_from_generated)
-            .collect(),
         max_rows: decode_required_u32_as_usize(
             request.max_rows,
             stage,
@@ -518,10 +498,6 @@ mod tests {
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
     use crate::transport::generated::types;
-    use crate::transport::query_parameter::QueryCanonicalParameter;
-    use crate::transport::query_parameter::QueryCanonicalParameterType;
-    use crate::transport::query_parameter::QueryRequestParameter;
-    use crate::transport::query_parameter::QueryRequestParameterType;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceSummary;
 
@@ -591,10 +567,6 @@ mod tests {
         let payload = json!({
             "request": {
                 "sql": "SELECT 1",
-                "parameters": [
-                    {"type": "string", "value": "acme"},
-                    {"type": "null", "value": null}
-                ],
                 "maxRows": 100,
                 "maxBytes": 4096,
                 "cellMaxChars": 256,
@@ -613,7 +585,7 @@ mod tests {
                 "queryable": true,
                 "status": "active"
             },
-            "truncated": false
+            "sqlNormalized": false
         });
 
         let parsed = serde_json::from_value::<QueryValidationResult>(payload)
@@ -624,16 +596,6 @@ mod tests {
             QueryValidationResult {
                 request: super::QueryCanonicalRequest {
                     sql: "SELECT 1".to_owned(),
-                    parameters: vec![
-                        QueryCanonicalParameter {
-                            parameter_type: QueryCanonicalParameterType::String,
-                            value: Some("acme".to_owned()),
-                        },
-                        QueryCanonicalParameter {
-                            parameter_type: QueryCanonicalParameterType::Null,
-                            value: None,
-                        },
-                    ],
                     max_rows: 100,
                     max_bytes: 4096,
                     cell_max_chars: 256,
@@ -653,7 +615,7 @@ mod tests {
                     queryable: true,
                     status: "active".to_owned(),
                 },
-                truncated: false,
+                sql_normalized: false,
             }
         );
     }
@@ -697,16 +659,6 @@ mod tests {
     fn query_request_from_payload_maps_connect_request() {
         let request = super::query_request_from_payload(&QueryRequestPayload {
             sql: "select 42".to_owned(),
-            parameters: Some(vec![
-                QueryRequestParameter {
-                    parameter_type: QueryRequestParameterType::String,
-                    value: Some("acme".to_owned()),
-                },
-                QueryRequestParameter {
-                    parameter_type: QueryRequestParameterType::Null,
-                    value: None,
-                },
-            ]),
             max_rows: Some(100),
             max_bytes: Some(4_096),
             cell_max_chars: Some(256),
@@ -718,22 +670,6 @@ mod tests {
             request,
             super::types::CliQueryRequest {
                 sql: Some("select 42".to_owned()),
-                parameters: vec![
-                    super::types::CliQueryParameter {
-                        value_type: Some(
-                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING.into(),
-                        ),
-                        value: Some("acme".to_owned()),
-                        ..Default::default()
-                    },
-                    super::types::CliQueryParameter {
-                        value_type: Some(
-                            super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
-                        ),
-                        value: None,
-                        ..Default::default()
-                    },
-                ],
                 max_rows: Some(100),
                 max_bytes: Some(4_096),
                 cell_max_chars: Some(256),
@@ -823,23 +759,6 @@ mod tests {
             super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
                     sql: Some("SELECT 1".to_owned()),
-                    parameters: vec![
-                        super::types::CliQueryParameter {
-                            value_type: Some(
-                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_STRING
-                                    .into(),
-                            ),
-                            value: Some("acme".to_owned()),
-                            ..Default::default()
-                        },
-                        super::types::CliQueryParameter {
-                            value_type: Some(
-                                super::types::QueryParameterType::QUERY_PARAMETER_TYPE_NULL.into(),
-                            ),
-                            value: None,
-                            ..Default::default()
-                        },
-                    ],
                     max_rows: Some(100),
                     max_bytes: Some(4_096),
                     cell_max_chars: Some(256),
@@ -865,7 +784,7 @@ mod tests {
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     ..Default::default()
                 }),
-                truncated: Some(false),
+                sql_normalized: Some(false),
                 ..Default::default()
             },
             Some("req_validation".to_owned()),
@@ -877,16 +796,6 @@ mod tests {
             QueryValidationResult {
                 request: super::QueryCanonicalRequest {
                     sql: "SELECT 1".to_owned(),
-                    parameters: vec![
-                        QueryCanonicalParameter {
-                            parameter_type: QueryCanonicalParameterType::String,
-                            value: Some("acme".to_owned()),
-                        },
-                        QueryCanonicalParameter {
-                            parameter_type: QueryCanonicalParameterType::Null,
-                            value: None,
-                        },
-                    ],
                     max_rows: 100,
                     max_bytes: 4_096,
                     cell_max_chars: 256,
@@ -906,7 +815,7 @@ mod tests {
                     queryable: true,
                     status: "active".to_owned(),
                 },
-                truncated: false,
+                sql_normalized: false,
             }
         );
     }
@@ -926,7 +835,7 @@ mod tests {
                         ..Default::default()
                     },
                 ),
-                truncated: Some(false),
+                sql_normalized: Some(false),
                 ..Default::default()
             },
             Some("req_missing_validation_source".to_owned()),
@@ -1034,7 +943,7 @@ mod tests {
     }
 
     #[test]
-    fn query_validation_from_generated_requires_truncated_flag() {
+    fn query_validation_from_generated_requires_sql_normalized_flag() {
         let error = super::query_validation_from_generated(
             super::types::ValidateQueryResponse {
                 request: buffa::MessageField::some(super::types::CliQueryCanonicalRequest {
@@ -1068,13 +977,13 @@ mod tests {
             },
             Some("req_missing_validation_truncated".to_owned()),
         )
-        .expect_err("expected missing validation truncated flag to fail");
+        .expect_err("expected missing SQL normalization flag to fail");
 
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::ReadQueryInput,
-                message: "query validation response missing truncated flag".to_owned(),
+                message: "query validation response missing SQL normalization flag".to_owned(),
                 request_id: Some("req_missing_validation_truncated".to_owned()),
             })
         );

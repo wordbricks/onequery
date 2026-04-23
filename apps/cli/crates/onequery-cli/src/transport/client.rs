@@ -11,7 +11,11 @@ use http::header::HeaderValue;
 use http::header::USER_AGENT;
 use url::Url;
 
-use crate::transport::generated::Client as GeneratedCliClient;
+use crate::transport::generated::AuthClient as GeneratedAuthClient;
+use crate::transport::generated::OrganizationClient as GeneratedOrganizationClient;
+use crate::transport::generated::QueryClient as GeneratedQueryClient;
+use crate::transport::generated::SourceApiClient as GeneratedSourceApiClient;
+use crate::transport::generated::SourceClient as GeneratedSourceClient;
 
 const CLI_BASE_PATH: &str = "/api/cli";
 const CLI_USER_AGENT: &str = concat!("onequery-cli/", env!("CARGO_PKG_VERSION"));
@@ -33,9 +37,13 @@ pub(crate) struct Unauthenticated;
 #[derive(Clone)]
 pub(crate) struct ApiClient<State> {
     pub(crate) base_url: Url,
-    cli: GeneratedCliClient,
+    auth: GeneratedAuthClient,
+    organization: GeneratedOrganizationClient,
+    query: GeneratedQueryClient,
     request_timeout: Duration,
     request_id: Option<String>,
+    source: GeneratedSourceClient,
+    source_api: GeneratedSourceApiClient,
     _state: PhantomData<State>,
 }
 
@@ -59,8 +67,24 @@ enum AuthHeader<'a> {
 }
 
 impl<State> ApiClient<State> {
-    pub(crate) fn cli(&self) -> &GeneratedCliClient {
-        &self.cli
+    pub(crate) fn auth(&self) -> &GeneratedAuthClient {
+        &self.auth
+    }
+
+    pub(crate) fn organization(&self) -> &GeneratedOrganizationClient {
+        &self.organization
+    }
+
+    pub(crate) fn query(&self) -> &GeneratedQueryClient {
+        &self.query
+    }
+
+    pub(crate) fn source(&self) -> &GeneratedSourceClient {
+        &self.source
+    }
+
+    pub(crate) fn source_api(&self) -> &GeneratedSourceApiClient {
+        &self.source_api
     }
 }
 
@@ -145,21 +169,23 @@ fn build_client<State>(
         .map(ToOwned::to_owned);
 
     let cli_base_url = cli_base_url(&base_url);
-    let cli = GeneratedCliClient::new(
-        connect_transport_for_base_url(&base_url)?,
-        connect_config(
-            cli_base_url.as_str(),
-            request_timeout,
-            auth_token.as_deref(),
-            request_id.as_deref(),
-        )?,
-    );
+    let transport = connect_transport_for_base_url(&base_url)?;
+    let config = connect_config(
+        cli_base_url.as_str(),
+        request_timeout,
+        auth_token.as_deref(),
+        request_id.as_deref(),
+    )?;
 
     Ok(ApiClient {
+        auth: GeneratedAuthClient::new(transport.clone(), config.clone()),
         base_url,
-        cli,
+        organization: GeneratedOrganizationClient::new(transport.clone(), config.clone()),
+        query: GeneratedQueryClient::new(transport.clone(), config.clone()),
         request_timeout,
         request_id,
+        source: GeneratedSourceClient::new(transport.clone(), config.clone()),
+        source_api: GeneratedSourceApiClient::new(transport, config),
         _state: PhantomData,
     })
 }

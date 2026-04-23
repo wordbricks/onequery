@@ -22,7 +22,7 @@ import { file_onequery_cli_v1_source } from "./source_pb.js";
  * Describes the file onequery/cli/v1/source_api.proto.
  */
 export const file_onequery_cli_v1_source_api: GenFile /*@__PURE__*/ = fileDesc(
-  "CiBvbmVxdWVyeS9jbGkvdjEvc291cmNlX2FwaS5wcm90bxIPb25lcXVlcnkuY2xpLnYxIrEBChhEZXNjcmliZVNvdXJjZUFwaVJlcXVlc3QSOwoIb3JnX3NsdWcYASABKAlCKbpIJsgBAXIhEAEY/wEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElgKCnNvdXJjZV9rZXkYAiABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIt4CChlEZXNjcmliZVNvdXJjZUFwaVJlc3BvbnNlEjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARIpChJkZXNjcmlwdG9yX3ZlcnNpb24YAiABKAlCDbpICsgBAXIFEAEYgAESLQoWZGVmYXVsdF9wYXRoX29wZXJhdGlvbhgDIAEoCUINukgKyAEBcgUQARiAARJECgpvcGVyYXRpb25zGAQgAygLMiYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbkIIukgFkgECEGQSQAoIZXhhbXBsZXMYBSADKAsyJC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpRXhhbXBsZUIIukgFkgECEBQSIgoFbm90ZXMYBiADKAlCE7pIEJIBDRAUGAEiB3IFEAEYgAQiqAEKD1NvdXJjZUFwaVRhcmdldBI7Cghvcmdfc2x1ZxgBIAEoCUIpukgmyAEBciEQARj/ATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSWAoKc291cmNlX2tleRgCIAEoCUJEukhByAEBcjwQARj/ATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQiowMKDlNvdXJjZUFwaURyYWZ0EjMKCW9wZXJhdGlvbhgBIAEoCUIgukgdyAEBchgQARiAATIRXlthLXpdW2EtejAtOV9dKiQSKQoSZGVzY3JpcHRvcl92ZXJzaW9uGAIgASgJQg26SArIAQFyBRABGIABEhwKCHNlbGVjdG9yGAMgASgJQgq6SAdyBRABGIAgEiwKD21ldGhvZF9vdmVycmlkZRgEIAEoCUITukgQcg4QARgQMgheW0EtWl0rJBI+CgdoZWFkZXJzGAUgAygLMiMub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaUhlYWRlckIIukgFkgECEEASLgoLZmllbGRfcGF0Y2gYBiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0SAASKwoJanNvbl9ib2R5GAcgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlSAASHgoJdGV4dF9ib2R5GAggASgJQgm6SAZyBBiAgEBIABIgCgtiaW5hcnlfYm9keRgJIAEoDEIJukgGegQYgIBASABCBgoEYm9keSLHBAoQU291cmNlQXBpUHJldmlldxI7CgZzb3VyY2UYASABKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpU291cmNlQga6SAPIAQESMwoJb3BlcmF0aW9uGAIgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJBIcCghzZWxlY3RvchgDIAEoCUIKukgHcgUQARiAIBJECgRraW5kGAQgASgOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaU9wZXJhdGlvbktpbmRCDbpICsgBAYIBBBABIAASJgoGbWV0aG9kGAUgASgJQha6SBPIAQFyDhABGBAyCF5bQS1aXSskEhgKBGhvc3QYBiABKAlCCrpIB3IFEAEY/QESGgoDdXJsGAcgASgJQg26SApyCBABGIBAiAEBEjoKDGhlYWRlcl9uYW1lcxgIIAMoCUIkukghkgEeEEAYASIYchYQARiAATIPXltBLVphLXowLTktXSskEkQKCWJvZHlfa2luZBgJIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlCb2R5S2luZEINukgKyAEBggEEEAEgABInCgpib2R5X3BhdGhzGAogAygJQhO6SBCSAQ0QZBgBIgdyBRABGIAEElQKEXBhZ2luYXRpb25fcG9saWN5GAsgASgOMioub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVBhZ2luYXRpb25Qb2xpY3lCDbpICsgBAYIBBBABIAAizwEKF1N0YXJ0U291cmNlQXBpRXhlY3V0aW9uEjgKBnRhcmdldBgBIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlUYXJnZXRCBrpIA8gBARI2CgVkcmFmdBgCIAEoCzIfLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlEcmFmdEIGukgDyAEBEkIKBG1vZGUYAyABKA4yJS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0ZU1vZGVCDbpICsgBAYIBBBABIAAifwoYUmVzdW1lU291cmNlQXBpRXhlY3V0aW9uEjgKBnRhcmdldBgBIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlUYXJnZXRCBrpIA8gBARIpChJjb250aW51YXRpb25fdG9rZW4YAiABKAlCDbpICsgBAXIFEAEYgCAioQEKF0V4ZWN1dGVTb3VyY2VBcGlSZXF1ZXN0EjkKBXN0YXJ0GAEgASgLMigub25lcXVlcnkuY2xpLnYxLlN0YXJ0U291cmNlQXBpRXhlY3V0aW9uSAASOwoGcmVzdW1lGAIgASgLMikub25lcXVlcnkuY2xpLnYxLlJlc3VtZVNvdXJjZUFwaUV4ZWN1dGlvbkgAQg4KBWlucHV0EgW6SAIIASKWAwoYU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0EjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARIzCglvcGVyYXRpb24YAiABKAlCILpIHcgBAXIYEAEYgAEyEV5bYS16XVthLXowLTlfXSokEhwKCHNlbGVjdG9yGAMgASgJQgq6SAdyBRABGIAgEh0KBnN0YXR1cxgEIAEoDUINukgKyAEBKgUY1wQoZBI+CgdoZWFkZXJzGAUgAygLMiMub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaUhlYWRlckIIukgFkgECEGQSIwoMY29udGVudF90eXBlGAYgASgJQg26SArIAQFyBRABGP8BEiYKBGpzb24YByABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWVIABIZCgR0ZXh0GAggASgJQgm6SAZyBBiAgEBIABIbCgZiaW5hcnkYCSABKAxCCbpIBnoEGICAQEgAQgYKBGJvZHki9AEKGEV4ZWN1dGVTb3VyY2VBcGlSZXNwb25zZRJECgxwcmV2aWV3X29ubHkYASABKAsyLC5vbmVxdWVyeS5jbGkudjEuRXhlY3V0ZVNvdXJjZUFwaVByZXZpZXdPbmx5SAASPwoJY29tcGxldGVkGAIgASgLMioub25lcXVlcnkuY2xpLnYxLkV4ZWN1dGVTb3VyY2VBcGlDb21wbGV0ZWRIABI/Cgljb250aW51ZWQYAyABKAsyKi5vbmVxdWVyeS5jbGkudjEuRXhlY3V0ZVNvdXJjZUFwaUNvbnRpbnVlZEgAQhAKB291dGNvbWUSBbpIAggBIlkKG0V4ZWN1dGVTb3VyY2VBcGlQcmV2aWV3T25seRI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBASKaAQoZRXhlY3V0ZVNvdXJjZUFwaUNvbXBsZXRlZBI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBARJBCgZyZXN1bHQYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0Qga6SAPIAQEixQEKGUV4ZWN1dGVTb3VyY2VBcGlDb250aW51ZWQSOgoHcHJldmlldxgBIAEoCzIhLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlQcmV2aWV3Qga6SAPIAQESQQoGcmVzdWx0GAIgASgLMikub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaUV4ZWN1dGlvblJlc3VsdEIGukgDyAEBEikKEmNvbnRpbnVhdGlvbl90b2tlbhgDIAEoCUINukgKyAEBcgUQARiAICLWAQoSQ2xpU291cmNlQXBpU291cmNlElgKCnNvdXJjZV9rZXkYASABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEkAKCHByb3ZpZGVyGAIgASgOMh8ub25lcXVlcnkuY2xpLnYxLlNvdXJjZVByb3ZpZGVyQg26SArIAQGCAQQQASAAEiQKDGRpc3BsYXlfbmFtZRgDIAEoCUIOukgLcgkQARj/ATICXFMi3gUKFUNsaVNvdXJjZUFwaU9wZXJhdGlvbhIuCgRuYW1lGAEgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJBJECgRraW5kGAIgASgOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaU9wZXJhdGlvbktpbmRCDbpICsgBAYIBBBABIAASHgoHc3VtbWFyeRgDIAEoCUINukgKyAEBcgUQARigARIiCgtkZXNjcmlwdGlvbhgEIAEoCUINukgKyAEBcgUQARiAEBJMCg1zZWxlY3Rvcl9raW5kGAUgASgOMiYub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVNlbGVjdG9yS2luZEINukgKyAEBggEEEAEgABIlCg5zZWxlY3Rvcl9sYWJlbBgGIAEoCUINukgKyAEBcgUQARiAARJICg1tZXRob2RfcG9saWN5GAcgASgLMikub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU1ldGhvZFBvbGljeUIGukgDyAEBEkYKDGZpZWxkX3BvbGljeRgIIAEoCzIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlGaWVsZFBvbGljeUIGukgDyAEBEkgKDWhlYWRlcl9wb2xpY3kYCSABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5Qga6SAPIAQESVAoRcGFnaW5hdGlvbl9wb2xpY3kYCiABKA4yKi5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUINukgKyAEBggEEEAEgABJACghleGFtcGxlcxgLIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlQgi6SAWSAQIQFBIiCgVub3RlcxgMIAMoCUITukgQkgENEBQYASIHcgUQARiABCKDAQoYQ2xpU291cmNlQXBpTWV0aG9kUG9saWN5Ei4KDmRlZmF1bHRfbWV0aG9kGAEgASgJQha6SBPIAQFyDhABGBAyCF5bQS1aXSskEjcKD2FsbG93ZWRfbWV0aG9kcxgCIAMoCUIeukgbkgEYCAEQEBgBIhByDhABGBAyCF5bQS1aXSskIoQCChdDbGlTb3VyY2VBcGlGaWVsZFBvbGljeRIZChFhbGxvd3NfcmF3X2ZpZWxkcxgBIAEoCBIbChNhbGxvd3NfdHlwZWRfZmllbGRzGAIgASgIEh0KFXN1cHBvcnRzX25lc3RlZF9wYXRocxgDIAEoCBIcChRzdXBwb3J0c19hcnJheV9wYXRocxgEIAEoCBIVCg1hY2NlcHRzX2lucHV0GAUgASgIEkYKCmlucHV0X21vZGUYBiABKA4yIy5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpSW5wdXRNb2RlQg26SArIAQGCAQQQASAAEhUKDW1lcmdlX3BhdGNoZXMYByABKAgiZgoYQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5EkoKHGFsbG93ZWRfcmVxdWVzdF9oZWFkZXJfbmFtZXMYASADKAlCJLpIIZIBHhBAGAEiGHIWEAEYgAEyD15bQS1aYS16MC05LV0rJCJ3ChNDbGlTb3VyY2VBcGlFeGFtcGxlEhwKBWxhYmVsGAEgASgJQg26SArIAQFyBRABGIABEiIKC2Rlc2NyaXB0aW9uGAIgASgJQg26SArIAQFyBRABGIAIEh4KB2NvbW1hbmQYAyABKAlCDbpICsgBAXIFEAEYgEAiWwoSQ2xpU291cmNlQXBpSGVhZGVyEiwKBG5hbWUYASABKAlCHrpIG8gBAXIWEAEYgAEyD15bQS1aYS16MC05LV0rJBIXCgV2YWx1ZRgCIAEoCUIIukgFcgMYgEAqrQEKElNvdXJjZUFwaUlucHV0TW9kZRIlCiFTT1VSQ0VfQVBJX0lOUFVUX01PREVfVU5TUEVDSUZJRUQQABIeChpTT1VSQ0VfQVBJX0lOUFVUX01PREVfTk9ORRABEigKJFNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX09CSkVDVBACEiYKIlNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX0JPRFkQAyqhAQoWU291cmNlQXBpT3BlcmF0aW9uS2luZBIpCiVTT1VSQ0VfQVBJX09QRVJBVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASKgomU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9IVFRQX1JFUVVFU1QQARIwCixTT1VSQ0VfQVBJX09QRVJBVElPTl9LSU5EX1NUUlVDVFVSRURfUkVRVUVTVBACKrABChVTb3VyY2VBcGlTZWxlY3RvcktpbmQSKAokU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX1VOU1BFQ0lGSUVEEAASIQodU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX05PTkUQARIhCh1TT1VSQ0VfQVBJX1NFTEVDVE9SX0tJTkRfUEFUSBACEicKI1NPVVJDRV9BUElfU0VMRUNUT1JfS0lORF9JREVOVElGSUVSEAMqpQEKGVNvdXJjZUFwaVBhZ2luYXRpb25Qb2xpY3kSLAooU09VUkNFX0FQSV9QQUdJTkFUSU9OX1BPTElDWV9VTlNQRUNJRklFRBAAEiUKIVNPVVJDRV9BUElfUEFHSU5BVElPTl9QT0xJQ1lfTk9ORRABEjMKL1NPVVJDRV9BUElfUEFHSU5BVElPTl9QT0xJQ1lfQ09OVElOVUFUSU9OX1RPS0VOEAIqjgEKFFNvdXJjZUFwaUV4ZWN1dGVNb2RlEicKI1NPVVJDRV9BUElfRVhFQ1VURV9NT0RFX1VOU1BFQ0lGSUVEEAASIwofU09VUkNFX0FQSV9FWEVDVVRFX01PREVfRVhFQ1VURRABEigKJFNPVVJDRV9BUElfRVhFQ1VURV9NT0RFX1BSRVZJRVdfT05MWRACKrcBChFTb3VyY2VBcGlCb2R5S2luZBIkCiBTT1VSQ0VfQVBJX0JPRFlfS0lORF9VTlNQRUNJRklFRBAAEh0KGVNPVVJDRV9BUElfQk9EWV9LSU5EX05PTkUQARIdChlTT1VSQ0VfQVBJX0JPRFlfS0lORF9KU09OEAISHQoZU09VUkNFX0FQSV9CT0RZX0tJTkRfVEVYVBADEh8KG1NPVVJDRV9BUElfQk9EWV9LSU5EX0JJTkFSWRAEYghlZGl0aW9uc3DoBw",
+  "CiBvbmVxdWVyeS9jbGkvdjEvc291cmNlX2FwaS5wcm90bxIPb25lcXVlcnkuY2xpLnYxIrEBChhEZXNjcmliZVNvdXJjZUFwaVJlcXVlc3QSOwoIb3JnX3NsdWcYASABKAlCKbpIJsgBAXIhEAEY/wEyGl5bYS16MC05XSsoPzotW2EtejAtOV0rKSokElgKCnNvdXJjZV9rZXkYAiABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kIuQFChlEZXNjcmliZVNvdXJjZUFwaVJlc3BvbnNlEjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARIpChJkZXNjcmlwdG9yX3ZlcnNpb24YAiABKAlCDbpICsgBAXIFEAEYgAESQgobZGVmYXVsdF9wYXRoX29wZXJhdGlvbl9uYW1lGAMgASgJQh26SBpyGBABGIABMhFeW2Etel1bYS16MC05X10qJBJECgpvcGVyYXRpb25zGAQgAygLMiYub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU9wZXJhdGlvbkIIukgFkgECEGQSQAoIZXhhbXBsZXMYBSADKAsyJC5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpRXhhbXBsZUIIukgFkgECEBQSIgoFbm90ZXMYBiADKAlCE7pIEJIBDRAUGAEiB3IFEAEYgAQ67gK6SOoCGnwKIXNvdXJjZV9hcGlfb3BlcmF0aW9uX25hbWVzX3VuaXF1ZRIeb3BlcmF0aW9uIG5hbWVzIG11c3QgYmUgdW5pcXVlGjd0aGlzLm9wZXJhdGlvbnMubWFwKG9wZXJhdGlvbiwgb3BlcmF0aW9uLm5hbWUpLnVuaXF1ZSgpGukBCi1zb3VyY2VfYXBpX2RlZmF1bHRfcGF0aF9vcGVyYXRpb25fbmFtZV9leGlzdHMSN2RlZmF1bHRfcGF0aF9vcGVyYXRpb25fbmFtZSBtdXN0IHJlZmVyZW5jZSBhbiBvcGVyYXRpb24afyFoYXModGhpcy5kZWZhdWx0X3BhdGhfb3BlcmF0aW9uX25hbWUpIHx8IHRoaXMub3BlcmF0aW9ucy5leGlzdHMob3BlcmF0aW9uLCBvcGVyYXRpb24ubmFtZSA9PSB0aGlzLmRlZmF1bHRfcGF0aF9vcGVyYXRpb25fbmFtZSkiqAEKD1NvdXJjZUFwaVRhcmdldBI7Cghvcmdfc2x1ZxgBIAEoCUIpukgmyAEBciEQARj/ATIaXlthLXowLTldKyg/Oi1bYS16MC05XSspKiQSWAoKc291cmNlX2tleRgCIAEoCUJEukhByAEBcjwQARj/ATI1XltBLVphLXowLTldW0EtWmEtejAtOS5fLV0qW0EtWmEtejAtOV0kfF5bQS1aYS16MC05XSQiqAMKDlNvdXJjZUFwaURyYWZ0EjgKDm9wZXJhdGlvbl9uYW1lGAEgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJBIpChJkZXNjcmlwdG9yX3ZlcnNpb24YAiABKAlCDbpICsgBAXIFEAEYgAESHAoIc2VsZWN0b3IYAyABKAlCCrpIB3IFEAEYgCASLAoPbWV0aG9kX292ZXJyaWRlGAQgASgJQhO6SBByDhABGBAyCF5bQS1aXSskEj4KB2hlYWRlcnMYBSADKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyQgi6SAWSAQIQQBIuCgtmaWVsZF9wYXRjaBgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3RIABIrCglqc29uX2JvZHkYByABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWVIABIeCgl0ZXh0X2JvZHkYCCABKAlCCbpIBnIEGICAQEgAEiAKC2JpbmFyeV9ib2R5GAkgASgMQgm6SAZ6BBiAgEBIAEIGCgRib2R5IskEChBTb3VyY2VBcGlQcmV2aWV3EjsKBnNvdXJjZRgBIAEoCzIjLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlTb3VyY2VCBrpIA8gBARI4Cg5vcGVyYXRpb25fbmFtZRgCIAEoCUIgukgdyAEBchgQARiAATIRXlthLXpdW2EtejAtOV9dKiQSHAoIc2VsZWN0b3IYAyABKAlCCrpIB3IFEAEYgCASRAoEa2luZBgEIAEoDjInLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlPcGVyYXRpb25LaW5kQg26SArIAQGCAQQQASAAEiYKBm1ldGhvZBgFIAEoCUIWukgTyAEBcg4QARgQMgheW0EtWl0rJBIYCgRob3N0GAYgASgJQgq6SAdyBRABGP0BEhoKA3VybBgHIAEoCUINukgKcggQARiAQIgBARI3CgxoZWFkZXJfbmFtZXMYCCADKAlCIbpIHpIBGxBAGAEiFXITEAEYgAEyDF5bYS16MC05LV0rJBJECglib2R5X2tpbmQYCSABKA4yIi5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpQm9keUtpbmRCDbpICsgBAYIBBBABIAASJwoKYm9keV9wYXRocxgKIAMoCUITukgQkgENEGQYASIHcgUQARiABBJUChFwYWdpbmF0aW9uX3BvbGljeRgLIAEoDjIqLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlQYWdpbmF0aW9uUG9saWN5Qg26SArIAQGCAQQQASAAIosBChdQcmV2aWV3U291cmNlQXBpUmVxdWVzdBI4CgZ0YXJnZXQYASABKAsyIC5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpVGFyZ2V0Qga6SAPIAQESNgoFZHJhZnQYAiABKAsyHy5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRHJhZnRCBrpIA8gBASJWChhQcmV2aWV3U291cmNlQXBpUmVzcG9uc2USOgoHcHJldmlldxgBIAEoCzIhLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlQcmV2aWV3Qga6SAPIAQEiiwEKF0V4ZWN1dGVTb3VyY2VBcGlSZXF1ZXN0EjgKBnRhcmdldBgBIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlUYXJnZXRCBrpIA8gBARI2CgVkcmFmdBgCIAEoCzIfLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlEcmFmdEIGukgDyAEBIrIBChhFeGVjdXRlU291cmNlQXBpUmVzcG9uc2USQQoJY29tcGxldGVkGAEgASgLMiwub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaUV4ZWN1dGlvbkNvbXBsZXRlZEgAEkEKCWNvbnRpbnVlZBgCIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlFeGVjdXRpb25Db250aW51ZWRIAEIQCgdvdXRjb21lEgW6SAIIASJ9ChZSZXN1bWVTb3VyY2VBcGlSZXF1ZXN0EjgKBnRhcmdldBgBIAEoCzIgLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlUYXJnZXRCBrpIA8gBARIpChJjb250aW51YXRpb25fdG9rZW4YAiABKAlCDbpICsgBAXIFEAEYgCAisQEKF1Jlc3VtZVNvdXJjZUFwaVJlc3BvbnNlEkEKCWNvbXBsZXRlZBgBIAEoCzIsLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlFeGVjdXRpb25Db21wbGV0ZWRIABJBCgljb250aW51ZWQYAiABKAsyLC5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uQ29udGludWVkSABCEAoHb3V0Y29tZRIFukgCCAEinAEKG1NvdXJjZUFwaUV4ZWN1dGlvbkNvbXBsZXRlZBI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBARJBCgZyZXN1bHQYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0Qga6SAPIAQEixwEKG1NvdXJjZUFwaUV4ZWN1dGlvbkNvbnRpbnVlZBI6CgdwcmV2aWV3GAEgASgLMiEub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVByZXZpZXdCBrpIA8gBARJBCgZyZXN1bHQYAiABKAsyKS5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpRXhlY3V0aW9uUmVzdWx0Qga6SAPIAQESKQoSY29udGludWF0aW9uX3Rva2VuGAMgASgJQg26SArIAQFyBRABGIAgIqUDChhTb3VyY2VBcGlFeGVjdXRpb25SZXN1bHQSOwoGc291cmNlGAEgASgLMiMub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaVNvdXJjZUIGukgDyAEBEjgKDm9wZXJhdGlvbl9uYW1lGAIgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJBIcCghzZWxlY3RvchgDIAEoCUIKukgHcgUQARiAIBInChBodHRwX3N0YXR1c19jb2RlGAQgASgNQg26SArIAQEqBRjXBChkEj4KB2hlYWRlcnMYBSADKAsyIy5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyQgi6SAWSAQIQZBIjCgxjb250ZW50X3R5cGUYBiABKAlCDbpICsgBAXIFEAEY/wESJgoEanNvbhgHIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5WYWx1ZUgAEhkKBHRleHQYCCABKAlCCbpIBnIEGICAQEgAEhsKBmJpbmFyeRgJIAEoDEIJukgGegQYgIBASABCBgoEYm9keSLWAQoSQ2xpU291cmNlQXBpU291cmNlElgKCnNvdXJjZV9rZXkYASABKAlCRLpIQcgBAXI8EAEY/wEyNV5bQS1aYS16MC05XVtBLVphLXowLTkuXy1dKltBLVphLXowLTldJHxeW0EtWmEtejAtOV0kEkAKCHByb3ZpZGVyGAIgASgOMh8ub25lcXVlcnkuY2xpLnYxLlNvdXJjZVByb3ZpZGVyQg26SArIAQGCAQQQASAAEiQKDGRpc3BsYXlfbmFtZRgDIAEoCUIOukgLcgkQARj/ATICXFMi3gUKFUNsaVNvdXJjZUFwaU9wZXJhdGlvbhIuCgRuYW1lGAEgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJBJECgRraW5kGAIgASgOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaU9wZXJhdGlvbktpbmRCDbpICsgBAYIBBBABIAASHgoHc3VtbWFyeRgDIAEoCUINukgKyAEBcgUQARigARIiCgtkZXNjcmlwdGlvbhgEIAEoCUINukgKyAEBcgUQARiAEBJMCg1zZWxlY3Rvcl9raW5kGAUgASgOMiYub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaVNlbGVjdG9yS2luZEINukgKyAEBggEEEAEgABIlCg5zZWxlY3Rvcl9sYWJlbBgGIAEoCUINukgKyAEBcgUQARiAARJICg1tZXRob2RfcG9saWN5GAcgASgLMikub25lcXVlcnkuY2xpLnYxLkNsaVNvdXJjZUFwaU1ldGhvZFBvbGljeUIGukgDyAEBEkYKDGZpZWxkX3BvbGljeRgIIAEoCzIoLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlGaWVsZFBvbGljeUIGukgDyAEBEkgKDWhlYWRlcl9wb2xpY3kYCSABKAsyKS5vbmVxdWVyeS5jbGkudjEuQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5Qga6SAPIAQESVAoRcGFnaW5hdGlvbl9wb2xpY3kYCiABKA4yKi5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpUGFnaW5hdGlvblBvbGljeUINukgKyAEBggEEEAEgABJACghleGFtcGxlcxgLIAMoCzIkLm9uZXF1ZXJ5LmNsaS52MS5DbGlTb3VyY2VBcGlFeGFtcGxlQgi6SAWSAQIQFBIiCgVub3RlcxgMIAMoCUITukgQkgENEBQYASIHcgUQARiABCKjAgoYQ2xpU291cmNlQXBpTWV0aG9kUG9saWN5Ei4KDmRlZmF1bHRfbWV0aG9kGAEgASgJQha6SBPIAQFyDhABGBAyCF5bQS1aXSskEjcKD2FsbG93ZWRfbWV0aG9kcxgCIAMoCUIeukgbkgEYCAEQEBgBIhByDhABGBAyCF5bQS1aXSskOp0BukiZARqWAQohc291cmNlX2FwaV9kZWZhdWx0X21ldGhvZF9hbGxvd2VkEi1kZWZhdWx0X21ldGhvZCBtdXN0IGJlIG9uZSBvZiBhbGxvd2VkX21ldGhvZHMaQnRoaXMuYWxsb3dlZF9tZXRob2RzLmV4aXN0cyhtZXRob2QsIG1ldGhvZCA9PSB0aGlzLmRlZmF1bHRfbWV0aG9kKSLaAgoXQ2xpU291cmNlQXBpRmllbGRQb2xpY3kSVQoPZmllbGRfZW5jb2RpbmdzGAEgAygOMicub25lcXVlcnkuY2xpLnYxLlNvdXJjZUFwaUZpZWxkRW5jb2RpbmdCE7pIEJIBDRACGAEiB4IBBBABIAASWAoRcGF0aF9jYXBhYmlsaXRpZXMYAiADKA4yKC5vbmVxdWVyeS5jbGkudjEuU291cmNlQXBpUGF0aENhcGFiaWxpdHlCE7pIEJIBDRACGAEiB4IBBBABIAASRgoKaW5wdXRfbW9kZRgDIAEoDjIjLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlJbnB1dE1vZGVCDbpICsgBAYIBBBABIAASRgoKcGF0Y2hfbW9kZRgEIAEoDjIjLm9uZXF1ZXJ5LmNsaS52MS5Tb3VyY2VBcGlQYXRjaE1vZGVCDbpICsgBAYIBBBABIAAiYwoYQ2xpU291cmNlQXBpSGVhZGVyUG9saWN5EkcKHGFsbG93ZWRfcmVxdWVzdF9oZWFkZXJfbmFtZXMYASADKAlCIbpIHpIBGxBAGAEiFXITEAEYgAEyDF5bYS16MC05LV0rJCJ3ChNDbGlTb3VyY2VBcGlFeGFtcGxlEhwKBWxhYmVsGAEgASgJQg26SArIAQFyBRABGIABEiIKC2Rlc2NyaXB0aW9uGAIgASgJQg26SArIAQFyBRABGIAIEh4KB2NvbW1hbmQYAyABKAlCDbpICsgBAXIFEAEYgEAiWwoSQ2xpU291cmNlQXBpSGVhZGVyEiwKBG5hbWUYASABKAlCHrpIG8gBAXIWEAEYgAEyD15bQS1aYS16MC05LV0rJBIXCgV2YWx1ZRgCIAEoCUIIukgFcgMYgEAqiwEKFlNvdXJjZUFwaUZpZWxkRW5jb2RpbmcSKQolU09VUkNFX0FQSV9GSUVMRF9FTkNPRElOR19VTlNQRUNJRklFRBAAEiEKHVNPVVJDRV9BUElfRklFTERfRU5DT0RJTkdfUkFXEAESIwofU09VUkNFX0FQSV9GSUVMRF9FTkNPRElOR19UWVBFRBACKpIBChdTb3VyY2VBcGlQYXRoQ2FwYWJpbGl0eRIqCiZTT1VSQ0VfQVBJX1BBVEhfQ0FQQUJJTElUWV9VTlNQRUNJRklFRBAAEiUKIVNPVVJDRV9BUElfUEFUSF9DQVBBQklMSVRZX05FU1RFRBABEiQKIFNPVVJDRV9BUElfUEFUSF9DQVBBQklMSVRZX0FSUkFZEAIqrQEKElNvdXJjZUFwaUlucHV0TW9kZRIlCiFTT1VSQ0VfQVBJX0lOUFVUX01PREVfVU5TUEVDSUZJRUQQABIeChpTT1VSQ0VfQVBJX0lOUFVUX01PREVfTk9ORRABEigKJFNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX09CSkVDVBACEiYKIlNPVVJDRV9BUElfSU5QVVRfTU9ERV9SRVFVRVNUX0JPRFkQAyqgAQoSU291cmNlQXBpUGF0Y2hNb2RlEiUKIVNPVVJDRV9BUElfUEFUQ0hfTU9ERV9VTlNQRUNJRklFRBAAEh4KGlNPVVJDRV9BUElfUEFUQ0hfTU9ERV9OT05FEAESIgoeU09VUkNFX0FQSV9QQVRDSF9NT0RFX1NFUEFSQVRFEAISHwobU09VUkNFX0FQSV9QQVRDSF9NT0RFX01FUkdFEAMqoQEKFlNvdXJjZUFwaU9wZXJhdGlvbktpbmQSKQolU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9VTlNQRUNJRklFRBAAEioKJlNPVVJDRV9BUElfT1BFUkFUSU9OX0tJTkRfSFRUUF9SRVFVRVNUEAESMAosU09VUkNFX0FQSV9PUEVSQVRJT05fS0lORF9TVFJVQ1RVUkVEX1JFUVVFU1QQAiqwAQoVU291cmNlQXBpU2VsZWN0b3JLaW5kEigKJFNPVVJDRV9BUElfU0VMRUNUT1JfS0lORF9VTlNQRUNJRklFRBAAEiEKHVNPVVJDRV9BUElfU0VMRUNUT1JfS0lORF9OT05FEAESIQodU09VUkNFX0FQSV9TRUxFQ1RPUl9LSU5EX1BBVEgQAhInCiNTT1VSQ0VfQVBJX1NFTEVDVE9SX0tJTkRfSURFTlRJRklFUhADKqUBChlTb3VyY2VBcGlQYWdpbmF0aW9uUG9saWN5EiwKKFNPVVJDRV9BUElfUEFHSU5BVElPTl9QT0xJQ1lfVU5TUEVDSUZJRUQQABIlCiFTT1VSQ0VfQVBJX1BBR0lOQVRJT05fUE9MSUNZX05PTkUQARIzCi9TT1VSQ0VfQVBJX1BBR0lOQVRJT05fUE9MSUNZX0NPTlRJTlVBVElPTl9UT0tFThACKrcBChFTb3VyY2VBcGlCb2R5S2luZBIkCiBTT1VSQ0VfQVBJX0JPRFlfS0lORF9VTlNQRUNJRklFRBAAEh0KGVNPVVJDRV9BUElfQk9EWV9LSU5EX05PTkUQARIdChlTT1VSQ0VfQVBJX0JPRFlfS0lORF9KU09OEAISHQoZU09VUkNFX0FQSV9CT0RZX0tJTkRfVEVYVBADEh8KG1NPVVJDRV9BUElfQk9EWV9LSU5EX0JJTkFSWRAEYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_google_protobuf_struct,
@@ -69,9 +69,9 @@ export type DescribeSourceApiResponse =
     descriptorVersion: string;
 
     /**
-     * @generated from field: string default_path_operation = 3;
+     * @generated from field: string default_path_operation_name = 3;
      */
-    defaultPathOperation: string;
+    defaultPathOperationName: string;
 
     /**
      * @generated from field: repeated onequery.cli.v1.CliSourceApiOperation operations = 4;
@@ -123,9 +123,9 @@ export const SourceApiTargetSchema: GenMessage<SourceApiTarget> /*@__PURE__*/ =
  */
 export type SourceApiDraft = Message<"onequery.cli.v1.SourceApiDraft"> & {
   /**
-   * @generated from field: string operation = 1;
+   * @generated from field: string operation_name = 1;
    */
-  operation: string;
+  operationName: string;
 
   /**
    * @generated from field: string descriptor_version = 2;
@@ -202,9 +202,9 @@ export type SourceApiPreview = Message<"onequery.cli.v1.SourceApiPreview"> & {
   source?: CliSourceApiSource;
 
   /**
-   * @generated from field: string operation = 2;
+   * @generated from field: string operation_name = 2;
    */
-  operation: string;
+  operationName: string;
 
   /**
    * @generated from field: string selector = 3;
@@ -260,10 +260,10 @@ export const SourceApiPreviewSchema: GenMessage<SourceApiPreview> /*@__PURE__*/ 
   messageDesc(file_onequery_cli_v1_source_api, 4);
 
 /**
- * @generated from message onequery.cli.v1.StartSourceApiExecution
+ * @generated from message onequery.cli.v1.PreviewSourceApiRequest
  */
-export type StartSourceApiExecution =
-  Message<"onequery.cli.v1.StartSourceApiExecution"> & {
+export type PreviewSourceApiRequest =
+  Message<"onequery.cli.v1.PreviewSourceApiRequest"> & {
     /**
      * @generated from field: onequery.cli.v1.SourceApiTarget target = 1;
      */
@@ -273,25 +273,94 @@ export type StartSourceApiExecution =
      * @generated from field: onequery.cli.v1.SourceApiDraft draft = 2;
      */
     draft?: SourceApiDraft;
-
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiExecuteMode mode = 3;
-     */
-    mode: SourceApiExecuteMode;
   };
 
 /**
- * Describes the message onequery.cli.v1.StartSourceApiExecution.
- * Use `create(StartSourceApiExecutionSchema)` to create a new message.
+ * Describes the message onequery.cli.v1.PreviewSourceApiRequest.
+ * Use `create(PreviewSourceApiRequestSchema)` to create a new message.
  */
-export const StartSourceApiExecutionSchema: GenMessage<StartSourceApiExecution> /*@__PURE__*/ =
+export const PreviewSourceApiRequestSchema: GenMessage<PreviewSourceApiRequest> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_source_api, 5);
 
 /**
- * @generated from message onequery.cli.v1.ResumeSourceApiExecution
+ * @generated from message onequery.cli.v1.PreviewSourceApiResponse
  */
-export type ResumeSourceApiExecution =
-  Message<"onequery.cli.v1.ResumeSourceApiExecution"> & {
+export type PreviewSourceApiResponse =
+  Message<"onequery.cli.v1.PreviewSourceApiResponse"> & {
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
+     */
+    preview?: SourceApiPreview;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.PreviewSourceApiResponse.
+ * Use `create(PreviewSourceApiResponseSchema)` to create a new message.
+ */
+export const PreviewSourceApiResponseSchema: GenMessage<PreviewSourceApiResponse> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 6);
+
+/**
+ * @generated from message onequery.cli.v1.ExecuteSourceApiRequest
+ */
+export type ExecuteSourceApiRequest =
+  Message<"onequery.cli.v1.ExecuteSourceApiRequest"> & {
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiTarget target = 1;
+     */
+    target?: SourceApiTarget;
+
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiDraft draft = 2;
+     */
+    draft?: SourceApiDraft;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ExecuteSourceApiRequest.
+ * Use `create(ExecuteSourceApiRequestSchema)` to create a new message.
+ */
+export const ExecuteSourceApiRequestSchema: GenMessage<ExecuteSourceApiRequest> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 7);
+
+/**
+ * @generated from message onequery.cli.v1.ExecuteSourceApiResponse
+ */
+export type ExecuteSourceApiResponse =
+  Message<"onequery.cli.v1.ExecuteSourceApiResponse"> & {
+    /**
+     * @generated from oneof onequery.cli.v1.ExecuteSourceApiResponse.outcome
+     */
+    outcome:
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.SourceApiExecutionCompleted completed = 1;
+           */
+          value: SourceApiExecutionCompleted;
+          case: "completed";
+        }
+      | {
+          /**
+           * @generated from field: onequery.cli.v1.SourceApiExecutionContinued continued = 2;
+           */
+          value: SourceApiExecutionContinued;
+          case: "continued";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.cli.v1.ExecuteSourceApiResponse.
+ * Use `create(ExecuteSourceApiResponseSchema)` to create a new message.
+ */
+export const ExecuteSourceApiResponseSchema: GenMessage<ExecuteSourceApiResponse> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 8);
+
+/**
+ * @generated from message onequery.cli.v1.ResumeSourceApiRequest
+ */
+export type ResumeSourceApiRequest =
+  Message<"onequery.cli.v1.ResumeSourceApiRequest"> & {
     /**
      * @generated from field: onequery.cli.v1.SourceApiTarget target = 1;
      */
@@ -304,44 +373,95 @@ export type ResumeSourceApiExecution =
   };
 
 /**
- * Describes the message onequery.cli.v1.ResumeSourceApiExecution.
- * Use `create(ResumeSourceApiExecutionSchema)` to create a new message.
+ * Describes the message onequery.cli.v1.ResumeSourceApiRequest.
+ * Use `create(ResumeSourceApiRequestSchema)` to create a new message.
  */
-export const ResumeSourceApiExecutionSchema: GenMessage<ResumeSourceApiExecution> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 6);
+export const ResumeSourceApiRequestSchema: GenMessage<ResumeSourceApiRequest> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 9);
 
 /**
- * @generated from message onequery.cli.v1.ExecuteSourceApiRequest
+ * @generated from message onequery.cli.v1.ResumeSourceApiResponse
  */
-export type ExecuteSourceApiRequest =
-  Message<"onequery.cli.v1.ExecuteSourceApiRequest"> & {
+export type ResumeSourceApiResponse =
+  Message<"onequery.cli.v1.ResumeSourceApiResponse"> & {
     /**
-     * @generated from oneof onequery.cli.v1.ExecuteSourceApiRequest.input
+     * @generated from oneof onequery.cli.v1.ResumeSourceApiResponse.outcome
      */
-    input:
+    outcome:
       | {
           /**
-           * @generated from field: onequery.cli.v1.StartSourceApiExecution start = 1;
+           * @generated from field: onequery.cli.v1.SourceApiExecutionCompleted completed = 1;
            */
-          value: StartSourceApiExecution;
-          case: "start";
+          value: SourceApiExecutionCompleted;
+          case: "completed";
         }
       | {
           /**
-           * @generated from field: onequery.cli.v1.ResumeSourceApiExecution resume = 2;
+           * @generated from field: onequery.cli.v1.SourceApiExecutionContinued continued = 2;
            */
-          value: ResumeSourceApiExecution;
-          case: "resume";
+          value: SourceApiExecutionContinued;
+          case: "continued";
         }
       | { case: undefined; value?: undefined };
   };
 
 /**
- * Describes the message onequery.cli.v1.ExecuteSourceApiRequest.
- * Use `create(ExecuteSourceApiRequestSchema)` to create a new message.
+ * Describes the message onequery.cli.v1.ResumeSourceApiResponse.
+ * Use `create(ResumeSourceApiResponseSchema)` to create a new message.
  */
-export const ExecuteSourceApiRequestSchema: GenMessage<ExecuteSourceApiRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 7);
+export const ResumeSourceApiResponseSchema: GenMessage<ResumeSourceApiResponse> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 10);
+
+/**
+ * @generated from message onequery.cli.v1.SourceApiExecutionCompleted
+ */
+export type SourceApiExecutionCompleted =
+  Message<"onequery.cli.v1.SourceApiExecutionCompleted"> & {
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
+     */
+    preview?: SourceApiPreview;
+
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiExecutionResult result = 2;
+     */
+    result?: SourceApiExecutionResult;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.SourceApiExecutionCompleted.
+ * Use `create(SourceApiExecutionCompletedSchema)` to create a new message.
+ */
+export const SourceApiExecutionCompletedSchema: GenMessage<SourceApiExecutionCompleted> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 11);
+
+/**
+ * @generated from message onequery.cli.v1.SourceApiExecutionContinued
+ */
+export type SourceApiExecutionContinued =
+  Message<"onequery.cli.v1.SourceApiExecutionContinued"> & {
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
+     */
+    preview?: SourceApiPreview;
+
+    /**
+     * @generated from field: onequery.cli.v1.SourceApiExecutionResult result = 2;
+     */
+    result?: SourceApiExecutionResult;
+
+    /**
+     * @generated from field: string continuation_token = 3;
+     */
+    continuationToken: string;
+  };
+
+/**
+ * Describes the message onequery.cli.v1.SourceApiExecutionContinued.
+ * Use `create(SourceApiExecutionContinuedSchema)` to create a new message.
+ */
+export const SourceApiExecutionContinuedSchema: GenMessage<SourceApiExecutionContinued> /*@__PURE__*/ =
+  messageDesc(file_onequery_cli_v1_source_api, 12);
 
 /**
  * @generated from message onequery.cli.v1.SourceApiExecutionResult
@@ -354,9 +474,9 @@ export type SourceApiExecutionResult =
     source?: CliSourceApiSource;
 
     /**
-     * @generated from field: string operation = 2;
+     * @generated from field: string operation_name = 2;
      */
-    operation: string;
+    operationName: string;
 
     /**
      * @generated from field: string selector = 3;
@@ -364,9 +484,9 @@ export type SourceApiExecutionResult =
     selector: string;
 
     /**
-     * @generated from field: uint32 status = 4;
+     * @generated from field: uint32 http_status_code = 4;
      */
-    status: number;
+    httpStatusCode: number;
 
     /**
      * @generated from field: repeated onequery.cli.v1.CliSourceApiHeader headers = 5;
@@ -411,116 +531,7 @@ export type SourceApiExecutionResult =
  * Use `create(SourceApiExecutionResultSchema)` to create a new message.
  */
 export const SourceApiExecutionResultSchema: GenMessage<SourceApiExecutionResult> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 8);
-
-/**
- * @generated from message onequery.cli.v1.ExecuteSourceApiResponse
- */
-export type ExecuteSourceApiResponse =
-  Message<"onequery.cli.v1.ExecuteSourceApiResponse"> & {
-    /**
-     * @generated from oneof onequery.cli.v1.ExecuteSourceApiResponse.outcome
-     */
-    outcome:
-      | {
-          /**
-           * @generated from field: onequery.cli.v1.ExecuteSourceApiPreviewOnly preview_only = 1;
-           */
-          value: ExecuteSourceApiPreviewOnly;
-          case: "previewOnly";
-        }
-      | {
-          /**
-           * @generated from field: onequery.cli.v1.ExecuteSourceApiCompleted completed = 2;
-           */
-          value: ExecuteSourceApiCompleted;
-          case: "completed";
-        }
-      | {
-          /**
-           * @generated from field: onequery.cli.v1.ExecuteSourceApiContinued continued = 3;
-           */
-          value: ExecuteSourceApiContinued;
-          case: "continued";
-        }
-      | { case: undefined; value?: undefined };
-  };
-
-/**
- * Describes the message onequery.cli.v1.ExecuteSourceApiResponse.
- * Use `create(ExecuteSourceApiResponseSchema)` to create a new message.
- */
-export const ExecuteSourceApiResponseSchema: GenMessage<ExecuteSourceApiResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 9);
-
-/**
- * @generated from message onequery.cli.v1.ExecuteSourceApiPreviewOnly
- */
-export type ExecuteSourceApiPreviewOnly =
-  Message<"onequery.cli.v1.ExecuteSourceApiPreviewOnly"> & {
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
-     */
-    preview?: SourceApiPreview;
-  };
-
-/**
- * Describes the message onequery.cli.v1.ExecuteSourceApiPreviewOnly.
- * Use `create(ExecuteSourceApiPreviewOnlySchema)` to create a new message.
- */
-export const ExecuteSourceApiPreviewOnlySchema: GenMessage<ExecuteSourceApiPreviewOnly> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 10);
-
-/**
- * @generated from message onequery.cli.v1.ExecuteSourceApiCompleted
- */
-export type ExecuteSourceApiCompleted =
-  Message<"onequery.cli.v1.ExecuteSourceApiCompleted"> & {
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
-     */
-    preview?: SourceApiPreview;
-
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiExecutionResult result = 2;
-     */
-    result?: SourceApiExecutionResult;
-  };
-
-/**
- * Describes the message onequery.cli.v1.ExecuteSourceApiCompleted.
- * Use `create(ExecuteSourceApiCompletedSchema)` to create a new message.
- */
-export const ExecuteSourceApiCompletedSchema: GenMessage<ExecuteSourceApiCompleted> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 11);
-
-/**
- * @generated from message onequery.cli.v1.ExecuteSourceApiContinued
- */
-export type ExecuteSourceApiContinued =
-  Message<"onequery.cli.v1.ExecuteSourceApiContinued"> & {
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiPreview preview = 1;
-     */
-    preview?: SourceApiPreview;
-
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiExecutionResult result = 2;
-     */
-    result?: SourceApiExecutionResult;
-
-    /**
-     * @generated from field: string continuation_token = 3;
-     */
-    continuationToken: string;
-  };
-
-/**
- * Describes the message onequery.cli.v1.ExecuteSourceApiContinued.
- * Use `create(ExecuteSourceApiContinuedSchema)` to create a new message.
- */
-export const ExecuteSourceApiContinuedSchema: GenMessage<ExecuteSourceApiContinued> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 12);
+  messageDesc(file_onequery_cli_v1_source_api, 13);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiSource
@@ -548,7 +559,7 @@ export type CliSourceApiSource =
  * Use `create(CliSourceApiSourceSchema)` to create a new message.
  */
 export const CliSourceApiSourceSchema: GenMessage<CliSourceApiSource> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 13);
+  messageDesc(file_onequery_cli_v1_source_api, 14);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiOperation
@@ -621,7 +632,7 @@ export type CliSourceApiOperation =
  * Use `create(CliSourceApiOperationSchema)` to create a new message.
  */
 export const CliSourceApiOperationSchema: GenMessage<CliSourceApiOperation> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 14);
+  messageDesc(file_onequery_cli_v1_source_api, 15);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiMethodPolicy
@@ -644,7 +655,7 @@ export type CliSourceApiMethodPolicy =
  * Use `create(CliSourceApiMethodPolicySchema)` to create a new message.
  */
 export const CliSourceApiMethodPolicySchema: GenMessage<CliSourceApiMethodPolicy> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 15);
+  messageDesc(file_onequery_cli_v1_source_api, 16);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiFieldPolicy
@@ -652,39 +663,24 @@ export const CliSourceApiMethodPolicySchema: GenMessage<CliSourceApiMethodPolicy
 export type CliSourceApiFieldPolicy =
   Message<"onequery.cli.v1.CliSourceApiFieldPolicy"> & {
     /**
-     * @generated from field: bool allows_raw_fields = 1;
+     * @generated from field: repeated onequery.cli.v1.SourceApiFieldEncoding field_encodings = 1;
      */
-    allowsRawFields: boolean;
+    fieldEncodings: SourceApiFieldEncoding[];
 
     /**
-     * @generated from field: bool allows_typed_fields = 2;
+     * @generated from field: repeated onequery.cli.v1.SourceApiPathCapability path_capabilities = 2;
      */
-    allowsTypedFields: boolean;
+    pathCapabilities: SourceApiPathCapability[];
 
     /**
-     * @generated from field: bool supports_nested_paths = 3;
-     */
-    supportsNestedPaths: boolean;
-
-    /**
-     * @generated from field: bool supports_array_paths = 4;
-     */
-    supportsArrayPaths: boolean;
-
-    /**
-     * @generated from field: bool accepts_input = 5;
-     */
-    acceptsInput: boolean;
-
-    /**
-     * @generated from field: onequery.cli.v1.SourceApiInputMode input_mode = 6;
+     * @generated from field: onequery.cli.v1.SourceApiInputMode input_mode = 3;
      */
     inputMode: SourceApiInputMode;
 
     /**
-     * @generated from field: bool merge_patches = 7;
+     * @generated from field: onequery.cli.v1.SourceApiPatchMode patch_mode = 4;
      */
-    mergePatches: boolean;
+    patchMode: SourceApiPatchMode;
   };
 
 /**
@@ -692,7 +688,7 @@ export type CliSourceApiFieldPolicy =
  * Use `create(CliSourceApiFieldPolicySchema)` to create a new message.
  */
 export const CliSourceApiFieldPolicySchema: GenMessage<CliSourceApiFieldPolicy> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 16);
+  messageDesc(file_onequery_cli_v1_source_api, 17);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiHeaderPolicy
@@ -710,7 +706,7 @@ export type CliSourceApiHeaderPolicy =
  * Use `create(CliSourceApiHeaderPolicySchema)` to create a new message.
  */
 export const CliSourceApiHeaderPolicySchema: GenMessage<CliSourceApiHeaderPolicy> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 17);
+  messageDesc(file_onequery_cli_v1_source_api, 18);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiExample
@@ -738,7 +734,7 @@ export type CliSourceApiExample =
  * Use `create(CliSourceApiExampleSchema)` to create a new message.
  */
 export const CliSourceApiExampleSchema: GenMessage<CliSourceApiExample> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 18);
+  messageDesc(file_onequery_cli_v1_source_api, 19);
 
 /**
  * @generated from message onequery.cli.v1.CliSourceApiHeader
@@ -761,7 +757,59 @@ export type CliSourceApiHeader =
  * Use `create(CliSourceApiHeaderSchema)` to create a new message.
  */
 export const CliSourceApiHeaderSchema: GenMessage<CliSourceApiHeader> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_source_api, 19);
+  messageDesc(file_onequery_cli_v1_source_api, 20);
+
+/**
+ * @generated from enum onequery.cli.v1.SourceApiFieldEncoding
+ */
+export enum SourceApiFieldEncoding {
+  /**
+   * @generated from enum value: SOURCE_API_FIELD_ENCODING_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SOURCE_API_FIELD_ENCODING_RAW = 1;
+   */
+  RAW = 1,
+
+  /**
+   * @generated from enum value: SOURCE_API_FIELD_ENCODING_TYPED = 2;
+   */
+  TYPED = 2,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.SourceApiFieldEncoding.
+ */
+export const SourceApiFieldEncodingSchema: GenEnum<SourceApiFieldEncoding> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source_api, 0);
+
+/**
+ * @generated from enum onequery.cli.v1.SourceApiPathCapability
+ */
+export enum SourceApiPathCapability {
+  /**
+   * @generated from enum value: SOURCE_API_PATH_CAPABILITY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SOURCE_API_PATH_CAPABILITY_NESTED = 1;
+   */
+  NESTED = 1,
+
+  /**
+   * @generated from enum value: SOURCE_API_PATH_CAPABILITY_ARRAY = 2;
+   */
+  ARRAY = 2,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.SourceApiPathCapability.
+ */
+export const SourceApiPathCapabilitySchema: GenEnum<SourceApiPathCapability> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source_api, 1);
 
 /**
  * @generated from enum onequery.cli.v1.SourceApiInputMode
@@ -792,7 +840,38 @@ export enum SourceApiInputMode {
  * Describes the enum onequery.cli.v1.SourceApiInputMode.
  */
 export const SourceApiInputModeSchema: GenEnum<SourceApiInputMode> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 0);
+  enumDesc(file_onequery_cli_v1_source_api, 2);
+
+/**
+ * @generated from enum onequery.cli.v1.SourceApiPatchMode
+ */
+export enum SourceApiPatchMode {
+  /**
+   * @generated from enum value: SOURCE_API_PATCH_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SOURCE_API_PATCH_MODE_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * @generated from enum value: SOURCE_API_PATCH_MODE_SEPARATE = 2;
+   */
+  SEPARATE = 2,
+
+  /**
+   * @generated from enum value: SOURCE_API_PATCH_MODE_MERGE = 3;
+   */
+  MERGE = 3,
+}
+
+/**
+ * Describes the enum onequery.cli.v1.SourceApiPatchMode.
+ */
+export const SourceApiPatchModeSchema: GenEnum<SourceApiPatchMode> /*@__PURE__*/ =
+  enumDesc(file_onequery_cli_v1_source_api, 3);
 
 /**
  * @generated from enum onequery.cli.v1.SourceApiOperationKind
@@ -818,7 +897,7 @@ export enum SourceApiOperationKind {
  * Describes the enum onequery.cli.v1.SourceApiOperationKind.
  */
 export const SourceApiOperationKindSchema: GenEnum<SourceApiOperationKind> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 1);
+  enumDesc(file_onequery_cli_v1_source_api, 4);
 
 /**
  * @generated from enum onequery.cli.v1.SourceApiSelectorKind
@@ -849,7 +928,7 @@ export enum SourceApiSelectorKind {
  * Describes the enum onequery.cli.v1.SourceApiSelectorKind.
  */
 export const SourceApiSelectorKindSchema: GenEnum<SourceApiSelectorKind> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 2);
+  enumDesc(file_onequery_cli_v1_source_api, 5);
 
 /**
  * @generated from enum onequery.cli.v1.SourceApiPaginationPolicy
@@ -875,33 +954,7 @@ export enum SourceApiPaginationPolicy {
  * Describes the enum onequery.cli.v1.SourceApiPaginationPolicy.
  */
 export const SourceApiPaginationPolicySchema: GenEnum<SourceApiPaginationPolicy> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 3);
-
-/**
- * @generated from enum onequery.cli.v1.SourceApiExecuteMode
- */
-export enum SourceApiExecuteMode {
-  /**
-   * @generated from enum value: SOURCE_API_EXECUTE_MODE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SOURCE_API_EXECUTE_MODE_EXECUTE = 1;
-   */
-  EXECUTE = 1,
-
-  /**
-   * @generated from enum value: SOURCE_API_EXECUTE_MODE_PREVIEW_ONLY = 2;
-   */
-  PREVIEW_ONLY = 2,
-}
-
-/**
- * Describes the enum onequery.cli.v1.SourceApiExecuteMode.
- */
-export const SourceApiExecuteModeSchema: GenEnum<SourceApiExecuteMode> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 4);
+  enumDesc(file_onequery_cli_v1_source_api, 6);
 
 /**
  * @generated from enum onequery.cli.v1.SourceApiBodyKind
@@ -937,4 +990,4 @@ export enum SourceApiBodyKind {
  * Describes the enum onequery.cli.v1.SourceApiBodyKind.
  */
 export const SourceApiBodyKindSchema: GenEnum<SourceApiBodyKind> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_source_api, 5);
+  enumDesc(file_onequery_cli_v1_source_api, 7);

@@ -35,6 +35,10 @@ import type {
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequestSchema,
   ExecuteSourceApiResponseSchema,
+  PreviewSourceApiRequestSchema,
+  PreviewSourceApiResponseSchema,
+  ResumeSourceApiRequestSchema,
+  ResumeSourceApiResponseSchema,
 } from "./source_api_pb.js";
 import { file_onequery_cli_v1_source_api } from "./source_api_pb.js";
 import type {
@@ -55,7 +59,7 @@ import { file_onequery_cli_v1_source } from "./source_pb.js";
  * Describes the file onequery/cli/v1/cli.proto.
  */
 export const file_onequery_cli_v1_cli: GenFile /*@__PURE__*/ = fileDesc(
-  "ChlvbmVxdWVyeS9jbGkvdjEvY2xpLnByb3RvEg9vbmVxdWVyeS5jbGkudjEyqQwKCkNsaVNlcnZpY2USbwoRRGVzY3JpYmVTb3VyY2VBcGkSKS5vbmVxdWVyeS5jbGkudjEuRGVzY3JpYmVTb3VyY2VBcGlSZXF1ZXN0Gioub25lcXVlcnkuY2xpLnYxLkRlc2NyaWJlU291cmNlQXBpUmVzcG9uc2UiA5ACARJnChBFeGVjdXRlU291cmNlQXBpEigub25lcXVlcnkuY2xpLnYxLkV4ZWN1dGVTb3VyY2VBcGlSZXF1ZXN0Gikub25lcXVlcnkuY2xpLnYxLkV4ZWN1dGVTb3VyY2VBcGlSZXNwb25zZRJaCgpHZXRTZXNzaW9uEiIub25lcXVlcnkuY2xpLnYxLkdldFNlc3Npb25SZXF1ZXN0GiMub25lcXVlcnkuY2xpLnYxLkdldFNlc3Npb25SZXNwb25zZSIDkAIBEmEKDlJlZnJlc2hTZXNzaW9uEiYub25lcXVlcnkuY2xpLnYxLlJlZnJlc2hTZXNzaW9uUmVxdWVzdBonLm9uZXF1ZXJ5LmNsaS52MS5SZWZyZXNoU2Vzc2lvblJlc3BvbnNlEn8KGFN0YXJ0RGV2aWNlQXV0aG9yaXphdGlvbhIwLm9uZXF1ZXJ5LmNsaS52MS5TdGFydERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0GjEub25lcXVlcnkuY2xpLnYxLlN0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEnwKF1BvbGxEZXZpY2VBdXRob3JpemF0aW9uEi8ub25lcXVlcnkuY2xpLnYxLlBvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVxdWVzdBowLm9uZXF1ZXJ5LmNsaS52MS5Qb2xsRGV2aWNlQXV0aG9yaXphdGlvblJlc3BvbnNlEm8KEUxpc3RPcmdhbml6YXRpb25zEikub25lcXVlcnkuY2xpLnYxLkxpc3RPcmdhbml6YXRpb25zUmVxdWVzdBoqLm9uZXF1ZXJ5LmNsaS52MS5MaXN0T3JnYW5pemF0aW9uc1Jlc3BvbnNlIgOQAgESaQoPR2V0T3JnYW5pemF0aW9uEicub25lcXVlcnkuY2xpLnYxLkdldE9yZ2FuaXphdGlvblJlcXVlc3QaKC5vbmVxdWVyeS5jbGkudjEuR2V0T3JnYW5pemF0aW9uUmVzcG9uc2UiA5ACARJdCgtMaXN0U291cmNlcxIjLm9uZXF1ZXJ5LmNsaS52MS5MaXN0U291cmNlc1JlcXVlc3QaJC5vbmVxdWVyeS5jbGkudjEuTGlzdFNvdXJjZXNSZXNwb25zZSIDkAIBEnsKFUdldFNvdXJjZUNvbm5lY3RHdWlkZRItLm9uZXF1ZXJ5LmNsaS52MS5HZXRTb3VyY2VDb25uZWN0R3VpZGVSZXF1ZXN0Gi4ub25lcXVlcnkuY2xpLnYxLkdldFNvdXJjZUNvbm5lY3RHdWlkZVJlc3BvbnNlIgOQAgESXgoNQ29ubmVjdFNvdXJjZRIlLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlUmVxdWVzdBomLm9uZXF1ZXJ5LmNsaS52MS5Db25uZWN0U291cmNlUmVzcG9uc2USVwoJR2V0U291cmNlEiEub25lcXVlcnkuY2xpLnYxLkdldFNvdXJjZVJlcXVlc3QaIi5vbmVxdWVyeS5jbGkudjEuR2V0U291cmNlUmVzcG9uc2UiA5ACARJVCgpUZXN0U291cmNlEiIub25lcXVlcnkuY2xpLnYxLlRlc3RTb3VyY2VSZXF1ZXN0GiMub25lcXVlcnkuY2xpLnYxLlRlc3RTb3VyY2VSZXNwb25zZRJeCg1WYWxpZGF0ZVF1ZXJ5EiUub25lcXVlcnkuY2xpLnYxLlZhbGlkYXRlUXVlcnlSZXF1ZXN0GiYub25lcXVlcnkuY2xpLnYxLlZhbGlkYXRlUXVlcnlSZXNwb25zZRJbCgxFeGVjdXRlUXVlcnkSJC5vbmVxdWVyeS5jbGkudjEuRXhlY3V0ZVF1ZXJ5UmVxdWVzdBolLm9uZXF1ZXJ5LmNsaS52MS5FeGVjdXRlUXVlcnlSZXNwb25zZWIIZWRpdGlvbnNw6Ac",
+  "ChlvbmVxdWVyeS9jbGkvdjEvY2xpLnByb3RvEg9vbmVxdWVyeS5jbGkudjEyzgMKDkNsaUF1dGhTZXJ2aWNlEloKCkdldFNlc3Npb24SIi5vbmVxdWVyeS5jbGkudjEuR2V0U2Vzc2lvblJlcXVlc3QaIy5vbmVxdWVyeS5jbGkudjEuR2V0U2Vzc2lvblJlc3BvbnNlIgOQAgESYQoOUmVmcmVzaFNlc3Npb24SJi5vbmVxdWVyeS5jbGkudjEuUmVmcmVzaFNlc3Npb25SZXF1ZXN0Gicub25lcXVlcnkuY2xpLnYxLlJlZnJlc2hTZXNzaW9uUmVzcG9uc2USfwoYU3RhcnREZXZpY2VBdXRob3JpemF0aW9uEjAub25lcXVlcnkuY2xpLnYxLlN0YXJ0RGV2aWNlQXV0aG9yaXphdGlvblJlcXVlc3QaMS5vbmVxdWVyeS5jbGkudjEuU3RhcnREZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2USfAoXUG9sbERldmljZUF1dGhvcml6YXRpb24SLy5vbmVxdWVyeS5jbGkudjEuUG9sbERldmljZUF1dGhvcml6YXRpb25SZXF1ZXN0GjAub25lcXVlcnkuY2xpLnYxLlBvbGxEZXZpY2VBdXRob3JpemF0aW9uUmVzcG9uc2Uy9AEKFkNsaU9yZ2FuaXphdGlvblNlcnZpY2USbwoRTGlzdE9yZ2FuaXphdGlvbnMSKS5vbmVxdWVyeS5jbGkudjEuTGlzdE9yZ2FuaXphdGlvbnNSZXF1ZXN0Gioub25lcXVlcnkuY2xpLnYxLkxpc3RPcmdhbml6YXRpb25zUmVzcG9uc2UiA5ACARJpCg9HZXRPcmdhbml6YXRpb24SJy5vbmVxdWVyeS5jbGkudjEuR2V0T3JnYW5pemF0aW9uUmVxdWVzdBooLm9uZXF1ZXJ5LmNsaS52MS5HZXRPcmdhbml6YXRpb25SZXNwb25zZSIDkAIBMv4DChBDbGlTb3VyY2VTZXJ2aWNlEl0KC0xpc3RTb3VyY2VzEiMub25lcXVlcnkuY2xpLnYxLkxpc3RTb3VyY2VzUmVxdWVzdBokLm9uZXF1ZXJ5LmNsaS52MS5MaXN0U291cmNlc1Jlc3BvbnNlIgOQAgESewoVR2V0U291cmNlQ29ubmVjdEd1aWRlEi0ub25lcXVlcnkuY2xpLnYxLkdldFNvdXJjZUNvbm5lY3RHdWlkZVJlcXVlc3QaLi5vbmVxdWVyeS5jbGkudjEuR2V0U291cmNlQ29ubmVjdEd1aWRlUmVzcG9uc2UiA5ACARJeCg1Db25uZWN0U291cmNlEiUub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VSZXF1ZXN0GiYub25lcXVlcnkuY2xpLnYxLkNvbm5lY3RTb3VyY2VSZXNwb25zZRJXCglHZXRTb3VyY2USIS5vbmVxdWVyeS5jbGkudjEuR2V0U291cmNlUmVxdWVzdBoiLm9uZXF1ZXJ5LmNsaS52MS5HZXRTb3VyY2VSZXNwb25zZSIDkAIBElUKClRlc3RTb3VyY2USIi5vbmVxdWVyeS5jbGkudjEuVGVzdFNvdXJjZVJlcXVlc3QaIy5vbmVxdWVyeS5jbGkudjEuVGVzdFNvdXJjZVJlc3BvbnNlMr4DChNDbGlTb3VyY2VBcGlTZXJ2aWNlEm8KEURlc2NyaWJlU291cmNlQXBpEikub25lcXVlcnkuY2xpLnYxLkRlc2NyaWJlU291cmNlQXBpUmVxdWVzdBoqLm9uZXF1ZXJ5LmNsaS52MS5EZXNjcmliZVNvdXJjZUFwaVJlc3BvbnNlIgOQAgESZwoQUHJldmlld1NvdXJjZUFwaRIoLm9uZXF1ZXJ5LmNsaS52MS5QcmV2aWV3U291cmNlQXBpUmVxdWVzdBopLm9uZXF1ZXJ5LmNsaS52MS5QcmV2aWV3U291cmNlQXBpUmVzcG9uc2USZwoQRXhlY3V0ZVNvdXJjZUFwaRIoLm9uZXF1ZXJ5LmNsaS52MS5FeGVjdXRlU291cmNlQXBpUmVxdWVzdBopLm9uZXF1ZXJ5LmNsaS52MS5FeGVjdXRlU291cmNlQXBpUmVzcG9uc2USZAoPUmVzdW1lU291cmNlQXBpEicub25lcXVlcnkuY2xpLnYxLlJlc3VtZVNvdXJjZUFwaVJlcXVlc3QaKC5vbmVxdWVyeS5jbGkudjEuUmVzdW1lU291cmNlQXBpUmVzcG9uc2UyzgEKD0NsaVF1ZXJ5U2VydmljZRJeCg1WYWxpZGF0ZVF1ZXJ5EiUub25lcXVlcnkuY2xpLnYxLlZhbGlkYXRlUXVlcnlSZXF1ZXN0GiYub25lcXVlcnkuY2xpLnYxLlZhbGlkYXRlUXVlcnlSZXNwb25zZRJbCgxFeGVjdXRlUXVlcnkSJC5vbmVxdWVyeS5jbGkudjEuRXhlY3V0ZVF1ZXJ5UmVxdWVzdBolLm9uZXF1ZXJ5LmNsaS52MS5FeGVjdXRlUXVlcnlSZXNwb25zZWIIZWRpdGlvbnNw6Ac",
   [
     file_onequery_cli_v1_auth,
     file_onequery_cli_v1_org,
@@ -66,27 +70,11 @@ export const file_onequery_cli_v1_cli: GenFile /*@__PURE__*/ = fileDesc(
 );
 
 /**
- * @generated from service onequery.cli.v1.CliService
+ * @generated from service onequery.cli.v1.CliAuthService
  */
-export const CliService: GenService<{
+export const CliAuthService: GenService<{
   /**
-   * @generated from rpc onequery.cli.v1.CliService.DescribeSourceApi
-   */
-  describeSourceApi: {
-    methodKind: "unary";
-    input: typeof DescribeSourceApiRequestSchema;
-    output: typeof DescribeSourceApiResponseSchema;
-  };
-  /**
-   * @generated from rpc onequery.cli.v1.CliService.ExecuteSourceApi
-   */
-  executeSourceApi: {
-    methodKind: "unary";
-    input: typeof ExecuteSourceApiRequestSchema;
-    output: typeof ExecuteSourceApiResponseSchema;
-  };
-  /**
-   * @generated from rpc onequery.cli.v1.CliService.GetSession
+   * @generated from rpc onequery.cli.v1.CliAuthService.GetSession
    */
   getSession: {
     methodKind: "unary";
@@ -94,7 +82,7 @@ export const CliService: GenService<{
     output: typeof GetSessionResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.RefreshSession
+   * @generated from rpc onequery.cli.v1.CliAuthService.RefreshSession
    */
   refreshSession: {
     methodKind: "unary";
@@ -102,7 +90,7 @@ export const CliService: GenService<{
     output: typeof RefreshSessionResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.StartDeviceAuthorization
+   * @generated from rpc onequery.cli.v1.CliAuthService.StartDeviceAuthorization
    */
   startDeviceAuthorization: {
     methodKind: "unary";
@@ -110,15 +98,21 @@ export const CliService: GenService<{
     output: typeof StartDeviceAuthorizationResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.PollDeviceAuthorization
+   * @generated from rpc onequery.cli.v1.CliAuthService.PollDeviceAuthorization
    */
   pollDeviceAuthorization: {
     methodKind: "unary";
     input: typeof PollDeviceAuthorizationRequestSchema;
     output: typeof PollDeviceAuthorizationResponseSchema;
   };
+}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 0);
+
+/**
+ * @generated from service onequery.cli.v1.CliOrganizationService
+ */
+export const CliOrganizationService: GenService<{
   /**
-   * @generated from rpc onequery.cli.v1.CliService.ListOrganizations
+   * @generated from rpc onequery.cli.v1.CliOrganizationService.ListOrganizations
    */
   listOrganizations: {
     methodKind: "unary";
@@ -126,15 +120,21 @@ export const CliService: GenService<{
     output: typeof ListOrganizationsResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.GetOrganization
+   * @generated from rpc onequery.cli.v1.CliOrganizationService.GetOrganization
    */
   getOrganization: {
     methodKind: "unary";
     input: typeof GetOrganizationRequestSchema;
     output: typeof GetOrganizationResponseSchema;
   };
+}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 1);
+
+/**
+ * @generated from service onequery.cli.v1.CliSourceService
+ */
+export const CliSourceService: GenService<{
   /**
-   * @generated from rpc onequery.cli.v1.CliService.ListSources
+   * @generated from rpc onequery.cli.v1.CliSourceService.ListSources
    */
   listSources: {
     methodKind: "unary";
@@ -142,7 +142,7 @@ export const CliService: GenService<{
     output: typeof ListSourcesResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.GetSourceConnectGuide
+   * @generated from rpc onequery.cli.v1.CliSourceService.GetSourceConnectGuide
    */
   getSourceConnectGuide: {
     methodKind: "unary";
@@ -150,7 +150,7 @@ export const CliService: GenService<{
     output: typeof GetSourceConnectGuideResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.ConnectSource
+   * @generated from rpc onequery.cli.v1.CliSourceService.ConnectSource
    */
   connectSource: {
     methodKind: "unary";
@@ -158,7 +158,7 @@ export const CliService: GenService<{
     output: typeof ConnectSourceResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.GetSource
+   * @generated from rpc onequery.cli.v1.CliSourceService.GetSource
    */
   getSource: {
     methodKind: "unary";
@@ -166,15 +166,59 @@ export const CliService: GenService<{
     output: typeof GetSourceResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.TestSource
+   * @generated from rpc onequery.cli.v1.CliSourceService.TestSource
    */
   testSource: {
     methodKind: "unary";
     input: typeof TestSourceRequestSchema;
     output: typeof TestSourceResponseSchema;
   };
+}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 2);
+
+/**
+ * @generated from service onequery.cli.v1.CliSourceApiService
+ */
+export const CliSourceApiService: GenService<{
   /**
-   * @generated from rpc onequery.cli.v1.CliService.ValidateQuery
+   * @generated from rpc onequery.cli.v1.CliSourceApiService.DescribeSourceApi
+   */
+  describeSourceApi: {
+    methodKind: "unary";
+    input: typeof DescribeSourceApiRequestSchema;
+    output: typeof DescribeSourceApiResponseSchema;
+  };
+  /**
+   * @generated from rpc onequery.cli.v1.CliSourceApiService.PreviewSourceApi
+   */
+  previewSourceApi: {
+    methodKind: "unary";
+    input: typeof PreviewSourceApiRequestSchema;
+    output: typeof PreviewSourceApiResponseSchema;
+  };
+  /**
+   * @generated from rpc onequery.cli.v1.CliSourceApiService.ExecuteSourceApi
+   */
+  executeSourceApi: {
+    methodKind: "unary";
+    input: typeof ExecuteSourceApiRequestSchema;
+    output: typeof ExecuteSourceApiResponseSchema;
+  };
+  /**
+   * @generated from rpc onequery.cli.v1.CliSourceApiService.ResumeSourceApi
+   */
+  resumeSourceApi: {
+    methodKind: "unary";
+    input: typeof ResumeSourceApiRequestSchema;
+    output: typeof ResumeSourceApiResponseSchema;
+  };
+}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 3);
+
+/**
+ * @generated from service onequery.cli.v1.CliQueryService
+ */
+export const CliQueryService: GenService<{
+  /**
+   * @generated from rpc onequery.cli.v1.CliQueryService.ValidateQuery
    */
   validateQuery: {
     methodKind: "unary";
@@ -182,11 +226,11 @@ export const CliService: GenService<{
     output: typeof ValidateQueryResponseSchema;
   };
   /**
-   * @generated from rpc onequery.cli.v1.CliService.ExecuteQuery
+   * @generated from rpc onequery.cli.v1.CliQueryService.ExecuteQuery
    */
   executeQuery: {
     methodKind: "unary";
     input: typeof ExecuteQueryRequestSchema;
     output: typeof ExecuteQueryResponseSchema;
   };
-}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 0);
+}> /*@__PURE__*/ = serviceDesc(file_onequery_cli_v1_cli, 4);

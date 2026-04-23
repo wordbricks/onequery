@@ -108,7 +108,7 @@ async fn fetch_source_page(
     let org_slug: String = try_into_value(org, ErrorStage::Http)?;
     let page = page_request_from_controls(controls, ErrorStage::Http)?;
     let response = match client
-        .cli()
+        .source()
         .list_sources(types::ListSourcesRequest {
             org_slug: Some(org_slug),
             page,
@@ -155,7 +155,7 @@ pub(crate) async fn get_source_by_key_with_controls(
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
     let response = match client
-        .cli()
+        .source()
         .get_source(types::GetSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
@@ -191,7 +191,7 @@ pub(crate) async fn test_source(
     let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
     let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
     let response = match client
-        .cli()
+        .source()
         .test_source(types::TestSourceRequest {
             org_slug: Some(org_slug),
             source_key: Some(source_key),
