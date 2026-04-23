@@ -347,11 +347,6 @@ type AuditFeedCheckpointPositionMap = {
   sourceApiAction: bigint | null;
 };
 
-type AuditProjectionState = {
-  projectedThrough: AuditFeedCheckpointMap;
-  projectionLag: AuditProjectionLag;
-};
-
 type QueryActionProjectionRow = {
   actionName: "validate" | "execute";
   completedAt: Date | null;
@@ -1623,9 +1618,7 @@ async function advanceSourceApiActionProjectionBatch(db: DatabaseExecutor) {
   return true;
 }
 
-export async function syncAuditFeedProjection(
-  db: Database
-): Promise<AuditProjectionState> {
+export async function syncAuditFeedProjection(db: Database): Promise<void> {
   for (
     let batchIndex = 0;
     batchIndex < AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST;
@@ -1642,8 +1635,6 @@ export async function syncAuditFeedProjection(
       break;
     }
   }
-
-  return loadAuditProjectionState(db);
 }
 
 function serializeAuditProjectedThrough(
@@ -1688,51 +1679,71 @@ async function loadAuditProjectionCheckpointPositions(
 
 async function hasUnprojectedQueryActionEvents(
   db: DatabaseExecutor,
-  lastCommitPosition: bigint | null
+  lastCommitPosition: bigint | null,
+  organizationId: string
 ) {
-  const rows = await loadQueryActionEventBatch(db, lastCommitPosition ?? 0n, 1);
+  const conditions = [
+    gt(queryActionEvents.commitPosition, lastCommitPosition ?? 0n),
+    eq(workflowCommands.organizationId, organizationId),
+  ];
+
+  const rows = await db
+    .select({ eventId: queryActionEvents.id })
+    .from(queryActionEvents)
+    .innerJoin(
+      workflowCommands,
+      eq(workflowCommands.id, queryActionEvents.commandId)
+    )
+    .where(and(...conditions))
+    .orderBy(asc(queryActionEvents.commitPosition))
+    .limit(1);
+
   return rows.length > 0;
 }
 
 async function hasUnprojectedSourceApiActionEvents(
   db: DatabaseExecutor,
-  lastCommitPosition: bigint | null
+  lastCommitPosition: bigint | null,
+  organizationId: string
 ) {
-  const rows = await loadSourceApiActionEventBatch(
-    db,
-    lastCommitPosition ?? 0n,
-    1
-  );
+  const conditions = [
+    gt(sourceApiActionEvents.commitPosition, lastCommitPosition ?? 0n),
+    eq(workflowCommands.organizationId, organizationId),
+  ];
+
+  const rows = await db
+    .select({ eventId: sourceApiActionEvents.id })
+    .from(sourceApiActionEvents)
+    .innerJoin(
+      workflowCommands,
+      eq(workflowCommands.id, sourceApiActionEvents.commandId)
+    )
+    .where(and(...conditions))
+    .orderBy(asc(sourceApiActionEvents.commitPosition))
+    .limit(1);
+
   return rows.length > 0;
 }
 
 async function loadAuditProjectionLag(
   db: DatabaseExecutor,
-  checkpoints: AuditFeedCheckpointPositionMap
+  checkpoints: AuditFeedCheckpointPositionMap,
+  organizationId: string
 ): Promise<AuditProjectionLag> {
   const queryAction = await hasUnprojectedQueryActionEvents(
     db,
-    checkpoints.queryAction
+    checkpoints.queryAction,
+    organizationId
   );
   const sourceApiAction = await hasUnprojectedSourceApiActionEvents(
     db,
-    checkpoints.sourceApiAction
+    checkpoints.sourceApiAction,
+    organizationId
   );
 
   return {
     queryAction,
     sourceApiAction,
-  };
-}
-
-async function loadAuditProjectionState(
-  db: DatabaseExecutor
-): Promise<AuditProjectionState> {
-  const checkpoints = await loadAuditProjectionCheckpointPositions(db);
-
-  return {
-    projectedThrough: serializeAuditProjectedThrough(checkpoints),
-    projectionLag: await loadAuditProjectionLag(db, checkpoints),
   };
 }
 
@@ -1859,8 +1870,13 @@ export async function listAuditFeedPage(input: {
   organizationId: string;
   query: AuditListQuery;
 }): Promise<AuditListResponse> {
-  const { projectedThrough, projectionLag } = await syncAuditFeedProjection(
-    input.db
+  await syncAuditFeedProjection(input.db);
+  const checkpoints = await loadAuditProjectionCheckpointPositions(input.db);
+  const projectedThrough = serializeAuditProjectedThrough(checkpoints);
+  const projectionLag = await loadAuditProjectionLag(
+    input.db,
+    checkpoints,
+    input.organizationId
   );
   const conditions = [
     eq(auditFeedEntries.organizationId, input.organizationId),

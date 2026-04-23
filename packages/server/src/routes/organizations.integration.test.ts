@@ -1179,4 +1179,119 @@ describe("organizations audit route", () => {
       await closeDatabase(db as ClosableDatabase);
     }
   });
+
+  it("scopes projection lag to the current organization", async () => {
+    const harness = await createRouteIntegrationHarness({
+      databaseUrl: await createPgliteDatabaseUrl(
+        "onequery-org-audit-lag-scope-"
+      ),
+    });
+
+    expect(harness.isOk()).toBe(true);
+    if (harness.isErr()) {
+      return;
+    }
+
+    const { client, db, test } = harness.value;
+    const runId = createRunId();
+    const owner = test.createUser({
+      email: `audit-lag-scope-owner-${runId}@example.com`,
+    });
+    const visibleOrganization = test.createOrganization({
+      name: `Audit Lag Visible ${runId}`,
+      slug: `audit-lag-visible-${runId}`,
+    });
+    const laggingOrganization = test.createOrganization({
+      name: `Audit Lag Hidden ${runId}`,
+      slug: `audit-lag-hidden-${runId}`,
+    });
+
+    await test.saveUser(owner);
+
+    try {
+      await test.saveOrganization(visibleOrganization);
+      await test.saveOrganization(laggingOrganization);
+      await test.addMember({
+        organizationId: visibleOrganization.id as string,
+        role: "owner",
+        userId: owner.id,
+      });
+      await test.addMember({
+        organizationId: laggingOrganization.id as string,
+        role: "owner",
+        userId: owner.id,
+      });
+
+      const ownerLogin = await test.login({ userId: owner.id });
+      const ownerCookie = ownerLogin.headers.get("cookie");
+
+      if (!ownerCookie) {
+        throw new Error("Owner login must expose a cookie header");
+      }
+
+      const actorSnapshot: WorkflowActorSnapshot = {
+        authMode: "browser_session",
+        email: owner.email,
+        membershipRoles: ["owner"],
+        userId: owner.id,
+      };
+
+      await seedSucceededQueryAction({
+        actionId: `query-visible-${runId}`,
+        actorSnapshot,
+        commitPositionBase: 0n,
+        db,
+        organizationId: visibleOrganization.id as string,
+        requestId: `req-query-visible-${runId}`,
+        startedAt: new Date("2026-03-27T08:00:00.000Z"),
+      });
+
+      for (let index = 0; index < 168; index += 1) {
+        const commitPositionBase = 6n + BigInt(index) * 6n;
+
+        // Comment: This second org intentionally exceeds the per-request
+        // projection batch cap so the visible org only stays warning-free when
+        // lag detection is scoped to the requesting organization.
+        await seedSucceededQueryAction({
+          actionId: `query-hidden-${runId}-${index}`,
+          actorSnapshot,
+          commitPositionBase,
+          db,
+          organizationId: laggingOrganization.id as string,
+          requestId: `req-query-hidden-${runId}-${index}`,
+          startedAt: new Date(Date.UTC(2026, 2, 27, 9, 0, index)),
+        });
+      }
+
+      const response = await client.api.organizations[":slug"].audit.$get(
+        {
+          param: {
+            slug: visibleOrganization.slug as string,
+          },
+          query: {
+            limit: "1",
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(response.status).toBe(200);
+
+      const page = auditListResponseSchema.parse(await response.json());
+
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]).toMatchObject({
+        family: "query_action",
+        familyActionId: `query-visible-${runId}`,
+      });
+      expect(page.projectionLag).toEqual({
+        queryAction: false,
+        sourceApiAction: false,
+      });
+    } finally {
+      await closeDatabase(db as ClosableDatabase);
+    }
+  });
 });
