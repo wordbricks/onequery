@@ -139,6 +139,27 @@ Then enable the plugin in `openclaw.json`:
 }
 ```
 
+## Hermes
+
+For plugin-free Hermes Agent usage, install the standalone `onequery-cli`
+skill:
+
+```bash
+hermes skills install skills-sh/wordbricks/skills/onequery-cli --yes --force
+```
+
+Then start Hermes with the skill preloaded:
+
+```bash
+hermes chat --skills onequery-cli
+```
+
+Or load it inside an existing Hermes session:
+
+```text
+Load skill onequery-cli.
+```
+
 ---
 
 ## Contributing
