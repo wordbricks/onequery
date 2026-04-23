@@ -188,7 +188,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "cliDetails": [
       {
         "code": "not_logged_in",
-        "hint": "login via the OneQuery web app and retry",
+        "hint": "run \`onequery auth login\`",
         "retryable": false,
         "stage": "auth",
         "support": {
@@ -230,7 +230,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "cliDetails": [
       {
         "code": "query_execution_failed",
-        "hint": "retry \`onequery query --source <source> --sql "select ..."\`",
+        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
         "retryable": false,
         "stage": "execute_query",
         "support": {
@@ -251,7 +251,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "cliDetails": [
       {
         "code": "query_execution_timed_out",
-        "hint": "retry \`onequery query --source <source> --sql "select ..."\`",
+        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
         "retryable": true,
         "stage": "execute_query",
         "support": {
@@ -272,7 +272,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "cliDetails": [
       {
         "code": "query_execution_unavailable",
-        "hint": "retry \`onequery query --source <source> --sql "select ..."\`",
+        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
         "retryable": true,
         "stage": "execute_query",
         "support": {
@@ -293,7 +293,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "cliDetails": [
       {
         "code": "query_preparation_failed",
-        "hint": "retry \`onequery query --source <source> --sql "select ..."\`",
+        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
         "retryable": false,
         "stage": "execute_query",
         "support": {
