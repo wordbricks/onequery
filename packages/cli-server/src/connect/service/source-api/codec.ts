@@ -127,46 +127,58 @@ export function buildCliDescribeSourceApiResponse(
   };
 }
 
-export function buildCliExecuteSourceApiResponse(input: {
-  continuationToken?: string;
-  preview: SourceApiPreview;
-  result?: SourceApiExecutionResult;
-}): ExecuteSourceApiResponseInit {
+type CliExecuteSourceApiResponseInput =
+  | {
+      kind: "previewOnly";
+      preview: SourceApiPreview;
+    }
+  | {
+      kind: "completed";
+      preview: SourceApiPreview;
+      result: SourceApiExecutionResult;
+    }
+  | {
+      continuationToken: string;
+      kind: "continued";
+      preview: SourceApiPreview;
+      result: SourceApiExecutionResult;
+    };
+
+export function buildCliExecuteSourceApiResponse(
+  input: CliExecuteSourceApiResponseInput
+): ExecuteSourceApiResponseInit {
   const preview = buildCliSourceApiPreview(input.preview);
 
-  if (!input.result) {
-    return {
-      outcome: {
-        case: "previewOnly",
-        value: { preview },
-      },
-    };
-  }
-
-  const result = buildCliSourceApiExecutionResult(input.result);
-
-  if (input.continuationToken) {
-    return {
-      outcome: {
-        case: "continued",
-        value: {
-          continuationToken: input.continuationToken,
-          preview,
-          result,
+  switch (input.kind) {
+    case "previewOnly":
+      return {
+        outcome: {
+          case: "previewOnly",
+          value: { preview },
         },
-      },
-    };
+      };
+    case "completed":
+      return {
+        outcome: {
+          case: "completed",
+          value: {
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
+    case "continued":
+      return {
+        outcome: {
+          case: "continued",
+          value: {
+            continuationToken: input.continuationToken,
+            preview,
+            result: buildCliSourceApiExecutionResult(input.result),
+          },
+        },
+      };
   }
-
-  return {
-    outcome: {
-      case: "completed",
-      value: {
-        preview,
-        result,
-      },
-    },
-  };
 }
 
 function copySourceApiHeader(value: Pick<SourceApiHeader, "name" | "value">) {

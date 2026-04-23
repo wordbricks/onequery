@@ -405,6 +405,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "connectrpc-build"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "591bc832b8d3faef060e435f832a1cf10a71c865dfb49f9874247769b60ef816"
+dependencies = [
+ "anyhow",
+ "buffa",
+ "buffa-codegen",
+ "connectrpc-codegen",
+ "tempfile",
+]
+
+[[package]]
 name = "connectrpc-codegen"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1454,7 +1467,7 @@ dependencies = [
  "chrono",
  "clap",
  "connectrpc",
- "connectrpc-codegen",
+ "connectrpc-build",
  "dirs",
  "flate2",
  "getrandom 0.4.2",

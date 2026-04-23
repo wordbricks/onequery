@@ -134,6 +134,7 @@ async function handleStartSourceApiCommand(
 
       return Result.ok(
         buildCliExecuteSourceApiResponse({
+          kind: "previewOnly",
           preview: response.preview,
         })
       );
@@ -164,11 +165,18 @@ async function handleStartSourceApiCommand(
     );
 
     return Result.ok(
-      buildCliExecuteSourceApiResponse({
-        continuationToken: response.continuationToken,
-        preview: response.preview,
-        result,
-      })
+      response.continuationToken
+        ? buildCliExecuteSourceApiResponse({
+            continuationToken: response.continuationToken,
+            kind: "continued",
+            preview: response.preview,
+            result,
+          })
+        : buildCliExecuteSourceApiResponse({
+            kind: "completed",
+            preview: response.preview,
+            result,
+          })
     );
   });
 }
@@ -239,11 +247,18 @@ async function handleResumeSourceApiCommand(
     );
 
     return Result.ok(
-      buildCliExecuteSourceApiResponse({
-        continuationToken: response.continuationToken,
-        preview: response.preview,
-        result,
-      })
+      response.continuationToken
+        ? buildCliExecuteSourceApiResponse({
+            continuationToken: response.continuationToken,
+            kind: "continued",
+            preview: response.preview,
+            result,
+          })
+        : buildCliExecuteSourceApiResponse({
+            kind: "completed",
+            preview: response.preview,
+            result,
+          })
     );
   });
 }

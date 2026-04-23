@@ -37,11 +37,20 @@ pub(crate) type SourceApiPreview = types::SourceApiPreview;
 pub(crate) type SourceApiExecutionResult = types::SourceApiExecutionResult;
 pub(crate) type SourceApiResponseBody = types::source_api_execution_result::Body;
 
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct ExecuteSourceApiResult {
-    pub(crate) preview: SourceApiPreview,
-    pub(crate) result: Option<SourceApiExecutionResult>,
-    pub(crate) continuation_token: Option<String>,
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ExecuteSourceApiOutcome {
+    PreviewOnly {
+        preview: SourceApiPreview,
+    },
+    Completed {
+        preview: SourceApiPreview,
+        result: SourceApiExecutionResult,
+    },
+    Continued {
+        preview: SourceApiPreview,
+        result: SourceApiExecutionResult,
+        continuation_token: String,
+    },
 }
 
 macro_rules! source_api_enum_surface {
@@ -114,7 +123,7 @@ pub(crate) async fn execute_source_api(
     source_key: &str,
     draft: &SourceApiDraft,
     preview_only: bool,
-) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
+) -> Result<ApiSuccess<ExecuteSourceApiOutcome>, ApiFailure> {
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
@@ -148,7 +157,7 @@ pub(crate) async fn execute_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let payload = execute_source_api_result_from_generated(payload, request_id.clone())?;
+    let payload = execute_source_api_outcome_from_generated(payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -161,7 +170,7 @@ pub(crate) async fn resume_source_api(
     org: &str,
     source_key: &str,
     continuation_token: &str,
-) -> Result<ApiSuccess<ExecuteSourceApiResult>, ApiFailure> {
+) -> Result<ApiSuccess<ExecuteSourceApiOutcome>, ApiFailure> {
     let response = match client
         .cli()
         .execute_source_api(types::ExecuteSourceApiRequest {
@@ -190,7 +199,7 @@ pub(crate) async fn resume_source_api(
     };
     let request_id = response_request_id(response.headers());
     let payload = response.into_owned();
-    let payload = execute_source_api_result_from_generated(payload, request_id.clone())?;
+    let payload = execute_source_api_outcome_from_generated(payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -406,55 +415,52 @@ fn validate_required_operation_message(
     ))
 }
 
-fn execute_source_api_result_from_generated(
+fn execute_source_api_outcome_from_generated(
     value: types::ExecuteSourceApiResponse,
     request_id: Option<String>,
-) -> Result<ExecuteSourceApiResult, ApiFailure> {
+) -> Result<ExecuteSourceApiOutcome, ApiFailure> {
     match value.outcome {
         Some(types::execute_source_api_response::Outcome::PreviewOnly(preview_only)) => {
-            Ok(ExecuteSourceApiResult {
+            Ok(ExecuteSourceApiOutcome::PreviewOnly {
                 preview: required_source_api_preview(
                     preview_only.preview,
                     "source API execution response missing preview",
                     request_id,
                 )?,
-                result: None,
-                continuation_token: None,
             })
         }
         Some(types::execute_source_api_response::Outcome::Completed(completed)) => {
-            Ok(ExecuteSourceApiResult {
+            Ok(ExecuteSourceApiOutcome::Completed {
                 preview: required_source_api_preview(
                     completed.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
                 )?,
-                result: Some(required_source_api_execution_result(
+                result: required_source_api_execution_result(
                     completed.result,
                     "source API execution response missing result",
                     request_id,
-                )?),
-                continuation_token: None,
+                )?,
             })
         }
         Some(types::execute_source_api_response::Outcome::Continued(continued)) => {
-            Ok(ExecuteSourceApiResult {
+            Ok(ExecuteSourceApiOutcome::Continued {
                 preview: required_source_api_preview(
                     continued.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
                 )?,
-                result: Some(required_source_api_execution_result(
+                result: required_source_api_execution_result(
                     continued.result,
                     "source API execution response missing result",
                     request_id.clone(),
-                )?),
-                continuation_token: Some(require_non_empty_text(
+                )?,
+                continuation_token: require_non_empty_text(
                     continued.continuation_token,
                     ErrorStage::ExecuteQuery,
                     "source API execution response missing continuation token",
                     request_id,
-                )?),
+                )?,
             })
         }
         None => Err(decode_failure(
@@ -511,7 +517,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
-    use super::execute_source_api_result_from_generated;
+    use super::execute_source_api_outcome_from_generated;
     use super::json_from_proto_json_value;
     use super::proto_json_object_from_json;
     use super::proto_json_value_from_json;
@@ -525,8 +531,8 @@ mod tests {
     use crate::transport::api_failure::ApiFailure;
 
     #[test]
-    fn validate_execute_source_api_result_requires_preview() {
-        let error = execute_source_api_result_from_generated(
+    fn validate_execute_source_api_outcome_requires_preview() {
+        let error = execute_source_api_outcome_from_generated(
             types::ExecuteSourceApiResponse {
                 outcome: Some(types::execute_source_api_response::Outcome::PreviewOnly(
                     Box::new(types::ExecuteSourceApiPreviewOnly {
@@ -545,6 +551,24 @@ mod tests {
                 stage: ErrorStage::ExecuteQuery,
                 message: "source API execution response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
+            })
+        );
+    }
+
+    #[test]
+    fn validate_execute_source_api_outcome_requires_outcome() {
+        let error = execute_source_api_outcome_from_generated(
+            types::ExecuteSourceApiResponse::default(),
+            Some("req_missing_outcome".to_owned()),
+        )
+        .expect_err("expected missing outcome to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ExecuteQuery,
+                message: "source API execution response missing outcome".to_owned(),
+                request_id: Some("req_missing_outcome".to_owned()),
             })
         );
     }
@@ -601,8 +625,8 @@ mod tests {
     }
 
     #[test]
-    fn validate_execute_source_api_result_requires_source() {
-        let error = execute_source_api_result(
+    fn validate_execute_source_api_outcome_requires_source() {
+        let error = execute_source_api_outcome(
             types::ExecuteSourceApiResponse {
                 outcome: Some(types::execute_source_api_response::Outcome::Completed(
                     Box::new(types::ExecuteSourceApiCompleted {
@@ -771,10 +795,10 @@ mod tests {
         super::validate_source_api_descriptor(value, request_id)
     }
 
-    fn execute_source_api_result(
+    fn execute_source_api_outcome(
         value: types::ExecuteSourceApiResponse,
         request_id: Option<String>,
-    ) -> Result<super::ExecuteSourceApiResult, ApiFailure> {
-        super::execute_source_api_result_from_generated(value, request_id)
+    ) -> Result<super::ExecuteSourceApiOutcome, ApiFailure> {
+        super::execute_source_api_outcome_from_generated(value, request_id)
     }
 }

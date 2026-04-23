@@ -7,17 +7,12 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use buffa::Message;
-use buffa_codegen::CodeGenConfig;
-use buffa_codegen::GeneratedFile;
-use buffa_codegen::generated::descriptor::FileDescriptorProto;
 use buffa_codegen::generated::descriptor::FileDescriptorSet;
-use connectrpc_codegen::codegen::Options as ConnectOptions;
 
 const PROTO_ROOT: &str = "proto";
 const CLI_PROTO_DIR: &str = "onequery/cli/v1";
 const CLI_PROTO_ENTRYPOINT: &str = "onequery/cli/v1/cli.proto";
 const GOOGLE_RPC_ERROR_DETAILS_PROTO: &str = "google/rpc/error_details.proto";
-const GENERATED_MODULE_ROOT: &str = "crate::transport::generated";
 const GENERATED_INCLUDE_FILE: &str = "_connectrpc.rs";
 
 struct BufCommand {
@@ -59,7 +54,6 @@ fn main() {
         &descriptor_path,
         Path::new(&out_dir),
         &discovered_proto_files,
-        &cli_proto_entrypoint,
     );
 }
 
@@ -240,7 +234,6 @@ fn generate_connect_modules(
     descriptor_path: &Path,
     out_dir: &Path,
     discovered_proto_files: &[PathBuf],
-    cli_proto_entrypoint: &Path,
 ) {
     let descriptor_bytes = std::fs::read(descriptor_path).unwrap_or_else(|error| {
         panic!(
@@ -258,124 +251,23 @@ fn generate_connect_modules(
 
     let proto_files_to_generate =
         proto_relative_names_with_google_rpc_details(discovered_proto_files, &file_descriptor_set);
-    let cli_service_entrypoint = proto_relative_name(cli_proto_entrypoint);
-    let mut buffa_config = CodeGenConfig::default();
-    buffa_config.generate_views = true;
-    buffa_config.generate_json = true;
-    buffa_config.emit_register_fn = false;
-
-    let mut generated_files = buffa_codegen::generate(
-        &file_descriptor_set.file,
-        &proto_files_to_generate,
-        &buffa_config,
-    )
-    .unwrap_or_else(|error| panic!("expected Buffa code generation to succeed: {error}"));
-
-    // COMMENT: `connectrpc-build`'s unified path emits one Rust module per
-    // `.files()` input. The CLI service entrypoint lives in `cli.proto`, but
-    // its request/response messages are split across imported files, so we
-    // generate message modules for every discovered proto and append only the
-    // Connect client/service bindings from the single service entrypoint.
-    let mut connect_options = ConnectOptions::default();
-    connect_options
-        .extern_paths
-        .push((".".to_owned(), GENERATED_MODULE_ROOT.to_owned()));
-    let connect_service_files = connectrpc_codegen::codegen::generate_services(
-        &file_descriptor_set.file,
-        std::slice::from_ref(&cli_service_entrypoint),
-        &connect_options,
-    )
-    .unwrap_or_else(|error| panic!("expected Connect service generation to succeed: {error}"));
-    append_connect_services(
-        &mut generated_files,
-        &connect_service_files,
-        &cli_service_entrypoint,
-    );
-
-    write_generated_files(out_dir, &file_descriptor_set.file, &generated_files);
-}
-
-fn append_connect_services(
-    generated_files: &mut [GeneratedFile],
-    connect_service_files: &[GeneratedFile],
-    cli_service_entrypoint: &str,
-) {
-    for service_file in connect_service_files {
-        let target = generated_files
-            .iter_mut()
-            .find(|generated_file| generated_file.name == service_file.name)
-            .unwrap_or_else(|| {
-                panic!(
-                    "expected generated module {} for service entrypoint {}",
-                    service_file.name, cli_service_entrypoint
-                )
-            });
-        target.content.push('\n');
-        target.content.push_str(&service_file.content);
-    }
-}
-
-fn write_generated_files(
-    out_dir: &Path,
-    file_descriptors: &[FileDescriptorProto],
-    generated_files: &[GeneratedFile],
-) {
-    std::fs::create_dir_all(out_dir)
-        .unwrap_or_else(|error| panic!("expected output directory {}: {error}", out_dir.display()));
-
-    for generated_file in generated_files {
-        write_if_changed(
-            &out_dir.join(&generated_file.name),
-            generated_file.content.as_bytes(),
-        );
-    }
-
-    let packages_by_generated_file = file_descriptors
+    let files_to_generate = proto_files_to_generate
         .iter()
-        .filter_map(|file_descriptor| {
-            let proto_name = file_descriptor.name.as_deref()?;
-            Some((
-                buffa_codegen::proto_path_to_rust_module(proto_name),
-                file_descriptor
-                    .package
-                    .as_deref()
-                    .unwrap_or_default()
-                    .to_owned(),
-            ))
-        })
-        .collect::<std::collections::HashMap<_, _>>();
-    let mut module_tree_entries = generated_files
-        .iter()
-        .map(|generated_file| {
-            let package = packages_by_generated_file
-                .get(&generated_file.name)
-                .unwrap_or_else(|| panic!("expected package for {}", generated_file.name));
-            (generated_file.name.as_str(), package.as_str())
-        })
+        .map(PathBuf::from)
         .collect::<Vec<_>>();
-    module_tree_entries.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
-
-    let module_tree = buffa_codegen::generate_module_tree(&module_tree_entries, "", false);
-    write_if_changed(
-        &out_dir.join(GENERATED_INCLUDE_FILE),
-        module_tree.as_bytes(),
-    );
-}
-
-fn write_if_changed(path: &Path, contents: &[u8]) {
-    let matches_existing = std::fs::read(path)
-        .map(|existing_contents| existing_contents == contents)
-        .unwrap_or(false);
-    if matches_existing {
-        return;
-    }
-
-    std::fs::write(path, contents).unwrap_or_else(|error| {
-        panic!(
-            "expected to write generated file {}: {error}",
-            path.display()
-        )
-    });
+    connectrpc_build::Config::new()
+        .files(&files_to_generate)
+        .descriptor_set(descriptor_path)
+        .include_file(GENERATED_INCLUDE_FILE)
+        .emit_register_fn(false)
+        .compile()
+        .unwrap_or_else(|error| {
+            panic!(
+                "expected ConnectRPC code generation from descriptor {} into {} to succeed: {error}",
+                descriptor_path.display(),
+                out_dir.display()
+            )
+        });
 }
 
 fn proto_relative_names(proto_files: &[PathBuf]) -> Vec<String> {

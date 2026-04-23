@@ -1,7 +1,6 @@
 use serde::Deserialize;
 
 use crate::transport::api_failure::ApiFailure;
-use crate::transport::api_failure::ApiProblem;
 use crate::transport::api_failure::ApiSuccess;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
@@ -35,7 +34,6 @@ pub(crate) struct LoginSession {
     pub(crate) user_code: String,
     pub(crate) verification_uri: String,
     pub(crate) verification_uri_complete: String,
-    pub(crate) poll_interval_ms: u64,
     pub(crate) expires_in_sec: u64,
 }
 
@@ -50,8 +48,8 @@ pub(crate) struct LoginCompletion {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum LoginPollOutcome {
-    Pending,
-    SlowDown,
+    Pending { poll_after_ms: u64 },
+    RateLimited { poll_after_ms: u64 },
     Denied,
     Expired,
     Authorized { access_token: String },
@@ -92,27 +90,17 @@ pub(crate) async fn poll_login_session(
         ..Default::default()
     };
     let response = match client.cli().poll_device_authorization(body).await {
-        Ok(response) => Ok(response),
-        Err(error) => Err(failure_from_connect(error, ErrorStage::Auth)),
+        Ok(response) => response,
+        Err(error) => return Err(failure_from_connect(error, ErrorStage::Auth)),
     };
 
-    match response {
-        Ok(response) => {
-            let request_id = response_request_id(response.headers());
-            let payload = login_poll_outcome_from_generated(
-                response.into_owned(),
-                session.poll_interval_ms,
-                request_id.clone(),
-            )?;
+    let request_id = response_request_id(response.headers());
+    let payload = login_poll_outcome_from_generated(response.into_owned(), request_id.clone())?;
 
-            Ok(ApiSuccess {
-                payload,
-                request_id,
-            })
-        }
-        Err(ApiFailure::Problem(problem)) => interpret_login_poll_problem(problem),
-        Err(failure) => Err(failure),
-    }
+    Ok(ApiSuccess {
+        payload,
+        request_id,
+    })
 }
 
 pub(crate) async fn whoami(
@@ -163,21 +151,6 @@ pub(crate) async fn refresh_session(
     })
 }
 
-fn interpret_login_poll_problem(
-    problem: ApiProblem,
-) -> Result<ApiSuccess<LoginPollOutcome>, ApiFailure> {
-    let payload = match problem.code {
-        types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED => LoginPollOutcome::Denied,
-        types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED => LoginPollOutcome::Expired,
-        _ => return Err(ApiFailure::Problem(problem)),
-    };
-
-    Ok(ApiSuccess {
-        payload,
-        request_id: problem.request_id,
-    })
-}
-
 fn login_session_from_generated(
     response: types::StartDeviceAuthorizationResponse,
     request_id: Option<String>,
@@ -191,6 +164,13 @@ fn login_session_from_generated(
         .signed_duration_since(chrono::Utc::now())
         .num_seconds()
         .max(0);
+    let _poll_after_ms = response.poll_after_ms.ok_or_else(|| {
+        decode_failure(
+            ErrorStage::Auth,
+            "device authorization start response missing pollAfterMs",
+            request_id.clone(),
+        )
+    })?;
 
     Ok(LoginSession {
         device_code: required_auth_string(
@@ -213,37 +193,23 @@ fn login_session_from_generated(
             "device authorization start response missing verificationCompleteUrl",
             request_id.clone(),
         )?,
-        poll_interval_ms: u64::from(response.poll_after_ms.ok_or_else(|| {
-            decode_failure(
-                ErrorStage::Auth,
-                "device authorization start response missing pollAfterMs",
-                request_id.clone(),
-            )
-        })?),
         expires_in_sec: u64::try_from(seconds_until_expiry).unwrap_or(0),
     })
 }
 
 fn login_poll_outcome_from_generated(
     response: types::PollDeviceAuthorizationResponse,
-    poll_interval_ms: u64,
     request_id: Option<String>,
 ) -> Result<LoginPollOutcome, ApiFailure> {
     match response.outcome {
         Some(types::poll_device_authorization_response::Outcome::Pending(pending)) => {
-            let pending_poll_after_ms = u64::from(pending.poll_after_ms.ok_or_else(|| {
-                decode_failure(
-                    ErrorStage::Auth,
+            Ok(LoginPollOutcome::Pending {
+                poll_after_ms: required_poll_after_ms(
+                    pending.poll_after_ms,
                     "device authorization poll response missing pollAfterMs",
-                    request_id.clone(),
-                )
-            })?);
-
-            if pending_poll_after_ms > poll_interval_ms {
-                Ok(LoginPollOutcome::SlowDown)
-            } else {
-                Ok(LoginPollOutcome::Pending)
-            }
+                    request_id,
+                )?,
+            })
         }
         Some(types::poll_device_authorization_response::Outcome::Authorized(authorized)) => {
             Ok(LoginPollOutcome::Authorized {
@@ -261,14 +227,13 @@ fn login_poll_outcome_from_generated(
             Ok(LoginPollOutcome::Expired)
         }
         Some(types::poll_device_authorization_response::Outcome::RateLimited(rate_limited)) => {
-            let _poll_after_ms = rate_limited.poll_after_ms.ok_or_else(|| {
-                decode_failure(
-                    ErrorStage::Auth,
+            Ok(LoginPollOutcome::RateLimited {
+                poll_after_ms: required_poll_after_ms(
+                    rate_limited.poll_after_ms,
                     "device authorization poll response missing pollAfterMs",
-                    request_id.clone(),
-                )
-            })?;
-            Ok(LoginPollOutcome::SlowDown)
+                    request_id,
+                )?,
+            })
         }
         None => Err(decode_failure(
             ErrorStage::Auth,
@@ -276,6 +241,16 @@ fn login_poll_outcome_from_generated(
             request_id,
         )),
     }
+}
+
+fn required_poll_after_ms(
+    value: Option<u32>,
+    missing_message: &str,
+    request_id: Option<String>,
+) -> Result<u64, ApiFailure> {
+    value
+        .map(u64::from)
+        .ok_or_else(|| decode_failure(ErrorStage::Auth, missing_message, request_id))
 }
 
 fn whoami_from_generated(
@@ -424,10 +399,6 @@ fn format_timestamp(timestamp: Option<buffa_types::google::protobuf::Timestamp>)
 
 #[cfg(test)]
 mod tests {
-    use crate::transport::api_failure::ApiFailure;
-    use crate::transport::api_failure::ApiProblem;
-    use crate::transport::api_failure::ApiSuccess;
-    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use super::LoginPollOutcome;
@@ -436,7 +407,6 @@ mod tests {
     use super::UserProfile;
     use super::WhoAmI;
     use super::auth_mode_from_generated;
-    use super::interpret_login_poll_problem;
     use super::login_poll_outcome_from_generated;
     use super::login_session_from_generated;
     use super::refreshed_auth_session_from_generated;
@@ -451,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn auth_mode_from_generated_maps_known_values_to_legacy_strings() {
+    fn auth_mode_from_generated_maps_known_values_to_cli_strings() {
         assert_eq!(
             [
                 auth_mode_from_generated(Some(types::AuthMode::AUTH_MODE_BROWSER_SESSION.into(),)),
@@ -493,7 +463,6 @@ mod tests {
                 verification_uri: "https://example.test/device".to_owned(),
                 verification_uri_complete: "https://example.test/device?user_code=ABCD1234"
                     .to_owned(),
-                poll_interval_ms: 5_000,
                 expires_in_sec: session.expires_in_sec,
             }
         );
@@ -501,7 +470,7 @@ mod tests {
     }
 
     #[test]
-    fn login_poll_outcome_from_generated_maps_pending_and_slow_down() {
+    fn login_poll_outcome_from_generated_maps_pending_response() {
         let pending = types::PollDeviceAuthorizationResponse {
             outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
                 Box::new(types::CliPendingDeviceAuthorization {
@@ -511,24 +480,13 @@ mod tests {
             )),
             ..Default::default()
         };
-        let slowed = types::PollDeviceAuthorizationResponse {
-            outcome: Some(types::poll_device_authorization_response::Outcome::Pending(
-                Box::new(types::CliPendingDeviceAuthorization {
-                    poll_after_ms: Some(10_000),
-                    ..Default::default()
-                }),
-            )),
-            ..Default::default()
-        };
 
         assert_eq!(
-            [
-                login_poll_outcome_from_generated(pending, 5_000, Some("req_pending".to_owned()))
-                    .expect("expected pending outcome"),
-                login_poll_outcome_from_generated(slowed, 5_000, Some("req_slow".to_owned()))
-                    .expect("expected slow-down outcome"),
-            ],
-            [LoginPollOutcome::Pending, LoginPollOutcome::SlowDown]
+            login_poll_outcome_from_generated(pending, Some("req_pending".to_owned()))
+                .expect("expected pending outcome"),
+            LoginPollOutcome::Pending {
+                poll_after_ms: 5_000
+            }
         );
     }
 
@@ -547,7 +505,7 @@ mod tests {
         };
 
         assert_eq!(
-            login_poll_outcome_from_generated(response, 5_000, Some("req_poll".to_owned()))
+            login_poll_outcome_from_generated(response, Some("req_poll".to_owned()))
                 .expect("expected authorized outcome"),
             LoginPollOutcome::Authorized {
                 access_token: "pat_123".to_owned(),
@@ -593,13 +551,12 @@ mod tests {
 
         assert_eq!(
             [
-                login_poll_outcome_from_generated(denied, 5_000, Some("req_denied".to_owned()))
+                login_poll_outcome_from_generated(denied, Some("req_denied".to_owned()))
                     .expect("expected denied outcome"),
-                login_poll_outcome_from_generated(expired, 5_000, Some("req_expired".to_owned()))
+                login_poll_outcome_from_generated(expired, Some("req_expired".to_owned()))
                     .expect("expected expired outcome"),
                 login_poll_outcome_from_generated(
                     rate_limited,
-                    5_000,
                     Some("req_rate_limited".to_owned()),
                 )
                 .expect("expected rate limited outcome"),
@@ -607,50 +564,8 @@ mod tests {
             [
                 LoginPollOutcome::Denied,
                 LoginPollOutcome::Expired,
-                LoginPollOutcome::SlowDown,
-            ]
-        );
-    }
-
-    #[test]
-    fn interpret_login_poll_problem_maps_typed_problem_codes_to_terminal_outcomes() {
-        let denied = interpret_login_poll_problem(ApiProblem {
-            title: "Login Denied".to_owned(),
-            detail: "device authorization was denied".to_owned(),
-            code: types::ProblemCode::PROBLEM_CODE_LOGIN_DENIED,
-            retryable: false,
-            retry_after_ms: None,
-            stage: ErrorStage::Auth,
-            hint: None,
-            request_id: Some("req_denied".to_owned()),
-            validation_issues: Vec::new(),
-            support_action: None,
-        })
-        .expect("expected denied outcome");
-        let expired = interpret_login_poll_problem(ApiProblem {
-            title: "Login Session Expired".to_owned(),
-            detail: "device authorization session expired".to_owned(),
-            code: types::ProblemCode::PROBLEM_CODE_LOGIN_SESSION_EXPIRED,
-            retryable: false,
-            retry_after_ms: None,
-            stage: ErrorStage::Auth,
-            hint: None,
-            request_id: Some("req_expired".to_owned()),
-            validation_issues: Vec::new(),
-            support_action: None,
-        })
-        .expect("expected expired outcome");
-
-        assert_eq!(
-            [denied, expired],
-            [
-                ApiSuccess {
-                    payload: LoginPollOutcome::Denied,
-                    request_id: Some("req_denied".to_owned()),
-                },
-                ApiSuccess {
-                    payload: LoginPollOutcome::Expired,
-                    request_id: Some("req_expired".to_owned()),
+                LoginPollOutcome::RateLimited {
+                    poll_after_ms: 10_000
                 },
             ]
         );
@@ -723,39 +638,6 @@ mod tests {
                 },
                 active_org: Some("acme".to_owned()),
             }
-        );
-    }
-
-    #[test]
-    fn interpret_login_poll_problem_preserves_retryable_connect_failures() {
-        let failure = interpret_login_poll_problem(ApiProblem {
-            title: "Login Rate Limited".to_owned(),
-            detail: "polling is temporarily rate limited".to_owned(),
-            code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
-            retryable: true,
-            retry_after_ms: Some(10_000),
-            stage: ErrorStage::Auth,
-            hint: None,
-            request_id: Some("req_rate_limited".to_owned()),
-            validation_issues: Vec::new(),
-            support_action: None,
-        })
-        .expect_err("expected rate limited failure to remain a problem");
-
-        assert_eq!(
-            failure,
-            ApiFailure::Problem(ApiProblem {
-                title: "Login Rate Limited".to_owned(),
-                detail: "polling is temporarily rate limited".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_LOGIN_RATE_LIMITED,
-                retryable: true,
-                retry_after_ms: Some(10_000),
-                stage: ErrorStage::Auth,
-                hint: None,
-                request_id: Some("req_rate_limited".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: None,
-            })
         );
     }
 }

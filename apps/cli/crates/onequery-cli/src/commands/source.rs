@@ -23,7 +23,9 @@ use crate::transport::read_controls::PageInfo;
 use crate::transport::source;
 use crate::transport::source::SourceListPayload;
 use crate::transport::source::SourceSummary;
+use crate::transport::source::SourceTestOutcome;
 use crate::transport::source::SourceTestPayload;
+use crate::transport::source::SourceTestSupportedResult;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
@@ -693,31 +695,30 @@ fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput
         lines.insert(1, format!("Display Name: {display_name}"));
     }
 
-    match payload.outcome.kind.as_str() {
-        "supported" => {
-            let passed = payload.outcome.success.unwrap_or(false);
+    match &payload.outcome {
+        SourceTestOutcome::Supported { result, latency_ms } => {
+            let passed = matches!(result, SourceTestSupportedResult::Passed { .. });
             lines.push(format!(
                 "Test: {}",
                 if passed { "passed" } else { "failed" }
             ));
-            lines.push(format!("Message: {}", payload.outcome.message));
-            if let Some(error) = &payload.outcome.error {
-                lines.push(format!("Error: {error}"));
+            match result {
+                SourceTestSupportedResult::Passed { message } => {
+                    lines.push(format!("Message: {message}"));
+                }
+                SourceTestSupportedResult::Failed { message, error } => {
+                    lines.push(format!("Message: {message}"));
+                    lines.push(format!("Error: {error}"));
+                }
             }
-            if let Some(latency_ms) = payload.outcome.latency_ms {
+            if let Some(latency_ms) = latency_ms {
                 lines.push(format!("Latency: {latency_ms} ms"));
             }
         }
-        "unsupported" => {
+        SourceTestOutcome::Unsupported { message, reason } => {
             lines.push("Test: unsupported".to_owned());
-            lines.push(format!("Message: {}", payload.outcome.message));
-            if let Some(reason) = &payload.outcome.reason {
-                lines.push(format!("Reason: {reason}"));
-            }
-        }
-        _ => {
-            lines.push("Test: unknown".to_owned());
-            lines.push(format!("Message: {}", payload.outcome.message));
+            lines.push(format!("Message: {message}"));
+            lines.push(format!("Reason: {reason}"));
         }
     }
 
@@ -762,6 +763,7 @@ mod tests {
     use crate::transport::source::SourceListPayload;
     use crate::transport::source::SourceTestOutcome;
     use crate::transport::source::SourceTestPayload;
+    use crate::transport::source::SourceTestSupportedResult;
     use crate::workflows::runner::TransitionProgress;
 
     use super::SourceEvent;
@@ -854,13 +856,12 @@ mod tests {
                 queryable: true,
                 status: "error".to_owned(),
             },
-            outcome: SourceTestOutcome {
-                kind: "supported".to_owned(),
-                message: "Connection test failed.".to_owned(),
-                success: Some(false),
-                error: Some("password authentication failed".to_owned()),
+            outcome: SourceTestOutcome::Supported {
+                result: SourceTestSupportedResult::Failed {
+                    message: "Connection test failed.".to_owned(),
+                    error: "password authentication failed".to_owned(),
+                },
                 latency_ms: Some(123),
-                reason: None,
             },
         })
         .expect("expected source test output");
@@ -878,15 +879,11 @@ mod tests {
                 queryable: false,
                 status: "active".to_owned(),
             },
-            outcome: SourceTestOutcome {
-                kind: "unsupported".to_owned(),
+            outcome: SourceTestOutcome::Unsupported {
                 message:
                     "Testing is not supported for OAuth-based providers. They are tested during the authorization flow."
                         .to_owned(),
-                success: None,
-                error: None,
-                latency_ms: None,
-                reason: Some("oauth".to_owned()),
+                reason: "oauth".to_owned(),
             },
         })
         .expect("expected unsupported source test output");

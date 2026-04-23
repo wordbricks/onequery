@@ -5,7 +5,6 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 
 const MIN_LOGIN_POLL_INTERVAL_MS: u64 = 250;
-const SLOW_DOWN_DELAY_INCREMENT_MS: u64 = 5_000;
 
 #[derive(Debug, Clone)]
 pub(crate) enum LoginPollState {
@@ -16,13 +15,11 @@ pub(crate) enum LoginPollState {
         session: LoginSession,
         attempt: u32,
         elapsed_ms: u64,
-        delay_ms: u64,
     },
     Waiting {
         session: LoginSession,
         next_attempt: u32,
         elapsed_ms: u64,
-        delay_ms: u64,
     },
 }
 
@@ -66,14 +63,11 @@ pub(crate) fn reduce(
                 // CONTEXT: the reducer runner keeps workflow state/effects on one task and does
                 // not require `Send`, so cloning the session here is simpler than thread-safe
                 // shared ownership.
-                let delay_ms = poll_delay_ms(&session);
-
                 Transition::continue_with_effect(
                     LoginPollState::Polling {
                         session: session.clone(),
                         attempt: 1,
                         elapsed_ms: 0,
-                        delay_ms,
                     },
                     LoginPollEffect::PollOnce { session },
                 )
@@ -86,7 +80,6 @@ pub(crate) fn reduce(
             session,
             attempt,
             elapsed_ms,
-            delay_ms,
         } => match event {
             LoginPollEvent::PollSucceeded {
                 outcome: LoginPollOutcome::Authorized { access_token },
@@ -98,15 +91,20 @@ pub(crate) fn reduce(
                 outcome: LoginPollOutcome::Expired,
             } => Transition::done(LoginPollTerminalState::Expired),
             LoginPollEvent::PollSucceeded {
-                outcome: LoginPollOutcome::Pending,
-            } => wait_for_next_attempt(session, attempt, elapsed_ms, delay_ms),
-            LoginPollEvent::PollSucceeded {
-                outcome: LoginPollOutcome::SlowDown,
+                outcome: LoginPollOutcome::Pending { poll_after_ms },
             } => wait_for_next_attempt(
                 session,
                 attempt,
                 elapsed_ms,
-                delay_ms.saturating_add(SLOW_DOWN_DELAY_INCREMENT_MS),
+                normalized_poll_delay_ms(poll_after_ms),
+            ),
+            LoginPollEvent::PollSucceeded {
+                outcome: LoginPollOutcome::RateLimited { poll_after_ms },
+            } => wait_for_next_attempt(
+                session,
+                attempt,
+                elapsed_ms,
+                normalized_poll_delay_ms(poll_after_ms),
             ),
             LoginPollEvent::PollFailed { failure } => {
                 Transition::done(LoginPollTerminalState::TransportFailed { failure })
@@ -119,14 +117,12 @@ pub(crate) fn reduce(
             session,
             next_attempt,
             elapsed_ms,
-            delay_ms,
         } => match event {
             LoginPollEvent::WaitElapsed => Transition::continue_with_effect(
                 LoginPollState::Polling {
                     session: session.clone(),
                     attempt: next_attempt,
                     elapsed_ms,
-                    delay_ms,
                 },
                 LoginPollEffect::PollOnce { session },
             ),
@@ -157,7 +153,6 @@ fn wait_for_next_attempt(
             session,
             next_attempt,
             elapsed_ms: next_elapsed_ms,
-            delay_ms,
         },
         LoginPollEffect::WaitBeforeNextPoll {
             next_attempt,
@@ -178,8 +173,8 @@ fn unexpected_transition(
     })
 }
 
-fn poll_delay_ms(session: &LoginSession) -> u64 {
-    session.poll_interval_ms.max(MIN_LOGIN_POLL_INTERVAL_MS)
+fn normalized_poll_delay_ms(delay_ms: u64) -> u64 {
+    delay_ms.max(MIN_LOGIN_POLL_INTERVAL_MS)
 }
 
 fn poll_expiry_ms(session: &LoginSession) -> u64 {
@@ -249,7 +244,6 @@ mod tests {
             user_code: "ABCD1234".to_owned(),
             verification_uri: "https://example.test/device".to_owned(),
             verification_uri_complete: "https://example.test/device?user_code=ABCD1234".to_owned(),
-            poll_interval_ms: 1_000,
             expires_in_sec: 3,
         }
     }
@@ -270,15 +264,14 @@ mod tests {
                         session,
                         attempt,
                         elapsed_ms,
-                        delay_ms,
                     },
                 effect:
                     LoginPollEffect::PollOnce {
                         session: effect_session,
                     },
             } => assert_eq!(
-                (session, effect_session, attempt, elapsed_ms, delay_ms),
-                (sample_session(), sample_session(), 1, 0, 1_000)
+                (session, effect_session, attempt, elapsed_ms),
+                (sample_session(), sample_session(), 1, 0)
             ),
             other => panic!("expected login poll to start polling, got {other:?}"),
         }
@@ -291,10 +284,11 @@ mod tests {
                 session: sample_session(),
                 attempt: 1,
                 elapsed_ms: 0,
-                delay_ms: 1_000,
             },
             LoginPollEvent::PollSucceeded {
-                outcome: LoginPollOutcome::Pending,
+                outcome: LoginPollOutcome::Pending {
+                    poll_after_ms: 1_000,
+                },
             },
         );
 
@@ -305,7 +299,6 @@ mod tests {
                         session,
                         next_attempt,
                         elapsed_ms,
-                        delay_ms,
                     },
                 effect:
                     LoginPollEffect::WaitBeforeNextPoll {
@@ -317,18 +310,17 @@ mod tests {
                     session,
                     next_attempt,
                     elapsed_ms,
-                    delay_ms,
                     effect_attempt,
                     effect_delay_ms,
                 ),
-                (sample_session(), 2, 1_000, 1_000, 2, 1_000)
+                (sample_session(), 2, 1_000, 2, 1_000)
             ),
             other => panic!("expected login poll to wait before next attempt, got {other:?}"),
         }
     }
 
     #[test]
-    fn slow_down_increases_the_next_poll_delay() {
+    fn rate_limited_poll_uses_the_server_next_poll_delay() {
         let session = LoginSession {
             expires_in_sec: 10,
             ..sample_session()
@@ -338,10 +330,11 @@ mod tests {
                 session,
                 attempt: 1,
                 elapsed_ms: 0,
-                delay_ms: 1_000,
             },
             LoginPollEvent::PollSucceeded {
-                outcome: LoginPollOutcome::SlowDown,
+                outcome: LoginPollOutcome::RateLimited {
+                    poll_after_ms: 6_000,
+                },
             },
         );
 
@@ -351,7 +344,6 @@ mod tests {
                     LoginPollState::Waiting {
                         next_attempt,
                         elapsed_ms,
-                        delay_ms,
                         ..
                     },
                 effect:
@@ -360,16 +352,10 @@ mod tests {
                         delay_ms: effect_delay_ms,
                     },
             } => assert_eq!(
-                (
-                    next_attempt,
-                    elapsed_ms,
-                    delay_ms,
-                    effect_attempt,
-                    effect_delay_ms,
-                ),
-                (2, 6_000, 6_000, 2, 6_000)
+                (next_attempt, elapsed_ms, effect_attempt, effect_delay_ms,),
+                (2, 6_000, 2, 6_000)
             ),
-            other => panic!("expected login poll to slow down, got {other:?}"),
+            other => panic!("expected login poll rate limit wait, got {other:?}"),
         }
     }
 
@@ -380,10 +366,11 @@ mod tests {
                 session: sample_session(),
                 attempt: 3,
                 elapsed_ms: 2_000,
-                delay_ms: 1_000,
             },
             LoginPollEvent::PollSucceeded {
-                outcome: LoginPollOutcome::Pending,
+                outcome: LoginPollOutcome::Pending {
+                    poll_after_ms: 1_000,
+                },
             },
         );
 
@@ -402,7 +389,6 @@ mod tests {
                 session: sample_session(),
                 attempt: 1,
                 elapsed_ms: 0,
-                delay_ms: 1_000,
             },
             LoginPollEvent::PollSucceeded {
                 outcome: LoginPollOutcome::Authorized {
@@ -426,7 +412,6 @@ mod tests {
                 session: sample_session(),
                 attempt: 1,
                 elapsed_ms: 0,
-                delay_ms: 1_000,
             },
             LoginPollEvent::PollSucceeded {
                 outcome: LoginPollOutcome::Denied,
