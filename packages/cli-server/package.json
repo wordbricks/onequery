@@ -8,7 +8,7 @@
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run --exclude 'src/**/*.integration.test.ts'",
+    "test": "vitest run --exclude 'src/**/*.integration.test.ts' --pool=threads",
     "test:integration": "vitest run integration.test.ts"
   },
   "dependencies": {
