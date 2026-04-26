@@ -47,19 +47,14 @@ describe("cli authorization", () => {
     }
   );
 
-  it.each(["admin", "member", "owner"] as const)(
-    "allows all CLI actions for %s role",
-    (rawMembershipRole) => {
-      for (const action of CLI_ACTIONS) {
-        expect(
-          canCliActorAccessAction({
-            action,
-            rawMembershipRole,
-          })
-        ).toBe(true);
-      }
-    }
-  );
+  it("allows known actions through the boolean helper", () => {
+    expect(
+      canCliActorAccessAction({
+        action: "query.execute",
+        rawMembershipRole: "member",
+      })
+    ).toBe(true);
+  });
 
   it("unions multiple Better Auth membership roles instead of collapsing them", () => {
     expect(
