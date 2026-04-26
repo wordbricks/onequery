@@ -6,6 +6,7 @@ export * from "./normalize";
 export * from "./registry";
 export * from "./types";
 export * from "./helpers/continuation-token";
+export * from "./helpers/header-policy";
 export * from "./helpers/http-rest";
 export * from "./helpers/structured";
 export * from "./policy";
