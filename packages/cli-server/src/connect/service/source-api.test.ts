@@ -6,6 +6,12 @@ import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
 import { organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import {
+  closePgliteTestDatabase,
+  createPgliteTestDatabase,
+  resetPgliteTestDatabase,
+} from "@onequery/db/testing/pglite";
+import type { PgliteTestDatabase } from "@onequery/db/testing/pglite";
+import {
   SourceApiAdapterNotRegisteredError,
   SourceApiDescriptorVersionMismatchError,
   SourceApiExecutionStageError,
@@ -26,12 +32,6 @@ import {
 } from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
-import {
-  closePgliteTestDatabase,
-  createPgliteTestDatabase,
-  resetPgliteTestDatabase,
-} from "../../test/pglite";
-import type { PgliteTestDatabase } from "../../test/pglite";
 import { cliConnectRequestContextKey } from "../context";
 import { CLI_ERROR_INFO_DOMAIN } from "../error";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb";
@@ -726,7 +726,6 @@ function summarizeSourceApiPreview(
 describe("source api connect service", { timeout: 15_000 }, () => {
   beforeAll(async () => {
     sourceApiTestDatabase = await createPgliteTestDatabase({
-      prefix: "onequery-source-api-test-",
       migrationsFolder,
     });
   }, 15_000);

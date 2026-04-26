@@ -9,7 +9,8 @@
     "./server": "./src/server.ts",
     "./constants": "./src/constants.ts",
     "./credentials": "./src/credentials.ts",
-    "./pglite": "./src/pglite.ts"
+    "./pglite": "./src/pglite.ts",
+    "./testing/pglite": "./src/testing/pglite.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
