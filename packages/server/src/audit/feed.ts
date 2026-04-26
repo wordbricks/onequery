@@ -1,5 +1,7 @@
 import { fromBinary, isFieldSet } from "@bufbuild/protobuf";
+import type { DescMessage, MessageShape } from "@bufbuild/protobuf";
 import { durationMs } from "@bufbuild/protobuf/wkt";
+import { createValidator } from "@bufbuild/protovalidate";
 import {
   AUDIT_FAMILIES,
   auditListResponseSchema,
@@ -90,6 +92,7 @@ import { z } from "zod";
 const AUDIT_FEED_PROJECTION_NAME = "audit_feed_entries";
 const AUDIT_PROJECTION_BATCH_SIZE = 200;
 const AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST = 5;
+const auditFeedPayloadValidator = createValidator();
 
 type QueryActionStartCommandPayload = {
   sourceKey: string;
@@ -371,6 +374,7 @@ type SourceApiActionProjectionRow = {
 type QueryActionEventRecord = {
   actionId: string;
   actorSnapshotJson: WorkflowActorSnapshotJson;
+  commandId: string;
   commandPayloadBytes: Buffer;
   commandType: string;
   commitPosition: bigint;
@@ -386,6 +390,7 @@ type QueryActionEventRecord = {
 type SourceApiActionEventRecord = {
   actionId: string;
   actorSnapshotJson: WorkflowActorSnapshotJson;
+  commandId: string;
   commandPayloadBytes: Buffer;
   commandType: string;
   commitPosition: bigint;
@@ -414,6 +419,71 @@ export class InvalidAuditCursorError extends Error {
   constructor() {
     super("Invalid cursor");
   }
+}
+
+type AuditFeedProjectionPayloadEntity =
+  | "query_action_command_payload"
+  | "query_action_event_payload"
+  | "source_api_action_command_payload"
+  | "source_api_action_event_payload";
+
+type AuditFeedProjectionPayloadRecord = {
+  actionId: string;
+  commandId: string;
+  eventId: string;
+};
+
+export class AuditFeedProjectionCorruptPayloadError extends Error {
+  readonly actionId: string;
+  override readonly cause: unknown;
+  readonly commandId: string;
+  readonly entity: AuditFeedProjectionPayloadEntity;
+  readonly eventId: string;
+  readonly family: WorkflowFamily;
+  readonly payloadType: string;
+
+  constructor(input: {
+    actionId: string;
+    cause: unknown;
+    commandId: string;
+    entity: AuditFeedProjectionPayloadEntity;
+    eventId: string;
+    family: WorkflowFamily;
+    payloadType: string;
+  }) {
+    super(
+      `audit feed projection payload is corrupt (${formatAuditFeedProjectionCorruptPayloadDiagnostic(input)})`,
+      {
+        cause: input.cause instanceof Error ? input.cause : undefined,
+      }
+    );
+    this.name = "AuditFeedProjectionCorruptPayloadError";
+    this.actionId = input.actionId;
+    this.cause = input.cause;
+    this.commandId = input.commandId;
+    this.entity = input.entity;
+    this.eventId = input.eventId;
+    this.family = input.family;
+    this.payloadType = input.payloadType;
+  }
+}
+
+function formatAuditFeedProjectionCorruptPayloadDiagnostic(input: {
+  actionId: string;
+  commandId: string;
+  entity: AuditFeedProjectionPayloadEntity;
+  eventId: string;
+  family: WorkflowFamily;
+  payloadType: string;
+}) {
+  return [
+    `family=${input.family}`,
+    `entity=${input.entity}`,
+    `actionId=${input.actionId}`,
+    `commandId=${input.commandId}`,
+    `eventId=${input.eventId}`,
+    `payloadType=${input.payloadType}`,
+  ].join(" ");
 }
 
 export function buildAuditFeedId(family: AuditFamily, familyActionId: string) {
@@ -524,6 +594,45 @@ function requireProtoMessage<T>(value: T | undefined, fieldName: string): T {
   return value;
 }
 
+function decodeValidatedAuditFeedPayload<Schema extends DescMessage>(
+  schema: Schema,
+  bytes: Buffer
+): MessageShape<Schema> {
+  const decoded = fromBinary(schema, bytes);
+  const validation = auditFeedPayloadValidator.validate(schema, decoded);
+  if (validation.kind !== "valid") {
+    throw validation.error;
+  }
+
+  return decoded;
+}
+
+function readAuditFeedProjectionPayload<T>(input: {
+  entity: AuditFeedProjectionPayloadEntity;
+  family: WorkflowFamily;
+  payloadType: string;
+  read: () => T;
+  record: AuditFeedProjectionPayloadRecord;
+}): T {
+  try {
+    return input.read();
+  } catch (cause: unknown) {
+    if (cause instanceof AuditFeedProjectionCorruptPayloadError) {
+      throw cause;
+    }
+
+    throw new AuditFeedProjectionCorruptPayloadError({
+      actionId: input.record.actionId,
+      cause,
+      commandId: input.record.commandId,
+      entity: input.entity,
+      eventId: input.record.eventId,
+      family: input.family,
+      payloadType: input.payloadType,
+    });
+  }
+}
+
 function assertPayloadType(input: {
   actionId: string;
   actual: string;
@@ -540,123 +649,157 @@ function assertPayloadType(input: {
 function parseQueryActionStartCommand(
   record: QueryActionEventRecord
 ): QueryActionStartCommandPayload {
-  const payload = fromBinary(
-    QueryActionCommandPayloadSchema,
-    record.commandPayloadBytes
-  );
+  return readAuditFeedProjectionPayload({
+    entity: "query_action_command_payload",
+    family: "query_action",
+    payloadType: record.commandType,
+    record,
+    read: () => {
+      const payload = decodeValidatedAuditFeedPayload(
+        QueryActionCommandPayloadSchema,
+        record.commandPayloadBytes
+      );
 
-  switch (payload.command.case) {
-    case "startValidate":
-      assertPayloadType({
-        actionId: record.actionId,
-        actual: "start_validate",
-        expected: record.commandType,
-        family: "query_action",
-      });
-      return {
-        sourceKey: payload.command.value.sourceKey,
-        type: "start_validate",
-      };
-    case "startExecute":
-      assertPayloadType({
-        actionId: record.actionId,
-        actual: "start_execute",
-        expected: record.commandType,
-        family: "query_action",
-      });
-      return {
-        sourceKey: payload.command.value.sourceKey,
-        type: "start_execute",
-      };
-    case undefined:
-      throw new Error(
-        `query_action ${record.actionId} command payload is missing its oneof case`
-      );
-    default:
-      throw new Error(
-        `query_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
-      );
-  }
+      switch (payload.command.case) {
+        case "startValidate":
+          assertPayloadType({
+            actionId: record.actionId,
+            actual: "start_validate",
+            expected: record.commandType,
+            family: "query_action",
+          });
+          return {
+            sourceKey: payload.command.value.sourceKey,
+            type: "start_validate",
+          };
+        case "startExecute":
+          assertPayloadType({
+            actionId: record.actionId,
+            actual: "start_execute",
+            expected: record.commandType,
+            family: "query_action",
+          });
+          return {
+            sourceKey: payload.command.value.sourceKey,
+            type: "start_execute",
+          };
+        case undefined:
+          throw new Error(
+            `query_action ${record.actionId} command payload is missing its oneof case`
+          );
+        default:
+          throw new Error(
+            `query_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
+          );
+      }
+    },
+  });
 }
 
 function parseSourceApiStartCommand(
   record: SourceApiActionEventRecord
 ): SourceApiStartCommandPayload {
-  const payload = fromBinary(
-    SourceApiActionCommandPayloadSchema,
-    record.commandPayloadBytes
-  );
+  return readAuditFeedProjectionPayload({
+    entity: "source_api_action_command_payload",
+    family: "source_api_action",
+    payloadType: record.commandType,
+    record,
+    read: () => {
+      const payload = decodeValidatedAuditFeedPayload(
+        SourceApiActionCommandPayloadSchema,
+        record.commandPayloadBytes
+      );
 
-  switch (payload.command.case) {
-    case "startDescribe":
-      assertPayloadType({
-        actionId: record.actionId,
-        actual: "start_describe",
-        expected: record.commandType,
-        family: "source_api_action",
-      });
-      return {
-        sourceKey: payload.command.value.sourceKey,
-        type: "start_describe",
-      };
-    case "startInvoke":
-      assertPayloadType({
-        actionId: record.actionId,
-        actual: "start_invoke",
-        expected: record.commandType,
-        family: "source_api_action",
-      });
-      return {
-        invokeMode: fromSourceApiInvokeMode(payload.command.value.invokeMode),
-        requestDescriptor: fromSourceApiRequestDescriptor(
-          payload.command.value.requestDescriptor
-        ),
-        sourceKey: payload.command.value.sourceKey,
-        type: "start_invoke",
-      };
-    case undefined:
-      throw new Error(
-        `source_api_action ${record.actionId} command payload is missing its oneof case`
-      );
-    default:
-      throw new Error(
-        `source_api_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
-      );
-  }
+      switch (payload.command.case) {
+        case "startDescribe":
+          assertPayloadType({
+            actionId: record.actionId,
+            actual: "start_describe",
+            expected: record.commandType,
+            family: "source_api_action",
+          });
+          return {
+            sourceKey: payload.command.value.sourceKey,
+            type: "start_describe",
+          };
+        case "startInvoke":
+          assertPayloadType({
+            actionId: record.actionId,
+            actual: "start_invoke",
+            expected: record.commandType,
+            family: "source_api_action",
+          });
+          return {
+            invokeMode: fromSourceApiInvokeMode(
+              payload.command.value.invokeMode
+            ),
+            requestDescriptor: fromSourceApiRequestDescriptor(
+              payload.command.value.requestDescriptor
+            ),
+            sourceKey: payload.command.value.sourceKey,
+            type: "start_invoke",
+          };
+        case undefined:
+          throw new Error(
+            `source_api_action ${record.actionId} command payload is missing its oneof case`
+          );
+        default:
+          throw new Error(
+            `source_api_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
+          );
+      }
+    },
+  });
 }
 
 function parseQueryActionEventPayload(
   record: QueryActionEventRecord
 ): QueryActionEventPayload {
-  const payload = fromBinary(
-    QueryActionEventPayloadSchema,
-    record.payloadBytes
-  );
-  const event = fromQueryActionEventPayload(payload);
-  assertPayloadType({
-    actionId: record.actionId,
-    actual: event.type,
-    expected: record.eventType,
+  return readAuditFeedProjectionPayload({
+    entity: "query_action_event_payload",
     family: "query_action",
+    payloadType: record.eventType,
+    record,
+    read: () => {
+      const payload = decodeValidatedAuditFeedPayload(
+        QueryActionEventPayloadSchema,
+        record.payloadBytes
+      );
+      const event = fromQueryActionEventPayload(payload);
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: event.type,
+        expected: record.eventType,
+        family: "query_action",
+      });
+      return event;
+    },
   });
-  return event;
 }
 
 function parseSourceApiEventPayload(
   record: SourceApiActionEventRecord
 ): SourceApiEventPayload {
-  const payload = fromBinary(
-    SourceApiActionEventPayloadSchema,
-    record.payloadBytes
-  );
-  const event = fromSourceApiEventPayload(payload);
-  assertPayloadType({
-    actionId: record.actionId,
-    actual: event.type,
-    expected: record.eventType,
+  return readAuditFeedProjectionPayload({
+    entity: "source_api_action_event_payload",
     family: "source_api_action",
+    payloadType: record.eventType,
+    record,
+    read: () => {
+      const payload = decodeValidatedAuditFeedPayload(
+        SourceApiActionEventPayloadSchema,
+        record.payloadBytes
+      );
+      const event = fromSourceApiEventPayload(payload);
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: event.type,
+        expected: record.eventType,
+        family: "source_api_action",
+      });
+      return event;
+    },
   });
-  return event;
 }
 
 function fromQueryActionEventPayload(
@@ -1841,6 +1984,7 @@ async function loadQueryActionEventBatch(
     .select({
       actionId: queryActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
+      commandId: workflowCommands.id,
       commandPayloadBytes: workflowCommands.commandPayloadBytes,
       commandType: workflowCommands.commandType,
       commitPosition: queryActionEvents.commitPosition,
@@ -1871,6 +2015,7 @@ async function loadSourceApiActionEventBatch(
     .select({
       actionId: sourceApiActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
+      commandId: workflowCommands.id,
       commandPayloadBytes: workflowCommands.commandPayloadBytes,
       commandType: workflowCommands.commandType,
       commitPosition: sourceApiActionEvents.commitPosition,
@@ -1901,6 +2046,7 @@ async function rebuildQueryActionRow(
     .select({
       actionId: queryActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
+      commandId: workflowCommands.id,
       commandPayloadBytes: workflowCommands.commandPayloadBytes,
       commandType: workflowCommands.commandType,
       commitPosition: queryActionEvents.commitPosition,
@@ -1949,6 +2095,7 @@ async function rebuildSourceApiActionRow(
     .select({
       actionId: sourceApiActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
+      commandId: workflowCommands.id,
       commandPayloadBytes: workflowCommands.commandPayloadBytes,
       commandType: workflowCommands.commandType,
       commitPosition: sourceApiActionEvents.commitPosition,

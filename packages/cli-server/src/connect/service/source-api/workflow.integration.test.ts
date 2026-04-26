@@ -364,8 +364,8 @@ describe("source api workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_describe",
-      "record_source_lookup",
-      "record_descriptor_resolution",
+      "record_source_found",
+      "record_descriptor_resolved",
     ]);
     expect(actionRow).toMatchObject({
       attemptNumber: null,
@@ -442,9 +442,9 @@ describe("source api workflow audit runtime", () => {
     expect(preview.result).toBeUndefined();
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
     ]);
     expect(actionRow).toMatchObject({
       attemptNumber: null,
@@ -559,10 +559,10 @@ describe("source api workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
-      "record_page_fetch",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
+      "record_page_fetch_succeeded",
     ]);
   });
 
@@ -636,11 +636,11 @@ describe("source api workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_describe",
-      "record_source_lookup",
-      "record_descriptor_resolution",
+      "record_source_found",
+      "record_descriptor_resolved",
       "start_describe",
-      "record_source_lookup",
-      "record_descriptor_resolution",
+      "record_source_found",
+      "record_descriptor_resolved",
     ]);
   });
 
@@ -723,13 +723,13 @@ describe("source api workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
     ]);
   });
 
@@ -824,12 +824,12 @@ describe("source api workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
-      "record_page_fetch",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
+      "record_page_fetch_succeeded",
       "resume_invoke",
-      "record_page_fetch",
+      "record_page_fetch_succeeded",
     ]);
     expect(actionRow).toMatchObject({
       attemptNumber: 2,
@@ -928,12 +928,12 @@ describe("source api workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_invoke",
-      "record_source_lookup",
-      "record_descriptor_resolution",
-      "record_request_preparation",
-      "record_page_fetch",
+      "record_source_found",
+      "record_descriptor_resolved",
+      "record_request_prepared",
+      "record_page_fetch_succeeded",
       "resume_invoke",
-      "record_page_fetch",
+      "record_page_fetch_succeeded",
     ]);
   });
 

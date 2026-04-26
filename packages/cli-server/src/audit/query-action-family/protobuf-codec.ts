@@ -97,6 +97,72 @@ export function encodeQueryActionCommandPayload(
   );
 }
 
+export function getQueryActionCommandPayloadType(
+  payload: QueryActionCommandPayload
+): string {
+  switch (payload.type) {
+    case "start_validate":
+      return "start_validate";
+    case "start_execute":
+      return "start_execute";
+    case "record_source_lookup":
+      switch (payload.kind) {
+        case "found":
+          return "record_source_found";
+        case "not_found":
+          return "record_source_not_found";
+        case "not_queryable":
+          return "record_source_not_queryable";
+        default:
+          return assertNever(payload);
+      }
+    case "record_query_validation":
+      switch (payload.kind) {
+        case "accepted":
+          return "record_query_validation_accepted";
+        case "rejected":
+          return "record_query_validation_rejected";
+        case "preparation_failed":
+          return "record_query_validation_preparation_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_credentials_load":
+      switch (payload.kind) {
+        case "loaded":
+          return "record_credentials_loaded";
+        case "preparation_failed":
+          return "record_credentials_preparation_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_query_execution":
+      switch (payload.kind) {
+        case "succeeded":
+          return "record_query_execution_succeeded";
+        case "unavailable":
+          return "record_query_execution_unavailable";
+        case "timed_out":
+          return "record_query_execution_timed_out";
+        case "failed":
+          return "record_query_execution_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_usage_persistence":
+      switch (payload.kind) {
+        case "succeeded":
+          return "record_usage_persistence_succeeded";
+        case "failed":
+          return "record_usage_persistence_failed";
+        default:
+          return assertNever(payload);
+      }
+    default:
+      return assertNever(payload);
+  }
+}
+
 export function decodeQueryActionCommandPayload(
   bytes: Buffer,
   context: QueryPayloadDecodeContext
@@ -121,8 +187,11 @@ export function decodeQueryActionCommandPayload(
       family: "query_action",
     },
     () => {
+      const payloadType = getQueryActionCommandPayloadTypeFromOneofCase(
+        decoded.value.command.case
+      );
+      assertMatchingPayloadType(context.payloadType, payloadType);
       const payload = fromQueryActionCommandMessage(decoded.value);
-      assertMatchingPayloadType(context.payloadType, payload.type);
       return payload;
     }
   );
@@ -541,6 +610,49 @@ function fromQueryActionCommandMessage(
       throw new Error("query action command payload missing oneof case");
     default:
       return assertNever(payload.command);
+  }
+}
+
+function getQueryActionCommandPayloadTypeFromOneofCase(
+  oneofCase: ProtoQueryActionCommandPayload["command"]["case"]
+): string {
+  switch (oneofCase) {
+    case "startValidate":
+      return "start_validate";
+    case "startExecute":
+      return "start_execute";
+    case "recordSourceFound":
+      return "record_source_found";
+    case "recordSourceNotFound":
+      return "record_source_not_found";
+    case "recordSourceNotQueryable":
+      return "record_source_not_queryable";
+    case "recordQueryValidationAccepted":
+      return "record_query_validation_accepted";
+    case "recordQueryValidationRejected":
+      return "record_query_validation_rejected";
+    case "recordQueryValidationPreparationFailed":
+      return "record_query_validation_preparation_failed";
+    case "recordCredentialsLoaded":
+      return "record_credentials_loaded";
+    case "recordCredentialsPreparationFailed":
+      return "record_credentials_preparation_failed";
+    case "recordQueryExecutionSucceeded":
+      return "record_query_execution_succeeded";
+    case "recordQueryExecutionUnavailable":
+      return "record_query_execution_unavailable";
+    case "recordQueryExecutionTimedOut":
+      return "record_query_execution_timed_out";
+    case "recordQueryExecutionFailed":
+      return "record_query_execution_failed";
+    case "recordUsagePersistenceSucceeded":
+      return "record_usage_persistence_succeeded";
+    case "recordUsagePersistenceFailed":
+      return "record_usage_persistence_failed";
+    case undefined:
+      throw new Error("query action command payload missing oneof case");
+    default:
+      return assertNever(oneofCase);
   }
 }
 

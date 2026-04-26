@@ -210,8 +210,8 @@ describe("query workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_lookup",
-      "record_query_validation",
+      "record_source_found",
+      "record_query_validation_accepted",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: null,
@@ -314,11 +314,11 @@ describe("query workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_lookup",
-      "record_query_validation",
-      "record_credentials_load",
-      "record_query_execution",
-      "record_usage_persistence",
+      "record_source_found",
+      "record_query_validation_accepted",
+      "record_credentials_loaded",
+      "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: null,
@@ -404,8 +404,8 @@ describe("query workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_lookup",
-      "record_query_validation",
+      "record_source_found",
+      "record_query_validation_preparation_failed",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: "query_preparation_failed",
@@ -486,8 +486,8 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_lookup",
-      "record_query_validation",
+      "record_source_found",
+      "record_query_validation_accepted",
     ]);
 
     const dispatchRows = await db
@@ -770,11 +770,11 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_lookup",
-      "record_query_validation",
+      "record_source_found",
+      "record_query_validation_accepted",
       "start_validate",
-      "record_source_lookup",
-      "record_query_validation",
+      "record_source_found",
+      "record_query_validation_accepted",
     ]);
   });
 
@@ -868,11 +868,11 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_lookup",
-      "record_query_validation",
-      "record_credentials_load",
-      "record_query_execution",
-      "record_usage_persistence",
+      "record_source_found",
+      "record_query_validation_accepted",
+      "record_credentials_loaded",
+      "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
     ]);
   });
 
@@ -975,17 +975,17 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_lookup",
-      "record_query_validation",
-      "record_credentials_load",
-      "record_query_execution",
-      "record_usage_persistence",
+      "record_source_found",
+      "record_query_validation_accepted",
+      "record_credentials_loaded",
+      "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
       "start_execute",
-      "record_source_lookup",
-      "record_query_validation",
-      "record_credentials_load",
-      "record_query_execution",
-      "record_usage_persistence",
+      "record_source_found",
+      "record_query_validation_accepted",
+      "record_credentials_loaded",
+      "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
     ]);
   });
 });

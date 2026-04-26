@@ -53,6 +53,57 @@ export function encodeSourceApiActionCommandPayload(
   );
 }
 
+export function getSourceApiActionCommandPayloadType(
+  payload: SourceApiActionCommandPayload
+): string {
+  switch (payload.type) {
+    case "start_describe":
+      return "start_describe";
+    case "start_invoke":
+      return "start_invoke";
+    case "resume_invoke":
+      return "resume_invoke";
+    case "record_source_lookup":
+      switch (payload.kind) {
+        case "found":
+          return "record_source_found";
+        case "not_found":
+          return "record_source_not_found";
+        default:
+          return assertNever(payload);
+      }
+    case "record_descriptor_resolution":
+      switch (payload.kind) {
+        case "resolved":
+          return "record_descriptor_resolved";
+        case "failed":
+          return "record_descriptor_resolution_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_request_preparation":
+      switch (payload.kind) {
+        case "prepared":
+          return "record_request_prepared";
+        case "failed":
+          return "record_request_preparation_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_page_fetch":
+      switch (payload.kind) {
+        case "succeeded":
+          return "record_page_fetch_succeeded";
+        case "terminal_failure":
+          return "record_page_fetch_terminal_failure";
+        default:
+          return assertNever(payload);
+      }
+    default:
+      return assertNever(payload);
+  }
+}
+
 export function decodeSourceApiActionCommandPayload(
   bytes: Buffer,
   context: SourceApiPayloadDecodeContext
@@ -77,8 +128,11 @@ export function decodeSourceApiActionCommandPayload(
       family: "source_api_action",
     },
     () => {
+      const payloadType = getSourceApiActionCommandPayloadTypeFromOneofCase(
+        decoded.value.command.case
+      );
+      assertMatchingPayloadType(context.payloadType, payloadType);
       const payload = fromSourceApiActionCommandMessage(decoded.value);
-      assertMatchingPayloadType(context.payloadType, payload.type);
       return payload;
     }
   );
@@ -498,6 +552,39 @@ function fromSourceApiActionCommandMessage(
       throw new Error("source api action command payload missing oneof case");
     default:
       return assertNever(payload.command);
+  }
+}
+
+function getSourceApiActionCommandPayloadTypeFromOneofCase(
+  oneofCase: sourceApiPb.SourceApiActionCommandPayload["command"]["case"]
+): string {
+  switch (oneofCase) {
+    case "startDescribe":
+      return "start_describe";
+    case "startInvoke":
+      return "start_invoke";
+    case "resumeInvoke":
+      return "resume_invoke";
+    case "recordSourceFound":
+      return "record_source_found";
+    case "recordSourceNotFound":
+      return "record_source_not_found";
+    case "recordDescriptorResolved":
+      return "record_descriptor_resolved";
+    case "recordDescriptorResolutionFailed":
+      return "record_descriptor_resolution_failed";
+    case "recordRequestPrepared":
+      return "record_request_prepared";
+    case "recordRequestPreparationFailed":
+      return "record_request_preparation_failed";
+    case "recordPageFetchSucceeded":
+      return "record_page_fetch_succeeded";
+    case "recordPageFetchTerminalFailure":
+      return "record_page_fetch_terminal_failure";
+    case undefined:
+      throw new Error("source api action command payload missing oneof case");
+    default:
+      return assertNever(oneofCase);
   }
 }
 

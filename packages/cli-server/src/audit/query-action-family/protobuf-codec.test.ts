@@ -74,6 +74,7 @@ const queryExecutionResponse = {
 const commandPayloads = [
   [
     "start_validate",
+    "start_validate",
     {
       queryText: "select * from customers",
       sourceKey: "warehouse",
@@ -81,6 +82,7 @@ const commandPayloads = [
     },
   ],
   [
+    "start_execute",
     "start_execute",
     {
       queryText: "select * from customers",
@@ -90,6 +92,7 @@ const commandPayloads = [
   ],
   [
     "record_source_lookup/found",
+    "record_source_found",
     {
       kind: "found",
       source,
@@ -98,6 +101,7 @@ const commandPayloads = [
   ],
   [
     "record_source_lookup/not_found",
+    "record_source_not_found",
     {
       kind: "not_found",
       sourceKey: "warehouse",
@@ -106,6 +110,7 @@ const commandPayloads = [
   ],
   [
     "record_source_lookup/not_queryable",
+    "record_source_not_queryable",
     {
       kind: "not_queryable",
       provider: "postgres",
@@ -115,6 +120,7 @@ const commandPayloads = [
   ],
   [
     "record_query_validation/accepted",
+    "record_query_validation_accepted",
     {
       kind: "accepted",
       truncated: false,
@@ -124,6 +130,7 @@ const commandPayloads = [
   ],
   [
     "record_query_validation/rejected",
+    "record_query_validation_rejected",
     {
       detail: "query is read-only only",
       kind: "rejected",
@@ -132,6 +139,7 @@ const commandPayloads = [
   ],
   [
     "record_query_validation/preparation_failed",
+    "record_query_validation_preparation_failed",
     {
       detail: "validator unavailable",
       hint: "try again",
@@ -141,6 +149,7 @@ const commandPayloads = [
   ],
   [
     "record_credentials_load/loaded",
+    "record_credentials_loaded",
     {
       kind: "loaded",
       type: "record_credentials_load",
@@ -148,6 +157,7 @@ const commandPayloads = [
   ],
   [
     "record_credentials_load/preparation_failed",
+    "record_credentials_preparation_failed",
     {
       detail: "credentials unavailable",
       hint: "reconnect source",
@@ -157,6 +167,7 @@ const commandPayloads = [
   ],
   [
     "record_query_execution/succeeded",
+    "record_query_execution_succeeded",
     {
       kind: "succeeded",
       response: queryExecutionResponse,
@@ -165,6 +176,7 @@ const commandPayloads = [
   ],
   [
     "record_query_execution/unavailable",
+    "record_query_execution_unavailable",
     {
       detail: "warehouse unavailable",
       kind: "unavailable",
@@ -173,6 +185,7 @@ const commandPayloads = [
   ],
   [
     "record_query_execution/timed_out",
+    "record_query_execution_timed_out",
     {
       detail: "warehouse timed out",
       kind: "timed_out",
@@ -181,6 +194,7 @@ const commandPayloads = [
   ],
   [
     "record_query_execution/failed",
+    "record_query_execution_failed",
     {
       detail: "warehouse returned an error",
       kind: "failed",
@@ -189,6 +203,7 @@ const commandPayloads = [
   ],
   [
     "record_usage_persistence/succeeded",
+    "record_usage_persistence_succeeded",
     {
       kind: "succeeded",
       type: "record_usage_persistence",
@@ -196,13 +211,14 @@ const commandPayloads = [
   ],
   [
     "record_usage_persistence/failed",
+    "record_usage_persistence_failed",
     {
       detail: "usage sink unavailable",
       kind: "failed",
       type: "record_usage_persistence",
     },
   ],
-] satisfies ReadonlyArray<readonly [string, QueryActionCommandPayload]>;
+] satisfies ReadonlyArray<readonly [string, string, QueryActionCommandPayload]>;
 
 const eventPayloads = [
   [
@@ -405,11 +421,11 @@ function expectValidationCause(error: WorkflowStorageCorruptRowError) {
 describe("query action protobuf codec", () => {
   it.each(commandPayloads)(
     "round-trips command payload %s through protobuf bytes",
-    (_name, payload) => {
+    (_name, storageType, payload) => {
       const decoded = expectOk(
         decodeQueryActionCommandPayload(
           encodeQueryActionCommandPayload(payload),
-          decodeContext(payload.type)
+          decodeContext(storageType)
         )
       );
 
@@ -573,11 +589,11 @@ describe("query action protobuf codec", () => {
     const error = expectCorruptRow(
       decodeQueryActionCommandPayload(
         bytes,
-        decodeContext("record_query_execution")
+        decodeContext("record_query_execution_succeeded")
       ),
       {
         entity: "query_action_command_payload",
-        payloadType: "record_query_execution",
+        payloadType: "record_query_execution_succeeded",
       }
     );
 
@@ -603,6 +619,28 @@ describe("query action protobuf codec", () => {
     expect(error.cause).toBeInstanceOf(Error);
     expect(String(error.cause)).toContain(
       "stored scalar payload type 'start_validate' does not match protobuf payload type 'start_execute'"
+    );
+
+    const groupedBytes = encodeQueryActionCommandPayload({
+      detail: "warehouse timed out",
+      kind: "timed_out",
+      type: "record_query_execution",
+    });
+
+    const groupedError = expectCorruptRow(
+      decodeQueryActionCommandPayload(
+        groupedBytes,
+        decodeContext("record_query_execution_succeeded")
+      ),
+      {
+        entity: "query_action_command_payload",
+        payloadType: "record_query_execution_succeeded",
+      }
+    );
+
+    expect(groupedError.cause).toBeInstanceOf(Error);
+    expect(String(groupedError.cause)).toContain(
+      "stored scalar payload type 'record_query_execution_succeeded' does not match protobuf payload type 'record_query_execution_timed_out'"
     );
   });
 
@@ -657,11 +695,11 @@ describe("query action protobuf codec", () => {
     const error = expectCorruptRow(
       decodeQueryActionCommandPayload(
         bytes,
-        decodeContext("record_source_lookup")
+        decodeContext("record_source_not_queryable")
       ),
       {
         entity: "query_action_command_payload",
-        payloadType: "record_source_lookup",
+        payloadType: "record_source_not_queryable",
       }
     );
 

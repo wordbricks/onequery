@@ -57,6 +57,9 @@ export async function commitWorkflowDecision<
 > {
   const { adapter, command, currentState, db, decision } = input;
   const actionId = input.actionId;
+  const commandPayloadType = adapter.getCommandPayloadType(
+    command.commandPayload
+  );
 
   let acceptedCommit: {
     actionId: string;
@@ -122,7 +125,7 @@ export async function commitWorkflowDecision<
           commandPayloadBytes: adapter.encodeCommandPayload(
             command.commandPayload
           ),
-          commandType: command.commandPayload.type,
+          commandType: commandPayloadType,
           createdAt: command.observedAt,
           decisionKind: decision.kind,
           family: adapter.family,

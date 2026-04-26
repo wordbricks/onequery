@@ -30,6 +30,7 @@ import {
   encodeQueryActionCommandPayload,
   encodeQueryActionEffectPayload,
   encodeQueryActionEventPayload,
+  getQueryActionCommandPayloadType,
 } from "../query-action-family/protobuf-codec";
 import {
   SourceApiActionStateSchema,
@@ -48,6 +49,7 @@ import {
   encodeSourceApiActionCommandPayload,
   encodeSourceApiActionEffectPayload,
   encodeSourceApiActionEventPayload,
+  getSourceApiActionCommandPayloadType,
 } from "../source-api-action-family/protobuf-codec";
 import type { WorkflowStorageCorruptRowError } from "./errors";
 import {
@@ -131,6 +133,7 @@ export const queryActionStoreAdapter: WorkflowStoreAdapter<
   encodeCommandPayload: encodeQueryActionCommandPayload,
   encodeEffectPayload: encodeQueryActionEffectPayload,
   family: "query_action",
+  getCommandPayloadType: getQueryActionCommandPayloadType,
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(queryActions).values({
       id: actionId,
@@ -294,6 +297,7 @@ export const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
   encodeCommandPayload: encodeSourceApiActionCommandPayload,
   encodeEffectPayload: encodeSourceApiActionEffectPayload,
   family: "source_api_action",
+  getCommandPayloadType: getSourceApiActionCommandPayloadType,
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(sourceApiActions).values({
       id: actionId,

@@ -123,12 +123,14 @@ const executionResult = {
 const commandPayloads = [
   [
     "start_describe",
+    "start_describe",
     {
       sourceKey: "github-prod",
       type: "start_describe",
     },
   ],
   [
+    "start_invoke",
     "start_invoke",
     {
       invokeMode: "execute",
@@ -139,6 +141,7 @@ const commandPayloads = [
   ],
   [
     "resume_invoke",
+    "resume_invoke",
     {
       preparedRequestFingerprint: "prepared_execute",
       resumeFromEventId: "event_1",
@@ -147,6 +150,7 @@ const commandPayloads = [
   ],
   [
     "record_source_lookup/found",
+    "record_source_found",
     {
       kind: "found",
       source,
@@ -155,6 +159,7 @@ const commandPayloads = [
   ],
   [
     "record_source_lookup/not_found",
+    "record_source_not_found",
     {
       kind: "not_found",
       sourceKey: "github-prod",
@@ -163,6 +168,7 @@ const commandPayloads = [
   ],
   [
     "record_descriptor_resolution/resolved",
+    "record_descriptor_resolved",
     {
       descriptor,
       kind: "resolved",
@@ -172,6 +178,7 @@ const commandPayloads = [
   ],
   [
     "record_descriptor_resolution/failed",
+    "record_descriptor_resolution_failed",
     {
       detail: "descriptor denied",
       failureCode: "permission_denied",
@@ -181,6 +188,7 @@ const commandPayloads = [
   ],
   [
     "record_request_preparation/prepared",
+    "record_request_prepared",
     {
       kind: "prepared",
       preparedRequestFingerprint: "prepared_execute",
@@ -189,6 +197,7 @@ const commandPayloads = [
   ],
   [
     "record_request_preparation/failed",
+    "record_request_preparation_failed",
     {
       detail: "request invalid",
       failureCode: "invalid_request",
@@ -198,6 +207,7 @@ const commandPayloads = [
   ],
   [
     "record_page_fetch/succeeded",
+    "record_page_fetch_succeeded",
     {
       attemptNumber: 2,
       contentType: "application/octet-stream",
@@ -212,6 +222,7 @@ const commandPayloads = [
   ],
   [
     "record_page_fetch/terminal_failure",
+    "record_page_fetch_terminal_failure",
     {
       attemptNumber: 2,
       detail: "provider timed out",
@@ -221,7 +232,9 @@ const commandPayloads = [
       type: "record_page_fetch",
     },
   ],
-] satisfies ReadonlyArray<readonly [string, SourceApiActionCommandPayload]>;
+] satisfies ReadonlyArray<
+  readonly [string, string, SourceApiActionCommandPayload]
+>;
 
 const eventPayloads = [
   [
@@ -406,11 +419,11 @@ function expectOk<T, E>(result: ResultType<T, E>): T {
 describe("source api action protobuf codec", () => {
   it.each(commandPayloads)(
     "round-trips command payload %s through protobuf bytes",
-    (_name, payload) => {
+    (_name, storageType, payload) => {
       const decoded = expectOk(
         decodeSourceApiActionCommandPayload(
           encodeSourceApiActionCommandPayload(payload),
-          decodeContext(payload.type)
+          decodeContext(storageType)
         )
       );
 
@@ -568,14 +581,39 @@ describe("source api action protobuf codec", () => {
     const error = expectCorruptRow(
       decodeSourceApiActionCommandPayload(
         bytes,
-        decodeContext("record_page_fetch")
+        decodeContext("record_page_fetch_succeeded")
       )
     );
 
     expect(error).toMatchObject({
       entity: "source_api_action_command_payload",
-      payloadType: "record_page_fetch",
+      payloadType: "record_page_fetch_succeeded",
     });
+
+    const groupedBytes = encodeSourceApiActionCommandPayload({
+      attemptNumber: 2,
+      detail: "provider timed out",
+      failureCode: "request_timed_out",
+      kind: "terminal_failure",
+      pageIndex: 1,
+      type: "record_page_fetch",
+    });
+
+    const groupedError = expectCorruptRow(
+      decodeSourceApiActionCommandPayload(
+        groupedBytes,
+        decodeContext("record_page_fetch_succeeded")
+      )
+    );
+
+    expect(groupedError).toMatchObject({
+      entity: "source_api_action_command_payload",
+      payloadType: "record_page_fetch_succeeded",
+    });
+    expect(groupedError.cause).toBeInstanceOf(Error);
+    expect(String(groupedError.cause)).toContain(
+      "stored scalar payload type 'record_page_fetch_succeeded' does not match protobuf payload type 'record_page_fetch_terminal_failure'"
+    );
   });
 
   it("decodes semantic effect equality without relying on protobuf byte equality", () => {

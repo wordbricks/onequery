@@ -58,7 +58,7 @@ describe("workflow audit failures", () => {
         commandId: "workflow_command_1",
         entity: "query_action_command_payload",
         family: "query_action",
-        payloadType: "record_query_execution",
+        payloadType: "record_query_execution_succeeded",
       }),
       detail: "query_action stored result payload is corrupt",
       key: "QUERY_WORKFLOW_CORRUPT",
@@ -69,7 +69,7 @@ describe("workflow audit failures", () => {
       reason: failure.reason,
     }).toEqual({
       message:
-        "query_action stored result payload is corrupt (family=query_action entity=query_action_command_payload actionId=query_action_1 commandId=workflow_command_1 payloadType=record_query_execution)",
+        "query_action stored result payload is corrupt (family=query_action entity=query_action_command_payload actionId=query_action_1 commandId=workflow_command_1 payloadType=record_query_execution_succeeded)",
       reason: "QUERY_WORKFLOW_CORRUPT",
     });
   });

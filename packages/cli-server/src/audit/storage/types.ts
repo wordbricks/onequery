@@ -84,6 +84,7 @@ export type WorkflowStoreAdapter<
   encodeCommandPayload: (payload: CommandPayload) => Buffer;
   encodeEffectPayload: (effect: Effect) => Buffer;
   family: Family;
+  getCommandPayloadType: (payload: CommandPayload) => string;
   insertAction: (input: {
     actionId: string;
     organizationId: string;
