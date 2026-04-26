@@ -461,6 +461,42 @@ describe("source api action protobuf codec", () => {
     }
   );
 
+  it("normalizes replayed binary response bodies to Uint8Array", () => {
+    const payload: SourceApiActionCommandPayload = {
+      attemptNumber: 2,
+      contentType: "application/octet-stream",
+      executionResult,
+      hasContinuation: true,
+      httpStatus: 206,
+      kind: "succeeded",
+      pageIndex: 1,
+      responseBytes: 4,
+      type: "record_page_fetch",
+    };
+
+    const decoded = expectOk(
+      decodeSourceApiActionCommandPayload(
+        encodeSourceApiActionCommandPayload(payload),
+        decodeContext("record_page_fetch_succeeded")
+      )
+    );
+
+    if (decoded.type !== "record_page_fetch" || decoded.kind !== "succeeded") {
+      throw new Error("expected decoded page fetch success command");
+    }
+    expect(decoded.type).toBe("record_page_fetch");
+    expect(decoded.kind).toBe("succeeded");
+
+    const body = decoded.executionResult.body;
+    expect(body.kind).toBe("binary");
+    if (body.kind !== "binary") {
+      throw new Error("expected decoded binary body");
+    }
+    expect(body.value).toBeInstanceOf(Uint8Array);
+    expect(Buffer.isBuffer(body.value)).toBe(false);
+    expect([...body.value]).toEqual([0, 1, 127, 255]);
+  });
+
   it("classifies invalid protobuf bytes as corrupt storage rows", () => {
     const error = expectCorruptRow(
       decodeSourceApiActionCommandPayload(

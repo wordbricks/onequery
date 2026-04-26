@@ -1230,7 +1230,7 @@ function toSourceApiExecutionResultMessage(
     body: toSourceApiExecutionBodyMessage(result.body),
     contentType: result.contentType,
     headers: result.headers.map((header) =>
-      create(commonPb.WorkflowSourceHeaderSchema, {
+      create(sourceApiPb.WorkflowSourceHeaderSchema, {
         name: header.name,
         value: header.value,
       })
@@ -1359,7 +1359,7 @@ function fromSourceApiExecutionBodyMessage(
     case "binary":
       return {
         kind: "binary",
-        value: body.value,
+        value: new Uint8Array(body.value),
       };
     case undefined:
       throw new Error("source api execution result body missing oneof case");

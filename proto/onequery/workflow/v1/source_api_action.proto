@@ -535,6 +535,16 @@ message SourceApiActionExample {
   ];
 }
 
+message WorkflowSourceHeader {
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z0-9-]+$"
+  ];
+  string value = 2 [(buf.validate.field).string.max_len = 8192];
+}
+
 message SourceApiActionExecutionResult {
   SourceApiActionExecutionSource source = 1 [(buf.validate.field).required = true];
   string operation = 2 [

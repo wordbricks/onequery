@@ -1,0 +1,3 @@
+export const AUDIT_FEED_PROJECTION_NAME = "audit_feed_entries";
+export const AUDIT_PROJECTION_BATCH_SIZE = 200;
+export const AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST = 5;
