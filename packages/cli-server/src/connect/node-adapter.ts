@@ -6,6 +6,7 @@ import { createValidateInterceptor } from "@connectrpc/validate";
 
 import type { CliValidationIssue } from "../domain/failures";
 import type { CliProblemKey } from "../domain/problems";
+import { CLI_REQUEST_ID_HEADER } from "../request-context";
 import { cliConnectRequestContextKey } from "./context";
 import {
   CLI_ERROR_INFO_DOMAIN,
@@ -27,13 +28,14 @@ import {
 import { registerCliConnectRoutes } from "./rpc";
 
 const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
+  const requestContext = request.contextValues.get(cliConnectRequestContextKey);
+  const requestId = requestContext?.requestId ?? "unknown";
+
   try {
-    return await next(request);
+    const response = await next(request);
+    response.header.set(CLI_REQUEST_ID_HEADER, requestId);
+    return response;
   } catch (reason) {
-    const requestContext = request.contextValues.get(
-      cliConnectRequestContextKey
-    );
-    const requestId = requestContext?.requestId ?? "unknown";
     throw withCliRequestId(ConnectError.from(reason), requestId);
   }
 };

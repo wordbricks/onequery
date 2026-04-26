@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { requestId } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import { apiRateLimiter } from "./middleware/rate-limit";
@@ -22,7 +24,9 @@ import type { ServerStorage } from "./storage";
 
 export type { SessionVariables } from "./middleware/session";
 
-type ServerApiVariables = ServerRuntimeVariables & SessionVariables;
+type ServerApiVariables = RequestIdVariables &
+  ServerRuntimeVariables &
+  SessionVariables;
 
 export interface CreateServerApiOptions {
   enableAuthTestUtils?: boolean;
@@ -50,6 +54,7 @@ export function createServerApi(input: CreateServerApiOptions) {
       .onError(
         createProblemDetailsErrorHandler("packages/server/createServerApi")
       )
+      .use("*", requestId())
       .use("*", serverRuntimeMiddleware(input.runtime))
       .use("*", serverStorageMiddleware(storage))
       // Rate limiting (applied first to reject requests early)

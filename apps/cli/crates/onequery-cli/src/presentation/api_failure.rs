@@ -143,7 +143,7 @@ pub(crate) fn present_api_client_build_failure(
             ErrorStage::Http,
             message,
             vec![
-                "pass --request-id with visible ASCII characters only".to_owned(),
+                "pass --request-id with up to 255 letters, numbers, underscores, hyphens, or equals signs".to_owned(),
                 "retry command without --request-id".to_owned(),
             ],
         ),
@@ -329,7 +329,7 @@ mod tests {
                 "stage": "http",
                 "why": "failed to parse header value",
                 "tryNext": [
-                    "pass --request-id with visible ASCII characters only",
+                    "pass --request-id with up to 255 letters, numbers, underscores, hyphens, or equals signs",
                     "retry command without --request-id"
                 ],
                 "requestId": null,
