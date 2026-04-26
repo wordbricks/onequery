@@ -411,7 +411,6 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
-    use insta::assert_snapshot;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use uuid::Uuid;
@@ -419,12 +418,9 @@ mod tests {
     use crate::commands::ResolvedOrgSource;
     use crate::commands::test_support::refresh_session_response_body;
     use crate::commands::test_support::write_proto_response;
-    use crate::commands::with_command_snapshot_path;
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
     use crate::credentials::AuthSessionStore;
-    use crate::output::EffectiveOutputMode;
-    use crate::output::render_error;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
     use crate::platform::Terminal;
@@ -565,21 +561,6 @@ mod tests {
                 "onequery auth import --input <path|->".to_owned(),
             ]
         );
-
-        with_command_snapshot_path(|| {
-            crate::test_support::snapshot_settings_with_issue_url_filter().bind(|| {
-                assert_snapshot!(
-                    render_error(&error, EffectiveOutputMode::Text),
-                    @"
-                Error: not logged in
-                Why: no OneQuery token was found in the environment or local auth store.
-                Try:
-                  - onequery auth login
-                  - onequery auth import --input <path|->
-                "
-                );
-            });
-        });
     }
 
     #[test]

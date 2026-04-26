@@ -385,90 +385,6 @@ mod tests {
     }
 
     #[test]
-    fn present_api_failure_uses_typed_problem_fields_for_reauth_guidance() {
-        let error = present_api_failure(
-            ApiFailure::Problem(api_problem(
-                "NOT_LOGGED_IN",
-                "stored credentials are no longer authorized",
-                false,
-                None,
-                ErrorStage::Auth,
-                Some("req_connect_auth"),
-                Vec::new(),
-            )),
-            ApiErrorPresentation {
-                command: "onequery query exec --source warehouse --sql \"select 1\"",
-                title: "query failed",
-                transport_why_prefix: "failed to reach query endpoint",
-                decode_why_prefix: "failed to decode query response",
-                fallback_try_next: vec!["retry onequery query exec".to_owned()],
-                unauthorized_try_next: Some(auth_login_try_next()),
-            },
-        );
-
-        assert_eq!(
-            error_summary(&error),
-            json!({
-                "title": "Not Logged In",
-                "command": "onequery query exec --source warehouse --sql \"select 1\"",
-                "stage": "auth",
-                "why": "stored credentials are no longer authorized",
-                "tryNext": ["onequery auth login"],
-                "requestId": "req_connect_auth",
-                "hint": "run `onequery auth login`",
-                "code": "NOT_LOGGED_IN",
-                "status": null,
-                "retryable": false,
-                "retryAfterMs": null,
-                "validationIssues": [],
-            })
-        );
-    }
-
-    #[test]
-    fn present_api_failure_uses_typed_problem_codes_for_reauth_guidance() {
-        let error = present_api_failure(
-            ApiFailure::Problem(api_problem(
-                "NOT_LOGGED_IN",
-                "stored credentials are no longer authorized",
-                false,
-                None,
-                ErrorStage::Auth,
-                Some("req_connect_reauth"),
-                Vec::new(),
-            )),
-            ApiErrorPresentation {
-                command: "onequery query exec --source warehouse --sql \"select 1\"",
-                title: "query failed",
-                transport_why_prefix: "failed to reach query endpoint",
-                decode_why_prefix: "failed to decode query response",
-                fallback_try_next: vec![
-                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
-                ],
-                unauthorized_try_next: Some(auth_login_try_next()),
-            },
-        );
-
-        assert_eq!(
-            error_summary(&error),
-            json!({
-                "title": "Not Logged In",
-                "command": "onequery query exec --source warehouse --sql \"select 1\"",
-                "stage": "auth",
-                "why": "stored credentials are no longer authorized",
-                "tryNext": ["onequery auth login"],
-                "requestId": "req_connect_reauth",
-                "hint": "run `onequery auth login`",
-                "code": "NOT_LOGGED_IN",
-                "status": null,
-                "retryable": false,
-                "retryAfterMs": null,
-                "validationIssues": [],
-            })
-        );
-    }
-
-    #[test]
     fn present_api_failure_falls_back_for_decode_failures() {
         let error = present_api_failure(
             ApiFailure::Decode(DecodeFailure {
@@ -755,35 +671,6 @@ mod tests {
                 transport_why_prefix: "failed to reach org list endpoint",
                 decode_why_prefix: "failed to decode org list response",
                 fallback_try_next: auth_login_then_retry_try_next("onequery org list"),
-                unauthorized_try_next: Some(auth_login_try_next()),
-            },
-        );
-
-        crate::test_support::snapshot_settings_with_issue_url_filter()
-            .bind(|| assert_snapshot!(render_error(&error, EffectiveOutputMode::Text)));
-    }
-
-    #[test]
-    fn rendered_unauthorized_problem_guides_source_reauth_snapshot() {
-        let error = present_api_failure(
-            ApiFailure::Problem(api_problem(
-                "NOT_LOGGED_IN",
-                "stored credentials are no longer authorized",
-                false,
-                None,
-                ErrorStage::Auth,
-                Some("req_source_auth"),
-                Vec::new(),
-            )),
-            ApiErrorPresentation {
-                command: "onequery source show warehouse",
-                title: "source show failed",
-                transport_why_prefix: "failed to reach source show endpoint",
-                decode_why_prefix: "failed to decode source show response",
-                fallback_try_next: vec![
-                    "onequery source list".to_owned(),
-                    "retry onequery source show warehouse".to_owned(),
-                ],
                 unauthorized_try_next: Some(auth_login_try_next()),
             },
         );

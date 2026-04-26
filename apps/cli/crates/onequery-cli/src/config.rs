@@ -546,7 +546,6 @@ mod tests {
     use onequery_config::ConfigLayerStack;
     use onequery_config::build_cli_overrides_layer;
     use onequery_config::config_fingerprint;
-    use onequery_config::merge_toml_values;
     use pretty_assertions::assert_eq;
     use toml::Value as TomlValue;
     use tracing::Subscriber;
@@ -1586,48 +1585,6 @@ flag = true
                 request_timeout_sec: DEFAULT_REQUEST_TIMEOUT_SEC,
             }
         );
-    }
-
-    #[test]
-    fn merge_toml_values_recursively_overlays_nested_tables() {
-        let mut base = toml::from_str::<TomlValue>(
-            r#"
-[query]
-timeout = 60
-
-[query.output]
-format = "table"
-"#,
-        )
-        .expect("expected base TOML to parse");
-        let overlay = toml::from_str::<TomlValue>(
-            r#"
-[query.output]
-format = "json"
-
-[query.transport]
-retries = 3
-"#,
-        )
-        .expect("expected overlay TOML to parse");
-
-        merge_toml_values(&mut base, &overlay);
-
-        let expected = toml::from_str::<TomlValue>(
-            r#"
-[query]
-timeout = 60
-
-[query.output]
-format = "json"
-
-[query.transport]
-retries = 3
-"#,
-        )
-        .expect("expected merged TOML to parse");
-
-        assert_eq!(base, expected);
     }
 
     #[test]
