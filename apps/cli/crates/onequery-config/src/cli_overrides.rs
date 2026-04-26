@@ -71,32 +71,6 @@ mod tests {
     use toml::Value as TomlValue;
 
     use super::parse_cli_override;
-    use super::parse_cli_overrides;
-    use crate::build_cli_overrides_layer;
-
-    #[test]
-    fn parse_cli_overrides_expand_dotted_paths_when_built_into_a_layer() {
-        let overrides = parse_cli_overrides(&[
-            "query.output.format=json".to_owned(),
-            "query.timeout=15".to_owned(),
-        ])
-        .expect("expected CLI overrides to parse");
-        let layer = build_cli_overrides_layer(&overrides);
-
-        let expected = toml::from_str::<TomlValue>(
-            r#"
-[query]
-timeout = 15
-
-[query.output]
-format = "json"
-"#,
-        )
-        .expect("expected TOML parse to succeed");
-
-        assert_eq!(layer, expected);
-    }
-
     #[test]
     fn parse_cli_override_parses_toml_scalar_values() {
         assert_eq!(

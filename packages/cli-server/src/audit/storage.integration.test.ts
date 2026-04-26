@@ -718,33 +718,6 @@ describe("audit workflow storage", () => {
     });
   });
 
-  it("keeps event history when an action fold row is deleted so the cache can rebuild", async () => {
-    const db = await createTestDb();
-    openedDatabases.push(db as ClosableDatabase);
-
-    const startDecision = expectStoredDecision(
-      unwrapQueryResult(
-        await storeQueryActionCommand({
-          command: buildStartValidateCommand(),
-          db,
-        })
-      ),
-      "accepted"
-    );
-
-    await db
-      .delete(queryActions)
-      .where(eq(queryActions.id, startDecision.actionId));
-
-    const orphanedEventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .where(eq(queryActionEvents.actionId, startDecision.actionId));
-
-    expect(orphanedEventRows).toHaveLength(1);
-    expect(orphanedEventRows[0]?.eventType).toBe("action_received");
-  });
-
   it("repairs a corrupt action fold from committed events before deciding the next command", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SOURCE_API_CONTENT_TYPE,
   createHttpRequestOperation,
+  filterAllowedResponseHeaders,
   normalizeSourceApiContentType,
   readSourceApiHttpTransportResponse,
 } from "./http-rest";
@@ -36,6 +37,21 @@ describe("source api http transport helpers", () => {
         status: 200,
       }
     );
+  });
+
+  it("synthesizes fallback content types when response headers allow it", () => {
+    expect(
+      filterAllowedResponseHeaders({
+        allowedNames: ["content-type"],
+        contentType: DEFAULT_SOURCE_API_CONTENT_TYPE,
+        headers: [],
+      })
+    ).toEqual([
+      {
+        name: "content-type",
+        value: DEFAULT_SOURCE_API_CONTENT_TYPE,
+      },
+    ]);
   });
 
   it("canonicalizes operation header policies for durable descriptors", () => {

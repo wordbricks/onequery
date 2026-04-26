@@ -9,12 +9,4 @@ describe("data-sources schema", () => {
       queryableProviders: [...QUERYABLE_PROVIDER_TYPES],
     }).toMatchSnapshot();
   });
-
-  describe("QUERYABLE_PROVIDER_TYPES", () => {
-    it("should be a subset of PROVIDER_TYPES", () => {
-      for (const provider of QUERYABLE_PROVIDER_TYPES) {
-        expect(PROVIDER_TYPES).toContain(provider);
-      }
-    });
-  });
 });

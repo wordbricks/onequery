@@ -111,18 +111,8 @@ fn doctor_help_output_snapshot_targets_diagnostics_surface() {
 }
 
 #[test]
-fn bare_doctor_report_renders_help_snapshot() {
-    assert_snapshot!(rendered_display(&["onequery", "doctor", "report"]));
-}
-
-#[test]
 fn explain_help_output_snapshot_targets_support_surface() {
     assert_snapshot!(rendered_display(&["onequery", "explain", "--help"]));
-}
-
-#[test]
-fn bare_explain_renders_help_snapshot() {
-    assert_snapshot!(rendered_display(&["onequery", "explain"]));
 }
 
 #[test]
@@ -1029,7 +1019,7 @@ fn parse_invocation_accepts_explicit_query_validate_subcommand() {
 }
 
 #[test]
-fn parse_invocation_renders_bare_auth_and_query_as_help() {
+fn parse_invocation_renders_bare_commands_as_help() {
     for (args, usage) in [
         (
             &["onequery", "auth"][..],
@@ -1038,6 +1028,14 @@ fn parse_invocation_renders_bare_auth_and_query_as_help() {
         (
             &["onequery", "query"][..],
             "Usage: onequery query [OPTIONS] <COMMAND>",
+        ),
+        (
+            &["onequery", "explain"][..],
+            "Usage: onequery explain [OPTIONS] <CODE>",
+        ),
+        (
+            &["onequery", "doctor", "report"][..],
+            "Usage: onequery doctor report [OPTIONS]",
         ),
     ] {
         assert!(rendered_display(args).contains(usage));

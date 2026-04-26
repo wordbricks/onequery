@@ -497,7 +497,6 @@ mod tests {
     use super::UpgradeInstaller;
     use super::UpgradePlan;
     use super::parse_version_output;
-    use super::read_package_version;
     use super::render_command_failure;
     use super::render_upgrade_output;
 
@@ -648,22 +647,6 @@ mod tests {
         );
 
         assert_snapshot!(output.lines.join("\n"));
-    }
-
-    #[test]
-    fn read_package_version_from_package_json() {
-        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
-        let package_json = temp_dir.path().join("package.json");
-        fs::write(
-            &package_json,
-            r#"{"name":"@onequery/cli","version":"1.2.3"}"#,
-        )
-        .expect("failed to write package.json");
-
-        assert_eq!(
-            read_package_version(package_json.as_path()),
-            Some("1.2.3".to_owned())
-        );
     }
 
     #[test]

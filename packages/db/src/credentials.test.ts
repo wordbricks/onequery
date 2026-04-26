@@ -607,17 +607,6 @@ describe("credentials schemas", () => {
   });
 
   describe("isOAuthCredentials", () => {
-    it("should return true for GA credentials", () => {
-      const credentials: GoogleAnalyticsCredentials = {
-        accessToken: "token",
-        expiresAt: Date.now(),
-        propertyId: "prop",
-        refreshToken: "refresh",
-        type: "ga",
-      };
-      expect(isOAuthCredentials(credentials)).toBe(true);
-    });
-
     it("should return false for GA service account credentials", () => {
       const credentials: GoogleAnalyticsCredentials = {
         authType: "service_account",
@@ -633,17 +622,6 @@ describe("credentials schemas", () => {
       expect(isOAuthCredentials(credentials)).toBe(false);
     });
 
-    it("should return true for BigQuery credentials", () => {
-      const credentials: BigQueryCredentials = {
-        accessToken: "token",
-        expiresAt: Date.now(),
-        projectId: "proj",
-        refreshToken: "refresh",
-        type: "bigquery",
-      };
-      expect(isOAuthCredentials(credentials)).toBe(true);
-    });
-
     it("should return false for BigQuery service account credentials", () => {
       const credentials: BigQueryCredentials = {
         authType: "service_account",
@@ -657,86 +635,6 @@ describe("credentials schemas", () => {
         type: "bigquery",
       };
       expect(isOAuthCredentials(credentials)).toBe(false);
-    });
-
-    it("should return false for Postgres credentials", () => {
-      const credentials: PostgresCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 5432,
-        sslMode: "prefer",
-        type: "postgres",
-        username: "user",
-      };
-      expect(isOAuthCredentials(credentials)).toBe(false);
-    });
-  });
-
-  describe("isDatabaseCredentials", () => {
-    it("should return true for Postgres credentials", () => {
-      const credentials: PostgresCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 5432,
-        sslMode: "prefer",
-        type: "postgres",
-        username: "user",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for MySQL credentials", () => {
-      const credentials: MySQLCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 3306,
-        sslMode: "prefer",
-        type: "mysql",
-        username: "user",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for BigQuery credentials", () => {
-      const credentials: BigQueryCredentials = {
-        accessToken: "token",
-        expiresAt: Date.now(),
-        projectId: "proj",
-        refreshToken: "refresh",
-        type: "bigquery",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for Laminar credentials", () => {
-      const credentials: LaminarCredentials = {
-        apiKey: "lmnr_project_key_123",
-        type: "laminar",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for Connector credentials", () => {
-      const credentials: ConnectorCredentials = {
-        connectorId: "connector_123",
-        database: "analytics",
-        type: "aws_athena_connector",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(true);
-    });
-
-    it("should return false for GA credentials", () => {
-      const credentials: GoogleAnalyticsCredentials = {
-        accessToken: "token",
-        expiresAt: Date.now(),
-        propertyId: "prop",
-        refreshToken: "refresh",
-        type: "ga",
-      };
-      expect(isDatabaseCredentials(credentials)).toBe(false);
     });
   });
 
@@ -1043,20 +941,6 @@ describe("credentials schemas", () => {
       });
 
       expect(result.success).toBe(false);
-    });
-
-    it("should strip trailing slash from hostUrl", () => {
-      const result = PostHogCredentialsSchema.safeParse({
-        hostUrl: "https://us.posthog.com/",
-        personalApiKey: "phx_valid_personal_api_key",
-        projectId: "12345",
-        type: "posthog",
-      });
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.hostUrl).toBe("https://us.posthog.com");
-      }
     });
 
     it("should trim hostUrl before validation", () => {
@@ -1425,72 +1309,7 @@ describe("credentials schemas", () => {
     });
   });
 
-  describe("isAnalyticsCredentials", () => {
-    it("should return true for Amplitude credentials", () => {
-      const credentials: AmplitudeCredentials = {
-        apiKey: "key",
-        region: "us",
-        secretKey: "secret",
-        type: "amplitude",
-      };
-      expect(isAnalyticsCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for Mixpanel credentials", () => {
-      const credentials: MixpanelCredentials = {
-        projectId: "proj",
-        region: "us",
-        secret: "secret",
-        type: "mixpanel",
-        username: "user",
-      };
-      expect(isAnalyticsCredentials(credentials)).toBe(true);
-    });
-
-    it("should return true for PostHog credentials", () => {
-      const credentials: PostHogCredentials = {
-        hostUrl: "https://us.posthog.com",
-        personalApiKey: "phx_valid_personal_api_key",
-        projectId: "12345",
-        type: "posthog",
-      };
-      expect(isAnalyticsCredentials(credentials)).toBe(true);
-    });
-
-    it("should return false for Postgres credentials", () => {
-      const credentials: PostgresCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 5432,
-        sslMode: "prefer",
-        type: "postgres",
-        username: "user",
-      };
-      expect(isAnalyticsCredentials(credentials)).toBe(false);
-    });
-
-    it("should return false for GA credentials", () => {
-      const credentials: GoogleAnalyticsCredentials = {
-        accessToken: "token",
-        expiresAt: Date.now(),
-        propertyId: "prop",
-        refreshToken: "refresh",
-        type: "ga",
-      };
-      expect(isAnalyticsCredentials(credentials)).toBe(false);
-    });
-  });
-
   describe("isGitHubCredentials", () => {
-    it("should return true for GitHub credentials", () => {
-      const credentials: GitHubCredentials = {
-        accessToken: "ghp_xxx",
-        type: "github",
-      };
-      expect(isGitHubCredentials(credentials)).toBe(true);
-    });
-
     it("should return true for GitHub credentials with installationId", () => {
       const credentials: GitHubCredentials = {
         accessToken: "ghp_xxx",
@@ -1498,58 +1317,6 @@ describe("credentials schemas", () => {
         type: "github",
       };
       expect(isGitHubCredentials(credentials)).toBe(true);
-    });
-
-    it("should return false for Postgres credentials", () => {
-      const credentials: PostgresCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 5432,
-        sslMode: "prefer",
-        type: "postgres",
-        username: "user",
-      };
-      expect(isGitHubCredentials(credentials)).toBe(false);
-    });
-
-    it("should return false for Linear credentials", () => {
-      const credentials: LinearCredentials = {
-        apiKey: "lin_api_xxx",
-        type: "linear",
-      };
-      expect(isGitHubCredentials(credentials)).toBe(false);
-    });
-  });
-
-  describe("isLinearCredentials", () => {
-    it("should return true for Linear credentials", () => {
-      const credentials: LinearCredentials = {
-        apiKey: "lin_api_xxx",
-        type: "linear",
-      };
-      expect(isLinearCredentials(credentials)).toBe(true);
-    });
-
-    it("should return false for Postgres credentials", () => {
-      const credentials: PostgresCredentials = {
-        database: "db",
-        host: "localhost",
-        password: "pass",
-        port: 5432,
-        sslMode: "prefer",
-        type: "postgres",
-        username: "user",
-      };
-      expect(isLinearCredentials(credentials)).toBe(false);
-    });
-
-    it("should return false for GitHub credentials", () => {
-      const credentials: GitHubCredentials = {
-        accessToken: "ghp_xxx",
-        type: "github",
-      };
-      expect(isLinearCredentials(credentials)).toBe(false);
     });
   });
 

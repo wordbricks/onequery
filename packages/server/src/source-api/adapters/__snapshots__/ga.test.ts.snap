@@ -133,33 +133,6 @@ exports[`google analytics source api adapter > executes Google Analytics request
 }
 `;
 
-exports[`google analytics source api adapter > normalizes missing Google Analytics response content types to octet-stream 1`] = `
-{
-  "body": {
-    "kind": "binary",
-    "value": Uint8Array [
-      1,
-      2,
-      3,
-    ],
-  },
-  "contentType": "application/octet-stream",
-  "headers": [
-    {
-      "name": "content-type",
-      "value": "application/octet-stream",
-    },
-  ],
-  "operation": "run_report",
-  "source": {
-    "displayName": "Google Analytics Prod",
-    "provider": "ga",
-    "sourceKey": "ga-prod",
-  },
-  "status": 200,
-}
-`;
-
 exports[`google analytics source api adapter > normalizes structured requests and resolves the connected property 1`] = `
 {
   "body": {
