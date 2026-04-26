@@ -1,0 +1,640 @@
+// Internal durable payloads for the source API action workflow.
+edition = "2023";
+
+package onequery.workflow.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "onequery/workflow/v1/common.proto";
+
+message SourceApiActionCommandPayload {
+  oneof command {
+    option (buf.validate.oneof).required = true;
+
+    SourceApiActionStartDescribeCommand start_describe = 1;
+    SourceApiActionStartInvokeCommand start_invoke = 2;
+    SourceApiActionResumeInvokeCommand resume_invoke = 3;
+    SourceApiActionRecordSourceFoundCommand record_source_found = 4;
+    SourceApiActionRecordSourceNotFoundCommand record_source_not_found = 5;
+    SourceApiActionRecordDescriptorResolvedCommand record_descriptor_resolved = 6;
+    SourceApiActionRecordDescriptorResolutionFailedCommand record_descriptor_resolution_failed = 7;
+    SourceApiActionRecordRequestPreparedCommand record_request_prepared = 8;
+    SourceApiActionRecordRequestPreparationFailedCommand record_request_preparation_failed = 9;
+    SourceApiActionRecordPageFetchSucceededCommand record_page_fetch_succeeded = 10;
+    SourceApiActionRecordPageFetchTerminalFailureCommand record_page_fetch_terminal_failure = 11;
+  }
+}
+
+message SourceApiActionEventPayload {
+  oneof event {
+    option (buf.validate.oneof).required = true;
+
+    SourceApiActionReceivedEvent action_received = 1;
+    SourceApiActionSourceLoadedEvent source_loaded = 2;
+    SourceApiActionSourceNotFoundEvent source_not_found = 3;
+    SourceApiActionDescriptorResolvedEvent descriptor_resolved = 4;
+    SourceApiActionDescriptorResolutionFailedEvent descriptor_resolution_failed = 5;
+    SourceApiActionRequestPreparedEvent request_prepared = 6;
+    SourceApiActionRequestPreparationFailedEvent request_preparation_failed = 7;
+    SourceApiActionResumeRequestedEvent resume_requested = 8;
+    SourceApiActionPageFetchSucceededEvent page_fetch_succeeded = 9;
+    SourceApiActionPageFetchFailedEvent page_fetch_failed = 10;
+  }
+}
+
+message SourceApiActionEffectPayload {
+  oneof effect {
+    option (buf.validate.oneof).required = true;
+
+    SourceApiActionLoadSourceEffect load_source = 1;
+    SourceApiActionResolveDescriptorEffect resolve_descriptor = 2;
+    SourceApiActionPrepareRequestEffect prepare_request = 3;
+    SourceApiActionExecutePageEffect execute_page = 4;
+  }
+}
+
+message SourceApiActionStartDescribeCommand {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message SourceApiActionStartInvokeCommand {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  SourceApiActionInvokeMode invoke_mode = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  SourceApiActionRequestDescriptor request_descriptor = 3 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionResumeInvokeCommand {
+  string prepared_request_fingerprint = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string resume_from_event_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+}
+
+message SourceApiActionRecordSourceFoundCommand {
+  SourceApiActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionRecordSourceNotFoundCommand {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message SourceApiActionRecordDescriptorResolvedCommand {
+  // Retained for deterministic replay so descriptor resolution is not rerun.
+  SourceApiActionDescriptor descriptor = 1 [(buf.validate.field).required = true];
+  SourceApiActionRequestDescriptor request_descriptor = 2;
+}
+
+message SourceApiActionRecordDescriptorResolutionFailedCommand {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+message SourceApiActionRecordRequestPreparedCommand {
+  string prepared_request_fingerprint = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+}
+
+message SourceApiActionRecordRequestPreparationFailedCommand {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+message SourceApiActionRecordPageFetchSucceededCommand {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  string content_type = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  // Retained for deterministic replay so provider page fetches are not rerun.
+  SourceApiActionExecutionResult execution_result = 3 [(buf.validate.field).required = true];
+  bool has_continuation = 4 [(buf.validate.field).required = true];
+  uint32 http_status = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 100,
+    (buf.validate.field).uint32.lte = 599
+  ];
+  uint32 page_index = 6 [(buf.validate.field).required = true];
+  uint64 response_bytes = 7 [(buf.validate.field).uint64.lte = 10485760];
+}
+
+message SourceApiActionRecordPageFetchTerminalFailureCommand {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  string detail = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  uint32 page_index = 4 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionReceivedEvent {
+  SourceApiActionRequestKind request_kind = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  SourceApiActionInvokeMode invoke_mode = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  SourceApiActionRequestDescriptor request_descriptor = 3;
+}
+
+message SourceApiActionSourceLoadedEvent {
+  SourceApiActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionSourceNotFoundEvent {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message SourceApiActionDescriptorResolvedEvent {
+  SourceApiActionRequestDescriptor request_descriptor = 1;
+}
+
+message SourceApiActionDescriptorResolutionFailedEvent {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+message SourceApiActionRequestPreparedEvent {
+  string prepared_request_fingerprint = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+}
+
+message SourceApiActionRequestPreparationFailedEvent {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+message SourceApiActionResumeRequestedEvent {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+}
+
+message SourceApiActionPageFetchSucceededEvent {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  string content_type = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  bool has_continuation = 3 [(buf.validate.field).required = true];
+  uint32 http_status = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 100,
+    (buf.validate.field).uint32.lte = 599
+  ];
+  uint32 page_index = 5 [(buf.validate.field).required = true];
+  uint64 response_bytes = 6 [(buf.validate.field).uint64.lte = 10485760];
+}
+
+message SourceApiActionPageFetchFailedEvent {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  string detail = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  SourceApiActionFailureCode failure_code = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  uint32 page_index = 4 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionLoadSourceEffect {
+  string organization_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string source_key = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message SourceApiActionResolveDescriptorEffect {
+  SourceApiActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionPrepareRequestEffect {
+  SourceApiActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+  SourceApiActionRequestDescriptor request_descriptor = 2 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionExecutePageEffect {
+  uint32 attempt_number = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  uint32 page_index = 2 [(buf.validate.field).required = true];
+  string prepared_request_fingerprint = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  SourceApiActionRequestDescriptor request_descriptor = 4 [(buf.validate.field).required = true];
+  SourceApiActionSourceDescriptor source = 5 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionSourceDescriptor {
+  string display_name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  WorkflowSourceProvider provider = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string source_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string source_key = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message SourceApiActionRequestDescriptor {
+  string descriptor_version = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  SourceApiActionOperationKind kind = 2 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string method = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 16,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  string operation = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  SourceApiActionPaginationPolicy pagination_policy = 5 [
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string selector = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message SourceApiActionDescriptor {
+  SourceApiActionDescriptorSource source = 1 [(buf.validate.field).required = true];
+  string descriptor_version = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string default_path_operation = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  repeated SourceApiActionOperation operations = 4 [(buf.validate.field).repeated.max_items = 100];
+  repeated SourceApiActionExample examples = 5 [(buf.validate.field).repeated.max_items = 20];
+  repeated string notes = 6 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 20,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 512
+  ];
+}
+
+message SourceApiActionDescriptorSource {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  WorkflowSourceProvider provider = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string display_name = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+}
+
+message SourceApiActionOperation {
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  SourceApiActionOperationKind kind = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string summary = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 160
+  ];
+  string description = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 2048
+  ];
+  SourceApiActionSelectorKind selector_kind = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string selector_label = 6 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  SourceApiActionMethodPolicy method_policy = 7 [(buf.validate.field).required = true];
+  SourceApiActionFieldPolicy field_policy = 8 [(buf.validate.field).required = true];
+  SourceApiActionHeaderPolicy header_policy = 9 [(buf.validate.field).required = true];
+  SourceApiActionPaginationPolicy pagination_policy = 10 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  repeated SourceApiActionExample examples = 11 [(buf.validate.field).repeated.max_items = 20];
+  repeated string notes = 12 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 20,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 512
+  ];
+}
+
+message SourceApiActionMethodPolicy {
+  string default_method = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 16,
+    (buf.validate.field).string.pattern = "^[A-Z]+$"
+  ];
+  repeated string allowed_methods = 2 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 16,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 16,
+    (buf.validate.field).repeated.items.string.pattern = "^[A-Z]+$"
+  ];
+}
+
+message SourceApiActionFieldPolicy {
+  bool allows_raw_fields = 1 [(buf.validate.field).required = true];
+  bool allows_typed_fields = 2 [(buf.validate.field).required = true];
+  bool supports_nested_paths = 3 [(buf.validate.field).required = true];
+  bool supports_array_paths = 4 [(buf.validate.field).required = true];
+  bool accepts_input = 5 [(buf.validate.field).required = true];
+  SourceApiActionInputMode input_mode = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  bool merge_patches = 7 [(buf.validate.field).required = true];
+}
+
+message SourceApiActionHeaderPolicy {
+  repeated string allowed_request_header_names = 1 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 128,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z0-9-]+$"
+  ];
+  repeated string allowed_response_header_names = 2 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 64,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 128,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-z0-9-]+$"
+  ];
+}
+
+message SourceApiActionExample {
+  string label = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string command = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192
+  ];
+  string description = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}
+
+message SourceApiActionExecutionResult {
+  SourceApiActionExecutionSource source = 1 [(buf.validate.field).required = true];
+  string operation = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  string selector = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  uint32 http_status = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 100,
+    (buf.validate.field).uint32.lte = 599
+  ];
+  repeated WorkflowSourceHeader headers = 5 [(buf.validate.field).repeated.max_items = 100];
+  string content_type = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  oneof body {
+    option (buf.validate.oneof).required = true;
+
+    SourceApiActionEmptyBody none = 7;
+    google.protobuf.Value json = 8 [(buf.validate.field).ignore = IGNORE_ALWAYS];
+    string text = 9 [(buf.validate.field).string.max_len = 1048576];
+    bytes binary = 10 [(buf.validate.field).bytes.max_len = 1048576];
+  }
+  google.protobuf.Value next_continuation_state = 11 [(buf.validate.field).ignore = IGNORE_ALWAYS];
+}
+
+message SourceApiActionExecutionSource {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+  WorkflowSourceProvider provider = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string display_name = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+}
+
+message SourceApiActionEmptyBody {}
+
+enum SourceApiActionRequestKind {
+  SOURCE_API_ACTION_REQUEST_KIND_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_REQUEST_KIND_DESCRIBE = 1;
+  SOURCE_API_ACTION_REQUEST_KIND_INVOKE = 2;
+}
+
+enum SourceApiActionInvokeMode {
+  SOURCE_API_ACTION_INVOKE_MODE_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_INVOKE_MODE_PREVIEW_ONLY = 1;
+  SOURCE_API_ACTION_INVOKE_MODE_EXECUTE = 2;
+}
+
+enum SourceApiActionOperationKind {
+  SOURCE_API_ACTION_OPERATION_KIND_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_OPERATION_KIND_HTTP_REQUEST = 1;
+  SOURCE_API_ACTION_OPERATION_KIND_STRUCTURED_REQUEST = 2;
+}
+
+enum SourceApiActionSelectorKind {
+  SOURCE_API_ACTION_SELECTOR_KIND_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_SELECTOR_KIND_NONE = 1;
+  SOURCE_API_ACTION_SELECTOR_KIND_PATH = 2;
+  SOURCE_API_ACTION_SELECTOR_KIND_IDENTIFIER = 3;
+}
+
+enum SourceApiActionPaginationPolicy {
+  SOURCE_API_ACTION_PAGINATION_POLICY_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_PAGINATION_POLICY_NONE = 1;
+  SOURCE_API_ACTION_PAGINATION_POLICY_CONTINUATION_TOKEN = 2;
+}
+
+enum SourceApiActionInputMode {
+  SOURCE_API_ACTION_INPUT_MODE_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_INPUT_MODE_NONE = 1;
+  SOURCE_API_ACTION_INPUT_MODE_REQUEST_OBJECT = 2;
+  SOURCE_API_ACTION_INPUT_MODE_REQUEST_BODY = 3;
+}
+
+enum SourceApiActionFailureCode {
+  SOURCE_API_ACTION_FAILURE_CODE_UNSPECIFIED = 0;
+  SOURCE_API_ACTION_FAILURE_CODE_SOURCE_NOT_FOUND = 1;
+  SOURCE_API_ACTION_FAILURE_CODE_DESCRIPTOR_UNAVAILABLE = 2;
+  SOURCE_API_ACTION_FAILURE_CODE_INVALID_REQUEST = 3;
+  SOURCE_API_ACTION_FAILURE_CODE_PERMISSION_DENIED = 4;
+  SOURCE_API_ACTION_FAILURE_CODE_REQUEST_TIMED_OUT = 5;
+  SOURCE_API_ACTION_FAILURE_CODE_EXECUTION_FAILED = 6;
+  SOURCE_API_ACTION_FAILURE_CODE_EXECUTION_STATE_INVALID = 7;
+}

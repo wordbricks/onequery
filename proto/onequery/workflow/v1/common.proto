@@ -1,0 +1,75 @@
+// Internal durable workflow payload messages shared by workflow families.
+edition = "2023";
+
+package onequery.workflow.v1;
+
+import "buf/validate/validate.proto";
+
+enum WorkflowFamily {
+  WORKFLOW_FAMILY_UNSPECIFIED = 0;
+  WORKFLOW_FAMILY_QUERY_ACTION = 1;
+  WORKFLOW_FAMILY_SOURCE_API_ACTION = 2;
+}
+
+enum WorkflowSurface {
+  WORKFLOW_SURFACE_UNSPECIFIED = 0;
+  WORKFLOW_SURFACE_CLI = 1;
+  WORKFLOW_SURFACE_WEB = 2;
+  WORKFLOW_SURFACE_AGENT = 3;
+  WORKFLOW_SURFACE_SYSTEM = 4;
+}
+
+enum WorkflowSourceProvider {
+  WORKFLOW_SOURCE_PROVIDER_UNSPECIFIED = 0;
+  WORKFLOW_SOURCE_PROVIDER_POSTGRES = 1;
+  WORKFLOW_SOURCE_PROVIDER_SUPABASE = 2;
+  WORKFLOW_SOURCE_PROVIDER_MYSQL = 3;
+  WORKFLOW_SOURCE_PROVIDER_MONGODB = 4;
+  WORKFLOW_SOURCE_PROVIDER_BIGQUERY = 5;
+  WORKFLOW_SOURCE_PROVIDER_LAMINAR = 6;
+  WORKFLOW_SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
+  WORKFLOW_SOURCE_PROVIDER_GOOGLE_ANALYTICS = 8;
+  WORKFLOW_SOURCE_PROVIDER_AMPLITUDE = 9;
+  WORKFLOW_SOURCE_PROVIDER_MIXPANEL = 10;
+  WORKFLOW_SOURCE_PROVIDER_POSTHOG = 11;
+  WORKFLOW_SOURCE_PROVIDER_SENTRY = 12;
+  WORKFLOW_SOURCE_PROVIDER_GITHUB = 13;
+  WORKFLOW_SOURCE_PROVIDER_LINEAR = 14;
+}
+
+enum WorkflowDataSourceStatus {
+  WORKFLOW_DATA_SOURCE_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_DATA_SOURCE_STATUS_ACTIVE = 1;
+  WORKFLOW_DATA_SOURCE_STATUS_ERROR = 2;
+  WORKFLOW_DATA_SOURCE_STATUS_DISCONNECTED = 3;
+}
+
+message WorkflowActorSnapshot {
+  string auth_mode = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string email = 2 [
+    (buf.validate.field).string.email = true,
+    (buf.validate.field).string.max_len = 320
+  ];
+  repeated string membership_roles = 3 [
+    (buf.validate.field).repeated.max_items = 32,
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (buf.validate.field).repeated.items.string.max_len = 128
+  ];
+  string user_id = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+}
+
+message WorkflowSourceHeader {
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z0-9-]+$"
+  ];
+  string value = 2 [(buf.validate.field).string.max_len = 8192];
+}
