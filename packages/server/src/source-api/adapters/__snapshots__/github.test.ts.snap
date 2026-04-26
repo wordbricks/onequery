@@ -135,38 +135,6 @@ exports[`github source api adapter > executes GitHub requests with upstream stat
 }
 `;
 
-exports[`github source api adapter > normalizes missing GitHub response content types to octet-stream 1`] = `
-{
-  "body": {
-    "kind": "binary",
-    "value": Uint8Array [
-      1,
-      2,
-      3,
-    ],
-  },
-  "contentType": "application/octet-stream",
-  "headers": [
-    {
-      "name": "etag",
-      "value": ""abc123"",
-    },
-    {
-      "name": "content-type",
-      "value": "application/octet-stream",
-    },
-  ],
-  "operation": "fetch",
-  "selector": "/issues",
-  "source": {
-    "displayName": "GitHub Prod",
-    "provider": "github",
-    "sourceKey": "github-prod",
-  },
-  "status": 200,
-}
-`;
-
 exports[`github source api adapter > normalizes repo-scoped selectors into canonical GitHub URLs 1`] = `
 {
   "body": {

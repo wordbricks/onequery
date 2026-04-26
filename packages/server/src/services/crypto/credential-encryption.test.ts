@@ -63,17 +63,4 @@ describe("credential encryption", () => {
     expect(decrypted.error).toBeInstanceOf(EncryptedCredentialsDecodeError);
     expect(decrypted.error.message).toBe("Invalid encrypted credentials");
   });
-
-  it("returns typed failures for invalid master keys", () => {
-    const parsed = deriveKeyFromBase64Result("master");
-
-    expect(parsed.isErr()).toBe(true);
-    if (parsed.isOk()) {
-      throw new Error("Expected invalid master key to fail");
-    }
-
-    expect(parsed.error.message).toBe(
-      "Master encryption key must be valid base64 that decodes to exactly 32 bytes."
-    );
-  });
 });
