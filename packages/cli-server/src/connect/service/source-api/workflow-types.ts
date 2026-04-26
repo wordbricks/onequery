@@ -14,7 +14,6 @@ import type {
   SourceApiActionEffect,
   SourceApiActionEvent,
   SourceApiActionRequestDescriptor,
-  StoredSourceApiExecutionResult,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
 } from "../../../audit";
@@ -60,7 +59,7 @@ export type StoredAcceptedSourceApiActionDecision = Extract<
 >;
 
 export type StoredAcceptedSourceApiActionResultCommand = {
-  commandPayload: { type: string } & Record<string, unknown>;
+  commandPayload: SourceApiActionCommandPayload;
   decision: StoredAcceptedSourceApiActionDecision;
 };
 
@@ -174,5 +173,3 @@ export type SourceApiWorkflowDispatchContext = {
   organizationId: string;
   requestId: string;
 };
-
-export type StoredSourceApiExecutionPayload = StoredSourceApiExecutionResult;

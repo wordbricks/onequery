@@ -1,7 +1,7 @@
+import { fromBinary, isFieldSet } from "@bufbuild/protobuf";
+import { durationMs } from "@bufbuild/protobuf/wkt";
 import {
   AUDIT_FAMILIES,
-  AUDIT_QUERY_ACTION_EVENT_TYPES,
-  AUDIT_SOURCE_API_ACTION_EVENT_TYPES,
   auditListResponseSchema,
   auditOriginActorSchema,
   auditQueryActionMetricsSchema,
@@ -29,6 +29,38 @@ import type {
   AuditTarget,
 } from "@onequery/contracts/audit";
 import {
+  WorkflowDataSourceStatus,
+  WorkflowSourceProvider,
+} from "@onequery/contracts/workflow/v1/common_pb";
+import {
+  QueryActionCommandPayloadSchema,
+  QueryActionEventPayloadSchema,
+  QueryActionMode,
+  QueryActionSourceDescriptorSchema,
+} from "@onequery/contracts/workflow/v1/query_action_pb";
+import type {
+  QueryActionEventPayload as ProtoQueryActionEventPayload,
+  QueryActionSourceDescriptor as ProtoQueryActionSourceDescriptor,
+} from "@onequery/contracts/workflow/v1/query_action_pb";
+import {
+  SourceApiActionCommandPayloadSchema,
+  SourceApiActionEventPayloadSchema,
+  SourceApiActionFailureCode,
+  SourceApiActionInvokeMode,
+  SourceApiActionOperationKind,
+  SourceApiActionPageFetchSucceededEventSchema,
+  SourceApiActionPaginationPolicy,
+  SourceApiActionReceivedEventSchema,
+  SourceApiActionRequestKind,
+  SourceApiActionRequestDescriptorSchema,
+  SourceApiActionSourceDescriptorSchema,
+} from "@onequery/contracts/workflow/v1/source_api_action_pb";
+import type {
+  SourceApiActionEventPayload as ProtoSourceApiActionEventPayload,
+  SourceApiActionRequestDescriptor as ProtoSourceApiActionRequestDescriptor,
+  SourceApiActionSourceDescriptor as ProtoSourceApiActionSourceDescriptor,
+} from "@onequery/contracts/workflow/v1/source_api_action_pb";
+import {
   and,
   asc,
   auditFeedEntries,
@@ -48,7 +80,7 @@ import type {
   Database,
   WorkflowActorSnapshotJson,
   WorkflowFamily,
-  WorkflowJson,
+  WorkflowProjectionJson,
   WorkflowSurface,
 } from "@onequery/db/server";
 import { z } from "zod";
@@ -57,206 +89,170 @@ const AUDIT_FEED_PROJECTION_NAME = "audit_feed_entries";
 const AUDIT_PROJECTION_BATCH_SIZE = 200;
 const AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST = 5;
 
-const QueryActionStartCommandPayloadSchema = z
-  .object({
-    queryText: z.string(),
-    sourceKey: z.string(),
-  })
-  .strict();
+type QueryActionStartCommandPayload = {
+  sourceKey: string;
+  type: "start_execute" | "start_validate";
+};
 
-const QueryActionSourceDescriptorSchema = z
-  .object({
-    displayName: z.string().nullable(),
-    name: z.string(),
-    organizationId: z.string(),
-    provider: z.string(),
-    sourceId: z.string(),
-    sourceKey: z.string(),
-    sourceStatus: z.string(),
-  })
-  .strict();
+type QueryActionSourceDescriptorPayload = {
+  displayName: string | null;
+  name: string;
+  organizationId: string;
+  provider: string;
+  sourceId: string;
+  sourceKey: string;
+  sourceStatus: string;
+};
 
-const QueryActionEventTypeSchema = z.enum(AUDIT_QUERY_ACTION_EVENT_TYPES);
+type QueryActionEventPayload =
+  | {
+      queryMode: "execute" | "validate";
+      queryText: string;
+      type: "action_received";
+    }
+  | {
+      source: QueryActionSourceDescriptorPayload;
+      type: "source_loaded";
+    }
+  | {
+      sourceKey: string;
+      type: "source_not_found";
+    }
+  | {
+      provider: string;
+      sourceStatus: string;
+      type: "source_not_queryable";
+    }
+  | {
+      type: "query_validated";
+      validatedQuery: string;
+    }
+  | {
+      detail: string;
+      type: "query_rejected";
+    }
+  | {
+      type: "credentials_loaded";
+    }
+  | {
+      detail: string;
+      hint: string;
+      type: "query_preparation_failed";
+    }
+  | {
+      elapsedMs: number;
+      rowCount: number;
+      type: "query_executed";
+    }
+  | {
+      detail: string;
+      type: "query_unavailable";
+    }
+  | {
+      detail: string;
+      type: "query_timed_out";
+    }
+  | {
+      detail: string;
+      type: "query_execution_failed";
+    }
+  | {
+      type: "usage_persisted";
+    }
+  | {
+      detail: string;
+      type: "usage_persist_failed";
+    };
 
-const QueryActionEventPayloadSchemas = {
-  action_received: z
-    .object({
-      queryMode: z.enum(["validate", "execute"]),
-      queryText: z.string(),
-    })
-    .strict(),
-  credentials_loaded: z.object({}).strict(),
-  query_executed: z
-    .object({
-      elapsedMs: z.number().int(),
-      rowCount: z.number().int(),
-    })
-    .strict(),
-  query_execution_failed: z
-    .object({
-      detail: z.string(),
-    })
-    .strict(),
-  query_preparation_failed: z
-    .object({
-      detail: z.string(),
-      hint: z.string(),
-    })
-    .strict(),
-  query_rejected: z
-    .object({
-      detail: z.string(),
-    })
-    .strict(),
-  query_timed_out: z
-    .object({
-      detail: z.string(),
-    })
-    .strict(),
-  query_unavailable: z
-    .object({
-      detail: z.string(),
-    })
-    .strict(),
-  query_validated: z
-    .object({
-      validatedQuery: z.string(),
-    })
-    .strict(),
-  source_loaded: z
-    .object({
-      source: QueryActionSourceDescriptorSchema,
-    })
-    .strict(),
-  source_not_found: z
-    .object({
-      sourceKey: z.string(),
-    })
-    .strict(),
-  source_not_queryable: z
-    .object({
-      provider: z.string(),
-      sourceStatus: z.string(),
-    })
-    .strict(),
-  usage_persist_failed: z
-    .object({
-      detail: z.string(),
-    })
-    .strict(),
-  usage_persisted: z.object({}).strict(),
-} satisfies Record<AuditQueryActionEventType, z.ZodType>;
+type SourceApiRequestDescriptorPayload = {
+  descriptorVersion: string | null;
+  kind: string | null;
+  method: string | null;
+  operation: string;
+  paginationPolicy: string | null;
+  selector: string | null;
+};
 
-const SourceApiRequestDescriptorSchema = z
-  .object({
-    descriptorVersion: z.string().nullable(),
-    kind: z.string().nullable(),
-    method: z.string().nullable(),
-    operation: z.string(),
-    paginationPolicy: z.string().nullable(),
-    selector: z.string().nullable(),
-  })
-  .strict();
+type SourceApiStartCommandPayload =
+  | {
+      sourceKey: string;
+      type: "start_describe";
+    }
+  | {
+      invokeMode: "execute" | "preview_only";
+      requestDescriptor: SourceApiRequestDescriptorPayload;
+      sourceKey: string;
+      type: "start_invoke";
+    };
 
-const SourceApiStartCommandPayloadSchema = z.union([
-  z
-    .object({
-      sourceKey: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      invokeMode: z.enum(["preview_only", "execute"]),
-      requestDescriptor: SourceApiRequestDescriptorSchema,
-      sourceKey: z.string(),
-    })
-    .strict(),
-]);
+type SourceApiSourceDescriptorPayload = {
+  displayName: string | null;
+  provider: string;
+  sourceId: string;
+  sourceKey: string;
+};
 
-const SourceApiSourceDescriptorSchema = z
-  .object({
-    displayName: z.string().nullable(),
-    provider: z.string(),
-    sourceId: z.string(),
-    sourceKey: z.string(),
-  })
-  .strict();
-
-const SourceApiEventTypeSchema = z.enum(AUDIT_SOURCE_API_ACTION_EVENT_TYPES);
-
-const SourceApiEventPayloadSchemas = {
-  action_received: z
-    .object({
-      invokeMode: z.enum(["preview_only", "execute"]).nullable(),
-      requestDescriptor: SourceApiRequestDescriptorSchema.nullable(),
-      requestKind: z.enum(["describe", "invoke"]),
-    })
-    .strict(),
-  descriptor_resolution_failed: z
-    .object({
-      detail: z.string(),
-      failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
-      problemKey: z.string(),
-    })
-    .strict(),
-  descriptor_resolved: z
-    .object({
-      requestDescriptor: SourceApiRequestDescriptorSchema.nullable(),
-    })
-    .strict(),
-  page_fetch_failed: z
-    .object({
-      attemptNumber: z.number().int(),
-      detail: z.string(),
-      failureCode: z.enum([
-        "invalid_request",
-        "request_timed_out",
-        "execution_failed",
-        "execution_state_invalid",
-      ]),
-      kind: z.literal("terminal_failure"),
-      pageIndex: z.number().int(),
-      problemKey: z.string(),
-    })
-    .strict(),
-  page_fetch_succeeded: z
-    .object({
-      attemptNumber: z.number().int(),
-      contentType: z.string().nullable(),
-      hasContinuation: z.boolean(),
-      httpStatus: z.number().int(),
-      pageIndex: z.number().int(),
-      responseBytes: z.number().int().nullable(),
-    })
-    .strict(),
-  request_preparation_failed: z
-    .object({
-      detail: z.string(),
-      failureCode: z.enum(["invalid_request", "permission_denied"]),
-      problemKey: z.string(),
-    })
-    .strict(),
-  request_prepared: z
-    .object({
-      preparedRequestFingerprint: z.string(),
-    })
-    .strict(),
-  resume_requested: z
-    .object({
-      attemptNumber: z.number().int(),
-    })
-    .strict(),
-  source_loaded: z
-    .object({
-      source: SourceApiSourceDescriptorSchema,
-    })
-    .strict(),
-  source_not_found: z
-    .object({
-      sourceKey: z.string(),
-    })
-    .strict(),
-} satisfies Record<AuditSourceApiActionEventType, z.ZodType>;
+type SourceApiEventPayload =
+  | {
+      invokeMode: "execute" | "preview_only" | null;
+      requestDescriptor: SourceApiRequestDescriptorPayload | null;
+      requestKind: "describe" | "invoke";
+      type: "action_received";
+    }
+  | {
+      source: SourceApiSourceDescriptorPayload;
+      type: "source_loaded";
+    }
+  | {
+      sourceKey: string;
+      type: "source_not_found";
+    }
+  | {
+      requestDescriptor: SourceApiRequestDescriptorPayload | null;
+      type: "descriptor_resolved";
+    }
+  | {
+      detail: string;
+      failureCode: "descriptor_unavailable" | "permission_denied";
+      problemKey: string;
+      type: "descriptor_resolution_failed";
+    }
+  | {
+      preparedRequestFingerprint: string;
+      type: "request_prepared";
+    }
+  | {
+      detail: string;
+      failureCode: "invalid_request" | "permission_denied";
+      problemKey: string;
+      type: "request_preparation_failed";
+    }
+  | {
+      attemptNumber: number;
+      type: "resume_requested";
+    }
+  | {
+      attemptNumber: number;
+      contentType: string | null;
+      hasContinuation: boolean;
+      httpStatus: number;
+      pageIndex: number;
+      responseBytes: number | null;
+      type: "page_fetch_succeeded";
+    }
+  | {
+      attemptNumber: number;
+      detail: string;
+      failureCode:
+        | "execution_failed"
+        | "execution_state_invalid"
+        | "invalid_request"
+        | "request_timed_out";
+      kind: "terminal_failure";
+      pageIndex: number;
+      problemKey: string;
+      type: "page_fetch_failed";
+    };
 
 // Comment: projection rows retain richer preview state than the public feed
 // contract exposes, so storage and API schemas stay separate here.
@@ -361,13 +357,14 @@ type SourceApiActionProjectionRow = {
 type QueryActionEventRecord = {
   actionId: string;
   actorSnapshotJson: WorkflowActorSnapshotJson;
-  commandPayloadJson: WorkflowJson;
+  commandPayloadBytes: Buffer;
+  commandType: string;
   commitPosition: bigint;
   eventId: string;
   eventType: string;
   occurredAt: Date;
   organizationId: string;
-  payloadJson: WorkflowJson;
+  payloadBytes: Buffer;
   sequence: number;
   surface: WorkflowSurface;
 };
@@ -375,28 +372,17 @@ type QueryActionEventRecord = {
 type SourceApiActionEventRecord = {
   actionId: string;
   actorSnapshotJson: WorkflowActorSnapshotJson;
-  commandPayloadJson: WorkflowJson;
+  commandPayloadBytes: Buffer;
+  commandType: string;
   commitPosition: bigint;
   eventId: string;
   eventType: string;
   occurredAt: Date;
   organizationId: string;
-  payloadJson: WorkflowJson;
+  payloadBytes: Buffer;
   sequence: number;
   surface: WorkflowSurface;
 };
-
-type EventPayloadFromSchemas<TSchemas extends Record<string, z.ZodType>> = {
-  [TType in keyof TSchemas & string]: z.infer<TSchemas[TType]> & {
-    type: TType;
-  };
-}[keyof TSchemas & string];
-type QueryActionEventPayload = EventPayloadFromSchemas<
-  typeof QueryActionEventPayloadSchemas
->;
-type SourceApiEventPayload = EventPayloadFromSchemas<
-  typeof SourceApiEventPayloadSchemas
->;
 
 type AuditProjectionRow =
   | QueryActionProjectionRow
@@ -512,30 +498,604 @@ function normalizeOriginActor(
   return auditOriginActorSchema.parse(actorSnapshotJson);
 }
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected workflow payload variant: ${String(value)}`);
+}
+
+function requireProtoMessage<T>(value: T | undefined, fieldName: string): T {
+  if (value === undefined) {
+    throw new Error(`workflow protobuf field ${fieldName} is missing`);
+  }
+
+  return value;
+}
+
+function assertPayloadType(input: {
+  actionId: string;
+  actual: string;
+  expected: string;
+  family: WorkflowFamily;
+}) {
+  if (input.actual !== input.expected) {
+    throw new Error(
+      `${input.family} ${input.actionId} expected ${input.expected} payload but decoded ${input.actual}`
+    );
+  }
+}
+
+function parseQueryActionStartCommand(
+  record: QueryActionEventRecord
+): QueryActionStartCommandPayload {
+  const payload = fromBinary(
+    QueryActionCommandPayloadSchema,
+    record.commandPayloadBytes
+  );
+
+  switch (payload.command.case) {
+    case "startValidate":
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: "start_validate",
+        expected: record.commandType,
+        family: "query_action",
+      });
+      return {
+        sourceKey: payload.command.value.sourceKey,
+        type: "start_validate",
+      };
+    case "startExecute":
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: "start_execute",
+        expected: record.commandType,
+        family: "query_action",
+      });
+      return {
+        sourceKey: payload.command.value.sourceKey,
+        type: "start_execute",
+      };
+    case undefined:
+      throw new Error(
+        `query_action ${record.actionId} command payload is missing its oneof case`
+      );
+    default:
+      throw new Error(
+        `query_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
+      );
+  }
+}
+
+function parseSourceApiStartCommand(
+  record: SourceApiActionEventRecord
+): SourceApiStartCommandPayload {
+  const payload = fromBinary(
+    SourceApiActionCommandPayloadSchema,
+    record.commandPayloadBytes
+  );
+
+  switch (payload.command.case) {
+    case "startDescribe":
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: "start_describe",
+        expected: record.commandType,
+        family: "source_api_action",
+      });
+      return {
+        sourceKey: payload.command.value.sourceKey,
+        type: "start_describe",
+      };
+    case "startInvoke":
+      assertPayloadType({
+        actionId: record.actionId,
+        actual: "start_invoke",
+        expected: record.commandType,
+        family: "source_api_action",
+      });
+      return {
+        invokeMode: fromSourceApiInvokeMode(payload.command.value.invokeMode),
+        requestDescriptor: fromSourceApiRequestDescriptor(
+          payload.command.value.requestDescriptor
+        ),
+        sourceKey: payload.command.value.sourceKey,
+        type: "start_invoke",
+      };
+    case undefined:
+      throw new Error(
+        `source_api_action ${record.actionId} command payload is missing its oneof case`
+      );
+    default:
+      throw new Error(
+        `source_api_action ${record.actionId} projection expected a start command but loaded ${record.commandType}`
+      );
+  }
+}
+
 function parseQueryActionEventPayload(
   record: QueryActionEventRecord
 ): QueryActionEventPayload {
-  const eventType = QueryActionEventTypeSchema.parse(record.eventType);
-  const payload = QueryActionEventPayloadSchemas[eventType].parse(
-    record.payloadJson
+  const payload = fromBinary(
+    QueryActionEventPayloadSchema,
+    record.payloadBytes
   );
-
-  // Comment: workflow storage keeps transition truth in event_type and strips
-  // the duplicated discriminator out of payload_json.
-  return { ...payload, type: eventType } as QueryActionEventPayload;
+  const event = fromQueryActionEventPayload(payload);
+  assertPayloadType({
+    actionId: record.actionId,
+    actual: event.type,
+    expected: record.eventType,
+    family: "query_action",
+  });
+  return event;
 }
 
 function parseSourceApiEventPayload(
   record: SourceApiActionEventRecord
 ): SourceApiEventPayload {
-  const eventType = SourceApiEventTypeSchema.parse(record.eventType);
-  const payload = SourceApiEventPayloadSchemas[eventType].parse(
-    record.payloadJson
+  const payload = fromBinary(
+    SourceApiActionEventPayloadSchema,
+    record.payloadBytes
   );
+  const event = fromSourceApiEventPayload(payload);
+  assertPayloadType({
+    actionId: record.actionId,
+    actual: event.type,
+    expected: record.eventType,
+    family: "source_api_action",
+  });
+  return event;
+}
 
-  // Comment: workflow storage keeps transition truth in event_type and strips
-  // the duplicated discriminator out of payload_json.
-  return { ...payload, type: eventType } as SourceApiEventPayload;
+function fromQueryActionEventPayload(
+  payload: ProtoQueryActionEventPayload
+): QueryActionEventPayload {
+  switch (payload.event.case) {
+    case "actionReceived":
+      return {
+        queryMode: fromQueryActionMode(payload.event.value.queryMode),
+        queryText: payload.event.value.queryText,
+        type: "action_received",
+      };
+    case "sourceLoaded":
+      return {
+        source: fromQueryActionSourceDescriptor(payload.event.value.source),
+        type: "source_loaded",
+      };
+    case "sourceNotFound":
+      return {
+        sourceKey: payload.event.value.sourceKey,
+        type: "source_not_found",
+      };
+    case "sourceNotQueryable":
+      return {
+        provider: fromWorkflowSourceProvider(payload.event.value.provider),
+        sourceStatus: fromWorkflowDataSourceStatus(
+          payload.event.value.sourceStatus
+        ),
+        type: "source_not_queryable",
+      };
+    case "queryValidated":
+      return {
+        type: "query_validated",
+        validatedQuery: payload.event.value.validatedQuery,
+      };
+    case "queryRejected":
+      return {
+        detail: payload.event.value.detail,
+        type: "query_rejected",
+      };
+    case "credentialsLoaded":
+      return {
+        type: "credentials_loaded",
+      };
+    case "queryPreparationFailed":
+      return {
+        detail: payload.event.value.detail,
+        hint: payload.event.value.hint,
+        type: "query_preparation_failed",
+      };
+    case "queryExecuted":
+      return {
+        elapsedMs: durationMs(
+          requireProtoMessage(payload.event.value.elapsed, "elapsed")
+        ),
+        rowCount: payload.event.value.rowCount,
+        type: "query_executed",
+      };
+    case "queryUnavailable":
+      return {
+        detail: payload.event.value.detail,
+        type: "query_unavailable",
+      };
+    case "queryTimedOut":
+      return {
+        detail: payload.event.value.detail,
+        type: "query_timed_out",
+      };
+    case "queryExecutionFailed":
+      return {
+        detail: payload.event.value.detail,
+        type: "query_execution_failed",
+      };
+    case "usagePersisted":
+      return {
+        type: "usage_persisted",
+      };
+    case "usagePersistFailed":
+      return {
+        detail: payload.event.value.detail,
+        type: "usage_persist_failed",
+      };
+    case undefined:
+      throw new Error("query action event payload missing oneof case");
+    default:
+      return assertNever(payload.event);
+  }
+}
+
+function fromSourceApiEventPayload(
+  payload: ProtoSourceApiActionEventPayload
+): SourceApiEventPayload {
+  switch (payload.event.case) {
+    case "actionReceived":
+      return {
+        invokeMode: isFieldSet(
+          payload.event.value,
+          SourceApiActionReceivedEventSchema.field.invokeMode
+        )
+          ? fromSourceApiInvokeMode(payload.event.value.invokeMode)
+          : null,
+        requestDescriptor:
+          payload.event.value.requestDescriptor === undefined
+            ? null
+            : fromSourceApiRequestDescriptor(
+                payload.event.value.requestDescriptor
+              ),
+        requestKind: fromSourceApiRequestKind(payload.event.value.requestKind),
+        type: "action_received",
+      };
+    case "sourceLoaded":
+      return {
+        source: fromSourceApiSourceDescriptor(payload.event.value.source),
+        type: "source_loaded",
+      };
+    case "sourceNotFound":
+      return {
+        sourceKey: payload.event.value.sourceKey,
+        type: "source_not_found",
+      };
+    case "descriptorResolved":
+      return {
+        requestDescriptor:
+          payload.event.value.requestDescriptor === undefined
+            ? null
+            : fromSourceApiRequestDescriptor(
+                payload.event.value.requestDescriptor
+              ),
+        type: "descriptor_resolved",
+      };
+    case "descriptorResolutionFailed": {
+      const failureCode = fromDescriptorResolutionFailureCode(
+        payload.event.value.failureCode
+      );
+      return {
+        detail: payload.event.value.detail,
+        failureCode,
+        problemKey: sourceApiProblemKeyForFailure(failureCode),
+        type: "descriptor_resolution_failed",
+      };
+    }
+    case "requestPrepared":
+      return {
+        preparedRequestFingerprint:
+          payload.event.value.preparedRequestFingerprint,
+        type: "request_prepared",
+      };
+    case "requestPreparationFailed": {
+      const failureCode = fromRequestPreparationFailureCode(
+        payload.event.value.failureCode
+      );
+      return {
+        detail: payload.event.value.detail,
+        failureCode,
+        problemKey: sourceApiProblemKeyForFailure(failureCode),
+        type: "request_preparation_failed",
+      };
+    }
+    case "resumeRequested":
+      return {
+        attemptNumber: payload.event.value.attemptNumber,
+        type: "resume_requested",
+      };
+    case "pageFetchSucceeded":
+      return {
+        attemptNumber: payload.event.value.attemptNumber,
+        contentType: isFieldSet(
+          payload.event.value,
+          SourceApiActionPageFetchSucceededEventSchema.field.contentType
+        )
+          ? payload.event.value.contentType
+          : null,
+        hasContinuation: payload.event.value.hasContinuation,
+        httpStatus: payload.event.value.httpStatus,
+        pageIndex: payload.event.value.pageIndex,
+        responseBytes: isFieldSet(
+          payload.event.value,
+          SourceApiActionPageFetchSucceededEventSchema.field.responseBytes
+        )
+          ? Number(payload.event.value.responseBytes)
+          : null,
+        type: "page_fetch_succeeded",
+      };
+    case "pageFetchFailed": {
+      const failureCode = fromPageFetchFailureCode(
+        payload.event.value.failureCode
+      );
+      return {
+        attemptNumber: payload.event.value.attemptNumber,
+        detail: payload.event.value.detail,
+        failureCode,
+        kind: "terminal_failure",
+        pageIndex: payload.event.value.pageIndex,
+        problemKey: sourceApiProblemKeyForFailure(failureCode),
+        type: "page_fetch_failed",
+      };
+    }
+    case undefined:
+      throw new Error("source api action event payload missing oneof case");
+    default:
+      return assertNever(payload.event);
+  }
+}
+
+function fromQueryActionSourceDescriptor(
+  source: ProtoQueryActionSourceDescriptor | undefined
+): QueryActionSourceDescriptorPayload {
+  const value = requireProtoMessage(source, "source");
+
+  return {
+    displayName: isFieldSet(
+      value,
+      QueryActionSourceDescriptorSchema.field.displayName
+    )
+      ? value.displayName
+      : null,
+    name: value.name,
+    organizationId: value.organizationId,
+    provider: fromWorkflowSourceProvider(value.provider),
+    sourceId: value.sourceId,
+    sourceKey: value.sourceKey,
+    sourceStatus: fromWorkflowDataSourceStatus(value.sourceStatus),
+  };
+}
+
+function fromSourceApiSourceDescriptor(
+  source: ProtoSourceApiActionSourceDescriptor | undefined
+): SourceApiSourceDescriptorPayload {
+  const value = requireProtoMessage(source, "source");
+
+  return {
+    displayName: isFieldSet(
+      value,
+      SourceApiActionSourceDescriptorSchema.field.displayName
+    )
+      ? value.displayName
+      : null,
+    provider: fromWorkflowSourceProvider(value.provider),
+    sourceId: value.sourceId,
+    sourceKey: value.sourceKey,
+  };
+}
+
+function fromSourceApiRequestDescriptor(
+  descriptor: ProtoSourceApiActionRequestDescriptor | undefined
+): SourceApiRequestDescriptorPayload {
+  const value = requireProtoMessage(descriptor, "request_descriptor");
+
+  return {
+    descriptorVersion: isFieldSet(
+      value,
+      SourceApiActionRequestDescriptorSchema.field.descriptorVersion
+    )
+      ? value.descriptorVersion
+      : null,
+    kind: isFieldSet(value, SourceApiActionRequestDescriptorSchema.field.kind)
+      ? fromSourceApiOperationKind(value.kind)
+      : null,
+    method: isFieldSet(
+      value,
+      SourceApiActionRequestDescriptorSchema.field.method
+    )
+      ? value.method
+      : null,
+    operation: value.operation,
+    paginationPolicy: isFieldSet(
+      value,
+      SourceApiActionRequestDescriptorSchema.field.paginationPolicy
+    )
+      ? fromSourceApiPaginationPolicy(value.paginationPolicy)
+      : null,
+    selector: isFieldSet(
+      value,
+      SourceApiActionRequestDescriptorSchema.field.selector
+    )
+      ? value.selector
+      : null,
+  };
+}
+
+function fromWorkflowSourceProvider(provider: WorkflowSourceProvider): string {
+  switch (provider) {
+    case WorkflowSourceProvider.POSTGRES:
+      return "postgres";
+    case WorkflowSourceProvider.SUPABASE:
+      return "supabase";
+    case WorkflowSourceProvider.MYSQL:
+      return "mysql";
+    case WorkflowSourceProvider.MONGODB:
+      return "mongodb";
+    case WorkflowSourceProvider.BIGQUERY:
+      return "bigquery";
+    case WorkflowSourceProvider.LAMINAR:
+      return "laminar";
+    case WorkflowSourceProvider.AWS_ATHENA_CONNECTOR:
+      return "aws_athena_connector";
+    case WorkflowSourceProvider.GOOGLE_ANALYTICS:
+      return "ga";
+    case WorkflowSourceProvider.AMPLITUDE:
+      return "amplitude";
+    case WorkflowSourceProvider.MIXPANEL:
+      return "mixpanel";
+    case WorkflowSourceProvider.POSTHOG:
+      return "posthog";
+    case WorkflowSourceProvider.SENTRY:
+      return "sentry";
+    case WorkflowSourceProvider.GITHUB:
+      return "github";
+    case WorkflowSourceProvider.LINEAR:
+      return "linear";
+    case WorkflowSourceProvider.UNSPECIFIED:
+      throw new Error("workflow source provider is unspecified");
+  }
+}
+
+function fromWorkflowDataSourceStatus(
+  status: WorkflowDataSourceStatus
+): string {
+  switch (status) {
+    case WorkflowDataSourceStatus.ACTIVE:
+      return "active";
+    case WorkflowDataSourceStatus.ERROR:
+      return "error";
+    case WorkflowDataSourceStatus.DISCONNECTED:
+      return "disconnected";
+    case WorkflowDataSourceStatus.UNSPECIFIED:
+      throw new Error("workflow data source status is unspecified");
+  }
+}
+
+function fromQueryActionMode(mode: QueryActionMode) {
+  switch (mode) {
+    case QueryActionMode.VALIDATE:
+      return "validate";
+    case QueryActionMode.EXECUTE:
+      return "execute";
+    case QueryActionMode.UNSPECIFIED:
+      throw new Error("query action mode is unspecified");
+  }
+}
+
+function fromSourceApiRequestKind(kind: SourceApiActionRequestKind) {
+  switch (kind) {
+    case SourceApiActionRequestKind.DESCRIBE:
+      return "describe";
+    case SourceApiActionRequestKind.INVOKE:
+      return "invoke";
+    case SourceApiActionRequestKind.UNSPECIFIED:
+      throw new Error("source api request kind is unspecified");
+  }
+}
+
+function fromSourceApiInvokeMode(mode: SourceApiActionInvokeMode) {
+  switch (mode) {
+    case SourceApiActionInvokeMode.PREVIEW_ONLY:
+      return "preview_only";
+    case SourceApiActionInvokeMode.EXECUTE:
+      return "execute";
+    case SourceApiActionInvokeMode.UNSPECIFIED:
+      throw new Error("source api invoke mode is unspecified");
+  }
+}
+
+function fromSourceApiOperationKind(kind: SourceApiActionOperationKind) {
+  switch (kind) {
+    case SourceApiActionOperationKind.HTTP_REQUEST:
+      return "http_request";
+    case SourceApiActionOperationKind.STRUCTURED_REQUEST:
+      return "structured_request";
+    case SourceApiActionOperationKind.UNSPECIFIED:
+      throw new Error("source api operation kind is unspecified");
+  }
+}
+
+function fromSourceApiPaginationPolicy(
+  policy: SourceApiActionPaginationPolicy
+) {
+  switch (policy) {
+    case SourceApiActionPaginationPolicy.NONE:
+      return "none";
+    case SourceApiActionPaginationPolicy.CONTINUATION_TOKEN:
+      return "continuation_token";
+    case SourceApiActionPaginationPolicy.UNSPECIFIED:
+      throw new Error("source api pagination policy is unspecified");
+  }
+}
+
+function fromDescriptorResolutionFailureCode(code: SourceApiActionFailureCode) {
+  switch (code) {
+    case SourceApiActionFailureCode.DESCRIPTOR_UNAVAILABLE:
+      return "descriptor_unavailable";
+    case SourceApiActionFailureCode.PERMISSION_DENIED:
+      return "permission_denied";
+    default:
+      throw new Error(
+        `source api descriptor failure code ${code} is not valid for descriptor resolution`
+      );
+  }
+}
+
+function fromRequestPreparationFailureCode(code: SourceApiActionFailureCode) {
+  switch (code) {
+    case SourceApiActionFailureCode.INVALID_REQUEST:
+      return "invalid_request";
+    case SourceApiActionFailureCode.PERMISSION_DENIED:
+      return "permission_denied";
+    default:
+      throw new Error(
+        `source api request preparation failure code ${code} is not valid for request preparation`
+      );
+  }
+}
+
+function fromPageFetchFailureCode(code: SourceApiActionFailureCode) {
+  switch (code) {
+    case SourceApiActionFailureCode.INVALID_REQUEST:
+      return "invalid_request";
+    case SourceApiActionFailureCode.REQUEST_TIMED_OUT:
+      return "request_timed_out";
+    case SourceApiActionFailureCode.EXECUTION_FAILED:
+      return "execution_failed";
+    case SourceApiActionFailureCode.EXECUTION_STATE_INVALID:
+      return "execution_state_invalid";
+    default:
+      throw new Error(
+        `source api page fetch failure code ${code} is not valid for page fetch`
+      );
+  }
+}
+
+function sourceApiProblemKeyForFailure(
+  failureCode:
+    | "descriptor_unavailable"
+    | "execution_failed"
+    | "execution_state_invalid"
+    | "invalid_request"
+    | "permission_denied"
+    | "request_timed_out"
+) {
+  switch (failureCode) {
+    case "descriptor_unavailable":
+      return "SOURCE_API_DESCRIBE_FAILED";
+    case "invalid_request":
+      return "SOURCE_API_REQUEST_INVALID";
+    case "permission_denied":
+      return "SOURCE_API_FORBIDDEN";
+    case "request_timed_out":
+      return "SOURCE_API_EXECUTION_TIMED_OUT";
+    case "execution_failed":
+      return "SOURCE_API_EXECUTION_FAILED";
+    case "execution_state_invalid":
+      return "SOURCE_API_EXECUTION_STATE_INVALID";
+  }
 }
 
 function normalizeQueryActionMetrics(
@@ -720,9 +1280,7 @@ function createQueryActionRowFromStart(
     );
   }
 
-  const startCommand = QueryActionStartCommandPayloadSchema.parse(
-    record.commandPayloadJson
-  );
+  const startCommand = parseQueryActionStartCommand(record);
   const preview = QueryActionProjectionPreviewSchema.parse({
     elapsedMs: null,
     errorDetail: null,
@@ -921,9 +1479,7 @@ function createSourceApiActionRowFromStart(
     );
   }
 
-  const startCommand = SourceApiStartCommandPayloadSchema.parse(
-    record.commandPayloadJson
-  );
+  const startCommand = parseSourceApiStartCommand(record);
   const preview = SourceApiActionProjectionPreviewSchema.parse({
     attemptNumber: null,
     errorDetail: null,
@@ -1238,13 +1794,14 @@ async function loadQueryActionEventBatch(
     .select({
       actionId: queryActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandPayloadJson: workflowCommands.commandPayloadJson,
+      commandPayloadBytes: workflowCommands.commandPayloadBytes,
+      commandType: workflowCommands.commandType,
       commitPosition: queryActionEvents.commitPosition,
       eventId: queryActionEvents.id,
       eventType: queryActionEvents.eventType,
       occurredAt: queryActionEvents.occurredAt,
       organizationId: workflowCommands.organizationId,
-      payloadJson: queryActionEvents.payloadJson,
+      payloadBytes: queryActionEvents.payloadBytes,
       sequence: queryActionEvents.sequence,
       surface: workflowCommands.surface,
     })
@@ -1267,13 +1824,14 @@ async function loadSourceApiActionEventBatch(
     .select({
       actionId: sourceApiActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandPayloadJson: workflowCommands.commandPayloadJson,
+      commandPayloadBytes: workflowCommands.commandPayloadBytes,
+      commandType: workflowCommands.commandType,
       commitPosition: sourceApiActionEvents.commitPosition,
       eventId: sourceApiActionEvents.id,
       eventType: sourceApiActionEvents.eventType,
       occurredAt: sourceApiActionEvents.occurredAt,
       organizationId: workflowCommands.organizationId,
-      payloadJson: sourceApiActionEvents.payloadJson,
+      payloadBytes: sourceApiActionEvents.payloadBytes,
       sequence: sourceApiActionEvents.sequence,
       surface: workflowCommands.surface,
     })
@@ -1296,13 +1854,14 @@ async function rebuildQueryActionRow(
     .select({
       actionId: queryActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandPayloadJson: workflowCommands.commandPayloadJson,
+      commandPayloadBytes: workflowCommands.commandPayloadBytes,
+      commandType: workflowCommands.commandType,
       commitPosition: queryActionEvents.commitPosition,
       eventId: queryActionEvents.id,
       eventType: queryActionEvents.eventType,
       occurredAt: queryActionEvents.occurredAt,
       organizationId: workflowCommands.organizationId,
-      payloadJson: queryActionEvents.payloadJson,
+      payloadBytes: queryActionEvents.payloadBytes,
       sequence: queryActionEvents.sequence,
       surface: workflowCommands.surface,
     })
@@ -1343,13 +1902,14 @@ async function rebuildSourceApiActionRow(
     .select({
       actionId: sourceApiActionEvents.actionId,
       actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandPayloadJson: workflowCommands.commandPayloadJson,
+      commandPayloadBytes: workflowCommands.commandPayloadBytes,
+      commandType: workflowCommands.commandType,
       commitPosition: sourceApiActionEvents.commitPosition,
       eventId: sourceApiActionEvents.id,
       eventType: sourceApiActionEvents.eventType,
       occurredAt: sourceApiActionEvents.occurredAt,
       organizationId: workflowCommands.organizationId,
-      payloadJson: sourceApiActionEvents.payloadJson,
+      payloadBytes: sourceApiActionEvents.payloadBytes,
       sequence: sourceApiActionEvents.sequence,
       surface: workflowCommands.surface,
     })
@@ -1385,8 +1945,8 @@ async function upsertAuditFeedRow(
   db: DatabaseExecutor,
   row: AuditProjectionRow
 ) {
-  const previewJson = row.preview as WorkflowJson;
-  const metricsJson = row.metrics as WorkflowJson | null;
+  const previewJson = row.preview as WorkflowProjectionJson;
+  const metricsJson = row.metrics as WorkflowProjectionJson | null;
 
   await db
     .insert(auditFeedEntries)
@@ -1402,14 +1962,14 @@ async function upsertAuditFeedRow(
       lastEventType: row.lastEventType,
       metricsJson,
       organizationId: row.organizationId,
-      originActorJson: row.originActor as WorkflowJson,
+      originActorJson: row.originActor as WorkflowProjectionJson,
       originSurface: row.originSurface,
       outcome: row.outcome,
       phase: row.phase,
       searchDocument: row.searchDocument,
       startedAt: row.startedAt,
       subtitle: row.subtitle,
-      targetJson: row.target as WorkflowJson,
+      targetJson: row.target as WorkflowProjectionJson,
       title: row.title,
     })
     .onConflictDoUpdate({
@@ -1423,14 +1983,14 @@ async function upsertAuditFeedRow(
         lastEventType: row.lastEventType,
         metricsJson,
         organizationId: row.organizationId,
-        originActorJson: row.originActor as WorkflowJson,
+        originActorJson: row.originActor as WorkflowProjectionJson,
         originSurface: row.originSurface,
         outcome: row.outcome,
         phase: row.phase,
         searchDocument: row.searchDocument,
         startedAt: row.startedAt,
         subtitle: row.subtitle,
-        targetJson: row.target as WorkflowJson,
+        targetJson: row.target as WorkflowProjectionJson,
         title: row.title,
       },
       setWhere: sql`${auditFeedEntries.lastProjectedSequence} < ${sql.raw("excluded.last_projected_sequence")}`,

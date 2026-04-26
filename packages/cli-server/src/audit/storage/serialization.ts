@@ -1,13 +1,9 @@
-import type { WorkflowJson } from "@onequery/db/server";
+import type { WorkflowProjectionJson } from "@onequery/db/server";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 import { z } from "zod";
 
-import type {
-  SharedWorkflowRejectCode,
-  WorkflowCommittedEvent,
-  WorkflowFamily,
-} from "../kernel";
+import type { SharedWorkflowRejectCode, WorkflowFamily } from "../kernel";
 import { SHARED_WORKFLOW_REJECT_CODES } from "../kernel";
 import { WorkflowStorageCorruptRowError } from "./errors";
 import type { WorkflowActionRepairAnchor } from "./types";
@@ -51,29 +47,9 @@ export function parseStoredSharedRejectCode(
   });
 }
 
-export function toWorkflowPayloadJson<Value extends { type: string }>(
-  value: Value
-) {
-  const { type: _type, ...payload } = value as Value & Record<string, unknown>;
-
-  return toWorkflowJson(payload);
-}
-
-export function toWorkflowEventPayloadJson<Value extends { type: string }>(
-  value: WorkflowCommittedEvent<Value>
-) {
-  const {
-    id: _id,
-    occurredAt: _occurredAt,
-    sequence: _sequence,
-    type: _type,
-    ...payload
-  } = value as WorkflowCommittedEvent<Value> & Record<string, unknown>;
-
-  return toWorkflowJson(payload);
-}
-
-export function toWorkflowJson(value: Record<string, unknown>): WorkflowJson {
+export function toWorkflowProjectionJson(
+  value: Record<string, unknown>
+): WorkflowProjectionJson {
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined)
   );

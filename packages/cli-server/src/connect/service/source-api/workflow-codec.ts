@@ -1,20 +1,15 @@
 import { Buffer } from "node:buffer";
 
-import { PROVIDER_TYPES } from "@onequery/db/server";
 import type {
   SourceApiDescriptor,
   SourceApiDraft,
   SourceApiExecutionResult,
 } from "@onequery/server/source-api";
-import { z } from "zod";
 
 import type {
   SourceApiActionRequestDescriptor,
   SourceApiActionSourceDescriptor,
-  StoredSourceApiExecutionResult,
 } from "../../../audit";
-import { CLI_PROBLEM_KEYS } from "../../../domain/problems";
-import type { CliProblemKey } from "../../../domain/problems";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { createCliServiceFailure } from "../result";
 import {
@@ -29,187 +24,6 @@ import type {
   StoredAcceptedSourceApiActionDecision,
   StoredAcceptedSourceApiActionResultCommand,
 } from "./workflow-types";
-
-const JsonValueSchema: z.ZodType<import("@bufbuild/protobuf").JsonValue> =
-  z.lazy(() =>
-    z.union([
-      z.string(),
-      z.number(),
-      z.boolean(),
-      z.null(),
-      z.array(JsonValueSchema),
-      z.record(z.string(), JsonValueSchema),
-    ])
-  );
-
-const CliProblemKeySchema = z.enum(
-  CLI_PROBLEM_KEYS as [CliProblemKey, ...CliProblemKey[]]
-);
-
-const SourceApiSourceSchema = z
-  .object({
-    displayName: z.string().nullable().optional(),
-    provider: z.enum(PROVIDER_TYPES),
-    sourceKey: z.string(),
-  })
-  .strict();
-
-const SourceApiHeaderSchema = z
-  .object({
-    name: z.string(),
-    value: z.string(),
-  })
-  .strict();
-
-const SourceApiExampleSchema = z
-  .object({
-    command: z.string(),
-    description: z.string().optional(),
-    label: z.string(),
-  })
-  .strict();
-
-const SourceApiOperationSchema = z
-  .object({
-    description: z.string(),
-    examples: z.array(SourceApiExampleSchema),
-    fieldPolicy: z
-      .object({
-        acceptsInput: z.boolean(),
-        allowsRawFields: z.boolean(),
-        allowsTypedFields: z.boolean(),
-        inputMode: z.enum(["none", "request_object", "request_body"]),
-        mergePatches: z.boolean(),
-        supportsArrayPaths: z.boolean(),
-        supportsNestedPaths: z.boolean(),
-      })
-      .strict(),
-    headerPolicy: z
-      .object({
-        allowedRequestHeaders: z.array(z.string()),
-        allowedResponseHeaders: z.array(z.string()),
-      })
-      .strict(),
-    kind: z.enum(["http_request", "structured_request"]),
-    methodPolicy: z
-      .object({
-        allowedMethods: z.array(z.string()),
-        defaultMethod: z.string().optional(),
-      })
-      .strict(),
-    name: z.string(),
-    notes: z.array(z.string()),
-    paginationPolicy: z.enum(["none", "continuation_token"]),
-    selectorKind: z.enum(["none", "path", "identifier"]),
-    selectorLabel: z.string().optional(),
-    summary: z.string(),
-  })
-  .strict();
-
-const SourceApiDescriptorSchema = z
-  .object({
-    defaultPathOperation: z.string().optional(),
-    descriptorVersion: z.string(),
-    examples: z.array(SourceApiExampleSchema),
-    notes: z.array(z.string()),
-    operations: z.array(SourceApiOperationSchema),
-    source: SourceApiSourceSchema,
-  })
-  .strict();
-
-const StoredSourceApiResponseBodySchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      kind: z.literal("none"),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal("json"),
-      value: JsonValueSchema,
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal("text"),
-      value: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      base64: z.string(),
-      kind: z.literal("binary"),
-    })
-    .strict(),
-]);
-
-const StoredSourceApiExecutionResultSchema = z
-  .object({
-    body: StoredSourceApiResponseBodySchema,
-    contentType: z.string(),
-    headers: z.array(SourceApiHeaderSchema),
-    nextContinuationState: JsonValueSchema.optional(),
-    operation: z.string(),
-    selector: z.string().optional(),
-    source: SourceApiSourceSchema,
-    status: z.number().int(),
-  })
-  .strict();
-
-const StoredDescriptorResolutionResultPayloadSchema = z.discriminatedUnion(
-  "kind",
-  [
-    z
-      .object({
-        descriptor: SourceApiDescriptorSchema,
-        kind: z.literal("resolved"),
-        requestDescriptor: z.unknown().nullable(),
-        type: z.literal("record_descriptor_resolution"),
-      })
-      .strict(),
-    z
-      .object({
-        detail: z.string(),
-        failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
-        kind: z.literal("failed"),
-        problemKey: CliProblemKeySchema,
-        type: z.literal("record_descriptor_resolution"),
-      })
-      .strict(),
-  ]
-);
-
-const StoredPageFetchResultPayloadSchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      attemptNumber: z.number().int(),
-      contentType: z.string().nullable(),
-      executionResult: StoredSourceApiExecutionResultSchema,
-      hasContinuation: z.boolean(),
-      httpStatus: z.number().int(),
-      kind: z.literal("succeeded"),
-      pageIndex: z.number().int(),
-      responseBytes: z.number().int().nullable(),
-      type: z.literal("record_page_fetch"),
-    })
-    .strict(),
-  z
-    .object({
-      attemptNumber: z.number().int(),
-      detail: z.string(),
-      failureCode: z.enum([
-        "invalid_request",
-        "request_timed_out",
-        "execution_failed",
-        "execution_state_invalid",
-      ]),
-      kind: z.literal("terminal_failure"),
-      pageIndex: z.number().int(),
-      problemKey: CliProblemKeySchema,
-      type: z.literal("record_page_fetch"),
-    })
-    .strict(),
-]);
 
 export function toStoredSourceLookupResult(
   decision: StoredAcceptedSourceApiActionDecision
@@ -235,18 +49,15 @@ export function toStoredSourceLookupResult(
 export function toStoredDescriptorResolutionResult(
   commandPayload: StoredAcceptedSourceApiActionResultCommand["commandPayload"]
 ): DescriptorResolutionResult {
-  const parsed =
-    StoredDescriptorResolutionResultPayloadSchema.safeParse(commandPayload);
-  if (!parsed.success) {
+  if (commandPayload.type !== "record_descriptor_resolution") {
     throw createSourceApiAuditCorruptionFailure(
-      "source_api_action stored descriptor resolution payload is corrupt",
-      parsed.error
+      `source_api_action replay expected a descriptor resolution command but loaded ${commandPayload.type}`
     );
   }
 
-  if (parsed.data.kind === "resolved") {
+  if (commandPayload.kind === "resolved") {
     return {
-      descriptor: parsed.data.descriptor,
+      descriptor: commandPayload.descriptor,
       kind: "resolved",
     };
   }
@@ -254,8 +65,8 @@ export function toStoredDescriptorResolutionResult(
   return {
     kind: "failed",
     problem: createCliServiceFailure({
-      detail: parsed.data.detail,
-      key: parsed.data.problemKey,
+      detail: commandPayload.detail,
+      key: commandPayload.problemKey,
     }),
   };
 }
@@ -288,48 +99,27 @@ export function toStoredRequestPreparationResult(
 export function toStoredPageFetchResult(
   commandPayload: StoredAcceptedSourceApiActionResultCommand["commandPayload"]
 ): PageFetchResult {
-  const parsed = StoredPageFetchResultPayloadSchema.safeParse(commandPayload);
-  if (!parsed.success) {
+  if (commandPayload.type !== "record_page_fetch") {
     throw createSourceApiAuditCorruptionFailure(
-      "source_api_action stored page fetch payload is corrupt",
-      parsed.error
+      `source_api_action replay expected a page fetch command but loaded ${commandPayload.type}`
     );
   }
 
-  switch (parsed.data.kind) {
+  switch (commandPayload.kind) {
     case "succeeded":
       return {
         kind: "succeeded",
-        result: decodeStoredSourceApiExecutionResult(
-          parsed.data.executionResult
-        ),
+        result: commandPayload.executionResult,
       };
     case "terminal_failure":
       return {
         kind: "failed",
         problem: createCliServiceFailure({
-          detail: parsed.data.detail,
-          key: parsed.data.problemKey,
+          detail: commandPayload.detail,
+          key: commandPayload.problemKey,
         }),
       };
   }
-}
-
-export function encodeStoredSourceApiExecutionResult(
-  result: SourceApiExecutionResult
-): StoredSourceApiExecutionResult {
-  return {
-    body: encodeStoredSourceApiResponseBody(result.body),
-    contentType: result.contentType,
-    headers: [...result.headers],
-    ...(result.nextContinuationState === undefined
-      ? {}
-      : { nextContinuationState: result.nextContinuationState }),
-    operation: result.operation,
-    ...(result.selector === undefined ? {} : { selector: result.selector }),
-    source: result.source,
-    status: result.status,
-  };
 }
 
 export function toSourceApiActionSourceDescriptor(
@@ -396,74 +186,5 @@ export function measureSourceApiResponseBytes(
       return Buffer.byteLength(result.body.value, "utf8");
     case "none":
       return null;
-  }
-}
-
-function decodeStoredSourceApiExecutionResult(
-  result: StoredSourceApiExecutionResult
-): SourceApiExecutionResult {
-  return {
-    body: decodeStoredSourceApiResponseBody(result.body),
-    contentType: result.contentType,
-    headers: [...result.headers],
-    ...(result.nextContinuationState === undefined
-      ? {}
-      : { nextContinuationState: result.nextContinuationState }),
-    operation: result.operation,
-    ...(result.selector === undefined ? {} : { selector: result.selector }),
-    source: result.source,
-    status: result.status,
-  };
-}
-
-function encodeStoredSourceApiResponseBody(
-  body: SourceApiExecutionResult["body"]
-) {
-  switch (body.kind) {
-    case "binary":
-      return {
-        base64: Buffer.from(body.value).toString("base64"),
-        kind: "binary" as const,
-      };
-    case "json":
-      return {
-        kind: "json" as const,
-        value: body.value,
-      };
-    case "text":
-      return {
-        kind: "text" as const,
-        value: body.value,
-      };
-    case "none":
-      return {
-        kind: "none" as const,
-      };
-  }
-}
-
-function decodeStoredSourceApiResponseBody(
-  body: StoredSourceApiExecutionResult["body"]
-): SourceApiExecutionResult["body"] {
-  switch (body.kind) {
-    case "binary":
-      return {
-        kind: "binary",
-        value: Buffer.from(body.base64, "base64"),
-      };
-    case "json":
-      return {
-        kind: "json",
-        value: body.value as never,
-      };
-    case "text":
-      return {
-        kind: "text",
-        value: body.value,
-      };
-    case "none":
-      return {
-        kind: "none",
-      };
   }
 }

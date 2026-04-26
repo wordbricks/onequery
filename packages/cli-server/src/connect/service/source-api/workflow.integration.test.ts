@@ -205,6 +205,21 @@ const finalPageResult = {
   status: 200,
 } as const;
 
+const binaryFinalPageResult = {
+  ...finalPageResult,
+  body: {
+    kind: "binary",
+    value: new Uint8Array([0, 1, 127, 255]),
+  },
+  contentType: "application/octet-stream",
+  headers: [
+    {
+      name: "content-type",
+      value: "application/octet-stream",
+    },
+  ],
+} as const;
+
 async function closeDatabase(db: ClosableDatabase): Promise<void> {
   const client = db.$client;
   if (client && typeof client.close === "function") {
@@ -852,7 +867,7 @@ describe("source api workflow audit runtime", () => {
     const executePreparedSourceApi = vi
       .fn()
       .mockResolvedValueOnce(firstPageResult)
-      .mockResolvedValueOnce(finalPageResult)
+      .mockResolvedValueOnce(binaryFinalPageResult)
       .mockRejectedValueOnce(
         new Error("executePreparedSourceApi should not run on replay")
       );
@@ -895,7 +910,15 @@ describe("source api workflow audit runtime", () => {
       source: preparedSource as never,
     });
 
-    expect(unwrapOk(replayResumeResult)).toEqual(unwrapOk(firstResumeResult));
+    const firstResume = unwrapOk(firstResumeResult);
+    const replayResume = unwrapOk(replayResumeResult);
+
+    expect(replayResume).toEqual(firstResume);
+    expect(replayResume.result?.body.kind).toBe("binary");
+    if (replayResume.result?.body.kind !== "binary") {
+      throw new Error("expected replayed source API body to be binary");
+    }
+    expect([...replayResume.result.body.value]).toEqual([0, 1, 127, 255]);
     expect(executePreparedSourceApi).toHaveBeenCalledTimes(2);
 
     const commandRows = await db

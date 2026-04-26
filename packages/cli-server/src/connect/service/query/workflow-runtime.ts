@@ -8,17 +8,18 @@ import {
 } from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
 
-import {
-  QueryActionEffectSchema,
-  QueryActionEventSchema,
-  storeQueryActionCommand,
-} from "../../../audit";
+import { storeQueryActionCommand } from "../../../audit";
 import type {
   QueryActionCommand,
   QueryActionEffect,
   QueryActionEvent,
   QueryActionSourceDescriptor,
 } from "../../../audit";
+import {
+  decodeQueryActionCommandPayload,
+  decodeQueryActionEffectPayload,
+  decodeQueryActionEventPayload,
+} from "../../../audit/query-action-family/protobuf-codec";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import {
   createWorkflowAuditCorruptionFailure,
@@ -224,26 +225,26 @@ async function loadRequiredQueryActionEffect<
     );
   }
 
-  const parsedEffect = QueryActionEffectSchema.safeParse({
-    type: row.effectType,
-    ...row.payloadJson,
+  const decodedEffect = decodeQueryActionEffectPayload(row.payloadBytes, {
+    actionId: input.actionId,
+    payloadType: row.effectType,
   });
-  if (!parsedEffect.success) {
+  if (decodedEffect.isErr()) {
     throw createQueryAuditCorruptionProblem(
       `query_action effect ${row.effectType} payload is corrupt`,
-      parsedEffect.error
+      decodedEffect.error
     );
   }
 
-  if (parsedEffect.data.type !== input.expectedEffectType) {
+  if (decodedEffect.value.type !== input.expectedEffectType) {
     throw createQueryAuditCorruptionProblem(
-      `query_action expected effect ${input.expectedEffectType} but loaded ${parsedEffect.data.type}`
+      `query_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
     );
   }
 
   return {
     attemptCount: row.attemptCount,
-    effect: parsedEffect.data as Extract<
+    effect: decodedEffect.value as Extract<
       QueryActionEffect,
       { type: EffectType }
     >,
@@ -287,28 +288,41 @@ async function loadStoredAcceptedQueryActionResultCommand(input: {
     .where(eq(queryActionEvents.commandId, storedCommand.id))
     .orderBy(asc(queryActionEvents.sequence));
 
+  const commandPayload = decodeQueryActionCommandPayload(
+    storedCommand.commandPayloadBytes,
+    {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      payloadType: storedCommand.commandType,
+    }
+  );
+  if (commandPayload.isErr()) {
+    throw createQueryAuditCorruptionProblem(
+      `query_action stored result command ${input.commandInvocationId} has a corrupt command payload`,
+      commandPayload.error
+    );
+  }
+
   return {
-    commandPayload: {
-      type: storedCommand.commandType,
-      ...storedCommand.commandPayloadJson,
-    },
+    commandPayload: commandPayload.value,
     decision: {
       actionId: storedCommand.actionId,
       commandId: storedCommand.id,
       events: events.map((row) => {
-        const parsed = QueryActionEventSchema.safeParse({
-          type: row.eventType,
-          ...row.payloadJson,
+        const decoded = decodeQueryActionEventPayload(row.payloadBytes, {
+          actionId: row.actionId,
+          commandId: row.commandId,
+          payloadType: row.eventType,
         });
-        if (!parsed.success) {
+        if (decoded.isErr()) {
           throw createQueryAuditCorruptionProblem(
             `query_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
-            parsed.error
+            decoded.error
           );
         }
 
         return {
-          ...parsed.data,
+          ...decoded.value,
           id: row.id,
           occurredAt: row.occurredAt,
           sequence: row.sequence,

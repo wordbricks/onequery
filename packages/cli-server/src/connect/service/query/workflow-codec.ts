@@ -1,6 +1,3 @@
-import { DATA_SOURCE_STATUS, PROVIDER_TYPES } from "@onequery/db/server";
-import { z } from "zod";
-
 import type { QueryActionSourceDescriptor } from "../../../audit";
 import type {
   CliPersistUsageEffectResult,
@@ -21,99 +18,6 @@ import type {
   StoredAcceptedQueryActionDecision,
   StoredAcceptedQueryActionResultCommand,
 } from "./workflow-types";
-
-const CliQuerySuccessResultSchema = z
-  .object({
-    columns: z.array(
-      z
-        .object({
-          logicalType: z
-            .enum([
-              "string",
-              "number",
-              "boolean",
-              "bigint",
-              "datetime",
-              "array",
-              "json",
-            ])
-            .nullable(),
-          name: z.string(),
-        })
-        .strict()
-    ),
-    elapsedMs: z.number().int(),
-    rowCount: z.number().int(),
-    rows: z.array(z.array(z.string())),
-    source: z
-      .object({
-        displayName: z.string().nullable(),
-        id: z.string(),
-        provider: z.enum(PROVIDER_TYPES),
-        sourceKey: z.string(),
-        status: z.enum(DATA_SOURCE_STATUS),
-      })
-      .strict(),
-    truncated: z.boolean(),
-  })
-  .strict();
-
-const StoredQueryValidationResultPayloadSchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      kind: z.literal("accepted"),
-      truncated: z.boolean(),
-      type: z.literal("record_query_validation"),
-      validatedQuery: z.string(),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      kind: z.literal("rejected"),
-      type: z.literal("record_query_validation"),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      hint: z.string(),
-      kind: z.literal("preparation_failed"),
-      type: z.literal("record_query_validation"),
-    })
-    .strict(),
-]);
-
-const StoredQueryExecutionResultPayloadSchema = z.discriminatedUnion("kind", [
-  z
-    .object({
-      kind: z.literal("succeeded"),
-      response: CliQuerySuccessResultSchema,
-      type: z.literal("record_query_execution"),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      kind: z.literal("unavailable"),
-      type: z.literal("record_query_execution"),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      kind: z.literal("timed_out"),
-      type: z.literal("record_query_execution"),
-    })
-    .strict(),
-  z
-    .object({
-      detail: z.string(),
-      kind: z.literal("failed"),
-      type: z.literal("record_query_execution"),
-    })
-    .strict(),
-]);
 
 export function toStoredQuerySourceLookupResult(input: {
   decision: StoredAcceptedQueryActionDecision;
@@ -153,31 +57,28 @@ export function toStoredQuerySourceLookupResult(input: {
 export function toStoredQueryValidationResult(
   commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"]
 ): CliValidateQueryEffectResult {
-  const parsed =
-    StoredQueryValidationResultPayloadSchema.safeParse(commandPayload);
-  if (!parsed.success) {
+  if (commandPayload.type !== "record_query_validation") {
     throw createQueryAuditCorruptionProblem(
-      "query_action stored validation result payload is corrupt",
-      parsed.error
+      `query_action replay expected a validation result command but loaded ${commandPayload.type}`
     );
   }
 
-  switch (parsed.data.kind) {
+  switch (commandPayload.kind) {
     case "accepted":
       return {
         kind: "query_ready",
-        normalizedSql: parsed.data.validatedQuery,
-        truncated: parsed.data.truncated,
+        normalizedSql: commandPayload.validatedQuery,
+        truncated: commandPayload.truncated,
       };
     case "rejected":
       return {
-        detail: parsed.data.detail,
+        detail: commandPayload.detail,
         kind: "query_rejected",
       };
     case "preparation_failed":
       return {
-        detail: parsed.data.detail,
-        hint: parsed.data.hint,
+        detail: commandPayload.detail,
+        hint: commandPayload.hint,
         kind: "query_preparation_failed",
       };
   }
@@ -208,34 +109,31 @@ export function toStoredQueryCredentialsLoadResult(
 export function toStoredQueryExecutionResult(
   commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"]
 ): QueryExecutionEffectResult {
-  const parsed =
-    StoredQueryExecutionResultPayloadSchema.safeParse(commandPayload);
-  if (!parsed.success) {
+  if (commandPayload.type !== "record_query_execution") {
     throw createQueryAuditCorruptionProblem(
-      "query_action stored execution result payload is corrupt",
-      parsed.error
+      `query_action replay expected an execution result command but loaded ${commandPayload.type}`
     );
   }
 
-  switch (parsed.data.kind) {
+  switch (commandPayload.kind) {
     case "succeeded":
       return {
         kind: "succeeded",
-        response: parsed.data.response,
+        response: commandPayload.response,
       };
     case "unavailable":
       return {
-        detail: parsed.data.detail,
+        detail: commandPayload.detail,
         kind: "query_unavailable",
       };
     case "timed_out":
       return {
-        detail: parsed.data.detail,
+        detail: commandPayload.detail,
         kind: "query_timed_out",
       };
     case "failed":
       return {
-        detail: parsed.data.detail,
+        detail: commandPayload.detail,
         kind: "query_execution_failed",
       };
   }

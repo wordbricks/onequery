@@ -1,5 +1,4 @@
 import { fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
-import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
   SourceApiBodyFormat,
@@ -362,7 +361,7 @@ function buildCliSourceApiResponseBody(
     case "json":
       return {
         case: "json",
-        value: fromJson(ValueSchema, value.value as JsonValue),
+        value: fromJson(ValueSchema, value.value),
       };
     case "text":
       return {

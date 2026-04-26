@@ -14,7 +14,6 @@ import type { Result as ResultType } from "better-result";
 
 import type { WorkflowCommittedEvent } from "../kernel";
 import {
-  QueryActionEventSchema,
   QueryActionStateSchema,
   decideQueryAction,
   reduceQueryAction,
@@ -27,7 +26,12 @@ import type {
   QueryActionState,
 } from "../query-action-family";
 import {
-  SourceApiActionEventSchema,
+  decodeQueryActionEventPayload,
+  encodeQueryActionCommandPayload,
+  encodeQueryActionEffectPayload,
+  encodeQueryActionEventPayload,
+} from "../query-action-family/protobuf-codec";
+import {
   SourceApiActionStateSchema,
   decideSourceApiAction,
   reduceSourceApiAction,
@@ -39,11 +43,16 @@ import type {
   SourceApiActionRejectCode,
   SourceApiActionState,
 } from "../source-api-action-family";
+import {
+  decodeSourceApiActionEventPayload,
+  encodeSourceApiActionCommandPayload,
+  encodeSourceApiActionEffectPayload,
+  encodeSourceApiActionEventPayload,
+} from "../source-api-action-family/protobuf-codec";
 import type { WorkflowStorageCorruptRowError } from "./errors";
 import {
   parseStoredWorkflowValue,
-  toWorkflowEventPayloadJson,
-  toWorkflowJson,
+  toWorkflowProjectionJson,
 } from "./serialization";
 import type { WorkflowStoreAdapter } from "./types";
 
@@ -75,7 +84,7 @@ function toQueryActionActionColumns(state: QueryActionState) {
     sourceDescriptorJson:
       state.sourceDescriptor === null
         ? null
-        : toWorkflowJson(state.sourceDescriptor),
+        : toWorkflowProjectionJson(state.sourceDescriptor),
     startedAt: state.startedAt,
     usageRecordingStatus: state.usageRecordingStatus,
     validatedQuery: state.validatedQuery,
@@ -92,18 +101,20 @@ function toSourceApiActionColumns(state: SourceApiActionState) {
     lastEventSequence: state.lastEventSequence,
     outcome: state.outcome,
     pageProgressJson:
-      state.pageProgress === null ? null : toWorkflowJson(state.pageProgress),
+      state.pageProgress === null
+        ? null
+        : toWorkflowProjectionJson(state.pageProgress),
     phase: state.phase,
     preparedRequestFingerprint: state.preparedRequestFingerprint,
     requestDescriptorJson:
       state.requestDescriptor === null
         ? null
-        : toWorkflowJson(state.requestDescriptor),
+        : toWorkflowProjectionJson(state.requestDescriptor),
     requestKind: state.requestKind,
     sourceDescriptorJson:
       state.sourceDescriptor === null
         ? null
-        : toWorkflowJson(state.sourceDescriptor),
+        : toWorkflowProjectionJson(state.sourceDescriptor),
     startedAt: state.startedAt,
   };
 }
@@ -117,6 +128,8 @@ export const queryActionStoreAdapter: WorkflowStoreAdapter<
   QueryActionRejectCode
 > = {
   decide: decideQueryAction,
+  encodeCommandPayload: encodeQueryActionCommandPayload,
+  encodeEffectPayload: encodeQueryActionEffectPayload,
   family: "query_action",
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(queryActions).values({
@@ -135,7 +148,7 @@ export const queryActionStoreAdapter: WorkflowStoreAdapter<
           eventType: event.type,
           id: event.id,
           occurredAt: event.occurredAt,
-          payloadJson: toWorkflowEventPayloadJson(event),
+          payloadBytes: encodeQueryActionEventPayload(event),
           sequence: event.sequence,
         }))
       )
@@ -278,6 +291,8 @@ export const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
   SourceApiActionRejectCode
 > = {
   decide: decideSourceApiAction,
+  encodeCommandPayload: encodeSourceApiActionCommandPayload,
+  encodeEffectPayload: encodeSourceApiActionEffectPayload,
   family: "source_api_action",
   insertAction: async ({ actionId, organizationId, state, tx }) => {
     await tx.insert(sourceApiActions).values({
@@ -296,7 +311,7 @@ export const sourceApiActionStoreAdapter: WorkflowStoreAdapter<
           eventType: event.type,
           id: event.id,
           occurredAt: event.occurredAt,
-          payloadJson: toWorkflowEventPayloadJson(event),
+          payloadBytes: encodeSourceApiActionEventPayload(event),
           sequence: event.sequence,
         }))
       )
@@ -501,14 +516,10 @@ function decodeQueryActionCommittedEvent(
   WorkflowCommittedEvent<QueryActionEvent>,
   WorkflowStorageCorruptRowError
 > {
-  return parseStoredWorkflowValue({
-    entity: "query_action_event",
-    family: "query_action",
-    schema: QueryActionEventSchema,
-    value: {
-      type: row.eventType,
-      ...row.payloadJson,
-    },
+  return decodeQueryActionEventPayload(row.payloadBytes, {
+    actionId: row.actionId,
+    commandId: row.commandId,
+    payloadType: row.eventType,
   }).map((event) => ({
     ...event,
     id: row.id,
@@ -523,14 +534,10 @@ function decodeSourceApiCommittedEvent(
   WorkflowCommittedEvent<SourceApiActionEvent>,
   WorkflowStorageCorruptRowError
 > {
-  return parseStoredWorkflowValue({
-    entity: "source_api_action_event",
-    family: "source_api_action",
-    schema: SourceApiActionEventSchema,
-    value: {
-      type: row.eventType,
-      ...row.payloadJson,
-    },
+  return decodeSourceApiActionEventPayload(row.payloadBytes, {
+    actionId: row.actionId,
+    commandId: row.commandId,
+    payloadType: row.eventType,
   }).map((event) => ({
     ...event,
     id: row.id,

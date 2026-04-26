@@ -89,8 +89,8 @@ export type StoredSourceApiResponseBody =
       value: string;
     }
   | {
-      base64: string;
       kind: "binary";
+      value: Uint8Array;
     };
 
 export type StoredSourceApiExecutionResult = {

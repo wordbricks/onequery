@@ -29,4 +29,4 @@ export type WorkflowActorSnapshotJson = {
   userId: string | null;
 };
 
-export type WorkflowJson = Record<string, unknown>;
+export type WorkflowProjectionJson = Record<string, unknown>;

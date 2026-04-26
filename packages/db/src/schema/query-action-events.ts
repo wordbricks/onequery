@@ -2,13 +2,12 @@ import {
   bigserial,
   index,
   integer,
-  jsonb,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-import type { WorkflowJson } from "./audit-workflow";
+import { bytea } from "./bytea";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
 import { workflowCommands } from "./workflow-commands";
@@ -26,7 +25,7 @@ export const queryActionEvents = pgTable(
     eventType: text("event_type").notNull(),
     id: text("id").primaryKey().$defaultFn(ulid),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
-    payloadJson: jsonb("payload_json").$type<WorkflowJson>().notNull(),
+    payloadBytes: bytea("payload_bytes").notNull(),
     sequence: integer("sequence").notNull(),
   },
   (table) => [

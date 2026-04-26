@@ -1,12 +1,14 @@
 import { workflowEffectDispatches } from "@onequery/db/server";
 
 import type { WorkflowFamily } from "../kernel";
-import { toWorkflowPayloadJson } from "./serialization";
 import type { DatabaseTransaction } from "./types";
 
-export async function insertWorkflowEffectDispatches(input: {
+export async function insertWorkflowEffectDispatches<
+  Effect extends { type: string },
+>(input: {
   actionId: string;
-  effects: readonly { type: string }[];
+  encodeEffectPayload: (effect: Effect) => Buffer;
+  effects: readonly Effect[];
   family: WorkflowFamily;
   occurredAt: Date;
   originEventId: string;
@@ -29,7 +31,7 @@ export async function insertWorkflowEffectDispatches(input: {
       effectType: effect.type,
       family: input.family,
       originEventId: input.originEventId,
-      payloadJson: toWorkflowPayloadJson(effect),
+      payloadBytes: input.encodeEffectPayload(effect),
       status: "pending" as const,
     }))
   );

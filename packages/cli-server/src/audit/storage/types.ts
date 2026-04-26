@@ -81,6 +81,8 @@ export type WorkflowStoreAdapter<
     WorkflowDecision<Event, Effect, RejectCode>,
     WorkflowInternalInvariantError
   >;
+  encodeCommandPayload: (payload: CommandPayload) => Buffer;
+  encodeEffectPayload: (effect: Effect) => Buffer;
   family: Family;
   insertAction: (input: {
     actionId: string;

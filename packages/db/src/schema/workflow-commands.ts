@@ -12,10 +12,10 @@ import type {
   WorkflowActorSnapshotJson,
   WorkflowCommandDecisionKind,
   WorkflowFamily,
-  WorkflowJson,
   WorkflowSurface,
 } from "./audit-workflow";
 import { organization } from "./auth";
+import { bytea } from "./bytea";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
 
@@ -28,9 +28,7 @@ export const workflowCommands = pgTable(
       .notNull(),
     causedByEventId: text("caused_by_event_id"),
     commandInvocationId: text("command_invocation_id").notNull(),
-    commandPayloadJson: jsonb("command_payload_json")
-      .$type<WorkflowJson>()
-      .notNull(),
+    commandPayloadBytes: bytea("command_payload_bytes").notNull(),
     commandType: text("command_type").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     decisionKind: text("decision_kind")

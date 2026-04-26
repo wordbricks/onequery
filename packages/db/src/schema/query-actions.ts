@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-import type { WorkflowJson, WorkflowOutcome } from "./audit-workflow";
+import type { WorkflowOutcome, WorkflowProjectionJson } from "./audit-workflow";
 import { organization } from "./auth";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
@@ -31,7 +31,9 @@ export const queryActions = pgTable(
     phase: text("phase").notNull(),
     queryMode: text("query_mode").notNull(),
     queryText: text("query_text").notNull(),
-    sourceDescriptorJson: jsonb("source_descriptor_json").$type<WorkflowJson>(),
+    sourceDescriptorJson: jsonb(
+      "source_descriptor_json"
+    ).$type<WorkflowProjectionJson>(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     usageRecordingStatus: text("usage_recording_status").notNull(),
     validatedQuery: text("validated_query"),

@@ -21,7 +21,6 @@ import {
   requireAcceptedActionId,
   requireFoldedState,
 } from "./folding";
-import { toWorkflowPayloadJson } from "./serialization";
 import type {
   StoredAcceptedWorkflowDecision,
   StoredRejectedWorkflowDecision,
@@ -120,7 +119,9 @@ export async function commitWorkflowDecision<
           },
           causedByEventId: command.causedByEventId,
           commandInvocationId: command.commandInvocationId,
-          commandPayloadJson: toWorkflowPayloadJson(command.commandPayload),
+          commandPayloadBytes: adapter.encodeCommandPayload(
+            command.commandPayload
+          ),
           commandType: command.commandPayload.type,
           createdAt: command.observedAt,
           decisionKind: decision.kind,
@@ -200,6 +201,7 @@ export async function commitWorkflowDecision<
 
       await insertWorkflowEffectDispatches({
         actionId: accepted.actionId,
+        encodeEffectPayload: adapter.encodeEffectPayload,
         effects: decision.effects,
         family: adapter.family,
         occurredAt: command.observedAt,

@@ -82,6 +82,7 @@ export class WorkflowStorageCorruptRowError extends TaggedError(
   entity: string;
   family: WorkflowFamily;
   message: string;
+  payloadType?: string;
   repairAnchor?: WorkflowActionRepairAnchor | null;
 }>() {
   constructor(input: {
@@ -90,6 +91,7 @@ export class WorkflowStorageCorruptRowError extends TaggedError(
     commandId?: string;
     entity: string;
     family: WorkflowFamily;
+    payloadType?: string;
     repairAnchor?: WorkflowActionRepairAnchor | null;
   }) {
     super({
@@ -98,12 +100,43 @@ export class WorkflowStorageCorruptRowError extends TaggedError(
       ...(input.commandId === undefined ? {} : { commandId: input.commandId }),
       entity: input.entity,
       family: input.family,
-      message: `workflow storage row is corrupt for ${input.family} ${input.entity}`,
+      message: formatWorkflowStorageCorruptRowMessage(input),
+      ...(input.payloadType === undefined
+        ? {}
+        : { payloadType: input.payloadType }),
       ...(input.repairAnchor === undefined
         ? {}
         : { repairAnchor: input.repairAnchor }),
     });
   }
+}
+
+function formatWorkflowStorageCorruptRowMessage(input: {
+  actionId?: string;
+  commandId?: string;
+  entity: string;
+  family: WorkflowFamily;
+  payloadType?: string;
+}) {
+  return `workflow storage row is corrupt (${formatWorkflowStorageCorruptRowDiagnostic(input)})`;
+}
+
+export function formatWorkflowStorageCorruptRowDiagnostic(input: {
+  actionId?: string;
+  commandId?: string;
+  entity: string;
+  family: WorkflowFamily;
+  payloadType?: string;
+}) {
+  return [
+    `family=${input.family}`,
+    `entity=${input.entity}`,
+    ...(input.actionId === undefined ? [] : [`actionId=${input.actionId}`]),
+    ...(input.commandId === undefined ? [] : [`commandId=${input.commandId}`]),
+    ...(input.payloadType === undefined
+      ? []
+      : [`payloadType=${input.payloadType}`]),
+  ].join(" ");
 }
 
 export type WorkflowStorageError =

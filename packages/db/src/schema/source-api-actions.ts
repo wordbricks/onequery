@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-import type { WorkflowJson, WorkflowOutcome } from "./audit-workflow";
+import type { WorkflowOutcome, WorkflowProjectionJson } from "./audit-workflow";
 import { organization } from "./auth";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
@@ -30,14 +30,17 @@ export const sourceApiActions = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     outcome: text("outcome").$type<WorkflowOutcome>().notNull(),
-    pageProgressJson: jsonb("page_progress_json").$type<WorkflowJson>(),
+    pageProgressJson:
+      jsonb("page_progress_json").$type<WorkflowProjectionJson>(),
     phase: text("phase").notNull(),
     preparedRequestFingerprint: text("prepared_request_fingerprint"),
     requestDescriptorJson: jsonb(
       "request_descriptor_json"
-    ).$type<WorkflowJson>(),
+    ).$type<WorkflowProjectionJson>(),
     requestKind: text("request_kind").notNull(),
-    sourceDescriptorJson: jsonb("source_descriptor_json").$type<WorkflowJson>(),
+    sourceDescriptorJson: jsonb(
+      "source_descriptor_json"
+    ).$type<WorkflowProjectionJson>(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   },
   (table) => [

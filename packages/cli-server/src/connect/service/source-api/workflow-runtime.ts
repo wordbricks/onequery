@@ -14,11 +14,7 @@ import type {
 } from "@onequery/server/source-api";
 import { Result, isPanic } from "better-result";
 
-import {
-  SourceApiActionEffectSchema,
-  SourceApiActionEventSchema,
-  storeSourceApiActionCommand,
-} from "../../../audit";
+import { storeSourceApiActionCommand } from "../../../audit";
 import type {
   SourceApiActionCommand,
   SourceApiActionCommandPayload,
@@ -27,6 +23,11 @@ import type {
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
 } from "../../../audit";
+import {
+  decodeSourceApiActionCommandPayload,
+  decodeSourceApiActionEffectPayload,
+  decodeSourceApiActionEventPayload,
+} from "../../../audit/source-api-action-family/protobuf-codec";
 import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
 import { createCliServiceFailure } from "../result";
@@ -359,27 +360,26 @@ async function loadRequiredSourceApiActionEffect<
     );
   }
 
-  const parsedEffect = SourceApiActionEffectSchema.safeParse({
-    type: row.effectType,
-    ...row.payloadJson,
+  const decodedEffect = decodeSourceApiActionEffectPayload(row.payloadBytes, {
+    actionId: input.actionId,
+    payloadType: row.effectType,
   });
-
-  if (!parsedEffect.success) {
+  if (decodedEffect.isErr()) {
     throw createSourceApiAuditCorruptionFailure(
       `source_api_action effect ${row.effectType} payload is corrupt`,
-      parsedEffect.error
+      decodedEffect.error
     );
   }
 
-  if (parsedEffect.data.type !== input.expectedEffectType) {
+  if (decodedEffect.value.type !== input.expectedEffectType) {
     throw createSourceApiAuditCorruptionFailure(
-      `source_api_action expected effect ${input.expectedEffectType} but loaded ${parsedEffect.data.type}`
+      `source_api_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
     );
   }
 
   return {
     attemptCount: row.attemptCount,
-    effect: parsedEffect.data as Extract<
+    effect: decodedEffect.value as Extract<
       SourceApiActionEffect,
       { type: EffectType }
     >,
@@ -423,28 +423,41 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
     .where(eq(sourceApiActionEvents.commandId, storedCommand.id))
     .orderBy(asc(sourceApiActionEvents.sequence));
 
+  const commandPayload = decodeSourceApiActionCommandPayload(
+    storedCommand.commandPayloadBytes,
+    {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      payloadType: storedCommand.commandType,
+    }
+  );
+  if (commandPayload.isErr()) {
+    throw createSourceApiAuditCorruptionFailure(
+      `source_api_action stored result command ${input.commandInvocationId} has a corrupt command payload`,
+      commandPayload.error
+    );
+  }
+
   return {
-    commandPayload: {
-      type: storedCommand.commandType,
-      ...storedCommand.commandPayloadJson,
-    },
+    commandPayload: commandPayload.value,
     decision: {
       actionId: storedCommand.actionId,
       commandId: storedCommand.id,
       events: events.map((row) => {
-        const parsed = SourceApiActionEventSchema.safeParse({
-          type: row.eventType,
-          ...row.payloadJson,
+        const decoded = decodeSourceApiActionEventPayload(row.payloadBytes, {
+          actionId: row.actionId,
+          commandId: row.commandId,
+          payloadType: row.eventType,
         });
-        if (!parsed.success) {
+        if (decoded.isErr()) {
           throw createSourceApiAuditCorruptionFailure(
             `source_api_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
-            parsed.error
+            decoded.error
           );
         }
 
         return {
-          ...parsed.data,
+          ...decoded.value,
           id: row.id,
           occurredAt: row.occurredAt,
           sequence: row.sequence,

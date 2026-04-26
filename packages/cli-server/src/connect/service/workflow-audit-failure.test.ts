@@ -16,8 +16,10 @@ describe("workflow audit failures", () => {
     const failure = createWorkflowAuditFailure({
       cause: new WorkflowStorageCorruptRowError({
         actionId: "query_action_1",
+        commandId: "workflow_command_1",
         entity: "workflow_event_history",
         family: "query_action",
+        payloadType: "query_executed",
       }),
       detail: "query_action replay failed",
       keys: queryWorkflowKeys,
@@ -27,7 +29,8 @@ describe("workflow audit failures", () => {
       message: failure.message,
       reason: failure.reason,
     }).toEqual({
-      message: "query_action replay failed",
+      message:
+        "query_action replay failed (family=query_action entity=workflow_event_history actionId=query_action_1 commandId=workflow_command_1 payloadType=query_executed)",
       reason: "QUERY_WORKFLOW_CORRUPT",
     });
   });
@@ -50,6 +53,13 @@ describe("workflow audit failures", () => {
 
   it("keeps explicit replay corruption distinct from internal audit failures", () => {
     const failure = createWorkflowAuditCorruptionFailure({
+      cause: new WorkflowStorageCorruptRowError({
+        actionId: "query_action_1",
+        commandId: "workflow_command_1",
+        entity: "query_action_command_payload",
+        family: "query_action",
+        payloadType: "record_query_execution",
+      }),
       detail: "query_action stored result payload is corrupt",
       key: "QUERY_WORKFLOW_CORRUPT",
     });
@@ -58,7 +68,8 @@ describe("workflow audit failures", () => {
       message: failure.message,
       reason: failure.reason,
     }).toEqual({
-      message: "query_action stored result payload is corrupt",
+      message:
+        "query_action stored result payload is corrupt (family=query_action entity=query_action_command_payload actionId=query_action_1 commandId=workflow_command_1 payloadType=record_query_execution)",
       reason: "QUERY_WORKFLOW_CORRUPT",
     });
   });

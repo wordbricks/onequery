@@ -6,12 +6,16 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./audit": "./src/audit.ts"
+    "./audit": "./src/audit.ts",
+    "./workflow/v1/common_pb": "./src/connect/gen/onequery/workflow/v1/common_pb.ts",
+    "./workflow/v1/query_action_pb": "./src/connect/gen/onequery/workflow/v1/query_action_pb.ts",
+    "./workflow/v1/source_api_action_pb": "./src/connect/gen/onequery/workflow/v1/source_api_action_pb.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {}

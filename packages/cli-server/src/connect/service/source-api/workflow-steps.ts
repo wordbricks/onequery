@@ -17,7 +17,6 @@ import {
   resolveSourceApiDescriptor,
 } from "./runtime";
 import {
-  encodeStoredSourceApiExecutionResult,
   measureSourceApiResponseBytes,
   toSourceApiActionSourceDescriptor,
   toStoredDescriptorResolutionResult,
@@ -315,9 +314,7 @@ export async function runSourceApiPageFetchStep(input: {
         commandPayload: {
           attemptNumber: effect.attemptNumber,
           contentType: executionResult.result.contentType,
-          executionResult: encodeStoredSourceApiExecutionResult(
-            executionResult.result
-          ),
+          executionResult: executionResult.result,
           hasContinuation:
             executionResult.result.nextContinuationState !== undefined,
           httpStatus: executionResult.result.status,

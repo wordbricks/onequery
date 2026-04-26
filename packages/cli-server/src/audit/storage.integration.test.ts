@@ -21,6 +21,10 @@ import type {
   QueryActionCommand,
   QueryActionSourceDescriptor,
 } from "./query-action-family";
+import {
+  decodeQueryActionEffectPayload,
+  decodeQueryActionEventPayload,
+} from "./query-action-family/protobuf-codec";
 import type { SourceApiActionCommand } from "./source-api-action-family";
 import {
   storeQueryActionCommand,
@@ -237,6 +241,37 @@ function unwrapQueryError(
   return result.error;
 }
 
+function decodeStoredQueryActionEvent(
+  row: typeof queryActionEvents.$inferSelect
+) {
+  const decoded = decodeQueryActionEventPayload(row.payloadBytes, {
+    actionId: row.actionId,
+    commandId: row.commandId,
+    payloadType: row.eventType,
+  });
+  expect(decoded.isOk()).toBe(true);
+  if (decoded.isErr()) {
+    throw decoded.error;
+  }
+
+  return decoded.value;
+}
+
+function decodeStoredQueryActionEffect(
+  row: typeof workflowEffectDispatches.$inferSelect
+) {
+  const decoded = decodeQueryActionEffectPayload(row.payloadBytes, {
+    actionId: row.actionId,
+    payloadType: row.effectType,
+  });
+  expect(decoded.isOk()).toBe(true);
+  if (decoded.isErr()) {
+    throw decoded.error;
+  }
+
+  return decoded.value;
+}
+
 describe("audit workflow storage", () => {
   const openedDatabases: ClosableDatabase[] = [];
 
@@ -321,7 +356,7 @@ describe("audit workflow storage", () => {
         commandId: row.commandId,
         commitPosition: row.commitPosition,
         eventType: row.eventType,
-        payloadJson: row.payloadJson,
+        payload: decodeStoredQueryActionEvent(row),
         sequence: row.sequence,
       }))
     ).toEqual([
@@ -329,9 +364,10 @@ describe("audit workflow storage", () => {
         commandId: startDecision.commandId,
         commitPosition: 1n,
         eventType: "action_received",
-        payloadJson: {
+        payload: {
           queryMode: "validate",
           queryText: "select 1",
+          type: "action_received",
         },
         sequence: 1,
       },
@@ -339,8 +375,9 @@ describe("audit workflow storage", () => {
         commandId: sourceLoadedDecision.commandId,
         commitPosition: 2n,
         eventType: "source_loaded",
-        payloadJson: {
+        payload: {
           source: sourceDescriptor,
+          type: "source_loaded",
         },
         sequence: 2,
       },
@@ -350,25 +387,27 @@ describe("audit workflow storage", () => {
       outboxRows.map((row) => ({
         effectType: row.effectType,
         originEventId: row.originEventId,
-        payloadJson: row.payloadJson,
+        payload: decodeStoredQueryActionEffect(row),
         status: row.status,
       }))
     ).toEqual([
       {
         effectType: "load_source",
         originEventId: startEvent.id,
-        payloadJson: {
+        payload: {
           organizationId: "org_1",
           sourceKey: "warehouse",
+          type: "load_source",
         },
         status: "pending",
       },
       {
         effectType: "validate_query",
         originEventId: sourceLoadedEvent.id,
-        payloadJson: {
+        payload: {
           queryText: "select 1",
           source: sourceDescriptor,
+          type: "validate_query",
         },
         status: "pending",
       },
@@ -650,10 +689,7 @@ describe("audit workflow storage", () => {
     await db
       .update(queryActionEvents)
       .set({
-        payloadJson: {
-          queryMode: "corrupt_mode",
-          queryText: "select 1",
-        },
+        payloadBytes: Buffer.from([0xff]),
       })
       .where(eq(queryActionEvents.commandId, storedDecision.commandId));
 
@@ -664,11 +700,12 @@ describe("audit workflow storage", () => {
       })
     );
 
-    expect(error).toMatchObject({
-      _tag: "WorkflowStorageCorruptRowError",
-      entity: "query_action_event",
-      family: "query_action",
-    });
+    expect(error._tag).toBe("WorkflowStorageCorruptRowError");
+    if (error._tag !== "WorkflowStorageCorruptRowError") {
+      throw error;
+    }
+    expect(error.entity).toBe("query_action_event_payload");
+    expect(error.family).toBe("query_action");
   });
 
   it("uses an independent commit position sequence per family", async () => {
