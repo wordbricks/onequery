@@ -13,6 +13,7 @@ import type {
   SourceApiDraft,
   SourceApiPreview,
 } from "@onequery/server/source-api";
+import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 import { Result } from "better-result";
 
 import {
@@ -271,7 +272,7 @@ function buildCliSourceApiPreview(
   return {
     bodyKind: toCliSourceApiBodyKind(value.bodyKind),
     bodyPaths: [...value.bodyPaths],
-    headerNames: lowerUniqueStrings(value.headerNames),
+    headerNames: canonicalizeSourceApiHeaderNames(value.headerNames),
     host: value.host,
     kind: toCliSourceApiOperationKind(value.kind),
     method: value.method,
@@ -303,7 +304,7 @@ function buildCliSourceApiOperation(value: SourceApiOperation) {
     examples: value.examples.map(buildCliSourceApiExample),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
-      allowedRequestHeaderNames: lowerUniqueStrings(
+      allowedRequestHeaderNames: canonicalizeSourceApiHeaderNames(
         value.headerPolicy.allowedRequestHeaders
       ),
     },
@@ -344,10 +345,6 @@ function toCliSourceApiPatchMode(value: SourceApiFieldPolicy) {
   return value.mergePatches
     ? SourceApiPatchMode.MERGE
     : SourceApiPatchMode.SEPARATE;
-}
-
-function lowerUniqueStrings(values: readonly string[]) {
-  return [...new Set(values.map((value) => value.toLowerCase()))];
 }
 
 function buildCliSourceApiExample(

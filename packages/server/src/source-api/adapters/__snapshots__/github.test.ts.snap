@@ -57,13 +57,13 @@ exports[`github source api adapter > describes the canonical fetch operation 1`]
       },
       "headerPolicy": {
         "allowedRequestHeaders": [
-          "Accept",
-          "Content-Type",
-          "If-Match",
-          "If-Modified-Since",
-          "If-None-Match",
-          "If-Unmodified-Since",
-          "X-GitHub-Api-Version",
+          "accept",
+          "content-type",
+          "if-match",
+          "if-modified-since",
+          "if-none-match",
+          "if-unmodified-since",
+          "x-github-api-version",
         ],
         "allowedResponseHeaders": [
           "content-type",
