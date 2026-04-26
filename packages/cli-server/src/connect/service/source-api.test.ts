@@ -1,16 +1,10 @@
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
-import {
-  createDb,
-  organization,
-  prepareApplicationDatabase,
-} from "@onequery/db/server";
+import { organization } from "@onequery/db/server";
+import type { Database } from "@onequery/db/server";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiDescriptorVersionMismatchError,
@@ -23,7 +17,6 @@ import {
 import { Result } from "better-result";
 import {
   afterAll,
-  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -33,6 +26,12 @@ import {
 } from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
+import {
+  closePgliteTestDatabase,
+  createPgliteTestDatabase,
+  resetPgliteTestDatabase,
+} from "../../test/pglite";
+import type { PgliteTestDatabase } from "../../test/pglite";
 import { cliConnectRequestContextKey } from "../context";
 import { CLI_ERROR_INFO_DOMAIN } from "../error";
 import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb";
@@ -251,69 +250,22 @@ const executionResponse = {
   status: 200,
 } as const;
 
-type OpenedDatabase = {
-  connectionString: string;
-  db: ClosableDatabase;
-  rootDir: string;
-};
-
-type ClosableDatabase = {
-  $client?: {
-    close?: () => Promise<unknown>;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
 const migrationsFolder = fileURLToPath(
   new URL("../../../../db/src/migrations", import.meta.url)
 );
 
-async function closeIsolatedDatabase(input: {
-  connectionString: string;
-  db: ClosableDatabase;
-}): Promise<void> {
-  const client = input.db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-  } else if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
+let sourceApiTestDatabase: PgliteTestDatabase | null = null;
+
+function getSourceApiTestDatabase() {
+  if (sourceApiTestDatabase === null) {
+    throw new Error("source api test database is not initialized");
   }
 
-  // Comment: createDb() keeps a process-global cache for runtime DB reuse; these
-  // tests create disposable PGlite paths, so teardown must evict the closed entry.
-  const globalWithDbCache = globalThis as typeof globalThis &
-    Record<symbol, Map<string, unknown> | undefined>;
-  globalWithDbCache[Symbol.for("onequery.db.instance-cache")]?.delete(
-    input.connectionString
-  );
-}
-
-let migratedTemplateRootDir: string | null = null;
-
-async function createIsolatedDatabase() {
-  if (migratedTemplateRootDir === null) {
-    throw new Error("source api test database template is not initialized");
-  }
-
-  const rootDir = mkdtempSync(join(tmpdir(), "onequery-source-api-test-"));
-  const dataDir = join(rootDir, "db");
-  const connectionString = `pglite:${dataDir}`;
-
-  // Reuse one migrated template per file so these handler tests stay stable
-  // under CI load instead of rerunning the full migration set each time.
-  cpSync(join(migratedTemplateRootDir, "db"), dataDir, {
-    recursive: true,
-  });
-
-  return {
-    connectionString,
-    db: createDb(connectionString),
-    rootDir,
-  };
+  return sourceApiTestDatabase;
 }
 
 async function createHarness() {
-  const { connectionString, db, rootDir } = await createIsolatedDatabase();
+  const { db } = getSourceApiTestDatabase();
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -371,22 +323,17 @@ async function createHarness() {
   };
 
   return {
-    connectionString,
     db,
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
     handlePreviewSourceApi: createHandlePreviewSourceApi(dependencies),
     handleResumeSourceApi: createHandleResumeSourceApi(dependencies),
-    rootDir,
     requestContext,
   };
 }
 
-async function seedResumableSourceApiAction(
-  db: ReturnType<typeof createDb>,
-  requestId: string
-) {
+async function seedResumableSourceApiAction(db: Database, requestId: string) {
   const startResult = await storeSourceApiActionCommand({
     command: {
       actionId: null,
@@ -777,50 +724,27 @@ function summarizeSourceApiPreview(
 }
 
 describe("source api connect service", { timeout: 15_000 }, () => {
-  const openedDatabases: OpenedDatabase[] = [];
-
   beforeAll(async () => {
-    migratedTemplateRootDir = mkdtempSync(
-      join(tmpdir(), "onequery-source-api-template-")
-    );
-    await prepareApplicationDatabase({
-      connectionString: `pglite:${join(migratedTemplateRootDir, "db")}`,
+    sourceApiTestDatabase = await createPgliteTestDatabase({
+      prefix: "onequery-source-api-test-",
       migrationsFolder,
     });
   }, 15_000);
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetPgliteTestDatabase(getSourceApiTestDatabase().db);
   });
 
-  afterEach(async () => {
-    for (const { connectionString, db, rootDir } of openedDatabases.splice(0)) {
-      await closeIsolatedDatabase({ connectionString, db });
-      rmSync(rootDir, {
-        force: true,
-        recursive: true,
-      });
-    }
-  });
-
-  afterAll(() => {
-    if (migratedTemplateRootDir !== null) {
-      rmSync(migratedTemplateRootDir, {
-        force: true,
-        recursive: true,
-      });
-      migratedTemplateRootDir = null;
+  afterAll(async () => {
+    if (sourceApiTestDatabase !== null) {
+      await closePgliteTestDatabase(sourceApiTestDatabase);
+      sourceApiTestDatabase = null;
     }
   });
 
   async function createTrackedHarness() {
-    const harness = await createHarness();
-    openedDatabases.push({
-      connectionString: harness.connectionString,
-      db: harness.db as ClosableDatabase,
-      rootDir: harness.rootDir,
-    });
-    return harness;
+    return createHarness();
   }
 
   it("describes the source API through the Connect handler", async () => {
