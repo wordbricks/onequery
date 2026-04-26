@@ -1,11 +1,26 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { resolvePackagedRuntimeAssetPath } from "@onequery/base/runtime-bundle";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { createLaunchConfig } from "../../../scripts/run-self-host-runtime";
+import {
+  createChildEnv,
+  createLaunchConfig,
+  createWorkspaceDevRuntimeRoot,
+  stageWorkspaceDevRuntimeAssetsResult,
+} from "../../../scripts/run-self-host-runtime";
+
+const stagedRoots = new Set<string>();
+
+afterEach(() => {
+  for (const rootDir of stagedRoots) {
+    rmSync(rootDir, { force: true, recursive: true });
+  }
+  stagedRoots.clear();
+});
 
 describe("self-host runtime dev entrypoint", () => {
   it("writes a launch contract with separate browser and API ports", () => {
@@ -66,5 +81,33 @@ describe("self-host runtime dev entrypoint", () => {
     } finally {
       rmSync(rootDir, { force: true, recursive: true });
     }
+  });
+
+  it("stages workspace-dev runtime sidecar assets for the bundled Node entry", async () => {
+    const tempDir = mkdtempSync(
+      join(tmpdir(), "onequery-self-host-runtime-dev-assets-")
+    );
+    stagedRoots.add(tempDir);
+    const runtimeRoot = createWorkspaceDevRuntimeRoot(tempDir);
+
+    const result = await stageWorkspaceDevRuntimeAssetsResult(runtimeRoot);
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(createChildEnv({ runtimeRoot }).ONEQUERY_RUNTIME_ROOT).toBe(
+      runtimeRoot
+    );
+    expect(
+      existsSync(
+        resolvePackagedRuntimeAssetPath(runtimeRoot, "sqlParser", "wasm")
+      )
+    ).toBe(true);
+    expect(
+      existsSync(
+        resolvePackagedRuntimeAssetPath(runtimeRoot, "pglite", "pgliteWasm")
+      )
+    ).toBe(true);
   });
 });

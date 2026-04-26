@@ -7,6 +7,7 @@
     "./app": "./src/app.ts",
     "./assets": "./src/assets.ts",
     "./client": "./src/client.ts",
+    "./dev-runner": "./src/dev-runner.ts",
     "./packaged-entry": "./src/node-entry.ts"
   },
   "scripts": {
@@ -27,7 +28,7 @@
     "@onequery/db": "workspace:*",
     "@onequery/installer": "workspace:*",
     "@onequery/server": "workspace:*",
-    "antiox": "0.1.4",
+    "antiox": "catalog:",
     "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",

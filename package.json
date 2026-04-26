@@ -25,6 +25,7 @@
       "@types/pg": "8.16.0",
       "@types/react": "19.2.7",
       "@types/react-dom": "19.2.3",
+      "antiox": "0.1.4",
       "better-auth": "1.5.5",
       "better-result": "2.8.2",
       "hono": "4.12.14",

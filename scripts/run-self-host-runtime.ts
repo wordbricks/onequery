@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,10 +8,21 @@ import { loadWorkspaceDev } from "@onequery/config-node";
 import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { getDefaultSpaBuildDir } from "@onequery/self-host-runtime/assets";
+import {
+  renderWorkspaceDevRuntimePreparationError,
+  stageWorkspaceDevRuntimeAssetsResult as stageWorkspaceDevRuntimeAssetsWithStager,
+  waitForBundledRuntimeResult,
+} from "@onequery/self-host-runtime/dev-runner";
+
+import { stageRuntimeAssets } from "../apps/cli/scripts/build-npm-package.js";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const selfHostRuntimeDir = resolve(rootDir, "packages", "self-host-runtime");
 const bundledRuntimePath = resolve(selfHostRuntimeDir, "dist", "node-entry.js");
+
+type ChildEnvOptions = {
+  runtimeRoot?: string;
+};
 
 function prependPathEntries(
   entries: readonly string[],
@@ -79,10 +90,25 @@ export function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
   };
 }
 
-export function createChildEnv(): NodeJS.ProcessEnv {
+export function createWorkspaceDevRuntimeRoot(tempDir: string): string {
+  return join(tempDir, "runtime-root");
+}
+
+export async function stageWorkspaceDevRuntimeAssetsResult(
+  runtimeRoot: string
+): ReturnType<typeof stageWorkspaceDevRuntimeAssetsWithStager> {
+  return stageWorkspaceDevRuntimeAssetsWithStager(
+    runtimeRoot,
+    stageRuntimeAssets
+  );
+}
+
+export function createChildEnv(
+  options: ChildEnvOptions = {}
+): NodeJS.ProcessEnv {
   const childEnv: NodeJS.ProcessEnv = {
     ...process.env,
-    ONEQUERY_RUNTIME_ROOT: rootDir,
+    ONEQUERY_RUNTIME_ROOT: options.runtimeRoot ?? rootDir,
     PATH: prependPathEntries(
       [
         join(selfHostRuntimeDir, "node_modules/.bin"),
@@ -117,38 +143,6 @@ export function createRuntimeBuildArgs(): string[] {
   ];
 }
 
-async function waitForBundledRuntime(
-  buildStartedAtMs: number,
-  builder: ReturnType<typeof spawn>
-): Promise<void> {
-  const timeoutMs = 15_000;
-  const pollIntervalMs = 50;
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() <= deadline) {
-    if (builder.exitCode !== null || builder.signalCode !== null) {
-      throw new Error(
-        "Runtime bundle build exited before the Node entry was ready."
-      );
-    }
-
-    try {
-      const bundleStats = statSync(bundledRuntimePath);
-      if (bundleStats.isFile() && bundleStats.mtimeMs >= buildStartedAtMs) {
-        return;
-      }
-    } catch {
-      // Comment: the first watch build has not emitted the bundle yet.
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-  }
-
-  throw new Error(
-    `Timed out waiting for bundled self-host runtime entry at ${bundledRuntimePath}.`
-  );
-}
-
 function terminateChild(
   child: ReturnType<typeof spawn> | null,
   signal: NodeJS.Signals = "SIGTERM"
@@ -158,13 +152,31 @@ function terminateChild(
   }
 }
 
+function failBeforeRuntimeStart(tempDir: string, message: string): never {
+  rmSync(tempDir, {
+    force: true,
+    recursive: true,
+  });
+  console.error(message);
+  process.exit(1);
+}
+
 export async function main(): Promise<void> {
   parseRunMode(process.argv.slice(2));
   const launchConfig = writeLaunchConfigFile(createLaunchConfig());
+  const runtimeRoot = createWorkspaceDevRuntimeRoot(launchConfig.tempDir);
+  const runtimeAssets = await stageWorkspaceDevRuntimeAssetsResult(runtimeRoot);
+  if (runtimeAssets.isErr()) {
+    failBeforeRuntimeStart(
+      launchConfig.tempDir,
+      renderWorkspaceDevRuntimePreparationError(runtimeAssets.error)
+    );
+  }
+
   const buildStartedAtMs = Date.now();
   const builder = spawn("bun", createRuntimeBuildArgs(), {
     cwd: selfHostRuntimeDir,
-    env: createChildEnv(),
+    env: createChildEnv({ runtimeRoot }),
     shell: process.platform === "win32",
     stdio: "inherit",
   });
@@ -221,27 +233,22 @@ export async function main(): Promise<void> {
     process.exit(1);
   });
 
-  try {
-    await waitForBundledRuntime(buildStartedAtMs, builder);
-  } catch (error) {
+  const bundledRuntime = await waitForBundledRuntimeResult({
+    buildStartedAtMs,
+    builder,
+    bundledRuntimePath,
+  });
+  if (bundledRuntime.isErr()) {
     terminateChild(builder);
-    rmSync(launchConfig.tempDir, {
-      force: true,
-      recursive: true,
-    });
-
-    if (error instanceof Error) {
-      console.error(error.message);
-      process.exit(1);
-    }
-
-    console.error("Failed to prepare the Node self-host runtime bundle.");
-    process.exit(1);
+    failBeforeRuntimeStart(
+      launchConfig.tempDir,
+      renderWorkspaceDevRuntimePreparationError(bundledRuntime.error)
+    );
   }
 
   runtime = spawn("node", createRuntimeArgs(launchConfig.launchConfigPath), {
     cwd: selfHostRuntimeDir,
-    env: createChildEnv(),
+    env: createChildEnv({ runtimeRoot }),
     shell: process.platform === "win32",
     stdio: "inherit",
   });
