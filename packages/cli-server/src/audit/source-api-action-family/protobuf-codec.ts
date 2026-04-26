@@ -12,6 +12,7 @@ import type {
   SourceApiSelectorKind,
   SourceApiSource,
 } from "@onequery/server/source-api";
+import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
@@ -1180,10 +1181,10 @@ function fromSourceApiFieldPolicyMessage(
 
 function toSourceApiHeaderPolicyMessage(policy: SourceApiHeaderPolicy) {
   return create(sourceApiPb.SourceApiActionHeaderPolicySchema, {
-    allowedRequestHeaderNames: canonicalizeHeaderNames(
+    allowedRequestHeaderNames: canonicalizeSourceApiHeaderNames(
       policy.allowedRequestHeaders
     ),
-    allowedResponseHeaderNames: canonicalizeHeaderNames(
+    allowedResponseHeaderNames: canonicalizeSourceApiHeaderNames(
       policy.allowedResponseHeaders
     ),
   });
@@ -1198,10 +1199,6 @@ function fromSourceApiHeaderPolicyMessage(
     allowedRequestHeaders: [...value.allowedRequestHeaderNames],
     allowedResponseHeaders: [...value.allowedResponseHeaderNames],
   };
-}
-
-function canonicalizeHeaderNames(names: readonly string[]): string[] {
-  return [...new Set(names.map((name) => name.trim().toLowerCase()))];
 }
 
 function toSourceApiExampleMessage(
