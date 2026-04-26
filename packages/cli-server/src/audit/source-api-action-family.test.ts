@@ -533,7 +533,6 @@ describe("source_api_action family", () => {
             failureCode: "request_timed_out",
             kind: "terminal_failure",
             pageIndex: 2,
-            problemKey: "SOURCE_API_EXECUTION_TIMED_OUT",
             type: "record_page_fetch",
           },
           { actionId: "action_1", causedByEventId: state.lastEventId }

@@ -13,6 +13,11 @@ import type {
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { createCliServiceFailure } from "../result";
 import {
+  toCliDescriptorResolutionProblemKey,
+  toCliPageFetchProblemKey,
+  toCliRequestPreparationProblemKey,
+} from "./workflow-failures";
+import {
   createSourceApiAuditCorruptionFailure,
   requireLastCommittedEvent,
 } from "./workflow-runtime";
@@ -55,20 +60,23 @@ export function toStoredDescriptorResolutionResult(
     );
   }
 
-  if (commandPayload.kind === "resolved") {
-    return {
-      descriptor: commandPayload.descriptor,
-      kind: "resolved",
-    };
+  switch (commandPayload.kind) {
+    case "resolved":
+      return {
+        descriptor: commandPayload.descriptor,
+        kind: "resolved",
+      };
+    case "failed":
+      return {
+        kind: "failed",
+        problem: createCliServiceFailure({
+          detail: commandPayload.detail,
+          key: toCliDescriptorResolutionProblemKey(commandPayload.failureCode),
+        }),
+      };
+    default:
+      return assertNever(commandPayload);
   }
-
-  return {
-    kind: "failed",
-    problem: createCliServiceFailure({
-      detail: commandPayload.detail,
-      key: commandPayload.problemKey,
-    }),
-  };
 }
 
 export function toStoredRequestPreparationResult(
@@ -86,7 +94,7 @@ export function toStoredRequestPreparationResult(
         kind: "failed",
         problem: createCliServiceFailure({
           detail: event.detail,
-          key: event.problemKey,
+          key: toCliRequestPreparationProblemKey(event.failureCode),
         }),
       };
     default:
@@ -116,9 +124,11 @@ export function toStoredPageFetchResult(
         kind: "failed",
         problem: createCliServiceFailure({
           detail: commandPayload.detail,
-          key: commandPayload.problemKey,
+          key: toCliPageFetchProblemKey(commandPayload.failureCode),
         }),
       };
+    default:
+      return assertNever(commandPayload);
   }
 }
 
@@ -186,5 +196,13 @@ export function measureSourceApiResponseBytes(
       return Buffer.byteLength(result.body.value, "utf8");
     case "none":
       return null;
+    default:
+      return assertNever(result.body);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(
+    `Unhandled source API workflow projection case: ${String(value)}`
+  );
 }

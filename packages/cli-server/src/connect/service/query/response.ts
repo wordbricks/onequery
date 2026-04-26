@@ -1,5 +1,6 @@
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
 
+import type { CliQueryColumn } from "../../../domain/workflows";
 import {
   buildCliSanitization,
   sanitizeCliRemoteText,
@@ -52,7 +53,7 @@ export function buildQueryValidateResponse(response: {
 }
 
 export function buildQueryExecuteResponse(response: {
-  columns: readonly { name: string; logicalType: string | null }[];
+  columns: readonly Pick<CliQueryColumn, "logicalType" | "name">[];
   elapsedMs: number;
   rowCount: number;
   rows: readonly (readonly string[])[];
@@ -95,7 +96,7 @@ export function buildQueryExecuteSanitization(hasRows: boolean) {
 
 function buildCliQueryColumn(column: {
   name: string;
-  logicalType: string | null;
+  logicalType: CliQueryColumn["logicalType"];
 }): ExecuteQueryColumnMessage {
   return {
     name: column.name,
@@ -109,8 +110,12 @@ function buildCliQueryRow(row: readonly string[]): ExecuteQueryRowMessage {
   };
 }
 
-function toCliQueryLogicalType(value: string | null) {
+function toCliQueryLogicalType(
+  value: CliQueryColumn["logicalType"]
+): QueryLogicalType {
   switch (value) {
+    case null:
+      return QueryLogicalType.UNKNOWN;
     case "string":
       return QueryLogicalType.STRING;
     case "number":
@@ -126,6 +131,10 @@ function toCliQueryLogicalType(value: string | null) {
     case "json":
       return QueryLogicalType.JSON;
     default:
-      return QueryLogicalType.UNKNOWN;
+      return assertNever(value);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled query logical type: ${String(value)}`);
 }

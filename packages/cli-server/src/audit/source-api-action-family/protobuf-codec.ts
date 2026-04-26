@@ -17,7 +17,6 @@ import type { Result as ResultType } from "better-result";
 
 import * as commonPb from "../../connect/gen/onequery/workflow/v1/common_pb";
 import * as sourceApiPb from "../../connect/gen/onequery/workflow/v1/source_api_action_pb";
-import type { CliProblemKey } from "../../domain/problems";
 import { WorkflowStorageCorruptRowError } from "../storage/errors";
 import {
   assertNever,
@@ -431,12 +430,11 @@ function fromSourceApiActionCommandMessage(
         type: "record_descriptor_resolution",
       };
     case "recordDescriptorResolutionFailed": {
-      const failure = fromDescriptorResolutionFailureCode(
-        payload.command.value.failureCode
-      );
       return {
         detail: payload.command.value.detail,
-        ...failure,
+        failureCode: fromDescriptorResolutionFailureCode(
+          payload.command.value.failureCode
+        ),
         kind: "failed",
         type: "record_descriptor_resolution",
       };
@@ -449,12 +447,11 @@ function fromSourceApiActionCommandMessage(
         type: "record_request_preparation",
       };
     case "recordRequestPreparationFailed": {
-      const failure = fromRequestPreparationFailureCode(
-        payload.command.value.failureCode
-      );
       return {
         detail: payload.command.value.detail,
-        ...failure,
+        failureCode: fromRequestPreparationFailureCode(
+          payload.command.value.failureCode
+        ),
         kind: "failed",
         type: "record_request_preparation",
       };
@@ -486,13 +483,12 @@ function fromSourceApiActionCommandMessage(
         type: "record_page_fetch",
       };
     case "recordPageFetchTerminalFailure": {
-      const failure = fromPageFetchFailureCode(
-        payload.command.value.failureCode
-      );
       return {
         attemptNumber: payload.command.value.attemptNumber,
         detail: payload.command.value.detail,
-        ...failure,
+        failureCode: fromPageFetchFailureCode(
+          payload.command.value.failureCode
+        ),
         kind: "terminal_failure",
         pageIndex: payload.command.value.pageIndex,
         type: "record_page_fetch",
@@ -686,12 +682,11 @@ function fromSourceApiActionEventMessage(
         type: "descriptor_resolved",
       };
     case "descriptorResolutionFailed": {
-      const failure = fromDescriptorResolutionFailureCode(
-        payload.event.value.failureCode
-      );
       return {
         detail: payload.event.value.detail,
-        ...failure,
+        failureCode: fromDescriptorResolutionFailureCode(
+          payload.event.value.failureCode
+        ),
         type: "descriptor_resolution_failed",
       };
     }
@@ -702,12 +697,11 @@ function fromSourceApiActionEventMessage(
         type: "request_prepared",
       };
     case "requestPreparationFailed": {
-      const failure = fromRequestPreparationFailureCode(
-        payload.event.value.failureCode
-      );
       return {
         detail: payload.event.value.detail,
-        ...failure,
+        failureCode: fromRequestPreparationFailureCode(
+          payload.event.value.failureCode
+        ),
         type: "request_preparation_failed",
       };
     }
@@ -739,11 +733,10 @@ function fromSourceApiActionEventMessage(
         type: "page_fetch_succeeded",
       };
     case "pageFetchFailed": {
-      const failure = fromPageFetchFailureCode(payload.event.value.failureCode);
       return {
         attemptNumber: payload.event.value.attemptNumber,
         detail: payload.event.value.detail,
-        ...failure,
+        failureCode: fromPageFetchFailureCode(payload.event.value.failureCode),
         kind: "terminal_failure",
         pageIndex: payload.event.value.pageIndex,
         type: "page_fetch_failed",
@@ -1549,24 +1542,15 @@ function toSourceApiFailureCode(code: SourceApiActionFailureCode) {
 
 function fromDescriptorResolutionFailureCode(
   code: sourceApiPb.SourceApiActionFailureCode
-): {
-  failureCode: Extract<
-    SourceApiActionFailureCode,
-    "descriptor_unavailable" | "permission_denied"
-  >;
-  problemKey: CliProblemKey;
-} {
+): Extract<
+  SourceApiActionFailureCode,
+  "descriptor_unavailable" | "permission_denied"
+> {
   switch (code) {
     case sourceApiPb.SourceApiActionFailureCode.DESCRIPTOR_UNAVAILABLE:
-      return {
-        failureCode: "descriptor_unavailable",
-        problemKey: "SOURCE_API_DESCRIBE_FAILED",
-      };
+      return "descriptor_unavailable";
     case sourceApiPb.SourceApiActionFailureCode.PERMISSION_DENIED:
-      return {
-        failureCode: "permission_denied",
-        problemKey: "SOURCE_API_FORBIDDEN",
-      };
+      return "permission_denied";
     case sourceApiPb.SourceApiActionFailureCode.UNSPECIFIED:
       throw new Error("source api failure code is unspecified");
     default:
@@ -1578,29 +1562,17 @@ function fromDescriptorResolutionFailureCode(
 
 function fromRequestPreparationFailureCode(
   code: sourceApiPb.SourceApiActionFailureCode
-): {
-  failureCode: Extract<
-    SourceApiActionFailureCode,
-    "invalid_request" | "permission_denied" | "execution_state_invalid"
-  >;
-  problemKey: CliProblemKey;
-} {
+): Extract<
+  SourceApiActionFailureCode,
+  "invalid_request" | "permission_denied" | "execution_state_invalid"
+> {
   switch (code) {
     case sourceApiPb.SourceApiActionFailureCode.INVALID_REQUEST:
-      return {
-        failureCode: "invalid_request",
-        problemKey: "SOURCE_API_REQUEST_INVALID",
-      };
+      return "invalid_request";
     case sourceApiPb.SourceApiActionFailureCode.PERMISSION_DENIED:
-      return {
-        failureCode: "permission_denied",
-        problemKey: "SOURCE_API_FORBIDDEN",
-      };
+      return "permission_denied";
     case sourceApiPb.SourceApiActionFailureCode.EXECUTION_STATE_INVALID:
-      return {
-        failureCode: "execution_state_invalid",
-        problemKey: "SOURCE_API_EXECUTION_STATE_INVALID",
-      };
+      return "execution_state_invalid";
     case sourceApiPb.SourceApiActionFailureCode.UNSPECIFIED:
       throw new Error("source api failure code is unspecified");
     default:
@@ -1610,37 +1582,22 @@ function fromRequestPreparationFailureCode(
 
 function fromPageFetchFailureCode(
   code: sourceApiPb.SourceApiActionFailureCode
-): {
-  failureCode: Extract<
-    SourceApiActionFailureCode,
-    | "invalid_request"
-    | "request_timed_out"
-    | "execution_failed"
-    | "execution_state_invalid"
-  >;
-  problemKey: CliProblemKey;
-} {
+): Extract<
+  SourceApiActionFailureCode,
+  | "invalid_request"
+  | "request_timed_out"
+  | "execution_failed"
+  | "execution_state_invalid"
+> {
   switch (code) {
     case sourceApiPb.SourceApiActionFailureCode.INVALID_REQUEST:
-      return {
-        failureCode: "invalid_request",
-        problemKey: "SOURCE_API_REQUEST_INVALID",
-      };
+      return "invalid_request";
     case sourceApiPb.SourceApiActionFailureCode.REQUEST_TIMED_OUT:
-      return {
-        failureCode: "request_timed_out",
-        problemKey: "SOURCE_API_EXECUTION_TIMED_OUT",
-      };
+      return "request_timed_out";
     case sourceApiPb.SourceApiActionFailureCode.EXECUTION_FAILED:
-      return {
-        failureCode: "execution_failed",
-        problemKey: "SOURCE_API_EXECUTION_FAILED",
-      };
+      return "execution_failed";
     case sourceApiPb.SourceApiActionFailureCode.EXECUTION_STATE_INVALID:
-      return {
-        failureCode: "execution_state_invalid",
-        problemKey: "SOURCE_API_EXECUTION_STATE_INVALID",
-      };
+      return "execution_state_invalid";
     case sourceApiPb.SourceApiActionFailureCode.UNSPECIFIED:
       throw new Error("source api failure code is unspecified");
     default:

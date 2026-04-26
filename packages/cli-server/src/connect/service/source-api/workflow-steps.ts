@@ -129,7 +129,6 @@ export async function runPreparedSourceApiWorkflow(
             detail: problem.message,
             failureCode: "descriptor_unavailable",
             kind: "failed",
-            problemKey: problem.reason,
             type: "record_descriptor_resolution",
           },
           result: {
@@ -157,7 +156,6 @@ export async function runPreparedSourceApiWorkflow(
             detail: failure.problem.message,
             failureCode: failure.failureCode,
             kind: "failed",
-            problemKey: failure.problemKey,
             type: "record_descriptor_resolution",
           },
           result: {
@@ -249,7 +247,6 @@ export async function runSourceApiRequestPreparationStep(input: {
             detail: failure.problem.message,
             failureCode: failure.failureCode,
             kind: "failed",
-            problemKey: failure.problemKey,
             type: "record_request_preparation",
           },
           result: {
@@ -351,7 +348,6 @@ function toDescriptorResolutionFailure(
         ? ("permission_denied" as const)
         : ("descriptor_unavailable" as const),
     problem: normalizedProblem,
-    problemKey: normalizedProblem.reason,
   };
 }
 
@@ -372,7 +368,6 @@ function toRequestPreparationFailure(
   return {
     failureCode: classifyRequestPreparationFailureCode(normalizedProblem),
     problem: normalizedProblem,
-    problemKey: normalizedProblem.reason,
   };
 }
 

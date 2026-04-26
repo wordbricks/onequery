@@ -77,7 +77,9 @@ import {
   workflowCommands,
 } from "@onequery/db/server";
 import type {
+  DataSourceStatus,
   Database,
+  ProviderType,
   WorkflowActorSnapshotJson,
   WorkflowFamily,
   WorkflowProjectionJson,
@@ -98,10 +100,10 @@ type QueryActionSourceDescriptorPayload = {
   displayName: string | null;
   name: string;
   organizationId: string;
-  provider: string;
+  provider: ProviderType;
   sourceId: string;
   sourceKey: string;
-  sourceStatus: string;
+  sourceStatus: DataSourceStatus;
 };
 
 type QueryActionEventPayload =
@@ -119,8 +121,8 @@ type QueryActionEventPayload =
       type: "source_not_found";
     }
   | {
-      provider: string;
-      sourceStatus: string;
+      provider: ProviderType;
+      sourceStatus: DataSourceStatus;
       type: "source_not_queryable";
     }
   | {
@@ -166,10 +168,10 @@ type QueryActionEventPayload =
 
 type SourceApiRequestDescriptorPayload = {
   descriptorVersion: string | null;
-  kind: string | null;
+  kind: "http_request" | "structured_request" | null;
   method: string | null;
   operation: string;
-  paginationPolicy: string | null;
+  paginationPolicy: "continuation_token" | "none" | null;
   selector: string | null;
 };
 
@@ -187,10 +189,26 @@ type SourceApiStartCommandPayload =
 
 type SourceApiSourceDescriptorPayload = {
   displayName: string | null;
-  provider: string;
+  provider: ProviderType;
   sourceId: string;
   sourceKey: string;
 };
+
+type SourceApiDescriptorResolutionFailureCode = Extract<
+  AuditSourceApiActionFailureCode,
+  "descriptor_unavailable" | "permission_denied"
+>;
+type SourceApiRequestPreparationFailureCode = Extract<
+  AuditSourceApiActionFailureCode,
+  "execution_state_invalid" | "invalid_request" | "permission_denied"
+>;
+type SourceApiPageFetchFailureCode = Extract<
+  AuditSourceApiActionFailureCode,
+  | "execution_failed"
+  | "execution_state_invalid"
+  | "invalid_request"
+  | "request_timed_out"
+>;
 
 type SourceApiEventPayload =
   | {
@@ -213,7 +231,7 @@ type SourceApiEventPayload =
     }
   | {
       detail: string;
-      failureCode: "descriptor_unavailable" | "permission_denied";
+      failureCode: SourceApiDescriptorResolutionFailureCode;
       problemKey: string;
       type: "descriptor_resolution_failed";
     }
@@ -223,7 +241,7 @@ type SourceApiEventPayload =
     }
   | {
       detail: string;
-      failureCode: "invalid_request" | "permission_denied";
+      failureCode: SourceApiRequestPreparationFailureCode;
       problemKey: string;
       type: "request_preparation_failed";
     }
@@ -243,11 +261,7 @@ type SourceApiEventPayload =
   | {
       attemptNumber: number;
       detail: string;
-      failureCode:
-        | "execution_failed"
-        | "execution_state_invalid"
-        | "invalid_request"
-        | "request_timed_out";
+      failureCode: SourceApiPageFetchFailureCode;
       kind: "terminal_failure";
       pageIndex: number;
       problemKey: string;
@@ -923,7 +937,9 @@ function fromSourceApiRequestDescriptor(
   };
 }
 
-function fromWorkflowSourceProvider(provider: WorkflowSourceProvider): string {
+function fromWorkflowSourceProvider(
+  provider: WorkflowSourceProvider
+): ProviderType {
   switch (provider) {
     case WorkflowSourceProvider.POSTGRES:
       return "postgres";
@@ -955,12 +971,14 @@ function fromWorkflowSourceProvider(provider: WorkflowSourceProvider): string {
       return "linear";
     case WorkflowSourceProvider.UNSPECIFIED:
       throw new Error("workflow source provider is unspecified");
+    default:
+      throw new Error(`unsupported workflow source provider: ${provider}`);
   }
 }
 
 function fromWorkflowDataSourceStatus(
   status: WorkflowDataSourceStatus
-): string {
+): DataSourceStatus {
   switch (status) {
     case WorkflowDataSourceStatus.ACTIVE:
       return "active";
@@ -970,10 +988,14 @@ function fromWorkflowDataSourceStatus(
       return "disconnected";
     case WorkflowDataSourceStatus.UNSPECIFIED:
       throw new Error("workflow data source status is unspecified");
+    default:
+      throw new Error(`unsupported workflow data source status: ${status}`);
   }
 }
 
-function fromQueryActionMode(mode: QueryActionMode) {
+function fromQueryActionMode(
+  mode: QueryActionMode
+): Extract<QueryActionEventPayload, { type: "action_received" }>["queryMode"] {
   switch (mode) {
     case QueryActionMode.VALIDATE:
       return "validate";
@@ -981,10 +1003,14 @@ function fromQueryActionMode(mode: QueryActionMode) {
       return "execute";
     case QueryActionMode.UNSPECIFIED:
       throw new Error("query action mode is unspecified");
+    default:
+      throw new Error(`unsupported query action mode: ${mode}`);
   }
 }
 
-function fromSourceApiRequestKind(kind: SourceApiActionRequestKind) {
+function fromSourceApiRequestKind(
+  kind: SourceApiActionRequestKind
+): Extract<SourceApiEventPayload, { type: "action_received" }>["requestKind"] {
   switch (kind) {
     case SourceApiActionRequestKind.DESCRIBE:
       return "describe";
@@ -992,10 +1018,16 @@ function fromSourceApiRequestKind(kind: SourceApiActionRequestKind) {
       return "invoke";
     case SourceApiActionRequestKind.UNSPECIFIED:
       throw new Error("source api request kind is unspecified");
+    default:
+      throw new Error(`unsupported source api request kind: ${kind}`);
   }
 }
 
-function fromSourceApiInvokeMode(mode: SourceApiActionInvokeMode) {
+function fromSourceApiInvokeMode(
+  mode: SourceApiActionInvokeMode
+): NonNullable<
+  Extract<SourceApiEventPayload, { type: "action_received" }>["invokeMode"]
+> {
   switch (mode) {
     case SourceApiActionInvokeMode.PREVIEW_ONLY:
       return "preview_only";
@@ -1003,10 +1035,14 @@ function fromSourceApiInvokeMode(mode: SourceApiActionInvokeMode) {
       return "execute";
     case SourceApiActionInvokeMode.UNSPECIFIED:
       throw new Error("source api invoke mode is unspecified");
+    default:
+      throw new Error(`unsupported source api invoke mode: ${mode}`);
   }
 }
 
-function fromSourceApiOperationKind(kind: SourceApiActionOperationKind) {
+function fromSourceApiOperationKind(
+  kind: SourceApiActionOperationKind
+): NonNullable<SourceApiRequestDescriptorPayload["kind"]> {
   switch (kind) {
     case SourceApiActionOperationKind.HTTP_REQUEST:
       return "http_request";
@@ -1014,12 +1050,14 @@ function fromSourceApiOperationKind(kind: SourceApiActionOperationKind) {
       return "structured_request";
     case SourceApiActionOperationKind.UNSPECIFIED:
       throw new Error("source api operation kind is unspecified");
+    default:
+      throw new Error(`unsupported source api operation kind: ${kind}`);
   }
 }
 
 function fromSourceApiPaginationPolicy(
   policy: SourceApiActionPaginationPolicy
-) {
+): NonNullable<SourceApiRequestDescriptorPayload["paginationPolicy"]> {
   switch (policy) {
     case SourceApiActionPaginationPolicy.NONE:
       return "none";
@@ -1027,10 +1065,14 @@ function fromSourceApiPaginationPolicy(
       return "continuation_token";
     case SourceApiActionPaginationPolicy.UNSPECIFIED:
       throw new Error("source api pagination policy is unspecified");
+    default:
+      throw new Error(`unsupported source api pagination policy: ${policy}`);
   }
 }
 
-function fromDescriptorResolutionFailureCode(code: SourceApiActionFailureCode) {
+function fromDescriptorResolutionFailureCode(
+  code: SourceApiActionFailureCode
+): SourceApiDescriptorResolutionFailureCode {
   switch (code) {
     case SourceApiActionFailureCode.DESCRIPTOR_UNAVAILABLE:
       return "descriptor_unavailable";
@@ -1043,12 +1085,16 @@ function fromDescriptorResolutionFailureCode(code: SourceApiActionFailureCode) {
   }
 }
 
-function fromRequestPreparationFailureCode(code: SourceApiActionFailureCode) {
+function fromRequestPreparationFailureCode(
+  code: SourceApiActionFailureCode
+): SourceApiRequestPreparationFailureCode {
   switch (code) {
     case SourceApiActionFailureCode.INVALID_REQUEST:
       return "invalid_request";
     case SourceApiActionFailureCode.PERMISSION_DENIED:
       return "permission_denied";
+    case SourceApiActionFailureCode.EXECUTION_STATE_INVALID:
+      return "execution_state_invalid";
     default:
       throw new Error(
         `source api request preparation failure code ${code} is not valid for request preparation`
@@ -1056,7 +1102,9 @@ function fromRequestPreparationFailureCode(code: SourceApiActionFailureCode) {
   }
 }
 
-function fromPageFetchFailureCode(code: SourceApiActionFailureCode) {
+function fromPageFetchFailureCode(
+  code: SourceApiActionFailureCode
+): SourceApiPageFetchFailureCode {
   switch (code) {
     case SourceApiActionFailureCode.INVALID_REQUEST:
       return "invalid_request";
@@ -1075,13 +1123,10 @@ function fromPageFetchFailureCode(code: SourceApiActionFailureCode) {
 
 function sourceApiProblemKeyForFailure(
   failureCode:
-    | "descriptor_unavailable"
-    | "execution_failed"
-    | "execution_state_invalid"
-    | "invalid_request"
-    | "permission_denied"
-    | "request_timed_out"
-) {
+    | SourceApiDescriptorResolutionFailureCode
+    | SourceApiPageFetchFailureCode
+    | SourceApiRequestPreparationFailureCode
+): string {
   switch (failureCode) {
     case "descriptor_unavailable":
       return "SOURCE_API_DESCRIBE_FAILED";
@@ -1095,6 +1140,8 @@ function sourceApiProblemKeyForFailure(
       return "SOURCE_API_EXECUTION_FAILED";
     case "execution_state_invalid":
       return "SOURCE_API_EXECUTION_STATE_INVALID";
+    default:
+      return assertNever(failureCode);
   }
 }
 

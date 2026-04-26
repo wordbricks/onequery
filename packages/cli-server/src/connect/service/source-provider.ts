@@ -35,6 +35,8 @@ export function toCliSourceProvider(value: ProviderType): SourceProvider {
       return SourceProvider.GITHUB;
     case "linear":
       return SourceProvider.LINEAR;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -76,4 +78,8 @@ export function fromCliSourceProvider(
         key: "SOURCE_REQUEST_INVALID",
       });
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled source provider: ${String(value)}`);
 }

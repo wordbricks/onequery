@@ -251,7 +251,6 @@ export function decideSourceApiAction(
                 {
                   detail: commandPayload.detail,
                   failureCode: commandPayload.failureCode,
-                  problemKey: commandPayload.problemKey,
                   type: "descriptor_resolution_failed",
                 },
               ],
@@ -327,7 +326,6 @@ export function decideSourceApiAction(
                 {
                   detail: commandPayload.detail,
                   failureCode: commandPayload.failureCode,
-                  problemKey: commandPayload.problemKey,
                   type: "request_preparation_failed",
                 },
               ],
@@ -378,7 +376,6 @@ export function decideSourceApiAction(
                   failureCode: commandPayload.failureCode,
                   kind: "terminal_failure",
                   pageIndex: commandPayload.pageIndex,
-                  problemKey: commandPayload.problemKey,
                   type: "page_fetch_failed",
                 },
               ],

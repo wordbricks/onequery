@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { CLI_PROBLEM_KEYS } from "../../domain/problems";
-import type { CliProblemKey } from "../../domain/problems";
 import type { WorkflowCommittedEvent } from "../kernel";
 import {
   SOURCE_API_ACTION_INVOKE_MODES,
@@ -16,10 +14,6 @@ import type {
   SourceApiActionSourceDescriptor,
 } from "./descriptors";
 import type { SourceApiActionFailureCode } from "./state";
-
-const CliProblemKeySchema = z.enum(
-  CLI_PROBLEM_KEYS as [CliProblemKey, ...CliProblemKey[]]
-);
 
 export type SourceApiActionEvent =
   | {
@@ -46,7 +40,6 @@ export type SourceApiActionEvent =
         SourceApiActionFailureCode,
         "descriptor_unavailable" | "permission_denied"
       >;
-      problemKey: CliProblemKey;
       type: "descriptor_resolution_failed";
     }
   | {
@@ -59,7 +52,6 @@ export type SourceApiActionEvent =
         SourceApiActionFailureCode,
         "invalid_request" | "permission_denied" | "execution_state_invalid"
       >;
-      problemKey: CliProblemKey;
       type: "request_preparation_failed";
     }
   | {
@@ -87,7 +79,6 @@ export type SourceApiActionEvent =
       >;
       kind: "terminal_failure";
       pageIndex: number;
-      problemKey: CliProblemKey;
       type: "page_fetch_failed";
     };
 
@@ -122,7 +113,6 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
     .object({
       detail: z.string(),
       failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
-      problemKey: CliProblemKeySchema,
       type: z.literal("descriptor_resolution_failed"),
     })
     .strict(),
@@ -140,7 +130,6 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
         "permission_denied",
         "execution_state_invalid",
       ]),
-      problemKey: CliProblemKeySchema,
       type: z.literal("request_preparation_failed"),
     })
     .strict(),
@@ -173,7 +162,6 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
       ]),
       kind: z.literal("terminal_failure"),
       pageIndex: z.number().int(),
-      problemKey: CliProblemKeySchema,
       type: z.literal("page_fetch_failed"),
     })
     .strict(),

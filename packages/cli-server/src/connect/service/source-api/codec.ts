@@ -177,6 +177,8 @@ export function buildCliExecuteSourceApiResponse(
           },
         },
       };
+    default:
+      return assertNever(input);
   }
 }
 
@@ -207,6 +209,8 @@ export function buildCliResumeSourceApiResponse(
           },
         },
       };
+    default:
+      return assertNever(input);
   }
 }
 
@@ -256,6 +260,8 @@ function buildSourceApiDraftPayload(body: CliSourceApiDraft["body"]): {
           kind: "none",
         },
       };
+    default:
+      return assertNever(body);
   }
 }
 
@@ -378,6 +384,8 @@ function buildCliSourceApiResponseBody(
         case: undefined,
         value: undefined,
       };
+    default:
+      return assertNever(value);
   }
 }
 
@@ -397,6 +405,8 @@ function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
       return SourceApiInputMode.REQUEST_OBJECT;
     case "request_body":
       return SourceApiInputMode.REQUEST_BODY;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -408,6 +418,8 @@ function toCliSourceApiOperationKind(
       return SourceApiOperationKind.HTTP_REQUEST;
     case "structured_request":
       return SourceApiOperationKind.STRUCTURED_REQUEST;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -421,6 +433,8 @@ function toCliSourceApiBodyKind(value: SourceApiBodyFormat): SourceApiBodyKind {
       return SourceApiBodyKind.TEXT;
     case "binary":
       return SourceApiBodyKind.BINARY;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -432,6 +446,8 @@ function toCliSourceApiPaginationPolicy(
       return SourceApiPaginationPolicy.NONE;
     case "continuation_token":
       return SourceApiPaginationPolicy.CONTINUATION_TOKEN;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -445,5 +461,11 @@ function toCliSourceApiSelectorKind(
       return SourceApiSelectorKind.PATH;
     case "identifier":
       return SourceApiSelectorKind.IDENTIFIER;
+    default:
+      return assertNever(value);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled source API codec case: ${String(value)}`);
 }

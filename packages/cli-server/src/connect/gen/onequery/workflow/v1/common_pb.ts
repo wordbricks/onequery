@@ -18,42 +18,9 @@ import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js
  * Describes the file onequery/workflow/v1/common.proto.
  */
 export const file_onequery_workflow_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "CiFvbmVxdWVyeS93b3JrZmxvdy92MS9jb21tb24ucHJvdG8SFG9uZXF1ZXJ5LndvcmtmbG93LnYxIpsBChVXb3JrZmxvd0FjdG9yU25hcHNob3QSHQoJYXV0aF9tb2RlGAEgASgJQgq6SAdyBRABGIABEhkKBWVtYWlsGAIgASgJQgq6SAdyBRjAAmABEisKEG1lbWJlcnNoaXBfcm9sZXMYAyADKAlCEbpIDpIBCxAgIgdyBRABGIABEhsKB3VzZXJfaWQYBCABKAlCCrpIB3IFEAEY/wEiWgoUV29ya2Zsb3dTb3VyY2VIZWFkZXISKQoEbmFtZRgBIAEoCUIbukgYyAEBchMQARiAATIMXlthLXowLTktXSskEhcKBXZhbHVlGAIgASgJQgi6SAVyAxiAQCp6Cg5Xb3JrZmxvd0ZhbWlseRIfChtXT1JLRkxPV19GQU1JTFlfVU5TUEVDSUZJRUQQABIgChxXT1JLRkxPV19GQU1JTFlfUVVFUllfQUNUSU9OEAESJQohV09SS0ZMT1dfRkFNSUxZX1NPVVJDRV9BUElfQUNUSU9OEAIqoAEKD1dvcmtmbG93U3VyZmFjZRIgChxXT1JLRkxPV19TVVJGQUNFX1VOU1BFQ0lGSUVEEAASGAoUV09SS0ZMT1dfU1VSRkFDRV9DTEkQARIYChRXT1JLRkxPV19TVVJGQUNFX1dFQhACEhoKFldPUktGTE9XX1NVUkZBQ0VfQUdFTlQQAxIbChdXT1JLRkxPV19TVVJGQUNFX1NZU1RFTRAEKu0EChZXb3JrZmxvd1NvdXJjZVByb3ZpZGVyEigKJFdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9VTlNQRUNJRklFRBAAEiUKIVdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9QT1NUR1JFUxABEiUKIVdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9TVVBBQkFTRRACEiIKHldPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9NWVNRTBADEiQKIFdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9NT05HT0RCEAQSJQohV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX0JJR1FVRVJZEAUSJAogV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX0xBTUlOQVIQBhIxCi1XT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfQVdTX0FUSEVOQV9DT05ORUNUT1IQBxItCilXT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfR09PR0xFX0FOQUxZVElDUxAIEiYKIldPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9BTVBMSVRVREUQCRIlCiFXT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfTUlYUEFORUwQChIkCiBXT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfUE9TVEhPRxALEiMKH1dPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9TRU5UUlkQDBIjCh9XT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfR0lUSFVCEA0SIwofV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX0xJTkVBUhAOKsQBChhXb3JrZmxvd0RhdGFTb3VyY2VTdGF0dXMSKwonV09SS0ZMT1dfREFUQV9TT1VSQ0VfU1RBVFVTX1VOU1BFQ0lGSUVEEAASJgoiV09SS0ZMT1dfREFUQV9TT1VSQ0VfU1RBVFVTX0FDVElWRRABEiUKIVdPUktGTE9XX0RBVEFfU09VUkNFX1NUQVRVU19FUlJPUhACEiwKKFdPUktGTE9XX0RBVEFfU09VUkNFX1NUQVRVU19ESVNDT05ORUNURUQQA2IIZWRpdGlvbnNw6Ac",
+  "CiFvbmVxdWVyeS93b3JrZmxvdy92MS9jb21tb24ucHJvdG8SFG9uZXF1ZXJ5LndvcmtmbG93LnYxIloKFFdvcmtmbG93U291cmNlSGVhZGVyEikKBG5hbWUYASABKAlCG7pIGMgBAXITEAEYgAEyDF5bYS16MC05LV0rJBIXCgV2YWx1ZRgCIAEoCUIIukgFcgMYgEAq7QQKFldvcmtmbG93U291cmNlUHJvdmlkZXISKAokV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX1VOU1BFQ0lGSUVEEAASJQohV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX1BPU1RHUkVTEAESJQohV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX1NVUEFCQVNFEAISIgoeV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX01ZU1FMEAMSJAogV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX01PTkdPREIQBBIlCiFXT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfQklHUVVFUlkQBRIkCiBXT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfTEFNSU5BUhAGEjEKLVdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9BV1NfQVRIRU5BX0NPTk5FQ1RPUhAHEi0KKVdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9HT09HTEVfQU5BTFlUSUNTEAgSJgoiV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX0FNUExJVFVERRAJEiUKIVdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9NSVhQQU5FTBAKEiQKIFdPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9QT1NUSE9HEAsSIwofV09SS0ZMT1dfU09VUkNFX1BST1ZJREVSX1NFTlRSWRAMEiMKH1dPUktGTE9XX1NPVVJDRV9QUk9WSURFUl9HSVRIVUIQDRIjCh9XT1JLRkxPV19TT1VSQ0VfUFJPVklERVJfTElORUFSEA4qxAEKGFdvcmtmbG93RGF0YVNvdXJjZVN0YXR1cxIrCidXT1JLRkxPV19EQVRBX1NPVVJDRV9TVEFUVVNfVU5TUEVDSUZJRUQQABImCiJXT1JLRkxPV19EQVRBX1NPVVJDRV9TVEFUVVNfQUNUSVZFEAESJQohV09SS0ZMT1dfREFUQV9TT1VSQ0VfU1RBVFVTX0VSUk9SEAISLAooV09SS0ZMT1dfREFUQV9TT1VSQ0VfU1RBVFVTX0RJU0NPTk5FQ1RFRBADYghlZGl0aW9uc3DoBw",
   [file_buf_validate_validate]
 );
-
-/**
- * @generated from message onequery.workflow.v1.WorkflowActorSnapshot
- */
-export type WorkflowActorSnapshot =
-  Message<"onequery.workflow.v1.WorkflowActorSnapshot"> & {
-    /**
-     * @generated from field: string auth_mode = 1;
-     */
-    authMode: string;
-
-    /**
-     * @generated from field: string email = 2;
-     */
-    email: string;
-
-    /**
-     * @generated from field: repeated string membership_roles = 3;
-     */
-    membershipRoles: string[];
-
-    /**
-     * @generated from field: string user_id = 4;
-     */
-    userId: string;
-  };
-
-/**
- * Describes the message onequery.workflow.v1.WorkflowActorSnapshot.
- * Use `create(WorkflowActorSnapshotSchema)` to create a new message.
- */
-export const WorkflowActorSnapshotSchema: GenMessage<WorkflowActorSnapshot> /*@__PURE__*/ =
-  messageDesc(file_onequery_workflow_v1_common, 0);
 
 /**
  * @generated from message onequery.workflow.v1.WorkflowSourceHeader
@@ -76,69 +43,7 @@ export type WorkflowSourceHeader =
  * Use `create(WorkflowSourceHeaderSchema)` to create a new message.
  */
 export const WorkflowSourceHeaderSchema: GenMessage<WorkflowSourceHeader> /*@__PURE__*/ =
-  messageDesc(file_onequery_workflow_v1_common, 1);
-
-/**
- * @generated from enum onequery.workflow.v1.WorkflowFamily
- */
-export enum WorkflowFamily {
-  /**
-   * @generated from enum value: WORKFLOW_FAMILY_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: WORKFLOW_FAMILY_QUERY_ACTION = 1;
-   */
-  QUERY_ACTION = 1,
-
-  /**
-   * @generated from enum value: WORKFLOW_FAMILY_SOURCE_API_ACTION = 2;
-   */
-  SOURCE_API_ACTION = 2,
-}
-
-/**
- * Describes the enum onequery.workflow.v1.WorkflowFamily.
- */
-export const WorkflowFamilySchema: GenEnum<WorkflowFamily> /*@__PURE__*/ =
-  enumDesc(file_onequery_workflow_v1_common, 0);
-
-/**
- * @generated from enum onequery.workflow.v1.WorkflowSurface
- */
-export enum WorkflowSurface {
-  /**
-   * @generated from enum value: WORKFLOW_SURFACE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: WORKFLOW_SURFACE_CLI = 1;
-   */
-  CLI = 1,
-
-  /**
-   * @generated from enum value: WORKFLOW_SURFACE_WEB = 2;
-   */
-  WEB = 2,
-
-  /**
-   * @generated from enum value: WORKFLOW_SURFACE_AGENT = 3;
-   */
-  AGENT = 3,
-
-  /**
-   * @generated from enum value: WORKFLOW_SURFACE_SYSTEM = 4;
-   */
-  SYSTEM = 4,
-}
-
-/**
- * Describes the enum onequery.workflow.v1.WorkflowSurface.
- */
-export const WorkflowSurfaceSchema: GenEnum<WorkflowSurface> /*@__PURE__*/ =
-  enumDesc(file_onequery_workflow_v1_common, 1);
+  messageDesc(file_onequery_workflow_v1_common, 0);
 
 /**
  * @generated from enum onequery.workflow.v1.WorkflowSourceProvider
@@ -224,7 +129,7 @@ export enum WorkflowSourceProvider {
  * Describes the enum onequery.workflow.v1.WorkflowSourceProvider.
  */
 export const WorkflowSourceProviderSchema: GenEnum<WorkflowSourceProvider> /*@__PURE__*/ =
-  enumDesc(file_onequery_workflow_v1_common, 2);
+  enumDesc(file_onequery_workflow_v1_common, 0);
 
 /**
  * @generated from enum onequery.workflow.v1.WorkflowDataSourceStatus
@@ -255,4 +160,4 @@ export enum WorkflowDataSourceStatus {
  * Describes the enum onequery.workflow.v1.WorkflowDataSourceStatus.
  */
 export const WorkflowDataSourceStatusSchema: GenEnum<WorkflowDataSourceStatus> /*@__PURE__*/ =
-  enumDesc(file_onequery_workflow_v1_common, 3);
+  enumDesc(file_onequery_workflow_v1_common, 1);

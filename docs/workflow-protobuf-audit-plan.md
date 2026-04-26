@@ -7,7 +7,7 @@ be discarded or migrated destructively.
 
 ## Design Priority
 
-- [x] Prefer the Connect RPC/protobuf-es native path over generic protobuf
+- [x] `AUDITED` Prefer the Connect RPC/protobuf-es native path over generic protobuf
   style rules when they conflict: schema-first `.proto` contracts, generated
   TypeScript messages, Protovalidate at the RPC boundary, binary protobuf as the
   default machine format, and ProtoJSON only as an inspection/debug format.

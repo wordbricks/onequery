@@ -415,7 +415,6 @@ function toTerminalPageFetchFailureResult(input: {
       failureCode: failure.failureCode,
       kind: "terminal_failure",
       pageIndex: input.pageIndex,
-      problemKey: failure.problem.reason,
       type: "record_page_fetch",
     },
     kind: "failed",

@@ -1,6 +1,5 @@
 import type { SourceApiDescriptor } from "@onequery/server/source-api";
 
-import type { CliProblemKey } from "../../domain/problems";
 import type { WorkflowCommandEnvelope } from "../kernel";
 import type {
   SourceApiActionInvokeMode,
@@ -49,7 +48,6 @@ export type SourceApiActionCommandPayload =
         "descriptor_unavailable" | "permission_denied"
       >;
       kind: "failed";
-      problemKey: CliProblemKey;
       type: "record_descriptor_resolution";
     }
   | {
@@ -64,7 +62,6 @@ export type SourceApiActionCommandPayload =
         "invalid_request" | "permission_denied" | "execution_state_invalid"
       >;
       kind: "failed";
-      problemKey: CliProblemKey;
       type: "record_request_preparation";
     }
   | {
@@ -90,7 +87,6 @@ export type SourceApiActionCommandPayload =
       >;
       kind: "terminal_failure";
       pageIndex: number;
-      problemKey: CliProblemKey;
       type: "record_page_fetch";
     };
 

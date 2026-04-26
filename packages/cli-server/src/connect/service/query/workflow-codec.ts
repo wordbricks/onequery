@@ -81,6 +81,8 @@ export function toStoredQueryValidationResult(
         hint: commandPayload.hint,
         kind: "query_preparation_failed",
       };
+    default:
+      return assertNever(commandPayload);
   }
 }
 
@@ -136,6 +138,8 @@ export function toStoredQueryExecutionResult(
         detail: commandPayload.detail,
         kind: "query_execution_failed",
       };
+    default:
+      return assertNever(commandPayload);
   }
 }
 
@@ -187,4 +191,8 @@ export function toCliSourceRecord(
     sourceKey: source.sourceKey,
     status: source.sourceStatus,
   };
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled query workflow projection case: ${String(value)}`);
 }
