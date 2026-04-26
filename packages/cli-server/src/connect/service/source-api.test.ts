@@ -1,16 +1,9 @@
-import { fileURLToPath } from "node:url";
-
 import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
 import { organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
-import {
-  closePgliteTestDatabase,
-  createPgliteTestDatabase,
-  resetPgliteTestDatabase,
-} from "@onequery/db/testing/pglite";
-import type { PgliteTestDatabase } from "@onequery/db/testing/pglite";
+import { pgliteTestDb } from "@onequery/db/testing/setup";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiDescriptorVersionMismatchError,
@@ -21,15 +14,7 @@ import {
   SourceApiTimeoutError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
@@ -250,22 +235,8 @@ const executionResponse = {
   status: 200,
 } as const;
 
-const migrationsFolder = fileURLToPath(
-  new URL("../../../../db/src/migrations", import.meta.url)
-);
-
-let sourceApiTestDatabase: PgliteTestDatabase | null = null;
-
-function getSourceApiTestDatabase() {
-  if (sourceApiTestDatabase === null) {
-    throw new Error("source api test database is not initialized");
-  }
-
-  return sourceApiTestDatabase;
-}
-
 async function createHarness() {
-  const { db } = getSourceApiTestDatabase();
+  const db = pgliteTestDb;
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -724,22 +695,8 @@ function summarizeSourceApiPreview(
 }
 
 describe("source api connect service", { timeout: 15_000 }, () => {
-  beforeAll(async () => {
-    sourceApiTestDatabase = await createPgliteTestDatabase({
-      migrationsFolder,
-    });
-  }, 15_000);
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    await resetPgliteTestDatabase(getSourceApiTestDatabase().db);
-  });
-
-  afterAll(async () => {
-    if (sourceApiTestDatabase !== null) {
-      await closePgliteTestDatabase(sourceApiTestDatabase);
-      sourceApiTestDatabase = null;
-    }
   });
 
   async function createTrackedHarness() {

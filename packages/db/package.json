@@ -10,7 +10,7 @@
     "./constants": "./src/constants.ts",
     "./credentials": "./src/credentials.ts",
     "./pglite": "./src/pglite.ts",
-    "./testing/pglite": "./src/testing/pglite.ts"
+    "./testing/setup": "./src/testing/setup.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",

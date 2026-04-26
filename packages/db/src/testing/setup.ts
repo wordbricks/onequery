@@ -1,6 +1,9 @@
+import { fileURLToPath } from "node:url";
+
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
+import { afterAll, beforeAll, beforeEach } from "vitest";
 
 import { schema } from "../client";
 import type { Database } from "../client";
@@ -17,30 +20,19 @@ type PgTableResult =
       rows: PgTableRow[];
     };
 
-export type PgliteTestDatabase = {
-  client: PGlite;
-  db: Database;
-};
+const migrationsFolder = fileURLToPath(
+  new URL("../migrations", import.meta.url)
+);
 
-export async function createPgliteTestDatabase(options: {
-  migrationsFolder: string;
-}): Promise<PgliteTestDatabase> {
-  // Comment: CI can keep Vitest worker threads alive after file-backed PGlite
-  // closes; in-memory PGlite follows Drizzle's test pattern and avoids NodeFS.
-  const client = new PGlite(resolvePgliteRuntimeOptions());
-  const db = drizzlePglite(client, { schema });
+// Comment: CI can keep Vitest worker threads alive after file-backed PGlite
+// closes; in-memory PGlite follows Drizzle's test pattern and avoids NodeFS.
+const pgliteTestClient = new PGlite(resolvePgliteRuntimeOptions());
+const pgliteDrizzleDb = drizzlePglite(pgliteTestClient, {
+  schema,
+});
+export const pgliteTestDb = pgliteDrizzleDb as Database;
 
-  await migratePglite(db, {
-    migrationsFolder: options.migrationsFolder,
-  });
-
-  return {
-    client,
-    db,
-  };
-}
-
-export async function resetPgliteTestDatabase(db: Database): Promise<void> {
+async function resetPgliteTestDatabase(db: Database): Promise<void> {
   const tableResult = (await db.execute(sql`
     SELECT tablename
     FROM pg_tables
@@ -61,8 +53,16 @@ export async function resetPgliteTestDatabase(db: Database): Promise<void> {
   `);
 }
 
-export async function closePgliteTestDatabase(
-  testDatabase: PgliteTestDatabase
-): Promise<void> {
-  await testDatabase.client.close();
-}
+beforeAll(async () => {
+  await migratePglite(pgliteDrizzleDb, {
+    migrationsFolder,
+  });
+}, 15_000);
+
+beforeEach(async () => {
+  await resetPgliteTestDatabase(pgliteTestDb);
+});
+
+afterAll(async () => {
+  await pgliteTestClient.close();
+});

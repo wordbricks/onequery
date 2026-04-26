@@ -5,18 +5,13 @@ import {
   QueryActionReceivedEventSchema,
 } from "@onequery/contracts/workflow/v1/query_action_pb";
 import {
-  createDatabaseRuntime,
   organization,
   queryActionEvents,
   workflowCommands,
 } from "@onequery/db/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { pgliteTestDb } from "@onequery/db/testing/setup";
+import { describe, expect, it } from "vitest";
 
-import {
-  closeDatabase,
-  createPgliteDatabaseUrl,
-} from "../test/integration-helpers";
-import type { ClosableDatabase } from "../test/integration-helpers";
 import {
   AuditFeedProjectionCorruptPayloadError,
   syncAuditFeedProjection,
@@ -40,31 +35,20 @@ function encodeQueryActionReceivedEventPayload() {
 }
 
 describe("audit feed projection", () => {
-  const openedDatabases: ClosableDatabase[] = [];
-
-  afterEach(async () => {
-    for (const db of openedDatabases.splice(0)) {
-      await closeDatabase(db);
-    }
-  });
-
   it("reports corrupt workflow payloads with scoped projection diagnostics", async () => {
-    const runtime = createDatabaseRuntime(
-      await createPgliteDatabaseUrl("onequery-audit-feed-test-")
-    );
-    openedDatabases.push(runtime.db as ClosableDatabase);
+    const db = pgliteTestDb;
 
     const actionId = "query_action_corrupt_payload";
     const commandId = "workflow_command_corrupt_payload";
     const eventId = "query_action_event_corrupt_payload";
     const rawCommandBody = "sensitive command bytes";
 
-    await runtime.db.insert(organization).values({
+    await db.insert(organization).values({
       id: "org_audit_feed_corrupt_payload",
       name: "Audit Feed Test",
       slug: "audit-feed-test",
     });
-    await runtime.db.insert(workflowCommands).values({
+    await db.insert(workflowCommands).values({
       actionId,
       actorSnapshotJson: {
         authMode: "api_key",
@@ -87,7 +71,7 @@ describe("audit feed projection", () => {
       requestId: "request_audit_feed_corrupt_payload",
       surface: "cli",
     });
-    await runtime.db.insert(queryActionEvents).values({
+    await db.insert(queryActionEvents).values({
       actionId,
       commandId,
       eventType: "action_received",
@@ -99,7 +83,7 @@ describe("audit feed projection", () => {
 
     let error: unknown;
     try {
-      await syncAuditFeedProjection(runtime.db);
+      await syncAuditFeedProjection(db);
     } catch (cause: unknown) {
       error = cause;
     }
