@@ -1,5 +1,5 @@
 import { dateLikeToDate } from "@onequery/codecs/date";
-import { eq, getDatabaseSchema } from "@onequery/db/server";
+import { eq, organization } from "@onequery/db/server";
 import type { ServerStorage } from "@onequery/server/storage";
 import { z } from "zod";
 
@@ -39,7 +39,6 @@ async function resolveActiveOrgSlug(
   }
 
   try {
-    const { organization } = getDatabaseSchema(storage.db);
     const [org] = await storage.db
       .select({ slug: organization.slug })
       .from(organization)

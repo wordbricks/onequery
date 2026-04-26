@@ -2,8 +2,8 @@ import { zValidator } from "@hono/zod-validator";
 import {
   and,
   CredentialsSchema,
+  dataSources,
   eq,
-  getDatabaseSchema,
   isGitHubCredentials,
 } from "@onequery/db/server";
 import { Result } from "better-result";
@@ -49,7 +49,6 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
       const { organizationId } = c.req.valid("query");
       const id = c.req.param("id");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const dataSource = await db.query.dataSources.findFirst({
         columns: {
@@ -136,7 +135,6 @@ export const dataSourcesGitHubRepositoriesRoute = new Hono<{
       const id = c.req.param("id");
       const body = c.req.valid("json");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const dataSource = await db.query.dataSources.findFirst({
         where: and(

@@ -1,4 +1,4 @@
-import { and, eq, getDatabaseSchema } from "@onequery/db/server";
+import { and, eq, member, organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 
@@ -17,7 +17,6 @@ async function getOrganizationName(
   db: Database,
   organizationId: string
 ): Promise<Result<string, OrganizationNotFoundError>> {
-  const { organization } = getDatabaseSchema(db);
   const [org] = await db
     .select({ name: organization.name })
     .from(organization)
@@ -45,7 +44,6 @@ export async function verifyOrgAccess(
   userId: string,
   organizationId: string
 ): Promise<boolean> {
-  const { member } = getDatabaseSchema(db);
   const [membership] = await db
     .select({ id: member.id })
     .from(member)
@@ -62,7 +60,6 @@ export async function verifyOrgAccessWithName(
   userId: string,
   organizationId: string
 ): Promise<OrgAccessWithName> {
-  const { member, organization } = getDatabaseSchema(db);
   const [membership] = await db
     .select({ name: organization.name })
     .from(member)

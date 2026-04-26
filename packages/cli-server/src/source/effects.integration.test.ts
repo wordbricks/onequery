@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 import {
   CredentialsSchema,
   createDb,
+  dataSources,
   eq,
-  getDatabaseSchema,
+  organization,
   prepareApplicationDatabase,
 } from "@onequery/db/server";
 import {
@@ -73,8 +74,7 @@ describe("runCliConnectSourceEffect", () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
-    const schema = getDatabaseSchema(db);
-    await db.insert(schema.organization).values({
+    await db.insert(organization).values({
       id: "org_1",
       name: "Org One",
       slug: "org-one",
@@ -117,7 +117,7 @@ describe("runCliConnectSourceEffect", () => {
         credentialsIv: true,
         provider: true,
       },
-      where: eq(schema.dataSources.organizationId, "org_1"),
+      where: eq(dataSources.organizationId, "org_1"),
     });
 
     expect(persisted?.provider).toBe("postgres");

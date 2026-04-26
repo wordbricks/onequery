@@ -10,7 +10,6 @@ export const authRoute = new Hono<{
   .get("/bootstrap-state", async (c) => {
     const state = await readAuthBootstrapState({
       db: c.var.storage.db,
-      schema: c.var.storage.schema,
     });
 
     return c.json({

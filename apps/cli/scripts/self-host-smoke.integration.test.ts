@@ -239,13 +239,7 @@ async function callCliConnectRpc<T>(input: {
     responseHeaders.get("x-request-id") ??
     responseTrailers.get("x-request-id") ??
     null;
-  // Comment: the Connect client path does not reliably surface custom
-  // response metadata for this gateway setup, even though the server logs and
-  // raw HTTP path still carry the request id. Keep smoke coverage on the typed
-  // protobuf contract instead of overfitting to transport callback behavior.
-  if (responseRequestId !== null) {
-    expect(responseRequestId).toBe(input.requestId);
-  }
+  expect(responseRequestId).toBe(input.requestId);
 
   return {
     payload,

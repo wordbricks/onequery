@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate as migratePostgres } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
-import { getDatabaseEngine, postgresSchema } from "./client";
+import { getDatabaseEngine, schema } from "./client";
 import { ensurePgliteDataDir, resolvePgliteRuntimeOptions } from "./pglite";
 
 export type DatabasePreparationResult =
@@ -29,7 +29,7 @@ export async function prepareApplicationDatabase(options: {
     );
 
     try {
-      const db = drizzlePglite(client, { schema: postgresSchema });
+      const db = drizzlePglite(client, { schema });
       await migratePglite(db, {
         migrationsFolder: options.migrationsFolder,
       });
@@ -54,7 +54,7 @@ export async function prepareApplicationDatabase(options: {
   });
 
   try {
-    const db = drizzle(client, { schema: postgresSchema });
+    const db = drizzle(client, { schema });
     await migratePostgres(db, {
       migrationsFolder: options.migrationsFolder,
     });

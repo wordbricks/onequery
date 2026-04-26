@@ -1,7 +1,5 @@
 use std::fmt;
 
-use http::HeaderValue;
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) struct OrgSlug(String);
 
@@ -117,6 +115,8 @@ pub(crate) struct RequestId(String);
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) struct RequestIdParseError;
 
+pub(crate) const REQUEST_ID_PARSE_ERROR_MESSAGE: &str = "request ID must use only letters, numbers, underscores, hyphens, or equals signs and be at most 255 characters";
+
 impl RequestId {
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_str()
@@ -137,7 +137,7 @@ impl fmt::Display for RequestId {
 
 impl fmt::Display for RequestIdParseError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("request ID must use visible ASCII characters only")
+        formatter.write_str(REQUEST_ID_PARSE_ERROR_MESSAGE)
     }
 }
 
@@ -146,16 +146,10 @@ impl TryFrom<&str> for RequestId {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let normalized = value.trim();
-        if normalized.is_empty() {
+        if !is_request_id_format(normalized) {
             return Err(RequestIdParseError);
         }
 
-        HeaderValue::from_str(normalized).map_err(|_| RequestIdParseError)?;
-        // Comment: `HeaderValue` accepts tabs, but the CLI contract and its
-        // user-facing guidance both promise request IDs made of visible ASCII only.
-        if !normalized.bytes().all(|byte| matches!(byte, b'!'..=b'~')) {
-            return Err(RequestIdParseError);
-        }
         Ok(Self(normalized.to_owned()))
     }
 }
@@ -231,6 +225,16 @@ pub(crate) fn normalize_safe_path_segment(raw: &str) -> Option<&str> {
     Some(normalized)
 }
 
+pub(crate) fn is_request_id_format(value: &str) -> bool {
+    const REQUEST_ID_MAX_LEN: usize = 255;
+
+    !value.is_empty()
+        && value.len() <= REQUEST_ID_MAX_LEN
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'='))
+}
+
 #[cfg(test)]
 pub(crate) fn is_public_id_format(value: &str) -> bool {
     let Some((prefix, number)) = value.split_once('-') else {
@@ -273,6 +277,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::OrgSlug;
+    use super::REQUEST_ID_PARSE_ERROR_MESSAGE;
     use super::RequestId;
     use super::SourceKey;
     use super::is_public_id_format;
@@ -347,10 +352,30 @@ mod tests {
     }
 
     #[test]
-    fn request_id_type_rejects_control_characters() {
+    fn request_id_type_parses_hono_request_id_values() {
         assert_eq!(
-            RequestId::try_from("req\t123").map_err(|error| error.to_string()),
-            Err("request ID must use visible ASCII characters only".to_owned())
+            RequestId::try_from(" Req_123-abc= "),
+            Ok(RequestId("Req_123-abc=".to_owned()))
+        );
+    }
+
+    #[test]
+    fn request_id_type_rejects_values_hono_would_replace() {
+        let long_request_id = "a".repeat(256);
+
+        assert_eq!(
+            [
+                RequestId::try_from("req\t123").map_err(|error| error.to_string()),
+                RequestId::try_from("req.123").map_err(|error| error.to_string()),
+                RequestId::try_from("req:123").map_err(|error| error.to_string()),
+                RequestId::try_from(long_request_id.as_str()).map_err(|error| error.to_string()),
+            ],
+            [
+                Err(REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned()),
+                Err(REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned()),
+                Err(REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned()),
+                Err(REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned()),
+            ]
         );
     }
 

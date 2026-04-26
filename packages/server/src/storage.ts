@@ -1,5 +1,5 @@
-import { createDatabaseRuntime } from "@onequery/db/server";
-import type { Database, DatabaseSchema } from "@onequery/db/server";
+import { createDb, getDatabaseEngine } from "@onequery/db/server";
+import type { Database, DatabaseEngine } from "@onequery/db/server";
 import { createMiddleware } from "hono/factory";
 
 import { createAuthFromConfig } from "./auth";
@@ -12,15 +12,12 @@ import { getEmailDeliveryMode } from "./lib/email-delivery";
 import type { ApiRateLimitStorage } from "./lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "./runtime";
 
-export type ServerDatabase = Database;
-
 export type ServerStorage = {
   auth: Auth;
-  db: ServerDatabase;
+  db: Database;
   emailDelivery: AuthEmailDeliveryConfig;
   emailDeliveryMode: EmailDeliveryMode;
-  engine: "postgres" | "pglite";
-  schema: DatabaseSchema;
+  engine: DatabaseEngine;
   apiRateLimitStorage: ApiRateLimitStorage;
 };
 
@@ -37,22 +34,18 @@ export function createServerStorage(
   apiRateLimitStorage: ApiRateLimitStorage,
   input: CreateServerStorageOptions = {}
 ): ServerStorage {
-  const databaseRuntime = createDatabaseRuntime(
-    runtime.storage.connectionString
-  );
+  const db = createDb(runtime.storage.connectionString);
 
   return {
     auth: createAuthFromConfig(runtime, {
-      db: databaseRuntime.db,
+      db,
       enableTestUtils: input.enableAuthTestUtils,
       provider: "pg",
-      schema: databaseRuntime.schema,
     }),
-    db: databaseRuntime.db,
+    db,
     emailDelivery: runtime.auth.emailDelivery,
     emailDeliveryMode: getEmailDeliveryMode(runtime.auth.emailDelivery),
-    engine: databaseRuntime.engine,
-    schema: databaseRuntime.schema,
+    engine: getDatabaseEngine(runtime.storage.connectionString),
     apiRateLimitStorage,
   };
 }

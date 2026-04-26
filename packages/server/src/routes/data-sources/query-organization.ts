@@ -1,4 +1,4 @@
-import { eq, getDatabaseSchema } from "@onequery/db/server";
+import { eq, organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { Result } from "better-result";
 import type { Context } from "hono";
@@ -30,8 +30,6 @@ async function resolveOrganizationId(
     organizationSlug?: string;
   }
 ): Promise<string | null> {
-  const { organization } = getDatabaseSchema(db);
-
   if (input.organizationId) {
     return input.organizationId;
   }

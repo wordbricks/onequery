@@ -4,9 +4,9 @@ import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { requestId as requestIdMiddleware } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
 import type { CliSessionIdentity } from "./domain/workflows";
@@ -24,8 +24,7 @@ export type CliRouteEnv<
   Variables extends Record<string, unknown> = Record<string, never>,
 > = {
   Bindings: HonoNodeBindings;
-  Variables: {
-    requestId: string;
+  Variables: RequestIdVariables & {
     requestStartedAtMs: number;
     runtime: ServerRuntimeConfig;
     storage: ServerStorage;
@@ -44,13 +43,6 @@ export type CliOrgRouteVariables = CliSessionRouteVariables & {
 export interface CreateCliAppOptions {
   runtime: ServerRuntimeConfig;
   storage: ServerStorage;
-}
-
-function generateCliRequestId(c: Context) {
-  const existingRequestId = c.get("requestId");
-  return typeof existingRequestId === "string" && existingRequestId.length > 0
-    ? existingRequestId
-    : crypto.randomUUID();
 }
 
 const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
@@ -124,7 +116,6 @@ export function createCliApp<
   app.use(serverStorageMiddleware(input.storage));
   app.use(
     requestIdMiddleware({
-      generator: generateCliRequestId,
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
@@ -140,7 +131,6 @@ export function createCliBrowserApp<
   app.use(serverStorageMiddleware(input.storage));
   app.use(
     requestIdMiddleware({
-      generator: generateCliRequestId,
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );

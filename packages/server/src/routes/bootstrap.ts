@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "@onequery/db/server";
+import { eq, organization, user } from "@onequery/db/server";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -74,7 +74,6 @@ export const bootstrapRoute = new Hono<{
 
       const auth = c.var.storage.auth;
       const db = c.var.storage.db;
-      const schema = c.var.storage.schema;
       const body = c.req.valid("json");
       let createdOrganizationId: string | null = null;
       const baseUrl = c.var.runtime.auth.baseURL;
@@ -180,7 +179,7 @@ export const bootstrapRoute = new Hono<{
         return response;
       } catch (error) {
         const cleanupOperations: Promise<unknown>[] = [
-          db.delete(schema.user).where(eq(schema.user.id, userId)),
+          db.delete(user).where(eq(user.id, userId)),
         ];
         if (createdOrganizationId) {
           // Comment: createOrganization can commit its side effects before the
@@ -188,8 +187,8 @@ export const bootstrapRoute = new Hono<{
           // remove any partially created organization state.
           cleanupOperations.push(
             db
-              .delete(schema.organization)
-              .where(eq(schema.organization.id, createdOrganizationId))
+              .delete(organization)
+              .where(eq(organization.id, createdOrganizationId))
           );
         }
         await Promise.allSettled(cleanupOperations);

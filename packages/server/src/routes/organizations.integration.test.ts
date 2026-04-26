@@ -103,7 +103,7 @@ const requestDescriptor = {
   descriptorVersion: "2026-04-20",
   kind: "http_request",
   method: "GET",
-  operation: "listCustomers",
+  operation: "list_customers",
   paginationPolicy: "continuation_token",
   selector: "/customers",
 } as const;
@@ -1201,7 +1201,7 @@ async function seedPendingSourceApiAction(input: {
         nextContinuationState: {
           cursor: "page-2",
         },
-        operation: "listCustomers",
+        operation: "list_customers",
         selector: "/customers",
         source: {
           displayName: sourceApiDescriptor.displayName,
@@ -1408,7 +1408,13 @@ describe("organizations audit route", () => {
         }
       );
 
-      expect(firstPageResponse.status).toBe(200);
+      if (firstPageResponse.status !== 200) {
+        throw new Error(
+          `Expected audit first page to return 200, got ${
+            firstPageResponse.status
+          }: ${await firstPageResponse.text()}`
+        );
+      }
 
       const firstPage = auditListResponseSchema.parse(
         await firstPageResponse.json()
@@ -1489,7 +1495,7 @@ describe("organizations audit route", () => {
         httpStatus: 200,
         invokeMode: "execute",
         method: "GET",
-        operation: "listCustomers",
+        operation: "list_customers",
         pageCount: 1,
         selector: "/customers",
       });

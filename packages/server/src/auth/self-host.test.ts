@@ -1,4 +1,3 @@
-import { schema } from "@onequery/db/server";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -24,7 +23,6 @@ describe("self-host auth guards", () => {
     const result = await authorizeSelfHostSignUp({
       db,
       email: "   ",
-      schema,
     });
 
     expect(result).toMatchObject({

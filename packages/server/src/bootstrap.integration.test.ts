@@ -1,4 +1,11 @@
-import { and, eq } from "@onequery/db/server";
+import {
+  and,
+  eq,
+  invitation,
+  member,
+  organization,
+  user,
+} from "@onequery/db/server";
 import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -123,7 +130,7 @@ describe("self-host bootstrap", () => {
         email: true,
         id: true,
       },
-      where: eq(storage.schema.user.email, "owner@example.com"),
+      where: eq(user.email, "owner@example.com"),
     });
 
     expect(owner).toMatchObject({
@@ -137,7 +144,7 @@ describe("self-host bootstrap", () => {
         role: true,
         userId: true,
       },
-      where: eq(storage.schema.member.userId, owner?.id ?? ""),
+      where: eq(member.userId, owner?.id ?? ""),
     });
 
     expect(ownerMember?.role).toBe("owner");
@@ -208,19 +215,19 @@ describe("self-host bootstrap", () => {
       columns: {
         id: true,
       },
-      where: eq(storage.schema.user.email, "owner@example.com"),
+      where: eq(user.email, "owner@example.com"),
     });
     const ownerOrg = await storage.db.query.organization.findFirst({
       columns: {
         id: true,
       },
-      where: eq(storage.schema.organization.slug, "owner-org"),
+      where: eq(organization.slug, "owner-org"),
     });
 
     expect(owner?.id).toBeDefined();
     expect(ownerOrg?.id).toBeDefined();
 
-    await storage.db.insert(storage.schema.invitation).values({
+    await storage.db.insert(invitation).values({
       email: "invitee@example.com",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       id: "invite_1",
@@ -251,7 +258,7 @@ describe("self-host bootstrap", () => {
       columns: {
         id: true,
       },
-      where: eq(storage.schema.user.email, "invitee@example.com"),
+      where: eq(user.email, "invitee@example.com"),
     });
 
     expect(invitedUser?.id).toBeDefined();
@@ -261,8 +268,8 @@ describe("self-host bootstrap", () => {
         id: true,
       },
       where: and(
-        eq(storage.schema.invitation.email, "invitee@example.com"),
-        eq(storage.schema.invitation.status, "pending")
+        eq(invitation.email, "invitee@example.com"),
+        eq(invitation.status, "pending")
       ),
     });
 
@@ -287,7 +294,7 @@ describe("self-host bootstrap", () => {
     Object.defineProperty(storage.auth.api, "createOrganization", {
       configurable: true,
       value: async () => {
-        await storage.db.insert(storage.schema.organization).values({
+        await storage.db.insert(organization).values({
           id: "org_partial_bootstrap",
           name: "Owner Org",
           slug: "owner-org",
@@ -323,14 +330,14 @@ describe("self-host bootstrap", () => {
         columns: {
           id: true,
         },
-        where: eq(storage.schema.user.email, "owner@example.com"),
+        where: eq(user.email, "owner@example.com"),
       });
       const partialOrganization = await storage.db.query.organization.findFirst(
         {
           columns: {
             id: true,
           },
-          where: eq(storage.schema.organization.id, "org_partial_bootstrap"),
+          where: eq(organization.id, "org_partial_bootstrap"),
         }
       );
 
@@ -375,19 +382,19 @@ describe("self-host bootstrap", () => {
       columns: {
         id: true,
       },
-      where: eq(storage.schema.user.email, "owner@example.com"),
+      where: eq(user.email, "owner@example.com"),
     });
     const ownerOrg = await storage.db.query.organization.findFirst({
       columns: {
         id: true,
       },
-      where: eq(storage.schema.organization.slug, "owner-org"),
+      where: eq(organization.slug, "owner-org"),
     });
 
     expect(owner?.id).toBeDefined();
     expect(ownerOrg?.id).toBeDefined();
 
-    await storage.db.insert(storage.schema.invitation).values({
+    await storage.db.insert(invitation).values({
       email: "invitee@example.com",
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       id: "invite_2",
@@ -433,7 +440,7 @@ describe("self-host bootstrap", () => {
       columns: {
         id: true,
       },
-      where: eq(storage.schema.organization.slug, "invitee-org"),
+      where: eq(organization.slug, "invitee-org"),
     });
 
     expect(inviteeOrg?.id).toBeDefined();

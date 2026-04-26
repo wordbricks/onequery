@@ -11,6 +11,8 @@ use http::header::HeaderValue;
 use http::header::USER_AGENT;
 use url::Url;
 
+use crate::identifiers::REQUEST_ID_PARSE_ERROR_MESSAGE;
+use crate::identifiers::is_request_id_format;
 use crate::transport::generated::AuthClient as GeneratedAuthClient;
 use crate::transport::generated::OrganizationClient as GeneratedOrganizationClient;
 use crate::transport::generated::QueryClient as GeneratedQueryClient;
@@ -254,6 +256,12 @@ fn authorization_header_value(token: &str) -> Result<HeaderValue, ApiClientBuild
 }
 
 fn request_id_header_value(request_id: &str) -> Result<HeaderValue, ApiClientBuildFailure> {
+    if !is_request_id_format(request_id) {
+        return Err(ApiClientBuildFailure::RequestId {
+            message: REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned(),
+        });
+    }
+
     HeaderValue::from_str(request_id).map_err(|header_error| ApiClientBuildFailure::RequestId {
         message: header_error.to_string(),
     })
@@ -386,11 +394,11 @@ mod tests {
             UnauthenticatedApiClient::new_with_timeout_and_request_id(
                 "http://example.test",
                 Duration::from_secs(5),
-                Some("bad\nid"),
+                Some("bad.id"),
             )
             .expect_err("expected invalid request ID"),
             ApiClientBuildFailure::RequestId {
-                message: "failed to parse header value".to_owned(),
+                message: crate::identifiers::REQUEST_ID_PARSE_ERROR_MESSAGE.to_owned(),
             }
         );
     }

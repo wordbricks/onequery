@@ -1,4 +1,11 @@
-import { and, asc, eq, getDatabaseSchema, or } from "@onequery/db/server";
+import {
+  and,
+  asc,
+  connectorJobs,
+  connectors,
+  eq,
+  or,
+} from "@onequery/db/server";
 import type {
   ConnectorHealthStatus,
   Database,
@@ -142,14 +149,6 @@ type ConnectorJobRequest = {
   jobId: string;
   db?: Database;
 };
-
-function getConnectorTables(db: Database) {
-  const schema = getDatabaseSchema(db);
-  return {
-    connectorJobs: schema.connectorJobs,
-    connectors: schema.connectors,
-  };
-}
 
 function getTestStoreOverride(): ConnectorStore | null {
   return testStoreOverride;
@@ -306,7 +305,6 @@ async function authenticateConnectorInDb(input: {
   connectorId: string;
   authToken: string;
 }): Promise<ConnectorBrokerResult<ConnectorAuth>> {
-  const { connectors } = getConnectorTables(input.db);
   const [connector] = await input.db
     .select({
       authTokenHash: connectors.authTokenHash,
@@ -378,7 +376,6 @@ async function expireConnectorJobIfPending(input: {
   jobId: string;
   now: Date;
 }): Promise<void> {
-  const { connectorJobs } = getConnectorTables(input.db);
   await input.db
     .update(connectorJobs)
     .set({
@@ -402,7 +399,6 @@ async function waitForConnectorJobOutcomeInDb(input: {
   jobId: string;
   waitTimeoutMs: number;
 }): Promise<ConnectorBrokerResult<ConnectorAthenaJobOutcome>> {
-  const { connectorJobs } = getConnectorTables(input.db);
   const startedAt = Date.now();
 
   while (Date.now() - startedAt <= input.waitTimeoutMs) {
@@ -472,7 +468,6 @@ async function claimNextQueuedJobInDb(input: {
   connectorId: string;
   now: Date;
 }): Promise<ConnectorAthenaJob | null> {
-  const { connectorJobs } = getConnectorTables(input.db);
   while (true) {
     const [candidate] = await input.db
       .select({
@@ -579,7 +574,6 @@ async function assertJobMutationAllowedInDb(
   }>
 > {
   const db = resolveBrokerDb(request.db);
-  const { connectorJobs } = getConnectorTables(db);
   const auth = await authenticateConnectorInDb({
     authToken: request.authToken,
     connectorId: request.connectorId,
@@ -636,7 +630,6 @@ export async function findConnectorIdByAuthToken(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectors } = getConnectorTables(db);
   const authTokenHash = await hashAuthToken(input.authToken);
   const [connector] = await db
     .select({ connectorId: connectors.connectorId })
@@ -682,7 +675,6 @@ export async function registerConnector(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectors } = getConnectorTables(db);
   const connectorId = generateConnectorId();
   const authToken = generateConnectorAuthToken();
   const authTokenHash = await hashAuthToken(authToken);
@@ -726,7 +718,6 @@ export async function ensureConnectorOrganization(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectors } = getConnectorTables(db);
   const [connector] = await db
     .select({ organizationId: connectors.organizationId })
     .from(connectors)
@@ -779,7 +770,6 @@ export async function recordConnectorHeartbeat(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectors } = getConnectorTables(db);
   const auth = await authenticateConnectorInDb({
     authToken: input.authToken,
     connectorId: input.connectorId,
@@ -871,7 +861,6 @@ export async function pollConnectorJob(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectors } = getConnectorTables(db);
   const auth = await authenticateConnectorInDb({
     authToken: input.authToken,
     connectorId: input.connectorId,
@@ -995,7 +984,6 @@ export async function queueConnectorAthenaJob(input: {
   }
 
   const now = new Date();
-  const { connectorJobs } = getConnectorTables(db);
   const jobId = generateJobId();
   await db.insert(connectorJobs).values({
     connectorId: input.connectorId,
@@ -1054,7 +1042,6 @@ export async function submitConnectorJobResult(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectorJobs } = getConnectorTables(db);
   const now = new Date();
   const [updated] = await db
     .update(connectorJobs)
@@ -1118,7 +1105,6 @@ export async function submitConnectorJobError(input: {
   }
 
   const db = resolveBrokerDb(input.db);
-  const { connectorJobs } = getConnectorTables(db);
   const now = new Date();
   const [updated] = await db
     .update(connectorJobs)

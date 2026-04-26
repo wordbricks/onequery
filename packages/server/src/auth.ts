@@ -1,6 +1,5 @@
 import { ORGANIZATION_INVITATION_EXPIRES_IN_SECONDS } from "@onequery/base";
-import { and, createDatabaseRuntime, createDb, eq } from "@onequery/db/server";
-import type { DatabaseSchema } from "@onequery/db/server";
+import { and, createDb, eq, schema as dbSchema } from "@onequery/db/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
@@ -25,7 +24,6 @@ import type { ServerRuntimeConfig } from "./runtime";
 type AuthConfig = {
   databaseUrl?: string;
   db?: DbInstance;
-  schema?: DatabaseSchema;
   provider?: "pg";
   secret: string;
   baseURL?: string;
@@ -70,19 +68,7 @@ function resolveAuthDb(config: AuthConfig): DbInstance {
 
 export function createAuth(config: AuthConfig) {
   const db = resolveAuthDb(config);
-  const tables =
-    config.schema ??
-    (config.databaseUrl
-      ? createDatabaseRuntime(config.databaseUrl).schema
-      : undefined);
   const provider = config.provider ?? "pg";
-  const authSchema = tables;
-
-  if (!tables) {
-    throw new Error(
-      "createAuth requires a runtime schema when no databaseUrl is provided"
-    );
-  }
 
   const isHttps = config.baseURL?.startsWith("https://") ?? false;
 
@@ -105,7 +91,7 @@ export function createAuth(config: AuthConfig) {
   return betterAuth({
     database: drizzleAdapter(db, {
       provider,
-      schema: authSchema,
+      schema: dbSchema,
     }),
     secret: config.secret,
     baseURL: config.baseURL,
@@ -173,7 +159,6 @@ export function createAuth(config: AuthConfig) {
             const authorization = await authorizeSelfHostSignUp({
               db,
               email: signupEmail,
-              schema: tables,
             });
 
             if (!authorization.allowed) {
@@ -205,8 +190,8 @@ export function createAuth(config: AuthConfig) {
           const membership = await db.query.member.findFirst({
             columns: { role: true },
             where: and(
-              eq(tables.member.userId, session.user.id),
-              eq(tables.member.organizationId, organizationId)
+              eq(dbSchema.member.userId, session.user.id),
+              eq(dbSchema.member.organizationId, organizationId)
             ),
           });
 
@@ -247,7 +232,6 @@ export interface CreateAuthFromConfigOptions {
   db?: DbInstance;
   enableTestUtils?: boolean;
   provider?: "pg";
-  schema?: DatabaseSchema;
 }
 
 export function createAuthFromConfig(
@@ -264,7 +248,6 @@ export function createAuthFromConfig(
     emailDelivery: runtime.auth.emailDelivery,
     enableTestUtils: input.enableTestUtils,
     provider: input.provider,
-    schema: input.schema,
     secret: runtime.auth.secret,
   });
 }

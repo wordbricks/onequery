@@ -1,4 +1,4 @@
-import { and, eq, getDatabaseSchema } from "@onequery/db/server";
+import { and, eq, member, organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 
 import type {
@@ -12,7 +12,6 @@ export async function runCliLoadOrgAccess(input: {
   orgSlug: string;
   userId: string;
 }): Promise<CliOrgAccessResult> {
-  const { member, organization } = getDatabaseSchema(input.db);
   const org = await input.db.query.organization.findFirst({
     columns: {
       id: true,
@@ -65,7 +64,6 @@ export async function runCliListVisibleOrgs(input: {
   db: Database;
   userId: string;
 }): Promise<CliOrgSummary[]> {
-  const { member, organization } = getDatabaseSchema(input.db);
   const rawRows = await input.db
     .select({ name: organization.name, slug: organization.slug })
     .from(member)

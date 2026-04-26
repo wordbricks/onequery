@@ -1,6 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
 import { auditListQuerySchema } from "@onequery/contracts/audit";
-import { and, eq, getDatabaseSchema } from "@onequery/db/server";
+import {
+  and,
+  eq,
+  member,
+  organization,
+  organizationProfiles,
+} from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -27,8 +33,7 @@ const UpdateOrgSettingsSchema = z
     message: "At least one organization setting must be provided",
   });
 
-function getOrganizationSettingsSelection(db: Database) {
-  const { organizationProfiles } = getDatabaseSchema(db);
+function getOrganizationSettingsSelection() {
   return {
     monthlyBudgetUsd: organizationProfiles.monthlyBudgetUsd,
   };
@@ -43,8 +48,6 @@ async function findOrganizationMembershipBySlug(input: {
   | { kind: "forbidden" }
   | { kind: "ok"; organizationId: string; rawRole: string | null }
 > {
-  const { member, organization } = getDatabaseSchema(input.db);
-
   const [org] = await input.db
     .select({ id: organization.id })
     .from(organization)
@@ -87,7 +90,6 @@ export const organizationsRoute = new Hono<{
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
     const db = c.var.storage.db;
-    const { organization } = getDatabaseSchema(db);
     const session = c.get("session");
 
     // Require authentication
@@ -182,8 +184,7 @@ export const organizationsRoute = new Hono<{
   .get("/:slug/settings", async (c) => {
     const slug = c.req.param("slug");
     const db = c.var.storage.db;
-    const { organization, organizationProfiles } = getDatabaseSchema(db);
-    const organizationSettingsSelection = getOrganizationSettingsSelection(db);
+    const organizationSettingsSelection = getOrganizationSettingsSelection();
     const session = c.get("session");
 
     if (!session?.user) {
@@ -241,10 +242,7 @@ export const organizationsRoute = new Hono<{
       const slug = c.req.param("slug");
       const body = c.req.valid("json");
       const db = c.var.storage.db;
-      const { member, organization, organizationProfiles } =
-        getDatabaseSchema(db);
-      const organizationSettingsSelection =
-        getOrganizationSettingsSelection(db);
+      const organizationSettingsSelection = getOrganizationSettingsSelection();
       const session = c.get("session");
 
       if (!session?.user) {

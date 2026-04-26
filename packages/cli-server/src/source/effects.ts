@@ -1,4 +1,4 @@
-import { and, eq, getDatabaseSchema } from "@onequery/db/server";
+import { and, dataSources, eq } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { encryptCredentialsObject } from "@onequery/server/services/crypto/credential-encryption";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
@@ -23,7 +23,6 @@ export async function runCliListSourcesEffect(input: {
   db: Database;
   effect: CliListSourcesEffect;
 }): Promise<CliListSourcesEffectResult> {
-  const { dataSources } = getDatabaseSchema(input.db);
   const rows = await input.db.query.dataSources.findMany({
     columns: {
       id: true,
@@ -47,7 +46,6 @@ export async function runCliLoadSourceEffect(input: {
   db: Database;
   effect: CliLoadSourceEffect;
 }): Promise<CliLoadSourceEffectResult> {
-  const { dataSources } = getDatabaseSchema(input.db);
   const row = await input.db.query.dataSources.findFirst({
     columns: {
       id: true,
@@ -88,7 +86,6 @@ export async function runCliConnectSourceEffect(input: {
   effect: CliConnectSourceEffect;
   masterEncryptionKey: Uint8Array;
 }): Promise<CliConnectSourceEffectResult> {
-  const { dataSources } = getDatabaseSchema(input.db);
   const encrypted = encryptCredentialsObject(
     input.effect.credentials,
     input.masterEncryptionKey
@@ -154,8 +151,6 @@ export async function runCliTestSourceEffect(input: {
   if (preparedCredentials.isErr()) {
     const latencyMs = 0;
     const now = new Date();
-    const { dataSources } = getDatabaseSchema(input.db);
-
     // Comment: source test treats credential decode/provider mismatches as an
     // explicit failed test result so CLI callers can script against one stable
     // response shape instead of branching on transport vs. domain failures.
@@ -189,7 +184,6 @@ export async function runCliTestSourceEffect(input: {
   }
 
   const now = new Date();
-  const { dataSources } = getDatabaseSchema(input.db);
   await input.db
     .update(dataSources)
     .set({

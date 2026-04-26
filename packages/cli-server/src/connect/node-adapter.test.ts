@@ -11,8 +11,10 @@ import {
   ConnectError,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
+import { Result } from "better-result";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { CliSessionIdentity } from "../domain/workflows";
 import type { CliConnectRequestContext } from "./context";
 import { cliConnectRequestContextKey } from "./context";
 import { CLI_ERROR_INFO_DOMAIN } from "./error";
@@ -101,6 +103,65 @@ describe("cli connect node integration", () => {
     expect(listCliValidationMappedMethodNames()).toEqual(
       [...listCliConnectRpcMethodNames()].sort()
     );
+  });
+
+  it("attaches request IDs to successful response metadata", async () => {
+    const session = {
+      accessToken: "token",
+      activeOrg: "acme",
+      authMode: "bearer_token",
+      expiresAt: null,
+      issuedAt: null,
+      user: {
+        displayName: "CLI User",
+        email: "cli@example.test",
+        id: "user_cli_success",
+      },
+    } satisfies CliSessionIdentity;
+    const server = http.createServer(
+      createCliConnectHandler({
+        contextValues(request) {
+          const requestIdHeader = request.headers["x-request-id"];
+          const requestId = Array.isArray(requestIdHeader)
+            ? requestIdHeader[0]
+            : requestIdHeader;
+
+          return createContextValues().set(cliConnectRequestContextKey, {
+            honoContext: null,
+            requestId: requestId ?? "unknown",
+            resolveAuthorizedOrg: async () => {
+              throw new Error("success metadata test should not resolve org");
+            },
+            resolveSession: async () => Result.ok(session),
+          } as unknown as CliConnectRequestContext);
+        },
+      })
+    );
+    openServers.add(server);
+    const port = await listen(server);
+    const client = createClient(
+      CliAuthService,
+      createConnectTransport({
+        baseUrl: `http://127.0.0.1:${port}`,
+        httpVersion: "1.1",
+      })
+    );
+    let responseHeaders = new Headers();
+
+    const response = await client.getSession(
+      {},
+      {
+        headers: {
+          "x-request-id": "req_cli_success",
+        },
+        onHeader(headers) {
+          responseHeaders = headers;
+        },
+      }
+    );
+
+    expect(response.user?.email).toBe("cli@example.test");
+    expect(responseHeaders.get("x-request-id")).toBe("req_cli_success");
   });
 
   it("normalizes protovalidate failures into typed cli connect problems", async () => {
