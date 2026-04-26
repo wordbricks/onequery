@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, getDatabaseSchema } from "@onequery/db/server";
+import { and, dataSources, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 
 import { requireOrgAccess } from "../../middleware/require-org-access";
@@ -24,7 +24,6 @@ export const dataSourcesTestRoute = new Hono<{
       const { organizationId } = c.req.valid("query");
       const id = c.req.param("id");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const dataSource = await db.query.dataSources.findFirst({
         where: and(

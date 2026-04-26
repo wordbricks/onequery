@@ -1,8 +1,4 @@
-import {
-  eq,
-  getDatabaseSchema,
-  isDatabaseCredentials,
-} from "@onequery/db/server";
+import { dataSources, eq, isDatabaseCredentials } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
@@ -108,7 +104,6 @@ export async function runCliPersistQueryUsageEffect(input: {
   db: Database;
   effect: CliPersistUsageEffect;
 }): Promise<CliPersistUsageEffectResult> {
-  const { dataSources } = getDatabaseSchema(input.db);
   const persisted = await Result.tryPromise(async () => {
     await input.db
       .update(dataSources)

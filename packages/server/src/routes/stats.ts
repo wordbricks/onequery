@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { count, eq, getDatabaseSchema } from "@onequery/db/server";
+import { count, dataSources, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -18,7 +18,6 @@ export const statsRoute = new Hono<{
   .get("/", zValidator("query", QuerySchema, zodProblemHook()), async (c) => {
     const { organizationId } = c.req.valid("query");
     const db = c.var.storage.db;
-    const { dataSources } = getDatabaseSchema(db);
 
     const [dataSourcesResult] = await Promise.all([
       db

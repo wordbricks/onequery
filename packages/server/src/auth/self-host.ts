@@ -1,5 +1,5 @@
-import { and, eq } from "@onequery/db/server";
-import type { Database, DatabaseSchema } from "@onequery/db/server";
+import { and, eq, invitation } from "@onequery/db/server";
+import type { Database } from "@onequery/db/server";
 
 export const INVITE_ONLY_SIGNUP_MESSAGE =
   "Public signup is disabled. Ask an organization admin for an invitation before creating an account.";
@@ -26,7 +26,6 @@ type SignupAuthorization =
 
 export async function readAuthBootstrapState(input: {
   db: Database;
-  schema: DatabaseSchema;
 }): Promise<AuthBootstrapState> {
   const firstUser = await input.db.query.user.findFirst({
     columns: { id: true },
@@ -42,7 +41,6 @@ export async function readAuthBootstrapState(input: {
 export async function authorizeSelfHostSignUp(input: {
   db: Database;
   email: string;
-  schema: DatabaseSchema;
 }): Promise<SignupAuthorization> {
   const state = await readAuthBootstrapState(input);
 
@@ -68,8 +66,8 @@ export async function authorizeSelfHostSignUp(input: {
       expiresAt: true,
     },
     where: and(
-      eq(input.schema.invitation.email, normalizedEmail),
-      eq(input.schema.invitation.status, "pending")
+      eq(invitation.email, normalizedEmail),
+      eq(invitation.status, "pending")
     ),
   });
 

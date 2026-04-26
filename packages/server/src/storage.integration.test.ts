@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 
-import { eq } from "@onequery/db/server";
+import { dataSources, eq, member, organization } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
@@ -89,8 +89,6 @@ describe("server storage", () => {
     if (!owner) {
       throw new Error("Expected seeded owner user");
     }
-
-    const { dataSources, member, organization } = storage.schema;
 
     await storage.db.insert(organization).values({
       id: "org_1",

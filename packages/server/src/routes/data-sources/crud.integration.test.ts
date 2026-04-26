@@ -1,4 +1,11 @@
-import { createDatabaseRuntime, eq } from "@onequery/db/server";
+import {
+  createDb,
+  dataSources,
+  eq,
+  member,
+  organization,
+  user,
+} from "@onequery/db/server";
 import { Hono } from "hono";
 import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -47,26 +54,26 @@ describe("dataSourcesCrudRoute", () => {
       ["db"]
     );
     const runtimeConfig = createTestRuntimeConfigFromDatabaseUrl(dbUrl);
-    const runtime = createDatabaseRuntime(dbUrl);
+    const db = createDb(dbUrl);
 
     expect(runtimeConfig.isOk()).toBe(true);
     if (runtimeConfig.isErr()) {
       return;
     }
 
-    openedDatabases.push(runtime.db as ClosableDatabase);
+    openedDatabases.push(db as ClosableDatabase);
 
-    await runtime.db.insert(runtime.schema.organization).values({
+    await db.insert(organization).values({
       id: "org-1",
       name: "Acme",
       slug: "acme",
     });
-    await runtime.db.insert(runtime.schema.user).values({
+    await db.insert(user).values({
       email: "owner@example.com",
       id: "user-1",
       name: "Owner",
     });
-    await runtime.db.insert(runtime.schema.member).values({
+    await db.insert(member).values({
       id: "member-1",
       organizationId: "org-1",
       role: "owner",
@@ -79,8 +86,7 @@ describe("dataSourcesCrudRoute", () => {
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {
-          db: runtime.db,
-          schema: runtime.schema,
+          db,
         } as StorageVariables["storage"]);
         c.set("runtime", runtimeConfig.value);
         c.set("session", createSession("user-1"));
@@ -114,14 +120,14 @@ describe("dataSourcesCrudRoute", () => {
       },
     });
 
-    const persisted = await runtime.db.query.dataSources.findFirst({
+    const persisted = await db.query.dataSources.findFirst({
       columns: {
         credentialsEncrypted: true,
         id: true,
         name: true,
         provider: true,
       },
-      where: eq(runtime.schema.dataSources.organizationId, "org-1"),
+      where: eq(dataSources.organizationId, "org-1"),
     });
 
     expect(persisted).toMatchObject({

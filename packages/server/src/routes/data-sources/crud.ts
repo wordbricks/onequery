@@ -3,8 +3,8 @@ import { DATA_SOURCE_NAME_DUPLICATE_CODE } from "@onequery/db/constants";
 import {
   and,
   credentialSchemaMap,
+  dataSources,
   eq,
-  getDatabaseSchema,
   ne,
 } from "@onequery/db/server";
 import type { ProviderType } from "@onequery/db/server";
@@ -130,7 +130,6 @@ export const dataSourcesCrudRoute = new Hono<{
     async (c) => {
       const { organizationId } = c.req.valid("query");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const result = await db.query.dataSources.findMany({
         columns: {
@@ -159,7 +158,6 @@ export const dataSourcesCrudRoute = new Hono<{
       const { organizationId } = c.req.valid("query");
       const id = c.req.param("id");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const dataSource = await db.query.dataSources.findFirst({
         columns: {
@@ -199,7 +197,6 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
       const hasAccess = await verifyOrgAccess(
         db,
         session.user.id,
@@ -307,7 +304,6 @@ export const dataSourcesCrudRoute = new Hono<{
       const id = c.req.param("id");
       const body = c.req.valid("json");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const existing = await db.query.dataSources.findFirst({
         where: and(
@@ -440,7 +436,6 @@ export const dataSourcesCrudRoute = new Hono<{
       const { organizationId } = c.req.valid("query");
       const id = c.req.param("id");
       const db = c.var.storage.db;
-      const { dataSources } = getDatabaseSchema(db);
 
       const existing = await db.query.dataSources.findFirst({
         where: and(

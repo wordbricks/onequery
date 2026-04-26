@@ -7,9 +7,10 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  createDatabaseRuntime,
-  getDatabaseSchema,
+  createDb,
+  getDatabaseEngine,
   prepareApplicationDatabase,
+  schema,
   sql,
 } from "./server";
 
@@ -59,6 +60,10 @@ async function isTcpPortReachable(
   });
 }
 
+function readExecuteRows(result: unknown): unknown {
+  return Array.isArray(result) ? result : (result as { rows?: unknown }).rows;
+}
+
 const liveDockerDatabaseReachable = await isTcpPortReachable("127.0.0.1", 5454);
 const liveDatabaseTest = liveDockerDatabaseReachable ? it : it.skip;
 const migrationsFolder = fileURLToPath(
@@ -74,42 +79,20 @@ describe("database runtime", () => {
     }
   });
 
-  it("boots the PGlite runtime and keeps a stable runtime schema marker", async () => {
+  it("boots the PGlite runtime with the static schema", async () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-db-runtime-test-"));
     const connectionString = `pglite:${join(root, "pglite", "onequery")}`;
     await prepareApplicationDatabase({
       connectionString,
       migrationsFolder,
     });
-    const runtime = createDatabaseRuntime(connectionString);
-    openedDatabases.push(runtime.db as ClosableDatabase);
+    const db = createDb(connectionString);
+    openedDatabases.push(db as ClosableDatabase);
 
-    expect(runtime.engine).toBe("pglite");
-    expect(runtime.schema.organization).toBeDefined();
-    expect(getDatabaseSchema(runtime.db)).toBe(runtime.schema);
-
-    const dbWithInternals = runtime.db as typeof runtime.db & {
-      [key: symbol]: unknown;
-      _?: {
-        fullSchema?: unknown;
-      };
-    };
-
-    const originalInternals = dbWithInternals._;
-    Object.defineProperty(dbWithInternals, "_", {
-      configurable: true,
-      value: undefined,
-    });
-
-    expect(dbWithInternals[Symbol.for("onequery.db.runtime-schema")]).toBe(
-      runtime.schema
-    );
-    expect(getDatabaseSchema(runtime.db)).toBe(runtime.schema);
-
-    Object.defineProperty(dbWithInternals, "_", {
-      configurable: true,
-      value: originalInternals,
-    });
+    expect(getDatabaseEngine(connectionString)).toBe("pglite");
+    expect(schema.organization).toBeDefined();
+    const rows = readExecuteRows(await db.execute(sql`select 1 as ok`));
+    expect(rows).toEqual([{ ok: 1 }]);
   });
 
   // Comment: this integration check uses the shared local/CI test Postgres DSN
@@ -117,13 +100,13 @@ describe("database runtime", () => {
   liveDatabaseTest(
     "boots the Postgres runtime against the live docker database",
     async () => {
-      const runtime = createDatabaseRuntime(DEFAULT_TEST_DATABASE_URL);
-      openedDatabases.push(runtime.db as ClosableDatabase);
+      const db = createDb(DEFAULT_TEST_DATABASE_URL);
+      openedDatabases.push(db as ClosableDatabase);
 
-      expect(runtime.engine).toBe("postgres");
-      expect(runtime.schema.organization).toBeDefined();
+      expect(getDatabaseEngine(DEFAULT_TEST_DATABASE_URL)).toBe("postgres");
+      expect(schema.organization).toBeDefined();
 
-      const rows = await runtime.db.execute(sql`select 1 as ok`);
+      const rows = readExecuteRows(await db.execute(sql`select 1 as ok`));
       expect(rows).toEqual([{ ok: 1 }]);
     }
   );
