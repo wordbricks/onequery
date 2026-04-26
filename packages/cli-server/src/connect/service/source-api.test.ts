@@ -251,6 +251,12 @@ const executionResponse = {
   status: 200,
 } as const;
 
+type OpenedDatabase = {
+  connectionString: string;
+  db: ClosableDatabase;
+  rootDir: string;
+};
+
 type ClosableDatabase = {
   $client?: {
     close?: () => Promise<unknown>;
@@ -258,25 +264,28 @@ type ClosableDatabase = {
   };
 };
 
-type OpenedDatabase = {
-  db: ClosableDatabase;
-  rootDir: string;
-};
-
 const migrationsFolder = fileURLToPath(
   new URL("../../../../db/src/migrations", import.meta.url)
 );
 
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
+async function closeIsolatedDatabase(input: {
+  connectionString: string;
+  db: ClosableDatabase;
+}): Promise<void> {
+  const client = input.db.$client;
   if (client && typeof client.close === "function") {
     await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
+  } else if (client && typeof client.end === "function") {
     await client.end({ timeout: 0 });
   }
+
+  // Comment: createDb() keeps a process-global cache for runtime DB reuse; these
+  // tests create disposable PGlite paths, so teardown must evict the closed entry.
+  const globalWithDbCache = globalThis as typeof globalThis &
+    Record<symbol, Map<string, unknown> | undefined>;
+  globalWithDbCache[Symbol.for("onequery.db.instance-cache")]?.delete(
+    input.connectionString
+  );
 }
 
 let migratedTemplateRootDir: string | null = null;
@@ -288,6 +297,7 @@ async function createIsolatedDatabase() {
 
   const rootDir = mkdtempSync(join(tmpdir(), "onequery-source-api-test-"));
   const dataDir = join(rootDir, "db");
+  const connectionString = `pglite:${dataDir}`;
 
   // Reuse one migrated template per file so these handler tests stay stable
   // under CI load instead of rerunning the full migration set each time.
@@ -296,13 +306,14 @@ async function createIsolatedDatabase() {
   });
 
   return {
-    db: createDb(`pglite:${dataDir}`),
+    connectionString,
+    db: createDb(connectionString),
     rootDir,
   };
 }
 
 async function createHarness() {
-  const { db, rootDir } = await createIsolatedDatabase();
+  const { connectionString, db, rootDir } = await createIsolatedDatabase();
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -360,6 +371,7 @@ async function createHarness() {
   };
 
   return {
+    connectionString,
     db,
     dependencies,
     handleDescribeSourceApi: createHandleDescribeSourceApi(dependencies),
@@ -782,8 +794,8 @@ describe("source api connect service", { timeout: 15_000 }, () => {
   });
 
   afterEach(async () => {
-    for (const { db, rootDir } of openedDatabases.splice(0)) {
-      await closeDatabase(db);
+    for (const { connectionString, db, rootDir } of openedDatabases.splice(0)) {
+      await closeIsolatedDatabase({ connectionString, db });
       rmSync(rootDir, {
         force: true,
         recursive: true,
@@ -804,6 +816,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
   async function createTrackedHarness() {
     const harness = await createHarness();
     openedDatabases.push({
+      connectionString: harness.connectionString,
       db: harness.db as ClosableDatabase,
       rootDir: harness.rootDir,
     });
