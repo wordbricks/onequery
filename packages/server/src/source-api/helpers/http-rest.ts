@@ -11,6 +11,7 @@ import type {
   SourceApiResponseBody,
   SourceApiSelectorKind,
 } from "../types";
+import { canonicalizeSourceApiHeaderPolicy } from "./header-policy";
 
 type CreateHttpRequestOperationInput = {
   name: string;
@@ -59,7 +60,7 @@ export function createHttpRequestOperation(
       ...DEFAULT_HTTP_FIELD_POLICY,
       ...input.fieldPolicy,
     },
-    headerPolicy,
+    headerPolicy: canonicalizeSourceApiHeaderPolicy(headerPolicy),
     kind: "http_request",
     methodPolicy,
     name: input.name,

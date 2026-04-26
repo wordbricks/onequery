@@ -8,6 +8,7 @@ import type {
   SourceApiPaginationPolicy,
   SourceApiSelectorKind,
 } from "../types";
+import { canonicalizeSourceApiHeaderPolicy } from "./header-policy";
 
 type CreateStructuredRequestOperationInput = {
   name: string;
@@ -48,7 +49,7 @@ export function createStructuredRequestOperation(
       ...DEFAULT_STRUCTURED_FIELD_POLICY,
       ...input.fieldPolicy,
     },
-    headerPolicy,
+    headerPolicy: canonicalizeSourceApiHeaderPolicy(headerPolicy),
     kind: "structured_request",
     methodPolicy: {
       allowedMethods: ["POST"],

@@ -1,3 +1,4 @@
+import { canonicalizeSourceApiDescriptorHeaderPolicies } from "./helpers/header-policy";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
@@ -14,8 +15,10 @@ export async function describeSourceApi(input: {
   const registry = input.registry ?? sourceApiRegistry;
   const adapter = getSourceApiAdapter(registry, input.source.provider);
 
-  return adapter.describe({
+  const descriptor = await adapter.describe({
     actor: input.actor,
     source: input.source,
   });
+
+  return canonicalizeSourceApiDescriptorHeaderPolicies(descriptor);
 }

@@ -433,6 +433,49 @@ describe("source api action protobuf codec", () => {
     }
   );
 
+  it("canonicalizes descriptor header policies before durable protobuf validation", () => {
+    const descriptorWithMixedCaseHeaders = {
+      ...descriptor,
+      operations: descriptor.operations.map((operation) => ({
+        ...operation,
+        headerPolicy: {
+          allowedRequestHeaders: [
+            "Accept",
+            "Content-Type",
+            "X-GitHub-Api-Version",
+            "accept",
+          ],
+          allowedResponseHeaders: ["Content-Type", "ETag", "content-type"],
+        },
+      })),
+    } satisfies SourceApiDescriptor;
+    const payload: SourceApiActionCommandPayload = {
+      descriptor: descriptorWithMixedCaseHeaders,
+      kind: "resolved",
+      requestDescriptor: null,
+      type: "record_descriptor_resolution",
+    };
+
+    const decoded = expectOk(
+      decodeSourceApiActionCommandPayload(
+        encodeSourceApiActionCommandPayload(payload),
+        decodeContext("record_descriptor_resolved")
+      )
+    );
+
+    if (
+      decoded.type !== "record_descriptor_resolution" ||
+      decoded.kind !== "resolved"
+    ) {
+      throw new Error("expected decoded descriptor resolution command");
+    }
+
+    expect(decoded.descriptor.operations[0]?.headerPolicy).toEqual({
+      allowedRequestHeaders: ["accept", "content-type", "x-github-api-version"],
+      allowedResponseHeaders: ["content-type", "etag"],
+    });
+  });
+
   it.each(eventPayloads)(
     "round-trips event payload %s through protobuf bytes",
     (_name, payload) => {

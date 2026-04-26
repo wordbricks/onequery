@@ -1180,8 +1180,12 @@ function fromSourceApiFieldPolicyMessage(
 
 function toSourceApiHeaderPolicyMessage(policy: SourceApiHeaderPolicy) {
   return create(sourceApiPb.SourceApiActionHeaderPolicySchema, {
-    allowedRequestHeaderNames: [...policy.allowedRequestHeaders],
-    allowedResponseHeaderNames: [...policy.allowedResponseHeaders],
+    allowedRequestHeaderNames: canonicalizeHeaderNames(
+      policy.allowedRequestHeaders
+    ),
+    allowedResponseHeaderNames: canonicalizeHeaderNames(
+      policy.allowedResponseHeaders
+    ),
   });
 }
 
@@ -1194,6 +1198,10 @@ function fromSourceApiHeaderPolicyMessage(
     allowedRequestHeaders: [...value.allowedRequestHeaderNames],
     allowedResponseHeaders: [...value.allowedResponseHeaderNames],
   };
+}
+
+function canonicalizeHeaderNames(names: readonly string[]): string[] {
+  return [...new Set(names.map((name) => name.trim().toLowerCase()))];
 }
 
 function toSourceApiExampleMessage(
