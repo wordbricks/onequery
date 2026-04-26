@@ -11,7 +11,7 @@ import type {
   CliSourceRecord,
 } from "../../../domain/workflows";
 import {
-  createQueryAuditProblem,
+  createQueryAuditCorruptionProblem,
   requireLastCommittedEvent,
 } from "./workflow-runtime";
 import type {
@@ -144,7 +144,7 @@ export function toStoredQuerySourceLookupResult(input: {
         status: event.sourceStatus,
       };
     default:
-      throw createQueryAuditProblem(
+      throw createQueryAuditCorruptionProblem(
         `query_action replay expected a source lookup event but loaded ${event.type}`
       );
   }
@@ -156,7 +156,7 @@ export function toStoredQueryValidationResult(
   const parsed =
     StoredQueryValidationResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       "query_action stored validation result payload is corrupt",
       parsed.error
     );
@@ -199,7 +199,7 @@ export function toStoredQueryCredentialsLoadResult(
         kind: "credentials_invalid",
       };
     default:
-      throw createQueryAuditProblem(
+      throw createQueryAuditCorruptionProblem(
         `query_action replay expected a credentials load event but loaded ${event.type}`
       );
   }
@@ -211,7 +211,7 @@ export function toStoredQueryExecutionResult(
   const parsed =
     StoredQueryExecutionResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       "query_action stored execution result payload is corrupt",
       parsed.error
     );
@@ -259,7 +259,7 @@ export function toStoredUsagePersistenceResult(input: {
         sourceId: input.sourceId,
       };
     default:
-      throw createQueryAuditProblem(
+      throw createQueryAuditCorruptionProblem(
         `query_action replay expected a usage persistence event but loaded ${event.type}`
       );
   }

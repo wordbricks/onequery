@@ -73,23 +73,39 @@ function applyQueryDecision(
         sequence:
           currentState === null ? 1 : currentState.lastEventSequence + 1,
       }) satisfies QueryActionCommittedEvent;
-      return reduceQueryAction(currentState, committedEvent);
+      const reduced = reduceQueryAction(currentState, committedEvent);
+      expect(reduced.isOk()).toBe(true);
+      if (reduced.isErr()) {
+        throw reduced.error;
+      }
+      return reduced.value;
     },
     state
   ) as QueryActionState;
+}
+
+function unwrapQueryDecision(result: ReturnType<typeof decideQueryAction>) {
+  expect(result.isOk()).toBe(true);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
 }
 
 describe("query_action family", () => {
   it("executes the documented happy path and keeps usage persistence orthogonal", () => {
     let state: QueryActionState | null = null;
 
-    const startDecision = decideQueryAction(
-      state,
-      buildQueryCommand({
-        queryText: "select * from customers",
-        sourceKey: "warehouse",
-        type: "start_execute",
-      })
+    const startDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand({
+          queryText: "select * from customers",
+          sourceKey: "warehouse",
+          type: "start_execute",
+        })
+      )
     );
     expect(startDecision.kind).toBe("accepted");
     if (startDecision.kind !== "accepted") {
@@ -98,23 +114,25 @@ describe("query_action family", () => {
     state = applyQueryDecision(state, startDecision.events);
     expect(state.phase).toBe("load_source");
 
-    const sourceLookupDecision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "found",
-          source: {
-            displayName: "Warehouse",
-            name: "warehouse",
-            organizationId: "org_1",
-            provider: "postgres",
-            sourceId: "source_1",
-            sourceKey: "warehouse",
-            sourceStatus: "active",
+    const sourceLookupDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "found",
+            source: {
+              displayName: "Warehouse",
+              name: "warehouse",
+              organizationId: "org_1",
+              provider: "postgres",
+              sourceId: "source_1",
+              sourceKey: "warehouse",
+              sourceStatus: "active",
+            },
+            type: "record_source_lookup",
           },
-          type: "record_source_lookup",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(sourceLookupDecision.kind).toBe("accepted");
@@ -123,16 +141,18 @@ describe("query_action family", () => {
     }
     state = applyQueryDecision(state, sourceLookupDecision.events);
 
-    const validationDecision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "accepted",
-          truncated: false,
-          type: "record_query_validation",
-          validatedQuery: "SELECT * FROM customers LIMIT 1000",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const validationDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "accepted",
+            truncated: false,
+            type: "record_query_validation",
+            validatedQuery: "SELECT * FROM customers LIMIT 1000",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(validationDecision.kind).toBe("accepted");
@@ -141,14 +161,16 @@ describe("query_action family", () => {
     }
     state = applyQueryDecision(state, validationDecision.events);
 
-    const credentialsDecision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "loaded",
-          type: "record_credentials_load",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const credentialsDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "loaded",
+            type: "record_credentials_load",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(credentialsDecision.kind).toBe("accepted");
@@ -157,15 +179,17 @@ describe("query_action family", () => {
     }
     state = applyQueryDecision(state, credentialsDecision.events);
 
-    const executionDecision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "succeeded",
-          response: queryExecutionResponse,
-          type: "record_query_execution",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const executionDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "succeeded",
+            response: queryExecutionResponse,
+            type: "record_query_execution",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(executionDecision.kind).toBe("accepted");
@@ -174,15 +198,17 @@ describe("query_action family", () => {
     }
     state = applyQueryDecision(state, executionDecision.events);
 
-    const usageDecision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          detail: "usage sink unavailable",
-          kind: "failed",
-          type: "record_usage_persistence",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const usageDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            detail: "usage sink unavailable",
+            kind: "failed",
+            type: "record_usage_persistence",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(usageDecision.kind).toBe("accepted");
@@ -222,16 +248,18 @@ describe("query_action family", () => {
       },
     ]);
 
-    const decision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "accepted",
-          truncated: false,
-          type: "record_query_validation",
-          validatedQuery: "SELECT 1",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const decision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "accepted",
+            truncated: false,
+            type: "record_query_validation",
+            validatedQuery: "SELECT 1",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
 
@@ -275,16 +303,18 @@ describe("query_action family", () => {
       },
     ]);
 
-    const decision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          detail: "sql parser runtime unavailable",
-          hint: "retry the request",
-          kind: "preparation_failed",
-          type: "record_query_validation",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const decision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            detail: "sql parser runtime unavailable",
+            hint: "retry the request",
+            kind: "preparation_failed",
+            type: "record_query_validation",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
 
@@ -324,15 +354,17 @@ describe("query_action family", () => {
       },
     ]);
 
-    const decision = decideQueryAction(
-      state,
-      buildQueryCommand(
-        {
-          kind: "not_found",
-          sourceKey: "warehouse",
-          type: "record_source_lookup",
-        },
-        { actionId: "action_1", causedByEventId: "stale_event" }
+    const decision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "not_found",
+            sourceKey: "warehouse",
+            type: "record_source_lookup",
+          },
+          { actionId: "action_1", causedByEventId: "stale_event" }
+        )
       )
     );
 
@@ -367,7 +399,76 @@ describe("query_action family", () => {
       },
     ]);
 
-    const decision = decideQueryAction(
+    const decision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "loaded",
+            type: "record_credentials_load",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
+      )
+    );
+
+    expect(decision).toEqual({
+      kind: "rejected",
+      rejectCode: "invalid_phase",
+    });
+  });
+
+  it("returns a typed reducer invariant error for malformed event order", () => {
+    const event = appendEventMetadata(
+      {
+        source: {
+          displayName: null,
+          name: "warehouse",
+          organizationId: "org_1",
+          provider: "postgres",
+          sourceId: "source_1",
+          sourceKey: "warehouse",
+          sourceStatus: "active",
+        },
+        type: "source_loaded",
+      },
+      {
+        id: "event_source_loaded",
+        occurredAt: baseObservedAt,
+        sequence: 1,
+      }
+    ) satisfies QueryActionCommittedEvent;
+
+    const result = reduceQueryAction(null, event);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      _tag: "WorkflowInternalInvariantError",
+      eventType: "source_loaded",
+      family: "query_action",
+      invariant: "state_required",
+      scope: "reducer",
+    });
+  });
+
+  it("returns a typed decision invariant error for semantically corrupt state", () => {
+    const state = {
+      ...applyQueryDecision(null, [
+        {
+          queryMode: "execute",
+          queryText: "select 1",
+          type: "action_received",
+        },
+      ]),
+      phase: "load_credentials" as const,
+      sourceDescriptor: null,
+      validatedQuery: "SELECT 1",
+    } satisfies QueryActionState;
+
+    const result = decideQueryAction(
       state,
       buildQueryCommand(
         {
@@ -378,9 +479,17 @@ describe("query_action family", () => {
       )
     );
 
-    expect(decision).toEqual({
-      kind: "rejected",
-      rejectCode: "invalid_phase",
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      _tag: "WorkflowInternalInvariantError",
+      commandType: "record_credentials_load",
+      family: "query_action",
+      invariant: "source_descriptor_required",
+      phase: "load_credentials",
+      scope: "decision",
     });
   });
 });

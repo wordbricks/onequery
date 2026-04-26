@@ -3,6 +3,7 @@ import { Code } from "@connectrpc/connect";
 export type CliFailureStage =
   | "auth"
   | "execute_query"
+  | "internal"
   | "read_query_input"
   | "resolve_org"
   | "resolve_source"
@@ -10,11 +11,16 @@ export type CliFailureStage =
   | "source_api_prepare"
   | "source_api_execute";
 
+export type CliProblemTelemetryKind =
+  | "workflow_corruption"
+  | "workflow_internal";
+
 export type CliProblemDefinition = {
   reason: string;
   connectCode: Code;
   stage: CliFailureStage;
   retryable: boolean;
+  telemetryKind?: CliProblemTelemetryKind;
 };
 
 function defineCliProblem<const Reason extends string>(
@@ -111,6 +117,18 @@ export const CLI_PROBLEM_DEFINITIONS = {
     retryable: false,
     stage: "execute_query",
   }),
+  QUERY_WORKFLOW_CORRUPT: defineCliProblem("QUERY_WORKFLOW_CORRUPT", {
+    connectCode: Code.DataLoss,
+    retryable: false,
+    stage: "internal",
+    telemetryKind: "workflow_corruption",
+  }),
+  QUERY_WORKFLOW_INTERNAL: defineCliProblem("QUERY_WORKFLOW_INTERNAL", {
+    connectCode: Code.Internal,
+    retryable: false,
+    stage: "internal",
+    telemetryKind: "workflow_internal",
+  }),
   QUERY_REJECTED: defineCliProblem("QUERY_REJECTED", {
     connectCode: Code.InvalidArgument,
     retryable: false,
@@ -145,6 +163,21 @@ export const CLI_PROBLEM_DEFINITIONS = {
       connectCode: Code.Internal,
       retryable: false,
       stage: "source_api_prepare",
+    }
+  ),
+  SOURCE_API_WORKFLOW_CORRUPT: defineCliProblem("SOURCE_API_WORKFLOW_CORRUPT", {
+    connectCode: Code.DataLoss,
+    retryable: false,
+    stage: "internal",
+    telemetryKind: "workflow_corruption",
+  }),
+  SOURCE_API_WORKFLOW_INTERNAL: defineCliProblem(
+    "SOURCE_API_WORKFLOW_INTERNAL",
+    {
+      connectCode: Code.Internal,
+      retryable: false,
+      stage: "internal",
+      telemetryKind: "workflow_internal",
     }
   ),
   SOURCE_API_EXECUTION_STATE_INVALID: defineCliProblem(

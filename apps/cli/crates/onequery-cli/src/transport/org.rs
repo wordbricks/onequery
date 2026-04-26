@@ -1,3 +1,4 @@
+use buffa::EnumValue;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
@@ -10,8 +11,6 @@ use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::labels::org_capability_to_str;
-use crate::transport::labels::org_role_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
@@ -60,7 +59,7 @@ pub(crate) async fn get_org_with_controls(
     let request_id = success_response_request_id(&response);
 
     Ok(ApiSuccess {
-        payload: org_details_from_generated(response.into_owned()),
+        payload: org_details_from_generated(response.into_owned(), request_id.clone())?,
         request_id,
     })
 }
@@ -151,7 +150,10 @@ fn org_summary_from_generated(summary: types::CliOrganizationSummary) -> OrgSumm
     }
 }
 
-fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDetails {
+fn org_details_from_generated(
+    details: types::GetOrganizationResponse,
+    request_id: Option<String>,
+) -> Result<OrgDetails, ApiFailure> {
     let types::GetOrganizationResponse {
         slug,
         name,
@@ -160,23 +162,73 @@ fn org_details_from_generated(details: types::GetOrganizationResponse) -> OrgDet
         ..
     } = details;
 
-    OrgDetails {
+    Ok(OrgDetails {
         slug,
         name,
-        roles: Some(roles.into_iter().map(org_role_to_str).collect()),
+        roles: Some(
+            roles
+                .into_iter()
+                .map(|role| org_role_from_generated(role, request_id.clone()))
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
         capabilities: Some(
             capabilities
                 .into_iter()
-                .map(org_capability_to_str)
-                .collect(),
+                .map(|capability| org_capability_from_generated(capability, request_id.clone()))
+                .collect::<Result<Vec<_>, _>>()?,
         ),
+    })
+}
+
+fn org_role_from_generated(
+    value: EnumValue<types::OrganizationRole>,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value.as_known() {
+        Some(types::OrganizationRole::ORGANIZATION_ROLE_OWNER) => Ok("owner".to_owned()),
+        Some(types::OrganizationRole::ORGANIZATION_ROLE_ADMIN) => Ok("admin".to_owned()),
+        Some(types::OrganizationRole::ORGANIZATION_ROLE_MEMBER) => Ok("member".to_owned()),
+        Some(types::OrganizationRole::ORGANIZATION_ROLE_UNSPECIFIED) | None => Err(decode_failure(
+            ErrorStage::ResolveOrg,
+            "organization response has invalid role",
+            request_id,
+        )),
+    }
+}
+
+fn org_capability_from_generated(
+    value: EnumValue<types::OrgCapability>,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value.as_known() {
+        Some(types::OrgCapability::ORG_CAPABILITY_ORG_LIST) => Ok("org.list".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_ORG_READ) => Ok("org.read".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_CONNECT) => {
+            Ok("source.connect".to_owned())
+        }
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_LIST) => Ok("source.list".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_READ) => Ok("source.read".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE) => Ok("query.execute".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE) => {
+            Ok("source_api.describe".to_owned())
+        }
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE) => {
+            Ok("source_api.execute".to_owned())
+        }
+        Some(types::OrgCapability::ORG_CAPABILITY_UNSPECIFIED) | None => Err(decode_failure(
+            ErrorStage::ResolveOrg,
+            "organization response has invalid capability",
+            request_id,
+        )),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
+    use crate::transport::api_failure::ApiFailure;
     use crate::transport::read_controls::PageInfo;
 
     use super::OrgDetails;
@@ -205,21 +257,25 @@ mod tests {
 
     #[test]
     fn org_details_from_generated_maps_capabilities() {
-        let details = org_details_from_generated(types::GetOrganizationResponse {
-            slug: Some("acme".to_owned()),
-            name: Some("Acme".to_owned()),
-            roles: vec![
-                types::OrganizationRole::ORGANIZATION_ROLE_MEMBER.into(),
-                types::OrganizationRole::ORGANIZATION_ROLE_ADMIN.into(),
-            ],
-            capabilities: vec![
-                types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into(),
-                types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
-                types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
-                types::OrgCapability::ORG_CAPABILITY_ORG_READ.into(),
-            ],
-            ..Default::default()
-        });
+        let details = org_details_from_generated(
+            types::GetOrganizationResponse {
+                slug: Some("acme".to_owned()),
+                name: Some("Acme".to_owned()),
+                roles: vec![
+                    types::OrganizationRole::ORGANIZATION_ROLE_MEMBER.into(),
+                    types::OrganizationRole::ORGANIZATION_ROLE_ADMIN.into(),
+                ],
+                capabilities: vec![
+                    types::OrgCapability::ORG_CAPABILITY_ORG_LIST.into(),
+                    types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
+                    types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
+                    types::OrgCapability::ORG_CAPABILITY_ORG_READ.into(),
+                ],
+                ..Default::default()
+            },
+            Some("req_org".to_owned()),
+        )
+        .expect("expected organization details");
 
         assert_eq!(
             details,
@@ -234,6 +290,29 @@ mod tests {
                     "org.read".to_owned(),
                 ]),
             }
+        );
+    }
+
+    #[test]
+    fn org_details_from_generated_rejects_invalid_role() {
+        let error = org_details_from_generated(
+            types::GetOrganizationResponse {
+                slug: Some("acme".to_owned()),
+                name: Some("Acme".to_owned()),
+                roles: vec![types::OrganizationRole::ORGANIZATION_ROLE_UNSPECIFIED.into()],
+                ..Default::default()
+            },
+            Some("req_org_role".to_owned()),
+        )
+        .expect_err("expected invalid role to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ResolveOrg,
+                message: "organization response has invalid role".to_owned(),
+                request_id: Some("req_org_role".to_owned()),
+            })
         );
     }
 

@@ -18,7 +18,7 @@ import type { CliProblemKey } from "../../../domain/problems";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { createCliServiceFailure } from "../result";
 import {
-  createSourceApiAuditFailure,
+  createSourceApiAuditCorruptionFailure,
   requireLastCommittedEvent,
 } from "./workflow-runtime";
 import type {
@@ -226,7 +226,7 @@ export function toStoredSourceLookupResult(
         kind: "not_found",
       };
     default:
-      throw createSourceApiAuditFailure(
+      throw createSourceApiAuditCorruptionFailure(
         `source_api_action replay expected a source lookup event but loaded ${event.type}`
       );
   }
@@ -238,7 +238,7 @@ export function toStoredDescriptorResolutionResult(
   const parsed =
     StoredDescriptorResolutionResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createSourceApiAuditFailure(
+    throw createSourceApiAuditCorruptionFailure(
       "source_api_action stored descriptor resolution payload is corrupt",
       parsed.error
     );
@@ -279,7 +279,7 @@ export function toStoredRequestPreparationResult(
         }),
       };
     default:
-      throw createSourceApiAuditFailure(
+      throw createSourceApiAuditCorruptionFailure(
         `source_api_action replay expected a request preparation event but loaded ${event.type}`
       );
   }
@@ -290,7 +290,7 @@ export function toStoredPageFetchResult(
 ): PageFetchResult {
   const parsed = StoredPageFetchResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createSourceApiAuditFailure(
+    throw createSourceApiAuditCorruptionFailure(
       "source_api_action stored page fetch payload is corrupt",
       parsed.error
     );

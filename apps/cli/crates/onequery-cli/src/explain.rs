@@ -15,6 +15,10 @@ pub(crate) enum ExplainCode {
     OrgNotFound,
     TransportError,
     DecodeError,
+    QueryWorkflowCorrupt,
+    QueryWorkflowInternal,
+    SourceApiWorkflowCorrupt,
+    SourceApiWorkflowInternal,
     QueryExecutionFailed,
     QueryExecutionTimedOut,
     QueryExecutionUnavailable,
@@ -83,6 +87,7 @@ const AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES: &[&str] = &[
     "source_api_execute",
 ];
 const EXECUTE_QUERY_STAGE: &[&str] = &["execute_query"];
+const INTERNAL_STAGE: &[&str] = &["internal"];
 const INVALID_REQUEST_STAGES: &[&str] = &[
     "auth",
     "resolve_org",
@@ -96,6 +101,7 @@ const RESOLVE_SOURCE_STAGE: &[&str] = &["resolve_source"];
 const SOURCE_API_DESCRIBE_STAGE: &[&str] = &["source_api_describe"];
 const SOURCE_API_PREPARE_STAGE: &[&str] = &["source_api_prepare"];
 const SOURCE_API_EXECUTE_STAGE: &[&str] = &["source_api_execute"];
+const REPORT_TRY_NEXT: &[&str] = &[TEXT_REPORT_COMMAND];
 
 impl ExplainCode {
     pub(crate) fn from_problem_reason(reason: &str) -> Option<Self> {
@@ -116,12 +122,16 @@ impl ExplainCode {
             "QUERY_EXECUTION_TIMED_OUT" => Some(Self::QueryExecutionTimedOut),
             "QUERY_EXECUTION_UNAVAILABLE" => Some(Self::QueryExecutionUnavailable),
             "QUERY_PREPARATION_FAILED" => Some(Self::QueryPreparationFailed),
+            "QUERY_WORKFLOW_CORRUPT" => Some(Self::QueryWorkflowCorrupt),
+            "QUERY_WORKFLOW_INTERNAL" => Some(Self::QueryWorkflowInternal),
             "QUERY_REJECTED" => Some(Self::QueryRejected),
             "SOURCE_API_DESCRIBE_FAILED" => Some(Self::SourceApiDescribeFailed),
             "SOURCE_API_EXECUTION_FAILED" => Some(Self::SourceApiExecutionFailed),
             "SOURCE_API_EXECUTION_TIMED_OUT" => Some(Self::SourceApiExecutionTimedOut),
             "SOURCE_API_FORBIDDEN" => Some(Self::SourceApiForbidden),
             "SOURCE_API_PREPARATION_FAILED" => Some(Self::SourceApiPreparationFailed),
+            "SOURCE_API_WORKFLOW_CORRUPT" => Some(Self::SourceApiWorkflowCorrupt),
+            "SOURCE_API_WORKFLOW_INTERNAL" => Some(Self::SourceApiWorkflowInternal),
             "SOURCE_API_EXECUTION_STATE_INVALID" => Some(Self::SourceApiExecutionStateInvalid),
             "SOURCE_API_SOURCE_UNAVAILABLE" => Some(Self::SourceApiSourceUnavailable),
             "SOURCE_NOT_FOUND" => Some(Self::SourceNotFound),
@@ -142,6 +152,10 @@ impl ExplainCode {
             Self::OrgNotFound => "org_not_found",
             Self::TransportError => "transport_error",
             Self::DecodeError => "decode_error",
+            Self::QueryWorkflowCorrupt => "query_workflow_corrupt",
+            Self::QueryWorkflowInternal => "query_workflow_internal",
+            Self::SourceApiWorkflowCorrupt => "source_api_workflow_corrupt",
+            Self::SourceApiWorkflowInternal => "source_api_workflow_internal",
             Self::QueryExecutionFailed => "query_execution_failed",
             Self::QueryExecutionTimedOut => "query_execution_timed_out",
             Self::QueryExecutionUnavailable => "query_execution_unavailable",
@@ -268,6 +282,50 @@ impl ExplainCode {
                 try_next: &[
                     "retry the failing command to confirm the response shape is consistently invalid",
                 ],
+            },
+            Self::QueryWorkflowCorrupt => Explanation {
+                code: self,
+                title: "Query Workflow Corrupt",
+                stages: INTERNAL_STAGE,
+                http_status: Some(500),
+                retryable: false,
+                support_kind: ExplainSupportKind::ReportRecommended,
+                support_reason: "workflow_corruption",
+                summary: "The CLI API detected corrupt persisted query workflow state while replaying the action trail.",
+                try_next: REPORT_TRY_NEXT,
+            },
+            Self::QueryWorkflowInternal => Explanation {
+                code: self,
+                title: "Query Workflow Internal Failure",
+                stages: INTERNAL_STAGE,
+                http_status: Some(500),
+                retryable: false,
+                support_kind: ExplainSupportKind::ReportRecommended,
+                support_reason: "workflow_internal",
+                summary: "The CLI API hit an internal query workflow invariant while storing or replaying the action trail.",
+                try_next: REPORT_TRY_NEXT,
+            },
+            Self::SourceApiWorkflowCorrupt => Explanation {
+                code: self,
+                title: "Source API Workflow Corrupt",
+                stages: INTERNAL_STAGE,
+                http_status: Some(500),
+                retryable: false,
+                support_kind: ExplainSupportKind::ReportRecommended,
+                support_reason: "workflow_corruption",
+                summary: "The CLI API detected corrupt persisted source API workflow state while replaying the action trail.",
+                try_next: REPORT_TRY_NEXT,
+            },
+            Self::SourceApiWorkflowInternal => Explanation {
+                code: self,
+                title: "Source API Workflow Internal Failure",
+                stages: INTERNAL_STAGE,
+                http_status: Some(500),
+                retryable: false,
+                support_kind: ExplainSupportKind::ReportRecommended,
+                support_reason: "workflow_internal",
+                summary: "The CLI API hit an internal source API workflow invariant while storing or replaying the action trail.",
+                try_next: REPORT_TRY_NEXT,
             },
             Self::QueryExecutionFailed => Explanation {
                 code: self,

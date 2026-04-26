@@ -637,7 +637,7 @@ describe("audit workflow storage", () => {
     expect(commandRows).toHaveLength(1);
   });
 
-  it("surfaces a storage read error when a stored accepted event payload is corrupt", async () => {
+  it("surfaces corrupt row errors when a stored accepted event payload is corrupt", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -664,12 +664,11 @@ describe("audit workflow storage", () => {
       })
     );
 
-    expect(error.family).toBe("query_action");
-    expect("operation" in error).toBe(true);
-    if (!("operation" in error)) {
-      throw new Error("expected workflow storage read error");
-    }
-    expect(error.operation).toBe("load_command_journal");
+    expect(error).toMatchObject({
+      _tag: "WorkflowStorageCorruptRowError",
+      entity: "query_action_event",
+      family: "query_action",
+    });
   });
 
   it("uses an independent commit position sequence per family", async () => {

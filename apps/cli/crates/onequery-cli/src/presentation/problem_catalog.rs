@@ -79,6 +79,18 @@ mod tests {
     }
 
     #[test]
+    fn api_problem_presentation_uses_workflow_corruption_reporting_guidance() {
+        assert_eq!(
+            api_problem_presentation("QUERY_WORKFLOW_CORRUPT"),
+            Some(ApiProblemPresentation {
+                title: "Query Workflow Corrupt",
+                hint: Some("onequery doctor report --last"),
+                try_next: &["onequery doctor report --last"],
+            })
+        );
+    }
+
+    #[test]
     fn api_problem_presentation_rejects_unknown_reasons() {
         assert_eq!(api_problem_presentation("SOURCE_MOVED_ELSEWHERE"), None);
     }

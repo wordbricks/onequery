@@ -7,7 +7,7 @@ Explain a stable CLI error code
 Usage: onequery explain [OPTIONS] <CODE>
 
 Arguments:
-  <CODE>  Explain this stable CLI error code [possible values: forbidden, invalid_request, login_denied, login_rate_limited, login_session_expired, not_logged_in, org_not_found, transport_error, decode_error, query_execution_failed, query_execution_timed_out, query_execution_unavailable, query_preparation_failed, query_rejected, source_api_describe_failed, source_api_execution_failed, source_api_execution_timed_out, source_api_forbidden, source_api_preparation_failed, source_api_execution_state_invalid, source_api_source_unavailable, source_not_found, source_name_conflict, source_not_queryable]
+  <CODE>  Explain this stable CLI error code [possible values: forbidden, invalid_request, login_denied, login_rate_limited, login_session_expired, not_logged_in, org_not_found, transport_error, decode_error, query_workflow_corrupt, query_workflow_internal, source_api_workflow_corrupt, source_api_workflow_internal, query_execution_failed, query_execution_timed_out, query_execution_unavailable, query_preparation_failed, query_rejected, source_api_describe_failed, source_api_execution_failed, source_api_execution_timed_out, source_api_forbidden, source_api_preparation_failed, source_api_execution_state_invalid, source_api_source_unavailable, source_not_found, source_name_conflict, source_not_queryable]
 
 Options:
   -h, --help     Print help

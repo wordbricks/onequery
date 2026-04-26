@@ -39,6 +39,9 @@ function createCliErrorInfoDetail(problem: CliProblemDefinition) {
       metadata: {
         problemStage: problem.stage,
         retryable: problem.retryable ? "true" : "false",
+        ...(problem.telemetryKind
+          ? { problemKind: problem.telemetryKind }
+          : {}),
       },
       reason: problem.reason,
     } satisfies MessageInitShape<typeof ErrorInfoSchema>,

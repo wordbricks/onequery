@@ -624,6 +624,49 @@ mod tests {
     }
 
     #[test]
+    fn present_api_failure_keeps_workflow_corruption_distinct_from_preparation_failure() {
+        let error = present_api_failure(
+            ApiFailure::Problem(api_problem(
+                "QUERY_WORKFLOW_CORRUPT",
+                "query_action stored validation result payload is corrupt",
+                false,
+                None,
+                ErrorStage::Internal,
+                Some("req_workflow_corrupt"),
+                Vec::new(),
+            )),
+            ApiErrorPresentation {
+                command: "onequery query exec --source warehouse --sql \"select 1\"",
+                title: "query failed",
+                transport_why_prefix: "failed to reach query endpoint",
+                decode_why_prefix: "failed to decode query response",
+                fallback_try_next: vec![
+                    "retry onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
+                ],
+                unauthorized_try_next: None,
+            },
+        );
+
+        assert_eq!(
+            error_summary(&error),
+            json!({
+                "title": "Query Workflow Corrupt",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
+                "stage": "internal",
+                "why": "query_action stored validation result payload is corrupt",
+                "tryNext": ["onequery doctor report --last"],
+                "requestId": "req_workflow_corrupt",
+                "hint": "onequery doctor report --last",
+                "code": "QUERY_WORKFLOW_CORRUPT",
+                "status": null,
+                "retryable": false,
+                "retryAfterMs": null,
+                "validationIssues": [],
+            })
+        );
+    }
+
+    #[test]
     fn present_api_failure_overrides_unauthorized_try_next_for_reauth_guidance() {
         let error = present_api_failure(
             ApiFailure::Problem(api_problem(

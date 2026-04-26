@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use buffa::EnumValue;
 use buffa::MessageField;
 use connectrpc::client::CallOptions;
 use onequery_cli_core::error::ErrorStage;
@@ -17,7 +18,6 @@ use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::labels::query_logical_type_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
@@ -306,7 +306,10 @@ fn query_result_from_generated(
                         "query execution response included a column without a name",
                         request_id.clone(),
                     )?,
-                    logical_type: column.logical_type.and_then(query_logical_type_to_str),
+                    logical_type: Some(query_logical_type_from_generated(
+                        column.logical_type,
+                        request_id.clone(),
+                    )?),
                 })
             })
             .collect::<Result<Vec<_>, ApiFailure>>()?,
@@ -323,6 +326,36 @@ fn query_result_from_generated(
         )?,
         page: page_info_from_generated(page),
     })
+}
+
+fn query_logical_type_from_generated(
+    value: Option<EnumValue<types::QueryLogicalType>>,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value {
+        Some(value) => match value.as_known() {
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_STRING) => Ok("string".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_NUMBER) => Ok("number".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_BOOLEAN) => Ok("boolean".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_BIGINT) => Ok("bigint".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_DATETIME) => Ok("datetime".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_ARRAY) => Ok("array".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_JSON) => Ok("json".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_UNKNOWN) => Ok("unknown".to_owned()),
+            Some(types::QueryLogicalType::QUERY_LOGICAL_TYPE_UNSPECIFIED) | None => {
+                Err(decode_failure(
+                    ErrorStage::ExecuteQuery,
+                    "query execution response column has invalid logical type",
+                    request_id,
+                ))
+            }
+        },
+        None => Err(decode_failure(
+            ErrorStage::ExecuteQuery,
+            "query execution response column missing logical type",
+            request_id,
+        )),
+    }
 }
 
 fn query_validation_from_generated(
@@ -746,6 +779,46 @@ mod tests {
                     raw_available: false,
                 }),
             }
+        );
+    }
+
+    #[test]
+    fn query_result_from_generated_rejects_missing_column_logical_type() {
+        let error = super::query_result_from_generated(
+            super::types::ExecuteQueryResponse {
+                source: buffa::MessageField::some(super::types::CliSource {
+                    source_key: Some("warehouse".to_owned()),
+                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    query_support: Some(
+                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                    ),
+                    status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    ..Default::default()
+                }),
+                row_count: Some(1),
+                elapsed: buffa::MessageField::some(duration_ms(25)),
+                columns: vec![super::types::CliQueryColumn {
+                    name: Some("value".to_owned()),
+                    ..Default::default()
+                }],
+                truncated: Some(false),
+                page: buffa::MessageField::some(super::types::CliPage {
+                    returned_count: Some(1),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some("req_column_type".to_owned()),
+        )
+        .expect_err("expected missing logical type to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ExecuteQuery,
+                message: "query execution response column missing logical type".to_owned(),
+                request_id: Some("req_column_type".to_owned()),
+            })
         );
     }
 

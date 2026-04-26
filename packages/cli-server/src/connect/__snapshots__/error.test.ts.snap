@@ -284,6 +284,44 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "resourceInfo": [],
     "retryInfo": [],
   },
+  "QUERY_WORKFLOW_CORRUPT": {
+    "badRequest": [],
+    "code": "DataLoss",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_corruption",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "QUERY_WORKFLOW_CORRUPT",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "QUERY_WORKFLOW_CORRUPT",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "QUERY_WORKFLOW_INTERNAL": {
+    "badRequest": [],
+    "code": "Internal",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_internal",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "QUERY_WORKFLOW_INTERNAL",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "QUERY_WORKFLOW_INTERNAL",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
   "READ_QUERY_INPUT_INVALID": {
     "badRequest": [],
     "code": "InvalidArgument",
@@ -443,6 +481,44 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     ],
     "metadata": {},
     "rawMessage": "SOURCE_API_SOURCE_UNAVAILABLE",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_WORKFLOW_CORRUPT": {
+    "badRequest": [],
+    "code": "DataLoss",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_corruption",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "SOURCE_API_WORKFLOW_CORRUPT",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_WORKFLOW_CORRUPT",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_WORKFLOW_INTERNAL": {
+    "badRequest": [],
+    "code": "Internal",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_internal",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "SOURCE_API_WORKFLOW_INTERNAL",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_WORKFLOW_INTERNAL",
     "resourceInfo": [],
     "retryInfo": [],
   },

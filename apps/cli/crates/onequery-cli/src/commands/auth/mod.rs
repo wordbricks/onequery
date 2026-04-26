@@ -229,10 +229,6 @@ where
     B: crate::platform::BrowserLauncher,
     T: crate::platform::Terminal,
 {
-    if let AuthSubcommand::Session { action } = command {
-        return session::execute(action, context, runtime).await;
-    }
-
     let mode = match command {
         AuthSubcommand::Login => AuthMode::Login,
         AuthSubcommand::Import(AuthImportArgs { input, dry_run }) => AuthMode::Import {
@@ -255,7 +251,9 @@ where
             validate_whoami_read_args(read, context)?;
             AuthMode::Whoami { read: read.clone() }
         }
-        AuthSubcommand::Session { .. } => unreachable!(),
+        AuthSubcommand::Session { action } => {
+            return session::execute(action, context, runtime).await;
+        }
     };
 
     let final_state = run_reducer_workflow(

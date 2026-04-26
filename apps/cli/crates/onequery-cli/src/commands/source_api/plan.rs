@@ -18,10 +18,6 @@ use crate::transport::source_api::proto_json_object_from_json;
 use crate::transport::source_api::proto_json_value_from_json;
 use crate::transport::source_api::source_api_field_policy_has_encoding;
 use crate::transport::source_api::source_api_field_policy_has_path_capability;
-use crate::transport::source_api::source_api_input_mode_or_none;
-use crate::transport::source_api::source_api_operation_kind_or_http_request;
-use crate::transport::source_api::source_api_pagination_policy_or_none;
-use crate::transport::source_api::source_api_selector_kind_or_none;
 use onequery_cli_core::error::CliError;
 
 use super::CommandContext;
@@ -200,11 +196,11 @@ fn validate_selector(
 ) -> Result<(), CliError> {
     let operation_name = operation.name.as_deref().unwrap_or_default();
     match (
-        source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into())),
+        operation.selector_kind.and_then(|value| value.as_known()),
         selector,
     ) {
-        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, None) => Ok(()),
-        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE, Some(_)) => {
+        (Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE), None) => Ok(()),
+        (Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE), Some(_)) => {
             Err(source_api_parse_error(
                 context,
                 "source API selector is not allowed",
@@ -213,13 +209,17 @@ fn validate_selector(
             ))
         }
         (
-            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            Some(
+                SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+                | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            ),
             Some(_),
         ) => Ok(()),
         (
-            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            Some(
+                SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
+                | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+            ),
             None,
         ) => Err(source_api_parse_error(
             context,
@@ -227,7 +227,14 @@ fn validate_selector(
             format!("operation `{operation_name}` requires a selector"),
             source_key,
         )),
-        (SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED, _) => unreachable!(),
+        (Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED) | None, _) => {
+            Err(source_api_parse_error(
+                context,
+                "source API descriptor is invalid",
+                format!("operation `{operation_name}` has invalid selector metadata"),
+                source_key,
+            ))
+        }
     }
 }
 
@@ -260,8 +267,10 @@ fn validate_pagination(
         return Ok(());
     }
 
-    if source_api_pagination_policy_or_none(operation.pagination_policy.unwrap_or_else(|| 0.into()))
-        == SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN
+    if operation
+        .pagination_policy
+        .and_then(|value| value.as_known())
+        == Some(SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_CONTINUATION_TOKEN)
     {
         return Ok(());
     }
@@ -285,8 +294,8 @@ fn validate_method(
         return Ok(());
     };
 
-    if source_api_operation_kind_or_http_request(operation.kind.unwrap_or_else(|| 0.into()))
-        != SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
+    if operation.kind.and_then(|value| value.as_known())
+        != Some(SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST)
     {
         return Err(source_api_parse_error(
             context,
@@ -371,16 +380,12 @@ fn validate_input(
     source_key: &str,
 ) -> Result<(), CliError> {
     let operation_name = operation.name.as_deref().unwrap_or_default();
-    let field_policy = operation.field_policy.as_option();
     if args.input.is_none() {
         return Ok(());
     }
 
-    if source_api_input_mode_or_none(
-        field_policy
-            .and_then(|policy| policy.input_mode)
-            .unwrap_or_else(|| 0.into()),
-    ) != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
+    if operation_input_mode(operation)
+        .is_some_and(|mode| mode != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE)
     {
         return Ok(());
     }
@@ -477,20 +482,16 @@ async fn load_request_body(
         return Ok(None);
     };
 
-    match source_api_input_mode_or_none(
-        operation
-            .field_policy
-            .as_option()
-            .and_then(|policy| policy.input_mode)
-            .unwrap_or_else(|| 0.into()),
-    ) {
-        SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE => Err(source_api_parse_error(
+    match operation_input_mode(operation) {
+        Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE)
+        | Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED)
+        | None => Err(source_api_parse_error(
             context,
             "source API request input is not supported",
             format!("operation `{operation_name}` does not accept `--input`"),
             source_key,
         )),
-        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT => {
+        Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_OBJECT) => {
             let raw_input = reader
                 .read_text(
                     input_path,
@@ -525,7 +526,7 @@ async fn load_request_body(
             })?;
             Ok(Some(SourceApiRequestBody::JsonBody(Box::new(value))))
         }
-        SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY => {
+        Some(SourceApiInputMode::SOURCE_API_INPUT_MODE_REQUEST_BODY) => {
             let raw_input = reader
                 .read_bytes(
                     input_path,
@@ -555,8 +556,15 @@ async fn load_request_body(
                 Err(_) => Ok(Some(SourceApiRequestBody::BinaryBody(raw_input))),
             }
         }
-        SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED => unreachable!(),
     }
+}
+
+fn operation_input_mode(operation: &SourceApiOperation) -> Option<SourceApiInputMode> {
+    operation
+        .field_policy
+        .as_option()
+        .and_then(|policy| policy.input_mode)
+        .and_then(|value| value.as_known())
 }
 
 fn normalized_method_override(value: Option<&str>) -> Option<String> {

@@ -130,31 +130,49 @@ function applySourceApiDecision(
         sequence:
           currentState === null ? 1 : currentState.lastEventSequence + 1,
       }) satisfies SourceApiActionCommittedEvent;
-      return reduceSourceApiAction(currentState, committedEvent);
+      const reduced = reduceSourceApiAction(currentState, committedEvent);
+      expect(reduced.isOk()).toBe(true);
+      if (reduced.isErr()) {
+        throw reduced.error;
+      }
+      return reduced.value;
     },
     state
   ) as SourceApiActionState;
+}
+
+function unwrapSourceApiDecision(
+  result: ReturnType<typeof decideSourceApiAction>
+) {
+  expect(result.isOk()).toBe(true);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
 }
 
 describe("source_api_action family", () => {
   it("models execute plus resume on the same action", () => {
     let state: SourceApiActionState | null = null;
 
-    const startDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand({
-        invokeMode: "execute",
-        requestDescriptor: {
-          descriptorVersion: null,
-          kind: null,
-          method: null,
-          operation: "fetch",
-          paginationPolicy: null,
-          selector: "customers",
-        },
-        sourceKey: "github",
-        type: "start_invoke",
-      })
+    const startDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand({
+          invokeMode: "execute",
+          requestDescriptor: {
+            descriptorVersion: null,
+            kind: null,
+            method: null,
+            operation: "fetch",
+            paginationPolicy: null,
+            selector: "customers",
+          },
+          sourceKey: "github",
+          type: "start_invoke",
+        })
+      )
     );
     expect(startDecision.kind).toBe("accepted");
     if (startDecision.kind !== "accepted") {
@@ -162,20 +180,22 @@ describe("source_api_action family", () => {
     }
     state = applySourceApiDecision(state, startDecision.events);
 
-    const sourceLookupDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          kind: "found",
-          source: {
-            displayName: "GitHub",
-            provider: "github",
-            sourceId: "source_1",
-            sourceKey: "github",
+    const sourceLookupDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            kind: "found",
+            source: {
+              displayName: "GitHub",
+              provider: "github",
+              sourceId: "source_1",
+              sourceKey: "github",
+            },
+            type: "record_source_lookup",
           },
-          type: "record_source_lookup",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(sourceLookupDecision.kind).toBe("accepted");
@@ -184,23 +204,25 @@ describe("source_api_action family", () => {
     }
     state = applySourceApiDecision(state, sourceLookupDecision.events);
 
-    const descriptorDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          descriptor: resolvedDescriptor,
-          kind: "resolved",
-          requestDescriptor: {
-            descriptorVersion: "v1",
-            kind: "http_request",
-            method: "GET",
-            operation: "fetch",
-            paginationPolicy: "continuation_token",
-            selector: "customers",
+    const descriptorDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            descriptor: resolvedDescriptor,
+            kind: "resolved",
+            requestDescriptor: {
+              descriptorVersion: "v1",
+              kind: "http_request",
+              method: "GET",
+              operation: "fetch",
+              paginationPolicy: "continuation_token",
+              selector: "customers",
+            },
+            type: "record_descriptor_resolution",
           },
-          type: "record_descriptor_resolution",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(descriptorDecision.kind).toBe("accepted");
@@ -209,15 +231,17 @@ describe("source_api_action family", () => {
     }
     state = applySourceApiDecision(state, descriptorDecision.events);
 
-    const preparedDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          kind: "prepared",
-          preparedRequestFingerprint: "prepared_v1",
-          type: "record_request_preparation",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const preparedDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            kind: "prepared",
+            preparedRequestFingerprint: "prepared_v1",
+            type: "record_request_preparation",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(preparedDecision.kind).toBe("accepted");
@@ -226,29 +250,31 @@ describe("source_api_action family", () => {
     }
     state = applySourceApiDecision(state, preparedDecision.events);
 
-    const firstPageDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          attemptNumber: 1,
-          contentType: "application/json",
-          executionResult: {
-            ...firstPageExecutionResult,
-            body: {
-              kind: "json",
-              value: {
-                page: 1,
+    const firstPageDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            attemptNumber: 1,
+            contentType: "application/json",
+            executionResult: {
+              ...firstPageExecutionResult,
+              body: {
+                kind: "json",
+                value: {
+                  page: 1,
+                },
               },
             },
+            hasContinuation: true,
+            httpStatus: 200,
+            kind: "succeeded",
+            pageIndex: 0,
+            responseBytes: 120,
+            type: "record_page_fetch",
           },
-          hasContinuation: true,
-          httpStatus: 200,
-          kind: "succeeded",
-          pageIndex: 0,
-          responseBytes: 120,
-          type: "record_page_fetch",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(firstPageDecision.kind).toBe("accepted");
@@ -258,15 +284,17 @@ describe("source_api_action family", () => {
     state = applySourceApiDecision(state, firstPageDecision.events);
     expect(state.phase).toBe("await_resume");
 
-    const resumeDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          preparedRequestFingerprint: "prepared_v1",
-          resumeFromEventId: state.lastEventId,
-          type: "resume_invoke",
-        },
-        { actionId: "action_1" }
+    const resumeDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            preparedRequestFingerprint: "prepared_v1",
+            resumeFromEventId: state.lastEventId,
+            type: "resume_invoke",
+          },
+          { actionId: "action_1" }
+        )
       )
     );
     expect(resumeDecision.kind).toBe("accepted");
@@ -275,29 +303,31 @@ describe("source_api_action family", () => {
     }
     state = applySourceApiDecision(state, resumeDecision.events);
 
-    const secondPageDecision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          attemptNumber: 2,
-          contentType: "application/json",
-          executionResult: {
-            ...secondPageExecutionResult,
-            body: {
-              kind: "json",
-              value: {
-                page: 2,
+    const secondPageDecision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            attemptNumber: 2,
+            contentType: "application/json",
+            executionResult: {
+              ...secondPageExecutionResult,
+              body: {
+                kind: "json",
+                value: {
+                  page: 2,
+                },
               },
             },
+            hasContinuation: false,
+            httpStatus: 200,
+            kind: "succeeded",
+            pageIndex: 1,
+            responseBytes: 90,
+            type: "record_page_fetch",
           },
-          hasContinuation: false,
-          httpStatus: 200,
-          kind: "succeeded",
-          pageIndex: 1,
-          responseBytes: 90,
-          type: "record_page_fetch",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
     expect(secondPageDecision.kind).toBe("accepted");
@@ -352,15 +382,17 @@ describe("source_api_action family", () => {
       },
     ]);
 
-    const decision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          kind: "prepared",
-          preparedRequestFingerprint: "prepared_preview",
-          type: "record_request_preparation",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const decision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            kind: "prepared",
+            preparedRequestFingerprint: "prepared_preview",
+            type: "record_request_preparation",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
 
@@ -426,15 +458,17 @@ describe("source_api_action family", () => {
       },
     ]);
 
-    const decision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          preparedRequestFingerprint: "prepared_v1",
-          resumeFromEventId: "stale_event",
-          type: "resume_invoke",
-        },
-        { actionId: "action_1" }
+    const decision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            preparedRequestFingerprint: "prepared_v1",
+            resumeFromEventId: "stale_event",
+            type: "resume_invoke",
+          },
+          { actionId: "action_1" }
+        )
       )
     );
 
@@ -489,19 +523,21 @@ describe("source_api_action family", () => {
       },
     ]);
 
-    const decision = decideSourceApiAction(
-      state,
-      buildSourceApiCommand(
-        {
-          attemptNumber: 1,
-          detail: "upstream timeout",
-          failureCode: "request_timed_out",
-          kind: "terminal_failure",
-          pageIndex: 2,
-          problemKey: "SOURCE_API_EXECUTION_TIMED_OUT",
-          type: "record_page_fetch",
-        },
-        { actionId: "action_1", causedByEventId: state.lastEventId }
+    const decision = unwrapSourceApiDecision(
+      decideSourceApiAction(
+        state,
+        buildSourceApiCommand(
+          {
+            attemptNumber: 1,
+            detail: "upstream timeout",
+            failureCode: "request_timed_out",
+            kind: "terminal_failure",
+            pageIndex: 2,
+            problemKey: "SOURCE_API_EXECUTION_TIMED_OUT",
+            type: "record_page_fetch",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
       )
     );
 
@@ -516,6 +552,105 @@ describe("source_api_action family", () => {
       outcome: "failed",
       pageProgress: null,
       phase: "completed",
+    });
+  });
+
+  it("returns a typed reducer invariant error for malformed event order", () => {
+    const event = appendEventMetadata(
+      {
+        source: {
+          displayName: "GitHub",
+          provider: "github",
+          sourceId: "source_1",
+          sourceKey: "github",
+        },
+        type: "source_loaded",
+      },
+      {
+        id: "event_source_loaded",
+        occurredAt: baseObservedAt,
+        sequence: 1,
+      }
+    ) satisfies SourceApiActionCommittedEvent;
+
+    const result = reduceSourceApiAction(null, event);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      _tag: "WorkflowInternalInvariantError",
+      eventType: "source_loaded",
+      family: "source_api_action",
+      invariant: "state_required",
+      scope: "reducer",
+    });
+  });
+
+  it("returns a typed decision invariant error for semantically corrupt state", () => {
+    const state = {
+      ...applySourceApiDecision(null, [
+        {
+          invokeMode: "execute",
+          requestDescriptor: {
+            descriptorVersion: "v1",
+            kind: "http_request",
+            method: "GET",
+            operation: "fetch",
+            paginationPolicy: "none",
+            selector: "customers",
+          },
+          requestKind: "invoke",
+          type: "action_received",
+        },
+        {
+          source: {
+            displayName: "GitHub",
+            provider: "github",
+            sourceId: "source_1",
+            sourceKey: "github",
+          },
+          type: "source_loaded",
+        },
+        {
+          requestDescriptor: {
+            descriptorVersion: "v1",
+            kind: "http_request",
+            method: "GET",
+            operation: "fetch",
+            paginationPolicy: "none",
+            selector: "customers",
+          },
+          type: "descriptor_resolved",
+        },
+      ]),
+      requestDescriptor: null,
+    } satisfies SourceApiActionState;
+
+    const result = decideSourceApiAction(
+      state,
+      buildSourceApiCommand(
+        {
+          kind: "prepared",
+          preparedRequestFingerprint: "prepared_v1",
+          type: "record_request_preparation",
+        },
+        { actionId: "action_1", causedByEventId: state.lastEventId }
+      )
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error).toMatchObject({
+      _tag: "WorkflowInternalInvariantError",
+      commandType: "record_request_preparation",
+      family: "source_api_action",
+      invariant: "request_descriptor_required",
+      phase: "prepare_request",
+      scope: "decision",
     });
   });
 });

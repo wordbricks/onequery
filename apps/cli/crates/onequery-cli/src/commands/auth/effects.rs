@@ -18,6 +18,7 @@ use crate::recovery::auth_login_then_retry_try_next;
 use crate::recovery::auth_login_try_next;
 use crate::recovery::retry_try_next;
 use crate::transport::auth;
+use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::org;
 use crate::transport::read_controls::ReadRequestControls;
@@ -44,6 +45,35 @@ struct LoginPollWorkflowContext<'a> {
     verbose: bool,
 }
 
+enum AuthSessionEffect {
+    PersistImportedSession { imported: ImportedAuthSession },
+    PersistToken { completion: auth::LoginCompletion },
+    RemoveCredentials,
+    ClearActiveOrg,
+}
+
+enum AuthTransportEffect {
+    StartLoginSession,
+    PollLogin {
+        session: auth::LoginSession,
+    },
+    ResolveLoginIdentity {
+        access_token: String,
+    },
+    BuildBootstrapClient {
+        completion: auth::LoginCompletion,
+    },
+    FetchBootstrapOrgs {
+        completion: auth::LoginCompletion,
+        client: Box<AuthenticatedApiClient>,
+    },
+    PersistBootstrappedOrg {
+        completion: auth::LoginCompletion,
+        org: String,
+    },
+    FetchWhoami,
+}
+
 pub(super) async fn execute_effect<B, T>(
     effect: AuthEffect,
     context: &CommandContext,
@@ -57,30 +87,67 @@ where
         AuthEffect::LoadImportPayload { input } => load_import_payload(input, context).await,
         AuthEffect::OpenBrowser { session } => open_browser(session, runtime),
         AuthEffect::PersistImportedSession { imported } => execute_session_effect(
-            AuthEffect::PersistImportedSession { imported },
+            AuthSessionEffect::PersistImportedSession { imported },
             context,
             runtime,
         ),
-        AuthEffect::PersistToken { completion } => {
-            execute_session_effect(AuthEffect::PersistToken { completion }, context, runtime)
-        }
+        AuthEffect::PersistToken { completion } => execute_session_effect(
+            AuthSessionEffect::PersistToken { completion },
+            context,
+            runtime,
+        ),
         AuthEffect::RemoveCredentials => {
-            execute_session_effect(AuthEffect::RemoveCredentials, context, runtime)
+            execute_session_effect(AuthSessionEffect::RemoveCredentials, context, runtime)
         }
         AuthEffect::ClearActiveOrg => {
-            execute_session_effect(AuthEffect::ClearActiveOrg, context, runtime)
+            execute_session_effect(AuthSessionEffect::ClearActiveOrg, context, runtime)
         }
         AuthEffect::EnsureAuthenticated => match ensure_authenticated(context, runtime).await {
             Ok(()) => AuthEvent::WhoamiAuthChecked,
             Err(error) => AuthEvent::WhoamiAuthFailed { error },
         },
-        AuthEffect::StartLoginSession
-        | AuthEffect::PollLogin { .. }
-        | AuthEffect::ResolveLoginIdentity { .. }
-        | AuthEffect::BuildBootstrapClient { .. }
-        | AuthEffect::FetchBootstrapOrgs { .. }
-        | AuthEffect::PersistBootstrappedOrg { .. }
-        | AuthEffect::FetchWhoami => execute_transport_effect(effect, context, runtime).await,
+        AuthEffect::StartLoginSession => {
+            execute_transport_effect(AuthTransportEffect::StartLoginSession, context, runtime).await
+        }
+        AuthEffect::PollLogin { session } => {
+            execute_transport_effect(AuthTransportEffect::PollLogin { session }, context, runtime)
+                .await
+        }
+        AuthEffect::ResolveLoginIdentity { access_token } => {
+            execute_transport_effect(
+                AuthTransportEffect::ResolveLoginIdentity { access_token },
+                context,
+                runtime,
+            )
+            .await
+        }
+        AuthEffect::BuildBootstrapClient { completion } => {
+            execute_transport_effect(
+                AuthTransportEffect::BuildBootstrapClient { completion },
+                context,
+                runtime,
+            )
+            .await
+        }
+        AuthEffect::FetchBootstrapOrgs { completion, client } => {
+            execute_transport_effect(
+                AuthTransportEffect::FetchBootstrapOrgs { completion, client },
+                context,
+                runtime,
+            )
+            .await
+        }
+        AuthEffect::PersistBootstrappedOrg { completion, org } => {
+            execute_transport_effect(
+                AuthTransportEffect::PersistBootstrappedOrg { completion, org },
+                context,
+                runtime,
+            )
+            .await
+        }
+        AuthEffect::FetchWhoami => {
+            execute_transport_effect(AuthTransportEffect::FetchWhoami, context, runtime).await
+        }
     }
 }
 
@@ -183,19 +250,19 @@ fn import_input_examples() -> Vec<String> {
 }
 
 fn execute_session_effect<B, T>(
-    effect: AuthEffect,
+    effect: AuthSessionEffect,
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> AuthEvent {
     match effect {
-        AuthEffect::PersistImportedSession { imported } => match runtime
+        AuthSessionEffect::PersistImportedSession { imported } => match runtime
             .auth_session
             .persist_imported_session(&imported, &context.command_line)
         {
             Ok(()) => AuthEvent::ImportedSessionPersisted { imported },
             Err(error) => AuthEvent::ImportedSessionPersistFailed { error },
         },
-        AuthEffect::PersistToken { completion } => {
+        AuthSessionEffect::PersistToken { completion } => {
             match persist_login_completion(context, runtime, completion) {
                 Ok(persisted_login) => AuthEvent::TokenPersisted {
                     completion: persisted_login.completion,
@@ -204,11 +271,11 @@ fn execute_session_effect<B, T>(
                 Err(error) => AuthEvent::TokenPersistFailed { error },
             }
         }
-        AuthEffect::RemoveCredentials => match clear_auth_session(context, runtime) {
+        AuthSessionEffect::RemoveCredentials => match clear_auth_session(context, runtime) {
             Ok(()) => AuthEvent::LogoutCompleted,
             Err(error) => AuthEvent::LogoutFailed { error },
         },
-        AuthEffect::ClearActiveOrg => {
+        AuthSessionEffect::ClearActiveOrg => {
             match runtime.config.clear_active_org(&context.command_line) {
                 Ok(()) => AuthEvent::ActiveOrgCleared,
                 Err(error) => AuthEvent::ActiveOrgClearFailed {
@@ -216,21 +283,11 @@ fn execute_session_effect<B, T>(
                 },
             }
         }
-        AuthEffect::StartLoginSession
-        | AuthEffect::LoadImportPayload { .. }
-        | AuthEffect::OpenBrowser { .. }
-        | AuthEffect::PollLogin { .. }
-        | AuthEffect::ResolveLoginIdentity { .. }
-        | AuthEffect::BuildBootstrapClient { .. }
-        | AuthEffect::FetchBootstrapOrgs { .. }
-        | AuthEffect::PersistBootstrappedOrg { .. }
-        | AuthEffect::EnsureAuthenticated
-        | AuthEffect::FetchWhoami => unreachable!(),
     }
 }
 
 async fn execute_transport_effect<B, T>(
-    effect: AuthEffect,
+    effect: AuthTransportEffect,
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> AuthEvent
@@ -239,12 +296,16 @@ where
     T: crate::platform::Terminal,
 {
     match effect {
-        AuthEffect::StartLoginSession => execute_start_login_session(context, runtime).await,
-        AuthEffect::PollLogin { session } => execute_poll_login(session, context, runtime).await,
-        AuthEffect::ResolveLoginIdentity { access_token } => {
+        AuthTransportEffect::StartLoginSession => {
+            execute_start_login_session(context, runtime).await
+        }
+        AuthTransportEffect::PollLogin { session } => {
+            execute_poll_login(session, context, runtime).await
+        }
+        AuthTransportEffect::ResolveLoginIdentity { access_token } => {
             execute_resolve_login_identity(access_token, context, runtime).await
         }
-        AuthEffect::BuildBootstrapClient { completion } => {
+        AuthTransportEffect::BuildBootstrapClient { completion } => {
             match authenticated_api_client(context, runtime) {
                 Ok(client) => AuthEvent::BootstrapClientBuilt {
                     completion,
@@ -253,7 +314,7 @@ where
                 Err(error) => AuthEvent::BootstrapClientBuildFailed { completion, error },
             }
         }
-        AuthEffect::FetchBootstrapOrgs { completion, client } => {
+        AuthTransportEffect::FetchBootstrapOrgs { completion, client } => {
             match org::list_orgs_with_controls(
                 client.as_ref(),
                 &ReadRequestControls {
@@ -284,7 +345,7 @@ where
                 },
             }
         }
-        AuthEffect::PersistBootstrappedOrg { completion, org } => {
+        AuthTransportEffect::PersistBootstrappedOrg { completion, org } => {
             match runtime
                 .config
                 .set_active_org(Some(org.clone()), &context.command_line)
@@ -296,7 +357,7 @@ where
                 Err(error) => AuthEvent::BootstrapOrgPersistFailed { completion, error },
             }
         }
-        AuthEffect::FetchWhoami => {
+        AuthTransportEffect::FetchWhoami => {
             let client = match authenticated_api_client(context, runtime) {
                 Ok(client) => client,
                 Err(error) => {
@@ -331,13 +392,6 @@ where
                 },
             }
         }
-        AuthEffect::LoadImportPayload { .. }
-        | AuthEffect::OpenBrowser { .. }
-        | AuthEffect::PersistToken { .. }
-        | AuthEffect::PersistImportedSession { .. }
-        | AuthEffect::RemoveCredentials
-        | AuthEffect::ClearActiveOrg
-        | AuthEffect::EnsureAuthenticated => unreachable!(),
     }
 }
 
