@@ -20,14 +20,11 @@ use crate::transport::source_api::source_api_field_encoding_label;
 use crate::transport::source_api::source_api_field_policy_has_encoding;
 use crate::transport::source_api::source_api_field_policy_has_path_capability;
 use crate::transport::source_api::source_api_input_mode_label;
-use crate::transport::source_api::source_api_input_mode_or_none;
 use crate::transport::source_api::source_api_operation_kind_label;
 use crate::transport::source_api::source_api_pagination_policy_label;
 use crate::transport::source_api::source_api_patch_mode_label;
-use crate::transport::source_api::source_api_patch_mode_or_none;
 use crate::transport::source_api::source_api_path_capability_label;
 use crate::transport::source_api::source_api_selector_kind_label;
-use crate::transport::source_api::source_api_selector_kind_or_none;
 use base64::Engine;
 use jaq_core::Compiler;
 use jaq_core::Ctx;
@@ -939,14 +936,14 @@ fn render_operation_lines(operation: &SourceApiOperation) -> Vec<String> {
         )
     ));
     if field_policy
-        .map(|policy| source_api_input_mode_or_none(policy.input_mode.unwrap_or_else(|| 0.into())))
+        .and_then(|policy| policy.input_mode)
+        .and_then(|value| value.as_known())
         .unwrap_or(SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE)
         != SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE
     {
         let patch_mode = field_policy
-            .map(|policy| {
-                source_api_patch_mode_or_none(policy.patch_mode.unwrap_or_else(|| 0.into()))
-            })
+            .and_then(|policy| policy.patch_mode)
+            .and_then(|value| value.as_known())
             .unwrap_or(SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE);
         lines.push(format!(
             "  field patch mode: {}",
@@ -1101,16 +1098,17 @@ fn binary_tty_render_error() -> CliError {
 }
 
 fn selector_summary(operation: &SourceApiOperation) -> Option<String> {
-    let kind =
-        match source_api_selector_kind_or_none(operation.selector_kind.unwrap_or_else(|| 0.into()))
-        {
-            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE => return None,
+    let Some(selector_kind) = operation.selector_kind else {
+        return Some("unknown".to_owned());
+    };
+    let kind = match selector_kind.as_known() {
+        Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE) => return None,
+        Some(
             SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH
-            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER => {
-                source_api_selector_kind_label(operation.selector_kind.unwrap_or_else(|| 0.into()))
-            }
-            SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED => unreachable!(),
-        };
+            | SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_IDENTIFIER,
+        ) => source_api_selector_kind_label(selector_kind),
+        Some(SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED) | None => "unknown",
+    };
 
     Some(match operation.selector_label.as_deref() {
         Some(label) if !label.trim().is_empty() => format!("{kind} ({label})"),

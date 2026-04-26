@@ -1,99 +1,23 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
-import { TaggedError } from "better-result";
+import { ConnectError } from "@connectrpc/connect";
 
-import {
-  CLI_PROBLEM_CATALOG,
-  createCliUserActionableSupport,
-} from "../domain/problems";
-import { CLI_REQUEST_ID_HEADER } from "../error";
+import { CliFailure, createCliFailure } from "../domain/failures";
+import type {
+  CreateCliFailureInput,
+  CliFailureResource,
+  CliValidationIssue,
+} from "../domain/failures";
+import { CLI_PROBLEM_DEFINITIONS } from "../domain/problems";
+import type { CliProblemDefinition } from "../domain/problems";
+import { CLI_REQUEST_ID_HEADER } from "../request-context";
 import {
   BadRequestSchema,
+  ErrorInfoSchema,
+  ResourceInfoSchema,
   RetryInfoSchema,
 } from "./gen/google/rpc/error_details_pb";
-import {
-  CliErrorDetailSchema,
-  ProblemCode,
-  ProblemStage,
-  SupportActionKind,
-} from "./gen/onequery/cli/v1/common_pb";
 
-type CliProblemKey = keyof typeof CLI_PROBLEM_CATALOG;
-type CliProblemCatalogEntry = (typeof CLI_PROBLEM_CATALOG)[CliProblemKey];
-type CliConnectCode = CliProblemCatalogEntry["connectCode"];
-type CliProblemSupport = CliProblemCatalogEntry["support"];
-
-export type CliConnectValidationIssue = {
-  field: string;
-  message: string;
-  code: string;
-};
-
-export type CreateCliConnectErrorInput = {
-  key: CliProblemKey;
-  detail?: string;
-  retryAfterMs?: number;
-  cause?: unknown;
-  errors?: CliConnectValidationIssue[];
-};
-
-export class CliConnectProblem extends TaggedError("CliConnectProblem")<{
-  key: CliProblemKey;
-  message: string;
-  retryAfterMs?: number;
-  cause?: unknown;
-  errors?: readonly CliConnectValidationIssue[];
-}>() {
-  constructor(input: CreateCliConnectErrorInput) {
-    super({
-      key: input.key,
-      message: input.detail ?? CLI_PROBLEM_CATALOG[input.key].title,
-      ...(typeof input.retryAfterMs === "number"
-        ? { retryAfterMs: input.retryAfterMs }
-        : {}),
-      ...(input.cause !== undefined ? { cause: input.cause } : {}),
-      ...(input.errors
-        ? {
-            errors: input.errors.map((issue) => ({
-              code: issue.code,
-              field: issue.field,
-              message: issue.message,
-            })),
-          }
-        : {}),
-    });
-  }
-}
-
-type CliConnectErrorProblem = Pick<
-  CliProblemCatalogEntry,
-  "code" | "connectCode" | "hint" | "retryable" | "stage" | "support" | "title"
->;
-
-function toCliConnectCode(code: CliConnectCode): Code {
-  switch (code) {
-    case "already_exists":
-      return Code.AlreadyExists;
-    case "deadline_exceeded":
-      return Code.DeadlineExceeded;
-    case "failed_precondition":
-      return Code.FailedPrecondition;
-    case "internal":
-      return Code.Internal;
-    case "invalid_argument":
-      return Code.InvalidArgument;
-    case "not_found":
-      return Code.NotFound;
-    case "permission_denied":
-      return Code.PermissionDenied;
-    case "resource_exhausted":
-      return Code.ResourceExhausted;
-    case "unauthenticated":
-      return Code.Unauthenticated;
-    case "unavailable":
-      return Code.Unavailable;
-  }
-}
+export const CLI_ERROR_INFO_DOMAIN = "onequery.cli.v1";
 
 function toCliValidationReason(code: string) {
   return code.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase();
@@ -107,40 +31,36 @@ function toRetryDelayMessage(retryAfterMs: number) {
   } satisfies MessageInitShape<typeof RetryInfoSchema>["retryDelay"];
 }
 
-function toSupportActionKind(kind: CliProblemSupport["kind"]) {
-  switch (kind) {
-    case "none":
-      return SupportActionKind.NONE;
-    case "retry":
-      return SupportActionKind.RETRY;
-    case "explain":
-      return SupportActionKind.EXPLAIN;
-    case "report_if_reproducible":
-      return SupportActionKind.REPORT_IF_REPRODUCIBLE;
-    case "report_recommended":
-      return SupportActionKind.REPORT_RECOMMENDED;
-  }
-}
-
-function createCliErrorDetail(problem: CliConnectErrorProblem) {
+function createCliErrorInfoDetail(problem: CliProblemDefinition) {
   return {
-    desc: CliErrorDetailSchema,
+    desc: ErrorInfoSchema,
     value: {
-      code: problem.code,
-      stage: problem.stage,
-      title: problem.title,
-      ...(problem.hint ? { hint: problem.hint } : {}),
-      retryable: problem.retryable,
-      support: {
-        explainSlug: problem.support.explainSlug,
-        kind: toSupportActionKind(problem.support.kind),
-        reason: problem.support.reason,
+      domain: CLI_ERROR_INFO_DOMAIN,
+      metadata: {
+        problemStage: problem.stage,
+        retryable: problem.retryable ? "true" : "false",
+        ...(problem.telemetryKind
+          ? { problemKind: problem.telemetryKind }
+          : {}),
       },
-    } satisfies MessageInitShape<typeof CliErrorDetailSchema>,
+      reason: problem.reason,
+    } satisfies MessageInitShape<typeof ErrorInfoSchema>,
   };
 }
 
-function createCliBadRequestDetail(errors: CliConnectValidationIssue[]) {
+function createCliResourceInfoDetail(resource: CliFailureResource) {
+  return {
+    desc: ResourceInfoSchema,
+    value: {
+      resourceName: resource.name,
+      resourceType: resource.type,
+      ...(resource.description ? { description: resource.description } : {}),
+      ...(resource.owner ? { owner: resource.owner } : {}),
+    } satisfies MessageInitShape<typeof ResourceInfoSchema>,
+  };
+}
+
+function createCliBadRequestDetail(errors: CliValidationIssue[]) {
   return {
     desc: BadRequestSchema,
     value: {
@@ -153,57 +73,37 @@ function createCliBadRequestDetail(errors: CliConnectValidationIssue[]) {
   };
 }
 
-export function createCliConnectProblem(input: CreateCliConnectErrorInput) {
-  return new CliConnectProblem(input);
-}
-
 export function createCliConnectError(
-  input: CreateCliConnectErrorInput | CliConnectProblem
+  input: CreateCliFailureInput | CliFailure
 ) {
-  const problemInput =
-    input instanceof CliConnectProblem ? input : createCliConnectProblem(input);
-  const problem: CliConnectErrorProblem = CLI_PROBLEM_CATALOG[problemInput.key];
+  const failure = input instanceof CliFailure ? input : createCliFailure(input);
+  const problem = CLI_PROBLEM_DEFINITIONS[failure.reason];
   return createCliConnectErrorFromProblem(problem, {
-    cause: problemInput.cause,
-    detail: problemInput.message,
-    errors: problemInput.errors,
-    retryAfterMs: problemInput.retryAfterMs,
+    cause: failure.cause,
+    detail: failure.message,
+    errors: failure.errors,
+    resource: failure.resource,
+    retryAfterMs: failure.retryAfterMs,
   });
 }
 
-export function createCliInvalidRequestConnectError(input: {
-  cause?: unknown;
-  detail?: string;
-  errors?: CliConnectValidationIssue[];
-  hint: string;
-  stage: ProblemStage;
-}) {
-  return createCliConnectErrorFromProblem(
-    {
-      code: ProblemCode.INVALID_REQUEST,
-      connectCode: "invalid_argument",
-      hint: input.hint,
-      retryable: false,
-      stage: input.stage,
-      support: createCliUserActionableSupport(ProblemCode.INVALID_REQUEST),
-      title: "Invalid Request",
-    },
-    input
-  );
-}
-
 function createCliConnectErrorFromProblem(
-  problem: CliConnectErrorProblem,
+  problem: CliProblemDefinition,
   input: {
     cause?: unknown;
     detail?: string;
-    errors?: readonly CliConnectValidationIssue[];
+    errors?: readonly CliValidationIssue[];
+    resource?: CliFailureResource;
     retryAfterMs?: number;
   }
 ) {
   const details: NonNullable<ConstructorParameters<typeof ConnectError>[3]> = [
-    createCliErrorDetail(problem),
+    createCliErrorInfoDetail(problem),
   ];
+
+  if (input.resource) {
+    details.push(createCliResourceInfoDetail(input.resource));
+  }
 
   if (typeof input.retryAfterMs === "number") {
     details.push({
@@ -219,33 +119,15 @@ function createCliConnectErrorFromProblem(
   }
 
   return new ConnectError(
-    input.detail ?? problem.title,
-    toCliConnectCode(problem.connectCode),
+    input.detail ?? problem.reason,
+    problem.connectCode,
     undefined,
     details,
     input.cause
   );
 }
 
-export function throwCliConnectError(input: CreateCliConnectErrorInput): never {
-  throw createCliConnectError(input);
-}
-
 export function withCliRequestId(error: ConnectError, requestId: string) {
   error.metadata.set(CLI_REQUEST_ID_HEADER, requestId);
-
-  for (const detail of error.details) {
-    if (!("desc" in detail) || detail.desc !== CliErrorDetailSchema) {
-      continue;
-    }
-
-    const value = detail.value as MessageInitShape<typeof CliErrorDetailSchema>;
-    detail.value = {
-      ...value,
-      requestId,
-    };
-    break;
-  }
-
   return error;
 }

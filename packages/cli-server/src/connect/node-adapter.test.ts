@@ -15,7 +15,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import type { CliConnectRequestContext } from "./context";
 import { cliConnectRequestContextKey } from "./context";
-import { BadRequestSchema } from "./gen/google/rpc/error_details_pb";
+import { CLI_ERROR_INFO_DOMAIN } from "./error";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "./gen/google/rpc/error_details_pb";
 import {
   CliAuthService,
   CliOrganizationService,
@@ -24,14 +28,10 @@ import {
   CliSourceService,
 } from "./gen/onequery/cli/v1/cli_pb";
 import {
-  CliErrorDetailSchema,
-  ProblemCode,
-  ProblemStage,
-  SupportActionKind,
-} from "./gen/onequery/cli/v1/common_pb";
-import {
   createCliConnectHandler,
   listCliConnectMountedRequestPaths,
+  listCliConnectRpcMethodNames,
+  listCliValidationMappedMethodNames,
 } from "./node-adapter";
 
 const openServers = new Set<http.Server>();
@@ -97,6 +97,12 @@ describe("cli connect node integration", () => {
     );
   });
 
+  it("keeps validation problem mappings explicit for every registered RPC method", () => {
+    expect(listCliValidationMappedMethodNames()).toEqual(
+      [...listCliConnectRpcMethodNames()].sort()
+    );
+  });
+
   it("normalizes protovalidate failures into typed cli connect problems", async () => {
     const server = http.createServer(
       createCliConnectHandler({
@@ -150,22 +156,18 @@ describe("cli connect node integration", () => {
       );
     } catch (error) {
       const connectError = ConnectError.from(error);
-      const cliDetails = connectError.findDetails(CliErrorDetailSchema);
+      const errorInfoDetails = connectError.findDetails(ErrorInfoSchema);
       const badRequestDetails = connectError.findDetails(BadRequestSchema);
 
       expect(connectError.code).toBe(Code.InvalidArgument);
-      expect(cliDetails).toHaveLength(1);
-      expect(cliDetails[0]).toMatchObject({
-        code: ProblemCode.INVALID_REQUEST,
-        hint: "correct the query input and retry",
-        requestId: "req_cli_validation",
-        stage: ProblemStage.READ_QUERY_INPUT,
-        support: {
-          explainSlug: "invalid_request",
-          kind: SupportActionKind.NONE,
-          reason: "user_actionable",
+      expect(errorInfoDetails).toHaveLength(1);
+      expect(errorInfoDetails[0]).toMatchObject({
+        domain: CLI_ERROR_INFO_DOMAIN,
+        metadata: {
+          problemStage: "read_query_input",
+          retryable: "false",
         },
-        title: "Invalid Request",
+        reason: "READ_QUERY_INPUT_INVALID",
       });
       expect(badRequestDetails).toHaveLength(1);
       expect(badRequestDetails[0]?.fieldViolations.length).toBeGreaterThan(0);
@@ -232,25 +234,24 @@ describe("cli connect node integration", () => {
       );
     } catch (error) {
       const connectError = ConnectError.from(error);
-      const cliDetails = connectError.findDetails(CliErrorDetailSchema);
+      const errorInfoDetails = connectError.findDetails(ErrorInfoSchema);
       const badRequestDetails = connectError.findDetails(BadRequestSchema);
 
       expect(connectError.code).toBe(Code.InvalidArgument);
-      expect(cliDetails).toHaveLength(1);
-      expect(cliDetails[0]).toMatchObject({
-        code: ProblemCode.INVALID_REQUEST,
-        hint: "correct the source API request and retry",
-        requestId: "req_cli_source_api_validation",
-        stage: ProblemStage.EXECUTE_QUERY,
-        support: {
-          explainSlug: "invalid_request",
-          kind: SupportActionKind.NONE,
-          reason: "user_actionable",
+      expect(errorInfoDetails).toHaveLength(1);
+      expect(errorInfoDetails[0]).toMatchObject({
+        domain: CLI_ERROR_INFO_DOMAIN,
+        metadata: {
+          problemStage: "source_api_execute",
+          retryable: "false",
         },
-        title: "Invalid Request",
+        reason: "SOURCE_API_REQUEST_INVALID",
       });
       expect(badRequestDetails).toHaveLength(1);
       expect(badRequestDetails[0]?.fieldViolations.length).toBeGreaterThan(0);
+      expect(connectError.metadata.get("x-request-id")).toBe(
+        "req_cli_source_api_validation"
+      );
       return;
     }
 
@@ -306,22 +307,18 @@ describe("cli connect node integration", () => {
       );
     } catch (error) {
       const connectError = ConnectError.from(error);
-      const cliDetails = connectError.findDetails(CliErrorDetailSchema);
+      const errorInfoDetails = connectError.findDetails(ErrorInfoSchema);
       const badRequestDetails = connectError.findDetails(BadRequestSchema);
 
       expect(connectError.code).toBe(Code.InvalidArgument);
-      expect(cliDetails).toHaveLength(1);
-      expect(cliDetails[0]).toMatchObject({
-        code: ProblemCode.INVALID_REQUEST,
-        hint: "correct the org request and retry",
-        requestId: "req_cli_page_validation",
-        stage: ProblemStage.RESOLVE_ORG,
-        support: {
-          explainSlug: "invalid_request",
-          kind: SupportActionKind.NONE,
-          reason: "user_actionable",
+      expect(errorInfoDetails).toHaveLength(1);
+      expect(errorInfoDetails[0]).toMatchObject({
+        domain: CLI_ERROR_INFO_DOMAIN,
+        metadata: {
+          problemStage: "resolve_org",
+          retryable: "false",
         },
-        title: "Invalid Request",
+        reason: "ORG_REQUEST_INVALID",
       });
       expect(badRequestDetails).toHaveLength(1);
       expect(badRequestDetails[0]?.fieldViolations).toEqual(
@@ -330,6 +327,9 @@ describe("cli connect node integration", () => {
             field: "page.limit",
           }),
         ])
+      );
+      expect(connectError.metadata.get("x-request-id")).toBe(
+        "req_cli_page_validation"
       );
       return;
     }

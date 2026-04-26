@@ -1,37 +1,25 @@
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { create, fromJson, isMessage, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
+import { organization } from "@onequery/db/server";
+import type { Database } from "@onequery/db/server";
+import { pgliteTestDb } from "@onequery/db/testing/setup";
 import {
-  createDb,
-  organization,
-  prepareApplicationDatabase,
-} from "@onequery/db/server";
-import {
+  SourceApiAdapterNotRegisteredError,
+  SourceApiDescriptorVersionMismatchError,
   SourceApiExecutionStageError,
   SourceApiExpiredError,
   SourceApiInvalidRequestError,
   SourceApiPermissionDeniedError,
+  SourceApiTimeoutError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
-import { createCliConnectProblem } from "../error";
+import { CLI_ERROR_INFO_DOMAIN } from "../error";
+import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb";
 import {
   SourceApiBodyKind,
   SourceApiOperationKind,
@@ -52,6 +40,7 @@ import type {
   ResumeSourceApiResponse,
 } from "../gen/onequery/cli/v1/source_api_pb";
 import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
+import { createCliServiceFailure } from "./result";
 import {
   createHandleDescribeSourceApi,
   createHandleExecuteSourceApi,
@@ -246,58 +235,8 @@ const executionResponse = {
   status: 200,
 } as const;
 
-type ClosableDatabase = {
-  $client?: {
-    close?: () => Promise<unknown>;
-    end?: (options?: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
-type OpenedDatabase = {
-  db: ClosableDatabase;
-  rootDir: string;
-};
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../../../db/src/migrations", import.meta.url)
-);
-
-async function closeDatabase(db: ClosableDatabase): Promise<void> {
-  const client = db.$client;
-  if (client && typeof client.close === "function") {
-    await client.close();
-    return;
-  }
-
-  if (client && typeof client.end === "function") {
-    await client.end({ timeout: 0 });
-  }
-}
-
-let migratedTemplateRootDir: string | null = null;
-
-async function createIsolatedDatabase() {
-  if (migratedTemplateRootDir === null) {
-    throw new Error("source api test database template is not initialized");
-  }
-
-  const rootDir = mkdtempSync(join(tmpdir(), "onequery-source-api-test-"));
-  const dataDir = join(rootDir, "db");
-
-  // Reuse one migrated template per file so these handler tests stay stable
-  // under CI load instead of rerunning the full migration set each time.
-  cpSync(join(migratedTemplateRootDir, "db"), dataDir, {
-    recursive: true,
-  });
-
-  return {
-    db: createDb(`pglite:${dataDir}`),
-    rootDir,
-  };
-}
-
 async function createHarness() {
-  const { db, rootDir } = await createIsolatedDatabase();
+  const db = pgliteTestDb;
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -361,15 +300,11 @@ async function createHarness() {
     handleExecuteSourceApi: createHandleExecuteSourceApi(dependencies),
     handlePreviewSourceApi: createHandlePreviewSourceApi(dependencies),
     handleResumeSourceApi: createHandleResumeSourceApi(dependencies),
-    rootDir,
     requestContext,
   };
 }
 
-async function seedResumableSourceApiAction(
-  db: ReturnType<typeof createDb>,
-  requestId: string
-) {
+async function seedResumableSourceApiAction(db: Database, requestId: string) {
   const startResult = await storeSourceApiActionCommand({
     command: {
       actionId: null,
@@ -628,14 +563,16 @@ async function expectConnectError(
     code: Code;
     message: string;
   }
-) {
+): Promise<ConnectError> {
   try {
     await Promise.resolve(promise);
     throw new Error("expected ConnectError");
   } catch (error: unknown) {
     expect(error).toBeInstanceOf(ConnectError);
-    expect((error as ConnectError).code).toBe(input.code);
-    expect((error as ConnectError).message).toContain(input.message);
+    const connectError = error as ConnectError;
+    expect(connectError.code).toBe(input.code);
+    expect(connectError.message).toContain(input.message);
+    return connectError;
   }
 }
 
@@ -758,49 +695,12 @@ function summarizeSourceApiPreview(
 }
 
 describe("source api connect service", { timeout: 15_000 }, () => {
-  const openedDatabases: OpenedDatabase[] = [];
-
-  beforeAll(async () => {
-    migratedTemplateRootDir = mkdtempSync(
-      join(tmpdir(), "onequery-source-api-template-")
-    );
-    await prepareApplicationDatabase({
-      connectionString: `pglite:${join(migratedTemplateRootDir, "db")}`,
-      migrationsFolder,
-    });
-  }, 15_000);
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(async () => {
-    for (const { db, rootDir } of openedDatabases.splice(0)) {
-      await closeDatabase(db);
-      rmSync(rootDir, {
-        force: true,
-        recursive: true,
-      });
-    }
-  });
-
-  afterAll(() => {
-    if (migratedTemplateRootDir !== null) {
-      rmSync(migratedTemplateRootDir, {
-        force: true,
-        recursive: true,
-      });
-      migratedTemplateRootDir = null;
-    }
-  });
-
   async function createTrackedHarness() {
-    const harness = await createHarness();
-    openedDatabases.push({
-      db: harness.db as ClosableDatabase,
-      rootDir: harness.rootDir,
-    });
-    return harness;
+    return createHarness();
   }
 
   it("describes the source API through the Connect handler", async () => {
@@ -826,6 +726,37 @@ describe("source api connect service", { timeout: 15_000 }, () => {
         harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
       response: summarizeDescribeSourceApiResponse(response),
     }).toMatchSnapshot();
+  });
+
+  it("maps missing source API adapter registration to source unavailable", async () => {
+    const harness = await createTrackedHarness();
+    harness.dependencies.describeSourceApi.mockRejectedValueOnce(
+      new SourceApiAdapterNotRegisteredError("github")
+    );
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    const error = await expectConnectError(
+      harness.handleDescribeSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.FailedPrecondition,
+        message: 'No source API adapter is registered for provider "github"',
+      }
+    );
+
+    expect(error.findDetails(ErrorInfoSchema)[0]).toMatchObject({
+      domain: CLI_ERROR_INFO_DOMAIN,
+      metadata: {
+        problemStage: "resolve_source",
+        retryable: "false",
+      },
+      reason: "SOURCE_API_SOURCE_UNAVAILABLE",
+    });
   });
 
   it("previews source API execution through the Connect handler", async () => {
@@ -873,6 +804,48 @@ describe("source api connect service", { timeout: 15_000 }, () => {
         harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
       response: summarizePreviewSourceApiResponse(response),
     }).toMatchSnapshot();
+  });
+
+  it("maps descriptor version mismatch to failed precondition", async () => {
+    const harness = await createTrackedHarness();
+    harness.dependencies.prepareSourceApiDraft.mockRejectedValueOnce(
+      new SourceApiDescriptorVersionMismatchError({
+        expectedDescriptorVersion: "github-v2",
+        receivedDescriptorVersion: "github-v1",
+      })
+    );
+    const request = create(PreviewSourceApiRequestSchema, {
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
+        selector: "/issues",
+      },
+    });
+
+    const error = await expectConnectError(
+      harness.handlePreviewSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.FailedPrecondition,
+        message:
+          'descriptor_version mismatch: expected "github-v2", received "github-v1"',
+      }
+    );
+
+    expect(error.findDetails(ErrorInfoSchema)[0]).toMatchObject({
+      domain: CLI_ERROR_INFO_DOMAIN,
+      metadata: {
+        problemStage: "source_api_execute",
+        retryable: "false",
+      },
+      reason: "SOURCE_API_EXECUTION_STATE_INVALID",
+    });
   });
 
   it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
@@ -1201,11 +1174,61 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
+  it("maps adapter execution timeouts to retryable deadline exceeded errors", async () => {
+    const harness = await createTrackedHarness();
+    harness.dependencies.executePreparedSourceApi.mockRejectedValue(
+      new SourceApiExecutionStageError(
+        "execute",
+        new SourceApiTimeoutError("GitHub upstream request timed out")
+      )
+    );
+    const request = create(ExecuteSourceApiRequestSchema, {
+      target: {
+        orgSlug: "acme",
+        sourceKey: "github-prod",
+      },
+      draft: {
+        descriptorVersion: "github-v1",
+        operationName: "fetch",
+      },
+    });
+
+    const error = await expectConnectError(
+      harness.handleExecuteSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.DeadlineExceeded,
+        message: "GitHub upstream request timed out",
+      }
+    );
+    const errorInfoDetails = error.findDetails(ErrorInfoSchema);
+    const actionRow = await harness.db.query.sourceApiActions.findFirst({
+      where: (table, { eq }) => eq(table.organizationId, authorizedOrg.org.id),
+    });
+
+    expect(errorInfoDetails).toHaveLength(1);
+    expect(errorInfoDetails[0]).toMatchObject({
+      domain: CLI_ERROR_INFO_DOMAIN,
+      metadata: {
+        problemStage: "source_api_execute",
+        retryable: "true",
+      },
+      reason: "SOURCE_API_EXECUTION_TIMED_OUT",
+    });
+    expect(actionRow).toMatchObject({
+      failureCode: "request_timed_out",
+      outcome: "failed",
+      phase: "completed",
+    });
+  });
+
   it("returns not logged in before validating source api execute input", async () => {
     const harness = await createTrackedHarness();
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
-        createCliConnectProblem({
+        createCliServiceFailure({
           detail: "no authenticated session was found",
           key: "NOT_LOGGED_IN",
         })
@@ -1231,7 +1254,7 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     const harness = await createTrackedHarness();
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
-        createCliConnectProblem({
+        createCliServiceFailure({
           detail: "no authenticated session was found",
           key: "NOT_LOGGED_IN",
         })

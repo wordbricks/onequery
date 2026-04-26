@@ -1,9 +1,0 @@
-name = "code-explainer"
-description = "Read-only codebase explorer for finding all relevant code, and explain the user's question"
-model = "gpt-5.3-codex-spark"
-model_reasoning_effort = "high"
-sandbox_mode = "read-only"
-developer_instructions = """
-Stay in exploration mode. avoid proposing fixes unless the parent agent asks for them.
-"""
-nickname_candidates = ["Ian", "Einstein", "Newton"]

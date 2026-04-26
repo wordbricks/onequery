@@ -1,7 +1,6 @@
 import { stringToInt } from "@onequery/codecs/number";
 import { z } from "zod";
 
-import { throwCliProblem } from "../error";
 import { sanitizeCliRemoteText } from "../transport/sanitization";
 
 const BetterAuthDeviceCodeResponseSchema = z
@@ -128,17 +127,6 @@ export function toCliDeviceAuthProblemDetail(
   // Comment: Better Auth error strings are untrusted remote input, so sanitize
   // them before they become CLI-facing problem details.
   return sanitizeCliRemoteText(payload.error_description ?? payload.error);
-}
-
-export function throwCliLoginRateLimitedProblem(
-  response: Response,
-  detail: string
-): never {
-  throwCliProblem({
-    detail,
-    key: "LOGIN_RATE_LIMITED",
-    retryAfterMs: parseRetryAfterMs(response),
-  });
 }
 
 export function parseRetryAfterMs(response: Response) {

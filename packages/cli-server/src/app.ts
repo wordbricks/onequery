@@ -4,18 +4,19 @@ import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import { requestId as requestIdMiddleware } from "hono/request-id";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
 import type { CliSessionIdentity } from "./domain/workflows";
-import { CLI_REQUEST_ID_HEADER, createCliProblemHandler } from "./error";
 import {
   buildCliRequestLogDetails,
   getCliLogLevelForStatus,
-  getIncomingCliRequestId,
   logCliEvent,
   toCliErrorMessage,
 } from "./observability";
+import { CLI_REQUEST_ID_HEADER } from "./request-context";
 
 export type HonoNodeBindings = HttpBindings | Http2Bindings;
 
@@ -45,20 +46,16 @@ export interface CreateCliAppOptions {
   storage: ServerStorage;
 }
 
+function generateCliRequestId(c: Context) {
+  const existingRequestId = c.get("requestId");
+  return typeof existingRequestId === "string" && existingRequestId.length > 0
+    ? existingRequestId
+    : crypto.randomUUID();
+}
+
 const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
   async (c, next) => {
-    const existingRequestId = c.get("requestId");
-    if (typeof existingRequestId === "string" && existingRequestId.length > 0) {
-      await next();
-      return;
-    }
-
-    // Comment: preserve an existing request ID when a parent app or test
-    // harness has already bound one before the CLI middleware runs.
-    const requestId =
-      getIncomingCliRequestId(c.req.raw.headers) ?? crypto.randomUUID();
     const requestStartedAtMs = Date.now();
-    c.set("requestId", requestId);
     c.set("requestStartedAtMs", requestStartedAtMs);
 
     logCliEvent({
@@ -74,8 +71,6 @@ const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
       thrownError = error;
       throw error;
     } finally {
-      c.header(CLI_REQUEST_ID_HEADER, requestId);
-
       if (thrownError) {
         logCliEvent({
           details: buildCliRequestLogDetails(c, {
@@ -127,8 +122,13 @@ export function createCliApp<
   const app = createCliRouter<Variables>();
   app.use(cliRuntimeMiddleware(input.runtime));
   app.use(serverStorageMiddleware(input.storage));
+  app.use(
+    requestIdMiddleware({
+      generator: generateCliRequestId,
+      headerName: CLI_REQUEST_ID_HEADER,
+    })
+  );
   app.use(cliRequestObservabilityMiddleware);
-  app.onError(createCliProblemHandler());
   return app;
 }
 
@@ -138,6 +138,12 @@ export function createCliBrowserApp<
   const app = createCliRouter<Variables>();
   app.use(cliRuntimeMiddleware(input.runtime));
   app.use(serverStorageMiddleware(input.storage));
+  app.use(
+    requestIdMiddleware({
+      generator: generateCliRequestId,
+      headerName: CLI_REQUEST_ID_HEADER,
+    })
+  );
   app.use(cliRequestObservabilityMiddleware);
   return app;
 }

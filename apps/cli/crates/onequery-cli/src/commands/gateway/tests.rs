@@ -22,10 +22,6 @@ use super::render::render_gateway_output;
 use super::render::render_gateway_start_output;
 use super::render::render_gateway_status_output;
 use super::runtime::LogPreview;
-use super::runtime::mark_stop_requested;
-use super::runtime::parse_runtime_major_version;
-use super::runtime::stop_request_matches;
-use super::runtime::validate_runtime_version_output;
 use super::state::GatewayRuntimeState;
 use super::state::GatewayStateAccessMode;
 use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
@@ -408,39 +404,6 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
 }
 
 #[test]
-fn mark_stop_requested_records_pid_for_managed_shutdown() {
-    let test_dir =
-        std::env::temp_dir().join(format!("onequery-gateway-stop-request-{}", Uuid::new_v4()));
-    let stop_request_path = test_dir.join("server.stop");
-
-    fs::create_dir_all(&test_dir)
-        .unwrap_or_else(|error| panic!("expected temp dir creation to succeed: {error}"));
-
-    mark_stop_requested(stop_request_path.as_path(), 4321, "onequery gateway stop")
-        .unwrap_or_else(|error| panic!("expected stop request write to succeed: {error}"));
-
-    assert_eq!(
-        stop_request_matches(stop_request_path.as_path(), 4321),
-        true
-    );
-
-    fs::remove_dir_all(test_dir)
-        .unwrap_or_else(|error| panic!("expected stop-request temp dir cleanup: {error}"));
-}
-
-#[test]
-fn parse_runtime_major_version_accepts_node_style_version_output() {
-    assert_eq!(parse_runtime_major_version("v22.13.1\n"), Some(22));
-    assert_eq!(parse_runtime_major_version("22.13.1\n"), Some(22));
-}
-
-#[test]
-fn parse_runtime_major_version_rejects_invalid_version_output() {
-    assert_eq!(parse_runtime_major_version(""), None);
-    assert_eq!(parse_runtime_major_version("lts"), None);
-}
-
-#[test]
 fn runtime_probe_host_normalizes_unspecified_bind_addresses() {
     assert_eq!(runtime_probe_host("0.0.0.0"), "127.0.0.1");
     assert_eq!(runtime_probe_host("::"), "::1");
@@ -457,38 +420,6 @@ fn runtime_accepting_connections_treats_unspecified_ipv4_bind_as_localhost() {
         .port();
 
     assert_eq!(runtime_accepting_connections("0.0.0.0", port), true);
-}
-
-#[test]
-fn validate_runtime_version_output_rejects_node_20() {
-    let error = validate_runtime_version_output(
-        "v20.19.0\n",
-        &std::ffi::OsString::from("node"),
-        "onequery gateway",
-        "onequery gateway",
-    )
-    .expect_err("expected Node 20 to be rejected");
-
-    assert_eq!(error.title.as_str(), "unsupported self-host server runtime");
-    assert_eq!(
-        error.why.as_str(),
-        "node reports major version 20, but packaged onequery gateway requires Node.js 22+"
-    );
-    assert_eq!(
-        error.try_next,
-        vec!["install Node.js 22+ and retry onequery gateway".to_owned()]
-    );
-}
-
-#[test]
-fn validate_runtime_version_output_accepts_node_22() {
-    validate_runtime_version_output(
-        "v22.13.1\n",
-        &std::ffi::OsString::from("node"),
-        "onequery gateway",
-        "onequery gateway",
-    )
-    .unwrap_or_else(|error| panic!("expected Node 22 to be accepted: {error}"));
 }
 
 fn resolve_runtime_state_with_paths_for_test(

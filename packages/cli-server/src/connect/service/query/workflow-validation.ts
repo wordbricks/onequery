@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 
-import { CliConnectProblem } from "../../error";
+import { isCliFailure } from "../../../domain/failures";
 import type { CliServiceResult } from "../result";
 import { toCliSourceRecord } from "./workflow-codec";
 import { runPreparedCliQueryWorkflow } from "./workflow-preparation";
@@ -40,7 +40,7 @@ export async function runCliQueryValidationWorkflowResult(
       };
     },
     catch: (error) =>
-      error instanceof CliConnectProblem
+      isCliFailure(error)
         ? error
         : createQueryAuditProblem(
             `query_action validation failed for source "${input.sourceName}"`,

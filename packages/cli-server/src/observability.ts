@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-import { CLI_REQUEST_ID_HEADER, getCliRequestId } from "./error";
+import { getCliRequestId } from "./request-context";
 
 type CliLogLevel = "info" | "warn" | "error";
 
@@ -170,11 +170,6 @@ export function buildCliRequestLogDetails(
     requestId: getCliRequestId(c),
     ...extra,
   };
-}
-
-export function getIncomingCliRequestId(headers: Headers): string | null {
-  const requestId = headers.get(CLI_REQUEST_ID_HEADER)?.trim() ?? "";
-  return requestId.length > 0 ? requestId : null;
 }
 
 export function toCliErrorMessage(error: unknown): string {

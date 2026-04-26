@@ -12,22 +12,32 @@ import type {
   SourceApiDescriptor,
   SourceApiDraft,
 } from "@onequery/server/source-api";
+import { Result, isPanic } from "better-result";
 
-import {
-  SourceApiActionEffectSchema,
-  SourceApiActionEventSchema,
-  storeSourceApiActionCommand,
-} from "../../../audit";
+import { storeSourceApiActionCommand } from "../../../audit";
 import type {
   SourceApiActionCommand,
   SourceApiActionCommandPayload,
   SourceApiActionEffect,
+  SourceApiActionEvent,
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
 } from "../../../audit";
+import {
+  decodeSourceApiActionCommandPayload,
+  decodeSourceApiActionEffectPayload,
+  decodeSourceApiActionEventPayload,
+} from "../../../audit/source-api-action-family/protobuf-codec";
+import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
+import type { CliServiceResult } from "../result";
 import type { CliHonoContext } from "../types";
+import {
+  createWorkflowAuditCorruptionFailure,
+  createWorkflowAuditFailure,
+} from "../workflow-audit-failure";
+import { dispatchStoredWorkflowEffect } from "../workflow-effect-dispatch";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import { prepareSourceApiDraftResult } from "./runtime";
 import type {
@@ -37,8 +47,6 @@ import type {
   StoredAcceptedSourceApiActionDecision,
   StoredAcceptedSourceApiActionResultCommand,
 } from "./workflow-types";
-
-const EFFECT_LEASE_DURATION_MS = 30_000;
 
 export async function dispatchStoredSourceApiActionEffect<
   EffectType extends SourceApiActionEffect["type"],
@@ -61,75 +69,23 @@ export async function dispatchStoredSourceApiActionEffect<
     result: TResult;
   }>;
 }): Promise<DispatchedSourceApiActionEffect<EffectType, TResult>> {
-  // Comment: source_api_action still replays committed effect results inline on
-  // the request path, so the effect row is the source of truth and the stored
-  // result command is the replay cache.
-  const originEvent = requireLastCommittedEvent(input.currentDecision);
-  const effectDispatch = await loadRequiredSourceApiActionEffect({
-    actionId: input.currentDecision.actionId,
-    db: input.db,
-    expectedEffectType: input.expectedEffectType,
-    originEventId: originEvent.id,
+  return dispatchStoredWorkflowEffect<
+    SourceApiActionEffect,
+    EffectType,
+    SourceApiActionCommandPayload,
+    SourceApiActionEvent,
+    StoredAcceptedSourceApiActionDecision,
+    StoredAcceptedSourceApiActionResultCommand,
+    TResult
+  >({
+    ...input,
+    createCorruptionProblem: createSourceApiAuditCorruptionFailure,
+    createProblem: createSourceApiAuditFailure,
+    family: "source_api_action",
+    loadEffect: loadRequiredSourceApiActionEffect,
+    loadStoredResultCommand: loadStoredAcceptedSourceApiActionResultCommand,
+    storeResultCommand: storeAcceptedSourceApiActionCommand,
   });
-
-  const stored = await loadStoredAcceptedSourceApiActionResultCommand({
-    commandInvocationId: `${effectDispatch.effectKey}:result`,
-    db: input.db,
-  });
-  if (stored !== null) {
-    return {
-      decision: stored.decision,
-      effect: effectDispatch.effect,
-      result: await input.replay({
-        effect: effectDispatch.effect,
-        stored,
-      }),
-    };
-  }
-
-  if (effectDispatch.status !== "pending") {
-    throw createSourceApiAuditProblem(
-      `source_api_action effect ${effectDispatch.id} is ${effectDispatch.status} without a stored result command`
-    );
-  }
-
-  await leaseSourceApiActionEffect({
-    db: input.db,
-    effectDispatch,
-  });
-
-  try {
-    const outcome = await input.run(effectDispatch.effect);
-    const decision = await storeAcceptedSourceApiActionCommand({
-      actionId: input.currentDecision.actionId,
-      actorSnapshot: input.actorSnapshot,
-      causedByEventId: effectDispatch.originEventId,
-      commandInvocationId: `${effectDispatch.effectKey}:result`,
-      commandPayload: outcome.commandPayload,
-      db: input.db,
-      organizationId: input.organizationId,
-      requestId: input.requestId,
-      surface: "system",
-    });
-
-    await completeSourceApiActionEffect({
-      db: input.db,
-      effectId: effectDispatch.id,
-    });
-
-    return {
-      decision,
-      effect: effectDispatch.effect,
-      result: outcome.result,
-    };
-  } catch (error) {
-    await releaseSourceApiActionEffect({
-      db: input.db,
-      effectId: effectDispatch.id,
-      error,
-    });
-    throw error;
-  }
 }
 
 export async function storeAcceptedSourceApiActionCommand(
@@ -147,14 +103,14 @@ export async function storeAcceptedSourceApiActionCommand(
   });
 
   if (stored.isErr()) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action ${input.commandPayload.type} could not be stored`,
       stored.error
     );
   }
 
   if (stored.value.kind !== "accepted") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action ${input.commandPayload.type} was rejected with ${stored.value.rejectCode}`
     );
   }
@@ -240,7 +196,7 @@ export async function loadRequiredPreparedSourceConnection(input: {
   const loaded = await loadPreparedSourceConnection(input);
 
   if (loaded.kind !== "loaded") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action replay could not reload source "${input.source.sourceKey}" for a downstream effect`
     );
   }
@@ -282,7 +238,7 @@ export async function loadRequiredPreparedSourceApi(input: {
   );
 
   if (prepared.isErr()) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action replay could not rebuild the prepared request",
       prepared.error
     );
@@ -296,7 +252,7 @@ export function requireLastCommittedEvent(
 ) {
   const event = decision.events.at(-1);
   if (!event) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditCorruptionFailure(
       `source_api_action ${decision.commandId} committed without events`
     );
   }
@@ -308,7 +264,7 @@ export function requireResolvedSourceApiDescriptor(
   descriptor: SourceApiDescriptor | null
 ) {
   if (descriptor === null) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action descriptor cache was missing during replay"
     );
   }
@@ -316,23 +272,61 @@ export function requireResolvedSourceApiDescriptor(
   return descriptor;
 }
 
-export function ensureCliServiceProblem(error: unknown) {
-  if (error instanceof Error && error.name === "CliConnectProblem") {
-    return error as ReturnType<typeof createCliServiceProblem>;
+export function ensureCliServiceFailure(error: unknown) {
+  if (isCliFailure(error)) {
+    return error;
   }
 
-  return createCliServiceProblem({
+  if (isPanic(error) && isCliFailure(error.cause)) {
+    return error.cause;
+  }
+
+  return createCliServiceFailure({
     ...(error === undefined ? {} : { cause: error }),
     detail: toCliErrorMessage(error),
     key: "SOURCE_API_EXECUTION_FAILED",
   });
 }
 
-export function createSourceApiAuditProblem(detail: string, cause?: unknown) {
-  return createCliServiceProblem({
-    ...(cause === undefined ? {} : { cause }),
+export async function captureSourceApiWorkflowResult<T>(
+  operation: () => Promise<CliServiceResult<T>>
+): Promise<CliServiceResult<T>> {
+  const result = await Result.tryPromise({
+    try: operation,
+    catch: (error) => ensureCliServiceFailure(error),
+  });
+
+  return Result.flatten(result);
+}
+
+export function captureSourceApiWorkflowValue<T>(
+  operation: () => Promise<T>
+): Promise<CliServiceResult<T>> {
+  return Result.tryPromise({
+    try: operation,
+    catch: (error) => ensureCliServiceFailure(error),
+  });
+}
+
+export function createSourceApiAuditFailure(detail: string, cause?: unknown) {
+  return createWorkflowAuditFailure({
+    cause,
     detail,
-    key: "SOURCE_API_PREPARATION_FAILED",
+    keys: {
+      corrupt: "SOURCE_API_WORKFLOW_CORRUPT",
+      internal: "SOURCE_API_WORKFLOW_INTERNAL",
+    },
+  });
+}
+
+export function createSourceApiAuditCorruptionFailure(
+  detail: string,
+  cause?: unknown
+) {
+  return createWorkflowAuditCorruptionFailure({
+    cause,
+    detail,
+    key: "SOURCE_API_WORKFLOW_CORRUPT",
   });
 }
 
@@ -361,32 +355,31 @@ async function loadRequiredSourceApiActionEffect<
     .limit(1);
 
   if (!row) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditCorruptionFailure(
       `source_api_action effect ${input.expectedEffectType} is missing for origin event ${input.originEventId}`
     );
   }
 
-  const parsedEffect = SourceApiActionEffectSchema.safeParse({
-    type: row.effectType,
-    ...row.payloadJson,
+  const decodedEffect = decodeSourceApiActionEffectPayload(row.payloadBytes, {
+    actionId: input.actionId,
+    payloadType: row.effectType,
   });
-
-  if (!parsedEffect.success) {
-    throw createSourceApiAuditProblem(
+  if (decodedEffect.isErr()) {
+    throw createSourceApiAuditCorruptionFailure(
       `source_api_action effect ${row.effectType} payload is corrupt`,
-      parsedEffect.error
+      decodedEffect.error
     );
   }
 
-  if (parsedEffect.data.type !== input.expectedEffectType) {
-    throw createSourceApiAuditProblem(
-      `source_api_action expected effect ${input.expectedEffectType} but loaded ${parsedEffect.data.type}`
+  if (decodedEffect.value.type !== input.expectedEffectType) {
+    throw createSourceApiAuditCorruptionFailure(
+      `source_api_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
     );
   }
 
   return {
     attemptCount: row.attemptCount,
-    effect: parsedEffect.data as Extract<
+    effect: decodedEffect.value as Extract<
       SourceApiActionEffect,
       { type: EffectType }
     >,
@@ -413,13 +406,13 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
   }
 
   if (storedCommand.decisionKind !== "accepted") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditCorruptionFailure(
       `source_api_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
     );
   }
 
   if (storedCommand.actionId === null) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditCorruptionFailure(
       `source_api_action stored result command ${input.commandInvocationId} is missing its action id`
     );
   }
@@ -430,28 +423,41 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
     .where(eq(sourceApiActionEvents.commandId, storedCommand.id))
     .orderBy(asc(sourceApiActionEvents.sequence));
 
+  const commandPayload = decodeSourceApiActionCommandPayload(
+    storedCommand.commandPayloadBytes,
+    {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      payloadType: storedCommand.commandType,
+    }
+  );
+  if (commandPayload.isErr()) {
+    throw createSourceApiAuditCorruptionFailure(
+      `source_api_action stored result command ${input.commandInvocationId} has a corrupt command payload`,
+      commandPayload.error
+    );
+  }
+
   return {
-    commandPayload: {
-      type: storedCommand.commandType,
-      ...storedCommand.commandPayloadJson,
-    },
+    commandPayload: commandPayload.value,
     decision: {
       actionId: storedCommand.actionId,
       commandId: storedCommand.id,
       events: events.map((row) => {
-        const parsed = SourceApiActionEventSchema.safeParse({
-          type: row.eventType,
-          ...row.payloadJson,
+        const decoded = decodeSourceApiActionEventPayload(row.payloadBytes, {
+          actionId: row.actionId,
+          commandId: row.commandId,
+          payloadType: row.eventType,
         });
-        if (!parsed.success) {
-          throw createSourceApiAuditProblem(
+        if (decoded.isErr()) {
+          throw createSourceApiAuditCorruptionFailure(
             `source_api_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
-            parsed.error
+            decoded.error
           );
         }
 
         return {
-          ...parsed.data,
+          ...decoded.value,
           id: row.id,
           occurredAt: row.occurredAt,
           sequence: row.sequence,
@@ -462,74 +468,4 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
       kind: "accepted" as const,
     },
   };
-}
-
-async function leaseSourceApiActionEffect(input: {
-  db: Database;
-  effectDispatch: Pick<LoadedSourceApiActionEffect, "attemptCount" | "id">;
-}) {
-  const leasedUntil = new Date(Date.now() + EFFECT_LEASE_DURATION_MS);
-  const leased = await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      attemptCount: input.effectDispatch.attemptCount + 1,
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil,
-      status: "leased",
-    })
-    .where(
-      and(
-        eq(workflowEffectDispatches.id, input.effectDispatch.id),
-        eq(workflowEffectDispatches.status, "pending")
-      )
-    )
-    .returning({ id: workflowEffectDispatches.id });
-
-  if (leased.length !== 1) {
-    throw createSourceApiAuditProblem(
-      `source_api_action effect ${input.effectDispatch.id} could not be leased`
-    );
-  }
-}
-
-async function completeSourceApiActionEffect(input: {
-  db: Database;
-  effectId: string;
-}) {
-  const completedAt = new Date();
-  const completed = await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      completedAt,
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil: null,
-      status: "completed",
-    })
-    .where(eq(workflowEffectDispatches.id, input.effectId))
-    .returning({ id: workflowEffectDispatches.id });
-
-  if (completed.length !== 1) {
-    throw createSourceApiAuditProblem(
-      `source_api_action effect ${input.effectId} could not be completed`
-    );
-  }
-}
-
-async function releaseSourceApiActionEffect(input: {
-  db: Database;
-  effectId: string;
-  error: unknown;
-}) {
-  await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      availableAt: new Date(),
-      lastErrorCode: "dispatch_failed",
-      lastErrorDetail: toCliErrorMessage(input.error),
-      leasedUntil: null,
-      status: "pending",
-    })
-    .where(eq(workflowEffectDispatches.id, input.effectId));
 }

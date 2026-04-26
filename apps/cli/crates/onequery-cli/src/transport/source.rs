@@ -11,14 +11,13 @@ use crate::transport::api_failure::success_response_request_id;
 use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::labels::source_provider_to_str;
-use crate::transport::labels::source_status_to_str;
 use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
 use crate::transport::response_decode::require_non_empty_text;
+use crate::transport::source_connect_provider::SourceConnectProvider;
 use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
@@ -335,18 +334,60 @@ pub(crate) fn source_summary_from_generated(
             request_id.clone(),
         )?,
         display_name: display_name.filter(|value| !value.is_empty()),
-        provider: provider.map(source_provider_to_str).ok_or_else(|| {
-            decode_failure(
-                stage,
-                "source response missing provider",
-                request_id.clone(),
-            )
-        })?,
+        provider: source_provider_from_generated(provider, stage, request_id.clone())?,
         queryable: source_query_support_to_bool(query_support, stage, request_id.clone())?,
-        status: status
-            .map(source_status_to_str)
-            .ok_or_else(|| decode_failure(stage, "source response missing status", request_id))?,
+        status: source_status_from_generated(status, stage, request_id)?,
     })
+}
+
+fn source_provider_from_generated(
+    value: Option<EnumValue<types::SourceProvider>>,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value {
+        Some(value) => {
+            match value.as_known() {
+                Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED) | None => Err(
+                    decode_failure(stage, "source response has invalid provider", request_id),
+                ),
+                Some(provider) => SourceConnectProvider::try_from(provider)
+                    .map(|provider| provider.to_string())
+                    .map_err(|()| {
+                        decode_failure(stage, "source response has invalid provider", request_id)
+                    }),
+            }
+        }
+        None => Err(decode_failure(
+            stage,
+            "source response missing provider",
+            request_id,
+        )),
+    }
+}
+
+fn source_status_from_generated(
+    value: Option<EnumValue<types::SourceStatus>>,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value {
+        Some(value) => match value.as_known() {
+            Some(types::SourceStatus::SOURCE_STATUS_ACTIVE) => Ok("active".to_owned()),
+            Some(types::SourceStatus::SOURCE_STATUS_ERROR) => Ok("error".to_owned()),
+            Some(types::SourceStatus::SOURCE_STATUS_DISCONNECTED) => Ok("disconnected".to_owned()),
+            Some(types::SourceStatus::SOURCE_STATUS_UNSPECIFIED) | None => Err(decode_failure(
+                stage,
+                "source response has invalid status",
+                request_id,
+            )),
+        },
+        None => Err(decode_failure(
+            stage,
+            "source response missing status",
+            request_id,
+        )),
+    }
 }
 
 fn source_query_support_to_bool(
@@ -385,13 +426,17 @@ fn source_test_unsupported_reason_to_str(
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
+    use crate::transport::api_failure::ApiFailure;
     use crate::transport::read_controls::PageInfo;
 
     use super::SourceListPayload;
     use super::SourceSummary;
+    use super::source_summary_from_generated;
+    use super::types;
 
     #[test]
     fn source_list_response_deserializes_canonical_shape() {
@@ -466,6 +511,33 @@ mod tests {
                 queryable: true,
                 status: "active".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn source_summary_from_generated_rejects_invalid_provider() {
+        let error = source_summary_from_generated(
+            types::CliSource {
+                source_key: Some("warehouse".to_owned()),
+                provider: Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED.into()),
+                query_support: Some(
+                    types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
+                ),
+                status: Some(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                ..Default::default()
+            },
+            ErrorStage::Http,
+            Some("req_source_provider".to_owned()),
+        )
+        .expect_err("expected invalid provider to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::Http,
+                message: "source response has invalid provider".to_owned(),
+                request_id: Some("req_source_provider".to_owned()),
+            })
         );
     }
 }

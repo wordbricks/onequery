@@ -13,6 +13,8 @@ use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::response_decode::require_non_empty_text;
 
+mod validation;
+
 pub(crate) type ProtoJsonObject = buffa_types::google::protobuf::Struct;
 pub(crate) type ProtoJsonValue = buffa_types::google::protobuf::Value;
 
@@ -53,12 +55,10 @@ pub(crate) enum ExecuteSourceApiOutcome {
     },
 }
 
-macro_rules! source_api_enum_surface {
+macro_rules! source_api_enum_label {
     (
-        $normalize:ident,
         $label_fn:ident,
         $enum_ty:ty,
-        $default:path,
         $unspecified:path,
         {
             $(
@@ -66,21 +66,13 @@ macro_rules! source_api_enum_surface {
             )+
         }
     ) => {
-        pub(crate) fn $normalize(value: EnumValue<$enum_ty>) -> $enum_ty {
+        pub(crate) fn $label_fn(value: EnumValue<$enum_ty>) -> &'static str {
             match value.as_known() {
                 $(
-                    Some($variant) => $variant,
+                    Some($variant) => $label,
                 )+
-                Some($unspecified) | None => $default,
-            }
-        }
-
-        pub(crate) fn $label_fn(value: EnumValue<$enum_ty>) -> &'static str {
-            match $normalize(value) {
-                $(
-                    $variant => $label,
-                )+
-                $unspecified => unreachable!(),
+                Some($unspecified) => "unspecified",
+                None => "unknown",
             }
         }
     };
@@ -91,8 +83,8 @@ pub(crate) async fn describe_source_api(
     org: &str,
     source_key: &str,
 ) -> Result<ApiSuccess<SourceApiDescriptor>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
+    let org_slug: String = try_into_value(org, ErrorStage::SourceApiDescribe)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::SourceApiDescribe)?;
     let response = match client
         .source_api()
         .describe_source_api(types::DescribeSourceApiRequest {
@@ -104,12 +96,12 @@ pub(crate) async fn describe_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiDescribe));
         }
     };
     let request_id = success_response_request_id(&response);
     let payload = response.into_owned();
-    validate_source_api_descriptor(&payload, request_id.clone())?;
+    validation::validate_source_api_descriptor(&payload, request_id.clone())?;
 
     Ok(ApiSuccess {
         payload,
@@ -129,7 +121,7 @@ pub(crate) async fn preview_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiPrepare,
             )?),
             draft: MessageField::some(draft.clone()),
             ..Default::default()
@@ -138,7 +130,7 @@ pub(crate) async fn preview_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiPrepare));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -163,7 +155,7 @@ pub(crate) async fn execute_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             draft: MessageField::some(draft.clone()),
             ..Default::default()
@@ -172,7 +164,7 @@ pub(crate) async fn execute_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiExecute));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -197,11 +189,11 @@ pub(crate) async fn resume_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             continuation_token: Some(try_into_value(
                 continuation_token,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             ..Default::default()
         })
@@ -209,7 +201,7 @@ pub(crate) async fn resume_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiExecute));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -222,11 +214,9 @@ pub(crate) async fn resume_source_api(
     })
 }
 
-source_api_enum_surface!(
-    source_api_operation_kind_or_http_request,
+source_api_enum_label!(
     source_api_operation_kind_label,
     SourceApiOperationKind,
-    SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST,
     SourceApiOperationKind::SOURCE_API_OPERATION_KIND_UNSPECIFIED,
     {
         SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST => "http_request",
@@ -234,11 +224,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_selector_kind_or_none,
+source_api_enum_label!(
     source_api_selector_kind_label,
     SourceApiSelectorKind,
-    SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE,
     SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED,
     {
         SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE => "none",
@@ -247,11 +235,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_pagination_policy_or_none,
+source_api_enum_label!(
     source_api_pagination_policy_label,
     SourceApiPaginationPolicy,
-    SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE,
     SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_UNSPECIFIED,
     {
         SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE => "none",
@@ -259,11 +245,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_body_kind_or_none,
+source_api_enum_label!(
     source_api_body_kind_label,
     SourceApiBodyKind,
-    SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE,
     SourceApiBodyKind::SOURCE_API_BODY_KIND_UNSPECIFIED,
     {
         SourceApiBodyKind::SOURCE_API_BODY_KIND_NONE => "none",
@@ -273,11 +257,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_field_encoding_or_raw,
+source_api_enum_label!(
     source_api_field_encoding_label,
     SourceApiFieldEncoding,
-    SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW,
     SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_UNSPECIFIED,
     {
         SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW => "raw",
@@ -285,11 +267,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_path_capability_or_nested,
+source_api_enum_label!(
     source_api_path_capability_label,
     SourceApiPathCapability,
-    SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED,
     SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_UNSPECIFIED,
     {
         SourceApiPathCapability::SOURCE_API_PATH_CAPABILITY_NESTED => "nested",
@@ -297,11 +277,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_input_mode_or_none,
+source_api_enum_label!(
     source_api_input_mode_label,
     SourceApiInputMode,
-    SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE,
     SourceApiInputMode::SOURCE_API_INPUT_MODE_UNSPECIFIED,
     {
         SourceApiInputMode::SOURCE_API_INPUT_MODE_NONE => "none",
@@ -310,11 +288,9 @@ source_api_enum_surface!(
     }
 );
 
-source_api_enum_surface!(
-    source_api_patch_mode_or_none,
+source_api_enum_label!(
     source_api_patch_mode_label,
     SourceApiPatchMode,
-    SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE,
     SourceApiPatchMode::SOURCE_API_PATCH_MODE_UNSPECIFIED,
     {
         SourceApiPatchMode::SOURCE_API_PATCH_MODE_NONE => "none",
@@ -425,68 +401,6 @@ fn source_api_target(
     })
 }
 
-fn validate_source_api_descriptor(
-    value: &SourceApiDescriptor,
-    request_id: Option<String>,
-) -> Result<(), ApiFailure> {
-    if !value.source.is_set() {
-        return Err(decode_failure(
-            ErrorStage::ResolveSource,
-            "source API descriptor response missing source metadata",
-            request_id,
-        ));
-    }
-
-    for operation in &value.operations {
-        validate_source_api_operation(operation, request_id.clone())?;
-    }
-
-    Ok(())
-}
-
-fn validate_source_api_operation(
-    value: &SourceApiOperation,
-    request_id: Option<String>,
-) -> Result<(), ApiFailure> {
-    let operation_name = value.name.as_deref().unwrap_or("<unnamed>");
-
-    validate_required_operation_message(
-        value.method_policy.is_set(),
-        operation_name,
-        "method policy",
-        request_id.clone(),
-    )?;
-    validate_required_operation_message(
-        value.field_policy.is_set(),
-        operation_name,
-        "field policy",
-        request_id.clone(),
-    )?;
-    validate_required_operation_message(
-        value.header_policy.is_set(),
-        operation_name,
-        "header policy",
-        request_id,
-    )
-}
-
-fn validate_required_operation_message(
-    is_set: bool,
-    operation_name: &str,
-    field_name: &str,
-    request_id: Option<String>,
-) -> Result<(), ApiFailure> {
-    if is_set {
-        return Ok(());
-    }
-
-    Err(decode_failure(
-        ErrorStage::ResolveSource,
-        format!("source API operation `{operation_name}` missing {field_name}"),
-        request_id,
-    ))
-}
-
 fn execute_source_api_outcome_from_generated(
     value: types::ExecuteSourceApiResponse,
     request_id: Option<String>,
@@ -494,12 +408,13 @@ fn execute_source_api_outcome_from_generated(
     match value.outcome {
         Some(types::execute_source_api_response::Outcome::Completed(completed)) => {
             Ok(ExecuteSourceApiOutcome::Completed {
-                preview: required_source_api_preview(
+                preview: validation::required_source_api_preview(
                     completed.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
-                result: required_source_api_execution_result(
+                result: validation::required_source_api_execution_result(
                     completed.result,
                     "source API execution response missing result",
                     request_id,
@@ -508,26 +423,27 @@ fn execute_source_api_outcome_from_generated(
         }
         Some(types::execute_source_api_response::Outcome::Continued(continued)) => {
             Ok(ExecuteSourceApiOutcome::Continued {
-                preview: required_source_api_preview(
+                preview: validation::required_source_api_preview(
                     continued.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
-                result: required_source_api_execution_result(
+                result: validation::required_source_api_execution_result(
                     continued.result,
                     "source API execution response missing result",
                     request_id.clone(),
                 )?,
                 continuation_token: require_non_empty_text(
                     continued.continuation_token,
-                    ErrorStage::ExecuteQuery,
+                    ErrorStage::SourceApiExecute,
                     "source API execution response missing continuation token",
                     request_id,
                 )?,
             })
         }
         None => Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             "source API execution response missing outcome",
             request_id,
         )),
@@ -541,12 +457,13 @@ fn resume_source_api_outcome_from_generated(
     match value.outcome {
         Some(types::resume_source_api_response::Outcome::Completed(completed)) => {
             Ok(ExecuteSourceApiOutcome::Completed {
-                preview: required_source_api_preview(
+                preview: validation::required_source_api_preview(
                     completed.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
-                result: required_source_api_execution_result(
+                result: validation::required_source_api_execution_result(
                     completed.result,
                     "source API execution response missing result",
                     request_id,
@@ -555,26 +472,27 @@ fn resume_source_api_outcome_from_generated(
         }
         Some(types::resume_source_api_response::Outcome::Continued(continued)) => {
             Ok(ExecuteSourceApiOutcome::Continued {
-                preview: required_source_api_preview(
+                preview: validation::required_source_api_preview(
                     continued.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
-                result: required_source_api_execution_result(
+                result: validation::required_source_api_execution_result(
                     continued.result,
                     "source API execution response missing result",
                     request_id.clone(),
                 )?,
                 continuation_token: require_non_empty_text(
                     continued.continuation_token,
-                    ErrorStage::ExecuteQuery,
+                    ErrorStage::SourceApiExecute,
                     "source API execution response missing continuation token",
                     request_id,
                 )?,
             })
         }
         None => Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             "source API execution response missing outcome",
             request_id,
         )),
@@ -585,51 +503,12 @@ fn preview_source_api_response_from_generated(
     value: types::PreviewSourceApiResponse,
     request_id: Option<String>,
 ) -> Result<SourceApiPreview, ApiFailure> {
-    required_source_api_preview(
+    validation::required_source_api_preview(
         value.preview,
         "source API preview response missing preview",
         request_id,
+        ErrorStage::SourceApiPrepare,
     )
-}
-
-fn required_source_api_preview(
-    preview: MessageField<SourceApiPreview>,
-    message: &'static str,
-    request_id: Option<String>,
-) -> Result<SourceApiPreview, ApiFailure> {
-    let preview = preview
-        .into_option()
-        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
-
-    if !preview.source.is_set() {
-        return Err(decode_failure(
-            ErrorStage::ExecuteQuery,
-            "source API execution response missing preview source metadata",
-            request_id,
-        ));
-    }
-
-    Ok(preview)
-}
-
-fn required_source_api_execution_result(
-    result: MessageField<SourceApiExecutionResult>,
-    message: &'static str,
-    request_id: Option<String>,
-) -> Result<SourceApiExecutionResult, ApiFailure> {
-    let result = result
-        .into_option()
-        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
-
-    if !result.source.is_set() {
-        return Err(decode_failure(
-            ErrorStage::ExecuteQuery,
-            "source API execution response missing source metadata",
-            request_id,
-        ));
-    }
-
-    Ok(result)
 }
 
 #[cfg(test)]
@@ -648,7 +527,6 @@ mod tests {
     use super::source_api_operation_kind_label;
     use super::source_api_pagination_policy_label;
     use super::source_api_selector_kind_label;
-    use super::source_api_selector_kind_or_none;
     use super::types;
     use crate::transport::api_failure::ApiFailure;
 
@@ -663,7 +541,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiPrepare,
                 message: "source API preview response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
             })
@@ -681,62 +559,9 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiExecute,
                 message: "source API execution response missing outcome".to_owned(),
                 request_id: Some("req_missing_outcome".to_owned()),
-            })
-        );
-    }
-
-    #[test]
-    fn validate_source_api_descriptor_requires_operation_policies() {
-        let error = source_api_descriptor(
-            &types::DescribeSourceApiResponse {
-                source: buffa::MessageField::some(types::CliSourceApiSource {
-                    source_key: Some("github-prod".to_owned()),
-                    provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
-                    ..Default::default()
-                }),
-                descriptor_version: Some("github.v1".to_owned()),
-                operations: vec![types::CliSourceApiOperation {
-                    name: Some("fetch".to_owned()),
-                    kind: Some(
-                        types::SourceApiOperationKind::SOURCE_API_OPERATION_KIND_HTTP_REQUEST
-                            .into(),
-                    ),
-                    summary: Some("Fetch a resource".to_owned()),
-                    description: Some("Fetches a GitHub resource.".to_owned()),
-                    selector_kind: Some(
-                        types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_PATH.into(),
-                    ),
-                    pagination_policy: Some(
-                        types::SourceApiPaginationPolicy::SOURCE_API_PAGINATION_POLICY_NONE.into(),
-                    ),
-                    field_policy: buffa::MessageField::some(types::CliSourceApiFieldPolicy {
-                        field_encodings: vec![
-                            types::SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_RAW.into(),
-                            types::SourceApiFieldEncoding::SOURCE_API_FIELD_ENCODING_TYPED.into(),
-                        ],
-                        ..Default::default()
-                    }),
-                    header_policy: buffa::MessageField::some(types::CliSourceApiHeaderPolicy {
-                        allowed_request_header_names: vec!["accept".to_owned()],
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-            Some("req_missing_policy".to_owned()),
-        )
-        .expect_err("expected missing method policy to fail");
-
-        assert_eq!(
-            error,
-            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ResolveSource,
-                message: "source API operation `fetch` missing method policy".to_owned(),
-                request_id: Some("req_missing_policy".to_owned()),
             })
         );
     }
@@ -785,7 +610,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiExecute,
                 message: "source API execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_source".to_owned()),
             })
@@ -824,11 +649,12 @@ mod tests {
             "identifier"
         );
         assert_eq!(
-            source_api_selector_kind_or_none(
+            source_api_selector_kind_label(
                 types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_UNSPECIFIED.into(),
             ),
-            types::SourceApiSelectorKind::SOURCE_API_SELECTOR_KIND_NONE
+            "unspecified"
         );
+        assert_eq!(source_api_selector_kind_label(99.into()), "unknown");
     }
 
     #[test]
@@ -891,13 +717,6 @@ mod tests {
             }))
         );
         assert!(draft_json.get("requestId").is_none());
-    }
-
-    fn source_api_descriptor(
-        value: &types::DescribeSourceApiResponse,
-        request_id: Option<String>,
-    ) -> Result<(), ApiFailure> {
-        super::validate_source_api_descriptor(value, request_id)
     }
 
     fn execute_source_api_outcome(

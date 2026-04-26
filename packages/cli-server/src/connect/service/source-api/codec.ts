@@ -1,5 +1,4 @@
 import { fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
-import type { JsonValue } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import type {
   SourceApiBodyFormat,
@@ -52,14 +51,14 @@ export function resolveSourceApiStartCommand(
   if (!input.target) {
     return cliServiceErr({
       detail: "source API request missing target payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 
   if (!input.draft) {
     return cliServiceErr({
       detail: "source API request missing draft payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 
@@ -75,7 +74,7 @@ export function resolveSourceApiResumeCommand(
   if (!input.target) {
     return cliServiceErr({
       detail: "source API request missing target payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 
@@ -178,6 +177,8 @@ export function buildCliExecuteSourceApiResponse(
           },
         },
       };
+    default:
+      return assertNever(input);
   }
 }
 
@@ -208,6 +209,8 @@ export function buildCliResumeSourceApiResponse(
           },
         },
       };
+    default:
+      return assertNever(input);
   }
 }
 
@@ -257,6 +260,8 @@ function buildSourceApiDraftPayload(body: CliSourceApiDraft["body"]): {
           kind: "none",
         },
       };
+    default:
+      return assertNever(body);
   }
 }
 
@@ -362,7 +367,7 @@ function buildCliSourceApiResponseBody(
     case "json":
       return {
         case: "json",
-        value: fromJson(ValueSchema, value.value as JsonValue),
+        value: fromJson(ValueSchema, value.value),
       };
     case "text":
       return {
@@ -379,6 +384,8 @@ function buildCliSourceApiResponseBody(
         case: undefined,
         value: undefined,
       };
+    default:
+      return assertNever(value);
   }
 }
 
@@ -398,6 +405,8 @@ function toCliSourceApiInputMode(value: SourceApiFieldPolicy["inputMode"]) {
       return SourceApiInputMode.REQUEST_OBJECT;
     case "request_body":
       return SourceApiInputMode.REQUEST_BODY;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -409,6 +418,8 @@ function toCliSourceApiOperationKind(
       return SourceApiOperationKind.HTTP_REQUEST;
     case "structured_request":
       return SourceApiOperationKind.STRUCTURED_REQUEST;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -422,6 +433,8 @@ function toCliSourceApiBodyKind(value: SourceApiBodyFormat): SourceApiBodyKind {
       return SourceApiBodyKind.TEXT;
     case "binary":
       return SourceApiBodyKind.BINARY;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -433,6 +446,8 @@ function toCliSourceApiPaginationPolicy(
       return SourceApiPaginationPolicy.NONE;
     case "continuation_token":
       return SourceApiPaginationPolicy.CONTINUATION_TOKEN;
+    default:
+      return assertNever(value);
   }
 }
 
@@ -446,5 +461,11 @@ function toCliSourceApiSelectorKind(
       return SourceApiSelectorKind.PATH;
     case "identifier":
       return SourceApiSelectorKind.IDENTIFIER;
+    default:
+      return assertNever(value);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled source API codec case: ${String(value)}`);
 }

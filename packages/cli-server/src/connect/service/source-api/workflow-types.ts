@@ -14,7 +14,6 @@ import type {
   SourceApiActionEffect,
   SourceApiActionEvent,
   SourceApiActionRequestDescriptor,
-  StoredSourceApiExecutionResult,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
 } from "../../../audit";
@@ -60,7 +59,7 @@ export type StoredAcceptedSourceApiActionDecision = Extract<
 >;
 
 export type StoredAcceptedSourceApiActionResultCommand = {
-  commandPayload: { type: string } & Record<string, unknown>;
+  commandPayload: SourceApiActionCommandPayload;
   decision: StoredAcceptedSourceApiActionDecision;
 };
 
@@ -100,7 +99,7 @@ export type DescriptorResolutionResult =
     }
   | {
       kind: "failed";
-      problem: ReturnType<typeof import("../result").createCliServiceProblem>;
+      problem: ReturnType<typeof import("../result").createCliServiceFailure>;
     };
 
 export type RequestPreparationResult =
@@ -109,7 +108,7 @@ export type RequestPreparationResult =
     }
   | {
       kind: "failed";
-      problem: ReturnType<typeof import("../result").createCliServiceProblem>;
+      problem: ReturnType<typeof import("../result").createCliServiceFailure>;
     };
 
 export type PageFetchResult =
@@ -119,7 +118,7 @@ export type PageFetchResult =
     }
   | {
       kind: "failed";
-      problem: ReturnType<typeof import("../result").createCliServiceProblem>;
+      problem: ReturnType<typeof import("../result").createCliServiceFailure>;
     };
 
 export type SourceApiPageFetchAttemptResult =
@@ -133,7 +132,7 @@ export type SourceApiPageFetchAttemptResult =
         { type: "record_page_fetch"; kind: "terminal_failure" }
       >;
       kind: "failed";
-      problem: ReturnType<typeof import("../result").createCliServiceProblem>;
+      problem: ReturnType<typeof import("../result").createCliServiceFailure>;
     };
 
 export type LoadedPreparedSourceResult =
@@ -174,5 +173,3 @@ export type SourceApiWorkflowDispatchContext = {
   organizationId: string;
   requestId: string;
 };
-
-export type StoredSourceApiExecutionPayload = StoredSourceApiExecutionResult;

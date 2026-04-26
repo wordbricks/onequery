@@ -6,6 +6,7 @@ import type {
 } from "@onequery/db/server";
 
 import type {
+  QueryActionCommandPayload,
   QueryActionEffect,
   QueryActionEvent,
   StoredWorkflowDecision,
@@ -120,7 +121,7 @@ export type QueryExecutionEffectResult =
     };
 
 export type StoredAcceptedQueryActionResultCommand = {
-  commandPayload: { type: string } & Record<string, unknown>;
+  commandPayload: QueryActionCommandPayload;
   decision: StoredAcceptedQueryActionDecision;
 };
 

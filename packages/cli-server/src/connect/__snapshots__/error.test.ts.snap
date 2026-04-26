@@ -3,26 +3,22 @@
 exports[`connect error helpers > keeps request IDs in transport metadata and attaches retry info as a Connect detail 1`] = `
 {
   "badRequest": [],
-  "cliDetails": [
+  "code": "ResourceExhausted",
+  "errorInfo": [
     {
-      "code": "login_rate_limited",
-      "hint": "wait briefly, then retry \`onequery auth login\`",
-      "requestId": "req_cli_123",
-      "retryable": true,
-      "stage": "auth",
-      "support": {
-        "explainSlug": "login_rate_limited",
-        "kind": "retry",
-        "reason": "transient",
+      "domain": "onequery.cli.v1",
+      "metadata": {
+        "problemStage": "auth",
+        "retryable": "true",
       },
-      "title": "Login Rate Limited",
+      "reason": "LOGIN_RATE_LIMITED",
     },
   ],
-  "code": "ResourceExhausted",
   "metadata": {
     "x-request-id": "req_cli_123",
   },
-  "rawMessage": "Login Rate Limited",
+  "rawMessage": "LOGIN_RATE_LIMITED",
+  "resourceInfo": [],
   "retryInfo": [
     {
       "retryDelay": {
@@ -34,533 +30,598 @@ exports[`connect error helpers > keeps request IDs in transport metadata and att
 }
 `;
 
-exports[`connect error helpers > projects every canonical CLI problem into a Connect code and typed CLI error details 1`] = `
+exports[`connect error helpers > projects every canonical CLI problem into a Connect code and ErrorInfo detail 1`] = `
 {
   "AUTH_REQUEST_INVALID": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "invalid_request",
-        "hint": "correct the auth request and retry",
-        "retryable": false,
-        "stage": "auth",
-        "support": {
-          "explainSlug": "invalid_request",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "auth",
+          "retryable": "false",
         },
-        "title": "Invalid Request",
+        "reason": "AUTH_REQUEST_INVALID",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Invalid Request",
+    "rawMessage": "AUTH_REQUEST_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "EXECUTE_QUERY_REQUEST_INVALID": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "invalid_request",
-        "hint": "correct the query request and retry",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "invalid_request",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "false",
         },
-        "title": "Invalid Request",
+        "reason": "EXECUTE_QUERY_REQUEST_INVALID",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Invalid Request",
+    "rawMessage": "EXECUTE_QUERY_REQUEST_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "FORBIDDEN": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "PermissionDenied",
+    "errorInfo": [
       {
-        "code": "forbidden",
-        "hint": "verify org membership and retry",
-        "retryable": false,
-        "stage": "resolve_org",
-        "support": {
-          "explainSlug": "forbidden",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_org",
+          "retryable": "false",
         },
-        "title": "Forbidden",
+        "reason": "FORBIDDEN",
       },
     ],
-    "code": "PermissionDenied",
     "metadata": {},
-    "rawMessage": "Forbidden",
+    "rawMessage": "FORBIDDEN",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "LOGIN_DENIED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "PermissionDenied",
+    "errorInfo": [
       {
-        "code": "login_denied",
-        "hint": "run \`onequery auth login\` again",
-        "retryable": false,
-        "stage": "auth",
-        "support": {
-          "explainSlug": "login_denied",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "auth",
+          "retryable": "false",
         },
-        "title": "Login Denied",
+        "reason": "LOGIN_DENIED",
       },
     ],
-    "code": "PermissionDenied",
     "metadata": {},
-    "rawMessage": "Login Denied",
+    "rawMessage": "LOGIN_DENIED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "LOGIN_RATE_LIMITED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "ResourceExhausted",
+    "errorInfo": [
       {
-        "code": "login_rate_limited",
-        "hint": "wait briefly, then retry \`onequery auth login\`",
-        "retryable": true,
-        "stage": "auth",
-        "support": {
-          "explainSlug": "login_rate_limited",
-          "kind": "retry",
-          "reason": "transient",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "auth",
+          "retryable": "true",
         },
-        "title": "Login Rate Limited",
+        "reason": "LOGIN_RATE_LIMITED",
       },
     ],
-    "code": "ResourceExhausted",
     "metadata": {},
-    "rawMessage": "Login Rate Limited",
+    "rawMessage": "LOGIN_RATE_LIMITED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "LOGIN_SESSION_EXPIRED": {
     "badRequest": [],
-    "cliDetails": [
-      {
-        "code": "login_session_expired",
-        "hint": "run \`onequery auth login\` again",
-        "retryable": false,
-        "stage": "auth",
-        "support": {
-          "explainSlug": "login_session_expired",
-          "kind": "none",
-          "reason": "user_actionable",
-        },
-        "title": "Login Session Expired",
-      },
-    ],
     "code": "FailedPrecondition",
-    "metadata": {},
-    "rawMessage": "Login Session Expired",
-    "retryInfo": [],
-  },
-  "MALFORMED_JSON": {
-    "badRequest": [],
-    "cliDetails": [
+    "errorInfo": [
       {
-        "code": "malformed_json",
-        "hint": "correct the request body and retry",
-        "retryable": false,
-        "stage": "read_query_input",
-        "support": {
-          "explainSlug": "malformed_json",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "auth",
+          "retryable": "false",
         },
-        "title": "Malformed JSON",
+        "reason": "LOGIN_SESSION_EXPIRED",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Malformed JSON",
+    "rawMessage": "LOGIN_SESSION_EXPIRED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "NOT_LOGGED_IN": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Unauthenticated",
+    "errorInfo": [
       {
-        "code": "not_logged_in",
-        "hint": "run \`onequery auth login\`",
-        "retryable": false,
-        "stage": "auth",
-        "support": {
-          "explainSlug": "not_logged_in",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "auth",
+          "retryable": "false",
         },
-        "title": "Not Logged In",
+        "reason": "NOT_LOGGED_IN",
       },
     ],
-    "code": "Unauthenticated",
     "metadata": {},
-    "rawMessage": "Not Logged In",
+    "rawMessage": "NOT_LOGGED_IN",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "ORG_NOT_FOUND": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "NotFound",
+    "errorInfo": [
       {
-        "code": "org_not_found",
-        "hint": "run \`onequery org list\`",
-        "retryable": false,
-        "stage": "resolve_org",
-        "support": {
-          "explainSlug": "org_not_found",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_org",
+          "retryable": "false",
         },
-        "title": "Organization Not Found",
+        "reason": "ORG_NOT_FOUND",
       },
     ],
-    "code": "NotFound",
     "metadata": {},
-    "rawMessage": "Organization Not Found",
+    "rawMessage": "ORG_NOT_FOUND",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "ORG_REQUEST_INVALID": {
+    "badRequest": [],
+    "code": "InvalidArgument",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_org",
+          "retryable": "false",
+        },
+        "reason": "ORG_REQUEST_INVALID",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "ORG_REQUEST_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "QUERY_EXECUTION_FAILED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Internal",
+    "errorInfo": [
       {
-        "code": "query_execution_failed",
-        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "query_execution_failed",
-          "kind": "report_if_reproducible",
-          "reason": "query_execution_failure",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "false",
         },
-        "title": "Query Execution Failed",
+        "reason": "QUERY_EXECUTION_FAILED",
       },
     ],
-    "code": "Internal",
     "metadata": {},
-    "rawMessage": "Query Execution Failed",
+    "rawMessage": "QUERY_EXECUTION_FAILED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "QUERY_EXECUTION_TIMED_OUT": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "DeadlineExceeded",
+    "errorInfo": [
       {
-        "code": "query_execution_timed_out",
-        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
-        "retryable": true,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "query_execution_timed_out",
-          "kind": "retry",
-          "reason": "transient",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "true",
         },
-        "title": "Query Execution Timed Out",
+        "reason": "QUERY_EXECUTION_TIMED_OUT",
       },
     ],
-    "code": "DeadlineExceeded",
     "metadata": {},
-    "rawMessage": "Query Execution Timed Out",
+    "rawMessage": "QUERY_EXECUTION_TIMED_OUT",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "QUERY_EXECUTION_UNAVAILABLE": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Unavailable",
+    "errorInfo": [
       {
-        "code": "query_execution_unavailable",
-        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
-        "retryable": true,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "query_execution_unavailable",
-          "kind": "retry",
-          "reason": "transient",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "true",
         },
-        "title": "Query Execution Unavailable",
+        "reason": "QUERY_EXECUTION_UNAVAILABLE",
       },
     ],
-    "code": "Unavailable",
     "metadata": {},
-    "rawMessage": "Query Execution Unavailable",
+    "rawMessage": "QUERY_EXECUTION_UNAVAILABLE",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "QUERY_PREPARATION_FAILED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Internal",
+    "errorInfo": [
       {
-        "code": "query_preparation_failed",
-        "hint": "retry \`onequery query exec --source <source> --sql "select ..."\`",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "query_preparation_failed",
-          "kind": "report_if_reproducible",
-          "reason": "query_preparation_failure",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "false",
         },
-        "title": "Query Preparation Failed",
+        "reason": "QUERY_PREPARATION_FAILED",
       },
     ],
-    "code": "Internal",
     "metadata": {},
-    "rawMessage": "Query Preparation Failed",
+    "rawMessage": "QUERY_PREPARATION_FAILED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "QUERY_REJECTED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "query_rejected",
-        "hint": "use a single read-only SELECT query",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "query_rejected",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "execute_query",
+          "retryable": "false",
         },
-        "title": "Query Rejected",
+        "reason": "QUERY_REJECTED",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Query Rejected",
+    "rawMessage": "QUERY_REJECTED",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "QUERY_WORKFLOW_CORRUPT": {
+    "badRequest": [],
+    "code": "DataLoss",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_corruption",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "QUERY_WORKFLOW_CORRUPT",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "QUERY_WORKFLOW_CORRUPT",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "QUERY_WORKFLOW_INTERNAL": {
+    "badRequest": [],
+    "code": "Internal",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_internal",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "QUERY_WORKFLOW_INTERNAL",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "QUERY_WORKFLOW_INTERNAL",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "READ_QUERY_INPUT_INVALID": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "invalid_request",
-        "hint": "correct the query input and retry",
-        "retryable": false,
-        "stage": "read_query_input",
-        "support": {
-          "explainSlug": "invalid_request",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "read_query_input",
+          "retryable": "false",
         },
-        "title": "Invalid Request",
+        "reason": "READ_QUERY_INPUT_INVALID",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Invalid Request",
+    "rawMessage": "READ_QUERY_INPUT_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_DESCRIBE_FAILED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Internal",
+    "errorInfo": [
       {
-        "code": "source_api_describe_failed",
-        "hint": "retry \`onequery api --source <source>\`",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "source_api_describe_failed",
-          "kind": "report_if_reproducible",
-          "reason": "source_api_describe_failure",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_describe",
+          "retryable": "false",
         },
-        "title": "Source API Describe Failed",
+        "reason": "SOURCE_API_DESCRIBE_FAILED",
       },
     ],
-    "code": "Internal",
     "metadata": {},
-    "rawMessage": "Source API Describe Failed",
+    "rawMessage": "SOURCE_API_DESCRIBE_FAILED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_EXECUTION_FAILED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Internal",
+    "errorInfo": [
       {
-        "code": "source_api_execution_failed",
-        "hint": "retry \`onequery api --source <source>\`",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "source_api_execution_failed",
-          "kind": "report_if_reproducible",
-          "reason": "source_api_execution_failure",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_execute",
+          "retryable": "false",
         },
-        "title": "Source API Execution Failed",
+        "reason": "SOURCE_API_EXECUTION_FAILED",
       },
     ],
-    "code": "Internal",
     "metadata": {},
-    "rawMessage": "Source API Execution Failed",
+    "rawMessage": "SOURCE_API_EXECUTION_FAILED",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_EXECUTION_STATE_INVALID": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "FailedPrecondition",
+    "errorInfo": [
       {
-        "code": "source_api_execution_state_invalid",
-        "hint": "rerun the \`onequery api\` command to refresh source API execution state",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "source_api_execution_state_invalid",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_execute",
+          "retryable": "false",
         },
-        "title": "Source API Execution State Invalid",
+        "reason": "SOURCE_API_EXECUTION_STATE_INVALID",
       },
     ],
-    "code": "FailedPrecondition",
     "metadata": {},
-    "rawMessage": "Source API Execution State Invalid",
+    "rawMessage": "SOURCE_API_EXECUTION_STATE_INVALID",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_EXECUTION_TIMED_OUT": {
+    "badRequest": [],
+    "code": "DeadlineExceeded",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_execute",
+          "retryable": "true",
+        },
+        "reason": "SOURCE_API_EXECUTION_TIMED_OUT",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_EXECUTION_TIMED_OUT",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_FORBIDDEN": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "PermissionDenied",
+    "errorInfo": [
       {
-        "code": "source_api_forbidden",
-        "hint": "verify source API permissions and retry",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "source_api_forbidden",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_execute",
+          "retryable": "false",
         },
-        "title": "Source API Forbidden",
+        "reason": "SOURCE_API_FORBIDDEN",
       },
     ],
-    "code": "PermissionDenied",
     "metadata": {},
-    "rawMessage": "Source API Forbidden",
+    "rawMessage": "SOURCE_API_FORBIDDEN",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_PREPARATION_FAILED": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "Internal",
+    "errorInfo": [
       {
-        "code": "source_api_preparation_failed",
-        "hint": "retry \`onequery api --source <source>\`",
-        "retryable": false,
-        "stage": "execute_query",
-        "support": {
-          "explainSlug": "source_api_preparation_failed",
-          "kind": "report_if_reproducible",
-          "reason": "source_api_preparation_failure",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_prepare",
+          "retryable": "false",
         },
-        "title": "Source API Preparation Failed",
+        "reason": "SOURCE_API_PREPARATION_FAILED",
       },
     ],
-    "code": "Internal",
     "metadata": {},
-    "rawMessage": "Source API Preparation Failed",
+    "rawMessage": "SOURCE_API_PREPARATION_FAILED",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_REQUEST_INVALID": {
+    "badRequest": [],
+    "code": "InvalidArgument",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "source_api_execute",
+          "retryable": "false",
+        },
+        "reason": "SOURCE_API_REQUEST_INVALID",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_REQUEST_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_API_SOURCE_UNAVAILABLE": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "FailedPrecondition",
+    "errorInfo": [
       {
-        "code": "source_api_source_unavailable",
-        "hint": "review source credentials in OneQuery and retry",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "source_api_source_unavailable",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_source",
+          "retryable": "false",
         },
-        "title": "Source API Source Unavailable",
+        "reason": "SOURCE_API_SOURCE_UNAVAILABLE",
       },
     ],
-    "code": "FailedPrecondition",
     "metadata": {},
-    "rawMessage": "Source API Source Unavailable",
+    "rawMessage": "SOURCE_API_SOURCE_UNAVAILABLE",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_WORKFLOW_CORRUPT": {
+    "badRequest": [],
+    "code": "DataLoss",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_corruption",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "SOURCE_API_WORKFLOW_CORRUPT",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_WORKFLOW_CORRUPT",
+    "resourceInfo": [],
+    "retryInfo": [],
+  },
+  "SOURCE_API_WORKFLOW_INTERNAL": {
+    "badRequest": [],
+    "code": "Internal",
+    "errorInfo": [
+      {
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemKind": "workflow_internal",
+          "problemStage": "internal",
+          "retryable": "false",
+        },
+        "reason": "SOURCE_API_WORKFLOW_INTERNAL",
+      },
+    ],
+    "metadata": {},
+    "rawMessage": "SOURCE_API_WORKFLOW_INTERNAL",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_NAME_CONFLICT": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "AlreadyExists",
+    "errorInfo": [
       {
-        "code": "source_name_conflict",
-        "hint": "choose a different source name and retry",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "source_name_conflict",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_source",
+          "retryable": "false",
         },
-        "title": "Source Name Conflict",
+        "reason": "SOURCE_NAME_CONFLICT",
       },
     ],
-    "code": "AlreadyExists",
     "metadata": {},
-    "rawMessage": "Source Name Conflict",
+    "rawMessage": "SOURCE_NAME_CONFLICT",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_NOT_FOUND": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "NotFound",
+    "errorInfo": [
       {
-        "code": "source_not_found",
-        "hint": "run \`onequery source list\`",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "source_not_found",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_source",
+          "retryable": "false",
         },
-        "title": "Source Not Found",
+        "reason": "SOURCE_NOT_FOUND",
       },
     ],
-    "code": "NotFound",
     "metadata": {},
-    "rawMessage": "Source Not Found",
+    "rawMessage": "SOURCE_NOT_FOUND",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_NOT_QUERYABLE": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "source_not_queryable",
-        "hint": "run \`onequery source list\` and choose a source where QUERY is yes",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "source_not_queryable",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_source",
+          "retryable": "false",
         },
-        "title": "Source Not Queryable",
+        "reason": "SOURCE_NOT_QUERYABLE",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Source Not Queryable",
+    "rawMessage": "SOURCE_NOT_QUERYABLE",
+    "resourceInfo": [],
     "retryInfo": [],
   },
   "SOURCE_REQUEST_INVALID": {
     "badRequest": [],
-    "cliDetails": [
+    "code": "InvalidArgument",
+    "errorInfo": [
       {
-        "code": "invalid_request",
-        "hint": "correct the source request and retry",
-        "retryable": false,
-        "stage": "resolve_source",
-        "support": {
-          "explainSlug": "invalid_request",
-          "kind": "none",
-          "reason": "user_actionable",
+        "domain": "onequery.cli.v1",
+        "metadata": {
+          "problemStage": "resolve_source",
+          "retryable": "false",
         },
-        "title": "Invalid Request",
+        "reason": "SOURCE_REQUEST_INVALID",
       },
     ],
-    "code": "InvalidArgument",
     "metadata": {},
-    "rawMessage": "Invalid Request",
+    "rawMessage": "SOURCE_REQUEST_INVALID",
+    "resourceInfo": [],
     "retryInfo": [],
   },
+}
+`;
+
+exports[`connect error helpers > serializes resource info as a standard Connect detail 1`] = `
+{
+  "badRequest": [],
+  "code": "NotFound",
+  "errorInfo": [
+    {
+      "domain": "onequery.cli.v1",
+      "metadata": {
+        "problemStage": "resolve_source",
+        "retryable": "false",
+      },
+      "reason": "SOURCE_NOT_FOUND",
+    },
+  ],
+  "metadata": {},
+  "rawMessage": "no source named "warehouse" exists in org "acme"",
+  "resourceInfo": [
+    {
+      "description": "source was not found",
+      "owner": "acme",
+      "resourceName": "warehouse",
+      "resourceType": "onequery.cli.source",
+    },
+  ],
+  "retryInfo": [],
 }
 `;
 
@@ -582,23 +643,20 @@ exports[`connect error helpers > serializes structured validation issues as goog
       ],
     },
   ],
-  "cliDetails": [
+  "code": "InvalidArgument",
+  "errorInfo": [
     {
-      "code": "invalid_request",
-      "hint": "correct the source request and retry",
-      "retryable": false,
-      "stage": "resolve_source",
-      "support": {
-        "explainSlug": "invalid_request",
-        "kind": "none",
-        "reason": "user_actionable",
+      "domain": "onequery.cli.v1",
+      "metadata": {
+        "problemStage": "resolve_source",
+        "retryable": "false",
       },
-      "title": "Invalid Request",
+      "reason": "SOURCE_REQUEST_INVALID",
     },
   ],
-  "code": "InvalidArgument",
   "metadata": {},
   "rawMessage": "invalid source connect request",
+  "resourceInfo": [],
   "retryInfo": [],
 }
 `;

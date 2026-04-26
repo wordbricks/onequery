@@ -43,6 +43,13 @@
       "when": 1776680191903,
       "tag": "20260420101631_even_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777115119543,
+      "tag": "20260425110519_smart_amazoness",
+      "breakpoints": true
     }
   ]
 }

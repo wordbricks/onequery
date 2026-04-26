@@ -24,8 +24,8 @@ import {
 } from "../../../source/model";
 import { requireCliConnectRequestContext } from "../../context";
 import {
-  createCliConnectSourceNameConflictProblem,
-  createCliConnectSourceNotFoundProblem,
+  createCliSourceNameConflictFailure,
+  createCliSourceNotFoundFailure,
 } from "../errors";
 import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod, CliServiceResult } from "../result";
@@ -60,7 +60,10 @@ const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
         context
       )
     );
-    const readControls = yield* parseCliPageRequest(request.page);
+    const readControls = yield* parseCliPageRequest({
+      invalidRequestKey: "SOURCE_REQUEST_INVALID",
+      page: request.page,
+    });
     const sources = await runCliListSourcesEffect({
       db: access.c.var.storage.db,
       effect: {
@@ -120,7 +123,7 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       });
 
       return Result.err(
-        createCliConnectSourceNotFoundProblem(
+        createCliSourceNotFoundFailure(
           access.authorizedOrg.org.slug,
           request.sourceKey
         )
@@ -181,7 +184,7 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
       });
 
       return Result.err(
-        createCliConnectSourceNotFoundProblem(
+        createCliSourceNotFoundFailure(
           access.authorizedOrg.org.slug,
           request.sourceKey
         )
@@ -301,7 +304,7 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
     });
     if (result.kind === "name_conflict") {
       return Result.err(
-        createCliConnectSourceNameConflictProblem(
+        createCliSourceNameConflictFailure(
           access.authorizedOrg.org.slug,
           result.sourceName
         )

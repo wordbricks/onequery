@@ -2,7 +2,6 @@ import {
   check,
   index,
   integer,
-  jsonb,
   text,
   timestamp,
   uniqueIndex,
@@ -12,8 +11,8 @@ import { sql } from "drizzle-orm/sql";
 import type {
   WorkflowEffectDispatchStatus,
   WorkflowFamily,
-  WorkflowJson,
 } from "./audit-workflow";
+import { bytea } from "./bytea";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
 
@@ -37,7 +36,7 @@ export const workflowEffectDispatches = pgTable(
     lastErrorDetail: text("last_error_detail"),
     leasedUntil: timestamp("leased_until", { withTimezone: true }),
     originEventId: text("origin_event_id").notNull(),
-    payloadJson: jsonb("payload_json").$type<WorkflowJson>().notNull(),
+    payloadBytes: bytea("payload_bytes").notNull(),
     status: text("status")
       .$type<WorkflowEffectDispatchStatus>()
       .notNull()

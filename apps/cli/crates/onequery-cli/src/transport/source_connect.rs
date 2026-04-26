@@ -15,7 +15,6 @@ use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::success_response_request_id;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
-use crate::transport::labels::content_format_to_str;
 use crate::transport::source::SourceSummary;
 use crate::transport::source::source_summary_from_generated;
 use crate::transport::source_connect_provider::SourceConnectProvider;
@@ -834,13 +833,7 @@ fn source_connect_guide_from_generated(
                 request_id.clone(),
             )
         })?,
-        format: content_format_to_str(response.format.ok_or_else(|| {
-            decode_failure(
-                ErrorStage::ResolveSource,
-                "source connect guide response missing format",
-                request_id.clone(),
-            )
-        })?),
+        format: content_format_from_generated(response.format, request_id.clone())?,
         content: response.content.ok_or_else(|| {
             decode_failure(
                 ErrorStage::ResolveSource,
@@ -856,6 +849,27 @@ fn source_connect_guide_from_generated(
             )
         })?,
     })
+}
+
+fn content_format_from_generated(
+    value: Option<EnumValue<types::ContentFormat>>,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value {
+        Some(value) => match value.as_known() {
+            Some(types::ContentFormat::CONTENT_FORMAT_MARKDOWN) => Ok("markdown".to_owned()),
+            Some(types::ContentFormat::CONTENT_FORMAT_UNSPECIFIED) | None => Err(decode_failure(
+                ErrorStage::ResolveSource,
+                "source connect guide response has invalid format",
+                request_id,
+            )),
+        },
+        None => Err(decode_failure(
+            ErrorStage::ResolveSource,
+            "source connect guide response missing format",
+            request_id,
+        )),
+    }
 }
 
 fn source_connect_result_from_generated(
@@ -888,12 +902,14 @@ fn source_connect_result_from_generated(
 
 #[cfg(test)]
 mod tests {
+    use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
     use super::SourceConnectGuide;
     use super::SourceConnectResult;
     use super::connect_source_credentials_from_json;
+    use super::source_connect_guide_from_generated;
     use super::types;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::source::SourceSummary;
@@ -920,6 +936,31 @@ mod tests {
                 content: "1. Gather credentials.\n2. Run the command.".to_owned(),
                 command: "onequery source connect --source postgres --input '<json>'".to_owned(),
             }
+        );
+    }
+
+    #[test]
+    fn source_connect_guide_from_generated_rejects_invalid_format() {
+        let error = source_connect_guide_from_generated(
+            types::GetSourceConnectGuideResponse {
+                title: Some("Guide".to_owned()),
+                description: Some("Create one source connection.".to_owned()),
+                format: Some(types::ContentFormat::CONTENT_FORMAT_UNSPECIFIED.into()),
+                content: Some("Run the command.".to_owned()),
+                command: Some("onequery source connect --source postgres".to_owned()),
+                ..Default::default()
+            },
+            Some("req_source_connect_format".to_owned()),
+        )
+        .expect_err("expected invalid format to fail");
+
+        assert_eq!(
+            error,
+            ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
+                stage: ErrorStage::ResolveSource,
+                message: "source connect guide response has invalid format".to_owned(),
+                request_id: Some("req_source_connect_format".to_owned()),
+            })
         );
     }
 
@@ -969,7 +1010,7 @@ mod tests {
         let ApiFailure::Problem(problem) = error else {
             panic!("expected problem failure");
         };
-        let detail = problem.detail;
+        let detail = problem.server_message;
 
         assert!(detail.contains("unknown field `unexpected`"));
     }

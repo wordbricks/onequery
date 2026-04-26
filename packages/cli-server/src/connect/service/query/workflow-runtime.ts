@@ -8,19 +8,24 @@ import {
 } from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
 
-import {
-  QueryActionEffectSchema,
-  QueryActionEventSchema,
-  storeQueryActionCommand,
-} from "../../../audit";
+import { storeQueryActionCommand } from "../../../audit";
 import type {
   QueryActionCommand,
   QueryActionEffect,
+  QueryActionEvent,
   QueryActionSourceDescriptor,
 } from "../../../audit";
+import {
+  decodeQueryActionCommandPayload,
+  decodeQueryActionEffectPayload,
+  decodeQueryActionEventPayload,
+} from "../../../audit/query-action-family/protobuf-codec";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
-import { toCliErrorMessage } from "../../../observability";
-import { createCliServiceProblem } from "../result";
+import {
+  createWorkflowAuditCorruptionFailure,
+  createWorkflowAuditFailure,
+} from "../workflow-audit-failure";
+import { dispatchStoredWorkflowEffect } from "../workflow-effect-dispatch";
 import type {
   CliQueryExecutionDispatch,
   DispatchedQueryActionEffect,
@@ -28,8 +33,6 @@ import type {
   StoredAcceptedQueryActionDecision,
   StoredAcceptedQueryActionResultCommand,
 } from "./workflow-types";
-
-const EFFECT_LEASE_DURATION_MS = 30_000;
 
 export async function dispatchStoredQueryActionEffect<
   EffectType extends QueryActionEffect["type"],
@@ -50,75 +53,23 @@ export async function dispatchStoredQueryActionEffect<
     result: TResult;
   }>;
 }): Promise<DispatchedQueryActionEffect<EffectType, TResult>> {
-  // Comment: query requests still run synchronously on the request path, so
-  // they lease and dispatch the already-committed outbox row inline here until
-  // the shared background dispatcher lands.
-  const originEvent = requireLastCommittedEvent(input.currentDecision);
-  const effectDispatch = await loadRequiredQueryActionEffect({
-    actionId: input.currentDecision.actionId,
-    db: input.db,
-    expectedEffectType: input.expectedEffectType,
-    originEventId: originEvent.id,
+  return dispatchStoredWorkflowEffect<
+    QueryActionEffect,
+    EffectType,
+    QueryActionCommand["commandPayload"],
+    QueryActionEvent,
+    StoredAcceptedQueryActionDecision,
+    StoredAcceptedQueryActionResultCommand,
+    TResult
+  >({
+    ...input,
+    createCorruptionProblem: createQueryAuditCorruptionProblem,
+    createProblem: createQueryAuditProblem,
+    family: "query_action",
+    loadEffect: loadRequiredQueryActionEffect,
+    loadStoredResultCommand: loadStoredAcceptedQueryActionResultCommand,
+    storeResultCommand: storeAcceptedQueryActionCommand,
   });
-
-  const stored = await loadStoredAcceptedQueryActionResultCommand({
-    commandInvocationId: `${effectDispatch.effectKey}:result`,
-    db: input.db,
-  });
-  if (stored !== null) {
-    return {
-      decision: stored.decision,
-      effect: effectDispatch.effect,
-      result: await input.replay({
-        effect: effectDispatch.effect,
-        stored,
-      }),
-    };
-  }
-
-  if (effectDispatch.status !== "pending") {
-    throw createQueryAuditProblem(
-      `query_action effect ${effectDispatch.id} is ${effectDispatch.status} without a stored result command`
-    );
-  }
-
-  await leaseQueryActionEffect({
-    db: input.db,
-    effectDispatch,
-  });
-
-  try {
-    const outcome = await input.run(effectDispatch.effect);
-    const decision = await storeAcceptedQueryActionCommand({
-      actionId: input.currentDecision.actionId,
-      actorSnapshot: input.actorSnapshot,
-      causedByEventId: effectDispatch.originEventId,
-      commandInvocationId: `${effectDispatch.effectKey}:result`,
-      commandPayload: outcome.commandPayload,
-      db: input.db,
-      organizationId: input.organizationId,
-      requestId: input.requestId,
-      surface: "system",
-    });
-
-    await completeQueryActionEffect({
-      db: input.db,
-      effectId: effectDispatch.id,
-    });
-
-    return {
-      decision,
-      effect: effectDispatch.effect,
-      result: outcome.result,
-    };
-  } catch (error) {
-    await releaseQueryActionEffect({
-      db: input.db,
-      effectId: effectDispatch.id,
-      error,
-    });
-    throw error;
-  }
 }
 
 export async function storeAcceptedQueryActionCommand(
@@ -214,7 +165,7 @@ export function requireLastCommittedEvent(
 ) {
   const event = decision.events.at(-1);
   if (!event) {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       `query_action ${decision.commandId} committed without events`
     );
   }
@@ -223,10 +174,24 @@ export function requireLastCommittedEvent(
 }
 
 export function createQueryAuditProblem(detail: string, cause?: unknown) {
-  return createCliServiceProblem({
-    ...(cause === undefined ? {} : { cause }),
+  return createWorkflowAuditFailure({
+    cause,
     detail,
-    key: "QUERY_PREPARATION_FAILED",
+    keys: {
+      corrupt: "QUERY_WORKFLOW_CORRUPT",
+      internal: "QUERY_WORKFLOW_INTERNAL",
+    },
+  });
+}
+
+export function createQueryAuditCorruptionProblem(
+  detail: string,
+  cause?: unknown
+) {
+  return createWorkflowAuditCorruptionFailure({
+    cause,
+    detail,
+    key: "QUERY_WORKFLOW_CORRUPT",
   });
 }
 
@@ -255,31 +220,31 @@ async function loadRequiredQueryActionEffect<
     .limit(1);
 
   if (!row) {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       `query_action effect ${input.expectedEffectType} is missing for origin event ${input.originEventId}`
     );
   }
 
-  const parsedEffect = QueryActionEffectSchema.safeParse({
-    type: row.effectType,
-    ...row.payloadJson,
+  const decodedEffect = decodeQueryActionEffectPayload(row.payloadBytes, {
+    actionId: input.actionId,
+    payloadType: row.effectType,
   });
-  if (!parsedEffect.success) {
-    throw createQueryAuditProblem(
+  if (decodedEffect.isErr()) {
+    throw createQueryAuditCorruptionProblem(
       `query_action effect ${row.effectType} payload is corrupt`,
-      parsedEffect.error
+      decodedEffect.error
     );
   }
 
-  if (parsedEffect.data.type !== input.expectedEffectType) {
-    throw createQueryAuditProblem(
-      `query_action expected effect ${input.expectedEffectType} but loaded ${parsedEffect.data.type}`
+  if (decodedEffect.value.type !== input.expectedEffectType) {
+    throw createQueryAuditCorruptionProblem(
+      `query_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
     );
   }
 
   return {
     attemptCount: row.attemptCount,
-    effect: parsedEffect.data as Extract<
+    effect: decodedEffect.value as Extract<
       QueryActionEffect,
       { type: EffectType }
     >,
@@ -306,13 +271,13 @@ async function loadStoredAcceptedQueryActionResultCommand(input: {
   }
 
   if (storedCommand.decisionKind !== "accepted") {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       `query_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
     );
   }
 
   if (storedCommand.actionId === null) {
-    throw createQueryAuditProblem(
+    throw createQueryAuditCorruptionProblem(
       `query_action stored result command ${input.commandInvocationId} is missing its action id`
     );
   }
@@ -323,28 +288,41 @@ async function loadStoredAcceptedQueryActionResultCommand(input: {
     .where(eq(queryActionEvents.commandId, storedCommand.id))
     .orderBy(asc(queryActionEvents.sequence));
 
+  const commandPayload = decodeQueryActionCommandPayload(
+    storedCommand.commandPayloadBytes,
+    {
+      actionId: storedCommand.actionId,
+      commandId: storedCommand.id,
+      payloadType: storedCommand.commandType,
+    }
+  );
+  if (commandPayload.isErr()) {
+    throw createQueryAuditCorruptionProblem(
+      `query_action stored result command ${input.commandInvocationId} has a corrupt command payload`,
+      commandPayload.error
+    );
+  }
+
   return {
-    commandPayload: {
-      type: storedCommand.commandType,
-      ...storedCommand.commandPayloadJson,
-    },
+    commandPayload: commandPayload.value,
     decision: {
       actionId: storedCommand.actionId,
       commandId: storedCommand.id,
       events: events.map((row) => {
-        const parsed = QueryActionEventSchema.safeParse({
-          type: row.eventType,
-          ...row.payloadJson,
+        const decoded = decodeQueryActionEventPayload(row.payloadBytes, {
+          actionId: row.actionId,
+          commandId: row.commandId,
+          payloadType: row.eventType,
         });
-        if (!parsed.success) {
-          throw createQueryAuditProblem(
+        if (decoded.isErr()) {
+          throw createQueryAuditCorruptionProblem(
             `query_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
-            parsed.error
+            decoded.error
           );
         }
 
         return {
-          ...parsed.data,
+          ...decoded.value,
           id: row.id,
           occurredAt: row.occurredAt,
           sequence: row.sequence,
@@ -355,74 +333,4 @@ async function loadStoredAcceptedQueryActionResultCommand(input: {
       kind: "accepted" as const,
     },
   };
-}
-
-async function leaseQueryActionEffect(input: {
-  db: Database;
-  effectDispatch: Pick<LoadedQueryActionEffect, "attemptCount" | "id">;
-}) {
-  const leasedUntil = new Date(Date.now() + EFFECT_LEASE_DURATION_MS);
-  const leased = await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      attemptCount: input.effectDispatch.attemptCount + 1,
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil,
-      status: "leased",
-    })
-    .where(
-      and(
-        eq(workflowEffectDispatches.id, input.effectDispatch.id),
-        eq(workflowEffectDispatches.status, "pending")
-      )
-    )
-    .returning({ id: workflowEffectDispatches.id });
-
-  if (leased.length !== 1) {
-    throw createQueryAuditProblem(
-      `query_action effect ${input.effectDispatch.id} could not be leased`
-    );
-  }
-}
-
-async function completeQueryActionEffect(input: {
-  db: Database;
-  effectId: string;
-}) {
-  const completedAt = new Date();
-  const completed = await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      completedAt,
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil: null,
-      status: "completed",
-    })
-    .where(eq(workflowEffectDispatches.id, input.effectId))
-    .returning({ id: workflowEffectDispatches.id });
-
-  if (completed.length !== 1) {
-    throw createQueryAuditProblem(
-      `query_action effect ${input.effectId} could not be completed`
-    );
-  }
-}
-
-async function releaseQueryActionEffect(input: {
-  db: Database;
-  effectId: string;
-  error: unknown;
-}) {
-  await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      availableAt: new Date(),
-      lastErrorCode: "dispatch_failed",
-      lastErrorDetail: toCliErrorMessage(input.error),
-      leasedUntil: null,
-      status: "pending",
-    })
-    .where(eq(workflowEffectDispatches.id, input.effectId));
 }

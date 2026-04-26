@@ -92,7 +92,7 @@ mod tests {
                 "server rejected write query",
                 vec![],
             )
-            .with_code(Some("query_rejected".to_owned())),
+            .with_code(Some("QUERY_REJECTED".to_owned())),
             Some("query exec"),
             chrono::DateTime::parse_from_rfc3339("2026-04-23T03:12:11Z")
                 .expect("expected timestamp")
@@ -107,7 +107,7 @@ mod tests {
             Path::new("/tmp/onequery-report-2026-04-23T03-20-00Z-req_123.md"),
         );
 
-        assert_eq!(draft.title, "[cli] query_rejected");
+        assert_eq!(draft.title, "[cli] QUERY_REJECTED");
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
             draft.issue_url
         );
         assert!(
-            draft.issue_url.contains("title=%5Bcli%5D+query_rejected"),
+            draft.issue_url.contains("title=%5Bcli%5D+QUERY_REJECTED"),
             "missing encoded title: {}",
             draft.issue_url
         );
@@ -152,7 +152,7 @@ mod tests {
 
         assert_eq!(
             draft.github_command,
-            "gh issue create -R wordbricks/onequery --label \"bug\" --label \"cli\" --title \"[cli] query_rejected\" --body-file \"/tmp/onequery-report-2026-04-23T03-20-00Z-req_123.md\""
+            "gh issue create -R wordbricks/onequery --label \"bug\" --label \"cli\" --title \"[cli] QUERY_REJECTED\" --body-file \"/tmp/onequery-report-2026-04-23T03-20-00Z-req_123.md\""
         );
     }
 

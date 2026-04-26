@@ -5,7 +5,6 @@ import {
   buildCliSourceShowCommand,
 } from "../cli-defaults";
 import type { CliSourceRecord } from "../domain/workflows";
-import { createCliProblem } from "../error";
 
 type SourceConnectProviderGuide = {
   provider: ProviderType;
@@ -313,13 +312,6 @@ export function buildCliSourceConnectResult(source: CliSourceRecord) {
     nextCommand: buildCliSourceShowCommand(source.sourceKey),
     source,
   };
-}
-
-export function sourceNameConflictProblem(orgSlug: string, sourceName: string) {
-  return createCliProblem({
-    detail: `source "${sourceName}" already exists in org "${orgSlug}"`,
-    key: "SOURCE_NAME_CONFLICT",
-  });
 }
 
 function buildSourceConnectContent(

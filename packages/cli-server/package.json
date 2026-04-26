@@ -4,12 +4,11 @@
   "private": false,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./route": "./src/route.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
-    "test": "vitest run --exclude 'src/**/*.integration.test.ts'",
+    "test": "vitest run --exclude 'src/**/*.integration.test.ts' --pool=threads",
     "test:integration": "vitest run integration.test.ts"
   },
   "dependencies": {
@@ -25,7 +24,6 @@
     "@onequery/server": "workspace:*",
     "better-result": "catalog:",
     "hono": "catalog:",
-    "hono-problem-details": "catalog:",
     "zod": "catalog:"
   }
 }

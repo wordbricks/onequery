@@ -1,5 +1,5 @@
 import { authorizeSourceApi } from "./authorize";
-import { readSourceApiErrorMessage } from "./errors";
+import { SourceApiTimeoutError, readSourceApiErrorMessage } from "./errors";
 import { getSourceApiAdapter, sourceApiRegistry } from "./registry";
 import type { SourceApiRegistry } from "./registry";
 import type {
@@ -69,5 +69,23 @@ function toSourceApiExecutionStageError(
     return error;
   }
 
-  return new SourceApiExecutionStageError(stage, error);
+  const cause =
+    stage === "execute" && isAbortTimeoutCause(error)
+      ? new SourceApiTimeoutError(readSourceApiErrorMessage(error), {
+          cause: error,
+        })
+      : error;
+  return new SourceApiExecutionStageError(stage, cause);
+}
+
+function isAbortTimeoutCause(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error.name === "AbortError" || error.name === "TimeoutError") {
+    return true;
+  }
+
+  return isAbortTimeoutCause(error.cause);
 }

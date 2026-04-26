@@ -412,6 +412,21 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
   );
   const webOutDir = resolvePackagedRuntimeEntryDir(runtimeRoot, "webDist");
   const builtWebDistDir = await resolveBuiltWebDistDir();
+
+  await mkdir(runtimeRoot, { recursive: true });
+  await Promise.all(
+    [migrationsOutDir, webOutDir]
+      .map((outDir) => path.dirname(outDir))
+      .map((outDir) => mkdir(outDir, { recursive: true }))
+  );
+  await Promise.all([
+    cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true }),
+    stageRuntimeAssets({ runtimeRoot }),
+    cp(builtWebDistDir, webOutDir, { recursive: true }),
+  ]);
+}
+
+export async function stageRuntimeAssets({ runtimeRoot }) {
   const runtimeAssetCopyPlans = await Promise.all(
     getRuntimeAssetFamilyIds().map(async (family) => ({
       family,
@@ -421,12 +436,6 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
   );
 
   await mkdir(runtimeRoot, { recursive: true });
-  await Promise.all(
-    [migrationsOutDir, webOutDir]
-      .map((outDir) => path.dirname(outDir))
-      .map((outDir) => mkdir(outDir, { recursive: true }))
-  );
-  await cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true });
   await Promise.all(
     runtimeAssetCopyPlans.map(({ outDir }) =>
       mkdir(outDir, { recursive: true })
@@ -439,7 +448,6 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
       )
     )
   );
-  await cp(builtWebDistDir, webOutDir, { recursive: true });
 }
 
 async function resolveRuntimeAssetSourcePaths(family) {
@@ -666,6 +674,7 @@ export const __internal = {
   stageInstallBundle,
   stageSources,
   stagePackagedRuntime,
+  stageRuntimeAssets,
 };
 
 async function buildWebAssets() {
