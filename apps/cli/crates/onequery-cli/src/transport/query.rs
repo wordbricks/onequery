@@ -497,7 +497,7 @@ mod tests {
     use crate::output_metadata::SanitizationMetadata;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
-    use crate::transport::generated::types;
+    use crate::transport::api_failure::ApiProblemReason;
     use crate::transport::read_controls::PageInfo;
     use crate::transport::source::SourceSummary;
 
@@ -625,29 +625,25 @@ mod tests {
         assert_eq!(
             [
                 ApiFailure::Problem(ApiProblem {
-                    title: "Query Execution Unavailable".to_owned(),
-                    detail: "query execution is temporarily unavailable".to_owned(),
-                    code: types::ProblemCode::PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE,
+                    reason: ApiProblemReason::from_static("QUERY_EXECUTION_UNAVAILABLE"),
+                    server_message: "query execution is temporarily unavailable".to_owned(),
                     retryable: true,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
-                    hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
-                    support_action: None,
+                    resource: None,
                 })
                 .is_retryable(),
                 ApiFailure::Problem(ApiProblem {
-                    title: "Invalid Request".to_owned(),
-                    detail: "query request is invalid".to_owned(),
-                    code: types::ProblemCode::PROBLEM_CODE_INVALID_REQUEST,
+                    reason: ApiProblemReason::from_static("EXECUTE_QUERY_REQUEST_INVALID"),
+                    server_message: "query request is invalid".to_owned(),
                     retryable: false,
                     retry_after_ms: None,
                     stage: ErrorStage::ExecuteQuery,
-                    hint: None,
                     request_id: None,
                     validation_issues: Vec::new(),
-                    support_action: None,
+                    resource: None,
                 })
                 .is_retryable(),
             ],

@@ -5,13 +5,14 @@ use std::path::PathBuf;
 use chrono::DateTime;
 use chrono::Utc;
 use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::CliSupportActionKind;
 use onequery_cli_core::error::CliValidationIssue;
 use onequery_cli_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::config::data_dir;
+use crate::explain::ExplainSupportKind;
+use crate::explain::explanation_for_error_code;
 use crate::path_utils;
 
 pub(crate) const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
@@ -34,23 +35,23 @@ pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
         return None;
     }
 
-    if let Some(support_action) = &error.support_action {
-        match support_action.kind {
-            CliSupportActionKind::ReportIfReproducible => {
+    if let Some(code) = error.code.as_deref()
+        && let Some(explanation) = explanation_for_error_code(code)
+    {
+        match explanation.support_kind {
+            ExplainSupportKind::ReportIfReproducible => {
                 return Some(ReportSuggestion {
                     recommended: false,
-                    reason: support_action.reason.clone(),
+                    reason: explanation.support_reason.to_owned(),
                 });
             }
-            CliSupportActionKind::ReportRecommended => {
+            ExplainSupportKind::ReportRecommended => {
                 return Some(ReportSuggestion {
                     recommended: true,
-                    reason: support_action.reason.clone(),
+                    reason: explanation.support_reason.to_owned(),
                 });
             }
-            CliSupportActionKind::None
-            | CliSupportActionKind::Retry
-            | CliSupportActionKind::Explain => return None,
+            ExplainSupportKind::None | ExplainSupportKind::Retry => return None,
         }
     }
 
@@ -65,13 +66,6 @@ pub(crate) fn report_suggestion(error: &CliError) -> Option<ReportSuggestion> {
         return Some(ReportSuggestion {
             recommended: true,
             reason: "render_failure".to_owned(),
-        });
-    }
-
-    if matches!(error.code.as_deref(), Some("decode_error")) {
-        return Some(ReportSuggestion {
-            recommended: true,
-            reason: "unexpected_response_decode_failure".to_owned(),
         });
     }
 
@@ -498,8 +492,6 @@ pub(crate) fn write_report(
 mod tests {
     use chrono::TimeZone;
     use chrono::Utc;
-    use onequery_cli_core::error::CliSupportAction;
-    use onequery_cli_core::error::CliSupportActionKind;
     use pretty_assertions::assert_eq;
     use std::path::Path;
     use tempfile::tempdir;
@@ -634,13 +626,9 @@ mod tests {
     }
 
     #[test]
-    fn diagnostic_snapshot_marks_report_if_reproducible_as_not_recommended() {
+    fn diagnostic_snapshot_derives_reportability_from_known_reason() {
         let snapshot = DiagnosticSnapshot::from_error(
-            &sample_error().with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::ReportIfReproducible,
-                reason: "query_execution_failure".to_owned(),
-                explain_slug: "query_execution_failed".to_owned(),
-            })),
+            &sample_error().with_code(Some("QUERY_EXECUTION_FAILED".to_owned())),
             Some("query exec"),
             Utc.with_ymd_and_hms(2026, 4, 23, 3, 12, 11)
                 .single()
@@ -657,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn report_suggestion_does_not_infer_server_reportability_from_error_code() {
+    fn report_suggestion_does_not_infer_unknown_problem_reason_reportability() {
         let error = CliError::new(
             "query failed",
             "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"",
@@ -665,7 +653,7 @@ mod tests {
             "warehouse execution unexpectedly failed",
             vec!["retry onequery query exec --source warehouse".to_owned()],
         )
-        .with_code(Some("query_execution_failed".to_owned()));
+        .with_code(Some("QUERY_RESULT_FORMAT_CHANGED".to_owned()));
 
         assert_eq!(report_suggestion(&error), None);
     }

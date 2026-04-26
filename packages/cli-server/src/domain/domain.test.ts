@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  CLI_PROBLEM_CATALOG,
-  cliProblemCodeToString,
-  cliProblemStageToString,
-} from "./problems";
+import { CLI_PROBLEM_DEFINITIONS } from "./problems";
 import { toCliAuthUserView } from "./workflows";
 
 describe("cli domain model", () => {
@@ -18,35 +14,24 @@ describe("cli domain model", () => {
     ).toMatchSnapshot();
   });
 
-  it("keeps CLI problem metadata in the canonical catalog", () => {
+  it("keeps CLI problem metadata in the canonical definition table", () => {
     expect({
-      notLoggedIn: {
-        ...CLI_PROBLEM_CATALOG.NOT_LOGGED_IN,
-        code: cliProblemCodeToString(CLI_PROBLEM_CATALOG.NOT_LOGGED_IN.code),
-        stage: cliProblemStageToString(CLI_PROBLEM_CATALOG.NOT_LOGGED_IN.stage),
-      },
-      sourceApiExecutionStateInvalid: {
-        ...CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID,
-        code: cliProblemCodeToString(
-          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.code
-        ),
-        stage: cliProblemStageToString(
-          CLI_PROBLEM_CATALOG.SOURCE_API_EXECUTION_STATE_INVALID.stage
-        ),
-      },
-      sourceNotFound: {
-        ...CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND,
-        code: cliProblemCodeToString(CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND.code),
-        stage: cliProblemStageToString(
-          CLI_PROBLEM_CATALOG.SOURCE_NOT_FOUND.stage
-        ),
-      },
+      notLoggedIn: CLI_PROBLEM_DEFINITIONS.NOT_LOGGED_IN,
+      sourceApiExecutionStateInvalid:
+        CLI_PROBLEM_DEFINITIONS.SOURCE_API_EXECUTION_STATE_INVALID,
+      sourceNotFound: CLI_PROBLEM_DEFINITIONS.SOURCE_NOT_FOUND,
     }).toMatchSnapshot();
-    expect(CLI_PROBLEM_CATALOG.AUTH_REQUEST_INVALID.stage).toBeDefined();
-    expect(CLI_PROBLEM_CATALOG.SOURCE_REQUEST_INVALID.stage).toBeDefined();
-    expect(CLI_PROBLEM_CATALOG.READ_QUERY_INPUT_INVALID.stage).toBeDefined();
+    expect(CLI_PROBLEM_DEFINITIONS.AUTH_REQUEST_INVALID.stage).toBeDefined();
+    expect(CLI_PROBLEM_DEFINITIONS.SOURCE_REQUEST_INVALID.stage).toBeDefined();
+    expect(CLI_PROBLEM_DEFINITIONS.ORG_REQUEST_INVALID.stage).toBeDefined();
     expect(
-      CLI_PROBLEM_CATALOG.EXECUTE_QUERY_REQUEST_INVALID.stage
+      CLI_PROBLEM_DEFINITIONS.READ_QUERY_INPUT_INVALID.stage
+    ).toBeDefined();
+    expect(
+      CLI_PROBLEM_DEFINITIONS.EXECUTE_QUERY_REQUEST_INVALID.stage
+    ).toBeDefined();
+    expect(
+      CLI_PROBLEM_DEFINITIONS.SOURCE_API_REQUEST_INVALID.stage
     ).toBeDefined();
   });
 });

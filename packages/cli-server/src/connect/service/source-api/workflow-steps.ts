@@ -4,13 +4,15 @@ import type {
   SourceApiDescriptor,
   SourceApiDraft,
 } from "@onequery/server/source-api";
+import { Result } from "better-result";
 
 import type { SourceApiActionEffect } from "../../../audit";
-import { createCliConnectSourceNotFoundProblem } from "../errors";
-import { createCliServiceProblem } from "../result";
+import { createCliSourceNotFoundFailure } from "../errors";
+import { createCliServiceFailure } from "../result";
+import type { CliServiceResult } from "../result";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
-  createSourceApiConnectProblem,
+  createSourceApiFailure,
   prepareSourceApiDraftResult,
   resolveSourceApiDescriptor,
 } from "./runtime";
@@ -42,7 +44,7 @@ import type {
 
 export async function runPreparedSourceApiWorkflow(
   input: PreparedSourceApiWorkflowInput
-): Promise<PreparedSourceApiWorkflow> {
+): Promise<CliServiceResult<PreparedSourceApiWorkflow>> {
   const startDecision = await dispatchStartSourceApiWorkflow(input);
 
   const sourceLookup = await dispatchStoredSourceApiActionEffect<
@@ -93,7 +95,9 @@ export async function runPreparedSourceApiWorkflow(
   });
 
   if (sourceLookup.result.kind === "not_found") {
-    throw createCliConnectSourceNotFoundProblem(input.orgSlug, input.sourceKey);
+    return Result.err(
+      createCliSourceNotFoundFailure(input.orgSlug, input.sourceKey)
+    );
   }
 
   const descriptorResolution = await dispatchStoredSourceApiActionEffect<
@@ -117,7 +121,7 @@ export async function runPreparedSourceApiWorkflow(
       });
 
       if (loadedSource.kind !== "loaded") {
-        const problem = createCliServiceProblem({
+        const problem = createCliServiceFailure({
           detail: loadedSource.detail,
           key: "SOURCE_API_SOURCE_UNAVAILABLE",
         });
@@ -126,6 +130,7 @@ export async function runPreparedSourceApiWorkflow(
             detail: problem.message,
             failureCode: "descriptor_unavailable",
             kind: "failed",
+            problemKey: problem.reason,
             type: "record_descriptor_resolution",
           },
           result: {
@@ -153,6 +158,7 @@ export async function runPreparedSourceApiWorkflow(
             detail: failure.problem.message,
             failureCode: failure.failureCode,
             kind: "failed",
+            problemKey: failure.problemKey,
             type: "record_descriptor_resolution",
           },
           result: {
@@ -178,13 +184,13 @@ export async function runPreparedSourceApiWorkflow(
   });
 
   if (descriptorResolution.result.kind === "failed") {
-    throw descriptorResolution.result.problem;
+    return Result.err(descriptorResolution.result.problem);
   }
 
-  return {
+  return Result.ok({
     decision: descriptorResolution.decision,
     descriptor: descriptorResolution.result.descriptor,
-  };
+  });
 }
 
 export async function runSourceApiRequestPreparationStep(input: {
@@ -244,6 +250,7 @@ export async function runSourceApiRequestPreparationStep(input: {
             detail: failure.problem.message,
             failureCode: failure.failureCode,
             kind: "failed",
+            problemKey: failure.problemKey,
             type: "record_request_preparation",
           },
           result: {
@@ -329,13 +336,13 @@ export async function runSourceApiPageFetchStep(input: {
 }
 
 function toDescriptorResolutionFailure(
-  problem: ReturnType<typeof createCliServiceProblem>,
+  problem: ReturnType<typeof createCliServiceFailure>,
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ) {
   const normalizedProblem =
-    problem.key === "SOURCE_API_FORBIDDEN"
+    problem.reason === "SOURCE_API_FORBIDDEN"
       ? problem
-      : createSourceApiConnectProblem({
+      : createSourceApiFailure({
           error: problem,
           phase: "describe",
           renderError: dependencies.toCliErrorMessage,
@@ -343,34 +350,47 @@ function toDescriptorResolutionFailure(
 
   return {
     failureCode:
-      normalizedProblem.key === "SOURCE_API_FORBIDDEN"
+      normalizedProblem.reason === "SOURCE_API_FORBIDDEN"
         ? ("permission_denied" as const)
         : ("descriptor_unavailable" as const),
     problem: normalizedProblem,
+    problemKey: normalizedProblem.reason,
   };
 }
 
 function toRequestPreparationFailure(
-  problem: ReturnType<typeof createCliServiceProblem>,
+  problem: ReturnType<typeof createCliServiceFailure>,
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ) {
   const normalizedProblem =
-    problem.key === "SOURCE_API_FORBIDDEN" ||
-    problem.key === "SOURCE_REQUEST_INVALID"
+    problem.reason === "SOURCE_API_FORBIDDEN" ||
+    problem.reason === "SOURCE_API_REQUEST_INVALID"
       ? problem
-      : createSourceApiConnectProblem({
+      : createSourceApiFailure({
           error: problem,
           phase: "prepare",
           renderError: dependencies.toCliErrorMessage,
         });
 
   return {
-    failureCode:
-      normalizedProblem.key === "SOURCE_API_FORBIDDEN"
-        ? ("permission_denied" as const)
-        : ("invalid_request" as const),
+    failureCode: classifyRequestPreparationFailureCode(normalizedProblem),
     problem: normalizedProblem,
+    problemKey: normalizedProblem.reason,
   };
+}
+
+function classifyRequestPreparationFailureCode(
+  problem: ReturnType<typeof createCliServiceFailure>
+) {
+  if (problem.reason === "SOURCE_API_FORBIDDEN") {
+    return "permission_denied" as const;
+  }
+
+  if (problem.reason === "SOURCE_API_EXECUTION_STATE_INVALID") {
+    return "execution_state_invalid" as const;
+  }
+
+  return "invalid_request" as const;
 }
 
 async function dispatchStartSourceApiWorkflow(

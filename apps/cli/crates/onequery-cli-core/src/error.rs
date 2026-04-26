@@ -23,6 +23,12 @@ pub enum ErrorStage {
     ReadQueryInput,
     /// Executing a query against the CLI API failed.
     ExecuteQuery,
+    /// Describing a source API operation failed.
+    SourceApiDescribe,
+    /// Preparing a source API operation failed.
+    SourceApiPrepare,
+    /// Executing a source API operation failed.
+    SourceApiExecute,
     /// A generic HTTP transport failure occurred.
     Http,
     /// Rendering CLI output failed.
@@ -43,6 +49,9 @@ impl ErrorStage {
             Self::ResolveSource => "resolve_source",
             Self::ReadQueryInput => "read_query_input",
             Self::ExecuteQuery => "execute_query",
+            Self::SourceApiDescribe => "source_api_describe",
+            Self::SourceApiPrepare => "source_api_prepare",
+            Self::SourceApiExecute => "source_api_execute",
             Self::Http => "http",
             Self::Render => "render",
             Self::Internal => "internal",
@@ -50,63 +59,25 @@ impl ErrorStage {
     }
 
     /// Maps a server-provided stage string to a local [`ErrorStage`].
-    ///
-    /// Unknown stage identifiers fall back to the caller-provided default.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use onequery_cli_core::error::ErrorStage;
-    ///
-    /// let stage = ErrorStage::from_api_stage("load_config", ErrorStage::Internal);
-    /// let unknown = ErrorStage::from_api_stage("mystery_stage", ErrorStage::Render);
-    ///
-    /// assert_eq!(stage, ErrorStage::LoadConfig);
-    /// assert_eq!(stage.as_str(), "load_config");
-    /// assert_eq!(unknown, ErrorStage::Render);
-    /// ```
-    pub fn from_api_stage(raw_stage: &str, fallback: Self) -> Self {
+    pub fn try_from_api_stage(raw_stage: &str) -> Option<Self> {
         match raw_stage {
-            "parse_command" => Self::ParseCommand,
-            "load_config" => Self::LoadConfig,
-            "load_credentials" => Self::LoadCredentials,
-            "auth" => Self::Auth,
-            "resolve_org" => Self::ResolveOrg,
-            "resolve_source" => Self::ResolveSource,
-            "read_query_input" => Self::ReadQueryInput,
-            "execute_query" => Self::ExecuteQuery,
-            "http" => Self::Http,
-            "render" => Self::Render,
-            "internal" => Self::Internal,
-            _ => fallback,
+            "parse_command" => Some(Self::ParseCommand),
+            "load_config" => Some(Self::LoadConfig),
+            "load_credentials" => Some(Self::LoadCredentials),
+            "auth" => Some(Self::Auth),
+            "resolve_org" => Some(Self::ResolveOrg),
+            "resolve_source" => Some(Self::ResolveSource),
+            "read_query_input" => Some(Self::ReadQueryInput),
+            "execute_query" => Some(Self::ExecuteQuery),
+            "source_api_describe" => Some(Self::SourceApiDescribe),
+            "source_api_prepare" => Some(Self::SourceApiPrepare),
+            "source_api_execute" => Some(Self::SourceApiExecute),
+            "http" => Some(Self::Http),
+            "render" => Some(Self::Render),
+            "internal" => Some(Self::Internal),
+            _ => None,
         }
     }
-}
-
-/// Server-provided support action kind for CLI problem responses.
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum CliSupportActionKind {
-    /// The error is user-actionable without extra support guidance.
-    None,
-    /// Retrying the same command is the primary recovery path.
-    Retry,
-    /// A longer-form explanation is available for this problem code.
-    Explain,
-    /// Reporting is useful when the failure is reproducible.
-    ReportIfReproducible,
-    /// Reporting is recommended because the failure is unexpected.
-    ReportRecommended,
-}
-
-/// Server-provided support guidance attached to a CLI problem response.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CliSupportAction {
-    /// Support guidance kind for the current failure.
-    pub kind: CliSupportActionKind,
-    /// Stable reason string for diagnostics and structured output.
-    pub reason: String,
-    /// Stable slug for future explain surfaces.
-    pub explain_slug: String,
 }
 
 /// Top-level CLI error wrapper.
@@ -147,8 +118,6 @@ pub struct CliErrorData {
     pub retry_after_ms: Option<u64>,
     /// Structured validation issues returned by the server when available.
     pub validation_issues: Vec<CliValidationIssue>,
-    /// Optional server-provided support guidance for typed API failures.
-    pub support_action: Option<CliSupportAction>,
 }
 
 /// Structured validation issue returned by the CLI API.
@@ -185,7 +154,6 @@ impl CliError {
             retryable: false,
             retry_after_ms: None,
             validation_issues: Vec::new(),
-            support_action: None,
         }))
     }
 
@@ -237,12 +205,6 @@ impl CliError {
         self
     }
 
-    /// Attaches server-provided support guidance when available.
-    pub fn with_support_action(mut self, support_action: Option<CliSupportAction>) -> Self {
-        self.0.support_action = support_action;
-        self
-    }
-
     /// Returns the process exit code associated with the error stage.
     pub fn exit_code(&self) -> i32 {
         match self.stage {
@@ -250,7 +212,11 @@ impl CliError {
             ErrorStage::Auth => 3,
             ErrorStage::ResolveOrg => 4,
             ErrorStage::ResolveSource => 5,
-            ErrorStage::ReadQueryInput | ErrorStage::ExecuteQuery => 6,
+            ErrorStage::ReadQueryInput
+            | ErrorStage::ExecuteQuery
+            | ErrorStage::SourceApiDescribe
+            | ErrorStage::SourceApiPrepare
+            | ErrorStage::SourceApiExecute => 6,
             ErrorStage::Http => 7,
             ErrorStage::LoadConfig | ErrorStage::LoadCredentials => 8,
             ErrorStage::Render | ErrorStage::Internal => 10,
@@ -283,17 +249,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::CliError;
-    use super::CliSupportAction;
-    use super::CliSupportActionKind;
     use super::ErrorStage;
-
-    #[test]
-    fn from_api_stage_falls_back_for_unknown_values() {
-        assert_eq!(
-            ErrorStage::from_api_stage("mystery_stage", ErrorStage::Render),
-            ErrorStage::Render
-        );
-    }
 
     #[test]
     fn exit_code_matches_documented_stage_groups() {
@@ -332,31 +288,6 @@ mod tests {
                 (ErrorStage::Render, 10, 10),
                 (ErrorStage::Internal, 10, 10),
             ]
-        );
-    }
-
-    #[test]
-    fn with_support_action_preserves_caller_payload_without_normalizing_strings() {
-        let error = CliError::new(
-            "query failed",
-            "onequery query exec",
-            ErrorStage::ExecuteQuery,
-            "boom",
-            vec![],
-        )
-        .with_support_action(Some(CliSupportAction {
-            kind: CliSupportActionKind::ReportIfReproducible,
-            reason: "  query_execution_failure  ".to_owned(),
-            explain_slug: "  query_execution_failed  ".to_owned(),
-        }));
-
-        assert_eq!(
-            error.support_action,
-            Some(CliSupportAction {
-                kind: CliSupportActionKind::ReportIfReproducible,
-                reason: "  query_execution_failure  ".to_owned(),
-                explain_slug: "  query_execution_failed  ".to_owned(),
-            })
         );
     }
 }

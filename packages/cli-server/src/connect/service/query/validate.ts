@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 
-import { createCliConnectProblemForQueryPlanResult } from "../errors";
+import { createCliFailureForQueryPlanResult } from "../errors";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
 import { syncCliQueryAuditFeedProjection } from "./audit-projection";
@@ -46,7 +46,7 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
 
     if (result.kind !== "ready") {
       logCliQueryValidationFailure(resolved.c, request.sourceKey, result);
-      return Result.err(createCliConnectProblemForQueryPlanResult(result));
+      return Result.err(createCliFailureForQueryPlanResult(result));
     }
 
     logCliQueryValidationAccepted({

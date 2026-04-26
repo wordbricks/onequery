@@ -38,7 +38,7 @@ export type CliSourceApiExecutionResultInit = MessageInitShape<
   typeof SourceApiExecutionResultSchema
 >;
 
-export type SourceApiConnectFailurePhase =
+export type SourceApiFailurePhase =
   | "authorize"
   | "describe"
   | "prepare"

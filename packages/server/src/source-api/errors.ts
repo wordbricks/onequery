@@ -15,28 +15,12 @@ export abstract class SourceApiRequestError extends SourceApiError {}
 
 export class SourceApiInvalidRequestError extends SourceApiRequestError {}
 
-export class SourceApiAdapterNotRegisteredError extends SourceApiRequestError {
+export class SourceApiAdapterNotRegisteredError extends SourceApiError {
   readonly provider: ProviderType;
 
   constructor(provider: ProviderType) {
     super(`No source API adapter is registered for provider "${provider}"`);
     this.provider = provider;
-  }
-}
-
-export class SourceApiDescriptorVersionMismatchError extends SourceApiRequestError {
-  readonly expectedDescriptorVersion: string;
-  readonly receivedDescriptorVersion: string;
-
-  constructor(input: {
-    expectedDescriptorVersion: string;
-    receivedDescriptorVersion: string;
-  }) {
-    super(
-      `descriptor_version mismatch: expected "${input.expectedDescriptorVersion}", received "${input.receivedDescriptorVersion}"`
-    );
-    this.expectedDescriptorVersion = input.expectedDescriptorVersion;
-    this.receivedDescriptorVersion = input.receivedDescriptorVersion;
   }
 }
 
@@ -56,6 +40,24 @@ export class SourceApiPermissionDeniedError extends SourceApiError {
 export class SourceApiExpiredError extends SourceApiError {}
 
 export class SourceApiInvalidatedError extends SourceApiError {}
+
+export class SourceApiDescriptorVersionMismatchError extends SourceApiInvalidatedError {
+  readonly expectedDescriptorVersion: string;
+  readonly receivedDescriptorVersion: string;
+
+  constructor(input: {
+    expectedDescriptorVersion: string;
+    receivedDescriptorVersion: string;
+  }) {
+    super(
+      `descriptor_version mismatch: expected "${input.expectedDescriptorVersion}", received "${input.receivedDescriptorVersion}"`
+    );
+    this.expectedDescriptorVersion = input.expectedDescriptorVersion;
+    this.receivedDescriptorVersion = input.receivedDescriptorVersion;
+  }
+}
+
+export class SourceApiTimeoutError extends SourceApiError {}
 
 export class SourceApiRegistryConfigurationError extends SourceApiError {
   readonly provider: ProviderType;

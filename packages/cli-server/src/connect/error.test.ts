@@ -1,20 +1,16 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { describe, expect, it } from "vitest";
 
-import {
-  CLI_PROBLEM_CATALOG,
-  cliProblemCodeToString,
-  cliProblemStageToString,
-  cliSupportActionKindToString,
-} from "../domain/problems";
-import type { CliProblemCatalogEntry, CliProblemKey } from "../domain/problems";
-import { CLI_REQUEST_ID_HEADER } from "../error";
+import { CLI_PROBLEM_DEFINITIONS } from "../domain/problems";
+import type { CliProblemDefinition, CliProblemKey } from "../domain/problems";
+import { CLI_REQUEST_ID_HEADER } from "../request-context";
 import { createCliConnectError, withCliRequestId } from "./error";
 import {
   BadRequestSchema,
+  ErrorInfoSchema,
+  ResourceInfoSchema,
   RetryInfoSchema,
 } from "./gen/google/rpc/error_details_pb";
-import { CliErrorDetailSchema } from "./gen/onequery/cli/v1/common_pb";
 
 function summarizeConnectError(error: ConnectError) {
   return {
@@ -25,28 +21,20 @@ function summarizeConnectError(error: ConnectError) {
         reason: violation.reason,
       })),
     })),
-    cliDetails: error.findDetails(CliErrorDetailSchema).map((detail) => {
-      const support = detail.support
-        ? {
-            explainSlug: detail.support.explainSlug,
-            kind: cliSupportActionKindToString(detail.support.kind),
-            reason: detail.support.reason,
-          }
-        : undefined;
-
-      return {
-        code: cliProblemCodeToString(detail.code),
-        ...(detail.hint ? { hint: detail.hint } : {}),
-        ...(detail.requestId ? { requestId: detail.requestId } : {}),
-        retryable: detail.retryable,
-        stage: cliProblemStageToString(detail.stage),
-        ...(support ? { support } : {}),
-        title: detail.title,
-      };
-    }),
     code: Code[error.code],
+    errorInfo: error.findDetails(ErrorInfoSchema).map((detail) => ({
+      domain: detail.domain,
+      metadata: detail.metadata,
+      reason: detail.reason,
+    })),
     metadata: Object.fromEntries(error.metadata.entries()),
     rawMessage: error.rawMessage,
+    resourceInfo: error.findDetails(ResourceInfoSchema).map((detail) => ({
+      description: detail.description,
+      owner: detail.owner,
+      resourceName: detail.resourceName,
+      resourceType: detail.resourceType,
+    })),
     retryInfo: error.findDetails(RetryInfoSchema).map((detail) => ({
       retryDelay: detail.retryDelay
         ? {
@@ -59,15 +47,15 @@ function summarizeConnectError(error: ConnectError) {
 }
 
 describe("connect error helpers", () => {
-  it("projects every canonical CLI problem into a Connect code and typed CLI error details", () => {
+  it("projects every canonical CLI problem into a Connect code and ErrorInfo detail", () => {
     const projectedErrors = Object.fromEntries(
-      Object.entries(CLI_PROBLEM_CATALOG).map(([key, problem]) => {
-        const typedProblem = problem as CliProblemCatalogEntry;
+      Object.entries(CLI_PROBLEM_DEFINITIONS).map(([key, problem]) => {
+        const typedProblem = problem as CliProblemDefinition;
         const error = createCliConnectError({
           key: key as CliProblemKey,
         });
 
-        expect(error.rawMessage).toBe(typedProblem.title);
+        expect(error.rawMessage).toBe(typedProblem.reason);
 
         return [key, summarizeConnectError(error)];
       })
@@ -85,6 +73,21 @@ describe("connect error helpers", () => {
     withCliRequestId(error, "req_cli_123");
 
     expect(error.metadata.get(CLI_REQUEST_ID_HEADER)).toBe("req_cli_123");
+    expect(summarizeConnectError(error)).toMatchSnapshot();
+  });
+
+  it("serializes resource info as a standard Connect detail", () => {
+    const error = createCliConnectError({
+      detail: 'no source named "warehouse" exists in org "acme"',
+      key: "SOURCE_NOT_FOUND",
+      resource: {
+        description: "source was not found",
+        name: "warehouse",
+        owner: "acme",
+        type: "onequery.cli.source",
+      },
+    });
+
     expect(summarizeConnectError(error)).toMatchSnapshot();
   });
 

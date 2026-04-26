@@ -4,15 +4,26 @@ import { connectNodeAdapter } from "@connectrpc/connect-node";
 import type { ConnectNodeAdapterOptions } from "@connectrpc/connect-node";
 import { createValidateInterceptor } from "@connectrpc/validate";
 
+import type { CliValidationIssue } from "../domain/failures";
+import type { CliProblemKey } from "../domain/problems";
 import { cliConnectRequestContextKey } from "./context";
-import type { CliConnectValidationIssue } from "./error";
-import { createCliInvalidRequestConnectError, withCliRequestId } from "./error";
-import { ViolationsSchema } from "./gen/buf/validate/validate_pb";
-import { BadRequestSchema } from "./gen/google/rpc/error_details_pb";
 import {
-  CliErrorDetailSchema,
-  ProblemStage,
-} from "./gen/onequery/cli/v1/common_pb";
+  CLI_ERROR_INFO_DOMAIN,
+  createCliConnectError,
+  withCliRequestId,
+} from "./error";
+import { ViolationsSchema } from "./gen/buf/validate/validate_pb";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "./gen/google/rpc/error_details_pb";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceApiService,
+  CliSourceService,
+} from "./gen/onequery/cli/v1/cli_pb";
 import { registerCliConnectRoutes } from "./rpc";
 
 const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {
@@ -38,15 +49,14 @@ const cliValidationErrorInterceptor: Interceptor =
       }
 
       const descriptor = getCliInvalidRequestDescriptor(request.method.name);
-      throw createCliInvalidRequestConnectError({
+      throw createCliConnectError({
         cause: error.cause,
         detail:
           error.rawMessage.length > 0
             ? error.rawMessage
             : `invalid ${request.method.name} request`,
         errors: collectCliValidationIssues(error),
-        hint: descriptor.hint,
-        stage: descriptor.stage,
+        key: descriptor.key,
       });
     }
   };
@@ -76,6 +86,55 @@ const cliConnectRequestPaths = (() => {
   return Object.freeze(router.handlers.map((handler) => handler.requestPath));
 })();
 
+const cliConnectRpcMethodNames = Object.freeze(
+  cliConnectRequestPaths.map((requestPath) => {
+    const methodName = requestPath.split("/").at(-1);
+    if (!methodName) {
+      throw new Error(`invalid CLI Connect request path: ${requestPath}`);
+    }
+
+    return methodName;
+  })
+);
+
+const CLI_VALIDATION_PROBLEM_KEYS_BY_METHOD_NAME = new Map<
+  string,
+  CliProblemKey
+>([
+  [CliAuthService.method.getSession.name, "AUTH_REQUEST_INVALID"],
+  [CliAuthService.method.refreshSession.name, "AUTH_REQUEST_INVALID"],
+  [CliAuthService.method.startDeviceAuthorization.name, "AUTH_REQUEST_INVALID"],
+  [CliAuthService.method.pollDeviceAuthorization.name, "AUTH_REQUEST_INVALID"],
+  [CliOrganizationService.method.listOrganizations.name, "ORG_REQUEST_INVALID"],
+  [CliOrganizationService.method.getOrganization.name, "ORG_REQUEST_INVALID"],
+  [CliSourceService.method.listSources.name, "SOURCE_REQUEST_INVALID"],
+  [
+    CliSourceService.method.getSourceConnectGuide.name,
+    "SOURCE_REQUEST_INVALID",
+  ],
+  [CliSourceService.method.connectSource.name, "SOURCE_REQUEST_INVALID"],
+  [CliSourceService.method.getSource.name, "SOURCE_REQUEST_INVALID"],
+  [CliSourceService.method.testSource.name, "SOURCE_REQUEST_INVALID"],
+  [
+    CliSourceApiService.method.describeSourceApi.name,
+    "SOURCE_API_REQUEST_INVALID",
+  ],
+  [
+    CliSourceApiService.method.previewSourceApi.name,
+    "SOURCE_API_REQUEST_INVALID",
+  ],
+  [
+    CliSourceApiService.method.executeSourceApi.name,
+    "SOURCE_API_REQUEST_INVALID",
+  ],
+  [
+    CliSourceApiService.method.resumeSourceApi.name,
+    "SOURCE_API_REQUEST_INVALID",
+  ],
+  [CliQueryService.method.validateQuery.name, "READ_QUERY_INPUT_INVALID"],
+  [CliQueryService.method.executeQuery.name, "EXECUTE_QUERY_REQUEST_INVALID"],
+]);
+
 export function createCliConnectHandler(
   options: CreateCliConnectHandlerOptions = {}
 ) {
@@ -88,6 +147,14 @@ export function createCliConnectHandler(
 
 export function listCliConnectRequestPaths() {
   return cliConnectRequestPaths;
+}
+
+export function listCliConnectRpcMethodNames() {
+  return cliConnectRpcMethodNames;
+}
+
+export function listCliValidationMappedMethodNames() {
+  return [...CLI_VALIDATION_PROBLEM_KEYS_BY_METHOD_NAME.keys()].sort();
 }
 
 export function listCliConnectMountedRequestPaths(
@@ -104,13 +171,17 @@ function shouldNormalizeCliValidationError(error: ConnectError) {
     error.code === Code.InvalidArgument &&
     (error.findDetails(BadRequestSchema).length > 0 ||
       error.findDetails(ViolationsSchema).length > 0) &&
-    error.findDetails(CliErrorDetailSchema).length === 0
+    !hasOneQueryCliErrorInfo(error)
   );
 }
 
-function collectCliValidationIssues(
-  error: ConnectError
-): CliConnectValidationIssue[] {
+function hasOneQueryCliErrorInfo(error: ConnectError) {
+  return error
+    .findDetails(ErrorInfoSchema)
+    .some((detail) => detail.domain === CLI_ERROR_INFO_DOMAIN);
+}
+
+function collectCliValidationIssues(error: ConnectError): CliValidationIssue[] {
   return [
     ...error.findDetails(BadRequestSchema).flatMap((detail) =>
       detail.fieldViolations.map((violation) => ({
@@ -134,55 +205,14 @@ function collectCliValidationIssues(
 }
 
 function getCliInvalidRequestDescriptor(methodName: string): {
-  hint: string;
-  stage: ProblemStage;
+  key: CliProblemKey;
 } {
-  switch (methodName.toLowerCase()) {
-    case "getsession":
-    case "refreshsession":
-    case "startdeviceauthorization":
-    case "polldeviceauthorization":
-      return {
-        hint: "correct the auth request and retry",
-        stage: ProblemStage.AUTH,
-      };
-    case "listorganizations":
-    case "getorganization":
-      return {
-        hint: "correct the org request and retry",
-        stage: ProblemStage.RESOLVE_ORG,
-      };
-    case "validatequery":
-      return {
-        hint: "correct the query input and retry",
-        stage: ProblemStage.READ_QUERY_INPUT,
-      };
-    case "executequery":
-      return {
-        hint: "correct the query request and retry",
-        stage: ProblemStage.EXECUTE_QUERY,
-      };
-    case "listsources":
-    case "getsourceconnectguide":
-    case "connectsource":
-    case "getsource":
-    case "testsource":
-    case "describesourceapi":
-      return {
-        hint: "correct the source request and retry",
-        stage: ProblemStage.RESOLVE_SOURCE,
-      };
-    case "previewsourceapi":
-    case "executesourceapi":
-    case "resumesourceapi":
-      return {
-        hint: "correct the source API request and retry",
-        stage: ProblemStage.EXECUTE_QUERY,
-      };
-    default:
-      return {
-        hint: "correct the request and retry",
-        stage: ProblemStage.READ_QUERY_INPUT,
-      };
+  const key = CLI_VALIDATION_PROBLEM_KEYS_BY_METHOD_NAME.get(methodName);
+  if (!key) {
+    throw new Error(
+      `missing CLI validation problem mapping for RPC method ${methodName}`
+    );
   }
+
+  return { key };
 }

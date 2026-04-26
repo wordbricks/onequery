@@ -9,19 +9,11 @@ import type {
   CliQuerySourceRecord,
   CliSourceRecord,
 } from "../domain/workflows";
-import { createCliProblem } from "../error";
 import { isCliSourceKey } from "../identifiers";
 
 // Comment: @onequery/db's QUERYABLE_PROVIDER_TYPES also includes non-SQL relays
 // like GitHub and analytics sources. CLI v1 query is intentionally narrower and
 // only treats database credential providers as queryable.
-
-export function sourceNotFoundProblem(orgSlug: string, sourceKey: string) {
-  return createCliProblem({
-    detail: `no source named "${sourceKey}" exists in org "${orgSlug}"`,
-    key: "SOURCE_NOT_FOUND",
-  });
-}
 
 // Comment: the backing table still stores the CLI-visible source identity in
 // data_sources.name. The CLI domain treats that normalized org-unique name as

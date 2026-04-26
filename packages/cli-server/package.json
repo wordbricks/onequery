@@ -4,8 +4,7 @@
   "private": false,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./route": "./src/route.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -25,7 +24,6 @@
     "@onequery/server": "workspace:*",
     "better-result": "catalog:",
     "hono": "catalog:",
-    "hono-problem-details": "catalog:",
     "zod": "catalog:"
   }
 }

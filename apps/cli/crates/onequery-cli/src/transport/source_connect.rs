@@ -969,7 +969,7 @@ mod tests {
         let ApiFailure::Problem(problem) = error else {
             panic!("expected problem failure");
         };
-        let detail = problem.detail;
+        let detail = problem.server_message;
 
         assert!(detail.contains("unknown field `unexpected`"));
     }

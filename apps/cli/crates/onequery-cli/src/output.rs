@@ -565,11 +565,8 @@ fn render_text_error(error: &CliError, verbose: bool) -> String {
         lines.push(format!("Request ID: {request_id}"));
     }
 
-    if let Some((code, command)) = explain_reference_for_error(error) {
+    if let Some((_, command)) = explain_reference_for_error(error) {
         lines.push(format!("Explain: {command}"));
-        if error.code.as_deref() != Some(code.as_str()) {
-            lines.push(format!("Explain code: {code}"));
-        }
     }
 
     if let Some(report) = report_suggestion(error) {
@@ -592,8 +589,6 @@ mod tests {
     use std::sync::atomic::Ordering;
 
     use insta::assert_snapshot;
-    use onequery_cli_core::error::CliSupportAction;
-    use onequery_cli_core::error::CliSupportActionKind;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
@@ -642,14 +637,9 @@ mod tests {
                 "server rejected write query",
                 vec!["retry with a read-only SELECT".to_owned()],
             )
-            .with_code(Some("query_rejected".to_owned()))
+            .with_code(Some("QUERY_REJECTED".to_owned()))
             .with_request_id(Some("req_verbose".to_owned()))
-            .with_hint(Some("queries must be read-only".to_owned()))
-            .with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::None,
-                reason: "user_actionable".to_owned(),
-                explain_slug: "query_rejected".to_owned(),
-            })),
+            .with_hint(Some("queries must be read-only".to_owned())),
             EffectiveOutputMode::Text,
             true,
         );
@@ -668,7 +658,7 @@ mod tests {
                 "server rejected write query",
                 vec!["retry with a read-only SELECT".to_owned()],
             )
-            .with_code(Some("query_rejected".to_owned()))
+            .with_code(Some("QUERY_REJECTED".to_owned()))
             .with_request_id(Some("req_compact".to_owned())),
             EffectiveOutputMode::Text,
         );
@@ -740,13 +730,8 @@ mod tests {
                 "warehouse execution unexpectedly failed",
                 vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
             )
-            .with_code(Some("query_execution_failed".to_owned()))
-            .with_request_id(Some("req_query_failure".to_owned()))
-            .with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::ReportIfReproducible,
-                reason: "query_execution_failure".to_owned(),
-                explain_slug: "query_execution_failed".to_owned(),
-            })),
+            .with_code(Some("QUERY_EXECUTION_FAILED".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned())),
             EffectiveOutputMode::Text,
         );
 
@@ -755,7 +740,7 @@ mod tests {
     }
 
     #[test]
-    fn render_error_with_support_action_adds_explain_hint_snapshot() {
+    fn render_error_with_known_reason_adds_explain_hint_snapshot() {
         let rendered = render_error(
             &CliError::new(
                 "source failed",
@@ -764,12 +749,7 @@ mod tests {
                 "no source named warehouse exists",
                 vec!["run onequery source list".to_owned()],
             )
-            .with_code(Some("source_not_found".to_owned()))
-            .with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::None,
-                reason: "user_actionable".to_owned(),
-                explain_slug: "source_not_found".to_owned(),
-            })),
+            .with_code(Some("SOURCE_NOT_FOUND".to_owned())),
             EffectiveOutputMode::Text,
         );
 
@@ -778,7 +758,7 @@ mod tests {
     }
 
     #[test]
-    fn render_error_with_server_code_and_no_support_action_omits_explain_hint() {
+    fn render_error_with_unknown_reason_omits_explain_hint() {
         let rendered = render_error(
             &CliError::new(
                 "source failed",
@@ -787,7 +767,7 @@ mod tests {
                 "no source named warehouse exists",
                 vec!["run onequery source list".to_owned()],
             )
-            .with_code(Some("source_not_found".to_owned())),
+            .with_code(Some("SOURCE_MOVED_ELSEWHERE".to_owned())),
             EffectiveOutputMode::Text,
         );
 
@@ -915,15 +895,10 @@ mod tests {
                 vec!["retry with a read-only SELECT".to_owned()],
             )
             .with_command_path(Some("query exec".to_owned()))
-            .with_code(Some("query_rejected".to_owned()))
+            .with_code(Some("QUERY_REJECTED".to_owned()))
             .with_status(Some(400))
             .with_request_id(Some("req_123".to_owned()))
-            .with_hint(Some("queries must be read-only".to_owned()))
-            .with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::None,
-                reason: "user_actionable".to_owned(),
-                explain_slug: "query_rejected".to_owned(),
-            })),
+            .with_hint(Some("queries must be read-only".to_owned())),
             EffectiveOutputMode::Json,
         );
 
@@ -935,7 +910,7 @@ mod tests {
                 "command": "query exec",
                 "requestId": "req_123",
                 "error": {
-                    "code": "query_rejected",
+                    "code": "QUERY_REJECTED",
                     "status": 400,
                     "title": "query failed",
                     "stage": "execute_query",
@@ -963,13 +938,8 @@ mod tests {
                 vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
             )
             .with_command_path(Some("query exec".to_owned()))
-            .with_code(Some("query_execution_failed".to_owned()))
-            .with_request_id(Some("req_query_failure".to_owned()))
-            .with_support_action(Some(CliSupportAction {
-                kind: CliSupportActionKind::ReportIfReproducible,
-                reason: "query_execution_failure".to_owned(),
-                explain_slug: "query_execution_failed".to_owned(),
-            })),
+            .with_code(Some("QUERY_EXECUTION_FAILED".to_owned()))
+            .with_request_id(Some("req_query_failure".to_owned())),
             EffectiveOutputMode::Json,
         );
 
@@ -981,7 +951,7 @@ mod tests {
                 "command": "query exec",
                 "requestId": "req_query_failure",
                 "error": {
-                    "code": "query_execution_failed",
+                    "code": "QUERY_EXECUTION_FAILED",
                     "title": "query failed",
                     "stage": "execute_query",
                     "detail": "warehouse execution unexpectedly failed",

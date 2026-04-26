@@ -49,110 +49,19 @@ enum ContentFormat {
   CONTENT_FORMAT_MARKDOWN = 1;
 }
 
-enum SupportActionKind {
-  SUPPORT_ACTION_KIND_UNSPECIFIED = 0;
-  SUPPORT_ACTION_KIND_NONE = 1;
-  SUPPORT_ACTION_KIND_RETRY = 2;
-  SUPPORT_ACTION_KIND_EXPLAIN = 3;
-  SUPPORT_ACTION_KIND_REPORT_IF_REPRODUCIBLE = 4;
-  SUPPORT_ACTION_KIND_REPORT_RECOMMENDED = 5;
-}
-
-enum ProblemCode {
-  PROBLEM_CODE_UNSPECIFIED = 0;
-  PROBLEM_CODE_FORBIDDEN = 1;
-  PROBLEM_CODE_INVALID_REQUEST = 2;
-  PROBLEM_CODE_LOGIN_DENIED = 3;
-  PROBLEM_CODE_LOGIN_RATE_LIMITED = 4;
-  PROBLEM_CODE_LOGIN_SESSION_EXPIRED = 5;
-  PROBLEM_CODE_MALFORMED_JSON = 6;
-  PROBLEM_CODE_NOT_LOGGED_IN = 7;
-  PROBLEM_CODE_ORG_NOT_FOUND = 8;
-  PROBLEM_CODE_QUERY_EXECUTION_FAILED = 9;
-  PROBLEM_CODE_QUERY_EXECUTION_TIMED_OUT = 10;
-  PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE = 11;
-  PROBLEM_CODE_QUERY_PREPARATION_FAILED = 12;
-  PROBLEM_CODE_QUERY_REJECTED = 13;
-  PROBLEM_CODE_SOURCE_API_DESCRIBE_FAILED = 14;
-  PROBLEM_CODE_SOURCE_API_EXECUTION_FAILED = 15;
-  PROBLEM_CODE_SOURCE_API_FORBIDDEN = 16;
-  PROBLEM_CODE_SOURCE_API_PREPARATION_FAILED = 17;
-  PROBLEM_CODE_SOURCE_API_EXECUTION_STATE_INVALID = 18;
-  PROBLEM_CODE_SOURCE_API_SOURCE_UNAVAILABLE = 19;
-  PROBLEM_CODE_SOURCE_NOT_FOUND = 20;
-  PROBLEM_CODE_SOURCE_NAME_CONFLICT = 21;
-  PROBLEM_CODE_SOURCE_NOT_QUERYABLE = 22;
-}
-
-enum ProblemStage {
-  PROBLEM_STAGE_UNSPECIFIED = 0;
-  PROBLEM_STAGE_AUTH = 1;
-  PROBLEM_STAGE_EXECUTE_QUERY = 2;
-  PROBLEM_STAGE_READ_QUERY_INPUT = 3;
-  PROBLEM_STAGE_RESOLVE_ORG = 4;
-  PROBLEM_STAGE_RESOLVE_SOURCE = 5;
-}
-
-message CliSupportAction {
-  SupportActionKind kind = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    }
-  ];
-  string reason = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 512
-  ];
-  string explain_slug = 3 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128
-  ];
-}
-
-message CliErrorDetail {
-  ProblemCode code = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    }
-  ];
-  ProblemStage stage = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum = {
-      defined_only: true
-      not_in: [0]
-    }
-  ];
-  string title = 3 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 160
-  ];
-  string hint = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 512
-  ];
-  bool retryable = 5;
-  string request_id = 6 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128
-  ];
-  CliSupportAction support = 7 [(buf.validate.field).required = true];
-}
-
-// Keeps generated Connect error-detail schemas available to both the CLI server
-// and the Rust CLI Connect client.
+// Codegen anchor for standard Connect error-detail schemas used by the CLI
+// server and the Rust CLI client. Typed OneQuery CLI problems are identified by
+// google.rpc.ErrorInfo with domain "onequery.cli.v1".
 message CliConnectErrorDetailReference {
   oneof detail {
     option (buf.validate.oneof).required = true;
 
-    CliErrorDetail cli_error = 1;
+    google.rpc.ErrorInfo error_info = 1;
     google.rpc.BadRequest bad_request = 2;
     google.rpc.RetryInfo retry_info = 3;
+    google.rpc.ResourceInfo resource_info = 4;
+    google.rpc.PreconditionFailure precondition_failure = 5;
+    google.rpc.QuotaFailure quota_failure = 6;
+    google.rpc.Help help = 7;
   }
 }

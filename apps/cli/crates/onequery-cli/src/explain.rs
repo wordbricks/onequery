@@ -11,7 +11,6 @@ pub(crate) enum ExplainCode {
     LoginDenied,
     LoginRateLimited,
     LoginSessionExpired,
-    MalformedJson,
     NotLoggedIn,
     OrgNotFound,
     TransportError,
@@ -23,6 +22,7 @@ pub(crate) enum ExplainCode {
     QueryRejected,
     SourceApiDescribeFailed,
     SourceApiExecutionFailed,
+    SourceApiExecutionTimedOut,
     SourceApiForbidden,
     SourceApiPreparationFailed,
     SourceApiExecutionStateInvalid,
@@ -73,20 +73,64 @@ pub(crate) struct Explanation {
 }
 
 const AUTH_STAGE: &[&str] = &["auth"];
-const AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES: &[&str] =
-    &["auth", "resolve_org", "resolve_source", "execute_query"];
+const AUTH_OR_ORG_OR_SOURCE_OR_EXECUTE_STAGES: &[&str] = &[
+    "auth",
+    "resolve_org",
+    "resolve_source",
+    "execute_query",
+    "source_api_describe",
+    "source_api_prepare",
+    "source_api_execute",
+];
 const EXECUTE_QUERY_STAGE: &[&str] = &["execute_query"];
 const INVALID_REQUEST_STAGES: &[&str] = &[
     "auth",
+    "resolve_org",
     "resolve_source",
     "read_query_input",
     "execute_query",
+    "source_api_execute",
 ];
-const READ_QUERY_INPUT_STAGE: &[&str] = &["read_query_input"];
 const RESOLVE_ORG_STAGE: &[&str] = &["resolve_org"];
 const RESOLVE_SOURCE_STAGE: &[&str] = &["resolve_source"];
+const SOURCE_API_DESCRIBE_STAGE: &[&str] = &["source_api_describe"];
+const SOURCE_API_PREPARE_STAGE: &[&str] = &["source_api_prepare"];
+const SOURCE_API_EXECUTE_STAGE: &[&str] = &["source_api_execute"];
 
 impl ExplainCode {
+    pub(crate) fn from_problem_reason(reason: &str) -> Option<Self> {
+        match reason {
+            "FORBIDDEN" => Some(Self::Forbidden),
+            "AUTH_REQUEST_INVALID"
+            | "SOURCE_REQUEST_INVALID"
+            | "ORG_REQUEST_INVALID"
+            | "READ_QUERY_INPUT_INVALID"
+            | "EXECUTE_QUERY_REQUEST_INVALID"
+            | "SOURCE_API_REQUEST_INVALID" => Some(Self::InvalidRequest),
+            "LOGIN_DENIED" => Some(Self::LoginDenied),
+            "LOGIN_RATE_LIMITED" => Some(Self::LoginRateLimited),
+            "LOGIN_SESSION_EXPIRED" => Some(Self::LoginSessionExpired),
+            "NOT_LOGGED_IN" => Some(Self::NotLoggedIn),
+            "ORG_NOT_FOUND" => Some(Self::OrgNotFound),
+            "QUERY_EXECUTION_FAILED" => Some(Self::QueryExecutionFailed),
+            "QUERY_EXECUTION_TIMED_OUT" => Some(Self::QueryExecutionTimedOut),
+            "QUERY_EXECUTION_UNAVAILABLE" => Some(Self::QueryExecutionUnavailable),
+            "QUERY_PREPARATION_FAILED" => Some(Self::QueryPreparationFailed),
+            "QUERY_REJECTED" => Some(Self::QueryRejected),
+            "SOURCE_API_DESCRIBE_FAILED" => Some(Self::SourceApiDescribeFailed),
+            "SOURCE_API_EXECUTION_FAILED" => Some(Self::SourceApiExecutionFailed),
+            "SOURCE_API_EXECUTION_TIMED_OUT" => Some(Self::SourceApiExecutionTimedOut),
+            "SOURCE_API_FORBIDDEN" => Some(Self::SourceApiForbidden),
+            "SOURCE_API_PREPARATION_FAILED" => Some(Self::SourceApiPreparationFailed),
+            "SOURCE_API_EXECUTION_STATE_INVALID" => Some(Self::SourceApiExecutionStateInvalid),
+            "SOURCE_API_SOURCE_UNAVAILABLE" => Some(Self::SourceApiSourceUnavailable),
+            "SOURCE_NOT_FOUND" => Some(Self::SourceNotFound),
+            "SOURCE_NAME_CONFLICT" => Some(Self::SourceNameConflict),
+            "SOURCE_NOT_QUERYABLE" => Some(Self::SourceNotQueryable),
+            _ => None,
+        }
+    }
+
     pub(crate) fn slug(self) -> &'static str {
         match self {
             Self::Forbidden => "forbidden",
@@ -94,7 +138,6 @@ impl ExplainCode {
             Self::LoginDenied => "login_denied",
             Self::LoginRateLimited => "login_rate_limited",
             Self::LoginSessionExpired => "login_session_expired",
-            Self::MalformedJson => "malformed_json",
             Self::NotLoggedIn => "not_logged_in",
             Self::OrgNotFound => "org_not_found",
             Self::TransportError => "transport_error",
@@ -106,6 +149,7 @@ impl ExplainCode {
             Self::QueryRejected => "query_rejected",
             Self::SourceApiDescribeFailed => "source_api_describe_failed",
             Self::SourceApiExecutionFailed => "source_api_execution_failed",
+            Self::SourceApiExecutionTimedOut => "source_api_execution_timed_out",
             Self::SourceApiForbidden => "source_api_forbidden",
             Self::SourceApiPreparationFailed => "source_api_preparation_failed",
             Self::SourceApiExecutionStateInvalid => "source_api_execution_state_invalid",
@@ -178,17 +222,6 @@ impl ExplainCode {
                 support_reason: "user_actionable",
                 summary: "The login attempt expired before the CLI could exchange it for a session.",
                 try_next: &["run onequery auth login again"],
-            },
-            Self::MalformedJson => Explanation {
-                code: self,
-                title: "Malformed JSON",
-                stages: READ_QUERY_INPUT_STAGE,
-                http_status: Some(400),
-                retryable: false,
-                support_kind: ExplainSupportKind::None,
-                support_reason: "user_actionable",
-                summary: "The CLI API could not parse the JSON request body for the current command.",
-                try_next: &["correct the request body and retry"],
             },
             Self::NotLoggedIn => Explanation {
                 code: self,
@@ -294,7 +327,7 @@ impl ExplainCode {
             Self::SourceApiDescribeFailed => Explanation {
                 code: self,
                 title: "Source API Describe Failed",
-                stages: RESOLVE_SOURCE_STAGE,
+                stages: SOURCE_API_DESCRIBE_STAGE,
                 http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
@@ -305,7 +338,7 @@ impl ExplainCode {
             Self::SourceApiExecutionFailed => Explanation {
                 code: self,
                 title: "Source API Execution Failed",
-                stages: EXECUTE_QUERY_STAGE,
+                stages: SOURCE_API_EXECUTE_STAGE,
                 http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
@@ -313,10 +346,21 @@ impl ExplainCode {
                 summary: "The source API request reached execution, but the backing source or service failed unexpectedly.",
                 try_next: &["retry onequery api --source <source>"],
             },
+            Self::SourceApiExecutionTimedOut => Explanation {
+                code: self,
+                title: "Source API Execution Timed Out",
+                stages: SOURCE_API_EXECUTE_STAGE,
+                http_status: Some(504),
+                retryable: true,
+                support_kind: ExplainSupportKind::Retry,
+                support_reason: "transient",
+                summary: "The source API request did not complete before the execution deadline expired.",
+                try_next: &["retry onequery api --source <source>"],
+            },
             Self::SourceApiForbidden => Explanation {
                 code: self,
                 title: "Source API Forbidden",
-                stages: EXECUTE_QUERY_STAGE,
+                stages: SOURCE_API_EXECUTE_STAGE,
                 http_status: Some(403),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
@@ -327,7 +371,7 @@ impl ExplainCode {
             Self::SourceApiPreparationFailed => Explanation {
                 code: self,
                 title: "Source API Preparation Failed",
-                stages: EXECUTE_QUERY_STAGE,
+                stages: SOURCE_API_PREPARE_STAGE,
                 http_status: Some(500),
                 retryable: false,
                 support_kind: ExplainSupportKind::ReportIfReproducible,
@@ -338,7 +382,7 @@ impl ExplainCode {
             Self::SourceApiExecutionStateInvalid => Explanation {
                 code: self,
                 title: "Source API Execution State Invalid",
-                stages: EXECUTE_QUERY_STAGE,
+                stages: SOURCE_API_EXECUTE_STAGE,
                 http_status: Some(410),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
@@ -396,12 +440,19 @@ impl ExplainCode {
 
 pub(crate) fn explain_reference_for_error(error: &CliError) -> Option<(String, String)> {
     let code = error
-        .support_action
-        .as_ref()
-        .and_then(|support_action| ExplainCode::from_str(&support_action.explain_slug, false).ok())
-        .or_else(|| error.code.as_deref().and_then(local_explain_code))?;
+        .code
+        .as_deref()
+        .and_then(explain_code_for_error_code)?;
     let slug = code.slug().to_owned();
     Some((slug, code.command()))
+}
+
+pub(crate) fn explanation_for_error_code(code: &str) -> Option<Explanation> {
+    explain_code_for_error_code(code).map(ExplainCode::explanation)
+}
+
+fn explain_code_for_error_code(code: &str) -> Option<ExplainCode> {
+    local_explain_code(code).or_else(|| ExplainCode::from_problem_reason(code))
 }
 
 fn local_explain_code(code: &str) -> Option<ExplainCode> {
@@ -422,8 +473,6 @@ pub(crate) fn report_command_for_explanation(explanation: Explanation) -> Option
 #[cfg(test)]
 mod tests {
     use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::CliSupportAction;
-    use onequery_cli_core::error::CliSupportActionKind;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
@@ -438,9 +487,11 @@ mod tests {
             explanation.stages,
             &[
                 "auth",
+                "resolve_org",
                 "resolve_source",
                 "read_query_input",
-                "execute_query"
+                "execute_query",
+                "source_api_execute"
             ]
         );
         assert_eq!(explanation.http_status, Some(422));
@@ -453,7 +504,15 @@ mod tests {
 
         assert_eq!(
             transport.stages,
-            &["auth", "resolve_org", "resolve_source", "execute_query"]
+            &[
+                "auth",
+                "resolve_org",
+                "resolve_source",
+                "execute_query",
+                "source_api_describe",
+                "source_api_prepare",
+                "source_api_execute"
+            ]
         );
         assert_eq!(transport.http_status, None);
         assert_eq!(decode.stages, transport.stages);
@@ -461,7 +520,7 @@ mod tests {
     }
 
     #[test]
-    fn explain_reference_for_error_uses_server_support_action_slug() {
+    fn explain_reference_for_error_uses_catalog_for_known_reason() {
         let error = CliError::new(
             "source failed",
             "onequery source show warehouse",
@@ -469,12 +528,7 @@ mod tests {
             "no source named warehouse exists",
             vec!["run onequery source list".to_owned()],
         )
-        .with_code(Some("source_not_found".to_owned()))
-        .with_support_action(Some(CliSupportAction {
-            kind: CliSupportActionKind::None,
-            reason: "user_actionable".to_owned(),
-            explain_slug: "source_not_found".to_owned(),
-        }));
+        .with_code(Some("SOURCE_NOT_FOUND".to_owned()));
 
         assert_eq!(
             explain_reference_for_error(&error),
@@ -506,7 +560,7 @@ mod tests {
     }
 
     #[test]
-    fn explain_reference_for_error_does_not_infer_server_problem_codes_without_support_action() {
+    fn explain_reference_for_error_does_not_infer_unknown_problem_reasons() {
         let error = CliError::new(
             "source failed",
             "onequery source show warehouse",
@@ -514,7 +568,7 @@ mod tests {
             "no source named warehouse exists",
             vec!["run onequery source list".to_owned()],
         )
-        .with_code(Some("source_not_found".to_owned()));
+        .with_code(Some("SOURCE_MOVED_ELSEWHERE".to_owned()));
 
         assert_eq!(explain_reference_for_error(&error), None);
     }

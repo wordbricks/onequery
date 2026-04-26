@@ -91,8 +91,8 @@ pub(crate) async fn describe_source_api(
     org: &str,
     source_key: &str,
 ) -> Result<ApiSuccess<SourceApiDescriptor>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ResolveSource)?;
+    let org_slug: String = try_into_value(org, ErrorStage::SourceApiDescribe)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::SourceApiDescribe)?;
     let response = match client
         .source_api()
         .describe_source_api(types::DescribeSourceApiRequest {
@@ -104,7 +104,7 @@ pub(crate) async fn describe_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiDescribe));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -129,7 +129,7 @@ pub(crate) async fn preview_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiPrepare,
             )?),
             draft: MessageField::some(draft.clone()),
             ..Default::default()
@@ -138,7 +138,7 @@ pub(crate) async fn preview_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiPrepare));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -163,7 +163,7 @@ pub(crate) async fn execute_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             draft: MessageField::some(draft.clone()),
             ..Default::default()
@@ -172,7 +172,7 @@ pub(crate) async fn execute_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiExecute));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -197,11 +197,11 @@ pub(crate) async fn resume_source_api(
             target: MessageField::some(source_api_target(
                 org,
                 source_key,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             continuation_token: Some(try_into_value(
                 continuation_token,
-                ErrorStage::ExecuteQuery,
+                ErrorStage::SourceApiExecute,
             )?),
             ..Default::default()
         })
@@ -209,7 +209,7 @@ pub(crate) async fn resume_source_api(
     {
         Ok(response) => response,
         Err(error) => {
-            return Err(failure_from_connect(error, ErrorStage::ExecuteQuery));
+            return Err(failure_from_connect(error, ErrorStage::SourceApiExecute));
         }
     };
     let request_id = success_response_request_id(&response);
@@ -431,7 +431,7 @@ fn validate_source_api_descriptor(
 ) -> Result<(), ApiFailure> {
     if !value.source.is_set() {
         return Err(decode_failure(
-            ErrorStage::ResolveSource,
+            ErrorStage::SourceApiDescribe,
             "source API descriptor response missing source metadata",
             request_id,
         ));
@@ -481,7 +481,7 @@ fn validate_required_operation_message(
     }
 
     Err(decode_failure(
-        ErrorStage::ResolveSource,
+        ErrorStage::SourceApiDescribe,
         format!("source API operation `{operation_name}` missing {field_name}"),
         request_id,
     ))
@@ -498,6 +498,7 @@ fn execute_source_api_outcome_from_generated(
                     completed.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
                 result: required_source_api_execution_result(
                     completed.result,
@@ -512,6 +513,7 @@ fn execute_source_api_outcome_from_generated(
                     continued.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
                 result: required_source_api_execution_result(
                     continued.result,
@@ -520,14 +522,14 @@ fn execute_source_api_outcome_from_generated(
                 )?,
                 continuation_token: require_non_empty_text(
                     continued.continuation_token,
-                    ErrorStage::ExecuteQuery,
+                    ErrorStage::SourceApiExecute,
                     "source API execution response missing continuation token",
                     request_id,
                 )?,
             })
         }
         None => Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             "source API execution response missing outcome",
             request_id,
         )),
@@ -545,6 +547,7 @@ fn resume_source_api_outcome_from_generated(
                     completed.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
                 result: required_source_api_execution_result(
                     completed.result,
@@ -559,6 +562,7 @@ fn resume_source_api_outcome_from_generated(
                     continued.preview,
                     "source API execution response missing preview",
                     request_id.clone(),
+                    ErrorStage::SourceApiExecute,
                 )?,
                 result: required_source_api_execution_result(
                     continued.result,
@@ -567,14 +571,14 @@ fn resume_source_api_outcome_from_generated(
                 )?,
                 continuation_token: require_non_empty_text(
                     continued.continuation_token,
-                    ErrorStage::ExecuteQuery,
+                    ErrorStage::SourceApiExecute,
                     "source API execution response missing continuation token",
                     request_id,
                 )?,
             })
         }
         None => Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             "source API execution response missing outcome",
             request_id,
         )),
@@ -589,6 +593,7 @@ fn preview_source_api_response_from_generated(
         value.preview,
         "source API preview response missing preview",
         request_id,
+        ErrorStage::SourceApiPrepare,
     )
 }
 
@@ -596,14 +601,15 @@ fn required_source_api_preview(
     preview: MessageField<SourceApiPreview>,
     message: &'static str,
     request_id: Option<String>,
+    stage: ErrorStage,
 ) -> Result<SourceApiPreview, ApiFailure> {
     let preview = preview
         .into_option()
-        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
+        .ok_or_else(|| decode_failure(stage, message, request_id.clone()))?;
 
     if !preview.source.is_set() {
         return Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            stage,
             "source API execution response missing preview source metadata",
             request_id,
         ));
@@ -619,11 +625,11 @@ fn required_source_api_execution_result(
 ) -> Result<SourceApiExecutionResult, ApiFailure> {
     let result = result
         .into_option()
-        .ok_or_else(|| decode_failure(ErrorStage::ExecuteQuery, message, request_id.clone()))?;
+        .ok_or_else(|| decode_failure(ErrorStage::SourceApiExecute, message, request_id.clone()))?;
 
     if !result.source.is_set() {
         return Err(decode_failure(
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             "source API execution response missing source metadata",
             request_id,
         ));
@@ -663,7 +669,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiPrepare,
                 message: "source API preview response missing preview".to_owned(),
                 request_id: Some("req_cli_123".to_owned()),
             })
@@ -681,7 +687,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiExecute,
                 message: "source API execution response missing outcome".to_owned(),
                 request_id: Some("req_missing_outcome".to_owned()),
             })
@@ -734,7 +740,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ResolveSource,
+                stage: ErrorStage::SourceApiDescribe,
                 message: "source API operation `fetch` missing method policy".to_owned(),
                 request_id: Some("req_missing_policy".to_owned()),
             })
@@ -785,7 +791,7 @@ mod tests {
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
-                stage: ErrorStage::ExecuteQuery,
+                stage: ErrorStage::SourceApiExecute,
                 message: "source API execution response missing source metadata".to_owned(),
                 request_id: Some("req_missing_source".to_owned()),
             })

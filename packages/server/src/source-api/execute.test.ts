@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { SourceApiPermissionDeniedError } from "./errors";
+import {
+  SourceApiPermissionDeniedError,
+  SourceApiTimeoutError,
+} from "./errors";
 import {
   executePreparedSourceApi,
   SourceApiExecutionStageError,
@@ -135,5 +138,42 @@ describe("executePreparedSourceApi", () => {
     }
 
     expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("normalizes abort causes into typed execute-stage timeouts", async () => {
+    const abortError = new Error("operation aborted");
+    abortError.name = "AbortError";
+    const adapter: SourceApiAdapter = {
+      describe: vi.fn(async () => {
+        throw new Error("describe should not run during prepared execution");
+      }),
+      execute: vi.fn(async () => {
+        throw new Error("GitHub request timeout after 30000ms", {
+          cause: abortError,
+        });
+      }),
+      normalize: vi.fn(async () => {
+        throw new Error("normalize should not run during prepared execution");
+      }),
+      provider: "github",
+    };
+
+    await expect(
+      executePreparedSourceApi({
+        actor: {
+          capabilities: ["source_api.execute"],
+          membershipRoles: ["owner"],
+          organizationId: "org_1",
+          organizationSlug: "acme",
+          userId: "user_1",
+        },
+        prepared,
+        registry: createSourceApiRegistry([adapter]),
+        source,
+      })
+    ).rejects.toMatchObject({
+      cause: expect.any(SourceApiTimeoutError),
+      stage: "execute",
+    });
   });
 });

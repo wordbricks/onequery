@@ -10,6 +10,8 @@ import type {
 } from "@onequery/server/source-api";
 import { z } from "zod";
 
+import { CLI_PROBLEM_KEYS } from "../domain/problems";
+import type { CliProblemKey } from "../domain/problems";
 import {
   WORKFLOW_OUTCOMES,
   acceptWorkflowDecision,
@@ -62,13 +64,16 @@ export const SOURCE_API_ACTION_FAILURE_CODES = [
   "descriptor_unavailable",
   "invalid_request",
   "permission_denied",
-  "request_failed",
   "request_timed_out",
   "execution_failed",
   "execution_state_invalid",
 ] as const;
 export type SourceApiActionFailureCode =
   (typeof SOURCE_API_ACTION_FAILURE_CODES)[number];
+
+const CliProblemKeySchema = z.enum(
+  CLI_PROBLEM_KEYS as [CliProblemKey, ...CliProblemKey[]]
+);
 
 export type SourceApiActionSourceDescriptor = {
   displayName: string | null;
@@ -215,6 +220,7 @@ export type SourceApiActionCommandPayload =
         "descriptor_unavailable" | "permission_denied"
       >;
       kind: "failed";
+      problemKey: CliProblemKey;
       type: "record_descriptor_resolution";
     }
   | {
@@ -226,9 +232,10 @@ export type SourceApiActionCommandPayload =
       detail: string;
       failureCode: Extract<
         SourceApiActionFailureCode,
-        "invalid_request" | "permission_denied"
+        "invalid_request" | "permission_denied" | "execution_state_invalid"
       >;
       kind: "failed";
+      problemKey: CliProblemKey;
       type: "record_request_preparation";
     }
   | {
@@ -245,22 +252,16 @@ export type SourceApiActionCommandPayload =
   | {
       attemptNumber: number;
       detail: string;
-      kind: "retryable_failure";
-      pageIndex: number;
-      type: "record_page_fetch";
-    }
-  | {
-      attemptNumber: number;
-      detail: string;
       failureCode: Extract<
         SourceApiActionFailureCode,
-        | "request_failed"
+        | "invalid_request"
         | "request_timed_out"
         | "execution_failed"
         | "execution_state_invalid"
       >;
       kind: "terminal_failure";
       pageIndex: number;
+      problemKey: CliProblemKey;
       type: "record_page_fetch";
     };
 
@@ -294,6 +295,7 @@ export type SourceApiActionEvent =
         SourceApiActionFailureCode,
         "descriptor_unavailable" | "permission_denied"
       >;
+      problemKey: CliProblemKey;
       type: "descriptor_resolution_failed";
     }
   | {
@@ -304,8 +306,9 @@ export type SourceApiActionEvent =
       detail: string;
       failureCode: Extract<
         SourceApiActionFailureCode,
-        "invalid_request" | "permission_denied"
+        "invalid_request" | "permission_denied" | "execution_state_invalid"
       >;
+      problemKey: CliProblemKey;
       type: "request_preparation_failed";
     }
   | {
@@ -326,13 +329,14 @@ export type SourceApiActionEvent =
       detail: string;
       failureCode: Extract<
         SourceApiActionFailureCode,
-        | "request_failed"
+        | "invalid_request"
         | "request_timed_out"
         | "execution_failed"
         | "execution_state_invalid"
-      > | null;
-      kind: "retryable_failure" | "terminal_failure";
+      >;
+      kind: "terminal_failure";
       pageIndex: number;
+      problemKey: CliProblemKey;
       type: "page_fetch_failed";
     };
 
@@ -367,6 +371,7 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
     .object({
       detail: z.string(),
       failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
+      problemKey: CliProblemKeySchema,
       type: z.literal("descriptor_resolution_failed"),
     })
     .strict(),
@@ -379,7 +384,12 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
   z
     .object({
       detail: z.string(),
-      failureCode: z.enum(["invalid_request", "permission_denied"]),
+      failureCode: z.enum([
+        "invalid_request",
+        "permission_denied",
+        "execution_state_invalid",
+      ]),
+      problemKey: CliProblemKeySchema,
       type: z.literal("request_preparation_failed"),
     })
     .strict(),
@@ -404,16 +414,15 @@ export const SourceApiActionEventSchema = z.discriminatedUnion("type", [
     .object({
       attemptNumber: z.number().int(),
       detail: z.string(),
-      failureCode: z
-        .enum([
-          "request_failed",
-          "request_timed_out",
-          "execution_failed",
-          "execution_state_invalid",
-        ])
-        .nullable(),
-      kind: z.enum(["retryable_failure", "terminal_failure"]),
+      failureCode: z.enum([
+        "invalid_request",
+        "request_timed_out",
+        "execution_failed",
+        "execution_state_invalid",
+      ]),
+      kind: z.literal("terminal_failure"),
       pageIndex: z.number().int(),
+      problemKey: CliProblemKeySchema,
       type: z.literal("page_fetch_failed"),
     })
     .strict(),
@@ -669,6 +678,7 @@ export function decideSourceApiAction(
               {
                 detail: command.commandPayload.detail,
                 failureCode: command.commandPayload.failureCode,
+                problemKey: command.commandPayload.problemKey,
                 type: "descriptor_resolution_failed",
               },
             ],
@@ -723,6 +733,7 @@ export function decideSourceApiAction(
               {
                 detail: command.commandPayload.detail,
                 failureCode: command.commandPayload.failureCode,
+                problemKey: command.commandPayload.problemKey,
                 type: "request_preparation_failed",
               },
             ],
@@ -758,19 +769,6 @@ export function decideSourceApiAction(
               },
             ],
           });
-        case "retryable_failure":
-          return acceptWorkflowDecision({
-            events: [
-              {
-                attemptNumber: command.commandPayload.attemptNumber,
-                detail: command.commandPayload.detail,
-                failureCode: null,
-                kind: "retryable_failure",
-                pageIndex: command.commandPayload.pageIndex,
-                type: "page_fetch_failed",
-              },
-            ],
-          });
         case "terminal_failure":
           return acceptWorkflowDecision({
             events: [
@@ -780,6 +778,7 @@ export function decideSourceApiAction(
                 failureCode: command.commandPayload.failureCode,
                 kind: "terminal_failure",
                 pageIndex: command.commandPayload.pageIndex,
+                problemKey: command.commandPayload.problemKey,
                 type: "page_fetch_failed",
               },
             ],
@@ -889,23 +888,8 @@ export function reduceSourceApiAction(
         phase: event.hasContinuation ? "await_resume" : "completed",
       };
     }
-    case "page_fetch_failed": {
-      if (event.kind === "retryable_failure") {
-        return {
-          ...requireSourceApiActionState(state),
-          lastEventId: event.id,
-          lastEventSequence: event.sequence,
-          pageProgress: { nextPageIndex: event.pageIndex },
-          phase: "await_resume",
-        };
-      }
-
-      return completeFailedSourceApiAction(
-        state,
-        event,
-        requireSourceApiTerminalFailureCode(event.failureCode)
-      );
-    }
+    case "page_fetch_failed":
+      return completeFailedSourceApiAction(state, event, event.failureCode);
   }
 }
 
@@ -954,24 +938,4 @@ function requireSourceApiActionRequestDescriptor(
   }
 
   return state.requestDescriptor;
-}
-
-function requireSourceApiTerminalFailureCode(
-  failureCode: SourceApiActionEvent extends infer Event
-    ? Event extends { type: "page_fetch_failed"; failureCode: infer Code }
-      ? Code
-      : never
-    : never
-): Extract<
-  SourceApiActionFailureCode,
-  | "request_failed"
-  | "request_timed_out"
-  | "execution_failed"
-  | "execution_state_invalid"
-> {
-  if (failureCode === null) {
-    throw new Error("terminal page fetch failure code is required");
-  }
-
-  return failureCode;
 }

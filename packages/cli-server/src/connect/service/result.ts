@@ -1,29 +1,30 @@
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import type { CliConnectProblem, CreateCliConnectErrorInput } from "../error";
-import { createCliConnectError, createCliConnectProblem } from "../error";
+import type { CliFailure, CreateCliFailureInput } from "../../domain/failures";
+import { createCliFailure } from "../../domain/failures";
+import { createCliConnectError } from "../error";
 import type {
   CliServiceMethod,
   CliServiceMethodName,
   CliServiceResponse,
 } from "./types";
 
-export type CliServiceResult<T> = ResultType<T, CliConnectProblem>;
+export type CliServiceResult<T> = ResultType<T, CliFailure>;
 
 export type CliResultServiceMethod<Name extends CliServiceMethodName> = (
   request: Parameters<CliServiceMethod<Name>>[0],
   context: Parameters<CliServiceMethod<Name>>[1]
 ) => Promise<CliServiceResult<CliServiceResponse<Name>>>;
 
-export function createCliServiceProblem(input: CreateCliConnectErrorInput) {
-  return createCliConnectProblem(input);
+export function createCliServiceFailure(input: CreateCliFailureInput) {
+  return createCliFailure(input);
 }
 
 export function cliServiceErr<T = never>(
-  input: CreateCliConnectErrorInput
+  input: CreateCliFailureInput
 ): CliServiceResult<T> {
-  return Result.err(createCliConnectProblem(input));
+  return Result.err(createCliFailure(input));
 }
 
 export function liftCliServiceMethod<Name extends CliServiceMethodName>(

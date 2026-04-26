@@ -113,6 +113,11 @@ export async function resolveAuthorizedCliOrg(input: {
     return cliServiceErr({
       detail: `you do not have permission to ${input.action} in org "${input.orgSlug}"`,
       key: "FORBIDDEN",
+      resource: {
+        description: `organization access does not allow ${input.action}`,
+        name: input.orgSlug,
+        type: "onequery.cli.organization",
+      },
     });
   }
 
@@ -130,6 +135,11 @@ function interpretCliOrgAccessState(
     return cliServiceErr({
       key: "ORG_NOT_FOUND",
       detail: `no org named "${state.orgSlug}" exists`,
+      resource: {
+        description: "organization was not found",
+        name: state.orgSlug,
+        type: "onequery.cli.organization",
+      },
     });
   }
 
@@ -137,6 +147,11 @@ function interpretCliOrgAccessState(
     return cliServiceErr({
       key: "FORBIDDEN",
       detail: `you do not have access to org "${state.orgSlug}"`,
+      resource: {
+        description: "organization access is forbidden",
+        name: state.orgSlug,
+        type: "onequery.cli.organization",
+      },
     });
   }
 

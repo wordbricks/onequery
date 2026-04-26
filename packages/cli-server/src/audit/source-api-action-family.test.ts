@@ -444,7 +444,7 @@ describe("source_api_action family", () => {
     });
   });
 
-  it("moves retryable page fetch failures into await_resume without terminal failure", () => {
+  it("moves terminal page fetch failures into completed failed", () => {
     let state = applySourceApiDecision(null, [
       {
         invokeMode: "execute",
@@ -495,8 +495,10 @@ describe("source_api_action family", () => {
         {
           attemptNumber: 1,
           detail: "upstream timeout",
-          kind: "retryable_failure",
+          failureCode: "request_timed_out",
+          kind: "terminal_failure",
           pageIndex: 2,
+          problemKey: "SOURCE_API_EXECUTION_TIMED_OUT",
           type: "record_page_fetch",
         },
         { actionId: "action_1", causedByEventId: state.lastEventId }
@@ -510,10 +512,10 @@ describe("source_api_action family", () => {
 
     state = applySourceApiDecision(state, decision.events);
     expect(state).toMatchObject({
-      failureCode: null,
-      outcome: "pending",
-      pageProgress: { nextPageIndex: 2 },
-      phase: "await_resume",
+      failureCode: "request_timed_out",
+      outcome: "failed",
+      pageProgress: null,
+      phase: "completed",
     });
   });
 });

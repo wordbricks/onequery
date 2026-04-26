@@ -15,6 +15,11 @@ import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_buf_validate_validate } from "../../../buf/validate/validate_pb.js";
 import type {
   BadRequest,
+  ErrorInfo,
+  Help,
+  PreconditionFailure,
+  QuotaFailure,
+  ResourceInfo,
   RetryInfo,
 } from "../../../google/rpc/error_details_pb.js";
 import { file_google_rpc_error_details } from "../../../google/rpc/error_details_pb.js";
@@ -23,7 +28,7 @@ import { file_google_rpc_error_details } from "../../../google/rpc/error_details
  * Describes the file onequery/cli/v1/common.proto.
  */
 export const file_onequery_cli_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiTgoHQ2xpUGFnZRIfCgtuZXh0X2N1cnNvchgBIAEoCUIKukgHcgUQARiAIBIiCg5yZXR1cm5lZF9jb3VudBgCIAEoDUIKukgHyAEBKgIYZCJGCg5DbGlQYWdlUmVxdWVzdBIYCgVsaW1pdBgBIAEoDUIJukgGKgQYZCgBEhoKBmN1cnNvchgCIAEoCUIKukgHcgUQARiAICJ0Cg9DbGlTYW5pdGl6YXRpb24SHgoHcHJvZmlsZRgBIAEoCUINukgKyAEBcgUQARiAARIqCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAlCEbpIDpIBCxBkIgdyBRABGIAEEhUKDXJhd19hdmFpbGFibGUYAyABKAgilAEKEENsaVN1cHBvcnRBY3Rpb24SPwoEa2luZBgBIAEoDjIiLm9uZXF1ZXJ5LmNsaS52MS5TdXBwb3J0QWN0aW9uS2luZEINukgKyAEBggEEEAEgABIdCgZyZWFzb24YAiABKAlCDbpICsgBAXIFEAEYgAQSIAoMZXhwbGFpbl9zbHVnGAMgASgJQgq6SAdyBRABGIABIrICCg5DbGlFcnJvckRldGFpbBI5CgRjb2RlGAEgASgOMhwub25lcXVlcnkuY2xpLnYxLlByb2JsZW1Db2RlQg26SArIAQGCAQQQASAAEjsKBXN0YWdlGAIgASgOMh0ub25lcXVlcnkuY2xpLnYxLlByb2JsZW1TdGFnZUINukgKyAEBggEEEAEgABIcCgV0aXRsZRgDIAEoCUINukgKyAEBcgUQARigARIbCgRoaW50GAQgASgJQg26SArIAQFyBRABGIAEEhEKCXJldHJ5YWJsZRgFIAEoCBIeCgpyZXF1ZXN0X2lkGAYgASgJQgq6SAdyBRABGIABEjoKB3N1cHBvcnQYByABKAsyIS5vbmVxdWVyeS5jbGkudjEuQ2xpU3VwcG9ydEFjdGlvbkIGukgDyAEBIsMBCh5DbGlDb25uZWN0RXJyb3JEZXRhaWxSZWZlcmVuY2USNAoJY2xpX2Vycm9yGAEgASgLMh8ub25lcXVlcnkuY2xpLnYxLkNsaUVycm9yRGV0YWlsSAASLQoLYmFkX3JlcXVlc3QYAiABKAsyFi5nb29nbGUucnBjLkJhZFJlcXVlc3RIABIrCgpyZXRyeV9pbmZvGAMgASgLMhUuZ29vZ2xlLnJwYy5SZXRyeUluZm9IAEIPCgZkZXRhaWwSBbpIAggBKkwKDUNvbnRlbnRGb3JtYXQSHgoaQ09OVEVOVF9GT1JNQVRfVU5TUEVDSUZJRUQQABIbChdDT05URU5UX0ZPUk1BVF9NQVJLRE9XThABKvIBChFTdXBwb3J0QWN0aW9uS2luZBIjCh9TVVBQT1JUX0FDVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASHAoYU1VQUE9SVF9BQ1RJT05fS0lORF9OT05FEAESHQoZU1VQUE9SVF9BQ1RJT05fS0lORF9SRVRSWRACEh8KG1NVUFBPUlRfQUNUSU9OX0tJTkRfRVhQTEFJThADEi4KKlNVUFBPUlRfQUNUSU9OX0tJTkRfUkVQT1JUX0lGX1JFUFJPRFVDSUJMRRAEEioKJlNVUFBPUlRfQUNUSU9OX0tJTkRfUkVQT1JUX1JFQ09NTUVOREVEEAUqjQcKC1Byb2JsZW1Db2RlEhwKGFBST0JMRU1fQ09ERV9VTlNQRUNJRklFRBAAEhoKFlBST0JMRU1fQ09ERV9GT1JCSURERU4QARIgChxQUk9CTEVNX0NPREVfSU5WQUxJRF9SRVFVRVNUEAISHQoZUFJPQkxFTV9DT0RFX0xPR0lOX0RFTklFRBADEiMKH1BST0JMRU1fQ09ERV9MT0dJTl9SQVRFX0xJTUlURUQQBBImCiJQUk9CTEVNX0NPREVfTE9HSU5fU0VTU0lPTl9FWFBJUkVEEAUSHwobUFJPQkxFTV9DT0RFX01BTEZPUk1FRF9KU09OEAYSHgoaUFJPQkxFTV9DT0RFX05PVF9MT0dHRURfSU4QBxIeChpQUk9CTEVNX0NPREVfT1JHX05PVF9GT1VORBAIEicKI1BST0JMRU1fQ09ERV9RVUVSWV9FWEVDVVRJT05fRkFJTEVEEAkSKgomUFJPQkxFTV9DT0RFX1FVRVJZX0VYRUNVVElPTl9USU1FRF9PVVQQChIsCihQUk9CTEVNX0NPREVfUVVFUllfRVhFQ1VUSU9OX1VOQVZBSUxBQkxFEAsSKQolUFJPQkxFTV9DT0RFX1FVRVJZX1BSRVBBUkFUSU9OX0ZBSUxFRBAMEh8KG1BST0JMRU1fQ09ERV9RVUVSWV9SRUpFQ1RFRBANEisKJ1BST0JMRU1fQ09ERV9TT1VSQ0VfQVBJX0RFU0NSSUJFX0ZBSUxFRBAOEiwKKFBST0JMRU1fQ09ERV9TT1VSQ0VfQVBJX0VYRUNVVElPTl9GQUlMRUQQDxIlCiFQUk9CTEVNX0NPREVfU09VUkNFX0FQSV9GT1JCSURERU4QEBIuCipQUk9CTEVNX0NPREVfU09VUkNFX0FQSV9QUkVQQVJBVElPTl9GQUlMRUQQERIzCi9QUk9CTEVNX0NPREVfU09VUkNFX0FQSV9FWEVDVVRJT05fU1RBVEVfSU5WQUxJRBASEi4KKlBST0JMRU1fQ09ERV9TT1VSQ0VfQVBJX1NPVVJDRV9VTkFWQUlMQUJMRRATEiEKHVBST0JMRU1fQ09ERV9TT1VSQ0VfTk9UX0ZPVU5EEBQSJQohUFJPQkxFTV9DT0RFX1NPVVJDRV9OQU1FX0NPTkZMSUNUEBUSJQohUFJPQkxFTV9DT0RFX1NPVVJDRV9OT1RfUVVFUllBQkxFEBYqywEKDFByb2JsZW1TdGFnZRIdChlQUk9CTEVNX1NUQUdFX1VOU1BFQ0lGSUVEEAASFgoSUFJPQkxFTV9TVEFHRV9BVVRIEAESHwobUFJPQkxFTV9TVEFHRV9FWEVDVVRFX1FVRVJZEAISIgoeUFJPQkxFTV9TVEFHRV9SRUFEX1FVRVJZX0lOUFVUEAMSHQoZUFJPQkxFTV9TVEFHRV9SRVNPTFZFX09SRxAEEiAKHFBST0JMRU1fU1RBR0VfUkVTT0xWRV9TT1VSQ0UQBWIIZWRpdGlvbnNw6Ac",
+  "ChxvbmVxdWVyeS9jbGkvdjEvY29tbW9uLnByb3RvEg9vbmVxdWVyeS5jbGkudjEiTgoHQ2xpUGFnZRIfCgtuZXh0X2N1cnNvchgBIAEoCUIKukgHcgUQARiAIBIiCg5yZXR1cm5lZF9jb3VudBgCIAEoDUIKukgHyAEBKgIYZCJGCg5DbGlQYWdlUmVxdWVzdBIYCgVsaW1pdBgBIAEoDUIJukgGKgQYZCgBEhoKBmN1cnNvchgCIAEoCUIKukgHcgUQARiAICJ0Cg9DbGlTYW5pdGl6YXRpb24SHgoHcHJvZmlsZRgBIAEoCUINukgKyAEBcgUQARiAARIqCg9zYW5pdGl6ZWRfcGF0aHMYAiADKAlCEbpIDpIBCxBkIgdyBRABGIAEEhUKDXJhd19hdmFpbGFibGUYAyABKAgigwMKHkNsaUNvbm5lY3RFcnJvckRldGFpbFJlZmVyZW5jZRIrCgplcnJvcl9pbmZvGAEgASgLMhUuZ29vZ2xlLnJwYy5FcnJvckluZm9IABItCgtiYWRfcmVxdWVzdBgCIAEoCzIWLmdvb2dsZS5ycGMuQmFkUmVxdWVzdEgAEisKCnJldHJ5X2luZm8YAyABKAsyFS5nb29nbGUucnBjLlJldHJ5SW5mb0gAEjEKDXJlc291cmNlX2luZm8YBCABKAsyGC5nb29nbGUucnBjLlJlc291cmNlSW5mb0gAEj8KFHByZWNvbmRpdGlvbl9mYWlsdXJlGAUgASgLMh8uZ29vZ2xlLnJwYy5QcmVjb25kaXRpb25GYWlsdXJlSAASMQoNcXVvdGFfZmFpbHVyZRgGIAEoCzIYLmdvb2dsZS5ycGMuUXVvdGFGYWlsdXJlSAASIAoEaGVscBgHIAEoCzIQLmdvb2dsZS5ycGMuSGVscEgAQg8KBmRldGFpbBIFukgCCAEqTAoNQ29udGVudEZvcm1hdBIeChpDT05URU5UX0ZPUk1BVF9VTlNQRUNJRklFRBAAEhsKF0NPTlRFTlRfRk9STUFUX01BUktET1dOEAFiCGVkaXRpb25zcOgH",
   [file_buf_validate_validate, file_google_rpc_error_details]
 );
 
@@ -104,82 +109,9 @@ export const CliSanitizationSchema: GenMessage<CliSanitization> /*@__PURE__*/ =
   messageDesc(file_onequery_cli_v1_common, 2);
 
 /**
- * @generated from message onequery.cli.v1.CliSupportAction
- */
-export type CliSupportAction = Message<"onequery.cli.v1.CliSupportAction"> & {
-  /**
-   * @generated from field: onequery.cli.v1.SupportActionKind kind = 1;
-   */
-  kind: SupportActionKind;
-
-  /**
-   * @generated from field: string reason = 2;
-   */
-  reason: string;
-
-  /**
-   * @generated from field: string explain_slug = 3;
-   */
-  explainSlug: string;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliSupportAction.
- * Use `create(CliSupportActionSchema)` to create a new message.
- */
-export const CliSupportActionSchema: GenMessage<CliSupportAction> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_common, 3);
-
-/**
- * @generated from message onequery.cli.v1.CliErrorDetail
- */
-export type CliErrorDetail = Message<"onequery.cli.v1.CliErrorDetail"> & {
-  /**
-   * @generated from field: onequery.cli.v1.ProblemCode code = 1;
-   */
-  code: ProblemCode;
-
-  /**
-   * @generated from field: onequery.cli.v1.ProblemStage stage = 2;
-   */
-  stage: ProblemStage;
-
-  /**
-   * @generated from field: string title = 3;
-   */
-  title: string;
-
-  /**
-   * @generated from field: string hint = 4;
-   */
-  hint: string;
-
-  /**
-   * @generated from field: bool retryable = 5;
-   */
-  retryable: boolean;
-
-  /**
-   * @generated from field: string request_id = 6;
-   */
-  requestId: string;
-
-  /**
-   * @generated from field: onequery.cli.v1.CliSupportAction support = 7;
-   */
-  support?: CliSupportAction;
-};
-
-/**
- * Describes the message onequery.cli.v1.CliErrorDetail.
- * Use `create(CliErrorDetailSchema)` to create a new message.
- */
-export const CliErrorDetailSchema: GenMessage<CliErrorDetail> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_common, 4);
-
-/**
- * Keeps generated Connect error-detail schemas available to both the CLI server
- * and the Rust CLI Connect client.
+ * Codegen anchor for standard Connect error-detail schemas used by the CLI
+ * server and the Rust CLI client. Typed OneQuery CLI problems are identified by
+ * google.rpc.ErrorInfo with domain "onequery.cli.v1".
  *
  * @generated from message onequery.cli.v1.CliConnectErrorDetailReference
  */
@@ -191,10 +123,10 @@ export type CliConnectErrorDetailReference =
     detail:
       | {
           /**
-           * @generated from field: onequery.cli.v1.CliErrorDetail cli_error = 1;
+           * @generated from field: google.rpc.ErrorInfo error_info = 1;
            */
-          value: CliErrorDetail;
-          case: "cliError";
+          value: ErrorInfo;
+          case: "errorInfo";
         }
       | {
           /**
@@ -210,6 +142,34 @@ export type CliConnectErrorDetailReference =
           value: RetryInfo;
           case: "retryInfo";
         }
+      | {
+          /**
+           * @generated from field: google.rpc.ResourceInfo resource_info = 4;
+           */
+          value: ResourceInfo;
+          case: "resourceInfo";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.PreconditionFailure precondition_failure = 5;
+           */
+          value: PreconditionFailure;
+          case: "preconditionFailure";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.QuotaFailure quota_failure = 6;
+           */
+          value: QuotaFailure;
+          case: "quotaFailure";
+        }
+      | {
+          /**
+           * @generated from field: google.rpc.Help help = 7;
+           */
+          value: Help;
+          case: "help";
+        }
       | { case: undefined; value?: undefined };
   };
 
@@ -218,7 +178,7 @@ export type CliConnectErrorDetailReference =
  * Use `create(CliConnectErrorDetailReferenceSchema)` to create a new message.
  */
 export const CliConnectErrorDetailReferenceSchema: GenMessage<CliConnectErrorDetailReference> /*@__PURE__*/ =
-  messageDesc(file_onequery_cli_v1_common, 5);
+  messageDesc(file_onequery_cli_v1_common, 3);
 
 /**
  * @generated from enum onequery.cli.v1.ContentFormat
@@ -240,215 +200,3 @@ export enum ContentFormat {
  */
 export const ContentFormatSchema: GenEnum<ContentFormat> /*@__PURE__*/ =
   enumDesc(file_onequery_cli_v1_common, 0);
-
-/**
- * @generated from enum onequery.cli.v1.SupportActionKind
- */
-export enum SupportActionKind {
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_NONE = 1;
-   */
-  NONE = 1,
-
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_RETRY = 2;
-   */
-  RETRY = 2,
-
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_EXPLAIN = 3;
-   */
-  EXPLAIN = 3,
-
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_REPORT_IF_REPRODUCIBLE = 4;
-   */
-  REPORT_IF_REPRODUCIBLE = 4,
-
-  /**
-   * @generated from enum value: SUPPORT_ACTION_KIND_REPORT_RECOMMENDED = 5;
-   */
-  REPORT_RECOMMENDED = 5,
-}
-
-/**
- * Describes the enum onequery.cli.v1.SupportActionKind.
- */
-export const SupportActionKindSchema: GenEnum<SupportActionKind> /*@__PURE__*/ =
-  enumDesc(file_onequery_cli_v1_common, 1);
-
-/**
- * @generated from enum onequery.cli.v1.ProblemCode
- */
-export enum ProblemCode {
-  /**
-   * @generated from enum value: PROBLEM_CODE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_FORBIDDEN = 1;
-   */
-  FORBIDDEN = 1,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_INVALID_REQUEST = 2;
-   */
-  INVALID_REQUEST = 2,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_LOGIN_DENIED = 3;
-   */
-  LOGIN_DENIED = 3,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_LOGIN_RATE_LIMITED = 4;
-   */
-  LOGIN_RATE_LIMITED = 4,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_LOGIN_SESSION_EXPIRED = 5;
-   */
-  LOGIN_SESSION_EXPIRED = 5,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_MALFORMED_JSON = 6;
-   */
-  MALFORMED_JSON = 6,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_NOT_LOGGED_IN = 7;
-   */
-  NOT_LOGGED_IN = 7,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_ORG_NOT_FOUND = 8;
-   */
-  ORG_NOT_FOUND = 8,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_QUERY_EXECUTION_FAILED = 9;
-   */
-  QUERY_EXECUTION_FAILED = 9,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_QUERY_EXECUTION_TIMED_OUT = 10;
-   */
-  QUERY_EXECUTION_TIMED_OUT = 10,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_QUERY_EXECUTION_UNAVAILABLE = 11;
-   */
-  QUERY_EXECUTION_UNAVAILABLE = 11,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_QUERY_PREPARATION_FAILED = 12;
-   */
-  QUERY_PREPARATION_FAILED = 12,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_QUERY_REJECTED = 13;
-   */
-  QUERY_REJECTED = 13,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_DESCRIBE_FAILED = 14;
-   */
-  SOURCE_API_DESCRIBE_FAILED = 14,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_EXECUTION_FAILED = 15;
-   */
-  SOURCE_API_EXECUTION_FAILED = 15,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_FORBIDDEN = 16;
-   */
-  SOURCE_API_FORBIDDEN = 16,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_PREPARATION_FAILED = 17;
-   */
-  SOURCE_API_PREPARATION_FAILED = 17,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_EXECUTION_STATE_INVALID = 18;
-   */
-  SOURCE_API_EXECUTION_STATE_INVALID = 18,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_API_SOURCE_UNAVAILABLE = 19;
-   */
-  SOURCE_API_SOURCE_UNAVAILABLE = 19,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_NOT_FOUND = 20;
-   */
-  SOURCE_NOT_FOUND = 20,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_NAME_CONFLICT = 21;
-   */
-  SOURCE_NAME_CONFLICT = 21,
-
-  /**
-   * @generated from enum value: PROBLEM_CODE_SOURCE_NOT_QUERYABLE = 22;
-   */
-  SOURCE_NOT_QUERYABLE = 22,
-}
-
-/**
- * Describes the enum onequery.cli.v1.ProblemCode.
- */
-export const ProblemCodeSchema: GenEnum<ProblemCode> /*@__PURE__*/ = enumDesc(
-  file_onequery_cli_v1_common,
-  2
-);
-
-/**
- * @generated from enum onequery.cli.v1.ProblemStage
- */
-export enum ProblemStage {
-  /**
-   * @generated from enum value: PROBLEM_STAGE_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: PROBLEM_STAGE_AUTH = 1;
-   */
-  AUTH = 1,
-
-  /**
-   * @generated from enum value: PROBLEM_STAGE_EXECUTE_QUERY = 2;
-   */
-  EXECUTE_QUERY = 2,
-
-  /**
-   * @generated from enum value: PROBLEM_STAGE_READ_QUERY_INPUT = 3;
-   */
-  READ_QUERY_INPUT = 3,
-
-  /**
-   * @generated from enum value: PROBLEM_STAGE_RESOLVE_ORG = 4;
-   */
-  RESOLVE_ORG = 4,
-
-  /**
-   * @generated from enum value: PROBLEM_STAGE_RESOLVE_SOURCE = 5;
-   */
-  RESOLVE_SOURCE = 5,
-}
-
-/**
- * Describes the enum onequery.cli.v1.ProblemStage.
- */
-export const ProblemStageSchema: GenEnum<ProblemStage> /*@__PURE__*/ = enumDesc(
-  file_onequery_cli_v1_common,
-  3
-);

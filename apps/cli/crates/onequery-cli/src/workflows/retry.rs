@@ -58,9 +58,8 @@ mod tests {
 
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::ApiProblemReason;
     use crate::transport::api_failure::TransportFailure;
-    use crate::transport::api_failure::TransportFailureKind;
-    use crate::transport::generated::types;
 
     use super::RetryDirective;
     use super::RetryTransition;
@@ -70,16 +69,14 @@ mod tests {
     #[test]
     fn unauthorized_failures_require_reauth_even_if_they_are_not_retryable() {
         let directive = classify_retry_directive(&ApiFailure::Problem(ApiProblem {
-            title: "Not Logged In".to_owned(),
-            detail: "stored credentials are no longer authorized".to_owned(),
-            code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
+            reason: ApiProblemReason::from_static("NOT_LOGGED_IN"),
+            server_message: "stored credentials are no longer authorized".to_owned(),
             retryable: false,
             retry_after_ms: None,
             stage: ErrorStage::Auth,
-            hint: None,
             request_id: None,
             validation_issues: Vec::new(),
-            support_action: None,
+            resource: None,
         }));
 
         assert_eq!(directive, RetryDirective::NeedsReauth);
@@ -89,7 +86,6 @@ mod tests {
     fn transient_transport_failures_are_classified_as_retry_allowed() {
         assert_eq!(
             classify_retry_directive(&ApiFailure::Transport(TransportFailure {
-                kind: TransportFailureKind::SendRequest,
                 stage: ErrorStage::Http,
                 message: "timeout".to_owned(),
                 retryable: true,

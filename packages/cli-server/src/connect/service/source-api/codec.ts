@@ -52,14 +52,14 @@ export function resolveSourceApiStartCommand(
   if (!input.target) {
     return cliServiceErr({
       detail: "source API request missing target payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 
   if (!input.draft) {
     return cliServiceErr({
       detail: "source API request missing draft payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 
@@ -75,7 +75,7 @@ export function resolveSourceApiResumeCommand(
   if (!input.target) {
     return cliServiceErr({
       detail: "source API request missing target payload",
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_REQUEST_INVALID",
     });
   }
 

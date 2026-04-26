@@ -1,4 +1,8 @@
-import type { CliSanitization } from "./envelope";
+import type { MessageInitShape } from "@bufbuild/protobuf";
+
+import type { CliSanitizationSchema } from "../connect/gen/onequery/cli/v1/common_pb";
+
+type CliSanitizationInit = MessageInitShape<typeof CliSanitizationSchema>;
 
 const CLI_SANITIZATION_PROFILE = "default-v1";
 const MARKDOWN_FENCE_LINE = /^([ \t]{0,3})(```|~~~)/;
@@ -61,7 +65,7 @@ export function sanitizeUndefinedableCliRemoteText(
 
 export function buildCliSanitization(
   sanitizedPaths: readonly string[] | undefined
-): CliSanitization | undefined {
+): CliSanitizationInit | undefined {
   if (!sanitizedPaths || sanitizedPaths.length === 0) {
     return undefined;
   }

@@ -4,9 +4,9 @@ use onequery_cli_core::error::ErrorStage;
 
 use crate::commands::CommandContext;
 use crate::local_target::managed_gateway_unavailable_error;
+use crate::presentation::problem_catalog::api_problem_presentation;
 use crate::recovery::auth_reset_try_next;
 use crate::transport::api_failure::ApiFailure;
-use crate::transport::api_failure::cli_problem_code_string;
 use crate::transport::client::ApiClientBuildFailure;
 
 pub(crate) struct ApiErrorPresentation<'a> {
@@ -33,23 +33,39 @@ pub(crate) fn present_api_failure(
 
     match failure {
         ApiFailure::Problem(problem) => {
-            let title = problem.title.clone();
-            let why = problem.detail.clone();
-            let hint = problem.hint.clone();
-            let code = cli_problem_code_string(problem.code);
-            let try_next = if problem.is_auth_error() {
-                unauthorized_try_next.unwrap_or_else(|| {
-                    hint.clone()
-                        .map_or_else(|| fallback_try_next.clone(), |value| vec![value])
-                })
-            } else {
-                hint.clone()
-                    .map_or_else(|| fallback_try_next.clone(), |value| vec![value])
-            };
+            let problem_presentation = api_problem_presentation(problem.reason.as_str());
+            let title = problem_presentation.map_or_else(
+                || humanize_error_code(problem.reason.as_str()),
+                |presentation| presentation.title.to_owned(),
+            );
+            let why = problem.server_message.clone();
+            let code = problem.reason.structured_code();
+            let try_next = problem_presentation.map_or_else(
+                || {
+                    if problem.is_auth_error() {
+                        unauthorized_try_next.unwrap_or_else(|| fallback_try_next.clone())
+                    } else {
+                        fallback_try_next.clone()
+                    }
+                },
+                |presentation| {
+                    presentation
+                        .try_next
+                        .iter()
+                        .map(|step| (*step).to_owned())
+                        .collect()
+                },
+            );
+            let hint = problem_presentation.and_then(|presentation| {
+                presentation
+                    .hint
+                    .filter(|value| !value.trim().is_empty())
+                    .map(ToOwned::to_owned)
+            });
 
             CliError::new(title, command, problem.stage, why, try_next)
-                .with_hint(hint)
                 .with_code(Some(code))
+                .with_hint(hint)
                 .with_retryable(problem.retryable)
                 .with_retry_after_ms(problem.retry_after_ms)
                 .with_validation_issues(
@@ -63,7 +79,6 @@ pub(crate) fn present_api_failure(
                         })
                         .collect(),
                 )
-                .with_support_action(problem.support_action.clone())
                 .with_request_id(problem.request_id)
         }
         ApiFailure::Transport(transport) => CliError::new(
@@ -135,7 +150,6 @@ pub(crate) fn present_api_client_build_failure(
     }
 }
 
-#[cfg(test)]
 fn humanize_error_code(raw: &str) -> String {
     if raw.contains(' ') {
         return raw.to_owned();
@@ -143,6 +157,18 @@ fn humanize_error_code(raw: &str) -> String {
 
     raw.split(['_', '-'])
         .filter(|part| !part.is_empty())
+        .map(|part| {
+            let lower = part.to_ascii_lowercase();
+            let mut chars = lower.chars();
+            match chars.next() {
+                Some(first) => {
+                    let mut word = first.to_ascii_uppercase().to_string();
+                    word.push_str(chars.as_str());
+                    word
+                }
+                None => String::new(),
+            }
+        })
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -151,8 +177,6 @@ fn humanize_error_code(raw: &str) -> String {
 mod tests {
     use insta::assert_snapshot;
     use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::CliSupportAction;
-    use onequery_cli_core::error::CliSupportActionKind;
     use onequery_cli_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::Value;
@@ -164,23 +188,35 @@ mod tests {
     use crate::recovery::auth_login_try_next;
     use crate::transport::api_failure::ApiFailure;
     use crate::transport::api_failure::ApiProblem;
+    use crate::transport::api_failure::ApiProblemReason;
     use crate::transport::api_failure::ApiValidationIssue;
     use crate::transport::api_failure::DecodeFailure;
     use crate::transport::api_failure::TransportFailure;
-    use crate::transport::api_failure::TransportFailureKind;
     use crate::transport::client::ApiClientBuildFailure;
-    use crate::transport::generated::types;
 
     use super::ApiErrorPresentation;
     use super::humanize_error_code;
     use super::present_api_client_build_failure;
     use super::present_api_failure;
 
-    fn user_actionable_support(explain_slug: &str) -> CliSupportAction {
-        CliSupportAction {
-            kind: CliSupportActionKind::None,
-            reason: "user_actionable".to_owned(),
-            explain_slug: explain_slug.to_owned(),
+    fn api_problem(
+        reason: &'static str,
+        server_message: &str,
+        retryable: bool,
+        retry_after_ms: Option<u64>,
+        stage: ErrorStage,
+        request_id: Option<&str>,
+        validation_issues: Vec<ApiValidationIssue>,
+    ) -> ApiProblem {
+        ApiProblem {
+            reason: ApiProblemReason::from_static(reason),
+            server_message: server_message.to_owned(),
+            retryable,
+            retry_after_ms,
+            stage,
+            request_id: request_id.map(ToOwned::to_owned),
+            validation_issues,
+            resource: None,
         }
     }
 
@@ -211,11 +247,11 @@ mod tests {
     fn humanize_error_code_replaces_separators() {
         assert_eq!(
             [
-                humanize_error_code("source_not_found"),
+                humanize_error_code("SOURCE_NOT_FOUND"),
                 humanize_error_code("query-failed"),
                 humanize_error_code("forbidden"),
             ],
-            ["source not found", "query failed", "forbidden"]
+            ["Source Not Found", "Query Failed", "Forbidden"]
         );
     }
 
@@ -310,18 +346,15 @@ mod tests {
     #[test]
     fn present_api_failure_prefers_api_problem_fields() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Source Not Found".to_owned(),
-                detail: "no source named \"warehouse\" exists".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_SOURCE_NOT_FOUND,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::ResolveSource,
-                hint: Some("run `onequery source list`".to_owned()),
-                request_id: Some("req_123".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("source_not_found")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "SOURCE_NOT_FOUND",
+                "no source named \"warehouse\" exists",
+                false,
+                None,
+                ErrorStage::ResolveSource,
+                Some("req_123"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
                 title: "source show failed",
@@ -342,7 +375,7 @@ mod tests {
                 "tryNext": ["run `onequery source list`"],
                 "requestId": "req_123",
                 "hint": "run `onequery source list`",
-                "code": "source_not_found",
+                "code": "SOURCE_NOT_FOUND",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -354,18 +387,15 @@ mod tests {
     #[test]
     fn present_api_failure_uses_typed_problem_fields_for_reauth_guidance() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Not Logged In".to_owned(),
-                detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::Auth,
-                hint: Some("run `onequery auth login`".to_owned()),
-                request_id: Some("req_connect_auth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("not_logged_in")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "NOT_LOGGED_IN",
+                "stored credentials are no longer authorized",
+                false,
+                None,
+                ErrorStage::Auth,
+                Some("req_connect_auth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
@@ -386,7 +416,7 @@ mod tests {
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_connect_auth",
                 "hint": "run `onequery auth login`",
-                "code": "not_logged_in",
+                "code": "NOT_LOGGED_IN",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -398,18 +428,15 @@ mod tests {
     #[test]
     fn present_api_failure_uses_typed_problem_codes_for_reauth_guidance() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Not Logged In".to_owned(),
-                detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::Auth,
-                hint: Some("run `onequery auth login`".to_owned()),
-                request_id: Some("req_connect_reauth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("not_logged_in")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "NOT_LOGGED_IN",
+                "stored credentials are no longer authorized",
+                false,
+                None,
+                ErrorStage::Auth,
+                Some("req_connect_reauth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
@@ -432,7 +459,7 @@ mod tests {
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_connect_reauth",
                 "hint": "run `onequery auth login`",
-                "code": "not_logged_in",
+                "code": "NOT_LOGGED_IN",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -483,18 +510,15 @@ mod tests {
     #[test]
     fn rendered_problem_error_snapshot() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Source Not Found".to_owned(),
-                detail: "no source named \"warehouse\" exists".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_SOURCE_NOT_FOUND,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::ResolveSource,
-                hint: Some("run `onequery source list`".to_owned()),
-                request_id: Some("req_problem".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("source_not_found")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "SOURCE_NOT_FOUND",
+                "no source named \"warehouse\" exists",
+                false,
+                None,
+                ErrorStage::ResolveSource,
+                Some("req_problem"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
                 title: "source show failed",
@@ -513,7 +537,6 @@ mod tests {
     fn rendered_transport_error_snapshot() {
         let error = present_api_failure(
             ApiFailure::Transport(TransportFailure {
-                kind: TransportFailureKind::SendRequest,
                 stage: ErrorStage::Http,
                 message: "operation timed out".to_owned(),
                 retryable: true,
@@ -558,26 +581,17 @@ mod tests {
     }
 
     #[test]
-    fn present_api_failure_preserves_server_support_action() {
+    fn present_api_failure_keeps_canonical_reason_code() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Query Execution Failed".to_owned(),
-                detail: "warehouse execution unexpectedly failed".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_QUERY_EXECUTION_FAILED,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::ExecuteQuery,
-                hint: Some(
-                    "retry `onequery query --source warehouse --sql \"select ...\"`".to_owned(),
-                ),
-                request_id: Some("req_support".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(CliSupportAction {
-                    kind: CliSupportActionKind::ReportIfReproducible,
-                    reason: "query_execution_failure".to_owned(),
-                    explain_slug: "query_execution_failed".to_owned(),
-                }),
-            }),
+            ApiFailure::Problem(api_problem(
+                "QUERY_EXECUTION_FAILED",
+                "warehouse execution unexpectedly failed",
+                false,
+                None,
+                ErrorStage::ExecuteQuery,
+                Some("req_support"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
@@ -591,11 +605,20 @@ mod tests {
         );
 
         assert_eq!(
-            error.support_action,
-            Some(CliSupportAction {
-                kind: CliSupportActionKind::ReportIfReproducible,
-                reason: "query_execution_failure".to_owned(),
-                explain_slug: "query_execution_failed".to_owned(),
+            error_summary(&error),
+            json!({
+                "title": "Query Execution Failed",
+                "command": "onequery query exec --source warehouse --sql \"select 1\"",
+                "stage": "execute_query",
+                "why": "warehouse execution unexpectedly failed",
+                "tryNext": ["retry onequery query exec --source <source> --sql \"select ...\""],
+                "requestId": "req_support",
+                "hint": "retry onequery query exec --source <source> --sql \"select ...\"",
+                "code": "QUERY_EXECUTION_FAILED",
+                "status": null,
+                "retryable": false,
+                "retryAfterMs": null,
+                "validationIssues": [],
             })
         );
     }
@@ -603,18 +626,15 @@ mod tests {
     #[test]
     fn present_api_failure_overrides_unauthorized_try_next_for_reauth_guidance() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Not Logged In".to_owned(),
-                detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::Auth,
-                hint: Some("run `onequery auth login`".to_owned()),
-                request_id: Some("req_reauth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("not_logged_in")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "NOT_LOGGED_IN",
+                "stored credentials are no longer authorized",
+                false,
+                None,
+                ErrorStage::Auth,
+                Some("req_reauth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
@@ -637,7 +657,7 @@ mod tests {
                 "tryNext": ["onequery auth login"],
                 "requestId": "req_reauth",
                 "hint": "run `onequery auth login`",
-                "code": "not_logged_in",
+                "code": "NOT_LOGGED_IN",
                 "status": null,
                 "retryable": false,
                 "retryAfterMs": null,
@@ -649,18 +669,15 @@ mod tests {
     #[test]
     fn rendered_unauthorized_problem_guides_query_reauth_snapshot() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Not Logged In".to_owned(),
-                detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::Auth,
-                hint: Some("run `onequery auth login`".to_owned()),
-                request_id: Some("req_query_auth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("not_logged_in")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "NOT_LOGGED_IN",
+                "stored credentials are no longer authorized",
+                false,
+                None,
+                ErrorStage::Auth,
+                Some("req_query_auth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source warehouse --sql \"select 1\"",
                 title: "query failed",
@@ -680,18 +697,15 @@ mod tests {
     #[test]
     fn rendered_forbidden_problem_uses_problem_hint_snapshot() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Forbidden".to_owned(),
-                detail: "this account can no longer access the org list".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_FORBIDDEN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::ResolveOrg,
-                hint: Some("refresh your session and retry".to_owned()),
-                request_id: Some("req_org_auth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("forbidden")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "FORBIDDEN",
+                "this account can no longer access the org list",
+                false,
+                None,
+                ErrorStage::ResolveOrg,
+                Some("req_org_auth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery org list",
                 title: "org list failed",
@@ -709,18 +723,15 @@ mod tests {
     #[test]
     fn rendered_unauthorized_problem_guides_source_reauth_snapshot() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Not Logged In".to_owned(),
-                detail: "stored credentials are no longer authorized".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_NOT_LOGGED_IN,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::Auth,
-                hint: Some("run `onequery auth login`".to_owned()),
-                request_id: Some("req_source_auth".to_owned()),
-                validation_issues: Vec::new(),
-                support_action: Some(user_actionable_support("not_logged_in")),
-            }),
+            ApiFailure::Problem(api_problem(
+                "NOT_LOGGED_IN",
+                "stored credentials are no longer authorized",
+                false,
+                None,
+                ErrorStage::Auth,
+                Some("req_source_auth"),
+                Vec::new(),
+            )),
             ApiErrorPresentation {
                 command: "onequery source show warehouse",
                 title: "source show failed",
@@ -741,16 +752,14 @@ mod tests {
     #[test]
     fn rendered_validation_problem_includes_structured_issues_snapshot() {
         let error = present_api_failure(
-            ApiFailure::Problem(ApiProblem {
-                title: "Invalid Request".to_owned(),
-                detail: "request body contains invalid fields".to_owned(),
-                code: types::ProblemCode::PROBLEM_CODE_INVALID_REQUEST,
-                retryable: false,
-                retry_after_ms: None,
-                stage: ErrorStage::ExecuteQuery,
-                hint: Some("correct the request and retry".to_owned()),
-                request_id: Some("req_validation".to_owned()),
-                validation_issues: vec![
+            ApiFailure::Problem(api_problem(
+                "EXECUTE_QUERY_REQUEST_INVALID",
+                "request body contains invalid fields",
+                false,
+                None,
+                ErrorStage::ExecuteQuery,
+                Some("req_validation"),
+                vec![
                     ApiValidationIssue {
                         field: "source".to_owned(),
                         message: "source is required".to_owned(),
@@ -762,8 +771,7 @@ mod tests {
                         code: "custom".to_owned(),
                     },
                 ],
-                support_action: Some(user_actionable_support("invalid_request")),
-            }),
+            )),
             ApiErrorPresentation {
                 command: "onequery query exec --source '' --sql \"delete from events\"",
                 title: "query failed",

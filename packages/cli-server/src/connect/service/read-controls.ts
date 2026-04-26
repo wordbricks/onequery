@@ -2,6 +2,7 @@ import { isFieldSet } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { Result } from "better-result";
 
+import type { CliProblemKey } from "../../domain/problems";
 import {
   CLI_DEFAULT_PAGE_LIMIT,
   parsePageCursor,
@@ -13,20 +14,23 @@ import {
 import type { CliPageRequest } from "../gen/onequery/cli/v1/common_pb";
 import { cliServiceErr } from "./result";
 
-export function parseCliPageRequest(page: CliPageRequest | undefined) {
+export function parseCliPageRequest(input: {
+  page: CliPageRequest | undefined;
+  invalidRequestKey: CliProblemKey;
+}) {
   const cursor =
-    page && isFieldSet(page, CliPageRequestSchema.field.cursor)
-      ? page.cursor
+    input.page && isFieldSet(input.page, CliPageRequestSchema.field.cursor)
+      ? input.page.cursor
       : undefined;
   const limit =
-    page && isFieldSet(page, CliPageRequestSchema.field.limit)
-      ? page.limit
+    input.page && isFieldSet(input.page, CliPageRequestSchema.field.limit)
+      ? input.page.limit
       : undefined;
   const offset = parsePageCursor(cursor);
   if (offset.isErr()) {
     return cliServiceErr({
       detail: offset.error.message,
-      key: "READ_QUERY_INPUT_INVALID",
+      key: input.invalidRequestKey,
     });
   }
 

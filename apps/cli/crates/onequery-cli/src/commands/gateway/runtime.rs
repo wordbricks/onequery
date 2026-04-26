@@ -1025,7 +1025,7 @@ mod tests {
     }
 
     #[test]
-    fn strict_runtime_state_reads_still_report_malformed_json() {
+    fn strict_runtime_state_reads_still_report_parse_failures() {
         let (_temp_dir, paths) = test_paths();
         let state_path = paths.run_dir.join(RUNTIME_STATE_FILENAME);
 

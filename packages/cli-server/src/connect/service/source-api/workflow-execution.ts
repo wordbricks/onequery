@@ -5,16 +5,17 @@ import type {
   SourceApiContinuationTokenPayload,
   SourceApiExecutionResult,
 } from "@onequery/server/source-api";
+import { SourceApiTimeoutError } from "@onequery/server/source-api";
 import { Result } from "better-result";
 
 import { storeSourceApiActionCommand } from "../../../audit";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
 import type { CliServiceResult } from "../result";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
   assertPreparedSourceApiStillValid,
-  createSourceApiConnectProblem,
+  createSourceApiFailure,
   executePreparedSourceApiResult,
 } from "./runtime";
 import {
@@ -23,11 +24,12 @@ import {
 } from "./workflow-codec";
 import { buildStartSourceApiExecuteCommandInvocationId } from "./workflow-command-id";
 import {
-  ensureCliServiceProblem,
+  captureSourceApiWorkflowResult,
+  captureSourceApiWorkflowValue,
   loadRequiredPreparedSourceApi,
   loadRequiredPreparedSourceConnection,
   requireLastCommittedEvent,
-  createSourceApiAuditProblem,
+  createSourceApiAuditFailure,
 } from "./workflow-runtime";
 import {
   runPreparedSourceApiWorkflow,
@@ -48,159 +50,195 @@ type SourceApiPageFetchStepResult = Awaited<
 export async function runStartSourceApiExecuteWorkflowResult(
   input: StartSourceApiExecuteWorkflowInput
 ): Promise<CliServiceResult<SourceApiExecuteSuccess>> {
-  return Result.tryPromise({
-    try: async () => {
-      const preparation = await runPreparedSourceApiWorkflow({
-        ...input,
-        commandInvocationId: buildStartSourceApiExecuteCommandInvocationId({
-          draft: input.draft,
-          invokeMode: input.invokeMode,
-          organizationId: input.organizationId,
-          requestId: input.requestId,
-          sourceKey: input.sourceKey,
-        }),
-        requestDescriptor: (descriptor) =>
-          buildResolvedRequestDescriptor({
-            descriptor,
-            draft: input.draft,
-          }),
-        startCommandPayload: {
-          invokeMode: input.invokeMode,
-          requestDescriptor: buildInitialRequestDescriptor(input.draft),
-          sourceKey: input.sourceKey,
-          type: "start_invoke",
-        },
-      });
+  return captureSourceApiWorkflowResult(async () =>
+    Result.gen(async function* runStartSourceApiExecuteWorkflowFlow() {
+      const preparation = yield* Result.await(
+        captureSourceApiWorkflowResult(() =>
+          runPreparedSourceApiWorkflow({
+            ...input,
+            commandInvocationId: buildStartSourceApiExecuteCommandInvocationId({
+              draft: input.draft,
+              invokeMode: input.invokeMode,
+              organizationId: input.organizationId,
+              requestId: input.requestId,
+              sourceKey: input.sourceKey,
+            }),
+            requestDescriptor: (descriptor) =>
+              buildResolvedRequestDescriptor({
+                descriptor,
+                draft: input.draft,
+              }),
+            startCommandPayload: {
+              invokeMode: input.invokeMode,
+              requestDescriptor: buildInitialRequestDescriptor(input.draft),
+              sourceKey: input.sourceKey,
+              type: "start_invoke",
+            },
+          })
+        )
+      );
 
-      const requestPreparation = await runSourceApiRequestPreparationStep({
-        actor: input.actor,
-        actorSnapshot: input.actorSnapshot,
-        c: input.c,
-        currentDecision: preparation.decision,
-        dependencies: input.dependencies,
-        descriptor: preparation.descriptor,
-        draft: input.draft,
-        organizationId: input.organizationId,
-        requestId: input.requestId,
-      });
+      const requestPreparation = yield* Result.await(
+        captureSourceApiWorkflowValue(() =>
+          runSourceApiRequestPreparationStep({
+            actor: input.actor,
+            actorSnapshot: input.actorSnapshot,
+            c: input.c,
+            currentDecision: preparation.decision,
+            dependencies: input.dependencies,
+            descriptor: preparation.descriptor,
+            draft: input.draft,
+            organizationId: input.organizationId,
+            requestId: input.requestId,
+          })
+        )
+      );
 
       if (requestPreparation.step.result.kind === "failed") {
-        throw requestPreparation.step.result.problem;
+        return Result.err(requestPreparation.step.result.problem);
       }
 
-      let preparedRequest = await loadRequiredPreparedSourceApi({
-        actor: input.actor,
-        c: input.c,
-        dependencies: input.dependencies,
-        descriptor: preparation.descriptor,
-        draft: input.draft,
-        prepared: requestPreparation.preparedRequest,
-        source: requestPreparation.step.effect.source,
-      });
-      const preview =
-        input.dependencies.createSourceApiPreview(preparedRequest);
-
-      if (input.invokeMode === "preview_only") {
-        return {
-          preview,
-        };
-      }
-
-      const pageFetch = await runSourceApiPageFetchStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: requestPreparation.step.decision,
-        db: input.c.var.storage.db,
-        organizationId: input.organizationId,
-        requestId: input.requestId,
-        runAttempt: async (effect) => {
-          const source = await loadRequiredPreparedSourceConnection({
-            c: input.c,
-            dependencies: input.dependencies,
-            organizationId: input.organizationId,
-            source: effect.source,
-          });
-          const currentPrepared = await loadRequiredPreparedSourceApi({
+      let preparedRequest = yield* Result.await(
+        captureSourceApiWorkflowValue(() =>
+          loadRequiredPreparedSourceApi({
             actor: input.actor,
             c: input.c,
             dependencies: input.dependencies,
             descriptor: preparation.descriptor,
             draft: input.draft,
-            prepared: preparedRequest,
-            source: effect.source,
-          });
-          preparedRequest = currentPrepared;
-          assertMatchingPreparedRequestFingerprint({
-            expectedFingerprint: effect.preparedRequestFingerprint,
-            prepared: currentPrepared,
-          });
+            prepared: requestPreparation.preparedRequest,
+            source: requestPreparation.step.effect.source,
+          })
+        )
+      );
+      const preview =
+        input.dependencies.createSourceApiPreview(preparedRequest);
 
-          return executePreparedSourceApiAttempt({
-            actor: input.actor,
-            attemptNumber: effect.attemptNumber,
-            c: input.c,
-            dependencies: input.dependencies,
-            pageIndex: effect.pageIndex,
-            prepared: currentPrepared,
-            source,
-          });
-        },
-      });
+      if (input.invokeMode === "preview_only") {
+        return Result.ok({
+          preview,
+        });
+      }
 
-      return buildSourceApiExecuteSuccess({
-        decision: pageFetch.decision,
-        dependencies: input.dependencies,
-        prepared: preparedRequest,
-        preparedRequestFingerprint: preparedRequest.preparedBinding,
-        preview,
-        result: requireSuccessfulSourceApiPageFetch(pageFetch),
-        secret: input.c.var.runtime.crypto.masterEncryptionKey,
-      });
-    },
-    catch: (error) => ensureCliServiceProblem(error),
-  });
+      const pageFetch = yield* Result.await(
+        captureSourceApiWorkflowValue(() =>
+          runSourceApiPageFetchStep({
+            actorSnapshot: input.actorSnapshot,
+            currentDecision: requestPreparation.step.decision,
+            db: input.c.var.storage.db,
+            organizationId: input.organizationId,
+            requestId: input.requestId,
+            runAttempt: async (effect) => {
+              const source = await loadRequiredPreparedSourceConnection({
+                c: input.c,
+                dependencies: input.dependencies,
+                organizationId: input.organizationId,
+                source: effect.source,
+              });
+              const currentPrepared = await loadRequiredPreparedSourceApi({
+                actor: input.actor,
+                c: input.c,
+                dependencies: input.dependencies,
+                descriptor: preparation.descriptor,
+                draft: input.draft,
+                prepared: preparedRequest,
+                source: effect.source,
+              });
+              preparedRequest = currentPrepared;
+              const fingerprint = assertMatchingPreparedRequestFingerprint({
+                expectedFingerprint: effect.preparedRequestFingerprint,
+                prepared: currentPrepared,
+              });
+
+              if (fingerprint.isErr()) {
+                return toTerminalPageFetchFailureResult({
+                  attemptNumber: effect.attemptNumber,
+                  dependencies: input.dependencies,
+                  pageIndex: effect.pageIndex,
+                  problem: fingerprint.error,
+                });
+              }
+
+              return executePreparedSourceApiAttempt({
+                actor: input.actor,
+                attemptNumber: effect.attemptNumber,
+                c: input.c,
+                dependencies: input.dependencies,
+                pageIndex: effect.pageIndex,
+                prepared: currentPrepared,
+                source,
+              });
+            },
+          })
+        )
+      );
+
+      const result = yield* requireSuccessfulSourceApiPageFetch(pageFetch);
+
+      return Result.ok(
+        buildSourceApiExecuteSuccess({
+          decision: pageFetch.decision,
+          dependencies: input.dependencies,
+          prepared: preparedRequest,
+          preparedRequestFingerprint: preparedRequest.preparedBinding,
+          preview,
+          result,
+          secret: input.c.var.runtime.crypto.masterEncryptionKey,
+        })
+      );
+    })
+  );
 }
 
 export async function runResumeSourceApiExecuteWorkflowResult(
   input: ResumeSourceApiExecuteWorkflowInput
 ): Promise<CliServiceResult<SourceApiExecuteSuccess>> {
-  return Result.tryPromise({
-    try: async () => {
-      const stored = await storeSourceApiActionCommand({
-        command: {
-          actionId: input.continuation.actionId,
-          actorSnapshot: input.actorSnapshot,
-          causedByEventId: null,
-          commandInvocationId: `source_api_action:${input.requestId}:resume_invoke`,
-          commandPayload: {
-            preparedRequestFingerprint:
-              input.continuation.preparedRequestFingerprint,
-            resumeFromEventId: input.continuation.resumeFromEventId,
-            type: "resume_invoke",
-          },
-          family: "source_api_action",
-          observedAt: new Date(),
-          organizationId: input.organizationId,
-          requestId: input.requestId,
-          surface: "cli",
-        },
-        db: input.c.var.storage.db,
-      });
+  return captureSourceApiWorkflowResult(async () =>
+    Result.gen(async function* runResumeSourceApiExecuteWorkflowFlow() {
+      const stored = yield* Result.await(
+        captureSourceApiWorkflowValue(() =>
+          storeSourceApiActionCommand({
+            command: {
+              actionId: input.continuation.actionId,
+              actorSnapshot: input.actorSnapshot,
+              causedByEventId: null,
+              commandInvocationId: `source_api_action:${input.requestId}:resume_invoke`,
+              commandPayload: {
+                preparedRequestFingerprint:
+                  input.continuation.preparedRequestFingerprint,
+                resumeFromEventId: input.continuation.resumeFromEventId,
+                type: "resume_invoke",
+              },
+              family: "source_api_action",
+              observedAt: new Date(),
+              organizationId: input.organizationId,
+              requestId: input.requestId,
+              surface: "cli",
+            },
+            db: input.c.var.storage.db,
+          })
+        )
+      );
 
       if (stored.isErr()) {
-        throw createSourceApiAuditProblem(
-          "source_api_action resume_invoke could not be stored",
-          stored.error
+        return Result.err(
+          createSourceApiAuditFailure(
+            "source_api_action resume_invoke could not be stored",
+            stored.error
+          )
         );
       }
 
       if (stored.value.kind === "rejected") {
-        throw createCliServiceProblem({
-          detail:
-            stored.value.rejectCode === "causation_mismatch"
-              ? "Source API continuation token is stale"
-              : "Source API continuation token can no longer resume this action",
-          key: "SOURCE_API_EXECUTION_STATE_INVALID",
-        });
+        return Result.err(
+          createCliServiceFailure({
+            detail:
+              stored.value.rejectCode === "causation_mismatch"
+                ? "Source API continuation token is stale"
+                : "Source API continuation token can no longer resume this action",
+            key: "SOURCE_API_EXECUTION_STATE_INVALID",
+          })
+        );
       }
 
       const resumeDecision = stored.value;
@@ -209,44 +247,60 @@ export async function runResumeSourceApiExecuteWorkflowResult(
         input.continuation.prepared
       );
 
-      const pageFetch = await runSourceApiPageFetchStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: resumeDecision,
-        db: input.c.var.storage.db,
-        organizationId: input.organizationId,
-        requestId: input.requestId,
-        runAttempt: async (effect) => {
-          assertMatchingPreparedRequestFingerprint({
-            expectedFingerprint: effect.preparedRequestFingerprint,
-            prepared: input.continuation.prepared,
-          });
+      const pageFetch = yield* Result.await(
+        captureSourceApiWorkflowValue(() =>
+          runSourceApiPageFetchStep({
+            actorSnapshot: input.actorSnapshot,
+            currentDecision: resumeDecision,
+            db: input.c.var.storage.db,
+            organizationId: input.organizationId,
+            requestId: input.requestId,
+            runAttempt: async (effect) => {
+              const fingerprint = assertMatchingPreparedRequestFingerprint({
+                expectedFingerprint: effect.preparedRequestFingerprint,
+                prepared: input.continuation.prepared,
+              });
 
-          return executePreparedSourceApiAttempt({
-            actor: input.actor,
-            attemptNumber: effect.attemptNumber,
-            c: input.c,
-            continuationState: input.continuation.state,
-            dependencies: input.dependencies,
-            pageIndex: effect.pageIndex,
-            prepared: input.continuation.prepared,
-            source: input.source,
-          });
-        },
-      });
+              if (fingerprint.isErr()) {
+                return toTerminalPageFetchFailureResult({
+                  attemptNumber: effect.attemptNumber,
+                  dependencies: input.dependencies,
+                  pageIndex: effect.pageIndex,
+                  problem: fingerprint.error,
+                });
+              }
 
-      return buildSourceApiExecuteSuccess({
-        decision: pageFetch.decision,
-        dependencies: input.dependencies,
-        prepared: input.continuation.prepared,
-        preparedRequestFingerprint:
-          input.continuation.preparedRequestFingerprint,
-        preview,
-        result: requireSuccessfulSourceApiPageFetch(pageFetch),
-        secret: input.c.var.runtime.crypto.masterEncryptionKey,
-      });
-    },
-    catch: (error) => ensureCliServiceProblem(error),
-  });
+              return executePreparedSourceApiAttempt({
+                actor: input.actor,
+                attemptNumber: effect.attemptNumber,
+                c: input.c,
+                continuationState: input.continuation.state,
+                dependencies: input.dependencies,
+                pageIndex: effect.pageIndex,
+                prepared: input.continuation.prepared,
+                source: input.source,
+              });
+            },
+          })
+        )
+      );
+
+      const result = yield* requireSuccessfulSourceApiPageFetch(pageFetch);
+
+      return Result.ok(
+        buildSourceApiExecuteSuccess({
+          decision: pageFetch.decision,
+          dependencies: input.dependencies,
+          prepared: input.continuation.prepared,
+          preparedRequestFingerprint:
+            input.continuation.preparedRequestFingerprint,
+          preview,
+          result,
+          secret: input.c.var.runtime.crypto.masterEncryptionKey,
+        })
+      );
+    })
+  );
 }
 
 async function executePreparedSourceApiAttempt(input: {
@@ -307,12 +361,12 @@ async function executePreparedSourceApiAttempt(input: {
 
 function requireSuccessfulSourceApiPageFetch(
   step: SourceApiPageFetchStepResult
-): SourceApiExecutionResult {
+): CliServiceResult<SourceApiExecutionResult> {
   if (step.result.kind === "failed") {
-    throw step.result.problem;
+    return Result.err(step.result.problem);
   }
 
-  return step.result.result;
+  return Result.ok(step.result.result);
 }
 
 function buildSourceApiExecuteSuccess(input: {
@@ -350,7 +404,7 @@ function toTerminalPageFetchFailureResult(input: {
   attemptNumber: number;
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">;
   pageIndex: number;
-  problem: ReturnType<typeof createCliServiceProblem>;
+  problem: ReturnType<typeof createCliServiceFailure>;
 }): SourceApiPageFetchAttemptResult {
   const failure = toExecutePageFailure(input.problem, input.dependencies);
 
@@ -361,6 +415,7 @@ function toTerminalPageFetchFailureResult(input: {
       failureCode: failure.failureCode,
       kind: "terminal_failure",
       pageIndex: input.pageIndex,
+      problemKey: failure.problem.reason,
       type: "record_page_fetch",
     },
     kind: "failed",
@@ -369,15 +424,15 @@ function toTerminalPageFetchFailureResult(input: {
 }
 
 function toExecutePageFailure(
-  problem: ReturnType<typeof createCliServiceProblem>,
+  problem: ReturnType<typeof createCliServiceFailure>,
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ) {
   const normalizedProblem =
-    problem.key === "SOURCE_API_EXECUTION_STATE_INVALID" ||
-    problem.key === "SOURCE_REQUEST_INVALID" ||
-    problem.key === "SOURCE_API_FORBIDDEN"
+    problem.reason === "SOURCE_API_EXECUTION_STATE_INVALID" ||
+    problem.reason === "SOURCE_API_REQUEST_INVALID" ||
+    problem.reason === "SOURCE_API_FORBIDDEN"
       ? problem
-      : createSourceApiConnectProblem({
+      : createSourceApiFailure({
           error: problem,
           phase: "execute",
           renderError: dependencies.toCliErrorMessage,
@@ -390,17 +445,17 @@ function toExecutePageFailure(
 }
 
 function classifyExecuteFailureCode(
-  problem: ReturnType<typeof createCliServiceProblem>
+  problem: ReturnType<typeof createCliServiceFailure>
 ) {
-  if (problem.key === "SOURCE_API_EXECUTION_STATE_INVALID") {
+  if (problem.reason === "SOURCE_API_EXECUTION_STATE_INVALID") {
     return "execution_state_invalid" as const;
   }
 
-  if (problem.key === "SOURCE_REQUEST_INVALID") {
-    return "request_failed" as const;
+  if (problem.reason === "SOURCE_API_REQUEST_INVALID") {
+    return "invalid_request" as const;
   }
 
-  if (/timed out/i.test(problem.message)) {
+  if (problem.cause instanceof SourceApiTimeoutError) {
     return "request_timed_out" as const;
   }
 
@@ -438,13 +493,16 @@ function encodeSourceApiContinuationTokenValue(
 function assertMatchingPreparedRequestFingerprint(input: {
   expectedFingerprint: string;
   prepared: PreparedSourceApi;
-}) {
+}): CliServiceResult<void> {
   if (input.prepared.preparedBinding === input.expectedFingerprint) {
-    return;
+    return Result.ok(undefined);
   }
 
-  throw createCliServiceProblem({
-    detail: "Source API execution state no longer matches the prepared request",
-    key: "SOURCE_API_EXECUTION_STATE_INVALID",
-  });
+  return Result.err(
+    createCliServiceFailure({
+      detail:
+        "Source API execution state no longer matches the prepared request",
+      key: "SOURCE_API_EXECUTION_STATE_INVALID",
+    })
+  );
 }

@@ -10,7 +10,10 @@ import { parseCliPageRequest } from "./read-controls";
 
 describe("parseCliPageRequest", () => {
   it("defaults the page limit when the request omits pagination", () => {
-    const result = parseCliPageRequest(undefined);
+    const result = parseCliPageRequest({
+      invalidRequestKey: "READ_QUERY_INPUT_INVALID",
+      page: undefined,
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -31,7 +34,10 @@ describe("parseCliPageRequest", () => {
     expect(isFieldSet(request, CliPageRequestSchema.field.limit)).toBe(false);
     expect(isFieldSet(request, CliPageRequestSchema.field.cursor)).toBe(false);
 
-    const result = parseCliPageRequest(request);
+    const result = parseCliPageRequest({
+      invalidRequestKey: "READ_QUERY_INPUT_INVALID",
+      page: request,
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -53,7 +59,10 @@ describe("parseCliPageRequest", () => {
     expect(isFieldSet(request, CliPageRequestSchema.field.limit)).toBe(true);
     expect(isFieldSet(request, CliPageRequestSchema.field.cursor)).toBe(true);
 
-    const result = parseCliPageRequest(request);
+    const result = parseCliPageRequest({
+      invalidRequestKey: "READ_QUERY_INPUT_INVALID",
+      page: request,
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -64,5 +73,23 @@ describe("parseCliPageRequest", () => {
       limit: 25,
       offset: 10,
     });
+  });
+
+  it("uses the caller-selected invalid request key for malformed cursors", () => {
+    const request = create(CliPageRequestSchema, {
+      cursor: "not-a-cursor",
+    });
+
+    const result = parseCliPageRequest({
+      invalidRequestKey: "SOURCE_REQUEST_INVALID",
+      page: request,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected malformed cursor to fail");
+    }
+
+    expect(result.error.reason).toBe("SOURCE_REQUEST_INVALID");
   });
 });

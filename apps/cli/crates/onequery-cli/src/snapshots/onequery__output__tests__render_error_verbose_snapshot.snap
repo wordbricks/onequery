@@ -5,7 +5,7 @@ expression: rendered
 Error: query failed
 Command: onequery query exec --source warehouse --sql "<excerpt: select ...>"
 Stage: execute_query
-Code: query_rejected
+Code: QUERY_REJECTED
 Why: server rejected write query
 Hint: queries must be read-only
 Try:

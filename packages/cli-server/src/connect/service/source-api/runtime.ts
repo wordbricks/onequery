@@ -6,26 +6,25 @@ import type {
   SourceApiExecutionResult,
 } from "@onequery/server/source-api";
 import {
+  SourceApiAdapterNotRegisteredError,
   SourceApiExecutionStageError,
   SourceApiExpiredError,
   SourceApiInvalidatedError,
   SourceApiPermissionDeniedError,
   SourceApiRequestError,
+  SourceApiTimeoutError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
+import { isCliFailure } from "../../../domain/failures";
 import type { AuthenticatedCliConnectRequestContext } from "../../context";
-import { CliConnectProblem } from "../../error";
-import { createCliConnectSourceNotFoundProblem } from "../errors";
+import { createCliSourceNotFoundFailure } from "../errors";
 import type { CliServiceResult } from "../result";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
-import type {
-  SourceApiAccessState,
-  SourceApiConnectFailurePhase,
-} from "./types";
+import type { SourceApiAccessState, SourceApiFailurePhase } from "./types";
 
 export async function resolveAuthorizedSourceApiAccess(
   input: {
@@ -108,7 +107,7 @@ export async function assertPreparedSourceApiStillValid(
       input.source.sourceKey !== input.prepared.sourceKey
     ) {
       return Result.err(
-        createSourceApiConnectProblem({
+        createSourceApiFailure({
           error: new SourceApiInvalidatedError(
             "Source API execution state no longer matches the current source"
           ),
@@ -134,7 +133,7 @@ export async function assertPreparedSourceApiStillValid(
 
     if (descriptor.descriptorVersion !== input.prepared.descriptorVersion) {
       return Result.err(
-        createSourceApiConnectProblem({
+        createSourceApiFailure({
           error: new SourceApiInvalidatedError(
             "Source API execution state descriptor version no longer matches the current source API descriptor"
           ),
@@ -200,17 +199,17 @@ export function decodeSourceApiContinuationTokenResult(
   );
 }
 
-export function createSourceApiConnectProblem(input: {
+export function createSourceApiFailure(input: {
   error: unknown;
-  phase: SourceApiConnectFailurePhase;
+  phase: SourceApiFailurePhase;
   renderError: SourceApiServiceDependencies["toCliErrorMessage"];
 }) {
-  if (input.error instanceof CliConnectProblem) {
+  if (isCliFailure(input.error)) {
     return input.error;
   }
 
   if (input.error instanceof SourceApiExecutionStageError) {
-    return createSourceApiConnectProblem({
+    return createSourceApiFailure({
       error: input.error.cause,
       phase: input.error.stage,
       renderError: input.renderError,
@@ -219,7 +218,7 @@ export function createSourceApiConnectProblem(input: {
 
   const detail = input.renderError(input.error);
   if (input.error instanceof SourceApiPermissionDeniedError) {
-    return createCliServiceProblem({
+    return createCliServiceFailure({
       cause: input.error,
       detail,
       key: "SOURCE_API_FORBIDDEN",
@@ -230,22 +229,38 @@ export function createSourceApiConnectProblem(input: {
     input.error instanceof SourceApiExpiredError ||
     input.error instanceof SourceApiInvalidatedError
   ) {
-    return createCliServiceProblem({
+    return createCliServiceFailure({
       cause: input.error,
       detail,
       key: "SOURCE_API_EXECUTION_STATE_INVALID",
     });
   }
 
-  if (input.error instanceof SourceApiRequestError) {
-    return createCliServiceProblem({
+  if (input.error instanceof SourceApiAdapterNotRegisteredError) {
+    return createCliServiceFailure({
       cause: input.error,
       detail,
-      key: "SOURCE_REQUEST_INVALID",
+      key: "SOURCE_API_SOURCE_UNAVAILABLE",
     });
   }
 
-  return createCliServiceProblem({
+  if (input.error instanceof SourceApiRequestError) {
+    return createCliServiceFailure({
+      cause: input.error,
+      detail,
+      key: "SOURCE_API_REQUEST_INVALID",
+    });
+  }
+
+  if (input.error instanceof SourceApiTimeoutError) {
+    return createCliServiceFailure({
+      cause: input.error,
+      detail,
+      key: "SOURCE_API_EXECUTION_TIMED_OUT",
+    });
+  }
+
+  return createCliServiceFailure({
     cause: input.error,
     detail,
     key: toSourceApiFailureProblemKey(input.phase),
@@ -275,7 +290,7 @@ async function requirePreparedCliSourceApiSource(
 
     if (source.kind === "not_found") {
       return Result.err(
-        createCliConnectSourceNotFoundProblem(
+        createCliSourceNotFoundFailure(
           input.authorizedOrg.org.slug,
           input.sourceKey
         )
@@ -288,9 +303,15 @@ async function requirePreparedCliSourceApiSource(
         masterEncryptionKey: input.c.var.runtime.crypto.masterEncryptionKey,
       })
     ).mapError((error) =>
-      createCliServiceProblem({
+      createCliServiceFailure({
         detail: error.message,
         key: "SOURCE_API_SOURCE_UNAVAILABLE",
+        resource: {
+          description: "source API credentials could not be prepared",
+          name: input.sourceKey,
+          owner: input.authorizedOrg.org.slug,
+          type: "onequery.cli.source",
+        },
       })
     );
 
@@ -322,14 +343,14 @@ function buildSourceApiActor(input: {
 function trySourceApi<T>(
   input: {
     operation: () => T;
-    phase: SourceApiConnectFailurePhase;
+    phase: SourceApiFailurePhase;
   },
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ): CliServiceResult<T> {
   return Result.try({
     try: input.operation as () => Awaited<T>,
     catch: (error: unknown) =>
-      createSourceApiConnectProblem({
+      createSourceApiFailure({
         error,
         phase: input.phase,
         renderError: dependencies.toCliErrorMessage,
@@ -340,14 +361,14 @@ function trySourceApi<T>(
 async function trySourceApiPromise<T>(
   input: {
     operation: () => Promise<T>;
-    phase: SourceApiConnectFailurePhase;
+    phase: SourceApiFailurePhase;
   },
   dependencies: Pick<SourceApiServiceDependencies, "toCliErrorMessage">
 ): Promise<CliServiceResult<T>> {
   return Result.tryPromise({
     try: input.operation,
     catch: (error: unknown) =>
-      createSourceApiConnectProblem({
+      createSourceApiFailure({
         error,
         phase: input.phase,
         renderError: dependencies.toCliErrorMessage,
@@ -355,7 +376,7 @@ async function trySourceApiPromise<T>(
   });
 }
 
-function toSourceApiFailureProblemKey(phase: SourceApiConnectFailurePhase) {
+function toSourceApiFailureProblemKey(phase: SourceApiFailurePhase) {
   switch (phase) {
     case "describe":
       return "SOURCE_API_DESCRIBE_FAILED";

@@ -60,7 +60,10 @@ const handleListOrganizationsImpl: CliResultServiceMethod<
   Result.gen(async function* handleListOrganizationsFlow() {
     const requestContext = requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
-    const readControls = yield* parseCliPageRequest(request.page);
+    const readControls = yield* parseCliPageRequest({
+      invalidRequestKey: "ORG_REQUEST_INVALID",
+      page: request.page,
+    });
     const session = yield* Result.await(requestContext.resolveSession());
     const organizations = await runCliListVisibleOrgs({
       db: c.var.storage.db,

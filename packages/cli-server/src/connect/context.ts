@@ -11,7 +11,7 @@ import type { Context } from "hono";
 import type { CliRouteEnv } from "../app";
 import type { AuthorizedCliOrgContext, CliAction } from "../authorization";
 import type { CliSessionIdentity } from "../domain/workflows";
-import { getCliRequestId } from "../error";
+import { getCliRequestId } from "../request-context";
 import {
   resolveAuthenticatedCliSession,
   resolveAuthorizedCliOrg,

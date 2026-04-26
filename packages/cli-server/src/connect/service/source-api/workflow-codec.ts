@@ -13,10 +13,12 @@ import type {
   SourceApiActionSourceDescriptor,
   StoredSourceApiExecutionResult,
 } from "../../../audit";
+import { CLI_PROBLEM_KEYS } from "../../../domain/problems";
+import type { CliProblemKey } from "../../../domain/problems";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
 import {
-  createSourceApiAuditProblem,
+  createSourceApiAuditFailure,
   requireLastCommittedEvent,
 } from "./workflow-runtime";
 import type {
@@ -39,6 +41,10 @@ const JsonValueSchema: z.ZodType<import("@bufbuild/protobuf").JsonValue> =
       z.record(z.string(), JsonValueSchema),
     ])
   );
+
+const CliProblemKeySchema = z.enum(
+  CLI_PROBLEM_KEYS as [CliProblemKey, ...CliProblemKey[]]
+);
 
 const SourceApiSourceSchema = z
   .object({
@@ -166,6 +172,7 @@ const StoredDescriptorResolutionResultPayloadSchema = z.discriminatedUnion(
         detail: z.string(),
         failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
         kind: z.literal("failed"),
+        problemKey: CliProblemKeySchema,
         type: z.literal("record_descriptor_resolution"),
       })
       .strict(),
@@ -190,23 +197,15 @@ const StoredPageFetchResultPayloadSchema = z.discriminatedUnion("kind", [
     .object({
       attemptNumber: z.number().int(),
       detail: z.string(),
-      kind: z.literal("retryable_failure"),
-      pageIndex: z.number().int(),
-      type: z.literal("record_page_fetch"),
-    })
-    .strict(),
-  z
-    .object({
-      attemptNumber: z.number().int(),
-      detail: z.string(),
       failureCode: z.enum([
-        "request_failed",
+        "invalid_request",
         "request_timed_out",
         "execution_failed",
         "execution_state_invalid",
       ]),
       kind: z.literal("terminal_failure"),
       pageIndex: z.number().int(),
+      problemKey: CliProblemKeySchema,
       type: z.literal("record_page_fetch"),
     })
     .strict(),
@@ -227,7 +226,7 @@ export function toStoredSourceLookupResult(
         kind: "not_found",
       };
     default:
-      throw createSourceApiAuditProblem(
+      throw createSourceApiAuditFailure(
         `source_api_action replay expected a source lookup event but loaded ${event.type}`
       );
   }
@@ -239,7 +238,7 @@ export function toStoredDescriptorResolutionResult(
   const parsed =
     StoredDescriptorResolutionResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action stored descriptor resolution payload is corrupt",
       parsed.error
     );
@@ -254,12 +253,9 @@ export function toStoredDescriptorResolutionResult(
 
   return {
     kind: "failed",
-    problem: createCliServiceProblem({
+    problem: createCliServiceFailure({
       detail: parsed.data.detail,
-      key:
-        parsed.data.failureCode === "permission_denied"
-          ? "SOURCE_API_FORBIDDEN"
-          : "SOURCE_API_SOURCE_UNAVAILABLE",
+      key: parsed.data.problemKey,
     }),
   };
 }
@@ -277,16 +273,13 @@ export function toStoredRequestPreparationResult(
     case "request_preparation_failed":
       return {
         kind: "failed",
-        problem: createCliServiceProblem({
+        problem: createCliServiceFailure({
           detail: event.detail,
-          key:
-            event.failureCode === "permission_denied"
-              ? "SOURCE_API_FORBIDDEN"
-              : "SOURCE_REQUEST_INVALID",
+          key: event.problemKey,
         }),
       };
     default:
-      throw createSourceApiAuditProblem(
+      throw createSourceApiAuditFailure(
         `source_api_action replay expected a request preparation event but loaded ${event.type}`
       );
   }
@@ -297,7 +290,7 @@ export function toStoredPageFetchResult(
 ): PageFetchResult {
   const parsed = StoredPageFetchResultPayloadSchema.safeParse(commandPayload);
   if (!parsed.success) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action stored page fetch payload is corrupt",
       parsed.error
     );
@@ -311,22 +304,12 @@ export function toStoredPageFetchResult(
           parsed.data.executionResult
         ),
       };
-    case "retryable_failure":
-      return {
-        kind: "failed",
-        problem: createCliServiceProblem({
-          detail: parsed.data.detail,
-          key: "SOURCE_API_EXECUTION_FAILED",
-        }),
-      };
     case "terminal_failure":
       return {
         kind: "failed",
-        problem: createCliServiceProblem({
+        problem: createCliServiceFailure({
           detail: parsed.data.detail,
-          key: toCliServiceProblemKeyForPageFetchFailure(
-            parsed.data.failureCode
-          ),
+          key: parsed.data.problemKey,
         }),
       };
   }
@@ -482,22 +465,5 @@ function decodeStoredSourceApiResponseBody(
       return {
         kind: "none",
       };
-  }
-}
-
-function toCliServiceProblemKeyForPageFetchFailure(
-  failureCode:
-    | "execution_failed"
-    | "execution_state_invalid"
-    | "request_failed"
-    | "request_timed_out"
-) {
-  switch (failureCode) {
-    case "execution_state_invalid":
-      return "SOURCE_API_EXECUTION_STATE_INVALID" as const;
-    case "request_failed":
-    case "request_timed_out":
-    case "execution_failed":
-      return "SOURCE_API_EXECUTION_FAILED" as const;
   }
 }

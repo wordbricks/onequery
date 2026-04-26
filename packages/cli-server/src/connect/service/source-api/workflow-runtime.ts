@@ -12,6 +12,7 @@ import type {
   SourceApiDescriptor,
   SourceApiDraft,
 } from "@onequery/server/source-api";
+import { Result, isPanic } from "better-result";
 
 import {
   SourceApiActionEffectSchema,
@@ -25,8 +26,10 @@ import type {
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
 } from "../../../audit";
+import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
+import type { CliServiceResult } from "../result";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import { prepareSourceApiDraftResult } from "./runtime";
@@ -88,7 +91,7 @@ export async function dispatchStoredSourceApiActionEffect<
   }
 
   if (effectDispatch.status !== "pending") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action effect ${effectDispatch.id} is ${effectDispatch.status} without a stored result command`
     );
   }
@@ -147,14 +150,14 @@ export async function storeAcceptedSourceApiActionCommand(
   });
 
   if (stored.isErr()) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action ${input.commandPayload.type} could not be stored`,
       stored.error
     );
   }
 
   if (stored.value.kind !== "accepted") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action ${input.commandPayload.type} was rejected with ${stored.value.rejectCode}`
     );
   }
@@ -240,7 +243,7 @@ export async function loadRequiredPreparedSourceConnection(input: {
   const loaded = await loadPreparedSourceConnection(input);
 
   if (loaded.kind !== "loaded") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action replay could not reload source "${input.source.sourceKey}" for a downstream effect`
     );
   }
@@ -282,7 +285,7 @@ export async function loadRequiredPreparedSourceApi(input: {
   );
 
   if (prepared.isErr()) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action replay could not rebuild the prepared request",
       prepared.error
     );
@@ -296,7 +299,7 @@ export function requireLastCommittedEvent(
 ) {
   const event = decision.events.at(-1);
   if (!event) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action ${decision.commandId} committed without events`
     );
   }
@@ -308,7 +311,7 @@ export function requireResolvedSourceApiDescriptor(
   descriptor: SourceApiDescriptor | null
 ) {
   if (descriptor === null) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       "source_api_action descriptor cache was missing during replay"
     );
   }
@@ -316,20 +319,44 @@ export function requireResolvedSourceApiDescriptor(
   return descriptor;
 }
 
-export function ensureCliServiceProblem(error: unknown) {
-  if (error instanceof Error && error.name === "CliConnectProblem") {
-    return error as ReturnType<typeof createCliServiceProblem>;
+export function ensureCliServiceFailure(error: unknown) {
+  if (isCliFailure(error)) {
+    return error;
   }
 
-  return createCliServiceProblem({
+  if (isPanic(error) && isCliFailure(error.cause)) {
+    return error.cause;
+  }
+
+  return createCliServiceFailure({
     ...(error === undefined ? {} : { cause: error }),
     detail: toCliErrorMessage(error),
     key: "SOURCE_API_EXECUTION_FAILED",
   });
 }
 
-export function createSourceApiAuditProblem(detail: string, cause?: unknown) {
-  return createCliServiceProblem({
+export async function captureSourceApiWorkflowResult<T>(
+  operation: () => Promise<CliServiceResult<T>>
+): Promise<CliServiceResult<T>> {
+  const result = await Result.tryPromise({
+    try: operation,
+    catch: (error) => ensureCliServiceFailure(error),
+  });
+
+  return Result.flatten(result);
+}
+
+export function captureSourceApiWorkflowValue<T>(
+  operation: () => Promise<T>
+): Promise<CliServiceResult<T>> {
+  return Result.tryPromise({
+    try: operation,
+    catch: (error) => ensureCliServiceFailure(error),
+  });
+}
+
+export function createSourceApiAuditFailure(detail: string, cause?: unknown) {
+  return createCliServiceFailure({
     ...(cause === undefined ? {} : { cause }),
     detail,
     key: "SOURCE_API_PREPARATION_FAILED",
@@ -361,7 +388,7 @@ async function loadRequiredSourceApiActionEffect<
     .limit(1);
 
   if (!row) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action effect ${input.expectedEffectType} is missing for origin event ${input.originEventId}`
     );
   }
@@ -372,14 +399,14 @@ async function loadRequiredSourceApiActionEffect<
   });
 
   if (!parsedEffect.success) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action effect ${row.effectType} payload is corrupt`,
       parsedEffect.error
     );
   }
 
   if (parsedEffect.data.type !== input.expectedEffectType) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action expected effect ${input.expectedEffectType} but loaded ${parsedEffect.data.type}`
     );
   }
@@ -413,13 +440,13 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
   }
 
   if (storedCommand.decisionKind !== "accepted") {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
     );
   }
 
   if (storedCommand.actionId === null) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action stored result command ${input.commandInvocationId} is missing its action id`
     );
   }
@@ -444,7 +471,7 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
           ...row.payloadJson,
         });
         if (!parsed.success) {
-          throw createSourceApiAuditProblem(
+          throw createSourceApiAuditFailure(
             `source_api_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
             parsed.error
           );
@@ -487,7 +514,7 @@ async function leaseSourceApiActionEffect(input: {
     .returning({ id: workflowEffectDispatches.id });
 
   if (leased.length !== 1) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action effect ${input.effectDispatch.id} could not be leased`
     );
   }
@@ -511,7 +538,7 @@ async function completeSourceApiActionEffect(input: {
     .returning({ id: workflowEffectDispatches.id });
 
   if (completed.length !== 1) {
-    throw createSourceApiAuditProblem(
+    throw createSourceApiAuditFailure(
       `source_api_action effect ${input.effectId} could not be completed`
     );
   }

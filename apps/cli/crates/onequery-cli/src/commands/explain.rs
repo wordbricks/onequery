@@ -178,7 +178,14 @@ mod tests {
             serde_json::json!({
                 "code": "invalid_request",
                 "title": "Invalid Request",
-                "stages": ["auth", "resolve_source", "read_query_input", "execute_query"],
+                "stages": [
+                    "auth",
+                    "resolve_org",
+                    "resolve_source",
+                    "read_query_input",
+                    "execute_query",
+                    "source_api_execute",
+                ],
                 "httpStatus": 422,
                 "retryable": false,
                 "support": {
@@ -204,7 +211,15 @@ mod tests {
             serde_json::json!({
                 "code": "transport_error",
                 "title": "Transport Error",
-                "stages": ["auth", "resolve_org", "resolve_source", "execute_query"],
+                "stages": [
+                    "auth",
+                    "resolve_org",
+                    "resolve_source",
+                    "execute_query",
+                    "source_api_describe",
+                    "source_api_prepare",
+                    "source_api_execute",
+                ],
                 "httpStatus": serde_json::Value::Null,
                 "retryable": true,
                 "support": {

@@ -241,7 +241,7 @@ fn source_api_execution_page_from_result(
         return Err(source_api_error(
             context,
             "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             format!("source API {response_kind} response did not include source metadata"),
             source_key,
         ));
@@ -250,7 +250,7 @@ fn source_api_execution_page_from_result(
         return Err(source_api_error(
             context,
             "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             format!("source API {response_kind} response did not include an operation name"),
             source_key,
         ));
@@ -259,7 +259,7 @@ fn source_api_execution_page_from_result(
         return Err(source_api_error(
             context,
             "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             format!("source API {response_kind} response did not include an HTTP status"),
             source_key,
         ));
@@ -268,7 +268,7 @@ fn source_api_execution_page_from_result(
         return Err(source_api_error(
             context,
             "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             format!("source API {response_kind} response included invalid HTTP status: {status}"),
             source_key,
         ));
@@ -277,7 +277,7 @@ fn source_api_execution_page_from_result(
         return Err(source_api_error(
             context,
             "invalid source API execution response",
-            ErrorStage::ExecuteQuery,
+            ErrorStage::SourceApiExecute,
             format!("source API {response_kind} response did not include a content type"),
             source_key,
         ));

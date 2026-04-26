@@ -22,7 +22,7 @@ import { resolveSourceApiWorkflowContext } from "./context";
 import { resolveSourceApiServiceDependencies } from "./dependencies";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
-  createSourceApiConnectProblem,
+  createSourceApiFailure,
   decodeSourceApiContinuationTokenResult,
   resolveAuthorizedSourceApiAccess,
 } from "./runtime";
@@ -197,7 +197,7 @@ async function handleExecuteSourceApiCommand(
     const result = response.result;
     if (result === undefined) {
       return Result.err(
-        createSourceApiConnectProblem({
+        createSourceApiFailure({
           error: new Error(
             "source_api_action execute completed without an execution result"
           ),
@@ -279,7 +279,7 @@ async function handleResumeSourceApiCommand(
     const result = response.result;
     if (result === undefined) {
       return Result.err(
-        createSourceApiConnectProblem({
+        createSourceApiFailure({
           error: new Error(
             "source_api_action resume completed without an execution result"
           ),
@@ -351,7 +351,7 @@ function requireContinuationPaginationSupport(
   }
 
   return Result.err(
-    createSourceApiConnectProblem({
+    createSourceApiFailure({
       error: new SourceApiInvalidRequestError(
         `Source API operation "${prepared.operation}" does not support continuation_token resume`
       ),

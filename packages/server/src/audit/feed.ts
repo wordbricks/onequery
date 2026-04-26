@@ -196,6 +196,7 @@ const SourceApiEventPayloadSchemas = {
     .object({
       detail: z.string(),
       failureCode: z.enum(["descriptor_unavailable", "permission_denied"]),
+      problemKey: z.string(),
     })
     .strict(),
   descriptor_resolved: z
@@ -207,16 +208,15 @@ const SourceApiEventPayloadSchemas = {
     .object({
       attemptNumber: z.number().int(),
       detail: z.string(),
-      failureCode: z
-        .enum([
-          "request_failed",
-          "request_timed_out",
-          "execution_failed",
-          "execution_state_invalid",
-        ])
-        .nullable(),
-      kind: z.enum(["retryable_failure", "terminal_failure"]),
+      failureCode: z.enum([
+        "invalid_request",
+        "request_timed_out",
+        "execution_failed",
+        "execution_state_invalid",
+      ]),
+      kind: z.literal("terminal_failure"),
       pageIndex: z.number().int(),
+      problemKey: z.string(),
     })
     .strict(),
   page_fetch_succeeded: z
@@ -233,6 +233,7 @@ const SourceApiEventPayloadSchemas = {
     .object({
       detail: z.string(),
       failureCode: z.enum(["invalid_request", "permission_denied"]),
+      problemKey: z.string(),
     })
     .strict(),
   request_prepared: z
@@ -1099,17 +1100,10 @@ function reduceSourceApiActionRow(
       next.preview.attemptNumber = payload.attemptNumber;
       next.preview.errorDetail = payload.detail;
       next.preview.pageCount = payload.pageIndex + 1;
-      if (payload.kind === "retryable_failure") {
-        next.completedAt = null;
-        next.failureCode = null;
-        next.outcome = "pending";
-        next.phase = "await_resume";
-      } else {
-        next.completedAt = record.occurredAt;
-        next.failureCode = payload.failureCode;
-        next.outcome = "failed";
-        next.phase = "completed";
-      }
+      next.completedAt = record.occurredAt;
+      next.failureCode = payload.failureCode;
+      next.outcome = "failed";
+      next.phase = "completed";
       break;
   }
 

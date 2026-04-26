@@ -20,7 +20,7 @@ import type {
 } from "../../../audit";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { toCliErrorMessage } from "../../../observability";
-import { createCliServiceProblem } from "../result";
+import { createCliServiceFailure } from "../result";
 import type {
   CliQueryExecutionDispatch,
   DispatchedQueryActionEffect,
@@ -223,7 +223,7 @@ export function requireLastCommittedEvent(
 }
 
 export function createQueryAuditProblem(detail: string, cause?: unknown) {
-  return createCliServiceProblem({
+  return createCliServiceFailure({
     ...(cause === undefined ? {} : { cause }),
     detail,
     key: "QUERY_PREPARATION_FAILED",
