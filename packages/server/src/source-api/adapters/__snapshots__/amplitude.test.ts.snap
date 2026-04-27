@@ -109,7 +109,7 @@ exports[`amplitude source api adapter > normalizes path selectors into canonical
   "method": "GET",
   "operation": "fetch_api",
   "paginationPolicy": "none",
-  "preparedBinding": "fHopa1TNVC66Yk7eS_WSPv6mG4I8SBgWb6MP82Kk4ls",
+  "preparedBinding": "eZ42ZcCAnmGVmpntyOJ2_zhLdfw2jsgFMGCuo8omdNc",
   "provider": "amplitude",
   "query": {
     "end": "2026-03-07",
@@ -120,6 +120,6 @@ exports[`amplitude source api adapter > normalizes path selectors into canonical
   "sourceId": "source_1",
   "sourceKey": "amplitude-prod",
   "timeoutMs": undefined,
-  "url": "https://amplitude.com/2/events/segmentation?end=2026-03-07&start=2026-03-01",
+  "url": "https://amplitude.com/api/2/events/segmentation?end=2026-03-07&start=2026-03-01",
 }
 `;
