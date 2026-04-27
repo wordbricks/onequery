@@ -40,6 +40,13 @@ describe("amplitude source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_api");
+    expect(descriptor.examples[0]?.command).toContain(
+      `-f 'params[e]={"event_type":"Signup"}'`
+    );
+    expect(descriptor.examples[0]?.command).toContain(
+      "-f params[start]=20260301"
+    );
+    expect(descriptor.examples[0]?.command).not.toContain("params[e]=[");
     expect(descriptor).toMatchSnapshot();
   });
 
