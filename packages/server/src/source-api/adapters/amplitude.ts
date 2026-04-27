@@ -239,7 +239,7 @@ export function buildAmplitudeUrl(input: {
 function buildAmplitudeExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery api --source ${sourceKey} /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07`,
+      command: `onequery api --source ${sourceKey} /2/events/segmentation -f 'params[e]={"event_type":"Signup"}' -f params[start]=20260301 -f params[end]=20260307 -f params[m]=totals`,
       description:
         "Run an Amplitude segmentation request against the connected source.",
       label: "Fetch event segmentation",
