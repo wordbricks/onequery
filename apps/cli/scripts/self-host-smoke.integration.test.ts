@@ -34,8 +34,8 @@ import {
 } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
 import {
   SourceConnectSslMode,
+  SourceInterface,
   SourceProvider,
-  SourceQuerySupport,
   SourceStatus,
 } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/source_pb.js";
 import {
@@ -288,15 +288,17 @@ function summarizeCliPage(value: {
 
 function summarizeCliSource(value: {
   displayName?: string;
+  interfaces: SourceInterface[];
   provider: SourceProvider;
-  querySupport: SourceQuerySupport;
   sourceKey: string;
   status: SourceStatus;
 }): JsonObject {
   return {
     ...(value.displayName ? { displayName: value.displayName } : {}),
+    interfaces: value.interfaces.map((sourceInterface) =>
+      SourceInterface[sourceInterface].toLowerCase()
+    ),
     provider: SourceProvider[value.provider],
-    queryable: value.querySupport === SourceQuerySupport.SUPPORTED,
     sourceKey: value.sourceKey,
     status: SourceStatus[value.status],
   };
@@ -1148,7 +1150,7 @@ describe("CLI self-host smoke", () => {
         source: {
           sourceKey: "Warehouse",
           provider: SourceProvider.POSTGRES,
-          querySupport: SourceQuerySupport.SUPPORTED,
+          interfaces: [SourceInterface.QUERY],
           status: SourceStatus.ACTIVE,
         },
       });
@@ -1193,7 +1195,7 @@ describe("CLI self-host smoke", () => {
       });
       expect(sourceResponse.payload).toMatchObject({
         source: {
-          querySupport: SourceQuerySupport.SUPPORTED,
+          interfaces: [SourceInterface.QUERY],
           sourceKey: "Warehouse",
         },
       });
@@ -1415,8 +1417,8 @@ describe("CLI self-host smoke", () => {
           source: {
             sourceKey: "warehouse-cli",
             provider: "postgres",
-            queryable: true,
             status: "active",
+            interfaces: ["query"],
           },
         },
       });
@@ -1459,7 +1461,7 @@ describe("CLI self-host smoke", () => {
           "show",
           "warehouse-cli",
           "--fields",
-          "sourceKey,queryable",
+          "sourceKey,interfaces",
         ],
         env: cliEnv,
         stagedBundleRoot,
@@ -1468,7 +1470,7 @@ describe("CLI self-host smoke", () => {
         ok: true,
         data: {
           sourceKey: "warehouse-cli",
-          queryable: true,
+          interfaces: ["query"],
         },
       });
 

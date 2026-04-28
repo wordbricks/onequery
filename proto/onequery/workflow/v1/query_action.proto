@@ -15,7 +15,7 @@ message QueryActionCommandPayload {
     QueryActionStartExecuteCommand start_execute = 2;
     QueryActionRecordSourceFoundCommand record_source_found = 3;
     QueryActionRecordSourceNotFoundCommand record_source_not_found = 4;
-    QueryActionRecordSourceNotQueryableCommand record_source_not_queryable = 5;
+    QueryActionRecordSourceQueryInterfaceMissingCommand record_source_query_interface_missing = 5;
     QueryActionRecordQueryValidationAcceptedCommand record_query_validation_accepted = 6;
     QueryActionRecordQueryValidationRejectedCommand record_query_validation_rejected = 7;
     QueryActionRecordQueryValidationPreparationFailedCommand record_query_validation_preparation_failed = 8;
@@ -37,7 +37,7 @@ message QueryActionEventPayload {
     QueryActionReceivedEvent action_received = 1;
     QueryActionSourceLoadedEvent source_loaded = 2;
     QueryActionSourceNotFoundEvent source_not_found = 3;
-    QueryActionSourceNotQueryableEvent source_not_queryable = 4;
+    QueryActionSourceQueryInterfaceMissingEvent source_query_interface_missing = 4;
     QueryActionQueryValidatedEvent query_validated = 5;
     QueryActionQueryRejectedEvent query_rejected = 6;
     QueryActionCredentialsLoadedEvent credentials_loaded = 7;
@@ -106,7 +106,7 @@ message QueryActionRecordSourceNotFoundCommand {
   ];
 }
 
-message QueryActionRecordSourceNotQueryableCommand {
+message QueryActionRecordSourceQueryInterfaceMissingCommand {
   WorkflowSourceProvider provider = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
@@ -231,7 +231,7 @@ message QueryActionSourceNotFoundEvent {
   ];
 }
 
-message QueryActionSourceNotQueryableEvent {
+message QueryActionSourceQueryInterfaceMissingEvent {
   WorkflowSourceProvider provider = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,

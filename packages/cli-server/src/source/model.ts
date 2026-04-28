@@ -4,6 +4,7 @@ import type {
   DataSourceStatus,
   ProviderType,
 } from "@onequery/db/server";
+import { sourceApiRegistry } from "@onequery/server/source-api";
 
 import type {
   CliQuerySourceRecord,
@@ -11,11 +12,13 @@ import type {
 } from "../domain/workflows";
 import { isCliSourceKey } from "../identifiers";
 
-// Comment: @onequery/db's QUERYABLE_PROVIDER_TYPES also includes non-SQL relays
-// like GitHub and analytics sources. CLI v1 query is intentionally narrower and
-// only treats database credential providers as queryable.
+// @onequery/db's analysis source providers include non-SQL relays like GitHub
+// and analytics sources. CLI query intentionally maps only database credential
+// providers to the `query` source interface.
 
-// Comment: the backing table still stores the CLI-visible source identity in
+export type CliSourceInterfaceType = "query" | "api";
+
+// The backing table still stores the CLI-visible source identity in
 // data_sources.name. The CLI domain treats that normalized org-unique name as
 // the canonical sourceKey so the rest of the workflow code never reaches for
 // raw table field names.
@@ -84,7 +87,7 @@ export function sortCliSourceRecords(
   });
 }
 
-export function getCliQueryableDatabaseProviderType(
+export function getCliQueryDatabaseProviderType(
   provider: ProviderType,
   status: DataSourceStatus
 ): DatabaseCredentialProviderType | null {
@@ -97,6 +100,25 @@ export function getCliQueryableDatabaseProviderType(
   }
 
   return isDatabaseCredentialProviderType(provider) ? provider : null;
+}
+
+export function getCliSourceInterfaceTypes(
+  provider: ProviderType,
+  status: DataSourceStatus
+): CliSourceInterfaceType[] {
+  if (status !== "active") {
+    return [];
+  }
+
+  const interfaces: CliSourceInterfaceType[] = [];
+  if (getCliQueryDatabaseProviderType(provider, status) !== null) {
+    interfaces.push("query");
+  }
+  if (sourceApiRegistry.get(provider) !== null) {
+    interfaces.push("api");
+  }
+
+  return interfaces;
 }
 
 function normalizeSourceDisplayName(

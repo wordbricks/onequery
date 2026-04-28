@@ -19,7 +19,7 @@ import {
   runCliTestSourceEffect,
 } from "../../../source/effects";
 import {
-  getCliQueryableDatabaseProviderType,
+  getCliSourceInterfaceTypes,
   sortCliSourceRecords,
 } from "../../../source/model";
 import { requireCliConnectRequestContext } from "../../context";
@@ -130,11 +130,10 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       );
     }
 
-    const queryable =
-      getCliQueryableDatabaseProviderType(
-        source.source.provider,
-        source.source.status
-      ) !== null;
+    const interfaces = getCliSourceInterfaceTypes(
+      source.source.provider,
+      source.source.status
+    );
 
     logCliEvent({
       details: buildCliRequestLogDetails(access.c, {
@@ -142,7 +141,7 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
         roles: access.authorizedOrg.membershipRoles,
         sourceKey: request.sourceKey,
         provider: source.source.provider,
-        queryable,
+        interfaces,
       }),
       event: "source.lookup.resolved",
       level: "info",

@@ -42,13 +42,13 @@ import {
   QueryActionRecordQueryValidationRejectedCommandSchema,
   QueryActionRecordSourceFoundCommandSchema,
   QueryActionRecordSourceNotFoundCommandSchema,
-  QueryActionRecordSourceNotQueryableCommandSchema,
+  QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
   QueryActionRecordUsagePersistenceFailedCommandSchema,
   QueryActionRecordUsagePersistenceSucceededCommandSchema,
   QueryActionSourceDescriptorSchema,
   QueryActionSourceLoadedEventSchema,
   QueryActionSourceNotFoundEventSchema,
-  QueryActionSourceNotQueryableEventSchema,
+  QueryActionSourceQueryInterfaceMissingEventSchema,
   QueryActionStartExecuteCommandSchema,
   QueryActionStartValidateCommandSchema,
   QueryActionUsagePersistedEventSchema,
@@ -111,8 +111,8 @@ export function getQueryActionCommandPayloadType(
           return "record_source_found";
         case "not_found":
           return "record_source_not_found";
-        case "not_queryable":
-          return "record_source_not_queryable";
+        case "query_interface_missing":
+          return "record_source_query_interface_missing";
         default:
           return assertNever(payload);
       }
@@ -326,14 +326,17 @@ function toQueryActionSourceLookupCommandMessage(
           }),
         },
       });
-    case "not_queryable":
+    case "query_interface_missing":
       return create(QueryActionCommandPayloadSchema, {
         command: {
-          case: "recordSourceNotQueryable",
-          value: create(QueryActionRecordSourceNotQueryableCommandSchema, {
-            provider: toWorkflowSourceProvider(payload.provider),
-            sourceStatus: toWorkflowDataSourceStatus(payload.sourceStatus),
-          }),
+          case: "recordSourceQueryInterfaceMissing",
+          value: create(
+            QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
+            {
+              provider: toWorkflowSourceProvider(payload.provider),
+              sourceStatus: toWorkflowDataSourceStatus(payload.sourceStatus),
+            }
+          ),
         },
       });
     default:
@@ -528,9 +531,9 @@ function fromQueryActionCommandMessage(
         sourceKey: payload.command.value.sourceKey,
         type: "record_source_lookup",
       };
-    case "recordSourceNotQueryable":
+    case "recordSourceQueryInterfaceMissing":
       return {
-        kind: "not_queryable",
+        kind: "query_interface_missing",
         provider: fromWorkflowSourceProvider(payload.command.value.provider),
         sourceStatus: fromWorkflowDataSourceStatus(
           payload.command.value.sourceStatus
@@ -625,8 +628,8 @@ function getQueryActionCommandPayloadTypeFromOneofCase(
       return "record_source_found";
     case "recordSourceNotFound":
       return "record_source_not_found";
-    case "recordSourceNotQueryable":
-      return "record_source_not_queryable";
+    case "recordSourceQueryInterfaceMissing":
+      return "record_source_query_interface_missing";
     case "recordQueryValidationAccepted":
       return "record_query_validation_accepted";
     case "recordQueryValidationRejected":
@@ -686,11 +689,11 @@ function toQueryActionEventMessage(event: QueryActionEvent) {
           }),
         },
       });
-    case "source_not_queryable":
+    case "source_query_interface_missing":
       return create(QueryActionEventPayloadSchema, {
         event: {
-          case: "sourceNotQueryable",
-          value: create(QueryActionSourceNotQueryableEventSchema, {
+          case: "sourceQueryInterfaceMissing",
+          value: create(QueryActionSourceQueryInterfaceMissingEventSchema, {
             provider: toWorkflowSourceProvider(event.provider),
             sourceStatus: toWorkflowDataSourceStatus(event.sourceStatus),
           }),
@@ -811,13 +814,13 @@ function fromQueryActionEventMessage(
         sourceKey: payload.event.value.sourceKey,
         type: "source_not_found",
       };
-    case "sourceNotQueryable":
+    case "sourceQueryInterfaceMissing":
       return {
         provider: fromWorkflowSourceProvider(payload.event.value.provider),
         sourceStatus: fromWorkflowDataSourceStatus(
           payload.event.value.sourceStatus
         ),
-        type: "source_not_queryable",
+        type: "source_query_interface_missing",
       };
     case "queryValidated":
       return {

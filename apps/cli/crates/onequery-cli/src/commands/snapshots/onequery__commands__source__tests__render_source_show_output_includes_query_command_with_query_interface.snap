@@ -6,5 +6,5 @@ Source: warehouse
 Display Name: Warehouse
 Provider: postgres
 Status: active
-Query (v1): yes
-Sample query: onequery query exec --source warehouse --sql "select 1"
+Interfaces: query
+Query command: onequery query exec --source warehouse --sql "select 1"

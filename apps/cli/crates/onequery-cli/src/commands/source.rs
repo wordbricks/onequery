@@ -600,7 +600,12 @@ fn render_source_list_output(
         .max()
         .unwrap_or(8)
         .max("PROVIDER".len());
-    let query_width = "QUERY".len();
+    let interfaces_width = sources
+        .iter()
+        .map(|source| format_source_interfaces(&source.interfaces).len())
+        .max()
+        .unwrap_or(10)
+        .max("INTERFACES".len());
     let status_width = sources
         .iter()
         .map(|source| source.status.len())
@@ -608,14 +613,14 @@ fn render_source_list_output(
         .unwrap_or(6)
         .max("STATUS".len());
 
-    let row_capacity = source_key_width + provider_width + query_width + status_width + 6;
+    let row_capacity = source_key_width + provider_width + interfaces_width + status_width + 6;
     let mut lines = Vec::with_capacity(sources.len() + 1);
     let mut header = String::with_capacity(row_capacity);
     append_padded_cell(&mut header, "SOURCE KEY", source_key_width);
     header.push_str("  ");
     append_padded_cell(&mut header, "PROVIDER", provider_width);
     header.push_str("  ");
-    append_padded_cell(&mut header, "QUERY", query_width);
+    append_padded_cell(&mut header, "INTERFACES", interfaces_width);
     header.push_str("  ");
     append_padded_cell(&mut header, "STATUS", status_width);
     lines.push(header);
@@ -628,8 +633,8 @@ fn render_source_list_output(
         row.push_str("  ");
         append_padded_cell(
             &mut row,
-            if source.queryable { "yes" } else { "no" },
-            query_width,
+            &format_source_interfaces(&source.interfaces),
+            interfaces_width,
         );
         row.push_str("  ");
         append_padded_cell(&mut row, &source.status, status_width);
@@ -663,8 +668,8 @@ fn render_source_show_output(
         format!("Provider: {}", &source.provider),
         format!("Status: {}", &source.status),
         format!(
-            "Query (v1): {}",
-            if source.queryable { "yes" } else { "no" }
+            "Interfaces: {}",
+            format_source_interfaces(&source.interfaces)
         ),
     ];
 
@@ -672,9 +677,20 @@ fn render_source_show_output(
         lines.insert(1, format!("Display Name: {display_name}"));
     }
 
-    if source.queryable {
+    if source
+        .interfaces
+        .iter()
+        .any(|interface| interface == "query")
+    {
         lines.push(format!(
-            "Sample query: onequery query exec --source {} --sql \"select 1\"",
+            "Query command: onequery query exec --source {} --sql \"select 1\"",
+            &source.source_key
+        ));
+    }
+
+    if source.interfaces.iter().any(|interface| interface == "api") {
+        lines.push(format!(
+            "API command: onequery api --source {}",
             &source.source_key
         ));
     }
@@ -682,6 +698,14 @@ fn render_source_show_output(
     Ok(CommandOutput::try_deferred(lines, move || {
         serialize_command_data(&source, "onequery source show")
     }))
+}
+
+fn format_source_interfaces(interfaces: &[String]) -> String {
+    if interfaces.is_empty() {
+        return "-".to_owned();
+    }
+
+    interfaces.join(",")
 }
 
 fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput, CliError> {
@@ -786,15 +810,15 @@ mod tests {
                         source_key: "warehouse".to_owned(),
                         display_name: None,
                         provider: "postgres".to_owned(),
-                        queryable: true,
                         status: "active".to_owned(),
+                        interfaces: vec!["query".to_owned()],
                     },
                     SourceSummary {
                         source_key: "github_main".to_owned(),
                         display_name: None,
                         provider: "github".to_owned(),
-                        queryable: false,
                         status: "active".to_owned(),
+                        interfaces: vec!["api".to_owned()],
                     },
                 ],
                 page: PageInfo {
@@ -809,13 +833,13 @@ mod tests {
     }
 
     #[test]
-    fn render_source_show_output_includes_sample_query_when_queryable() {
+    fn render_source_show_output_includes_query_command_with_query_interface() {
         let source = SourceSummary {
             source_key: "warehouse".to_owned(),
             display_name: Some("Warehouse".to_owned()),
             provider: "postgres".to_owned(),
-            queryable: true,
             status: "active".to_owned(),
+            interfaces: vec!["query".to_owned()],
         };
 
         let output = render_source_show_output(source, &ReadArgs::default())
@@ -824,13 +848,13 @@ mod tests {
     }
 
     #[test]
-    fn render_source_show_output_omits_sample_query_when_not_queryable() {
+    fn render_source_show_output_omits_sample_query_without_query_interface() {
         let source = SourceSummary {
             source_key: "github_main".to_owned(),
             display_name: None,
             provider: "github".to_owned(),
-            queryable: false,
             status: "active".to_owned(),
+            interfaces: vec!["api".to_owned()],
         };
 
         let output = render_source_show_output(source, &ReadArgs::default())
@@ -841,7 +865,8 @@ mod tests {
                 "Source: github_main".to_owned(),
                 "Provider: github".to_owned(),
                 "Status: active".to_owned(),
-                "Query (v1): no".to_owned(),
+                "Interfaces: api".to_owned(),
+                "API command: onequery api --source github_main".to_owned(),
             ]
         );
     }
@@ -853,8 +878,8 @@ mod tests {
                 source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
                 provider: "postgres".to_owned(),
-                queryable: true,
                 status: "error".to_owned(),
+                interfaces: Vec::new(),
             },
             outcome: SourceTestOutcome::Supported {
                 result: SourceTestSupportedResult::Failed {
@@ -876,8 +901,8 @@ mod tests {
                 source_key: "github_prod".to_owned(),
                 display_name: None,
                 provider: "github".to_owned(),
-                queryable: false,
                 status: "active".to_owned(),
+                interfaces: vec!["api".to_owned()],
             },
             outcome: SourceTestOutcome::Unsupported {
                 message:

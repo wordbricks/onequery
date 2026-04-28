@@ -95,7 +95,7 @@ export async function runPreparedCliQueryWorkflow(input: {
   });
   resourceCache = sourceLookup.resourceCache;
 
-  if (sourceLookup.step.result.kind !== "queryable_source_loaded") {
+  if (sourceLookup.step.result.kind !== "source_query_interface_loaded") {
     return {
       kind: "finished",
       result: sourceLookup.step.result,

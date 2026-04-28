@@ -33,7 +33,7 @@ pub(crate) enum ExplainCode {
     SourceApiSourceUnavailable,
     SourceNotFound,
     SourceNameConflict,
-    SourceNotQueryable,
+    SourceQueryInterfaceMissing,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -136,7 +136,7 @@ impl ExplainCode {
             "SOURCE_API_SOURCE_UNAVAILABLE" => Some(Self::SourceApiSourceUnavailable),
             "SOURCE_NOT_FOUND" => Some(Self::SourceNotFound),
             "SOURCE_NAME_CONFLICT" => Some(Self::SourceNameConflict),
-            "SOURCE_NOT_QUERYABLE" => Some(Self::SourceNotQueryable),
+            "SOURCE_QUERY_INTERFACE_MISSING" => Some(Self::SourceQueryInterfaceMissing),
             _ => None,
         }
     }
@@ -170,7 +170,7 @@ impl ExplainCode {
             Self::SourceApiSourceUnavailable => "source_api_source_unavailable",
             Self::SourceNotFound => "source_not_found",
             Self::SourceNameConflict => "source_name_conflict",
-            Self::SourceNotQueryable => "source_not_queryable",
+            Self::SourceQueryInterfaceMissing => "source_query_interface_missing",
         }
     }
 
@@ -481,16 +481,18 @@ impl ExplainCode {
                 summary: "A source with the same name already exists in the active org.",
                 try_next: &["choose a different source name and retry"],
             },
-            Self::SourceNotQueryable => Explanation {
+            Self::SourceQueryInterfaceMissing => Explanation {
                 code: self,
-                title: "Source Not Queryable",
+                title: "Source Missing Query Interface",
                 stages: RESOLVE_SOURCE_STAGE,
                 http_status: Some(400),
                 retryable: false,
                 support_kind: ExplainSupportKind::None,
                 support_reason: "user_actionable",
-                summary: "The selected source exists, but it does not support query execution.",
-                try_next: &["run onequery source list and choose a source where QUERY is yes"],
+                summary: "The selected source exists, but it does not expose the CLI query interface.",
+                try_next: &[
+                    "run onequery source list and choose a source whose INTERFACES includes query",
+                ],
             },
         }
     }
