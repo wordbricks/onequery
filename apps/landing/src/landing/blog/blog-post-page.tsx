@@ -5,6 +5,10 @@ import { blogPosts } from "./blog-posts";
 import type { BlogPost } from "./blog-posts";
 
 function getPostSections(post: BlogPost) {
+  if (post.sections) {
+    return post.sections;
+  }
+
   return [
     {
       id: "why-it-matters",
