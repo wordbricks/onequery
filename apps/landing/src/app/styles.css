@@ -454,12 +454,12 @@ code {
 .blog-post-byline,
 .blog-post-layout,
 .blog-related {
-  width: min(100%, 980px);
+  width: min(100%, 960px);
   margin: 0 auto;
 }
 
 .blog-post-header {
-  padding: 76px 0 56px;
+  padding: 72px 0 36px;
 }
 
 .blog-breadcrumb,
@@ -479,29 +479,30 @@ code {
 }
 
 .blog-post-date {
-  margin-top: 56px;
+  margin-top: 48px;
 }
 
 .blog-post-header h1 {
-  max-width: 850px;
+  max-width: 820px;
   margin: 18px 0 0;
-  font-size: clamp(2.7rem, 7vw, 5.5rem);
+  font-size: 76px;
   font-weight: 600;
-  line-height: 1.02;
-  letter-spacing: -0.06em;
+  line-height: 1.04;
+  letter-spacing: 0;
 }
 
 .blog-post-byline {
-  margin-top: 34px;
-  padding-bottom: 34px;
+  margin-top: 28px;
+  padding-bottom: 28px;
   border-bottom: 1px solid var(--line);
 }
 
 .blog-post-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 64px;
-  padding: 48px 0 80px;
+  grid-template-columns: 180px minmax(0, 640px);
+  gap: 56px;
+  justify-content: start;
+  padding: 34px 0 76px;
 }
 
 .blog-post-toc {
@@ -512,16 +513,19 @@ code {
 
 .blog-post-toc h2 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
 }
 
 .blog-post-toc nav {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 14px;
   color: var(--text-soft);
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .blog-post-toc a:hover {
@@ -529,27 +533,33 @@ code {
 }
 
 .blog-post-body {
-  max-width: 680px;
+  max-width: 640px;
 }
 
-.blog-post-deck,
+.blog-post-deck {
+  margin: 0;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.68;
+}
+
 .blog-post-body p {
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.7;
 }
 
 .blog-post-body section {
-  margin-top: 56px;
+  margin-top: 44px;
 }
 
 .blog-post-body h2 {
-  margin: 0 0 20px;
-  font-size: 30px;
+  margin: 0 0 16px;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 1.16;
-  letter-spacing: -0.04em;
+  line-height: 1.24;
+  letter-spacing: 0;
 }
 
 .blog-post-body p + p {
@@ -2287,6 +2297,11 @@ code {
     padding-bottom: 38px;
   }
 
+  .blog-post-header h1 {
+    font-size: 42px;
+    line-height: 1.08;
+  }
+
   .blog-post-date {
     margin-top: 40px;
   }
@@ -2301,7 +2316,7 @@ code {
 
   .blog-post-body h2,
   .blog-related > h2 {
-    font-size: 25px;
+    font-size: 23px;
   }
 
   .site-header {
