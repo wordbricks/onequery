@@ -411,14 +411,22 @@ fn render_source_connect_result_output(
         format!("Provider: {}", &result.source.provider),
         format!("Status: {}", &result.source.status),
         format!(
-            "Query (v1): {}",
-            if result.source.queryable { "yes" } else { "no" }
+            "Interfaces: {}",
+            format_source_interfaces(&result.source.interfaces)
         ),
         format!("Next: {}", result.next_command),
     ];
     Ok(CommandOutput::try_deferred(lines, move || {
         serialize_command_data(&result, "onequery source connect")
     }))
+}
+
+fn format_source_interfaces(interfaces: &[String]) -> String {
+    if interfaces.is_empty() {
+        return "-".to_owned();
+    }
+
+    interfaces.join(",")
 }
 
 impl WorkflowLabel for SourceConnectState {
@@ -517,8 +525,8 @@ mod tests {
                 source_key: "warehouse".to_owned(),
                 display_name: None,
                 provider: "postgres".to_owned(),
-                queryable: true,
                 status: "active".to_owned(),
+                interfaces: vec!["query".to_owned()],
             },
             next_command: "onequery source show warehouse".to_owned(),
         })

@@ -108,12 +108,12 @@ export function reduceQueryActionRow(
       next.preview.errorDetail = `Source "${payload.sourceKey}" was not found`;
       next.preview.errorHint = null;
       break;
-    case "source_not_queryable":
+    case "source_query_interface_missing":
       next.completedAt = record.occurredAt;
-      next.failureCode = "source_not_queryable";
+      next.failureCode = "source_query_interface_missing";
       next.outcome = "failed";
       next.phase = "completed";
-      next.preview.errorDetail = `Source is not queryable while ${payload.sourceStatus}`;
+      next.preview.errorDetail = `Source lacks the query interface while ${payload.sourceStatus}`;
       next.preview.errorHint = null;
       next.target.provider = payload.provider;
       break;

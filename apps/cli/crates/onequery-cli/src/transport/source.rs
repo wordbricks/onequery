@@ -27,8 +27,8 @@ pub(crate) struct SourceSummary {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) display_name: Option<String>,
     pub(crate) provider: String,
-    pub(crate) queryable: bool,
     pub(crate) status: String,
+    pub(crate) interfaces: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -321,8 +321,8 @@ pub(crate) fn source_summary_from_generated(
         source_key,
         display_name,
         provider,
-        query_support,
         status,
+        interfaces,
         ..
     } = summary;
 
@@ -335,8 +335,8 @@ pub(crate) fn source_summary_from_generated(
         )?,
         display_name: display_name.filter(|value| !value.is_empty()),
         provider: source_provider_from_generated(provider, stage, request_id.clone())?,
-        queryable: source_query_support_to_bool(query_support, stage, request_id.clone())?,
-        status: source_status_from_generated(status, stage, request_id)?,
+        status: source_status_from_generated(status, stage, request_id.clone())?,
+        interfaces: source_interfaces_from_generated(interfaces, stage, request_id)?,
     })
 }
 
@@ -390,17 +390,30 @@ fn source_status_from_generated(
     }
 }
 
-fn source_query_support_to_bool(
-    value: Option<EnumValue<types::SourceQuerySupport>>,
+fn source_interfaces_from_generated(
+    values: Vec<EnumValue<types::SourceInterface>>,
     stage: ErrorStage,
     request_id: Option<String>,
-) -> Result<bool, ApiFailure> {
-    match value.and_then(|value| value.as_known()) {
-        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED) => Ok(true),
-        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_NOT_SUPPORTED) => Ok(false),
-        Some(types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_UNSPECIFIED) | None => Err(
-            decode_failure(stage, "source response missing query support", request_id),
-        ),
+) -> Result<Vec<String>, ApiFailure> {
+    values
+        .into_iter()
+        .map(|value| source_interface_from_generated(value, stage, request_id.clone()))
+        .collect()
+}
+
+fn source_interface_from_generated(
+    value: EnumValue<types::SourceInterface>,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<String, ApiFailure> {
+    match value.as_known() {
+        Some(types::SourceInterface::SOURCE_INTERFACE_QUERY) => Ok("query".to_owned()),
+        Some(types::SourceInterface::SOURCE_INTERFACE_API) => Ok("api".to_owned()),
+        Some(types::SourceInterface::SOURCE_INTERFACE_UNSPECIFIED) | None => Err(decode_failure(
+            stage,
+            "source response has invalid interface",
+            request_id,
+        )),
     }
 }
 
@@ -445,14 +458,14 @@ mod tests {
                 {
                     "sourceKey": "warehouse",
                     "provider": "postgres",
-                    "queryable": true,
-                    "status": "active"
+                    "status": "active",
+                    "interfaces": ["query"]
                 },
                 {
                     "sourceKey": "github_main",
                     "provider": "github",
-                    "queryable": false,
-                    "status": "active"
+                    "status": "active",
+                    "interfaces": ["api"]
                 }
             ],
             "page": {
@@ -471,15 +484,15 @@ mod tests {
                         source_key: "warehouse".to_owned(),
                         display_name: None,
                         provider: "postgres".to_owned(),
-                        queryable: true,
                         status: "active".to_owned(),
+                        interfaces: vec!["query".to_owned()],
                     },
                     SourceSummary {
                         source_key: "github_main".to_owned(),
                         display_name: None,
                         provider: "github".to_owned(),
-                        queryable: false,
                         status: "active".to_owned(),
+                        interfaces: vec!["api".to_owned()],
                     },
                 ],
                 page: PageInfo {
@@ -496,8 +509,8 @@ mod tests {
             "sourceKey": "warehouse",
             "displayName": "Warehouse",
             "provider": "mysql",
-            "queryable": true,
-            "status": "active"
+            "status": "active",
+            "interfaces": ["query"]
         });
 
         let parsed = serde_json::from_value::<SourceSummary>(payload)
@@ -508,8 +521,8 @@ mod tests {
                 source_key: "warehouse".to_owned(),
                 display_name: Some("Warehouse".to_owned()),
                 provider: "mysql".to_owned(),
-                queryable: true,
                 status: "active".to_owned(),
+                interfaces: vec!["query".to_owned()],
             }
         );
     }
@@ -520,10 +533,8 @@ mod tests {
             types::CliSource {
                 source_key: Some("warehouse".to_owned()),
                 provider: Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED.into()),
-                query_support: Some(
-                    types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                ),
                 status: Some(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                interfaces: vec![types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                 ..Default::default()
             },
             ErrorStage::Http,

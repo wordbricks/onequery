@@ -30,7 +30,7 @@ export function toStoredQuerySourceLookupResult(input: {
   switch (event.type) {
     case "source_loaded":
       return {
-        kind: "queryable_source_loaded",
+        kind: "source_query_interface_loaded",
       };
     case "source_not_found":
       return {
@@ -39,9 +39,9 @@ export function toStoredQuerySourceLookupResult(input: {
         requestId: input.requestId,
         sourceName: input.sourceName,
       };
-    case "source_not_queryable":
+    case "source_query_interface_missing":
       return {
-        kind: "source_not_queryable",
+        kind: "source_query_interface_missing",
         provider: event.provider,
         requestId: input.requestId,
         sourceName: input.sourceName,

@@ -23,8 +23,8 @@ export const PROVIDER_TYPES = [
 
 export type ProviderType = (typeof PROVIDER_TYPES)[number];
 
-/** Provider types that can be queried for data analysis (not delivery channels) */
-export const QUERYABLE_PROVIDER_TYPES = [
+/** Provider types that can be used as analysis sources (not delivery channels). */
+export const ANALYSIS_SOURCE_PROVIDER_TYPES = [
   "postgres",
   "supabase",
   "mysql",
@@ -41,7 +41,8 @@ export const QUERYABLE_PROVIDER_TYPES = [
   "linear",
 ] as const satisfies readonly ProviderType[];
 
-export type QueryableProviderType = (typeof QUERYABLE_PROVIDER_TYPES)[number];
+export type AnalysisSourceProviderType =
+  (typeof ANALYSIS_SOURCE_PROVIDER_TYPES)[number];
 
 export const TESTABLE_PROVIDER = {
   AMPLITUDE: "amplitude",

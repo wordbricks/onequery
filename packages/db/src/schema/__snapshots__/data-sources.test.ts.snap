@@ -2,7 +2,7 @@
 
 exports[`data-sources schema > matches provider type snapshots 1`] = `
 {
-  "providers": [
+  "analysisSourceProviders": [
     "postgres",
     "supabase",
     "mysql",
@@ -18,7 +18,7 @@ exports[`data-sources schema > matches provider type snapshots 1`] = `
     "github",
     "linear",
   ],
-  "queryableProviders": [
+  "providers": [
     "postgres",
     "supabase",
     "mysql",

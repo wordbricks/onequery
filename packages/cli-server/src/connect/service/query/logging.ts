@@ -44,10 +44,10 @@ export function createCliQueryLogging(
         });
         return;
       }
-      case "source_not_queryable": {
+      case "source_query_interface_missing": {
         dependencies.logCliEvent({
           level: "warn",
-          event: "query.plan.source_not_queryable",
+          event: "query.plan.source_query_interface_missing",
           details: dependencies.buildCliRequestLogDetails(c, {
             source: sourceKey,
             provider: result.provider,
@@ -123,10 +123,10 @@ export function createCliQueryLogging(
         });
         return;
       }
-      case "source_not_queryable": {
+      case "source_query_interface_missing": {
         dependencies.logCliEvent({
           level: "warn",
-          event: "query.plan.source_not_queryable",
+          event: "query.plan.source_query_interface_missing",
           details: dependencies.buildCliRequestLogDetails(input.c, {
             source: input.result.sourceName,
             provider: input.result.provider,
@@ -284,7 +284,7 @@ function getCliQueryFailureHttpStatus(
   result: CliQueryExecutionFailure
 ): 400 | 404 | 500 | 503 | 504 {
   switch (result.kind) {
-    case "source_not_queryable":
+    case "source_query_interface_missing":
     case "query_rejected": {
       return 400;
     }

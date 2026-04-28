@@ -970,8 +970,8 @@ mod tests {
             "source": {
                 "sourceKey": "warehouse",
                 "provider": "postgres",
-                "queryable": true,
-                "status": "active"
+                "status": "active",
+                "interfaces": ["query"]
             },
             "nextCommand": "onequery source show warehouse"
         });
@@ -985,8 +985,8 @@ mod tests {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
-                    queryable: true,
                     status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
                 },
                 next_command: "onequery source show warehouse".to_owned(),
             }

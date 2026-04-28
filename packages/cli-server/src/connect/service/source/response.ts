@@ -1,9 +1,9 @@
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
 
-import { getCliQueryableDatabaseProviderType } from "../../../source/model";
+import { getCliSourceInterfaceTypes } from "../../../source/model";
 import { ContentFormat } from "../../gen/onequery/cli/v1/common_pb";
 import {
-  SourceQuerySupport,
+  SourceInterface,
   SourceStatus,
   SourceTestUnsupportedReason,
 } from "../../gen/onequery/cli/v1/source_pb";
@@ -35,13 +35,11 @@ function toCliSourceStatus(value: BuildCliSourceInput["status"]) {
 
 export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
   const response: CliSourceInit = {
+    interfaces: getCliSourceInterfaceTypes(source.provider, source.status).map(
+      toCliSourceInterface
+    ),
     sourceKey: source.sourceKey,
     provider: toCliSourceProvider(source.provider),
-    querySupport:
-      getCliQueryableDatabaseProviderType(source.provider, source.status) ===
-      null
-        ? SourceQuerySupport.NOT_SUPPORTED
-        : SourceQuerySupport.SUPPORTED,
     status: toCliSourceStatus(source.status),
   };
 
@@ -50,6 +48,15 @@ export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
   }
 
   return response;
+}
+
+function toCliSourceInterface(value: "query" | "api") {
+  switch (value) {
+    case "query":
+      return SourceInterface.QUERY;
+    case "api":
+      return SourceInterface.API;
+  }
 }
 
 export function buildGetSourceResponse(

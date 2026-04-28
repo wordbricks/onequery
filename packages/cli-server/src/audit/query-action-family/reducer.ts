@@ -48,8 +48,12 @@ export function reduceQueryAction(
       });
     case "source_not_found":
       return completeFailedQueryAction(state, event, "source_not_found");
-    case "source_not_queryable":
-      return completeFailedQueryAction(state, event, "source_not_queryable");
+    case "source_query_interface_missing":
+      return completeFailedQueryAction(
+        state,
+        event,
+        "source_query_interface_missing"
+      );
     case "query_validated":
       return Result.gen(function* reduceQueryValidated() {
         const current = yield* requireQueryActionState(state, {

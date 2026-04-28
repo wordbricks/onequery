@@ -206,11 +206,14 @@ export const CLI_PROBLEM_DEFINITIONS = {
     retryable: false,
     stage: "resolve_source",
   }),
-  SOURCE_NOT_QUERYABLE: defineCliProblem("SOURCE_NOT_QUERYABLE", {
-    connectCode: Code.InvalidArgument,
-    retryable: false,
-    stage: "resolve_source",
-  }),
+  SOURCE_QUERY_INTERFACE_MISSING: defineCliProblem(
+    "SOURCE_QUERY_INTERFACE_MISSING",
+    {
+      connectCode: Code.InvalidArgument,
+      retryable: false,
+      stage: "resolve_source",
+    }
+  ),
 } as const satisfies Record<string, CliProblemDefinition>;
 
 export type CliProblemReason = keyof typeof CLI_PROBLEM_DEFINITIONS;

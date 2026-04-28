@@ -23,7 +23,7 @@ export type QueryActionPhase = (typeof QUERY_ACTION_PHASES)[number];
 
 export const QUERY_ACTION_FAILURE_CODES = [
   "source_not_found",
-  "source_not_queryable",
+  "source_query_interface_missing",
   "query_rejected",
   "query_preparation_failed",
   "query_unavailable",

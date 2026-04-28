@@ -133,7 +133,7 @@ export type CliQueryPlanResult =
       requestId: string;
     }
   | {
-      kind: "source_not_queryable";
+      kind: "source_query_interface_missing";
       requestId: string;
       sourceName: string;
       provider: ProviderType;

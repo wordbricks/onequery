@@ -27,7 +27,7 @@ export type QueryActionCommandPayload =
     }
   | {
       type: "record_source_lookup";
-      kind: "not_queryable";
+      kind: "query_interface_missing";
       provider: ProviderType;
       sourceStatus: DataSourceStatus;
     }

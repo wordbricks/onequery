@@ -5,5 +5,5 @@ expression: "output.lines.join(\"\\n\")"
 Source connected: warehouse
 Provider: postgres
 Status: active
-Query (v1): yes
+Interfaces: query
 Next: onequery source show warehouse
