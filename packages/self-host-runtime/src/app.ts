@@ -1,3 +1,4 @@
+import { structuredLogger } from "@hono/structured-logger";
 import {
   createCliRoute,
   createDeviceAuthorizationBrowserRoute,
@@ -13,7 +14,8 @@ import { createServerStorage } from "@onequery/server/storage";
 import type { ServerStorage } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { problemDetailsHandler } from "hono-problem-details";
-import { logger } from "hono/logger";
+import { requestId } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import {
   API_ROUTE_PREFIX,
@@ -21,6 +23,8 @@ import {
   DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
   isApiRoutePath,
 } from "./constants";
+import * as runtimeLogger from "./runtime-logger";
+import type { RuntimeLogger } from "./runtime-logger";
 
 type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
@@ -33,8 +37,22 @@ export interface CreateRuntimeAppOptions {
   storage?: ServerStorage;
 }
 
-function apiLogger(message: string, ...rest: string[]): void {
-  console.log("[api]", message, ...rest);
+type RuntimeApiEnv = {
+  Variables: RequestIdVariables & {
+    logger: RuntimeLogger;
+  };
+};
+
+function getRuntimeRequestLogMethod(logger: RuntimeLogger, status: number) {
+  if (status >= 500) {
+    return logger.error.bind(logger);
+  }
+
+  if (status >= 400) {
+    return logger.warn.bind(logger);
+  }
+
+  return logger.info.bind(logger);
 }
 
 function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
@@ -51,8 +69,42 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
   const storage = resolveStorage(input);
 
   return (
-    new Hono()
-      .use("*", logger(apiLogger))
+    new Hono<RuntimeApiEnv>()
+      .use("*", requestId())
+      .use(
+        "*",
+        structuredLogger<RuntimeLogger>({
+          createLogger: (c) =>
+            runtimeLogger.createRuntimeLogger({
+              method: c.req.method,
+              path: c.req.path,
+              requestId: c.var.requestId,
+            }),
+          onError: (logger, error, c) => {
+            logger.error(
+              {
+                err: error,
+                event: "request.failed",
+                status: c.res.status,
+              },
+              "request failed"
+            );
+          },
+          onRequest: () => {},
+          onResponse: (logger, c, elapsedMs) => {
+            const log = getRuntimeRequestLogMethod(logger, c.res.status);
+
+            log(
+              {
+                durationMs: Math.max(0, Math.round(elapsedMs)),
+                event: "request.finished",
+                status: c.res.status,
+              },
+              "request finished"
+            );
+          },
+        })
+      )
       // Comment: mount the more specific `/api/*` children before the broad
       // `/api` app so Hono does not run the general control-plane middleware
       // for CLI or device-authorization requests.

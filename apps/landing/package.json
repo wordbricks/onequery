@@ -14,7 +14,7 @@
     "typecheck": "tsgo --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@hono/structured-logger": "0.1.0",
+    "@hono/structured-logger": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@onequery/landing-video": "workspace:*",
     "@onequery/ui": "workspace:*",
@@ -24,7 +24,7 @@
     "@xstate/react": "catalog:",
     "better-result": "catalog:",
     "hono": "catalog:",
-    "pino": "10.3.1",
+    "pino": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "remotion": "catalog:",
