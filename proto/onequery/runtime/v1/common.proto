@@ -237,6 +237,12 @@ message SupervisorStatus {
   google.protobuf.Timestamp updated_at = 5 [(buf.validate.field).required = true];
   RuntimeIdentity runtime = 6;
   SupervisorFailure failure = 7;
+  RuntimePhase runtime_phase = 8 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).enum.not_in = 0
+  ];
+  uint64 runtime_sequence = 9 [(buf.validate.field).uint64.gte = 0];
+  bool active_session = 10 [(buf.validate.field).required = true];
 }
 
 message RuntimeLeaseRecord {

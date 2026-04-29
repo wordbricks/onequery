@@ -248,7 +248,7 @@ pub(super) fn write_terminal_runtime_status_snapshot(
 
     // Comment: this supervisor-authored runtime snapshot is terminal recovery
     // evidence for OS child exit; live in-process lifecycle transitions still
-    // come from the runtime-control actor.
+    // come from the supervisor-control session.
     let snapshot = types::RuntimeStatusSnapshot {
         header: MessageField::some(lifecycle_record_header(
             record.supervisor,

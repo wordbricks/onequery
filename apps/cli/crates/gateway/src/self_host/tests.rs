@@ -32,7 +32,7 @@ use super::secrets::CryptoSecrets;
 use super::secrets::MASTER_ENCRYPTION_KEY_BYTE_LENGTH;
 use super::secrets::SecretsConfig;
 use super::secrets::SmtpSecrets;
-use crate::self_host_paths::runtime_control_socket_path_for_runtime;
+use crate::self_host_paths::supervisor_control_socket_path_for_runtime;
 
 const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
 
@@ -82,9 +82,9 @@ fn runtime_paths_follow_self_host_layout_contract() {
         server_log_path: PathBuf::from("/home/alice/.onequery/logs/server.log"),
         backups_dir: PathBuf::from("/home/alice/.onequery/backups"),
         run_dir: PathBuf::from("/home/alice/.onequery/run"),
-        runtime_control_socket_path: runtime_control_socket_path_for_runtime(
-            Path::new("/home/alice/.onequery"),
-            Path::new("/home/alice/.onequery/run"),
+        supervisor_control_socket_path: supervisor_control_socket_path_for_runtime(
+            PathBuf::from("/home/alice/.onequery").as_path(),
+            PathBuf::from("/home/alice/.onequery/run").as_path(),
         ),
         runtime_lease_path: PathBuf::from("/home/alice/.onequery/run/runtime.lease.json"),
         runtime_status_snapshot_path: PathBuf::from(

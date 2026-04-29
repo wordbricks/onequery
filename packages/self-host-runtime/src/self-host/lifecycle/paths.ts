@@ -21,10 +21,10 @@ export function toLifecyclePathsResult(
     );
   }
 
-  if (!launchConfig.runtimeControl) {
+  if (!launchConfig.supervisorControl) {
     return Result.err(
       new SelfHostRuntimePathsMissingError({
-        message: "Self-host launch config requires runtimeControl.",
+        message: "Self-host launch config requires supervisorControl.",
       })
     );
   }
@@ -32,7 +32,7 @@ export function toLifecyclePathsResult(
   return Result.ok({
     kind: "self-host",
     paths: {
-      controlEndpoint: launchConfig.runtimeControl,
+      controlEndpoint: launchConfig.supervisorControl,
       dataDir: launchConfig.runtimePaths.dataDir,
       lifecycleEventLogPath: launchConfig.runtimePaths.lifecycleEventLogPath,
       logsDir: launchConfig.runtimePaths.logsDir,

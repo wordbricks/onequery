@@ -28,20 +28,6 @@ export const serverLaunchRuntimePathsSchema = z
   })
   .strict();
 
-const serverLaunchRuntimeControlBearerAuthSchema = z
-  .object({
-    kind: z.literal("bearer"),
-    token: nonEmptyStringSchema,
-  })
-  .strict();
-
-const serverLaunchRuntimeControlFencingSchema = z
-  .object({
-    dataDir: nonEmptyStringSchema,
-    launchId: nonEmptyStringSchema,
-  })
-  .strict();
-
 const positiveUint64StringSchema = z
   .string()
   .regex(/^(?:[1-9][0-9]*)$/, "Expected a positive uint64 decimal string.")
@@ -61,38 +47,19 @@ export const serverLaunchSupervisorSchema = z
   })
   .strict();
 
-export const serverLaunchRuntimeControlTransportSchema = z.discriminatedUnion(
-  "kind",
-  [
+export const serverLaunchSupervisorControlTransportSchema =
+  z.discriminatedUnion("kind", [
     z
       .object({
         kind: z.literal("unix"),
         socketPath: nonEmptyStringSchema,
       })
       .strict(),
-    z
-      .object({
-        auth: serverLaunchRuntimeControlBearerAuthSchema,
-        fencing: serverLaunchRuntimeControlFencingSchema,
-        host: nonEmptyStringSchema,
-        kind: z.literal("loopback-h2c"),
-        port: portSchema,
-      })
-      .strict(),
-    z
-      .object({
-        auth: serverLaunchRuntimeControlBearerAuthSchema,
-        fencing: serverLaunchRuntimeControlFencingSchema,
-        kind: z.literal("windows-named-pipe"),
-        pipeName: nonEmptyStringSchema,
-      })
-      .strict(),
-  ]
-);
+  ]);
 
-export const serverLaunchRuntimeControlSchema = z
+export const serverLaunchSupervisorControlSchema = z
   .object({
-    transport: serverLaunchRuntimeControlTransportSchema,
+    transport: serverLaunchSupervisorControlTransportSchema,
   })
   .strict();
 
@@ -171,10 +138,10 @@ export const serverLaunchConfigSchema = z
         enabled: z.boolean(),
       })
       .strict(),
-    runtimeControl: serverLaunchRuntimeControlSchema.optional(),
     runtimePaths: serverLaunchRuntimePathsSchema.optional(),
     smtp: serverLaunchSmtpSchema.optional(),
     storage: serverLaunchStorageSchema,
+    supervisorControl: serverLaunchSupervisorControlSchema.optional(),
     supervisor: serverLaunchSupervisorSchema.optional(),
   })
   .strict()
@@ -195,11 +162,11 @@ export const serverLaunchConfigSchema = z
       });
     }
 
-    if (value.mode === "self-host" && !value.runtimeControl) {
+    if (value.mode === "self-host" && !value.supervisorControl) {
       context.addIssue({
         code: "custom",
-        message: "Self-host launch config requires runtimeControl.",
-        path: ["runtimeControl"],
+        message: "Self-host launch config requires supervisorControl.",
+        path: ["supervisorControl"],
       });
     }
 
@@ -218,52 +185,14 @@ export const serverLaunchConfigSchema = z
         path: ["supervisor"],
       });
     }
-
-    const runtimeControlTransport = value.runtimeControl?.transport;
-    if (
-      runtimeControlTransport !== undefined &&
-      runtimeControlTransport.kind !== "unix"
-    ) {
-      if (value.launchId === undefined) {
-        context.addIssue({
-          code: "custom",
-          message: "Non-UDS runtime control requires launchId.",
-          path: ["launchId"],
-        });
-      } else if (runtimeControlTransport.fencing.launchId !== value.launchId) {
-        context.addIssue({
-          code: "custom",
-          message:
-            "Non-UDS runtime control fencing launchId must match launchId.",
-          path: ["runtimeControl", "transport", "fencing", "launchId"],
-        });
-      }
-
-      if (value.runtimePaths === undefined) {
-        context.addIssue({
-          code: "custom",
-          message: "Non-UDS runtime control requires runtimePaths.",
-          path: ["runtimePaths"],
-        });
-      } else if (
-        runtimeControlTransport.fencing.dataDir !== value.runtimePaths.dataDir
-      ) {
-        context.addIssue({
-          code: "custom",
-          message:
-            "Non-UDS runtime control fencing dataDir must match runtimePaths.dataDir.",
-          path: ["runtimeControl", "transport", "fencing", "dataDir"],
-        });
-      }
-    }
   });
 
 export type ServerLaunchConfig = z.infer<typeof serverLaunchConfigSchema>;
-export type ServerLaunchRuntimeControlConfig = z.infer<
-  typeof serverLaunchRuntimeControlSchema
+export type ServerLaunchSupervisorControlConfig = z.infer<
+  typeof serverLaunchSupervisorControlSchema
 >;
-export type ServerLaunchRuntimeControlTransportConfig = z.infer<
-  typeof serverLaunchRuntimeControlTransportSchema
+export type ServerLaunchSupervisorControlTransportConfig = z.infer<
+  typeof serverLaunchSupervisorControlTransportSchema
 >;
 export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
 export type ServerLaunchSupervisorConfig = z.infer<

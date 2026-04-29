@@ -30,11 +30,11 @@ pub(crate) struct ServerLaunchConfig {
     pub(crate) migrations: ServerLaunchMigrationsConfig,
     pub(crate) public_origin: String,
     pub(crate) rate_limit: ServerLaunchRateLimitConfig,
-    pub(crate) runtime_control: ServerLaunchRuntimeControlConfig,
     pub(crate) runtime_paths: ServerLaunchRuntimePathsConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) smtp: Option<ServerLaunchSmtpConfig>,
     pub(crate) storage: ServerLaunchStorageConfig,
+    pub(crate) supervisor_control: ServerLaunchSupervisorControlConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) supervisor: Option<ServerLaunchSupervisorConfig>,
 }
@@ -113,8 +113,8 @@ pub(crate) struct ServerLaunchRuntimePathsConfig {
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ServerLaunchRuntimeControlConfig {
-    pub(crate) transport: ServerLaunchRuntimeControlTransportConfig,
+pub(crate) struct ServerLaunchSupervisorControlConfig {
+    pub(crate) transport: ServerLaunchSupervisorControlTransportConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -127,7 +127,7 @@ pub(crate) struct ServerLaunchSupervisorConfig {
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case", tag = "kind")]
-pub(crate) enum ServerLaunchRuntimeControlTransportConfig {
+pub(crate) enum ServerLaunchSupervisorControlTransportConfig {
     Unix {
         #[serde(rename = "socketPath")]
         socket_path: String,
@@ -305,9 +305,9 @@ fn resolve_self_host_launch_config(
             },
             enabled: true,
         },
-        runtime_control: ServerLaunchRuntimeControlConfig {
-            transport: ServerLaunchRuntimeControlTransportConfig::Unix {
-                socket_path: paths.runtime_control_socket_path.display().to_string(),
+        supervisor_control: ServerLaunchSupervisorControlConfig {
+            transport: ServerLaunchSupervisorControlTransportConfig::Unix {
+                socket_path: paths.supervisor_control_socket_path.display().to_string(),
             },
         },
         runtime_paths: ServerLaunchRuntimePathsConfig {

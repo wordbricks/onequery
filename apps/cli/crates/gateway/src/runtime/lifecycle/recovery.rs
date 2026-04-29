@@ -27,8 +27,8 @@ enum DurableRecoveryStep {
 }
 
 const DURABLE_RECOVERY_PRECEDENCE: [DurableRecoveryStep; 3] = [
-    DurableRecoveryStep::RuntimeStatusSnapshot,
     DurableRecoveryStep::SupervisorTerminalRecord,
+    DurableRecoveryStep::RuntimeStatusSnapshot,
     DurableRecoveryStep::RuntimeLeaseRecord,
 ];
 
@@ -51,6 +51,12 @@ pub(crate) struct ManagedSupervisorIdentity {
     pub(crate) supervisor_id: String,
     pub(crate) pid: u32,
     pub(crate) generation: u64,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct ManagedSupervisorControlIdentity {
+    pub(crate) runtime: ManagedRuntimeIdentity,
+    pub(crate) supervisor: ManagedSupervisorIdentity,
 }
 
 pub(crate) fn read_managed_runtime_pid(
@@ -77,6 +83,36 @@ pub(crate) fn read_active_supervisor_identity_for_runtime(
         paths.data_dir.as_path(),
         is_process_running,
     ))
+}
+
+pub(crate) fn read_supervisor_control_identity_for_recovery(
+    paths: &SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<Option<ManagedSupervisorControlIdentity>, CliError> {
+    if let Some(supervisor_snapshot) =
+        read_supervisor_status_snapshot_for_recovery(paths, command_line)?
+        && let Some(identity) = supervisor_control_identity_from_snapshot(
+            &supervisor_snapshot,
+            paths.data_dir.as_path(),
+            is_process_running,
+        )
+    {
+        return Ok(Some(identity));
+    }
+
+    let Some(runtime) = read_managed_runtime_identity(paths, command_line)? else {
+        return Ok(None);
+    };
+    let Some(supervisor) =
+        read_active_supervisor_identity_for_runtime(paths, &runtime, command_line)?
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(ManagedSupervisorControlIdentity {
+        runtime,
+        supervisor,
+    }))
 }
 
 pub(crate) fn read_managed_runtime_identity(
@@ -586,6 +622,63 @@ fn active_supervisor_identity_for_runtime(
         supervisor_id: supervisor_id.to_owned(),
         pid: supervisor_pid,
         generation: supervisor_generation,
+    })
+}
+
+fn supervisor_control_identity_from_snapshot(
+    snapshot: &types::SupervisorStatusSnapshot,
+    expected_data_dir: &Path,
+    is_process_running: impl Fn(u32) -> bool,
+) -> Option<ManagedSupervisorControlIdentity> {
+    let status = snapshot.status.as_option()?;
+    let launch = status.launch.as_option()?;
+    if !launch_identity_matches_data_dir(launch, expected_data_dir) {
+        return None;
+    }
+
+    let supervisor = status.identity.as_option()?;
+    if !supervisor_identity_matches_launch(supervisor, launch) {
+        return None;
+    }
+
+    let supervisor_pid = supervisor.pid?;
+    if !is_process_running(supervisor_pid) {
+        return None;
+    }
+
+    let supervisor_id = supervisor
+        .supervisor_id
+        .as_deref()
+        .filter(|supervisor_id| !supervisor_id.is_empty())?
+        .to_owned();
+    let supervisor_generation = supervisor.generation?;
+    let launch_id = launch
+        .launch_id
+        .as_deref()
+        .filter(|launch_id| !launch_id.is_empty())?
+        .to_owned();
+    let runtime_pid = launch.runtime_pid.filter(|pid| *pid > 0)?;
+
+    if let Some(runtime) = status.runtime.as_option()
+        && (runtime.pid != Some(runtime_pid)
+            || runtime.launch_id.as_deref() != Some(launch_id.as_str())
+            || !runtime_identity_matches_data_dir(runtime, expected_data_dir))
+    {
+        return None;
+    }
+
+    Some(ManagedSupervisorControlIdentity {
+        runtime: ManagedRuntimeIdentity {
+            launch_id,
+            pid: runtime_pid,
+            supervisor_pid,
+            supervisor_generation,
+        },
+        supervisor: ManagedSupervisorIdentity {
+            supervisor_id,
+            pid: supervisor_pid,
+            generation: supervisor_generation,
+        },
     })
 }
 

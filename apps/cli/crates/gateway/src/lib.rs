@@ -207,7 +207,7 @@ pub fn runtime_probe_host(listen_host: &str) -> &str {
 
 /// Best-effort local TCP probe for recovery guidance and diagnostics.
 ///
-/// Startup readiness is owned by the runtime-control `WatchStatus` handshake;
+/// Startup readiness is owned by the supervisor-control session handshake;
 /// this helper only answers whether something is currently accepting TCP
 /// connections on the configured local runtime endpoint.
 pub fn runtime_accepting_connections(listen_host: &str, port: u16) -> bool {

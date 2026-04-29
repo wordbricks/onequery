@@ -1,9 +1,16 @@
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
-import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import {
+  RuntimePhase,
+  RuntimeStatusSchema,
+  RuntimeStopCompletion,
+  SupervisorIdentitySchema,
+} from "@onequery/proto-runtime/runtime/v1/common_pb";
 import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type { SupervisorStopCommand } from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { createServerRuntimeConfig } from "@onequery/server/runtime";
@@ -37,17 +44,13 @@ import {
 import type {
   GracefulShutdownController,
   RuntimeLifecycleLease,
+  RuntimeShutdownRequest,
   RuntimeShutdownResource,
   SelfHostLifecyclePaths,
 } from "./self-host/lifecycle";
-import {
-  createRuntimeControlActor,
-  serveRuntimeControl,
-} from "./self-host/runtime-control";
-import type {
-  RuntimeControlActor,
-  RuntimeControlServer,
-} from "./self-host/runtime-control";
+import { createSupervisorLifecycleClient } from "./self-host/supervisor-client/client";
+import { openSupervisorRuntimeSession } from "./self-host/supervisor-client/session";
+import type { SupervisorRuntimeSession } from "./self-host/supervisor-client/session";
 import { loadStartupLaunchConfigResult } from "./startup";
 import type { ServerStartupInput } from "./startup";
 
@@ -78,9 +81,12 @@ type UnmanagedLifecycleContext = {
 
 type ManagedLifecycleContext = {
   kind: "managed";
-  controlActor: RuntimeControlActor;
+  launchId: string;
   lease: RuntimeLifecycleLease;
   logWriter: LifecycleLogWriter;
+  runtimePid: number;
+  runtimeSequence: bigint;
+  supervisor: SupervisorIdentity;
 };
 
 type RuntimeLifecycleContext =
@@ -90,8 +96,8 @@ type RuntimeLifecycleContext =
 type SelfHostLaunchConfig = ServerLaunchConfig & {
   launchId: string;
   mode: "self-host";
-  runtimeControl: NonNullable<ServerLaunchConfig["runtimeControl"]>;
   runtimePaths: NonNullable<ServerLaunchConfig["runtimePaths"]>;
+  supervisorControl: NonNullable<ServerLaunchConfig["supervisorControl"]>;
   supervisor: NonNullable<ServerLaunchConfig["supervisor"]>;
 };
 
@@ -129,10 +135,10 @@ type ServerStartupShell =
     }
   | {
       lifecycle: ManagedLifecycleContext;
-      controlServer: RuntimeControlServer;
       server: StartedServer;
       shutdownController: GracefulShutdownController;
       storageHandle: ServerStorageHandle;
+      supervisorSession?: SupervisorRuntimeSession;
       status: "serving_managed";
     };
 
@@ -145,7 +151,9 @@ type StartServerWorkflowStep =
   | "create_spa_assets"
   | "create_storage"
   | "load_launch_config"
+  | "open_supervisor_session"
   | "prepare_database"
+  | "report_supervisor_ready"
   | "resolve_lifecycle_paths"
   | "serve"
   | "transition_lifecycle_ready"
@@ -186,10 +194,10 @@ export interface StartServerDependencies {
   createServerStorageHandle: typeof createServerStorageHandle;
   createServerRuntimeConfig: typeof createServerRuntimeConfig;
   createSpaAssetBindingResult: typeof createSpaAssetBindingResult;
-  createRuntimeControlActor: typeof createRuntimeControlActor;
+  createSupervisorLifecycleClient: typeof createSupervisorLifecycleClient;
   loadStartupLaunchConfigResult: typeof loadStartupLaunchConfigResult;
+  openSupervisorRuntimeSession: typeof openSupervisorRuntimeSession;
   prepareRuntimeDatabaseResult: typeof prepareRuntimeDatabaseResult;
-  serveRuntimeControl: typeof serveRuntimeControl;
   serve(options: {
     fetch: (request: Request, env?: object) => Response | Promise<Response>;
     hostname: string;
@@ -206,10 +214,10 @@ const defaultStartServerDependencies: StartServerDependencies = {
   createServerStorageHandle,
   createServerRuntimeConfig,
   createSpaAssetBindingResult,
-  createRuntimeControlActor,
+  createSupervisorLifecycleClient,
   loadStartupLaunchConfigResult,
+  openSupervisorRuntimeSession,
   prepareRuntimeDatabaseResult,
-  serveRuntimeControl,
   serve: serveWithNode,
 };
 
@@ -269,8 +277,8 @@ function isSelfHostLaunchConfig(
 ): launchConfig is SelfHostLaunchConfig {
   return (
     launchConfig.mode === "self-host" &&
-    launchConfig.runtimeControl !== undefined &&
     launchConfig.runtimePaths !== undefined &&
+    launchConfig.supervisorControl !== undefined &&
     typeof launchConfig.launchId === "string" &&
     launchConfig.supervisor !== undefined
   );
@@ -283,6 +291,50 @@ function createSupervisorIdentity(
     generation: BigInt(supervisor.generation),
     pid: supervisor.pid,
     supervisorId: supervisor.supervisorId,
+  });
+}
+
+function supervisorStopCommandToRuntimeShutdownRequest(
+  command: SupervisorStopCommand
+): RuntimeShutdownRequest {
+  const target =
+    command.target && command.target.supervisor
+      ? {
+          dataDir: command.target.dataDir,
+          launchId: command.target.launchId,
+          pid: command.target.runtimePid,
+          supervisor: command.target.supervisor,
+        }
+      : undefined;
+
+  return {
+    completion:
+      command.completion === RuntimeStopCompletion.CLEANUP_ONLY
+        ? "cleanup_only"
+        : "cleanup_and_exit",
+    graceTimeout: command.graceTimeout,
+    operationId: command.operationId,
+    reason: command.reason,
+    target,
+  };
+}
+
+function runtimeStatusFromLifecycle(input: {
+  dataDir: string;
+  launchId: string;
+  phase: RuntimePhase;
+  runtimePid: number;
+  runtimeSequence: bigint;
+}) {
+  return create(RuntimeStatusSchema, {
+    identity: {
+      dataDir: input.dataDir,
+      launchId: input.launchId,
+      pid: input.runtimePid,
+    },
+    phase: input.phase,
+    runtimeSequence: input.runtimeSequence,
+    updatedAt: timestampFromDate(new Date()),
   });
 }
 
@@ -299,7 +351,7 @@ function resolveLaunchLifecycleModeResult(
     return Result.err(
       createWorkflowError(
         "resolve_lifecycle_paths",
-        "self-host launch config requires runtimePaths, runtimeControl, launchId, and supervisor",
+        "self-host launch config requires runtimePaths, supervisorControl, launchId, and supervisor",
         launchConfig
       )
     );
@@ -360,17 +412,17 @@ async function stopServerAfterStartupFailure(
   });
 }
 
-async function closeRuntimeControlServerAfterStartupFailure(
-  server: RuntimeControlServer
+async function closeSupervisorSessionAfterStartupFailure(
+  session: SupervisorRuntimeSession
 ): Promise<ResultType<void, StartServerWorkflowError>> {
   return Result.tryPromise({
     try: async () => {
-      await server.close();
+      await session.close();
     },
     catch: (cause) =>
       createWorkflowError(
         "cleanup_startup_failure",
-        "failed to close runtime control server after startup failure",
+        "failed to close supervisor runtime session after startup failure",
         cause
       ),
   });
@@ -447,21 +499,14 @@ async function resolveLifecycleContextResult(
               )
             )
         );
-        const controlActor = dependencies.createRuntimeControlActor({
-          identity: {
-            dataDir: lifecyclePaths.dataDir,
-            launchId: launchLifecycleMode.launchConfig.launchId,
-            pid: process.pid,
-            supervisor,
-          },
-          lease,
-        });
-
         return Result.ok({
-          controlActor,
           kind: "managed",
-          lease: controlActor.lease,
+          launchId: launchLifecycleMode.launchConfig.launchId,
+          lease,
           logWriter,
+          runtimePid: process.pid,
+          runtimeSequence: 1n,
+          supervisor,
         } satisfies ManagedLifecycleContext);
       }
       default:
@@ -617,7 +662,24 @@ export function createStartServerResult(
       const listenAddress = `http://${launchConfig.listen.host}:${startedServer.port}`;
 
       if (lifecycle.kind === "managed") {
-        let runtimeControlServer: RuntimeControlServer | null = null;
+        const selfHostLaunchConfig = yield* Result.try({
+          try: () => {
+            if (!isSelfHostLaunchConfig(launchConfig)) {
+              throw new Error(
+                "managed lifecycle requires self-host launch config"
+              );
+            }
+
+            return launchConfig;
+          },
+          catch: (cause) =>
+            createWorkflowError(
+              "open_supervisor_session",
+              "managed lifecycle is missing self-host launch metadata",
+              cause
+            ),
+        });
+        let supervisorSession: SupervisorRuntimeSession | null = null;
         const shutdownController = yield* Result.try({
           try: () =>
             resolvedDependencies.attachGracefulShutdownHandlers({
@@ -626,8 +688,8 @@ export function createStartServerResult(
               server: startedServer,
               shutdownResources: [
                 {
-                  close: () => runtimeControlServer?.close(),
-                  name: "runtime-control",
+                  close: () => supervisorSession?.close(),
+                  name: "supervisor-session",
                 },
                 {
                   close: () => storageHandle.close(),
@@ -643,28 +705,58 @@ export function createStartServerResult(
               cause
             ),
         });
-        lifecycle.controlActor.attachShutdownController(shutdownController);
-        runtimeControlServer = yield* Result.await(
-          Result.tryPromise({
-            try: () =>
-              resolvedDependencies.serveRuntimeControl({
-                actor: lifecycle.controlActor,
-                endpoint: lifecycle.lease.paths.controlEndpoint,
-              }),
-            catch: (cause) =>
-              createWorkflowError(
-                "serve",
-                "failed to start runtime control server",
-                cause
+        const supervisorClient = yield* Result.try({
+          try: () =>
+            resolvedDependencies.createSupervisorLifecycleClient({
+              endpoint: lifecycle.lease.paths.controlEndpoint,
+            }),
+          catch: (cause) =>
+            createWorkflowError(
+              "open_supervisor_session",
+              "failed to create supervisor lifecycle client",
+              cause
+            ),
+        });
+        supervisorSession = yield* Result.try({
+          try: () =>
+            resolvedDependencies.openSupervisorRuntimeSession({
+              client: supervisorClient,
+              dataDir: lifecycle.lease.paths.dataDir,
+              launchId: selfHostLaunchConfig.launchId,
+              runtimePid: lifecycle.runtimePid,
+              runtimeSequence: lifecycle.runtimeSequence,
+              onStopCommand: async (command) => {
+                await shutdownController.shutdown(
+                  supervisorStopCommandToRuntimeShutdownRequest(command)
+                );
+                lifecycle.runtimeSequence += 1n;
+                return {
+                  status: runtimeStatusFromLifecycle({
+                    dataDir: lifecycle.lease.paths.dataDir,
+                    launchId: lifecycle.launchId,
+                    phase: RuntimePhase.STOPPED,
+                    runtimePid: lifecycle.runtimePid,
+                    runtimeSequence: lifecycle.runtimeSequence,
+                  }),
+                };
+              },
+              supervisor: createSupervisorIdentity(
+                selfHostLaunchConfig.supervisor
               ),
-          })
-        );
+            }),
+          catch: (cause) =>
+            createWorkflowError(
+              "open_supervisor_session",
+              "failed to open supervisor runtime session",
+              cause
+            ),
+        });
         startupShellRef.current = {
-          controlServer: runtimeControlServer,
           lifecycle,
           server: startedServer,
           shutdownController,
           storageHandle,
+          supervisorSession,
           status: "serving_managed",
         };
         yield* Result.await(
@@ -674,6 +766,27 @@ export function createStartServerResult(
               createWorkflowError(
                 "transition_lifecycle_ready",
                 "failed to mark runtime lifecycle as ready",
+                cause
+              ),
+          })
+        );
+        lifecycle.runtimeSequence += 1n;
+        yield* Result.await(
+          Result.tryPromise({
+            try: () =>
+              supervisorSession.ready(
+                runtimeStatusFromLifecycle({
+                  dataDir: lifecycle.lease.paths.dataDir,
+                  launchId: lifecycle.launchId,
+                  phase: RuntimePhase.READY,
+                  runtimePid: lifecycle.runtimePid,
+                  runtimeSequence: lifecycle.runtimeSequence,
+                })
+              ),
+            catch: (cause) =>
+              createWorkflowError(
+                "report_supervisor_ready",
+                "failed to report runtime ready status to supervisor session",
                 cause
               ),
           })
@@ -720,12 +833,14 @@ export function createStartServerResult(
       }
       case "serving_managed": {
         startupShell.shutdownController.dispose();
-        const closeRuntimeControlResult =
-          await closeRuntimeControlServerAfterStartupFailure(
-            startupShell.controlServer
-          );
-        if (closeRuntimeControlResult.isErr()) {
-          cleanupErrors.push(closeRuntimeControlResult.error);
+        if (startupShell.supervisorSession !== undefined) {
+          const closeSupervisorSessionResult =
+            await closeSupervisorSessionAfterStartupFailure(
+              startupShell.supervisorSession
+            );
+          if (closeSupervisorSessionResult.isErr()) {
+            cleanupErrors.push(closeSupervisorSessionResult.error);
+          }
         }
         const stopServerResult = await stopServerAfterStartupFailure(
           startupShell.server
@@ -768,7 +883,6 @@ export function createStartServerResult(
       if (releaseLeaseResult.isErr()) {
         cleanupErrors.push(releaseLeaseResult.error);
       }
-      startupShell.lifecycle.controlActor.dispose();
     }
 
     if (cleanupErrors.length === 1) {

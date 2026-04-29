@@ -2,12 +2,19 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
+import { DurationSchema } from "@bufbuild/protobuf/wkt";
 import {
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
 import type { DatabasePreparationResult } from "@onequery/db/server";
+import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import {
+  SupervisorStopCommandSchema,
+  SupervisorStopTargetSchema,
+} from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type {
@@ -46,13 +53,13 @@ function createTempSelfHostRuntimePaths() {
   });
 }
 
-function createTempRuntimeControlEndpoint(
+function createTempSupervisorControlEndpoint(
   runtimePaths: ReturnType<typeof createTempSelfHostRuntimePaths>
 ) {
   return {
     transport: {
       kind: "unix" as const,
-      socketPath: join(runtimePaths.runDir, "runtime-control.sock"),
+      socketPath: join(runtimePaths.runDir, "supervisor-control.sock"),
     },
   };
 }
@@ -124,9 +131,23 @@ function createMocks() {
   const releaseLifecycleLease = vi.fn(async () => undefined);
   const transitionLifecycleLease = vi.fn(async () => undefined);
   const persistLifecycleTransition = vi.fn(async () => undefined);
-  const attachRuntimeControlShutdownController = vi.fn();
-  const disposeRuntimeControlActor = vi.fn();
-  const runtimeControlServerClose = vi.fn(async () => undefined);
+  const supervisorLifecycleClient = {
+    name: "supervisor-lifecycle-client",
+  } as unknown as ReturnType<
+    StartServerDependencies["createSupervisorLifecycleClient"]
+  >;
+  const createSupervisorLifecycleClient: StartServerDependencies["createSupervisorLifecycleClient"] =
+    vi.fn(() => supervisorLifecycleClient);
+  const supervisorRuntimeSessionClose = vi.fn(async () => undefined);
+  const supervisorRuntimeSessionReady = vi.fn(async () => undefined);
+  const supervisorRuntimeSessionHeartbeat = vi.fn(async () => undefined);
+  const openSupervisorRuntimeSession: StartServerDependencies["openSupervisorRuntimeSession"] =
+    vi.fn(() => ({
+      close: supervisorRuntimeSessionClose,
+      closed: Promise.resolve(),
+      heartbeat: supervisorRuntimeSessionHeartbeat,
+      ready: supervisorRuntimeSessionReady,
+    }));
   const acquireRuntimeLifecycleLeaseResult: StartServerDependencies["acquireRuntimeLifecycleLeaseResult"] =
     vi.fn(async (paths) =>
       Result.ok({
@@ -136,41 +157,6 @@ function createMocks() {
         release: releaseLifecycleLease,
       })
     );
-  const createRuntimeControlActor: StartServerDependencies["createRuntimeControlActor"] =
-    vi.fn(({ lease }) => ({
-      attachShutdownController: attachRuntimeControlShutdownController,
-      closeStatusWatches: vi.fn(async () => undefined),
-      dispose: disposeRuntimeControlActor,
-      getStatus: vi.fn(async () => ({
-        identity: {
-          dataDir: lease.paths.dataDir,
-          launchId: "launch-a",
-          pid: process.pid,
-        },
-        phase: 2,
-        runtimeSequence: 1n,
-      })),
-      lease,
-      stop: vi.fn(async () => ({
-        disposition: 1,
-        status: {
-          identity: {
-            dataDir: lease.paths.dataDir,
-            launchId: "launch-a",
-            pid: process.pid,
-          },
-          phase: 5,
-          runtimeSequence: 2n,
-        },
-      })),
-      watchStatus: vi.fn(async function* watchStatus() {}),
-    }));
-  const serveRuntimeControl: StartServerDependencies["serveRuntimeControl"] =
-    vi.fn(async ({ endpoint }) => ({
-      close: runtimeControlServerClose,
-      endpoint,
-      name: "runtime-control" as const,
-    }));
   const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
     vi.fn(async () => undefined);
   const shutdownController = {
@@ -191,21 +177,22 @@ function createMocks() {
     acquireRuntimeLifecycleLeaseResult,
     appendLifecycleLog,
     attachGracefulShutdownHandlers,
-    attachRuntimeControlShutdownController,
     createApp,
     closeServerStorage,
     createServerStorageHandle,
     createServerRuntimeConfig,
-    createRuntimeControlActor,
+    createSupervisorLifecycleClient,
     createSpaAssetBindingResult,
-    disposeRuntimeControlActor,
+    openSupervisorRuntimeSession,
     prepareRuntimeDatabaseResult,
     releaseLifecycleLease,
     persistLifecycleTransition,
-    runtimeControlServerClose,
     shutdownController,
+    supervisorLifecycleClient,
+    supervisorRuntimeSessionClose,
+    supervisorRuntimeSessionHeartbeat,
+    supervisorRuntimeSessionReady,
     transitionLifecycleLease,
-    serveRuntimeControl,
     serve,
   };
 }
@@ -221,11 +208,11 @@ function createDependencies(
     createApp: mocks.createApp,
     createServerStorageHandle: mocks.createServerStorageHandle,
     createServerRuntimeConfig: mocks.createServerRuntimeConfig,
-    createRuntimeControlActor: mocks.createRuntimeControlActor,
+    createSupervisorLifecycleClient: mocks.createSupervisorLifecycleClient,
     createSpaAssetBindingResult: mocks.createSpaAssetBindingResult,
     loadStartupLaunchConfigResult,
+    openSupervisorRuntimeSession: mocks.openSupervisorRuntimeSession,
     prepareRuntimeDatabaseResult: mocks.prepareRuntimeDatabaseResult,
-    serveRuntimeControl: mocks.serveRuntimeControl,
     serve: mocks.serve,
   };
 }
@@ -277,13 +264,13 @@ describe("startServer", () => {
 
   it("starts from a serialized self-host launch config file", async () => {
     const runtimePaths = createTempSelfHostRuntimePaths();
-    const runtimeControl = createTempRuntimeControlEndpoint(runtimePaths);
+    const supervisorControl = createTempSupervisorControlEndpoint(runtimePaths);
     const launchConfig = createSelfHostLaunchConfig({
       assetsDistDir: "/tmp/web",
       launchId: "launch-a",
       migrationsDir: "/tmp/migrations",
-      runtimeControl,
       runtimePaths,
+      supervisorControl,
     });
     const launchConfigPath = writeLaunchConfigFile(launchConfig);
 
@@ -312,7 +299,7 @@ describe("startServer", () => {
     });
     expect(mocks.acquireRuntimeLifecycleLeaseResult).toHaveBeenCalledWith(
       {
-        controlEndpoint: runtimeControl,
+        controlEndpoint: supervisorControl,
         dataDir: runtimePaths.dataDir,
         lifecycleEventLogPath: runtimePaths.lifecycleEventLogPath,
         logsDir: runtimePaths.logsDir,
@@ -340,7 +327,7 @@ describe("startServer", () => {
         server,
         shutdownResources: expect.arrayContaining([
           expect.objectContaining({
-            name: "runtime-control",
+            name: "supervisor-session",
           }),
           expect.objectContaining({
             name: "server-storage",
@@ -348,32 +335,69 @@ describe("startServer", () => {
         ]),
       })
     );
-    expect(mocks.createRuntimeControlActor).toHaveBeenCalledWith(
+    expect(mocks.createSupervisorLifecycleClient).toHaveBeenCalledWith({
+      endpoint: supervisorControl,
+    });
+    expect(mocks.openSupervisorRuntimeSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        identity: expect.objectContaining({
-          dataDir: runtimePaths.dataDir,
-          launchId: "launch-a",
-          pid: process.pid,
-          supervisor: expect.objectContaining({
-            generation: 7n,
-            pid: 1001,
-            supervisorId: "gateway-supervisor:1001",
-          }),
+        client: mocks.supervisorLifecycleClient,
+        dataDir: runtimePaths.dataDir,
+        launchId: "launch-a",
+        runtimePid: process.pid,
+        runtimeSequence: 1n,
+        onStopCommand: expect.any(Function),
+        supervisor: expect.objectContaining({
+          generation: 7n,
+          pid: 1001,
+          supervisorId: "gateway-supervisor:1001",
         }),
       })
     );
-    expect(mocks.attachRuntimeControlShutdownController).toHaveBeenCalledWith(
-      mocks.shutdownController
-    );
-    expect(mocks.serveRuntimeControl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        endpoint: runtimeControl,
+    const supervisorSessionInput = vi.mocked(mocks.openSupervisorRuntimeSession)
+      .mock.calls[0]?.[0];
+    const supervisorIdentity = create(SupervisorIdentitySchema, {
+      generation: 7n,
+      pid: 1001,
+      supervisorId: "gateway-supervisor:1001",
+    });
+    const graceTimeout = create(DurationSchema, { seconds: 30n });
+    const supervisorStopTarget = create(SupervisorStopTargetSchema, {
+      dataDir: runtimePaths.dataDir,
+      launchId: "launch-a",
+      runtimePid: process.pid,
+      supervisor: supervisorIdentity,
+    });
+    await supervisorSessionInput?.onStopCommand?.(
+      create(SupervisorStopCommandSchema, {
+        completion: 2,
+        graceTimeout,
+        operationId: "stop-operation",
+        reason: "test stop",
+        target: supervisorStopTarget,
       })
     );
+    expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
+      completion: "cleanup_and_exit",
+      graceTimeout,
+      operationId: "stop-operation",
+      reason: "test stop",
+      target: {
+        dataDir: runtimePaths.dataDir,
+        launchId: "launch-a",
+        pid: process.pid,
+        supervisor: supervisorIdentity,
+      },
+    });
     expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith("ready");
+    expect(mocks.supervisorRuntimeSessionReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: 2,
+        runtimeSequence: 2n,
+      })
+    );
     expect(mocks.appendLifecycleLog).toHaveBeenCalledWith(
       {
-        controlEndpoint: runtimeControl,
+        controlEndpoint: supervisorControl,
         dataDir: runtimePaths.dataDir,
         lifecycleEventLogPath: runtimePaths.lifecycleEventLogPath,
         logsDir: runtimePaths.logsDir,
@@ -394,8 +418,8 @@ describe("startServer", () => {
       createSelfHostLaunchConfig({
         assetsDistDir: "/tmp/web",
         migrationsDir: "/tmp/migrations",
-        runtimeControl: createTempRuntimeControlEndpoint(runtimePaths),
         runtimePaths,
+        supervisorControl: createTempSupervisorControlEndpoint(runtimePaths),
       })
     );
     mocks.transitionLifecycleLease.mockRejectedValueOnce(
@@ -412,7 +436,7 @@ describe("startServer", () => {
     });
 
     expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);
-    expect(mocks.runtimeControlServerClose).toHaveBeenCalledTimes(1);
+    expect(mocks.supervisorRuntimeSessionClose).toHaveBeenCalledTimes(1);
     expect(mocks.closeServerStorage).toHaveBeenCalledTimes(1);
     expect(mocks.releaseLifecycleLease).toHaveBeenCalledWith({
       reason: "startup_failure",

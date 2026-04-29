@@ -233,7 +233,7 @@ async function transitionRuntimeLifecycleLease(
     return Result.err(persisted.error);
   }
 
-  // Comment: runtime_sequence is allocated by the runtime-control reducer;
+  // Comment: runtime_sequence is allocated by the runtime lifecycle reducer;
   // durable lease state only adopts it after the snapshot writes complete.
   activeLease.failure = transition.failure;
   activeLease.phase = transition.phase;

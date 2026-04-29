@@ -7,10 +7,12 @@ license.workspace = true
 [dependencies]
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
-connectrpc = { workspace = true, features = ["client"] }
+connectrpc = { workspace = true, features = ["client", "server"] }
 futures = { workspace = true }
 http-body = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+# COMMENT: connectrpc's server feature expands tokio::select! internally.
+tokio = { workspace = true, features = ["macros"] }
 
 [build-dependencies]
 buffa = { workspace = true, features = ["json"] }

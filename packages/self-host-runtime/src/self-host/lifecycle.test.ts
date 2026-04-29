@@ -41,7 +41,7 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
     controlEndpoint: {
       transport: {
         kind: "unix",
-        socketPath: join(runDir, "runtime-control.sock"),
+        socketPath: join(runDir, "supervisor-control.sock"),
       },
     },
     dataDir,
@@ -428,15 +428,15 @@ describe("self-host lifecycle lease", () => {
       supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
-    const resourceError = new Error("runtime control close failed");
+    const resourceError = new Error("supervisor control close failed");
     const server = {
       stop: vi.fn(async () => {}),
     };
-    const runtimeControlResource = {
+    const supervisorControlResource = {
       close: vi.fn(async () => {
         throw resourceError;
       }),
-      name: "runtime-control",
+      name: "supervisor-control",
     };
     const exitProcess = vi.fn();
 
@@ -445,14 +445,14 @@ describe("self-host lifecycle lease", () => {
       lease,
       processSignals,
       server,
-      shutdownResources: [runtimeControlResource],
+      shutdownResources: [supervisorControlResource],
     });
 
     processSignals.emit("SIGTERM");
 
     await waitUntil(async () => {
       expect(server.stop).toHaveBeenCalledWith(true);
-      expect(runtimeControlResource.close).toHaveBeenCalledTimes(1);
+      expect(supervisorControlResource.close).toHaveBeenCalledTimes(1);
       expect(exitProcess).toHaveBeenCalledWith(1);
       await access(paths.statusPath);
       await access(paths.leasePath);
@@ -578,6 +578,7 @@ describe("self-host lifecycle lease", () => {
     const result = toLifecyclePathsResult({
       mode: "workspace-dev",
       runtimePaths: undefined,
+      supervisorControl: undefined,
     });
 
     expect(result.isOk()).toBe(true);
@@ -598,7 +599,6 @@ describe("self-host lifecycle lease", () => {
 
     const result = toLifecyclePathsResult({
       mode: "self-host",
-      runtimeControl: paths.controlEndpoint,
       runtimePaths: {
         backupsDir: join(root, "backups"),
         dataDir: paths.dataDir,
@@ -608,6 +608,7 @@ describe("self-host lifecycle lease", () => {
         runtimeLeasePath: paths.leasePath,
         runtimeStatusSnapshotPath: paths.statusPath,
       },
+      supervisorControl: paths.controlEndpoint,
     });
 
     expect(result.isOk()).toBe(true);

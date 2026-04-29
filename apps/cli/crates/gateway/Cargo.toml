@@ -10,16 +10,33 @@ blake3 = { workspace = true }
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
 chrono = { workspace = true, features = ["serde"] }
-connectrpc = { workspace = true, features = ["client"] }
+connectrpc = { workspace = true, features = ["client", "server"] }
+futures = { workspace = true }
 getrandom = { workspace = true }
 http = { workspace = true }
+hyper = { workspace = true }
+hyper-util = { workspace = true, features = [
+  "http1",
+  "http2",
+  "server",
+  "tokio",
+] }
 onequery-core = { workspace = true }
 onequery-proto-runtime = { workspace = true }
 onequery-utils-string = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-tokio = { workspace = true, features = ["macros", "signal", "time"] }
+tokio = { workspace = true, features = [
+  "fs",
+  "macros",
+  "net",
+  "signal",
+  "sync",
+  "time",
+] }
 toml = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [target.'cfg(unix)'.dependencies]

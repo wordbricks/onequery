@@ -79,13 +79,14 @@ export function createSelfHostRuntimePaths(input?: {
   };
 }
 
-export function createSelfHostRuntimeControl(input?: {
+export function createSelfHostSupervisorControl(input?: {
   socketPath?: string;
-}): NonNullable<ServerLaunchConfig["runtimeControl"]> {
+}): NonNullable<ServerLaunchConfig["supervisorControl"]> {
   return {
     transport: {
       kind: "unix",
-      socketPath: input?.socketPath ?? "/tmp/onequery/run/runtime-control.sock",
+      socketPath:
+        input?.socketPath ?? "/tmp/onequery/run/supervisor-control.sock",
     },
   };
 }
@@ -133,10 +134,10 @@ export function createSelfHostLaunchConfig(input?: {
   port?: number;
   publicOrigin?: string;
   rateLimit?: ServerLaunchConfig["rateLimit"];
-  runtimeControl?: NonNullable<ServerLaunchConfig["runtimeControl"]>;
   runtimePaths?: NonNullable<ServerLaunchConfig["runtimePaths"]>;
   smtp?: NonNullable<ServerLaunchConfig["smtp"]>;
   storageDir?: string;
+  supervisorControl?: NonNullable<ServerLaunchConfig["supervisorControl"]>;
   supervisor?: NonNullable<ServerLaunchConfig["supervisor"]>;
 }): ServerLaunchConfig {
   return {
@@ -169,13 +170,14 @@ export function createSelfHostLaunchConfig(input?: {
       },
       enabled: true,
     },
-    runtimeControl: input?.runtimeControl ?? createSelfHostRuntimeControl(),
     runtimePaths: input?.runtimePaths ?? createSelfHostRuntimePaths(),
     smtp: input?.smtp,
     storage: {
       dir: input?.storageDir ?? "/tmp/onequery/pglite/onequery",
       kind: "pglite",
     },
+    supervisorControl:
+      input?.supervisorControl ?? createSelfHostSupervisorControl(),
     supervisor: input?.supervisor ?? createSelfHostSupervisor(),
   };
 }

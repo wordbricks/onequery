@@ -304,17 +304,26 @@ where
 
 fn runtime_control_reason_summary(reason: &str) -> String {
     match reason {
-        "RUNTIME_CONTROL_REQUEST_INVALID" => "runtime control request is invalid".to_owned(),
-        "RUNTIME_CONTROL_OPERATION_CONFLICT" => {
-            "runtime control operation id conflicts with an earlier request".to_owned()
+        "RUNTIME_CONTROL_REQUEST_INVALID" | "SUPERVISOR_CONTROL_REQUEST_INVALID" => {
+            "supervisor control request is invalid".to_owned()
         }
-        "RUNTIME_CONTROL_TARGET_PRECONDITION_FAILED" => {
-            "runtime control target does not match the running runtime".to_owned()
+        "RUNTIME_CONTROL_OPERATION_CONFLICT" | "SUPERVISOR_CONTROL_OPERATION_CONFLICT" => {
+            "supervisor control operation id conflicts with an earlier request".to_owned()
         }
-        "RUNTIME_CONTROL_STARTUP_NOT_READY" => "runtime control is not ready yet".to_owned(),
-        "RUNTIME_CONTROL_ACTOR_UNAVAILABLE" => "runtime control actor is unavailable".to_owned(),
-        "RUNTIME_CONTROL_INTERNAL" => "runtime control failed internally".to_owned(),
-        _ => format!("runtime control returned {}", reason_to_label(reason)),
+        "RUNTIME_CONTROL_TARGET_PRECONDITION_FAILED"
+        | "SUPERVISOR_CONTROL_TARGET_PRECONDITION_FAILED" => {
+            "supervisor control target does not match the active launch".to_owned()
+        }
+        "RUNTIME_CONTROL_STARTUP_NOT_READY" | "SUPERVISOR_CONTROL_STARTUP_NOT_READY" => {
+            "supervisor control is not ready yet".to_owned()
+        }
+        "RUNTIME_CONTROL_ACTOR_UNAVAILABLE" | "SUPERVISOR_CONTROL_ACTOR_UNAVAILABLE" => {
+            "supervisor control actor is unavailable".to_owned()
+        }
+        "RUNTIME_CONTROL_INTERNAL" | "SUPERVISOR_CONTROL_INTERNAL" => {
+            "supervisor control failed internally".to_owned()
+        }
+        _ => format!("supervisor control returned {}", reason_to_label(reason)),
     }
 }
 
@@ -388,125 +397,10 @@ mod tests {
     use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use super::RuntimeControlPreconditionViolation;
-    use super::RuntimeControlResourceInfo;
     use super::runtime_control_connect_error_summary;
     use super::runtime_control_error_allows_fallback;
-    use super::runtime_control_problem_from_connect_error;
     use super::with_runtime_control_connect_error_metadata;
     use onequery_proto_runtime::google::rpc as google_rpc;
-
-    #[test]
-    fn parses_stale_launch_precondition_details() {
-        let mut error = ConnectError::new(
-            ErrorCode::FailedPrecondition,
-            "launch_id mismatch: expected launch-a, got launch-b",
-        );
-        error.details.push(error_detail(
-            "google.rpc.ErrorInfo",
-            &error_info(
-                "RUNTIME_CONTROL_TARGET_PRECONDITION_FAILED",
-                &[
-                    ("operation", "stop"),
-                    ("retryable", "false"),
-                    ("field", "launch_id"),
-                    ("expected", "launch-a"),
-                    ("actual", "launch-b"),
-                ],
-            ),
-        ));
-        error.details.push(error_detail(
-            "google.rpc.PreconditionFailure",
-            &google_rpc::PreconditionFailure {
-                violations: vec![google_rpc::precondition_failure::Violation {
-                    r#type: "RUNTIME_TARGET_MISMATCH".to_owned(),
-                    subject: "launch_id".to_owned(),
-                    description: "launch_id mismatch: expected launch-a, got launch-b".to_owned(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-        ));
-        error.details.push(error_detail(
-            "google.rpc.ResourceInfo",
-            &google_rpc::ResourceInfo {
-                resource_type: "onequery.runtime.control.target".to_owned(),
-                resource_name: "target.launch_id:launch-a".to_owned(),
-                description: "launch_id mismatch: expected launch-a, got launch-b".to_owned(),
-                ..Default::default()
-            },
-        ));
-
-        let problem = runtime_control_problem_from_connect_error(&error)
-            .unwrap_or_else(|| panic!("expected runtime-control details"));
-
-        assert_eq!(
-            problem.preconditions,
-            vec![RuntimeControlPreconditionViolation {
-                violation_type: "RUNTIME_TARGET_MISMATCH".to_owned(),
-                subject: "launch_id".to_owned(),
-                description: "launch_id mismatch: expected launch-a, got launch-b".to_owned(),
-            }]
-        );
-        assert_eq!(
-            problem.resources,
-            vec![RuntimeControlResourceInfo {
-                resource_type: "onequery.runtime.control.target".to_owned(),
-                resource_name: "target.launch_id:launch-a".to_owned(),
-                description: Some("launch_id mismatch: expected launch-a, got launch-b".to_owned()),
-            }]
-        );
-        assert_eq!(
-            runtime_control_connect_error_summary(&error),
-            Some(
-                "runtime control target does not match the running runtime for stop: launch_id mismatch: expected launch-a, got launch-b; preconditions: RUNTIME_TARGET_MISMATCH on launch_id: launch_id mismatch: expected launch-a, got launch-b; resources: onequery.runtime.control.target target.launch_id:launch-a (launch_id mismatch: expected launch-a, got launch-b)"
-                    .to_owned()
-            )
-        );
-    }
-
-    #[test]
-    fn parses_validation_failures() {
-        let mut error = ConnectError::new(ErrorCode::InvalidArgument, "invalid Stop request");
-        error.details.push(error_detail(
-            "google.rpc.ErrorInfo",
-            &error_info(
-                "RUNTIME_CONTROL_REQUEST_INVALID",
-                &[("operation", "Stop"), ("retryable", "false")],
-            ),
-        ));
-        error.details.push(error_detail(
-            "google.rpc.BadRequest",
-            &google_rpc::BadRequest {
-                field_violations: vec![google_rpc::bad_request::FieldViolation {
-                    field: "operation_id".to_owned(),
-                    description: "must be a valid UUID".to_owned(),
-                    reason: "STRING_UUID".to_owned(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            },
-        ));
-
-        let problem = runtime_control_problem_from_connect_error(&error)
-            .unwrap_or_else(|| panic!("expected runtime-control details"));
-
-        assert_eq!(
-            problem.validation_issues,
-            vec![onequery_core::error::CliValidationIssue {
-                field: "operation_id".to_owned(),
-                message: "must be a valid UUID".to_owned(),
-                code: "string_uuid".to_owned(),
-            }]
-        );
-        assert_eq!(
-            runtime_control_connect_error_summary(&error),
-            Some(
-                "runtime control request is invalid for Stop: invalid Stop request; validation issues: operation_id: must be a valid UUID (string_uuid)"
-                    .to_owned()
-            )
-        );
-    }
 
     #[test]
     fn attaches_problem_metadata_to_cli_errors() {
@@ -537,7 +431,7 @@ mod tests {
                 "failed",
                 "onequery gateway stop",
                 ErrorStage::Internal,
-                "runtime control failed",
+                "supervisor control failed",
                 Vec::new(),
             ),
             Some("fallback".to_owned()),
@@ -592,7 +486,7 @@ mod tests {
         assert_eq!(
             runtime_control_connect_error_summary(&error),
             Some(
-                "runtime control is not ready yet for stop: runtime shutdown controller is not attached; retryable after 250ms"
+                "supervisor control is not ready yet for stop: runtime shutdown controller is not attached; retryable after 250ms"
                     .to_owned()
             )
         );

@@ -14,5 +14,6 @@ pub(crate) use recovery::ManagedSupervisorIdentity;
 pub(crate) use recovery::read_active_supervisor_identity_for_runtime;
 pub(crate) use recovery::read_managed_runtime_identity;
 pub(crate) use recovery::read_managed_runtime_pid;
+pub(crate) use recovery::read_supervisor_control_identity_for_recovery;
 pub(in crate::runtime) use recovery::read_runtime_status_snapshot_for_recovery;
 pub(in crate::runtime) use recovery::runtime_phase_label;

@@ -8,6 +8,8 @@ use onequery_core::error::ErrorStage;
 use tokio::time::sleep;
 use uuid::Uuid;
 
+use crate::runtime_control::types;
+
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
 use super::control::runtime_control_error_allows_fallback;
 use super::control_error::runtime_control_connect_error_summary;
@@ -17,6 +19,7 @@ use super::status::exit_signal_label;
 use super::supervisor::SupervisedRuntimeContext;
 use super::supervisor::SupervisedRuntimeExit;
 use super::supervisor::supervisor_child_exit_kind;
+use super::supervisor_control::actor::SupervisorStopRequest;
 use super::supervisor_effects::SupervisorTimers;
 use super::supervisor_effects::dispatch_supervisor_event;
 use super::supervisor_machine::SupervisorEvent;
@@ -119,64 +122,117 @@ pub(super) async fn monitor_supervised_runtime_with_stop_signal<
 
         let poll_interval = timers.next_poll_interval();
         tokio::select! {
-            () = stop_signal.recv(), if timers.no_active_deadlines() => {
-                let stop_operation_id = Uuid::new_v4().to_string();
-                let report = dispatch_supervisor_event(
-                    &mut machine,
-                    SupervisorEvent::StopIntentReceived {
-                        operation_id: stop_operation_id.clone(),
-                    },
-                    context.effect_context(),
-                    Some(&mut timers),
-                )
-                .await?;
-
-                match report.runtime_stop_result(context.command_line)? {
-                    Ok(()) => {
-                        dispatch_supervisor_event(
-                            &mut machine,
-                            SupervisorEvent::StopRpcAccepted {
-                                operation_id: stop_operation_id.clone(),
-                            },
-                            context.effect_context(),
-                            Some(&mut timers),
-                        )
-                        .await?;
-                    }
-                    Err(error) if runtime_control_error_allows_fallback(&error) => {
-                        dispatch_supervisor_event(
-                            &mut machine,
-                            SupervisorEvent::StopRpcFailed {
-                                operation_id: stop_operation_id.clone(),
-                                disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
-                                message: runtime_control_stop_failure_message(&error),
-                            },
-                            context.effect_context(),
-                            Some(&mut timers),
-                        )
-                        .await?;
-                    }
-                    Err(error) => {
-                        dispatch_supervisor_event(
-                            &mut machine,
-                            SupervisorEvent::StopRpcFailed {
-                                operation_id: stop_operation_id,
-                                disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
-                                message: runtime_control_stop_failure_message(&error),
-                            },
-                            context.effect_context(),
-                            Some(&mut timers),
-                        )
-                        .await?;
-                        return Err(runtime_control_stop_error(
-                            error,
-                            context.command_line,
-                            context.retry_command,
-                        ));
-                    }
+            stop_request = context.supervisor_control.recv_stop_request(), if timers.no_active_deadlines() => {
+                if let Some(stop_request) = stop_request {
+                    handle_supervisor_stop_request(
+                        context,
+                        &mut machine,
+                        &mut timers,
+                        stop_request,
+                    )
+                    .await?;
                 }
             }
+            () = stop_signal.recv(), if timers.no_active_deadlines() => {
+                let stop_operation_id = Uuid::new_v4().to_string();
+                request_supervised_runtime_stop(
+                    context,
+                    &mut machine,
+                    &mut timers,
+                    stop_operation_id,
+                )
+                .await?;
+            }
             () = sleep(poll_interval) => {}
+        }
+    }
+}
+
+async fn handle_supervisor_stop_request(
+    context: SupervisedRuntimeContext<'_>,
+    machine: &mut SupervisorMachine,
+    timers: &mut SupervisorTimers,
+    stop_request: SupervisorStopRequest,
+) -> Result<(), CliError> {
+    let operation_id = stop_request.operation_id();
+    let result =
+        request_supervised_runtime_stop(context, machine, timers, operation_id.clone()).await;
+
+    let response = match &result {
+        Ok(()) => Ok(types::SupervisorLifecycleServiceStopResponse {
+            disposition: Some(
+                types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED.into(),
+            ),
+            status: buffa::MessageField::some(context.supervisor_control.snapshot().await),
+            ..Default::default()
+        }),
+        Err(error) => Err(ConnectError::internal(error.to_string())),
+    };
+    stop_request.complete(response);
+
+    result
+}
+
+async fn request_supervised_runtime_stop(
+    context: SupervisedRuntimeContext<'_>,
+    machine: &mut SupervisorMachine,
+    timers: &mut SupervisorTimers,
+    stop_operation_id: String,
+) -> Result<(), CliError> {
+    let report = dispatch_supervisor_event(
+        machine,
+        SupervisorEvent::StopIntentReceived {
+            operation_id: stop_operation_id.clone(),
+        },
+        context.effect_context(),
+        Some(&mut *timers),
+    )
+    .await?;
+
+    match report.runtime_stop_result(context.command_line)? {
+        Ok(()) => {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::StopRpcAccepted {
+                    operation_id: stop_operation_id,
+                },
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+            Ok(())
+        }
+        Err(error) if runtime_control_error_allows_fallback(&error) => {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::StopRpcFailed {
+                    operation_id: stop_operation_id,
+                    disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
+                    message: runtime_control_stop_failure_message(&error),
+                },
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+            Ok(())
+        }
+        Err(error) => {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::StopRpcFailed {
+                    operation_id: stop_operation_id,
+                    disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
+                    message: runtime_control_stop_failure_message(&error),
+                },
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+            Err(runtime_control_stop_error(
+                error,
+                context.command_line,
+                context.retry_command,
+            ))
         }
     }
 }
@@ -187,7 +243,7 @@ fn runtime_control_stop_error(
     retry_command: &str,
 ) -> CliError {
     let detail = runtime_control_stop_failure_message(&error);
-    let fallback_code = Some(format!("runtime_control_{}", error.code.as_str()));
+    let fallback_code = Some(format!("supervisor_control_{}", error.code.as_str()));
     let cli_error = CliError::new(
         "failed to request self-host runtime stop",
         command_line,
@@ -203,13 +259,13 @@ fn runtime_control_stop_failure_message(error: &ConnectError) -> String {
     runtime_control_connect_error_summary(error).map_or_else(
         || {
             format!(
-                "runtime control RPC returned {}: {error}",
+                "supervisor control RPC returned {}: {error}",
                 error.code.as_str()
             )
         },
         |summary| {
             format!(
-                "runtime control RPC returned {}: {summary}",
+                "supervisor control RPC returned {}: {summary}",
                 error.code.as_str()
             )
         },

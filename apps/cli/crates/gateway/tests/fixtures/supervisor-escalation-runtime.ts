@@ -1,12 +1,18 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
+import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+
+import {
+  RuntimePhase,
+  RuntimeStatusSchema,
+  RuntimeStopCompletion,
+} from "../../../../../../packages/proto-runtime/src/onequery/runtime/v1/common_pb";
 import { acquireRuntimeLifecycleLease } from "../../../../../../packages/self-host-runtime/src/self-host/lifecycle";
 import type { SelfHostLifecyclePaths } from "../../../../../../packages/self-host-runtime/src/self-host/lifecycle";
-import {
-  createRuntimeControlActor,
-  serveRuntimeControl,
-} from "../../../../../../packages/self-host-runtime/src/self-host/runtime-control";
+import { createSupervisorLifecycleClient } from "../../../../../../packages/self-host-runtime/src/self-host/supervisor-client/client";
+import { openSupervisorRuntimeSession } from "../../../../../../packages/self-host-runtime/src/self-host/supervisor-client/session";
 
 const [launchConfigPath, ...argvModes] = process.argv.slice(2);
 
@@ -23,14 +29,16 @@ const configModes = Array.isArray(launchConfig.testModes)
     )
   : [];
 const modeSet = new Set([...configModes, ...argvModes]);
-const socketPath = launchConfig.runtimeControl?.transport?.socketPath;
+const supervisorControlEndpoint = launchConfig.supervisorControl;
 
-if (launchConfig.runtimeControl?.transport?.kind !== "unix" || !socketPath) {
-  throw new Error("supervisor escalation fixture requires unix runtimeControl");
+if (supervisorControlEndpoint?.transport?.kind !== "unix") {
+  throw new Error(
+    "supervisor escalation fixture requires unix supervisorControl"
+  );
 }
 
 const lifecyclePaths: SelfHostLifecyclePaths = {
-  controlEndpoint: launchConfig.runtimeControl,
+  controlEndpoint: supervisorControlEndpoint,
   dataDir: launchConfig.runtimePaths.dataDir,
   lifecycleEventLogPath: launchConfig.runtimePaths.lifecycleEventLogPath,
   logsDir: launchConfig.runtimePaths.logsDir,
@@ -49,7 +57,10 @@ const supervisorPid = Number(launchSupervisor.pid);
 const supervisorId = launchSupervisor.supervisorId;
 const supervisorGeneration = BigInt(launchSupervisor.generation);
 
-await mkdir(dirname(socketPath), { mode: 0o700, recursive: true });
+await mkdir(dirname(supervisorControlEndpoint.transport.socketPath), {
+  mode: 0o700,
+  recursive: true,
+});
 
 const lease = await acquireRuntimeLifecycleLease(lifecyclePaths, {
   launchId: launchConfig.launchId,
@@ -60,22 +71,50 @@ const lease = await acquireRuntimeLifecycleLease(lifecyclePaths, {
     supervisorId,
   },
 });
-const actor = createRuntimeControlActor({
-  identity: {
-    dataDir: lifecyclePaths.dataDir,
-    launchId: launchConfig.launchId,
-    pid: process.pid,
-    supervisor: {
-      generation: supervisorGeneration,
-      pid: supervisorPid,
-      supervisorId,
-    },
+let runtimeSequence = 1n;
+
+const supervisorSession = openSupervisorRuntimeSession({
+  client: createSupervisorLifecycleClient({
+    endpoint: supervisorControlEndpoint,
+  }),
+  dataDir: lifecyclePaths.dataDir,
+  heartbeatIntervalMs: 50,
+  launchId: launchConfig.launchId,
+  onStopCommand: async (command) => {
+    if (modeSet.has("ignore-graceful-stop")) {
+      if (modeSet.has("exit-on-sigterm")) {
+        // COMMENT: Bun did not reliably run the SIGTERM handler while this fixture
+        // was awaiting an intentionally pending graceful stop; delay the exit so
+        // the supervisor observes the terminate phase.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        exitSoon(0);
+        return;
+      }
+      return new Promise<void>(() => undefined);
+    }
+
+    void lease
+      .release({
+        reason: command.reason,
+        stopServer:
+          command.completion === RuntimeStopCompletion.CLEANUP_AND_EXIT,
+      })
+      .finally(() => {
+        exitSoon(0);
+      });
+
+    runtimeSequence += 1n;
+    return {
+      status: runtimeStatus(RuntimePhase.STOPPED),
+    };
   },
-  lease,
-});
-const server = await serveRuntimeControl({
-  actor,
-  endpoint: lifecyclePaths.controlEndpoint,
+  runtimePid: process.pid,
+  runtimeSequence,
+  supervisor: {
+    generation: supervisorGeneration,
+    pid: supervisorPid,
+    supervisorId,
+  },
 });
 
 let exiting = false;
@@ -87,9 +126,8 @@ async function closeAndExit(code: number): Promise<void> {
   exiting = true;
 
   try {
-    await server.close();
+    await supervisorSession.close();
   } finally {
-    actor.dispose();
     process.exit(code);
   }
 }
@@ -102,24 +140,6 @@ function exitSoon(code: number): void {
     void closeAndExit(code);
   }, 25);
 }
-
-actor.attachShutdownController({
-  dispose: () => undefined,
-  shutdown: async (request) => {
-    if (modeSet.has("ignore-graceful-stop")) {
-      return new Promise<void>(() => undefined);
-    }
-
-    void actor.lease
-      .release({
-        reason: request.reason,
-        stopServer: request.completion === "cleanup_and_exit",
-      })
-      .finally(() => {
-        exitSoon(0);
-      });
-  },
-});
 
 if (modeSet.has("ignore-sigterm")) {
   process.on("SIGTERM", () => undefined);
@@ -138,7 +158,9 @@ if (Number.isFinite(readyDelayMs) && readyDelayMs > 0) {
   await new Promise((resolve) => setTimeout(resolve, readyDelayMs));
 }
 
-await actor.lease.transition("ready");
+await lease.transition("ready");
+runtimeSequence += 1n;
+await supervisorSession.ready(runtimeStatus(RuntimePhase.READY));
 
 if (modeSet.has("exit-after-ready")) {
   const exitDelayMs = Number(launchConfig.testExitAfterReadyDelayMs ?? 150);
@@ -151,3 +173,16 @@ if (modeSet.has("exit-after-ready")) {
 }
 
 await new Promise<void>(() => undefined);
+
+function runtimeStatus(phase: RuntimePhase) {
+  return create(RuntimeStatusSchema, {
+    identity: {
+      dataDir: lifecyclePaths.dataDir,
+      launchId: launchConfig.launchId,
+      pid: process.pid,
+    },
+    phase,
+    runtimeSequence,
+    updatedAt: timestampFromDate(new Date()),
+  });
+}

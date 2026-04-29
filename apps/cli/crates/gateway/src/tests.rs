@@ -21,8 +21,9 @@ use super::render::render_gateway_output;
 use super::render::render_gateway_start_output;
 use super::render::render_gateway_status_output;
 use super::render::render_gateway_status_output_with_live_status;
+use super::runtime::LiveSupervisorRuntimeStatus;
 use super::runtime::LogPreview;
-use super::runtime::RuntimeControlStatus;
+use super::runtime::read_live_runtime_status;
 use super::state::GatewayRuntimeState;
 use super::state::GatewayStateAccessMode;
 use crate::runtime_control::types;
@@ -73,8 +74,8 @@ fn render_gateway_status_output_snapshot() {
 }
 
 #[test]
-fn render_gateway_status_output_prefers_live_runtime_control_phase() {
-    let live_status = RuntimeControlStatus {
+fn render_gateway_status_output_prefers_live_supervisor_phase() {
+    let live_status = LiveSupervisorRuntimeStatus {
         pid: Some(4242),
         launch_id: Some("launch-a".to_owned()),
         data_dir: Some("/tmp/onequery-data".to_owned()),
@@ -93,7 +94,6 @@ fn render_gateway_status_output_prefers_live_runtime_control_phase() {
         Some("ready")
     );
     assert_eq!(data.pointer("/runtimeState/running"), None);
-    assert_eq!(data.pointer("/runtimeState/runtimeControlReachable"), None);
     assert_eq!(
         data.pointer("/runtimeState/runtimePid")
             .and_then(serde_json::Value::as_u64),
@@ -211,6 +211,48 @@ fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_sn
     .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
     let output = render_gateway_status_output(&state);
     assert_snapshot!(output.lines.join("\n"));
+
+    fs::remove_dir_all(test_dir)
+        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
+}
+
+#[tokio::test]
+async fn gateway_status_falls_back_to_durable_snapshot_when_supervisor_unavailable() {
+    let test_dir = std::env::temp_dir().join(format!(
+        "onequery-gateway-supervisor-unavailable-status-{}",
+        Uuid::new_v4()
+    ));
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
+
+    resolve_runtime_state_with_paths_for_test(
+        paths.clone(),
+        GatewayStateAccessMode::BootstrapIfMissing,
+        "onequery gateway",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
+    fs::write(
+        &paths.runtime_status_snapshot_path,
+        runtime_status_snapshot_json(&paths, std::process::id(), "launch-a"),
+    )
+    .unwrap_or_else(|error| panic!("expected status snapshot fixture write to succeed: {error}"));
+
+    let state = resolve_runtime_state_with_paths_for_test(
+        paths,
+        GatewayStateAccessMode::ReadOnly,
+        "onequery gateway status",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
+    let live_status = read_live_runtime_status(&state, "onequery gateway status").await;
+    let output = render_gateway_status_output_with_live_status(&state, live_status.as_ref());
+
+    assert_eq!(live_status, None);
+    assert_eq!(output.lines[3], "Runtime: running");
+    let data = output.into_data();
+    assert_eq!(
+        data.pointer("/runtimeState/status")
+            .and_then(serde_json::Value::as_str),
+        Some("running")
+    );
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
@@ -445,15 +487,15 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
         Some(&serde_json::Value::String("launch-a".to_owned()))
     );
     assert_eq!(
-        launch_config.pointer("/runtimeControl/transport/kind"),
+        launch_config.pointer("/supervisorControl/transport/kind"),
         Some(&serde_json::Value::String("unix".to_owned()))
     );
     assert_eq!(
-        launch_config.pointer("/runtimeControl/transport/socketPath"),
+        launch_config.pointer("/supervisorControl/transport/socketPath"),
         Some(&serde_json::Value::String(
             state
                 .paths
-                .runtime_control_socket_path
+                .supervisor_control_socket_path
                 .display()
                 .to_string(),
         ))

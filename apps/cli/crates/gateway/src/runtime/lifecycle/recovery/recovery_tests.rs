@@ -12,6 +12,7 @@ use super::read_active_supervisor_identity_for_runtime;
 use super::read_managed_runtime_identity;
 use super::read_managed_runtime_pid;
 use super::read_runtime_status_snapshot;
+use super::read_supervisor_control_identity_for_recovery;
 use super::runtime_ready_pid_reported_during_startup_poll;
 use super::runtime_ready_status_reported_during_startup_poll;
 use crate::runtime::lifecycle_records;
@@ -250,8 +251,8 @@ fn durable_recovery_precedence_matches_contract_order() {
     assert_eq!(
         DURABLE_RECOVERY_PRECEDENCE,
         [
-            DurableRecoveryStep::RuntimeStatusSnapshot,
             DurableRecoveryStep::SupervisorTerminalRecord,
+            DurableRecoveryStep::RuntimeStatusSnapshot,
             DurableRecoveryStep::RuntimeLeaseRecord,
         ]
     );
@@ -695,7 +696,7 @@ fn read_active_supervisor_identity_rejects_mismatched_supervisor_generation() {
 }
 
 #[test]
-fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_lower_artifacts() {
+fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_live_lease() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -719,6 +720,76 @@ fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_lower_artifacts
             .unwrap_or_else(|error| panic!("expected pid read: {error}")),
         Some(pid)
     );
+}
+
+#[test]
+fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_runtime_status_snapshot() {
+    let (_temp_dir, paths) = test_paths();
+    let pid = std::process::id();
+
+    fs::write(
+        &paths.supervisor_status_snapshot_path,
+        supervisor_status_snapshot_json_with_supervisor(
+            &paths.data_dir.display().to_string(),
+            pid,
+            pid,
+            "launch-a",
+            "SUPERVISOR_PHASE_EXITED",
+        ),
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor snapshot write: {error}"));
+    fs::write(
+        &paths.runtime_status_snapshot_path,
+        runtime_status_snapshot_json(
+            &paths.data_dir.display().to_string(),
+            pid,
+            "launch-a",
+            "RUNTIME_PHASE_READY",
+        ),
+    )
+    .unwrap_or_else(|error| panic!("expected runtime snapshot write: {error}"));
+
+    assert_eq!(
+        read_managed_runtime_pid(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+        None
+    );
+}
+
+#[test]
+fn supervisor_control_identity_recovery_can_probe_from_terminal_supervisor_snapshot() {
+    let (_temp_dir, paths) = test_paths();
+    let pid = std::process::id();
+
+    fs::write(
+        &paths.supervisor_status_snapshot_path,
+        supervisor_status_snapshot_json_with_supervisor(
+            &paths.data_dir.display().to_string(),
+            pid,
+            pid,
+            "launch-a",
+            "SUPERVISOR_PHASE_EXITED",
+        ),
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor snapshot write: {error}"));
+
+    assert_eq!(
+        read_managed_runtime_pid(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| panic!("expected durable recovery read: {error}")),
+        None
+    );
+
+    let identity =
+        read_supervisor_control_identity_for_recovery(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| {
+                panic!("expected supervisor control identity recovery: {error}")
+            })
+            .expect("expected supervisor control identity from terminal snapshot");
+
+    assert_eq!(identity.runtime.launch_id, "launch-a");
+    assert_eq!(identity.runtime.pid, pid);
+    assert_eq!(identity.supervisor.pid, pid);
+    assert_eq!(identity.supervisor.generation, 1);
 }
 
 #[test]

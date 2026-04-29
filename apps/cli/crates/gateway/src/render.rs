@@ -4,15 +4,15 @@ use crate::GatewayCommandOutput;
 use crate::self_host::SelfHostConfig;
 use crate::self_host::SelfHostRuntimePaths;
 
+use super::runtime::LiveSupervisorRuntimeStatus;
 use super::runtime::LogPreview;
-use super::runtime::RuntimeControlStatus;
 use super::runtime::read_managed_runtime_pid;
-use super::runtime::runtime_control_phase_label;
+use super::runtime::runtime_phase_label;
 use super::state::GatewayRuntimeState;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum RuntimeStatus<'a> {
-    Live(&'a RuntimeControlStatus),
+    Live(&'a LiveSupervisorRuntimeStatus),
     Running,
     StaleDurableRecords,
     NotRunning,
@@ -22,7 +22,7 @@ enum RuntimeStatus<'a> {
 impl RuntimeStatus<'_> {
     fn label(self) -> &'static str {
         match self {
-            Self::Live(status) => runtime_control_phase_label(status.phase),
+            Self::Live(status) => runtime_phase_label(status.phase),
             Self::Running => "running",
             Self::StaleDurableRecords => "stale_durable_records",
             Self::NotRunning => "not_running",
@@ -100,7 +100,7 @@ pub(super) fn render_gateway_status_output(state: &GatewayRuntimeState) -> Gatew
 
 pub(super) fn render_gateway_status_output_with_live_status(
     state: &GatewayRuntimeState,
-    live_status: Option<&RuntimeControlStatus>,
+    live_status: Option<&LiveSupervisorRuntimeStatus>,
 ) -> GatewayCommandOutput {
     let listen = server_listen_label(state.config.as_ref());
     let runtime_status = resolve_runtime_status(state, live_status);
@@ -215,7 +215,7 @@ fn runtime_state_json_with_status(
 
 fn resolve_runtime_status<'a>(
     state: &GatewayRuntimeState,
-    live_status: Option<&'a RuntimeControlStatus>,
+    live_status: Option<&'a LiveSupervisorRuntimeStatus>,
 ) -> RuntimeStatus<'a> {
     if let Some(live_status) = live_status {
         return RuntimeStatus::Live(live_status);

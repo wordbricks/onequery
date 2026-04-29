@@ -5,7 +5,7 @@ use onequery_core::app_paths::data_dir;
 use onequery_core::error::CliError;
 
 use crate::self_host_paths::launch_config_path_for_launch;
-use crate::self_host_paths::runtime_control_socket_path_for_runtime;
+use crate::self_host_paths::supervisor_control_socket_path_for_runtime;
 
 use super::config::SELF_HOST_CONFIG_DIR_NAME;
 
@@ -33,7 +33,7 @@ pub struct SelfHostRuntimePaths {
     pub server_log_path: PathBuf,
     pub backups_dir: PathBuf,
     pub run_dir: PathBuf,
-    pub runtime_control_socket_path: PathBuf,
+    pub supervisor_control_socket_path: PathBuf,
     pub runtime_lease_path: PathBuf,
     pub runtime_status_snapshot_path: PathBuf,
     pub supervisor_status_snapshot_path: PathBuf,
@@ -53,8 +53,8 @@ impl SelfHostRuntimePaths {
         let server_log_path = logs_dir.join(SERVER_LOG_FILENAME);
         let backups_dir = data_dir.join("backups");
         let run_dir = data_dir.join("run");
-        let runtime_control_socket_path =
-            runtime_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
+        let supervisor_control_socket_path =
+            supervisor_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
         let runtime_lease_path = run_dir.join(RUNTIME_LEASE_FILENAME);
         let runtime_status_snapshot_path = run_dir.join(RUNTIME_STATUS_SNAPSHOT_FILENAME);
         let supervisor_status_snapshot_path = run_dir.join(SUPERVISOR_STATUS_SNAPSHOT_FILENAME);
@@ -74,7 +74,7 @@ impl SelfHostRuntimePaths {
             server_log_path,
             backups_dir,
             run_dir,
-            runtime_control_socket_path,
+            supervisor_control_socket_path,
             runtime_lease_path,
             runtime_status_snapshot_path,
             supervisor_status_snapshot_path,

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 const LAUNCH_CONFIG_FILENAME_PREFIX: &str = "launch-";
 const LAUNCH_CONFIG_FILENAME_SUFFIX: &str = ".json";
-const RUNTIME_CONTROL_SOCKET_FILENAME: &str = "runtime-control.sock";
+const SUPERVISOR_CONTROL_SOCKET_FILENAME: &str = "supervisor-control.sock";
 
 pub(super) fn launch_config_path_for_launch(run_dir: &Path, launch_id: &str) -> PathBuf {
     run_dir.join(format!(
@@ -12,22 +12,25 @@ pub(super) fn launch_config_path_for_launch(run_dir: &Path, launch_id: &str) -> 
     ))
 }
 
-pub(super) fn runtime_control_socket_path_for_runtime(data_dir: &Path, run_dir: &Path) -> PathBuf {
+pub(super) fn supervisor_control_socket_path_for_runtime(
+    data_dir: &Path,
+    run_dir: &Path,
+) -> PathBuf {
     #[cfg(unix)]
     {
         let _ = run_dir;
         PathBuf::from("/tmp")
             .join(format!(
-                "onequery-runtime-control-{}",
+                "onequery-supervisor-control-{}",
                 path_stable_hash(data_dir)
             ))
-            .join(RUNTIME_CONTROL_SOCKET_FILENAME)
+            .join(SUPERVISOR_CONTROL_SOCKET_FILENAME)
     }
 
     #[cfg(not(unix))]
     {
         let _ = data_dir;
-        run_dir.join(RUNTIME_CONTROL_SOCKET_FILENAME)
+        run_dir.join(SUPERVISOR_CONTROL_SOCKET_FILENAME)
     }
 }
 
@@ -61,7 +64,7 @@ mod tests {
 
     use super::launch_config_path_for_launch;
     #[cfg(unix)]
-    use super::runtime_control_socket_path_for_runtime;
+    use super::supervisor_control_socket_path_for_runtime;
 
     #[test]
     fn launch_config_path_is_scoped_by_launch_id() {
@@ -81,18 +84,18 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn unix_runtime_control_socket_path_is_bounded_for_long_data_dirs() {
+    fn unix_supervisor_control_socket_path_is_bounded_for_long_data_dirs() {
         let long_prefix = "x".repeat(240);
         let data_dir = PathBuf::from(format!("/tmp/{long_prefix}/.onequery"));
         let run_dir = data_dir.join("run");
         let socket_path =
-            runtime_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
+            supervisor_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
 
         assert!(socket_path.as_os_str().as_bytes().len() < 100);
         assert!(
             socket_path
                 .to_string_lossy()
-                .starts_with("/tmp/onequery-runtime-control-")
+                .starts_with("/tmp/onequery-supervisor-control-")
         );
     }
 }

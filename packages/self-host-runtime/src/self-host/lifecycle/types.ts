@@ -6,12 +6,12 @@ export type RuntimeSupervisorIdentity = Pick<
   "generation" | "pid" | "supervisorId"
 >;
 
-export type RuntimeControlEndpoint = NonNullable<
-  ServerLaunchConfig["runtimeControl"]
+export type SupervisorControlEndpoint = NonNullable<
+  ServerLaunchConfig["supervisorControl"]
 >;
 
 export interface SelfHostLifecyclePaths {
-  controlEndpoint: RuntimeControlEndpoint;
+  controlEndpoint: SupervisorControlEndpoint;
   dataDir: string;
   lifecycleEventLogPath: string;
   logsDir: string;
@@ -88,7 +88,7 @@ export interface CleanupOptions {
 
 // Internal lifecycle phases owned by the runtime shutdown reducer. Durable
 // records map these string states to generated RuntimePhase values in
-// lifecycle/records.ts; terminal actor-only states stay in runtime-control.
+// lifecycle/records.ts; supervisor terminal state is owned by supervisor-control.
 export type RuntimeLifecyclePhase =
   | "checkpointing"
   | "draining"
@@ -139,5 +139,5 @@ export interface GracefulShutdownController {
 
 export type LifecycleLaunchConfig = Pick<
   ServerLaunchConfig,
-  "mode" | "runtimeControl" | "runtimePaths"
+  "mode" | "runtimePaths" | "supervisorControl"
 >;

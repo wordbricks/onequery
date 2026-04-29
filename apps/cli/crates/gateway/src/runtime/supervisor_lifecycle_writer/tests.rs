@@ -1,5 +1,6 @@
 use std::fs;
 
+use futures::StreamExt;
 use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 
@@ -10,6 +11,7 @@ use super::dispatch_supervisor_event;
 use super::lifecycle_records;
 use super::types;
 use super::write_terminal_runtime_status_snapshot;
+use crate::runtime::supervisor_control::actor::SupervisorControlActor;
 use crate::runtime::supervisor_effects::SupervisorEffectContext;
 use crate::runtime::supervisor_machine::SupervisorChildExitKind;
 use crate::runtime::supervisor_machine::SupervisorEvent;
@@ -280,8 +282,10 @@ fn supervisor_transition_event_log_records_ordered_transition_evidence() {
         .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
 
     let supervisor = test_supervisor_identity(123);
+    let supervisor_control = SupervisorControlActor::new(types::SupervisorStatus::default());
     let context = SupervisorEffectContext {
         paths: &paths,
+        supervisor_control: &supervisor_control,
         supervisor: &supervisor,
         launch_id: "launch-a",
         command_line: "onequery gateway start",
@@ -373,6 +377,60 @@ fn supervisor_transition_event_log_records_ordered_transition_evidence() {
     );
 }
 
+#[tokio::test]
+async fn dispatch_supervisor_event_publishes_transition_to_watch_status() {
+    let (_temp_dir, paths) = test_paths();
+    let supervisor = test_supervisor_identity(123);
+    let supervisor_control = SupervisorControlActor::new(types::SupervisorStatus {
+        identity: buffa::MessageField::some(supervisor.clone()),
+        launch: buffa::MessageField::some(types::LifecycleLaunchIdentity {
+            launch_id: Some("launch-a".to_owned()),
+            data_dir: Some(paths.data_dir.display().to_string()),
+            supervisor_pid: supervisor.pid,
+            supervisor_generation: supervisor.generation,
+            ..Default::default()
+        }),
+        phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_STARTING.into()),
+        supervisor_sequence: Some(0),
+        active_session: Some(false),
+        ..Default::default()
+    });
+    let mut machine = SupervisorMachine::new();
+    let mut watch = supervisor_control.watch_status(0, false).await;
+
+    dispatch_supervisor_event(
+        &mut machine,
+        SupervisorEvent::LaunchRequested,
+        SupervisorEffectContext {
+            paths: &paths,
+            supervisor_control: &supervisor_control,
+            supervisor: &supervisor,
+            launch_id: "launch-a",
+            command_line: "onequery gateway start",
+        },
+        None,
+    )
+    .await
+    .unwrap_or_else(|error| panic!("expected launch request dispatch: {error}"));
+
+    let response = watch
+        .next()
+        .await
+        .expect("expected supervisor transition response")
+        .expect("expected successful watch response");
+    let Some(types::supervisor_lifecycle_service_watch_status_response::Event::SupervisorTransition(
+        transition,
+    )) = response.event
+    else {
+        panic!("expected supervisor transition event");
+    };
+    assert_eq!(transition.supervisor_sequence, Some(1));
+    assert_eq!(
+        supervisor_control.snapshot().await.supervisor_sequence,
+        Some(1)
+    );
+}
+
 fn test_supervisor_identity(supervisor_pid: u32) -> types::SupervisorIdentity {
     types::SupervisorIdentity {
         supervisor_id: Some(format!("gateway-supervisor:{supervisor_pid}")),
@@ -400,11 +458,13 @@ async fn dispatch_test_supervisor_event(
     paths: &SelfHostRuntimePaths,
     supervisor: &types::SupervisorIdentity,
 ) {
+    let supervisor_control = SupervisorControlActor::new(types::SupervisorStatus::default());
     dispatch_supervisor_event(
         machine,
         event,
         SupervisorEffectContext {
             paths,
+            supervisor_control: &supervisor_control,
             supervisor,
             launch_id: "launch-a",
             command_line: "onequery gateway start",

@@ -11,7 +11,7 @@ use buffa_codegen::generated::descriptor::FileDescriptorSet;
 
 const PROTO_ROOT: &str = "proto";
 const RUNTIME_PROTO_DIR: &str = "onequery/runtime/v1";
-const RUNTIME_PROTO_ENTRYPOINT: &str = "onequery/runtime/v1/control.proto";
+const RUNTIME_PROTO_DESCRIPTOR_PATH: &str = "onequery/runtime/v1";
 const GOOGLE_RPC_ERROR_DETAILS_PROTO: &str = "google/rpc/error_details.proto";
 const GENERATED_INCLUDE_FILE: &str = "_runtime_control_connectrpc.rs";
 
@@ -44,12 +44,12 @@ fn main() {
     let repo_root = onequery_utils::repo_root()
         .unwrap_or_else(|error| panic!("expected repo root from onequery-utils: {error}"));
     let discovered_proto_files = discover_proto_files(&repo_root);
-    let runtime_proto_entrypoint = PathBuf::from(RUNTIME_PROTO_ENTRYPOINT);
+    let runtime_proto_descriptor_path = PathBuf::from(RUNTIME_PROTO_DESCRIPTOR_PATH);
     emit_rerun_triggers(&repo_root, &discovered_proto_files);
 
     let out_dir = env::var("OUT_DIR").unwrap_or_else(|error| panic!("expected OUT_DIR: {error}"));
     let descriptor_path = Path::new(&out_dir).join("onequery-proto-runtime.fds");
-    build_descriptor_set(&repo_root, &descriptor_path, &runtime_proto_entrypoint);
+    build_descriptor_set(&repo_root, &descriptor_path, &runtime_proto_descriptor_path);
     generate_connect_modules(
         &descriptor_path,
         Path::new(&out_dir),

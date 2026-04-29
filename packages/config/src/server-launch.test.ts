@@ -5,6 +5,7 @@ import {
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
   createSelfHostSmtpConfig,
+  createSelfHostSupervisorControl,
   createSelfHostSupervisor,
   createWorkspaceDevLaunchConfig,
 } from "./testing";
@@ -156,36 +157,36 @@ describe("server launch contract", () => {
     ).toThrow("supervisor.generation");
   });
 
-  it("requires runtimeControl for self-host launch configs", () => {
-    const { runtimeControl: _runtimeControl, ...launchConfig } =
+  it("requires supervisorControl for self-host launch configs", () => {
+    const { supervisorControl: _supervisorControl, ...launchConfig } =
       createSelfHostLaunchConfig();
 
     expect(() => validateServerLaunchConfig(launchConfig, "test")).toThrow(
-      "runtimeControl"
+      "supervisorControl"
     );
   });
 
-  it("requires runtime control transport details to live under the transport object", () => {
+  it("requires supervisor control transport details to live under the transport object", () => {
     expect(() =>
       validateServerLaunchConfig(
         {
           ...createSelfHostLaunchConfig(),
-          runtimeControl: {
-            socketPath: "/tmp/onequery/runtime-control.sock",
+          supervisorControl: {
+            socketPath: "/tmp/onequery/supervisor-control.sock",
             transport: "unix",
           },
         },
         "test"
       )
-    ).toThrow("runtimeControl.transport");
+    ).toThrow("supervisorControl.transport");
   });
 
-  it("requires launch-scoped auth and fencing for non-UDS runtime control transports", () => {
+  it("rejects non-UDS supervisor control transports until implemented", () => {
     expect(() =>
       validateServerLaunchConfig(
         {
           ...createSelfHostLaunchConfig(),
-          runtimeControl: {
+          supervisorControl: {
             transport: {
               host: "127.0.0.1",
               kind: "loopback-h2c",
@@ -195,122 +196,19 @@ describe("server launch contract", () => {
         },
         "test"
       )
-    ).toThrow("runtimeControl.transport.auth");
+    ).toThrow("supervisorControl.transport.kind");
+  });
 
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createSelfHostLaunchConfig(),
-          runtimeControl: {
-            transport: {
-              auth: {
-                kind: "bearer",
-                token: "launch-token",
-              },
-              host: "127.0.0.1",
-              kind: "loopback-h2c",
-              port: 5657,
-            },
-          },
-        },
-        "test"
-      )
-    ).toThrow("runtimeControl.transport.fencing");
-
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          runtimeControl: {
-            transport: {
-              auth: {
-                kind: "bearer",
-                token: "launch-token",
-              },
-              fencing: {
-                dataDir: "/tmp/onequery",
-                launchId: "launch-a",
-              },
-              host: "127.0.0.1",
-              kind: "loopback-h2c",
-              port: 5657,
-            },
-          },
-        },
-        "test"
-      )
-    ).toThrow("Non-UDS runtime control requires launchId");
-
+  it("accepts unix supervisor control transport", () => {
     const launchConfig = createSelfHostLaunchConfig({
-      launchId: "launch-a",
-      runtimeControl: {
-        transport: {
-          auth: {
-            kind: "bearer",
-            token: "launch-token",
-          },
-          fencing: {
-            dataDir: "/tmp/onequery",
-            launchId: "launch-a",
-          },
-          host: "127.0.0.1",
-          kind: "loopback-h2c",
-          port: 5657,
-        },
-      },
+      supervisorControl: createSelfHostSupervisorControl({
+        socketPath: "/tmp/onequery/supervisor-control.sock",
+      }),
     });
 
     expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
       launchConfig
     );
-
-    expect(() =>
-      validateServerLaunchConfig(
-        createSelfHostLaunchConfig({
-          launchId: "launch-a",
-          runtimeControl: {
-            transport: {
-              auth: {
-                kind: "bearer",
-                token: "launch-token",
-              },
-              fencing: {
-                dataDir: "/tmp/onequery",
-                launchId: "launch-b",
-              },
-              host: "127.0.0.1",
-              kind: "loopback-h2c",
-              port: 5657,
-            },
-          },
-        }),
-        "test"
-      )
-    ).toThrow("runtimeControl.transport.fencing.launchId");
-
-    expect(() =>
-      validateServerLaunchConfig(
-        createSelfHostLaunchConfig({
-          launchId: "launch-a",
-          runtimeControl: {
-            transport: {
-              auth: {
-                kind: "bearer",
-                token: "launch-token",
-              },
-              fencing: {
-                dataDir: "/tmp/other-onequery",
-                launchId: "launch-a",
-              },
-              host: "127.0.0.1",
-              kind: "loopback-h2c",
-              port: 5657,
-            },
-          },
-        }),
-        "test"
-      )
-    ).toThrow("runtimeControl.transport.fencing.dataDir");
   });
 
   it("rejects master keys that do not decode to exactly 32 bytes", () => {

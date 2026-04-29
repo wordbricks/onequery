@@ -6,6 +6,7 @@ use std::process::ExitStatus;
 use std::process::Stdio;
 use std::time::Duration;
 
+use buffa::MessageField;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use serde_json::json;
@@ -23,6 +24,10 @@ use super::process::background_log_stdio;
 use super::status::describe_exit_status;
 use super::status::exit_signal_label;
 use super::status::is_expected_termination;
+use super::supervisor_control::actor::SupervisorControlActor;
+use super::supervisor_control::server::SupervisorControlServer;
+use super::supervisor_control::server::start_supervisor_control_server;
+use super::supervisor_control::service::SupervisorControlService;
 use super::supervisor_crash_loop::SupervisorCrashLoopDecision;
 use super::supervisor_crash_loop::SupervisorCrashLoopPolicy;
 use super::supervisor_effects::SupervisorEffectContext;
@@ -153,96 +158,135 @@ async fn run_supervised_runtime_to_exit(
         allocate_supervisor_generation(&state.paths, supervisor_pid, command_line)?;
     let supervisor = supervisor_identity(supervisor_pid, supervisor_generation);
     stamp_launch_config_supervisor_identity(launch.launch_config, &supervisor, command_line)?;
+    let supervisor_control = SupervisorControlActor::new(supervisor_control_status(
+        state,
+        &supervisor,
+        launch.launch_id,
+        types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+        0,
+        None,
+    ));
+    let supervisor_control_server =
+        start_supervisor_control_runtime_server(state, supervisor_control.clone(), command_line)
+            .await?;
     let mut machine = SupervisorMachine::new();
 
-    loop {
-        dispatch_supervisor_event(
-            &mut machine,
-            SupervisorEvent::LaunchRequested,
-            supervisor_effect_context(state, &supervisor, launch.launch_id, command_line),
-            None,
-        )
-        .await?;
+    let result = async {
+        loop {
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::LaunchRequested,
+                supervisor_effect_context(
+                    state,
+                    &supervisor_control,
+                    &supervisor,
+                    launch.launch_id,
+                    command_line,
+                ),
+                None,
+            )
+            .await?;
 
-        let mut child = match spawn_supervised_runtime(&launch, command_line) {
-            Ok(child) => child,
-            Err(error) => {
-                let _ = dispatch_supervisor_event(
+            let mut child = match spawn_supervised_runtime(&launch, command_line) {
+                Ok(child) => child,
+                Err(error) => {
+                    let _ = dispatch_supervisor_event(
+                        &mut machine,
+                        SupervisorEvent::LaunchFailed {
+                            message: error.to_string(),
+                        },
+                        supervisor_effect_context(
+                            state,
+                            &supervisor_control,
+                            &supervisor,
+                            launch.launch_id,
+                            command_line,
+                        ),
+                        None,
+                    )
+                    .await;
+                    return Err(error);
+                }
+            };
+            let runtime_pid = child.id();
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::ChildSpawned { runtime_pid },
+                supervisor_effect_context(
+                    state,
+                    &supervisor_control,
+                    &supervisor,
+                    launch.launch_id,
+                    command_line,
+                ),
+                None,
+            )
+            .await?;
+
+            let runtime_context = SupervisedRuntimeContext {
+                state,
+                supervisor_control: &supervisor_control,
+                supervisor: &supervisor,
+                launch_id: launch.launch_id,
+                runtime_pid,
+                command_line,
+                retry_command: launch.retry_command,
+            };
+
+            let startup_outcome =
+                wait_for_supervised_runtime_ready(runtime_context, &mut child, &mut machine)
+                    .await?;
+
+            if let SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } = startup_outcome {
+                let restart_backoff = restart_backoff_after_unexpected_exit(
+                    state,
+                    &supervisor_control,
+                    &supervisor,
+                    launch.launch_id,
+                    launch.crash_loop_policy,
+                    command_line,
                     &mut machine,
-                    SupervisorEvent::LaunchFailed {
-                        message: error.to_string(),
-                    },
-                    supervisor_effect_context(state, &supervisor, launch.launch_id, command_line),
-                    None,
                 )
-                .await;
+                .await?;
+
+                if let Some(backoff) = restart_backoff {
+                    sleep(backoff).await;
+                    continue;
+                }
+
                 return Err(error);
             }
-        };
-        let runtime_pid = child.id();
-        dispatch_supervisor_event(
-            &mut machine,
-            SupervisorEvent::ChildSpawned { runtime_pid },
-            supervisor_effect_context(state, &supervisor, launch.launch_id, command_line),
-            None,
-        )
-        .await?;
 
-        let runtime_context = SupervisedRuntimeContext {
-            state,
-            supervisor: &supervisor,
-            launch_id: launch.launch_id,
-            runtime_pid,
-            command_line,
-            retry_command: launch.retry_command,
-        };
+            let mut exit = monitor_supervised_runtime(runtime_context, &mut child, machine).await?;
 
-        let startup_outcome =
-            wait_for_supervised_runtime_ready(runtime_context, &mut child, &mut machine).await?;
-
-        if let SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } = startup_outcome {
             let restart_backoff = restart_backoff_after_unexpected_exit(
                 state,
+                &supervisor_control,
                 &supervisor,
                 launch.launch_id,
                 launch.crash_loop_policy,
                 command_line,
-                &mut machine,
+                &mut exit.machine,
             )
             .await?;
 
             if let Some(backoff) = restart_backoff {
+                machine = exit.machine;
                 sleep(backoff).await;
                 continue;
             }
 
-            return Err(error);
+            return Ok(exit);
         }
-
-        let mut exit = monitor_supervised_runtime(runtime_context, &mut child, machine).await?;
-
-        let restart_backoff = restart_backoff_after_unexpected_exit(
-            state,
-            &supervisor,
-            launch.launch_id,
-            launch.crash_loop_policy,
-            command_line,
-            &mut exit.machine,
-        )
-        .await?;
-
-        if let Some(backoff) = restart_backoff {
-            machine = exit.machine;
-            sleep(backoff).await;
-            continue;
-        }
-
-        return Ok(exit);
     }
+    .await;
+
+    stop_supervisor_control_runtime_server(supervisor_control_server, command_line, result).await
 }
 
 async fn restart_backoff_after_unexpected_exit(
     state: &GatewayRuntimeState,
+    supervisor_control: &SupervisorControlActor,
     supervisor: &types::SupervisorIdentity,
     launch_id: &str,
     crash_loop_policy: SupervisorCrashLoopPolicy,
@@ -265,7 +309,13 @@ async fn restart_backoff_after_unexpected_exit(
             restart_attempt: attempt,
             backoff,
         },
-        supervisor_effect_context(state, supervisor, launch_id, command_line),
+        supervisor_effect_context(
+            state,
+            supervisor_control,
+            supervisor,
+            launch_id,
+            command_line,
+        ),
         None,
     )
     .await?;
@@ -349,6 +399,83 @@ fn stamp_launch_config_supervisor_identity(
     )
 }
 
+async fn start_supervisor_control_runtime_server(
+    state: &GatewayRuntimeState,
+    actor: SupervisorControlActor,
+    command_line: &str,
+) -> Result<SupervisorControlServer, CliError> {
+    start_supervisor_control_server(
+        state.paths.supervisor_control_socket_path.clone(),
+        SupervisorControlService::new(actor),
+    )
+    .await
+    .map_err(|error| supervisor_control_server_error(command_line, error))
+}
+
+async fn stop_supervisor_control_runtime_server(
+    server: SupervisorControlServer,
+    command_line: &str,
+    result: Result<SupervisedRuntimeExit, CliError>,
+) -> Result<SupervisedRuntimeExit, CliError> {
+    let stop_result = server
+        .stop()
+        .await
+        .map_err(|error| supervisor_control_server_error(command_line, error));
+
+    match (result, stop_result) {
+        (Ok(exit), Ok(())) => Ok(exit),
+        (Ok(_), Err(error)) => Err(error),
+        (Err(error), _) => Err(error),
+    }
+}
+
+fn supervisor_control_status(
+    state: &GatewayRuntimeState,
+    supervisor: &types::SupervisorIdentity,
+    launch_id: &str,
+    phase: types::SupervisorPhase,
+    supervisor_sequence: u64,
+    runtime_pid: Option<u32>,
+) -> types::SupervisorStatus {
+    let data_dir = state.paths.data_dir.display().to_string();
+    let runtime = runtime_pid.map(|pid| types::RuntimeIdentity {
+        pid: Some(pid),
+        launch_id: Some(launch_id.to_owned()),
+        data_dir: Some(data_dir.clone()),
+        ..Default::default()
+    });
+
+    types::SupervisorStatus {
+        identity: MessageField::some(supervisor.clone()),
+        launch: MessageField::some(types::LifecycleLaunchIdentity {
+            launch_id: Some(launch_id.to_owned()),
+            data_dir: Some(data_dir),
+            runtime_pid,
+            supervisor_pid: supervisor.pid,
+            supervisor_generation: supervisor.generation,
+            ..Default::default()
+        }),
+        phase: Some(phase.into()),
+        supervisor_sequence: Some(supervisor_sequence),
+        active_session: Some(false),
+        runtime: runtime.map(MessageField::some).unwrap_or_default(),
+        ..Default::default()
+    }
+}
+
+fn supervisor_control_server_error(
+    command_line: &str,
+    error: Box<dyn std::error::Error + Send + Sync>,
+) -> CliError {
+    CliError::new(
+        "failed to run gateway supervisor control server",
+        command_line,
+        ErrorStage::Internal,
+        error.to_string(),
+        vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
+    )
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(super) enum MonitoredRuntimeExitKind {
     Expected,
@@ -371,6 +498,7 @@ pub(super) struct SupervisedRuntimeExit {
 #[derive(Clone, Copy)]
 pub(super) struct SupervisedRuntimeContext<'a> {
     pub(super) state: &'a GatewayRuntimeState,
+    pub(super) supervisor_control: &'a SupervisorControlActor,
     pub(super) supervisor: &'a types::SupervisorIdentity,
     pub(super) launch_id: &'a str,
     pub(super) runtime_pid: u32,
@@ -382,6 +510,7 @@ impl<'a> SupervisedRuntimeContext<'a> {
     pub(super) fn effect_context(self) -> SupervisorEffectContext<'a> {
         supervisor_effect_context(
             self.state,
+            self.supervisor_control,
             self.supervisor,
             self.launch_id,
             self.command_line,
@@ -668,12 +797,28 @@ mod tests {
         let fixture = SupervisorFixture::new();
         let state = fixture.state();
         let supervisor = supervisor_identity(std::process::id(), 1);
+        let supervisor_control = SupervisorControlActor::new(supervisor_control_status(
+            &state,
+            &supervisor,
+            LAUNCH_ID,
+            types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+            0,
+            None,
+        ));
+        let supervisor_control_server =
+            start_supervisor_control_fixture_server(&fixture, supervisor_control.clone()).await;
         let mut machine = SupervisorMachine::new();
 
         dispatch_supervisor_event(
             &mut machine,
             SupervisorEvent::LaunchRequested,
-            supervisor_effect_context(&state, &supervisor, LAUNCH_ID, COMMAND_LINE),
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
             None,
         )
         .await
@@ -685,7 +830,13 @@ mod tests {
         dispatch_supervisor_event(
             &mut machine,
             SupervisorEvent::ChildSpawned { runtime_pid },
-            supervisor_effect_context(&state, &supervisor, LAUNCH_ID, COMMAND_LINE),
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
             None,
         )
         .await
@@ -693,6 +844,7 @@ mod tests {
 
         let runtime_context = SupervisedRuntimeContext {
             state: &state,
+            supervisor_control: &supervisor_control,
             supervisor: &supervisor,
             launch_id: LAUNCH_ID,
             runtime_pid,
@@ -719,6 +871,10 @@ mod tests {
         )
         .await
         .unwrap_or_else(|error| panic!("expected supervised runtime stop: {error}"));
+        supervisor_control_server
+            .stop()
+            .await
+            .unwrap_or_else(|error| panic!("expected supervisor control server stop: {error}"));
         let transitions = supervisor_transitions(&fixture.paths);
         let final_supervisor_phase = supervisor_snapshot_phase(&fixture.paths);
 
@@ -806,9 +962,9 @@ mod tests {
                 .unwrap_or_else(|error| panic!("expected logs dir creation: {error}"));
 
             let socket_parent = paths
-                .runtime_control_socket_path
+                .supervisor_control_socket_path
                 .parent()
-                .unwrap_or_else(|| panic!("expected runtime control socket parent"))
+                .unwrap_or_else(|| panic!("expected supervisor control socket parent"))
                 .to_path_buf();
             fs::create_dir_all(&socket_parent)
                 .unwrap_or_else(|error| panic!("expected socket parent creation: {error}"));
@@ -828,10 +984,10 @@ mod tests {
                     "pid": supervisor_pid,
                     "supervisorId": supervisor_id_for_pid(supervisor_pid),
                 },
-                "runtimeControl": {
+                "supervisorControl": {
                     "transport": {
                         "kind": "unix",
-                        "socketPath": paths.runtime_control_socket_path.display().to_string(),
+                        "socketPath": paths.supervisor_control_socket_path.display().to_string(),
                     },
                 },
                 "runtimePaths": {
@@ -882,6 +1038,18 @@ mod tests {
                 runtime_status_snapshot_present: false,
             }
         }
+    }
+
+    async fn start_supervisor_control_fixture_server(
+        fixture: &SupervisorFixture,
+        actor: SupervisorControlActor,
+    ) -> SupervisorControlServer {
+        start_supervisor_control_server(
+            fixture.paths.supervisor_control_socket_path.clone(),
+            SupervisorControlService::new(actor),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected supervisor control fixture server: {error}"))
     }
 
     impl Drop for SupervisorFixture {
