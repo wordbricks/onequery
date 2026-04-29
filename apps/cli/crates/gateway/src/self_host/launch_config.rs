@@ -1,9 +1,9 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::path_utils;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::private_files;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -167,7 +167,7 @@ pub(crate) fn write_self_host_launch_config(
         )
     })?;
 
-    path_utils::atomic_write_private_file(
+    private_files::atomic_write_private_file(
         &launch_config_path,
         &serialized,
         command_line,

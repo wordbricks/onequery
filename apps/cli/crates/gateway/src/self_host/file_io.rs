@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::Path;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::path_utils;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::private_files;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -31,7 +31,7 @@ where
         )
     })?;
 
-    path_utils::atomic_write_private_file(
+    private_files::atomic_write_private_file(
         path,
         &serialized,
         command_line,

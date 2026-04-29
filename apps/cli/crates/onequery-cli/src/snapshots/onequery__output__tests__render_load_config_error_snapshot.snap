@@ -3,6 +3,6 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: failed to parse config file
-Why: expected newline, found a string at line 2 column 14 (/Users/alice/.config/onequery/config.toml)
+Why: expected newline, found a string at line 2 column 14 (/Users/alice/.onequery/config.toml)
 Try:
-  - remove or fix /Users/alice/.config/onequery/config.toml
+  - remove or fix /Users/alice/.onequery/config.toml

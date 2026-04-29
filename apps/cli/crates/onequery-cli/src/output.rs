@@ -1,7 +1,7 @@
 use std::fmt;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
@@ -598,8 +598,8 @@ mod tests {
     use pretty_assertions::assert_eq;
     use serde_json::json;
 
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
 
     use super::CommandOutput;
     use super::EffectiveOutputMode;
@@ -680,8 +680,8 @@ mod tests {
                 "failed to parse config file",
                 "onequery auth whoami",
                 ErrorStage::LoadConfig,
-                "expected newline, found a string at line 2 column 14 (/Users/alice/.config/onequery/config.toml)",
-                vec!["remove or fix /Users/alice/.config/onequery/config.toml".to_owned()],
+                "expected newline, found a string at line 2 column 14 (/Users/alice/.onequery/config.toml)",
+                vec!["remove or fix /Users/alice/.onequery/config.toml".to_owned()],
             ),
             EffectiveOutputMode::Text,
         );
@@ -697,8 +697,8 @@ mod tests {
                 "failed to resolve config directory",
                 "onequery auth whoami",
                 ErrorStage::LoadConfig,
-                "XDG_CONFIG_HOME points to /Users/alice/.config-missing, but that path does not exist",
-                vec!["set XDG_CONFIG_HOME or HOME to a valid directory".to_owned()],
+                "ONEQUERY_HOME points to /Users/alice/.onequery-missing, but that path does not exist",
+                vec!["set ONEQUERY_HOME to a valid directory".to_owned()],
             ),
             EffectiveOutputMode::Text,
         );

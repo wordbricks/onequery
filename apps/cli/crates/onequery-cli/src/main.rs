@@ -3,6 +3,7 @@ mod commands;
 mod config;
 mod credentials;
 mod diagnostics;
+pub mod exit_status;
 mod explain;
 mod identifiers;
 mod issue_report;
@@ -18,6 +19,7 @@ mod test_support;
 mod transport;
 mod version;
 mod workflows;
+pub mod wsl_paths;
 
 use std::io::IsTerminal;
 use std::io::Write;
@@ -153,7 +155,7 @@ async fn main() {
 }
 
 fn emit_failure_and_exit(
-    error: onequery_cli_core::error::CliError,
+    error: onequery_core::error::CliError,
     output_mode: output::EffectiveOutputMode,
     command_path: Option<&str>,
     persist_failure: bool,
@@ -169,7 +171,7 @@ fn emit_failure_and_exit(
 }
 
 fn emit_failure_exit_code(
-    error: onequery_cli_core::error::CliError,
+    error: onequery_core::error::CliError,
     output_mode: output::EffectiveOutputMode,
     command_path: Option<&str>,
     persist_failure: bool,
@@ -186,7 +188,7 @@ fn emit_failure_exit_code(
 }
 
 fn persist_failure_if_needed(
-    error: &onequery_cli_core::error::CliError,
+    error: &onequery_core::error::CliError,
     command_path: Option<&str>,
     persist_failure: bool,
 ) {

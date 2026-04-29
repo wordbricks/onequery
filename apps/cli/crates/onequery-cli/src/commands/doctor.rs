@@ -2,8 +2,8 @@ use chrono::DateTime;
 use chrono::Utc;
 use serde_json::json;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use crate::cli::DoctorReportArgs;
 use crate::cli::DoctorSubcommand;
@@ -190,7 +190,7 @@ mod tests {
     use crate::output::render_output;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
 
     use super::DiagnosticsPaths;
     use super::DoctorReportArgs;

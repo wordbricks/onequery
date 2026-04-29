@@ -4,8 +4,8 @@ use std::path::Path;
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::super::PACKAGED_SERVER_JS_RUNTIME_ENV_VAR;
 use super::super::REINSTALL_CLI_PACKAGE_COMMAND;

@@ -22,7 +22,7 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::CommandContext;
 use super::Runtime;
@@ -469,7 +469,7 @@ impl WorkflowLabel for SourceConnectEffect {
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::commands::CommandContext;
@@ -480,7 +480,7 @@ mod tests {
     use crate::transport::source_connect::SourceConnectResult;
     use crate::transport::source_connect_provider::SourceConnectProvider;
     use crate::workflows::runner::TransitionProgress;
-    use onequery_cli_core::error::CliError;
+    use onequery_core::error::CliError;
 
     use super::SourceConnectEffect;
     use super::SourceConnectEvent;

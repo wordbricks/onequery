@@ -1,15 +1,15 @@
 use std::fs;
 use std::path::Path;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::AuthDotJson;
 use super::AuthSessionSnapshot;
 use super::AuthSessionSource;
 use super::AuthSessionStore;
 use super::paths::auth_path;
-use onequery_cli_core::path_utils;
+use onequery_core::private_files;
 
 pub(super) fn load_auth_session_store(startup_command: &str) -> Result<AuthSessionStore, CliError> {
     let path = auth_path(startup_command)?;
@@ -94,7 +94,7 @@ fn write_persisted_auth_session_record(
         )
     })?;
 
-    path_utils::create_private_dir(
+    private_files::create_private_dir(
         parent_dir,
         command_line,
         ErrorStage::LoadCredentials,
@@ -111,7 +111,7 @@ fn write_persisted_auth_session_record(
         )
     })?;
 
-    path_utils::atomic_write_private_file(
+    private_files::atomic_write_private_file(
         path,
         &serialized,
         command_line,

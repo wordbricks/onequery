@@ -3,9 +3,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use connectrpc::ConnectError;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::process::is_process_running;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::process::is_process_running;
 use serde_json::json;
 use tokio::time::Instant;
 use tokio::time::sleep;

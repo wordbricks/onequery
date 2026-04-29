@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use clap::CommandFactory;
 use insta::assert_snapshot;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
@@ -664,7 +664,7 @@ fn normalize_command_line_redacts_raw_config_override_values() {
             "org",
             "list",
         ])),
-        "onequery --config api.access_token=<redacted> --config=query.output.format=<redacted> org list"
+        "onequery --config 'api.access_token=<redacted>' '--config=query.output.format=<redacted>' org list"
             .to_owned()
     );
 }

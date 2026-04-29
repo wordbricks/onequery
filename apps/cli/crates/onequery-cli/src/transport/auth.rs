@@ -10,7 +10,7 @@ use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::client::UnauthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::well_known::required_duration_ms;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]

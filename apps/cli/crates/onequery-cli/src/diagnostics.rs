@@ -4,16 +4,16 @@ use std::path::PathBuf;
 
 use chrono::DateTime;
 use chrono::Utc;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::CliValidationIssue;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::CliValidationIssue;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::config::data_dir;
 use crate::explain::ExplainSupportKind;
 use crate::explain::explanation_for_error_code;
-use onequery_cli_core::path_utils;
+use onequery_core::private_files;
 
 pub(crate) const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
 pub(crate) const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --json";
@@ -255,7 +255,7 @@ pub(crate) fn persist_last_error(
         )
     })?;
 
-    path_utils::create_private_dir(
+    private_files::create_private_dir(
         parent_dir,
         command_line,
         ErrorStage::LoadConfig,
@@ -277,7 +277,7 @@ pub(crate) fn persist_last_error(
         )
     })?;
 
-    path_utils::atomic_write_private_file(
+    private_files::atomic_write_private_file(
         &paths.last_error_path,
         &serialized,
         command_line,
@@ -447,7 +447,7 @@ pub(crate) fn write_report(
     snapshot: &DiagnosticSnapshot,
     created_at: DateTime<Utc>,
 ) -> Result<PathBuf, CliError> {
-    path_utils::create_private_dir(
+    private_files::create_private_dir(
         &paths.reports_dir,
         command_line,
         ErrorStage::LoadConfig,
@@ -477,7 +477,7 @@ pub(crate) fn write_report(
     let report_path = paths.reports_dir.join(report_filename);
     let report = render_report_markdown(snapshot, &paths.last_error_path, command_line)?;
 
-    path_utils::atomic_write_private_file(
+    private_files::atomic_write_private_file(
         &report_path,
         &report,
         command_line,
@@ -504,9 +504,9 @@ mod tests {
     use super::persist_last_error;
     use super::render_report_markdown;
     use super::report_suggestion;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::CliValidationIssue;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::CliValidationIssue;
+    use onequery_core::error::ErrorStage;
 
     fn sample_error() -> CliError {
         CliError::new(

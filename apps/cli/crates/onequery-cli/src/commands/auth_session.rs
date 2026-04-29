@@ -16,8 +16,8 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::CommandContext;
 use super::Runtime;
@@ -411,7 +411,7 @@ mod tests {
     use std::sync::mpsc;
     use std::time::Duration;
 
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use uuid::Uuid;
 
@@ -497,7 +497,7 @@ mod tests {
             auth_session,
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: onequery_cli_core::process_context::ProcessContext::default(),
+            process: onequery_core::process_context::ProcessContext::default(),
         }
     }
 

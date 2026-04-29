@@ -53,6 +53,10 @@ if (!resolvedVendor) {
 }
 
 const { binaryPath, bundleRoot } = resolvedVendor;
+const packageManagerEnvVar =
+  detectPackageManager() === "bun"
+    ? "ONEQUERY_MANAGED_BY_BUN"
+    : "ONEQUERY_MANAGED_BY_NPM";
 
 if (platform !== "win32") {
   ensureExecutable(binaryPath);
@@ -61,6 +65,7 @@ if (platform !== "win32") {
 const child = spawn(binaryPath, process.argv.slice(2), {
   env: {
     ...process.env,
+    [packageManagerEnvVar]: "1",
     [runtimeBundleSpec.runtimeRootEnvVar]:
       process.env[runtimeBundleSpec.runtimeRootEnvVar] ?? bundleRoot,
   },

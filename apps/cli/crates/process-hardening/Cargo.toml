@@ -1,0 +1,18 @@
+[package]
+name = "onequery-process-hardening"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "onequery_process_hardening"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+libc = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

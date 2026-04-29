@@ -53,7 +53,7 @@ pub(crate) fn plan_retry_transition(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::api_failure::ApiFailure;

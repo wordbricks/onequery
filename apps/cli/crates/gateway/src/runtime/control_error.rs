@@ -2,8 +2,8 @@ use base64::Engine;
 use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::CliValidationIssue;
+use onequery_core::error::CliError;
+use onequery_core::error::CliValidationIssue;
 use onequery_proto_runtime::google::rpc;
 
 const RUNTIME_CONTROL_ERROR_INFO_DOMAIN: &str = "onequery.runtime.v1";
@@ -384,8 +384,8 @@ mod tests {
     use buffa::Message;
     use connectrpc::ConnectError;
     use connectrpc::ErrorCode;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use super::RuntimeControlPreconditionViolation;
@@ -493,7 +493,7 @@ mod tests {
 
         assert_eq!(
             problem.validation_issues,
-            vec![onequery_cli_core::error::CliValidationIssue {
+            vec![onequery_core::error::CliValidationIssue {
                 field: "operation_id".to_owned(),
                 message: "must be a valid UUID".to_owned(),
                 code: "string_uuid".to_owned(),
@@ -554,7 +554,7 @@ mod tests {
                 Some("RUNTIME_CONTROL_REQUEST_INVALID"),
                 false,
                 None,
-                [onequery_cli_core::error::CliValidationIssue {
+                [onequery_core::error::CliValidationIssue {
                     field: "operation_id".to_owned(),
                     message: "must be a valid UUID".to_owned(),
                     code: "string_uuid".to_owned(),

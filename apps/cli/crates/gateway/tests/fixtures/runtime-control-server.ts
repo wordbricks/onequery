@@ -5,11 +5,12 @@ import {
   serveRuntimeControl,
 } from "../../../../../../packages/self-host-runtime/src/self-host/runtime-control";
 
-const [socketPath, readyPath, mode] = process.argv.slice(2);
+const [socketPath, readyPath, ...modes] = process.argv.slice(2);
+const modeSet = new Set(modes);
 
 if (!socketPath || !readyPath) {
   throw new Error(
-    "usage: runtime-control-server.ts <socket-path> <ready-path>"
+    "usage: runtime-control-server.ts <socket-path> <ready-path> [modes...]"
   );
 }
 
@@ -41,15 +42,17 @@ const actor = createRuntimeControlActor({
   lease,
   now: () => new Date("2026-04-27T00:00:00.000Z"),
 });
-actor.attachShutdownController({
-  dispose: () => undefined,
-  shutdown: async (request) => {
-    await actor.lease.release({
-      reason: request.reason,
-      stopServer: request.completion === "cleanup_and_exit",
-    });
-  },
-});
+if (!modeSet.has("without-shutdown-controller")) {
+  actor.attachShutdownController({
+    dispose: () => undefined,
+    shutdown: async (request) => {
+      await actor.lease.release({
+        reason: request.reason,
+        stopServer: request.completion === "cleanup_and_exit",
+      });
+    },
+  });
+}
 const server = await serveRuntimeControl({
   actor,
   endpoint: lease.paths.controlEndpoint,
@@ -75,7 +78,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-if (mode === "transition-ready") {
+if (modeSet.has("transition-ready")) {
   await actor.lease.transition("ready");
 }
 await writeFile(readyPath, "ready\n");

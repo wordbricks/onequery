@@ -1,8 +1,8 @@
 use std::io::IsTerminal;
 use std::path::Path;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 use tokio::time::Duration;
@@ -11,7 +11,7 @@ use crate::cli::QueryInputArgs;
 use crate::transport::query::QueryRequestPayload;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
-use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
 
 use super::CommandContext;
 use super::QueryIntent;

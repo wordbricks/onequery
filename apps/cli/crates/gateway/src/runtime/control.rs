@@ -6,6 +6,7 @@ use buffa::EnumValue;
 use buffa::MessageField;
 use connectrpc::ConnectError;
 use connectrpc::client::CallOptions;
+use connectrpc::client::ClientConfig;
 use connectrpc::client::ClientTransport;
 #[cfg(unix)]
 use connectrpc::client::Http2Connection;
@@ -238,7 +239,7 @@ async fn runtime_control_client(
     let authority = runtime_control_authority()?;
     let endpoint = runtime_control_transport_endpoint(paths);
     let connection = runtime_control_connection(endpoint, authority.clone()).await?;
-    let config = connectrpc::client::ClientConfig::new(authority);
+    let config = runtime_control_client_config(authority)?;
 
     Ok(RuntimeControlClient::new(
         connection.shared(RUNTIME_CONTROL_SHARED_STREAM_BOUND),
@@ -289,6 +290,50 @@ fn runtime_control_authority() -> Result<http::Uri, ConnectError> {
     })
 }
 
+fn runtime_control_client_config(authority: http::Uri) -> Result<ClientConfig, ConnectError> {
+    Ok(ClientConfig::new(authority)
+        .default_timeout(RUNTIME_CONTROL_REQUEST_TIMEOUT)
+        .default_max_message_size(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
+        .default_headers(runtime_control_default_headers()?))
+}
+
+fn runtime_control_default_headers() -> Result<http::HeaderMap, ConnectError> {
+    let mut headers = http::HeaderMap::new();
+
+    // CONTEXT: connect-rust's `ClientConfig::default_header` silently drops
+    // invalid headers; this helper keeps runtime-control configuration
+    // failures visible.
+    try_insert_runtime_control_header(
+        &mut headers,
+        RUNTIME_CONTROL_CLIENT_HEADER_NAME,
+        RUNTIME_CONTROL_CLIENT_HEADER_VALUE,
+    )?;
+    try_insert_runtime_control_header(
+        &mut headers,
+        RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME,
+        RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE,
+    )?;
+
+    Ok(headers)
+}
+
+fn try_insert_runtime_control_header(
+    headers: &mut http::HeaderMap,
+    name: &'static str,
+    value: &str,
+) -> Result<(), ConnectError> {
+    let header_name = http::header::HeaderName::from_bytes(name.as_bytes()).map_err(|_| {
+        ConnectError::internal(format!("invalid runtime control header name {name}"))
+    })?;
+    let header_value = http::header::HeaderValue::from_str(value).map_err(|_| {
+        ConnectError::internal(format!("invalid runtime control header value for {name}"))
+    })?;
+
+    headers.append(header_name, header_value);
+
+    Ok(())
+}
+
 fn runtime_control_call_options(
     call_headers: RuntimeControlCallHeaders<'_>,
 ) -> Result<CallOptions, ConnectError> {
@@ -302,17 +347,7 @@ fn runtime_control_call_options_with_request_id(
     request_id: &str,
 ) -> Result<CallOptions, ConnectError> {
     let mut options = CallOptions::default()
-        .with_timeout(RUNTIME_CONTROL_REQUEST_TIMEOUT)
-        .with_max_message_size(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
-        .try_with_header(
-            RUNTIME_CONTROL_CLIENT_HEADER_NAME,
-            RUNTIME_CONTROL_CLIENT_HEADER_VALUE,
-        )?
-        .try_with_header(RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME, request_id)?
-        .try_with_header(
-            RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME,
-            RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE,
-        )?;
+        .try_with_header(RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME, request_id)?;
 
     if let Some(launch_id) = call_headers.launch_id {
         options = options.try_with_header(RUNTIME_CONTROL_LAUNCH_ID_HEADER_NAME, launch_id)?;
@@ -468,6 +503,7 @@ mod tests {
     use super::RuntimeControlTransportEndpoint;
     use super::protobuf_duration;
     use super::runtime_control_call_options_with_request_id;
+    use super::runtime_control_client_config;
     #[cfg(unix)]
     use super::runtime_control_transport_endpoint;
     use super::runtime_control_watch_event_from_proto;
@@ -502,7 +538,40 @@ mod tests {
     }
 
     #[test]
-    fn runtime_control_call_options_set_per_call_limits_and_headers() {
+    fn runtime_control_client_config_sets_shared_defaults() {
+        let config = runtime_control_client_config(
+            "http://onequery-runtime"
+                .parse()
+                .unwrap_or_else(|error| panic!("expected runtime control authority: {error}")),
+        )
+        .unwrap_or_else(|error| panic!("expected runtime control client config: {error}"));
+
+        assert_eq!(
+            config.default_timeout,
+            Some(RUNTIME_CONTROL_REQUEST_TIMEOUT)
+        );
+        assert_eq!(
+            config.default_max_message_size,
+            Some(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
+        );
+        assert_eq!(
+            config
+                .default_headers
+                .get(RUNTIME_CONTROL_CLIENT_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some(RUNTIME_CONTROL_CLIENT_HEADER_VALUE)
+        );
+        assert_eq!(
+            config
+                .default_headers
+                .get(RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some(RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE)
+        );
+    }
+
+    #[test]
+    fn runtime_control_call_options_set_per_call_headers() {
         let options = runtime_control_call_options_with_request_id(
             RuntimeControlCallHeaders::for_launch("launch-a")
                 .with_supervisor_id("gateway-supervisor:123"),
@@ -510,18 +579,8 @@ mod tests {
         )
         .unwrap_or_else(|error| panic!("expected runtime control call options: {error}"));
 
-        assert_eq!(options.timeout, Some(RUNTIME_CONTROL_REQUEST_TIMEOUT));
-        assert_eq!(
-            options.max_message_size,
-            Some(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
-        );
-        assert_eq!(
-            options
-                .headers
-                .get(RUNTIME_CONTROL_CLIENT_HEADER_NAME)
-                .and_then(|value| value.to_str().ok()),
-            Some(RUNTIME_CONTROL_CLIENT_HEADER_VALUE)
-        );
+        assert_eq!(options.timeout, None);
+        assert_eq!(options.max_message_size, None);
         assert_eq!(
             options
                 .headers
@@ -543,12 +602,15 @@ mod tests {
                 .and_then(|value| value.to_str().ok()),
             Some("launch-a")
         );
-        assert_eq!(
-            options
+        assert!(
+            !options
                 .headers
-                .get(RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME)
-                .and_then(|value| value.to_str().ok()),
-            Some(RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE)
+                .contains_key(RUNTIME_CONTROL_CLIENT_HEADER_NAME)
+        );
+        assert!(
+            !options
+                .headers
+                .contains_key(RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME)
         );
     }
 

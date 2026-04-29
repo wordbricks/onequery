@@ -22,7 +22,7 @@ use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
 use crate::workflows::retry::RetryTransition;
 use crate::workflows::runner::Transition;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use self::execute::run_query_workflow;
 use self::validate::run_query_validate_workflow;

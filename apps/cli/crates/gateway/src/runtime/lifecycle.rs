@@ -6,9 +6,9 @@ use std::path::Path;
 
 use buffa::MessageField;
 use chrono::Utc;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::process::is_process_running;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::process::is_process_running;
 
 use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
@@ -898,7 +898,7 @@ mod tests {
     }
 
     fn runtime_lease_json(paths: &SelfHostRuntimePaths, pid: u32, launch_id: &str) -> String {
-        runtime_lease_json_with_supervisor(paths, pid, launch_id, 1, 1)
+        runtime_lease_json_with_supervisor(paths, pid, launch_id, 1, 1, 1, 1)
     }
 
     fn runtime_lease_json_with_supervisor(
@@ -907,24 +907,46 @@ mod tests {
         launch_id: &str,
         header_supervisor_pid: u32,
         supervisor_pid: u32,
+        header_supervisor_generation: u64,
+        supervisor_generation: u64,
+    ) -> String {
+        runtime_lease_json_with_data_dir(
+            paths.data_dir.as_path(),
+            pid,
+            launch_id,
+            header_supervisor_pid,
+            supervisor_pid,
+            header_supervisor_generation,
+            supervisor_generation,
+        )
+    }
+
+    fn runtime_lease_json_with_data_dir(
+        data_dir: &std::path::Path,
+        pid: u32,
+        launch_id: &str,
+        header_supervisor_pid: u32,
+        supervisor_pid: u32,
+        header_supervisor_generation: u64,
+        supervisor_generation: u64,
     ) -> String {
         format!(
             r#"{{
   "header": {{
     "schemaVersion": 1,
     "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_RUNTIME", "writerId": "runtime:{pid}"}},
-    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {pid}, "supervisorPid": {header_supervisor_pid}, "supervisorGeneration": "1"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {pid}, "supervisorPid": {header_supervisor_pid}, "supervisorGeneration": "{header_supervisor_generation}"}},
     "writtenAt": "2026-03-25T00:00:00Z"
   }},
   "runtime": {{"pid": {pid}, "launchId": "{launch_id}", "dataDir": "{}"}},
-  "supervisor": {{"supervisorId": "supervisor-a", "pid": {supervisor_pid}, "generation": "1"}},
+  "supervisor": {{"supervisorId": "supervisor-a", "pid": {supervisor_pid}, "generation": "{supervisor_generation}"}},
   "runtimeSequence": "1",
   "acquiredAt": "2026-03-25T00:00:00Z",
   "renewedAt": "2026-03-25T00:00:00Z",
   "leaseTtl": "60s"
 }}"#,
-            paths.data_dir.display(),
-            paths.data_dir.display()
+            data_dir.display(),
+            data_dir.display()
         )
     }
 
@@ -997,17 +1019,35 @@ mod tests {
         launch_id: &str,
         phase: &str,
     ) -> String {
+        supervisor_status_snapshot_json_with_supervisor_generation(
+            data_dir,
+            runtime_pid,
+            supervisor_pid,
+            1,
+            launch_id,
+            phase,
+        )
+    }
+
+    fn supervisor_status_snapshot_json_with_supervisor_generation(
+        data_dir: &str,
+        runtime_pid: u32,
+        supervisor_pid: u32,
+        supervisor_generation: u64,
+        launch_id: &str,
+        phase: &str,
+    ) -> String {
         format!(
             r#"{{
   "header": {{
     "schemaVersion": 1,
     "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_SUPERVISOR", "writerId": "supervisor:{supervisor_pid}"}},
-    "launch": {{"launchId": "{launch_id}", "dataDir": "{data_dir}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "1"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{data_dir}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "{supervisor_generation}"}},
     "writtenAt": "2026-03-25T00:00:00Z"
   }},
   "status": {{
-    "identity": {{"supervisorId": "supervisor:{supervisor_pid}", "pid": {supervisor_pid}, "generation": "1"}},
-    "launch": {{"launchId": "{launch_id}", "dataDir": "{data_dir}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "1"}},
+    "identity": {{"supervisorId": "supervisor:{supervisor_pid}", "pid": {supervisor_pid}, "generation": "{supervisor_generation}"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{data_dir}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "{supervisor_generation}"}},
     "phase": "{phase}",
     "supervisorSequence": "3",
     "updatedAt": "2026-03-25T00:00:00Z",
@@ -1430,6 +1470,40 @@ mod tests {
     }
 
     #[test]
+    fn read_active_supervisor_identity_rejects_mismatched_supervisor_generation() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.supervisor_status_snapshot_path,
+            supervisor_status_snapshot_json_with_supervisor_generation(
+                &paths.data_dir.display().to_string(),
+                pid,
+                pid,
+                2,
+                "launch-a",
+                "SUPERVISOR_PHASE_READY",
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected supervisor snapshot write: {error}"));
+
+        assert_eq!(
+            read_active_supervisor_identity_for_runtime(
+                &paths,
+                &ManagedRuntimeIdentity {
+                    launch_id: "launch-a".to_owned(),
+                    pid,
+                    supervisor_pid: Some(pid),
+                    supervisor_generation: Some(1),
+                },
+                "onequery gateway stop",
+            )
+            .unwrap_or_else(|error| panic!("expected supervisor identity read: {error}")),
+            None
+        );
+    }
+
+    #[test]
     fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_lower_artifacts() {
         let (_temp_dir, paths) = test_paths();
         let pid = std::process::id();
@@ -1488,7 +1562,51 @@ mod tests {
 
         fs::write(
             &paths.runtime_lease_path,
-            runtime_lease_json_with_supervisor(&paths, pid, "launch-a", 1, 2),
+            runtime_lease_json_with_supervisor(&paths, pid, "launch-a", 1, 2, 1, 1),
+        )
+        .unwrap_or_else(|error| panic!("expected lease write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            None
+        );
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_ignores_stale_lease_with_live_unrelated_pid() {
+        let (_temp_dir, paths) = test_paths();
+        let live_unrelated_pid = std::process::id();
+
+        fs::write(
+            &paths.runtime_lease_path,
+            runtime_lease_json_with_data_dir(
+                std::path::Path::new("/tmp/onequery-other-data"),
+                live_unrelated_pid,
+                "launch-stale",
+                1,
+                1,
+                1,
+                1,
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected stale lease write: {error}"));
+
+        assert_eq!(
+            read_managed_runtime_pid(&paths, "onequery gateway status")
+                .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+            None
+        );
+    }
+
+    #[test]
+    fn read_managed_runtime_pid_ignores_lease_with_mismatched_supervisor_generation() {
+        let (_temp_dir, paths) = test_paths();
+        let pid = std::process::id();
+
+        fs::write(
+            &paths.runtime_lease_path,
+            runtime_lease_json_with_supervisor(&paths, pid, "launch-a", 1, 1, 1, 2),
         )
         .unwrap_or_else(|error| panic!("expected lease write: {error}"));
 

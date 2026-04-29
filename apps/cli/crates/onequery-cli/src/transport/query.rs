@@ -3,7 +3,7 @@ use std::time::Duration;
 use buffa::EnumValue;
 use buffa::MessageField;
 use connectrpc::client::CallOptions;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -518,7 +518,7 @@ fn optional_query_timeout(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 

@@ -5,7 +5,7 @@
 //! # Examples
 //!
 //! ```
-//! use onequery_cli_core::error::{CliError, ErrorStage};
+//! use onequery_core::error::{CliError, ErrorStage};
 //!
 //! let error = CliError::new(
 //!     "not logged in",
@@ -21,13 +21,18 @@
 
 /// Shared application config/data path resolution.
 pub mod app_paths;
+/// CLI path argument resolution helpers.
+pub mod cli_paths;
 /// Shared CLI error types and helpers.
 pub mod error;
 /// Shared packaged runtime bundle layout helpers.
 pub mod packaged_runtime;
-/// Shared path normalization and atomic file helpers.
-pub mod path_utils;
+/// Private filesystem write helpers.
+pub mod private_files;
 /// Shared process inspection helpers.
 pub mod process;
 /// Captured process context used by commands that need current executable metadata.
 pub mod process_context;
+pub(crate) mod utils;
+/// Shared path normalization and atomic file helpers.
+pub use utils::path_utils;

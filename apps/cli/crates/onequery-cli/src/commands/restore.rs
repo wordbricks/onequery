@@ -3,15 +3,15 @@ use std::fs::File;
 use std::path::Path;
 
 use flate2::read::GzDecoder;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde_json::json;
 use tar::Archive;
 use uuid::Uuid;
 
 use crate::cli::RestoreArgs;
 use crate::output::CommandOutput;
-use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
 use onequery_gateway::self_host::SelfHostBootstrapResult;
 use onequery_gateway::self_host::SelfHostRuntimePaths;
 use onequery_gateway::self_host::bootstrap_self_host_foundation;

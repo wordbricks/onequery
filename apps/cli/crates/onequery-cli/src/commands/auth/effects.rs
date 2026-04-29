@@ -2,8 +2,8 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 use tokio::time::Duration;
@@ -27,7 +27,7 @@ use crate::workflows::retry::classify_retry_directive;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
 
 use super::super::CommandContext;
 use super::super::Runtime;

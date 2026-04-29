@@ -11,12 +11,11 @@ buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
 chrono = { workspace = true, features = ["serde"] }
 connectrpc = { workspace = true, features = ["client"] }
-futures = { workspace = true }
 getrandom = { workspace = true }
 http = { workspace = true }
-http-body = { workspace = true }
-onequery-cli-core = { workspace = true }
+onequery-core = { workspace = true }
 onequery-proto-runtime = { workspace = true }
+onequery-utils-string = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "signal", "time"] }
@@ -37,7 +36,9 @@ http-body-util = { workspace = true }
 insta = { workspace = true, features = ["filters"] }
 onequery-utils = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 tempfile = { workspace = true }
+test-case = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [lints]

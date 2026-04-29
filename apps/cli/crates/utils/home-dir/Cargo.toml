@@ -1,0 +1,16 @@
+[package]
+name = "onequery-utils-home-dir"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+onequery-utils-absolute-path = { workspace = true }
+dirs = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

@@ -3,7 +3,7 @@ use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
 use http::HeaderMap;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 
 use crate::output_metadata::SanitizationMetadata;
 use crate::transport::generated;
@@ -458,7 +458,7 @@ mod tests {
     use buffa::Message;
     use connectrpc::ConnectError;
     use connectrpc::ErrorCode;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::generated;

@@ -9,7 +9,7 @@ use crate::transport::query::DeclaredQueryResultWindow;
 use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
 use crate::transport::read_controls::PageInfo;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 pub(super) fn render_query_output(
     result: QueryResult,

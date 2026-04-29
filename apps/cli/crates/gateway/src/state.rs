@@ -1,4 +1,4 @@
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::self_host::SelfHostConfig;
 use crate::self_host::SelfHostRuntimePaths;

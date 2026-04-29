@@ -24,12 +24,12 @@ use self::layers::load_user_file_layer;
 use self::layers::materialize_runtime_config;
 use self::layers::origins_for_layer_stack;
 use self::layers::raw_cli_overrides_layer;
-pub(crate) use onequery_cli_core::app_paths::config_dir;
-use onequery_cli_core::app_paths::config_path;
-pub(crate) use onequery_cli_core::app_paths::data_dir;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::path_utils;
+pub(crate) use onequery_core::app_paths::config_dir;
+use onequery_core::app_paths::config_path;
+pub(crate) use onequery_core::app_paths::data_dir;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::private_files;
 use onequery_gateway::self_host::default_public_origin;
 
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
@@ -486,7 +486,12 @@ impl ConfigStore {
             )
         })?;
 
-        path_utils::create_private_dir(parent_dir, command_line, ErrorStage::LoadConfig, "config")?;
+        private_files::create_private_dir(
+            parent_dir,
+            command_line,
+            ErrorStage::LoadConfig,
+            "config",
+        )?;
 
         let serialized = toml::to_string_pretty(&RawConfigLayerData::from_typed_config(data))
             .map_err(|serialize_error| {
@@ -499,7 +504,7 @@ impl ConfigStore {
                 )
             })?;
 
-        path_utils::atomic_write_private_file(
+        private_files::atomic_write_private_file(
             &self.path,
             &serialized,
             command_line,
@@ -816,7 +821,7 @@ port = 4545
         assert_eq!(
             (error.title.clone(), store.data.clone()),
             (
-                "failed to finalize config file".to_owned(),
+                "failed to write config file".to_owned(),
                 AppConfig {
                     active_org: Some("acme".to_owned()),
                     server_url: None,
@@ -1422,7 +1427,7 @@ active = "acme"
             ),
             (
                 "failed to parse config file".to_owned(),
-                onequery_cli_core::error::ErrorStage::LoadConfig,
+                onequery_core::error::ErrorStage::LoadConfig,
                 true,
                 true,
                 vec![format!("remove or fix {}", config_path.display())],
@@ -1459,7 +1464,7 @@ active = "acme"
             ),
             (
                 "failed to parse config file".to_owned(),
-                onequery_cli_core::error::ErrorStage::LoadConfig,
+                onequery_core::error::ErrorStage::LoadConfig,
                 true,
                 true,
                 vec![format!("remove or fix {}", config_path.display())],

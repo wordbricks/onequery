@@ -1,20 +1,20 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::REINSTALL_CLI_PACKAGE_COMMAND;
-use onequery_cli_core::packaged_runtime::CurrentExecutableLocation;
-use onequery_cli_core::packaged_runtime::classify_current_executable;
-use onequery_cli_core::packaged_runtime::packaged_cli_relative_path;
-use onequery_cli_core::packaged_runtime::packaged_migrations_relative_path;
-use onequery_cli_core::packaged_runtime::packaged_server_relative_path;
-use onequery_cli_core::packaged_runtime::packaged_web_dist_relative_path;
-use onequery_cli_core::packaged_runtime::packaged_web_required_file;
-use onequery_cli_core::packaged_runtime::runtime_root_env_var;
-use onequery_cli_core::process_context::ProcessContext;
+use onequery_core::packaged_runtime::CurrentExecutableLocation;
+use onequery_core::packaged_runtime::classify_current_executable;
+use onequery_core::packaged_runtime::packaged_cli_relative_path;
+use onequery_core::packaged_runtime::packaged_migrations_relative_path;
+use onequery_core::packaged_runtime::packaged_server_relative_path;
+use onequery_core::packaged_runtime::packaged_web_dist_relative_path;
+use onequery_core::packaged_runtime::packaged_web_required_file;
+use onequery_core::packaged_runtime::runtime_root_env_var;
+use onequery_core::process_context::ProcessContext;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct GatewayLaunchPlan {

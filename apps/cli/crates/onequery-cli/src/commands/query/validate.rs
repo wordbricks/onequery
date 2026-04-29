@@ -11,7 +11,7 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::CommandContext;
 use super::CompletedState;

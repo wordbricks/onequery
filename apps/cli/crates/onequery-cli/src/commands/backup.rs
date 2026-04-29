@@ -6,14 +6,14 @@ use std::path::Path;
 use chrono::Utc;
 use flate2::Compression;
 use flate2::write::GzEncoder;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde_json::json;
 use tar::Builder;
 
 use crate::cli::BackupArgs;
 use crate::output::CommandOutput;
-use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
 use onequery_gateway::self_host::SelfHostRuntimePaths;
 use onequery_gateway::self_host::self_host_runtime_paths;
 

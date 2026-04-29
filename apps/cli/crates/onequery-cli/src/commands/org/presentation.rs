@@ -10,7 +10,7 @@ use crate::output::serialize_command_data;
 use crate::transport::org::OrgDetails;
 use crate::transport::org::OrgListPayload;
 use crate::transport::read_controls::PageInfo;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::super::CommandContext;
 

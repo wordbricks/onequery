@@ -6,8 +6,8 @@ mod plan;
 mod render;
 mod workflow;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use crate::cli::ApiArgs;
 use crate::output::CommandOutput;

@@ -10,11 +10,14 @@ mod state;
 mod tests;
 
 use std::ffi::OsString;
+use std::net::TcpStream;
+use std::net::ToSocketAddrs;
 use std::path::PathBuf;
+use std::time::Duration;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::process_context::ProcessContext;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::process_context::ProcessContext;
 use serde_json::Value;
 
 use render::render_gateway_logs_output;
@@ -200,4 +203,20 @@ pub fn runtime_probe_host(listen_host: &str) -> &str {
         "::" => "::1",
         _ => listen_host,
     }
+}
+
+/// Best-effort local TCP probe for recovery guidance and diagnostics.
+///
+/// Startup readiness is owned by the runtime-control `WatchStatus` handshake;
+/// this helper only answers whether something is currently accepting TCP
+/// connections on the configured local runtime endpoint.
+pub fn runtime_accepting_connections(listen_host: &str, port: u16) -> bool {
+    let probe_host = runtime_probe_host(listen_host);
+    let Ok(addresses) = (probe_host, port).to_socket_addrs() else {
+        return false;
+    };
+
+    addresses
+        .into_iter()
+        .any(|address| TcpStream::connect_timeout(&address, Duration::from_millis(100)).is_ok())
 }

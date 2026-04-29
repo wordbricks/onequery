@@ -1,5 +1,7 @@
 use std::ffi::OsStr;
+use std::future::Future;
 use std::path::Path;
+use std::pin::Pin;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
@@ -7,8 +9,8 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use connectrpc::ConnectError;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde_json::json;
 use tokio::time::Instant;
 use tokio::time::sleep;
@@ -44,6 +46,7 @@ use super::status::exit_signal_label;
 use super::status::is_expected_termination;
 use super::supervisor_crash_loop::SupervisorCrashLoopDecision;
 use super::supervisor_crash_loop::SupervisorCrashLoopPolicy;
+use super::supervisor_effects::SupervisorEffectContext;
 use super::supervisor_effects::SupervisorTimers;
 use super::supervisor_effects::dispatch_supervisor_event;
 use super::supervisor_effects::supervisor_effect_context;
@@ -214,17 +217,17 @@ async fn run_supervised_runtime_to_exit(
         )
         .await?;
 
-        let startup_outcome = wait_for_supervised_runtime_ready(
+        let runtime_context = SupervisedRuntimeContext {
             state,
-            &supervisor,
-            launch.launch_id,
+            supervisor: &supervisor,
+            launch_id: launch.launch_id,
             runtime_pid,
-            &mut child,
-            &mut machine,
             command_line,
-            launch.retry_command,
-        )
-        .await?;
+            retry_command: launch.retry_command,
+        };
+
+        let startup_outcome =
+            wait_for_supervised_runtime_ready(runtime_context, &mut child, &mut machine).await?;
 
         if let SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } = startup_outcome {
             let restart_backoff = restart_backoff_after_unexpected_exit(
@@ -245,17 +248,7 @@ async fn run_supervised_runtime_to_exit(
             return Err(error);
         }
 
-        let mut exit = monitor_supervised_runtime(
-            state,
-            &supervisor,
-            launch.launch_id,
-            runtime_pid,
-            &mut child,
-            command_line,
-            launch.retry_command,
-            machine,
-        )
-        .await?;
+        let mut exit = monitor_supervised_runtime(runtime_context, &mut child, machine).await?;
 
         let restart_backoff = restart_backoff_after_unexpected_exit(
             state,
@@ -369,6 +362,28 @@ struct SupervisedRuntimeExit {
     machine: SupervisorMachine,
 }
 
+#[derive(Clone, Copy)]
+struct SupervisedRuntimeContext<'a> {
+    state: &'a GatewayRuntimeState,
+    supervisor: &'a types::SupervisorIdentity,
+    launch_id: &'a str,
+    runtime_pid: u32,
+    command_line: &'a str,
+    retry_command: &'a str,
+}
+
+impl<'a> SupervisedRuntimeContext<'a> {
+    fn effect_context(self) -> SupervisorEffectContext<'a> {
+        supervisor_effect_context(
+            self.state,
+            self.supervisor,
+            self.launch_id,
+            Some(self.runtime_pid),
+            self.command_line,
+        )
+    }
+}
+
 struct SupervisedRuntimeStartupCheck<'a> {
     state: &'a GatewayRuntimeState,
     launch_id: &'a str,
@@ -391,26 +406,20 @@ enum SupervisedRuntimeStartupOutcome {
 }
 
 async fn wait_for_supervised_runtime_ready(
-    state: &GatewayRuntimeState,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    runtime_pid: u32,
+    context: SupervisedRuntimeContext<'_>,
     child: &mut Child,
     machine: &mut SupervisorMachine,
-    command_line: &str,
-    retry_command: &str,
 ) -> Result<SupervisedRuntimeStartupOutcome, CliError> {
-    let supervisor_id = supervisor
-        .supervisor_id
-        .as_deref()
-        .ok_or_else(|| CliError::internal(command_line.to_owned(), "supervisor omitted id"))?;
+    let supervisor_id = context.supervisor.supervisor_id.as_deref().ok_or_else(|| {
+        CliError::internal(context.command_line.to_owned(), "supervisor omitted id")
+    })?;
     let check = SupervisedRuntimeStartupCheck {
-        state,
-        launch_id,
-        runtime_pid,
+        state: context.state,
+        launch_id: context.launch_id,
+        runtime_pid: context.runtime_pid,
         supervisor_id,
-        command_line,
-        retry_command,
+        command_line: context.command_line,
+        retry_command: context.retry_command,
     };
     let startup_deadline = Instant::now()
         + Duration::from_millis(
@@ -430,19 +439,13 @@ async fn wait_for_supervised_runtime_ready(
             dispatch_supervisor_event(
                 machine,
                 SupervisorEvent::ChildExited {
-                    runtime_pid,
+                    runtime_pid: context.runtime_pid,
                     exit_kind,
                     exit_code: status.code(),
                     signal: exit_signal_label(status),
                     message: describe_exit_status(status),
                 },
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 None,
             )
             .await?;
@@ -459,13 +462,7 @@ async fn wait_for_supervised_runtime_ready(
                 dispatch_supervisor_event(
                     machine,
                     SupervisorEvent::WatchReady,
-                    supervisor_effect_context(
-                        state,
-                        supervisor,
-                        launch_id,
-                        Some(runtime_pid),
-                        command_line,
-                    ),
+                    context.effect_context(),
                     None,
                 )
                 .await?;
@@ -489,13 +486,7 @@ async fn wait_for_supervised_runtime_ready(
                 dispatch_supervisor_event(
                     machine,
                     SupervisorEvent::StartupDeadlineElapsed { message },
-                    supervisor_effect_context(
-                        state,
-                        supervisor,
-                        launch_id,
-                        Some(runtime_pid),
-                        command_line,
-                    ),
+                    context.effect_context(),
                     None,
                 )
                 .await?;
@@ -513,13 +504,7 @@ async fn wait_for_supervised_runtime_ready(
             dispatch_supervisor_event(
                 machine,
                 SupervisorEvent::ControlSocketObserved,
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 None,
             )
             .await?;
@@ -535,13 +520,7 @@ async fn wait_for_supervised_runtime_ready(
         SupervisorEvent::StartupDeadlineElapsed {
             message: message.clone(),
         },
-        supervisor_effect_context(
-            state,
-            supervisor,
-            launch_id,
-            Some(runtime_pid),
-            command_line,
-        ),
+        context.effect_context(),
         None,
     )
     .await?;
@@ -549,50 +528,49 @@ async fn wait_for_supervised_runtime_ready(
 }
 
 async fn monitor_supervised_runtime(
-    state: &GatewayRuntimeState,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    runtime_pid: u32,
+    context: SupervisedRuntimeContext<'_>,
     child: &mut Child,
-    command_line: &str,
-    retry_command: &str,
-    mut machine: SupervisorMachine,
+    machine: SupervisorMachine,
 ) -> Result<SupervisedRuntimeExit, CliError> {
-    let mut stop_signal = SupervisorStopSignal::new(command_line)?;
+    let mut stop_signal = OsSupervisorStopSignal::new(context.command_line)?;
+
+    monitor_supervised_runtime_with_stop_signal(context, child, machine, &mut stop_signal).await
+}
+
+async fn monitor_supervised_runtime_with_stop_signal<S: SupervisorStopSignalSource + ?Sized>(
+    context: SupervisedRuntimeContext<'_>,
+    child: &mut Child,
+    mut machine: SupervisorMachine,
+    stop_signal: &mut S,
+) -> Result<SupervisedRuntimeExit, CliError> {
     let mut timers = SupervisorTimers::default();
 
     loop {
         if let Some(status) = child.try_wait().map_err(|error| {
             CliError::new(
                 "failed while monitoring supervised gateway",
-                command_line,
+                context.command_line,
                 ErrorStage::Internal,
                 error.to_string(),
-                vec![retry_command_hint(retry_command)],
+                vec![retry_command_hint(context.retry_command)],
             )
         })? {
             let exit_kind = supervisor_child_exit_kind(&machine, status);
             dispatch_supervisor_event(
                 &mut machine,
                 SupervisorEvent::ChildExited {
-                    runtime_pid,
+                    runtime_pid: context.runtime_pid,
                     exit_kind,
                     exit_code: status.code(),
                     signal: exit_signal_label(status),
                     message: describe_exit_status(status),
                 },
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 Some(&mut timers),
             )
             .await?;
             return Ok(SupervisedRuntimeExit {
-                runtime_pid,
+                runtime_pid: context.runtime_pid,
                 status,
                 exit_kind,
                 machine,
@@ -600,25 +578,22 @@ async fn monitor_supervised_runtime(
         }
 
         if timers.kill_deadline_elapsed() {
-            let message = format!("pid {runtime_pid} remained active after supervisor hard kill");
+            let message = format!(
+                "pid {} remained active after supervisor hard kill",
+                context.runtime_pid
+            );
             dispatch_supervisor_event(
                 &mut machine,
                 SupervisorEvent::EscalationDeadlineElapsed {
                     message: message.clone(),
                 },
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 Some(&mut timers),
             )
             .await?;
             return Err(supervisor_termination_timeout_error(
-                command_line,
-                retry_command,
+                context.command_line,
+                context.retry_command,
                 message,
             ));
         }
@@ -627,13 +602,7 @@ async fn monitor_supervised_runtime(
             dispatch_supervisor_event(
                 &mut machine,
                 SupervisorEvent::TerminateDeadlineElapsed,
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 Some(&mut timers),
             )
             .await?;
@@ -643,13 +612,7 @@ async fn monitor_supervised_runtime(
             dispatch_supervisor_event(
                 &mut machine,
                 SupervisorEvent::GraceDeadlineElapsed,
-                supervisor_effect_context(
-                    state,
-                    supervisor,
-                    launch_id,
-                    Some(runtime_pid),
-                    command_line,
-                ),
+                context.effect_context(),
                 Some(&mut timers),
             )
             .await?;
@@ -664,31 +627,19 @@ async fn monitor_supervised_runtime(
                     SupervisorEvent::StopIntentReceived {
                         operation_id: stop_operation_id.clone(),
                     },
-                    supervisor_effect_context(
-                        state,
-                        supervisor,
-                        launch_id,
-                        Some(runtime_pid),
-                        command_line,
-                    ),
+                    context.effect_context(),
                     Some(&mut timers),
                 )
                 .await?;
 
-                match report.runtime_stop_result(command_line)? {
+                match report.runtime_stop_result(context.command_line)? {
                     Ok(()) => {
                         dispatch_supervisor_event(
                             &mut machine,
                             SupervisorEvent::StopRpcAccepted {
                                 operation_id: stop_operation_id.clone(),
                             },
-                            supervisor_effect_context(
-                                state,
-                                supervisor,
-                                launch_id,
-                                Some(runtime_pid),
-                                command_line,
-                            ),
+                            context.effect_context(),
                             Some(&mut timers),
                         )
                         .await?;
@@ -701,13 +652,7 @@ async fn monitor_supervised_runtime(
                                 disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
                                 message: runtime_control_stop_failure_message(&error),
                             },
-                            supervisor_effect_context(
-                                state,
-                                supervisor,
-                                launch_id,
-                                Some(runtime_pid),
-                                command_line,
-                            ),
+                            context.effect_context(),
                             Some(&mut timers),
                         )
                         .await?;
@@ -720,17 +665,15 @@ async fn monitor_supervised_runtime(
                                 disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
                                 message: runtime_control_stop_failure_message(&error),
                             },
-                            supervisor_effect_context(
-                                state,
-                                supervisor,
-                                launch_id,
-                                Some(runtime_pid),
-                                command_line,
-                            ),
+                            context.effect_context(),
                             Some(&mut timers),
                         )
                         .await?;
-                        return Err(runtime_control_stop_error(error, command_line, retry_command));
+                        return Err(runtime_control_stop_error(
+                            error,
+                            context.command_line,
+                            context.retry_command,
+                        ));
                     }
                 }
             }
@@ -1114,14 +1057,18 @@ fn supervisor_termination_timeout_error(
     )
 }
 
+trait SupervisorStopSignalSource {
+    fn recv(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
+}
+
 #[cfg(unix)]
-struct SupervisorStopSignal {
+struct OsSupervisorStopSignal {
     interrupt: tokio::signal::unix::Signal,
     terminate: tokio::signal::unix::Signal,
 }
 
 #[cfg(unix)]
-impl SupervisorStopSignal {
+impl OsSupervisorStopSignal {
     fn new(command_line: &str) -> Result<Self, CliError> {
         Ok(Self {
             interrupt: tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
@@ -1130,26 +1077,34 @@ impl SupervisorStopSignal {
                 .map_err(|error| supervisor_signal_error(error, command_line))?,
         })
     }
+}
 
-    async fn recv(&mut self) {
-        tokio::select! {
-            _ = self.interrupt.recv() => {}
-            _ = self.terminate.recv() => {}
-        }
+#[cfg(unix)]
+impl SupervisorStopSignalSource for OsSupervisorStopSignal {
+    fn recv(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
+        Box::pin(async {
+            tokio::select! {
+                _ = self.interrupt.recv() => {}
+                _ = self.terminate.recv() => {}
+            }
+        })
     }
 }
 
 #[cfg(not(unix))]
-struct SupervisorStopSignal;
+struct OsSupervisorStopSignal;
 
 #[cfg(not(unix))]
-impl SupervisorStopSignal {
+impl OsSupervisorStopSignal {
     fn new(_command_line: &str) -> Result<Self, CliError> {
         Ok(Self)
     }
+}
 
-    async fn recv(&mut self) {
-        std::future::pending::<()>().await;
+#[cfg(not(unix))]
+impl SupervisorStopSignalSource for OsSupervisorStopSignal {
+    fn recv(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
+        Box::pin(std::future::pending())
     }
 }
 
@@ -1215,5 +1170,511 @@ fn supervisor_identity(supervisor_pid: u32) -> types::SupervisorIdentity {
         // the reducer owns transitions, not generation persistence yet.
         generation: Some(SUPERVISOR_GENERATION),
         ..Default::default()
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use std::ffi::OsString;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+    use tempfile::TempDir;
+    use tempfile::tempdir;
+
+    use super::super::lifecycle_records;
+    use super::*;
+    use crate::self_host::SelfHostConfig;
+    use crate::self_host::SelfHostRuntimePaths;
+
+    const COMMAND_LINE: &str = "onequery gateway start";
+    const LAUNCH_ID: &str = "launch-supervisor-escalation";
+    const RETRY_COMMAND: &str = "onequery gateway start";
+
+    #[tokio::test]
+    async fn stop_monitor_exits_from_stop_requested_when_runtime_honors_graceful_stop() {
+        let result = run_stop_escalation_fixture(&["exit-on-graceful-stop"]).await;
+
+        assert_eq!(result.exit_kind, SupervisorChildExitKind::Expected);
+        assert_eq!(
+            result.child_exit_previous_phase(),
+            Some(types::SupervisorPhase::SUPERVISOR_PHASE_STOP_REQUESTED)
+        );
+        assert_eq!(
+            result.final_supervisor_phase,
+            types::SupervisorPhase::SUPERVISOR_PHASE_EXITED
+        );
+        assert!(
+            !result.has_phase(types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING),
+            "graceful runtime exit should not require platform termination"
+        );
+    }
+
+    #[tokio::test]
+    async fn stop_monitor_terminates_runtime_that_ignores_graceful_stop() {
+        let result =
+            run_stop_escalation_fixture(&["ignore-graceful-stop", "exit-on-sigterm"]).await;
+
+        assert_eq!(result.exit_kind, SupervisorChildExitKind::Expected);
+        assert_eq!(
+            result.child_exit_previous_phase(),
+            Some(types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING)
+        );
+        assert_eq!(
+            result.final_supervisor_phase,
+            types::SupervisorPhase::SUPERVISOR_PHASE_EXITED
+        );
+        assert!(result.has_phase(types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING));
+        assert!(
+            !result.has_phase(types::SupervisorPhase::SUPERVISOR_PHASE_ESCALATING),
+            "runtime exited during platform termination before hard-kill escalation"
+        );
+    }
+
+    #[tokio::test]
+    async fn stop_monitor_hard_kills_runtime_that_ignores_graceful_stop_and_sigterm() {
+        let result = run_stop_escalation_fixture(&["ignore-graceful-stop", "ignore-sigterm"]).await;
+
+        assert_eq!(result.exit_kind, SupervisorChildExitKind::Expected);
+        assert_eq!(
+            result.child_exit_previous_phase(),
+            Some(types::SupervisorPhase::SUPERVISOR_PHASE_ESCALATING)
+        );
+        assert_eq!(
+            result.final_supervisor_phase,
+            types::SupervisorPhase::SUPERVISOR_PHASE_EXITED
+        );
+        assert_eq!(result.signal.as_deref(), Some("SIGKILL"));
+        assert!(result.has_phase(types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING));
+        assert!(result.has_phase(types::SupervisorPhase::SUPERVISOR_PHASE_ESCALATING));
+    }
+
+    #[tokio::test]
+    async fn foreground_and_background_launch_modes_share_startup_handshake() {
+        let foreground = run_launch_mode_parity_fixture(LaunchParityMode::Foreground).await;
+        let background = run_launch_mode_parity_fixture(LaunchParityMode::Background).await;
+
+        assert_eq!(foreground.transitions, background.transitions);
+        assert_eq!(
+            foreground.transitions,
+            vec![
+                SupervisorTransitionRecord {
+                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+                    event: "launch_requested".to_owned(),
+                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+                },
+                SupervisorTransitionRecord {
+                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
+                    event: "child_spawned".to_owned(),
+                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+                },
+                SupervisorTransitionRecord {
+                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
+                    event: "control_socket_observed".to_owned(),
+                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
+                },
+                SupervisorTransitionRecord {
+                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_READY,
+                    event: "watch_ready".to_owned(),
+                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
+                },
+                SupervisorTransitionRecord {
+                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_EXITED,
+                    event: "child_exited".to_owned(),
+                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_READY,
+                },
+            ]
+        );
+        assert!(
+            !foreground.log_file_present,
+            "foreground launch should inherit stdio without creating background log capture"
+        );
+        assert!(
+            background.log_file_present,
+            "background launch should capture runtime stdio in the gateway log"
+        );
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    enum LaunchParityMode {
+        Foreground,
+        Background,
+    }
+
+    struct LaunchParityResult {
+        log_file_present: bool,
+        transitions: Vec<SupervisorTransitionRecord>,
+    }
+
+    async fn run_launch_mode_parity_fixture(mode: LaunchParityMode) -> LaunchParityResult {
+        let fixture = SupervisorFixture::new_with_test_launch_options(
+            &["exit-after-ready"],
+            Some(500),
+            Some(150),
+        );
+        let state = fixture.state();
+        let runtime_entry = supervisor_fixture_runtime_path();
+
+        match mode {
+            LaunchParityMode::Foreground => {
+                let runtime_command = OsString::from("bun");
+                let exit = run_foreground_supervised_runtime(
+                    &state,
+                    LAUNCH_ID,
+                    runtime_command.as_os_str(),
+                    runtime_entry.as_path(),
+                    fixture.launch_config_path.as_path(),
+                    COMMAND_LINE,
+                    RETRY_COMMAND,
+                )
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("expected foreground supervisor parity run: {error}")
+                });
+
+                assert_eq!(exit.kind, MonitoredRuntimeExitKind::Expected);
+            }
+            LaunchParityMode::Background => {
+                let output = run_gateway_supervisor(
+                    &state,
+                    &crate::GatewaySupervisorArgs {
+                        runtime_command: OsString::from("bun"),
+                        runtime_entry,
+                        launch_config: fixture.launch_config_path.clone(),
+                        crash_loop_max_restarts: 0,
+                        crash_loop_initial_backoff_ms: 1,
+                        crash_loop_max_backoff_ms: 1,
+                    },
+                    COMMAND_LINE,
+                )
+                .await
+                .unwrap_or_else(|error| {
+                    panic!("expected background supervisor parity run: {error}")
+                });
+
+                assert_eq!(
+                    output
+                        .data
+                        .get("status")
+                        .and_then(serde_json::Value::as_str),
+                    Some("stopped")
+                );
+            }
+        }
+
+        LaunchParityResult {
+            log_file_present: fixture.paths.server_log_path.is_file(),
+            transitions: supervisor_transitions(&fixture.paths),
+        }
+    }
+
+    async fn run_stop_escalation_fixture(modes: &[&str]) -> StopEscalationResult {
+        let fixture = SupervisorFixture::new();
+        let state = fixture.state();
+        let supervisor = supervisor_identity(std::process::id());
+        let mut machine = SupervisorMachine::new();
+
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::LaunchRequested,
+            supervisor_effect_context(&state, &supervisor, LAUNCH_ID, None, COMMAND_LINE),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected launch request dispatch: {error}"));
+
+        let mut child = spawn_supervisor_fixture_runtime(&fixture, modes);
+        let runtime_pid = child.id();
+
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::ChildSpawned { runtime_pid },
+            supervisor_effect_context(
+                &state,
+                &supervisor,
+                LAUNCH_ID,
+                Some(runtime_pid),
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected child spawned dispatch: {error}"));
+
+        let runtime_context = SupervisedRuntimeContext {
+            state: &state,
+            supervisor: &supervisor,
+            launch_id: LAUNCH_ID,
+            runtime_pid,
+            command_line: COMMAND_LINE,
+            retry_command: RETRY_COMMAND,
+        };
+
+        match wait_for_supervised_runtime_ready(runtime_context, &mut child, &mut machine)
+            .await
+            .unwrap_or_else(|error| panic!("expected runtime fixture readiness: {error}"))
+        {
+            SupervisedRuntimeStartupOutcome::Ready => {}
+            SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } => {
+                panic!("runtime fixture exited before ready: {error}");
+            }
+        }
+
+        let mut stop_signal = ImmediateStopSignal::default();
+        let exit = monitor_supervised_runtime_with_stop_signal(
+            runtime_context,
+            &mut child,
+            machine,
+            &mut stop_signal,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected supervised runtime stop: {error}"));
+        let transitions = supervisor_transitions(&fixture.paths);
+        let final_supervisor_phase = supervisor_snapshot_phase(&fixture.paths);
+
+        StopEscalationResult {
+            exit_kind: exit.exit_kind,
+            final_supervisor_phase,
+            signal: exit_signal_label(exit.status),
+            transitions,
+        }
+    }
+
+    fn supervisor_fixture_runtime_path() -> PathBuf {
+        onequery_utils::repo_root()
+            .unwrap_or_else(|error| panic!("expected repo root from onequery-utils: {error}"))
+            .join("apps")
+            .join("cli")
+            .join("crates")
+            .join("gateway")
+            .join("tests")
+            .join("fixtures")
+            .join("supervisor-escalation-runtime.ts")
+    }
+
+    fn spawn_supervisor_fixture_runtime(fixture: &SupervisorFixture, modes: &[&str]) -> Child {
+        let repo_root = onequery_utils::repo_root()
+            .unwrap_or_else(|error| panic!("expected repo root from onequery-utils: {error}"));
+        let fixture_path = supervisor_fixture_runtime_path();
+        let supervisor_pid = std::process::id();
+        let mut command = ProcessCommand::new("bun");
+        command
+            .arg(fixture_path)
+            .arg(&fixture.launch_config_path)
+            .arg(supervisor_pid.to_string())
+            .arg(supervisor_id_for_pid(supervisor_pid))
+            .arg("1")
+            .args(modes)
+            .current_dir(repo_root)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+
+        command
+            .spawn()
+            .unwrap_or_else(|error| panic!("expected supervisor runtime fixture spawn: {error}"))
+    }
+
+    #[derive(Default)]
+    struct ImmediateStopSignal {
+        delivered: bool,
+    }
+
+    impl SupervisorStopSignalSource for ImmediateStopSignal {
+        fn recv(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
+            if self.delivered {
+                return Box::pin(std::future::pending());
+            }
+
+            self.delivered = true;
+            Box::pin(std::future::ready(()))
+        }
+    }
+
+    struct SupervisorFixture {
+        _temp_dir: TempDir,
+        launch_config_path: PathBuf,
+        paths: SelfHostRuntimePaths,
+        socket_parent: PathBuf,
+    }
+
+    impl SupervisorFixture {
+        fn new() -> Self {
+            Self::new_with_test_launch_options(&[], None, None)
+        }
+
+        fn new_with_test_launch_options(
+            test_modes: &[&str],
+            test_ready_delay_ms: Option<u64>,
+            test_exit_after_ready_delay_ms: Option<u64>,
+        ) -> Self {
+            let temp_dir =
+                tempdir().unwrap_or_else(|error| panic!("expected supervisor temp dir: {error}"));
+            let paths = SelfHostRuntimePaths::from_dirs(
+                temp_dir.path().join("config").join("self-host"),
+                temp_dir.path().join("data"),
+            );
+            fs::create_dir_all(&paths.run_dir)
+                .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
+            fs::create_dir_all(&paths.logs_dir)
+                .unwrap_or_else(|error| panic!("expected logs dir creation: {error}"));
+
+            let socket_parent = paths
+                .runtime_control_socket_path
+                .parent()
+                .unwrap_or_else(|| panic!("expected runtime control socket parent"))
+                .to_path_buf();
+            fs::create_dir_all(&socket_parent)
+                .unwrap_or_else(|error| panic!("expected socket parent creation: {error}"));
+            let mut permissions = fs::metadata(&socket_parent)
+                .unwrap_or_else(|error| panic!("expected socket parent metadata: {error}"))
+                .permissions();
+            permissions.set_mode(0o700);
+            fs::set_permissions(&socket_parent, permissions)
+                .unwrap_or_else(|error| panic!("expected private socket parent: {error}"));
+
+            let launch_config_path = temp_dir.path().join("launch.json");
+            let mut launch_config = json!({
+                "launchId": LAUNCH_ID,
+                "runtimeControl": {
+                    "transport": {
+                        "kind": "unix",
+                        "socketPath": paths.runtime_control_socket_path.display().to_string(),
+                    },
+                },
+                "runtimePaths": {
+                    "backupsDir": paths.backups_dir.display().to_string(),
+                    "dataDir": paths.data_dir.display().to_string(),
+                    "lifecycleEventLogPath": paths.lifecycle_event_log_path.display().to_string(),
+                    "logsDir": paths.logs_dir.display().to_string(),
+                    "runDir": paths.run_dir.display().to_string(),
+                    "runtimeLeasePath": paths.runtime_lease_path.display().to_string(),
+                    "runtimeStatusSnapshotPath": paths.runtime_status_snapshot_path.display().to_string(),
+                },
+            });
+            if !test_modes.is_empty() {
+                launch_config["testModes"] = json!(test_modes);
+            }
+            if let Some(delay_ms) = test_ready_delay_ms {
+                launch_config["testReadyDelayMs"] = json!(delay_ms);
+            }
+            if let Some(delay_ms) = test_exit_after_ready_delay_ms {
+                launch_config["testExitAfterReadyDelayMs"] = json!(delay_ms);
+            }
+            fs::write(
+                &launch_config_path,
+                serde_json::to_string_pretty(&launch_config).unwrap_or_else(|error| {
+                    panic!("expected launch config serialization: {error}")
+                }),
+            )
+            .unwrap_or_else(|error| panic!("expected launch config write: {error}"));
+
+            Self {
+                _temp_dir: temp_dir,
+                launch_config_path,
+                paths,
+                socket_parent,
+            }
+        }
+
+        fn state(&self) -> GatewayRuntimeState {
+            GatewayRuntimeState {
+                paths: self.paths.clone(),
+                bootstrapped: true,
+                config_created: false,
+                secrets_created: false,
+                config: Some(SelfHostConfig::default()),
+                pglite_dir_present: false,
+                log_file_present: false,
+                runtime_lease_present: false,
+                runtime_status_snapshot_present: false,
+            }
+        }
+    }
+
+    impl Drop for SupervisorFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.socket_parent);
+        }
+    }
+
+    struct StopEscalationResult {
+        exit_kind: SupervisorChildExitKind,
+        final_supervisor_phase: types::SupervisorPhase,
+        signal: Option<String>,
+        transitions: Vec<SupervisorTransitionRecord>,
+    }
+
+    impl StopEscalationResult {
+        fn child_exit_previous_phase(&self) -> Option<types::SupervisorPhase> {
+            self.transitions
+                .iter()
+                .find(|transition| transition.event == "child_exited")
+                .map(|transition| transition.previous_phase)
+        }
+
+        fn has_phase(&self, phase: types::SupervisorPhase) -> bool {
+            self.transitions
+                .iter()
+                .any(|transition| transition.current_phase == phase)
+        }
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    struct SupervisorTransitionRecord {
+        current_phase: types::SupervisorPhase,
+        event: String,
+        previous_phase: types::SupervisorPhase,
+    }
+
+    fn supervisor_transitions(paths: &SelfHostRuntimePaths) -> Vec<SupervisorTransitionRecord> {
+        lifecycle_records::decode_lifecycle_event_log_entries(
+            &fs::read(&paths.lifecycle_event_log_path)
+                .unwrap_or_else(|error| panic!("expected lifecycle event log read: {error}")),
+        )
+        .unwrap_or_else(|error| panic!("expected lifecycle event log decode: {error}"))
+        .into_iter()
+        .filter_map(|entry| {
+            let transition = match entry.payload.as_ref()? {
+                types::lifecycle_event_log_entry::Payload::SupervisorTransition(transition) => {
+                    transition
+                }
+                _ => return None,
+            };
+            Some(SupervisorTransitionRecord {
+                current_phase: transition
+                    .current_phase
+                    .and_then(|phase| phase.as_known())
+                    .unwrap_or(types::SupervisorPhase::SUPERVISOR_PHASE_UNSPECIFIED),
+                event: entry
+                    .transition_id
+                    .as_deref()
+                    .and_then(|transition_id| transition_id.rsplit(':').next())
+                    .unwrap_or("unknown")
+                    .to_owned(),
+                previous_phase: transition
+                    .previous_phase
+                    .and_then(|phase| phase.as_known())
+                    .unwrap_or(types::SupervisorPhase::SUPERVISOR_PHASE_UNSPECIFIED),
+            })
+        })
+        .collect()
+    }
+
+    fn supervisor_snapshot_phase(paths: &SelfHostRuntimePaths) -> types::SupervisorPhase {
+        let snapshot = lifecycle_records::decode_supervisor_status_snapshot(
+            &fs::read_to_string(&paths.supervisor_status_snapshot_path)
+                .unwrap_or_else(|error| panic!("expected supervisor snapshot read: {error}")),
+        )
+        .unwrap_or_else(|error| panic!("expected supervisor snapshot decode: {error}"));
+        snapshot
+            .status
+            .as_option()
+            .and_then(|status| status.phase)
+            .and_then(|phase| phase.as_known())
+            .unwrap_or(types::SupervisorPhase::SUPERVISOR_PHASE_UNSPECIFIED)
     }
 }

@@ -87,13 +87,13 @@ Comments:
 
 ### Tests
 
-- [ ] Add Rust reducer tests for the supervisor transition table covering every allowed transition and every rejected transition.
-- [ ] Add TypeScript runtime-control reducer tests for stop idempotency, operation-id conflict rejection, shutdown timeout, lifecycle failure details, and watcher non-durability.
-- [ ] Add Rust integration coverage using the generated runtime-control client for `GetStatus`, `Stop`, and `WatchStatus` over the Node UDS fixture.
-- [ ] Add cross-language tests for stale launch fencing, duplicate `operation_id`, operation-id conflict, timeout overflow, validation failures, and typed error details.
-- [ ] Add crash-recovery tests: child exits before control socket, exits after `READY`, corrupt durable snapshot, stale lock with live unrelated PID, stale socket, and mismatched supervisor generation.
-- [ ] Add stop escalation tests with a fixture runtime that ignores graceful stop, ignores SIGTERM/platform terminate, and exits during each supervisor state.
-- [ ] Add foreground/background parity tests proving both launch modes use the same lifecycle handshake and differ only in stdio/logging behavior.
+- [x] Add Rust reducer tests for the supervisor transition table covering every allowed transition and every rejected transition.
+- [x] Add TypeScript runtime-control reducer tests for stop idempotency, operation-id conflict rejection, shutdown timeout, lifecycle failure details, and watcher non-durability.
+- [x] Add Rust integration coverage using the generated runtime-control client for `GetStatus`, `Stop`, and `WatchStatus` over the Node UDS fixture.
+- [x] Add cross-language tests for stale launch fencing, duplicate `operation_id`, operation-id conflict, timeout overflow, validation failures, and typed error details.
+- [x] Add crash-recovery tests: child exits before control socket, exits after `READY`, corrupt durable snapshot, stale lock with live unrelated PID, stale socket, and mismatched supervisor generation.
+- [x] Add stop escalation tests with a fixture runtime that ignores graceful stop, ignores SIGTERM/platform terminate, and exits during each supervisor state.
+- [x] Add foreground/background parity tests proving both launch modes use the same lifecycle handshake and differ only in stdio/logging behavior.
 
 ## Connect References Consulted
 

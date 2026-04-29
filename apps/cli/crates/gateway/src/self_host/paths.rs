@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use onequery_cli_core::app_paths::config_dir;
-use onequery_cli_core::app_paths::data_dir;
-use onequery_cli_core::error::CliError;
+use onequery_core::app_paths::config_dir;
+use onequery_core::app_paths::data_dir;
+use onequery_core::error::CliError;
 
 use crate::self_host_paths::launch_config_path_for_launch;
 use crate::self_host_paths::runtime_control_socket_path_for_runtime;

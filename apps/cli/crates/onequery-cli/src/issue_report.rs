@@ -49,26 +49,42 @@ fn build_issue_title(snapshot: &DiagnosticSnapshot) -> String {
 }
 
 fn build_github_command(title: &str, report_path: &Path) -> String {
-    format!(
-        "gh issue create -R {GITHUB_REPOSITORY} --label {} --label {} --title {} --body-file {}",
-        quote_shell_arg(ISSUE_LABELS[0]),
-        quote_shell_arg(ISSUE_LABELS[1]),
-        quote_shell_arg(title),
-        quote_shell_arg(&report_path.display().to_string()),
-    )
-}
-
-fn quote_shell_arg(value: &str) -> String {
-    let mut quoted = String::with_capacity(value.len() + 2);
-    quoted.push('"');
-    for character in value.chars() {
-        if matches!(character, '\\' | '"' | '$' | '`') {
-            quoted.push('\\');
-        }
-        quoted.push(character);
-    }
-    quoted.push('"');
-    quoted
+    let body_file = report_path.display().to_string();
+    shlex::try_join([
+        "gh",
+        "issue",
+        "create",
+        "-R",
+        GITHUB_REPOSITORY,
+        "--label",
+        ISSUE_LABELS[0],
+        "--label",
+        ISSUE_LABELS[1],
+        "--title",
+        title,
+        "--body-file",
+        body_file.as_str(),
+    ])
+    .unwrap_or_else(|_| {
+        let sanitized_title = title.replace('\0', "");
+        let sanitized_body_file = body_file.replace('\0', "");
+        shlex::try_join([
+            "gh",
+            "issue",
+            "create",
+            "-R",
+            GITHUB_REPOSITORY,
+            "--label",
+            ISSUE_LABELS[0],
+            "--label",
+            ISSUE_LABELS[1],
+            "--title",
+            sanitized_title.as_str(),
+            "--body-file",
+            sanitized_body_file.as_str(),
+        ])
+        .unwrap_or_else(|_| format!("gh issue create -R {GITHUB_REPOSITORY}"))
+    })
 }
 
 #[cfg(test)]
@@ -78,8 +94,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use crate::diagnostics::DiagnosticSnapshot;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
 
     use super::build_issue_draft;
 
@@ -152,7 +168,7 @@ mod tests {
 
         assert_eq!(
             draft.github_command,
-            "gh issue create -R wordbricks/onequery --label \"bug\" --label \"cli\" --title \"[cli] QUERY_REJECTED\" --body-file \"/tmp/onequery-report-2026-04-23T03-20-00Z-req_123.md\""
+            "gh issue create -R wordbricks/onequery --label bug --label cli --title '[cli] QUERY_REJECTED' --body-file /tmp/onequery-report-2026-04-23T03-20-00Z-req_123.md"
         );
     }
 

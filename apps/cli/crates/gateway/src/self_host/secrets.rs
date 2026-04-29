@@ -2,8 +2,8 @@ use std::path::Path;
 
 use base64::Engine as _;
 use getrandom::fill as fill_random_bytes;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 

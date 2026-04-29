@@ -4,7 +4,7 @@ mod presentation;
 mod tests;
 mod workflow;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::cli::OrgSubcommand;
 use crate::output::CommandOutput;

@@ -4,8 +4,8 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::path::Path;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::super::GATEWAY_LOG_PREVIEW_LINE_COUNT;
 

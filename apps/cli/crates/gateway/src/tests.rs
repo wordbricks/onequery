@@ -7,9 +7,9 @@ use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 use uuid::Uuid;
 
-use onequery_cli_core::packaged_runtime::packaged_cli_relative_path;
-use onequery_cli_core::packaged_runtime::packaged_server_relative_path;
-use onequery_cli_core::packaged_runtime::runtime_root_env_var;
+use onequery_core::packaged_runtime::packaged_cli_relative_path;
+use onequery_core::packaged_runtime::packaged_server_relative_path;
+use onequery_core::packaged_runtime::runtime_root_env_var;
 
 use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::launch::RuntimeBundleRoot;
@@ -495,7 +495,7 @@ fn resolve_runtime_state_with_paths_for_test(
     paths: SelfHostRuntimePaths,
     access_mode: GatewayStateAccessMode,
     command_line: &str,
-) -> Result<GatewayRuntimeState, onequery_cli_core::error::CliError> {
+) -> Result<GatewayRuntimeState, onequery_core::error::CliError> {
     let bootstrap_result = match access_mode {
         GatewayStateAccessMode::BootstrapIfMissing => {
             Some(bootstrap_self_host_foundation(&paths, command_line)?)

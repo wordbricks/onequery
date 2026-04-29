@@ -1,8 +1,8 @@
 use std::net::IpAddr;
 use std::path::PathBuf;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use url::Url;
 
 use crate::commands::CommandContext;

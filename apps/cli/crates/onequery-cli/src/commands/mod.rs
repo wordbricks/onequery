@@ -39,10 +39,10 @@ use crate::platform::Terminal;
 use crate::recovery::missing_org_try_next;
 use crate::transport::query::QueryRequestWindow;
 use crate::transport::read_controls::ReadRequestControls;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::process::is_process_running as core_is_process_running;
-use onequery_cli_core::process_context::ProcessContext;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::process::is_process_running as core_is_process_running;
+use onequery_core::process_context::ProcessContext;
 
 pub(crate) const STARTUP_COMMAND: &str = "onequery";
 

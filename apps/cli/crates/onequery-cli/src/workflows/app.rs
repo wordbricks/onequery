@@ -10,7 +10,7 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 #[derive(Debug, Clone, Copy)]
 enum AppState {
@@ -250,7 +250,7 @@ mod tests {
     use crate::cli::ListReadArgs;
     use crate::cli::SourceSubcommand;
     use crate::workflows::runner::TransitionProgress;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
 
     use super::AppEffect;
     use super::AppEvent;

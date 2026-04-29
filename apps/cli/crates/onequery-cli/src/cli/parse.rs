@@ -11,8 +11,8 @@ use crate::output::EffectiveOutputMode;
 use crate::output::StdoutTarget;
 use crate::output::TerminalOutput;
 use crate::output::resolve_output_mode;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::model::Cli;
 use super::model::ParseOutcome;

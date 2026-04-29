@@ -109,7 +109,7 @@ fn file_storage_persist_preserves_in_memory_state_when_write_fails() {
     assert_eq!(
         (error.title.clone(), store),
         (
-            "failed to finalize auth file".to_owned(),
+            "failed to write auth file".to_owned(),
             AuthSessionStore::with_file_access_token_for_test(
                 invalid_auth_path,
                 Some("access_token_old".to_owned()),

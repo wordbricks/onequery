@@ -4,5 +4,5 @@ expression: "output.lines.join(\"\\n\")"
 ---
 Upgrade completed.
 Version: 1.2.3
-Installer: Bun
-Command: bun install -g @onequery/cli@latest
+Installer: install.sh
+Command: sh -c 'curl -fsSL https://onequery.dev/install.sh | sh'

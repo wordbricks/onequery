@@ -1,6 +1,6 @@
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
-use onequery_cli_core::path_utils;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_core::private_files;
 
 use super::config::SelfHostConfig;
 use super::file_io::load_toml_file;
@@ -37,7 +37,7 @@ pub fn bootstrap_self_host_foundation(
         (&paths.recovery_points_dir, "recovery-points"),
         (&paths.run_dir, "runtime"),
     ] {
-        path_utils::create_private_dir(path, command_line, ErrorStage::LoadConfig, label)?;
+        private_files::create_private_dir(path, command_line, ErrorStage::LoadConfig, label)?;
     }
 
     let config_created = write_default_toml_if_absent(

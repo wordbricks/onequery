@@ -18,7 +18,7 @@ use crate::transport::source_api::proto_json_object_from_json;
 use crate::transport::source_api::proto_json_value_from_json;
 use crate::transport::source_api::source_api_field_policy_has_encoding;
 use crate::transport::source_api::source_api_field_policy_has_path_capability;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::CommandContext;
 use super::args::SourceApiInputReader;
@@ -579,7 +579,7 @@ mod tests {
     use std::num::NonZeroU32;
 
     use buffa::MessageField;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tempfile::tempdir;

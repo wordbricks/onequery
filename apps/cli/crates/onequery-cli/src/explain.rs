@@ -1,5 +1,5 @@
 use clap::ValueEnum;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::diagnostics::TEXT_REPORT_COMMAND;
 
@@ -530,8 +530,8 @@ pub(crate) fn report_command_for_explanation(explanation: Explanation) -> Option
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use super::ExplainCode;

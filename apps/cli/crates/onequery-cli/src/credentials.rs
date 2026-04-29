@@ -14,8 +14,8 @@ use time::format_description::well_known::Rfc3339;
 
 use self::backends::load_auth_session_store;
 use crate::transport::auth::LoginCompletion;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum AuthSessionSource {

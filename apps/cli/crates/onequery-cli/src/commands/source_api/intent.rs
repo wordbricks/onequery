@@ -1,4 +1,4 @@
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::cli::ApiArgs;
 use crate::transport::source_api::SourceApiDescriptor;
@@ -123,7 +123,7 @@ fn infer_github_repository_selector(target: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use buffa::MessageField;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
 
     use crate::cli::ApiArgs;
     use crate::commands::ResolvedOrgSource;

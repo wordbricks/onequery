@@ -4,7 +4,7 @@ mod reducer;
 mod retry_policy;
 mod state;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::cli::ApiArgs;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;

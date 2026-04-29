@@ -7,8 +7,8 @@ use std::process::Command as ProcessCommand;
 use std::process::Stdio;
 use std::time::Duration;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde_json::json;
 use tokio::time::Instant;
 use tokio::time::sleep;
@@ -17,7 +17,7 @@ use crate::GatewayCommandOutput;
 use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
 use crate::self_host::write_self_host_launch_config;
-use onequery_cli_core::process_context::ProcessContext;
+use onequery_core::process_context::ProcessContext;
 
 use super::super::GATEWAY_START_POLL_ATTEMPTS;
 use super::super::GATEWAY_START_POLL_INTERVAL_MS;

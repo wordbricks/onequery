@@ -9,8 +9,8 @@ use crate::output::pretty_json_lines;
 use crate::transport::auth::LoginCompletion;
 use crate::transport::auth::WhoAmI;
 use crate::transport::org;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::super::CommandContext;
 
