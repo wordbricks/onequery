@@ -9,7 +9,7 @@ expression: rendered
 ## Summary
 
 - Generated at: `2026-04-23T03:12:11+00:00`
-- CLI version: `0.0.0`
+- CLI version: `0.1.49-alpha.1`
 - Command path: `query exec`
 - Request ID: `req_123`
 - Error code: `decode_error`
@@ -47,7 +47,7 @@ onequery query exec --source warehouse --sql "<excerpt: select 1>"
 {
   "schemaVersion": 1,
   "createdAt": "2026-04-23T03:12:11Z",
-  "cliVersion": "0.0.0",
+  "cliVersion": "0.1.49-alpha.1",
   "commandPath": "query exec",
   "commandLineSanitized": "onequery query exec --source warehouse --sql \"<excerpt: select 1>\"",
   "exitCode": 6,
