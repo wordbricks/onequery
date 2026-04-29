@@ -7,6 +7,7 @@ use crate::self_host::SelfHostRuntimePaths;
 use super::runtime::LogPreview;
 use super::runtime::RuntimeControlStatus;
 use super::runtime::read_managed_runtime_pid;
+use super::runtime::runtime_control_phase_label;
 use super::state::GatewayRuntimeState;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -19,13 +20,9 @@ enum RuntimeStatus<'a> {
 }
 
 impl RuntimeStatus<'_> {
-    const fn is_running(self) -> bool {
-        matches!(self, Self::Live(_) | Self::Running)
-    }
-
     fn label(self) -> &'static str {
         match self {
-            Self::Live(status) => status.phase.label(),
+            Self::Live(status) => runtime_control_phase_label(status.phase),
             Self::Running => "running",
             Self::StaleDurableRecords => "stale_durable_records",
             Self::NotRunning => "not_running",
@@ -189,7 +186,6 @@ fn runtime_state_json_with_status(
     status: RuntimeStatus<'_>,
 ) -> serde_json::Value {
     let mut value = json!({
-        "running": status.is_running(),
         "status": status.label(),
         "pgliteDirPresent": state.pglite_dir_present,
         "logFilePresent": state.log_file_present,
@@ -200,7 +196,6 @@ fn runtime_state_json_with_status(
     if let RuntimeStatus::Live(live_status) = status
         && let Some(object) = value.as_object_mut()
     {
-        object.insert("runtimeControlReachable".to_owned(), json!(true));
         if let Some(pid) = live_status.pid {
             object.insert("runtimePid".to_owned(), json!(pid));
         }
@@ -259,6 +254,7 @@ pub(super) fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
         "runtimeLeasePath": paths.runtime_lease_path.display().to_string(),
         "runtimeStatusSnapshotPath": paths.runtime_status_snapshot_path.display().to_string(),
         "supervisorStatusSnapshotPath": paths.supervisor_status_snapshot_path.display().to_string(),
+        "lifecycleEventLogPath": paths.lifecycle_event_log_path.display().to_string(),
         "releasesDir": paths.releases_dir.display().to_string(),
         "activeReleasePath": paths.active_release_path.display().to_string(),
         "recoveryPointsDir": paths.recovery_points_dir.display().to_string(),

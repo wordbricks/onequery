@@ -527,6 +527,18 @@ fn parse_invocation_accepts_hidden_gateway_supervisor_command() {
         PathBuf::from("/tmp/runtime/onequery-server.mjs")
     );
     assert_eq!(args.launch_config, PathBuf::from("/tmp/run/launch.json"));
+    assert_eq!(
+        args.crash_loop_max_restarts,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS
+    );
+    assert_eq!(
+        args.crash_loop_initial_backoff_ms,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS
+    );
+    assert_eq!(
+        args.crash_loop_max_backoff_ms,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS
+    );
 }
 
 #[test]

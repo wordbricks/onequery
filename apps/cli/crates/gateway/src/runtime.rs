@@ -7,12 +7,14 @@ mod process;
 mod shutdown;
 mod status;
 mod supervisor;
+mod supervisor_crash_loop;
+mod supervisor_effects;
+mod supervisor_machine;
 mod transport;
 
-#[cfg(test)]
-pub(crate) use control::RuntimeControlPhase;
 pub(crate) use control::RuntimeControlStatus;
 pub(crate) use control::read_live_runtime_status;
+pub(crate) use control::runtime_control_phase_label;
 pub(crate) use lifecycle::read_managed_runtime_pid;
 pub(crate) use logs::LogPreview;
 pub(crate) use logs::read_log_preview;

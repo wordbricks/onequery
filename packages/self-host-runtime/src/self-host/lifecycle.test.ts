@@ -36,10 +36,13 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
 
   return {
     controlEndpoint: {
-      socketPath: join(runDir, "runtime-control.sock"),
-      transport: "unix",
+      transport: {
+        kind: "unix",
+        socketPath: join(runDir, "runtime-control.sock"),
+      },
     },
     dataDir,
+    lifecycleEventLogPath: join(runDir, "lifecycle.events.pb"),
     logsDir,
     runtimeLeasePath: join(runDir, "runtime.lease.json"),
     runtimeStatusSnapshotPath: join(runDir, "runtime.status.json"),
@@ -304,6 +307,9 @@ describe("self-host lifecycle lease", () => {
       await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
         '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
       );
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"code":"RUNTIME_FAILURE_CODE_SHUTDOWN_REJECTED"'
+      );
     });
   });
 
@@ -327,6 +333,7 @@ describe("self-host lifecycle lease", () => {
       close: vi.fn(async () => {
         throw storageError;
       }),
+      failureCode: "checkpoint_failed" as const,
       name: "server-storage",
     };
     const exitProcess = vi.fn();
@@ -349,6 +356,58 @@ describe("self-host lifecycle lease", () => {
       await access(paths.leasePath);
       await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
         '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
+      );
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"code":"RUNTIME_FAILURE_CODE_CHECKPOINT_FAILED"'
+      );
+    });
+  });
+
+  it("records generic resource close failures in the lifecycle snapshot", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-resource-failure-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 446,
+    });
+    const processSignals = new EventEmitter();
+    const resourceError = new Error("runtime control close failed");
+    const server = {
+      stop: vi.fn(async () => {}),
+    };
+    const runtimeControlResource = {
+      close: vi.fn(async () => {
+        throw resourceError;
+      }),
+      name: "runtime-control",
+    };
+    const exitProcess = vi.fn();
+
+    attachGracefulShutdownHandlers({
+      exitProcess,
+      lease,
+      processSignals,
+      server,
+      shutdownResources: [runtimeControlResource],
+    });
+
+    processSignals.emit("SIGTERM");
+
+    await waitUntil(async () => {
+      expect(server.stop).toHaveBeenCalledWith(true);
+      expect(runtimeControlResource.close).toHaveBeenCalledTimes(1);
+      expect(exitProcess).toHaveBeenCalledWith(1);
+      await access(paths.statusPath);
+      await access(paths.leasePath);
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
+      );
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"code":"RUNTIME_FAILURE_CODE_RESOURCE_CLOSE_FAILED"'
       );
     });
   });
@@ -377,9 +436,12 @@ describe("self-host lifecycle lease", () => {
     controller.dispose();
     processSignals.emit("SIGTERM");
 
-    await expect(controller.shutdown("manual")).rejects.toBeInstanceOf(
-      RuntimeShutdownError
-    );
+    await expect(
+      controller.shutdown({
+        completion: "cleanup_only",
+        reason: "manual",
+      })
+    ).rejects.toBeInstanceOf(RuntimeShutdownError);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(server.stop).not.toHaveBeenCalled();
 
@@ -423,7 +485,10 @@ describe("self-host lifecycle lease", () => {
       shutdownResources: [storageResource],
     });
 
-    const shutdown = controller.shutdown("manual");
+    const shutdown = controller.shutdown({
+      completion: "cleanup_only",
+      reason: "manual",
+    });
     await waitUntil(async () => {
       expect(server.stop).toHaveBeenCalledWith(true);
     });
@@ -482,6 +547,7 @@ describe("self-host lifecycle lease", () => {
       runtimePaths: {
         backupsDir: join(root, "backups"),
         dataDir: paths.dataDir,
+        lifecycleEventLogPath: paths.lifecycleEventLogPath,
         logsDir: paths.logsDir,
         runDir: paths.runDir,
         runtimeLeasePath: paths.leasePath,
@@ -498,6 +564,7 @@ describe("self-host lifecycle lease", () => {
       paths: {
         controlEndpoint: paths.controlEndpoint,
         dataDir: paths.dataDir,
+        lifecycleEventLogPath: paths.lifecycleEventLogPath,
         logsDir: paths.logsDir,
         runtimeLeasePath: paths.leasePath,
         runtimeStatusSnapshotPath: paths.statusPath,

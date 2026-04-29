@@ -43,47 +43,47 @@ Comments:
 
 ### Supervisor State Machine
 
-- [ ] Implement the Rust supervisor as an explicit reducer/effect state machine with finite states: `starting`, `handshaking`, `ready`, `stop_requested`, `terminating`, `escalating`, `exited`, `failed`.
-- [ ] Document the formal transition table before implementation: state, event, guard, next state, emitted effects, durable event payload, and rejected-transition behavior.
-- [ ] Model these supervisor events explicitly: `launch_requested`, `child_spawned`, `control_socket_observed`, `watch_ready`, `stop_intent_received`, `stop_rpc_accepted`, `stop_rpc_failed`, `grace_deadline_elapsed`, `terminate_deadline_elapsed`, `child_exited`, `startup_deadline_elapsed`, `restart_scheduled`, and `artifact_recovery_completed`.
-- [ ] Handle `child_exited` from every non-terminal supervisor state. Unexpected child exit must produce a terminal runtime status/event with exit code, signal, phase, retryability, and launch identity.
-- [ ] Keep process effects outside the reducer: spawn, Connect dial, stream watch, signal, kill, file writes, log writes, sleep/backoff timers, and event-log appends.
-- [ ] Feed all Rust supervisor transitions into the durable lifecycle event log with sequence, monotonic timestamp, wall timestamp, operation id/correlation id, launch identity, supervisor generation, and exit status/signal when present.
-- [ ] Make foreground and background launch use the same supervisor lifecycle handshake path, with only stdio/logging differences.
-- [ ] Add crash-loop policy as explicit config: disabled by default or bounded restart count with exponential backoff and a terminal `failed` phase.
+- [x] Implement the Rust supervisor as an explicit reducer/effect state machine with finite states: `starting`, `handshaking`, `ready`, `stop_requested`, `terminating`, `escalating`, `exited`, `failed`.
+- [x] Document the formal transition table before implementation: state, event, guard, next state, emitted effects, durable event payload, and rejected-transition behavior.
+- [x] Model these supervisor events explicitly: `launch_requested`, `child_spawned`, `control_socket_observed`, `watch_ready`, `stop_intent_received`, `stop_rpc_accepted`, `stop_rpc_failed`, `grace_deadline_elapsed`, `terminate_deadline_elapsed`, `child_exited`, `startup_deadline_elapsed`, `restart_scheduled`, and `artifact_recovery_completed`.
+- [x] Handle `child_exited` from every non-terminal supervisor state. Unexpected child exit must produce a terminal runtime status/event with exit code, signal, phase, retryability, and launch identity.
+- [x] Keep process effects outside the reducer: spawn, Connect dial, stream watch, signal, kill, file writes, log writes, sleep/backoff timers, and event-log appends.
+- [x] Feed all Rust supervisor transitions into the durable lifecycle event log with sequence, monotonic timestamp, wall timestamp, operation id/correlation id, launch identity, supervisor generation, and exit status/signal when present.
+- [x] Make foreground and background launch use the same supervisor lifecycle handshake path, with only stdio/logging differences.
+- [x] Add crash-loop policy as explicit config: disabled by default or bounded restart count with exponential backoff and a terminal `failed` phase.
 
 ### Runtime State Machine
 
-- [ ] Ensure runtime-control actor, shutdown coordinator, and lease persistence share one transition path so each runtime phase change increments exactly one runtime sequence.
-- [ ] Keep watcher registry out of durable lifecycle state. Watchers are subscription state, not lifecycle truth.
-- [ ] Make TypeScript shutdown enforce `grace_timeout` with a reducer event such as `shutdown_timeout_elapsed`: transition to `shutdown_failed` with `SHUTDOWN_TIMEOUT`, then let Rust supervisor escalate process termination.
-- [ ] Pass stop target, operation id, completion, reason, and grace timeout through the actor and shutdown coordinator instead of reading partial request state in effects.
-- [ ] Preserve runtime failure detail in state transitions: `SHUTDOWN_REJECTED`, `SHUTDOWN_TIMEOUT`, `RESOURCE_CLOSE_FAILED`, `CHECKPOINT_FAILED`, and `INTERNAL`.
-- [ ] Avoid storing derivable booleans or duplicate mode in runtime context. UI/CLI output should derive from phase, tags/status helpers, and transition payloads.
+- [x] Ensure runtime-control actor, shutdown coordinator, and lease persistence share one transition path so each runtime phase change increments exactly one runtime sequence.
+- [x] Keep watcher registry out of durable lifecycle state. Watchers are subscription state, not lifecycle truth.
+- [x] Make TypeScript shutdown enforce `grace_timeout` with a reducer event such as `shutdown_timeout_elapsed`: transition to `shutdown_failed` with `SHUTDOWN_TIMEOUT`, then let Rust supervisor escalate process termination.
+- [x] Pass stop target, operation id, completion, reason, and grace timeout through the actor and shutdown coordinator instead of reading partial request state in effects.
+- [x] Preserve runtime failure detail in state transitions: `SHUTDOWN_REJECTED`, `SHUTDOWN_TIMEOUT`, `RESOURCE_CLOSE_FAILED`, `CHECKPOINT_FAILED`, and `INTERNAL`.
+- [x] Avoid storing derivable booleans or duplicate mode in runtime context. UI/CLI output should derive from phase, tags/status helpers, and transition payloads.
 
 ### Process Robustness
 
-- [ ] Add two-stage termination owned by the supervisor: RPC graceful stop, then SIGTERM/platform terminate, then SIGKILL or platform hard-kill after an explicit deadline.
-- [ ] Write terminal runtime status/event when the child exits unexpectedly, including exit code, signal, retryability, launch id, data dir, runtime pid, supervisor pid, and supervisor generation.
-- [ ] Harden stale artifact handling against PID reuse by requiring launch id, data dir, process liveness, runtime pid, supervisor pid, and supervisor generation to match before trusting files or removing sockets.
-- [ ] Remove stale sockets only after identity checks prove they belong to the current launch generation or are unreachable artifacts.
-- [ ] Treat corrupt durable snapshots as recovery events. Do not silently ignore corruption except in explicitly bounded pre-handshake retry windows.
+- [x] Add two-stage termination owned by the supervisor: RPC graceful stop, then SIGTERM/platform terminate, then SIGKILL or platform hard-kill after an explicit deadline.
+- [x] Write terminal runtime status/event when the child exits unexpectedly, including exit code, signal, retryability, launch id, data dir, runtime pid, supervisor pid, and supervisor generation.
+- [x] Harden stale artifact handling against PID reuse by requiring launch id, data dir, process liveness, runtime pid, supervisor pid, and supervisor generation to match before trusting files or removing sockets.
+- [x] Remove stale sockets only after identity checks prove they belong to the current launch generation or are unreachable artifacts.
+- [x] Treat corrupt durable snapshots as recovery events. Do not silently ignore corruption except in explicitly bounded pre-handshake retry windows.
 
 ### Transport and Security
 
-- [ ] Generalize `runtime_control.transport` beyond Unix sockets: Unix UDS now, Windows named pipe or loopback h2c with a random per-launch bearer token later.
-- [ ] Use connect-rust custom connectors for non-TCP transports instead of inventing a parallel RPC transport.
-- [ ] Verify runtime control socket/pipe parent directories are private, remove stale sockets only after identity checks, and keep socket mode `0600`.
-- [ ] Add graceful close behavior for active `WatchStatus` streams so shutdown does not leak sessions or leave clients hanging indefinitely.
-- [ ] Require launch-scoped auth/fencing metadata for any non-UDS transport before enabling it.
+- [x] Generalize `runtime_control.transport` beyond Unix sockets: Unix UDS now, Windows named pipe or loopback h2c with a random per-launch bearer token later.
+- [x] Use connect-rust custom connectors for non-TCP transports instead of inventing a parallel RPC transport.
+- [x] Verify runtime control socket/pipe parent directories are private, remove stale sockets only after identity checks, and keep socket mode `0600`.
+- [x] Add graceful close behavior for active `WatchStatus` streams so shutdown does not leak sessions or leave clients hanging indefinitely.
+- [x] Require launch-scoped auth/fencing metadata for any non-UDS transport before enabling it.
 
 ### Deletion Checklist
 
 - [x] Delete Rust serde structs for legacy runtime lock/state and supervisor state once proto records land.
 - [x] Delete TypeScript zod schemas/interfaces for legacy lock/state records once proto records land.
 - [x] Delete pid-only and stop-request control paths once supervisor-owned lifecycle events replace them.
-- [ ] Delete TCP readiness as a primary startup signal. Keep it only as an explicitly documented fallback if needed for crash recovery or pre-handshake diagnostics.
-- [ ] Delete phase enums that duplicate generated `RuntimePhase` unless they are narrow internal reducer states with documented mapping.
+- [x] Delete TCP readiness as a primary startup signal. Keep it only as an explicitly documented fallback if needed for crash recovery or pre-handshake diagnostics.
+- [x] Delete phase enums that duplicate generated `RuntimePhase` unless they are narrow internal reducer states with documented mapping.
 
 ### Tests
 

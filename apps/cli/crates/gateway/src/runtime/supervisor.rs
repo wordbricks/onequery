@@ -1,121 +1,93 @@
+use std::ffi::OsStr;
+use std::path::Path;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::ExitStatus;
 use std::process::Stdio;
 use std::time::Duration;
 
-use buffa::MessageField;
-use chrono::Utc;
 use connectrpc::ConnectError;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
 use tokio::time::Instant;
 use tokio::time::sleep;
+use tokio::time::timeout;
+use uuid::Uuid;
 
 use crate::GatewayCommandOutput;
 use crate::GatewaySupervisorArgs;
 use crate::runtime_control::types;
-use crate::self_host::SelfHostRuntimePaths;
-use onequery_cli_core::path_utils;
+use crate::runtime_probe_host;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
+use super::super::GATEWAY_START_POLL_ATTEMPTS;
+use super::super::GATEWAY_START_POLL_INTERVAL_MS;
 use super::super::state::GatewayRuntimeState;
-use super::control::request_runtime_control_stop;
+use super::control::RuntimeControlCallHeaders;
+use super::control::RuntimeControlStatus;
+use super::control::RuntimeControlStatusWatchEvent;
 use super::control::runtime_control_error_allows_fallback;
+use super::control::runtime_control_phase_is_terminal;
+use super::control::runtime_control_phase_label;
+use super::control::runtime_control_watch_event_from_proto;
+use super::control::watch_runtime_control_status;
 use super::control_error::runtime_control_connect_error_summary;
 use super::control_error::with_runtime_control_connect_error_metadata;
-use super::lifecycle::ManagedRuntimeIdentity;
-use super::lifecycle_records;
+use super::lifecycle::read_runtime_status_snapshot_for_recovery;
+use super::lifecycle::runtime_launch_id_matches;
+use super::lifecycle::runtime_phase_label;
+use super::lifecycle::runtime_status_snapshot_pid_and_phase;
 use super::process::background_log_stdio;
-use super::shutdown::terminate_process;
 use super::status::describe_exit_status;
 use super::status::exit_signal_label;
 use super::status::is_expected_termination;
+use super::supervisor_crash_loop::SupervisorCrashLoopDecision;
+use super::supervisor_crash_loop::SupervisorCrashLoopPolicy;
+use super::supervisor_effects::SupervisorTimers;
+use super::supervisor_effects::dispatch_supervisor_event;
+use super::supervisor_effects::supervisor_effect_context;
+use super::supervisor_machine::SupervisorChildExitKind;
+use super::supervisor_machine::SupervisorEvent;
+use super::supervisor_machine::SupervisorMachine;
+use super::supervisor_machine::SupervisorMachineState;
+use super::supervisor_machine::SupervisorStopRpcFailureDisposition;
 use super::transport::retry_command_hint;
 use super::transport::spawn_launch_error;
 
-const SUPERVISOR_POLL_INTERVAL: Duration = Duration::from_millis(100);
-const LIFECYCLE_SCHEMA_VERSION: u32 = 1;
 const SUPERVISOR_GENERATION: u64 = 1;
-const SUPERVISOR_RUNTIME_STOP_REASON: &str = "onequery gateway stop";
-const SUPERVISOR_RUNTIME_STOP_GRACE_TIMEOUT: Duration = Duration::from_secs(30);
-const SUPERVISOR_RUNTIME_TERMINATE_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(crate) async fn run_gateway_supervisor(
     state: &GatewayRuntimeState,
     args: &GatewaySupervisorArgs,
     command_line: &str,
 ) -> Result<GatewayCommandOutput, CliError> {
-    let supervisor_pid = std::process::id();
     let launch_id = read_supervised_launch_id(args.launch_config.as_path(), command_line)?;
-    let supervisor = supervisor_identity(supervisor_pid);
-
-    write_supervisor_status_snapshot(
-        &state.paths,
-        &supervisor,
-        &launch_id,
-        types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
-        1,
-        None,
-        command_line,
-    )?;
-
-    let mut child = match spawn_supervised_runtime(state, args, command_line) {
-        Ok(child) => child,
-        Err(error) => {
-            let _ = write_supervisor_status_snapshot(
-                &state.paths,
-                &supervisor,
-                &launch_id,
-                types::SupervisorPhase::SUPERVISOR_PHASE_FAILED,
-                2,
-                None,
-                command_line,
-            );
-            return Err(error);
-        }
-    };
-    let runtime_pid = child.id();
-    let _ = write_supervisor_status_snapshot(
-        &state.paths,
-        &supervisor,
-        &launch_id,
-        types::SupervisorPhase::SUPERVISOR_PHASE_READY,
-        2,
-        Some(runtime_pid),
-        command_line,
-    );
-
-    let exit = monitor_supervised_runtime(
+    let exit = run_supervised_runtime_to_exit(
         state,
-        &supervisor,
-        &launch_id,
-        runtime_pid,
-        &mut child,
+        SupervisedRuntimeLaunch {
+            launch_id: launch_id.as_str(),
+            runtime_command: args.runtime_command.as_os_str(),
+            runtime_entry: args.runtime_entry.as_path(),
+            launch_config: args.launch_config.as_path(),
+            crash_loop_policy: supervisor_crash_loop_policy_from_args(args),
+            retry_command: BACKGROUND_GATEWAY_RETRY_COMMAND,
+            stdio: SupervisedRuntimeStdio::Background {
+                log_path: state.paths.server_log_path.as_path(),
+            },
+        },
         command_line,
-        2,
     )
     .await?;
     let status = exit.status;
 
-    finalize_supervisor_state(
-        state,
-        &supervisor,
-        &launch_id,
-        runtime_pid,
-        status,
-        exit.supervisor_sequence + 1,
-        command_line,
-    );
-
-    if status.success() || is_expected_termination(status) {
+    if exit.exit_kind == SupervisorChildExitKind::Expected {
         return Ok(GatewayCommandOutput::structured(
             Vec::new(),
             json!({
                 "kind": "gateway-supervisor",
                 "status": "stopped",
-                "runtimePid": runtime_pid,
+                "runtimePid": exit.runtime_pid,
                 "exitCode": status.code(),
                 "signal": exit_signal_label(status),
             }),
@@ -134,83 +106,446 @@ pub(crate) async fn run_gateway_supervisor(
     ))
 }
 
-fn spawn_supervised_runtime(
+pub(super) async fn run_foreground_supervised_runtime(
     state: &GatewayRuntimeState,
+    launch_id: &str,
+    runtime_command: &OsStr,
+    runtime_entry: &Path,
+    launch_config: &Path,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<MonitoredRuntimeExit, CliError> {
+    let exit = run_supervised_runtime_to_exit(
+        state,
+        SupervisedRuntimeLaunch {
+            launch_id,
+            runtime_command,
+            runtime_entry,
+            launch_config,
+            crash_loop_policy: SupervisorCrashLoopPolicy::disabled(),
+            retry_command,
+            stdio: SupervisedRuntimeStdio::Foreground,
+        },
+        command_line,
+    )
+    .await?;
+
+    Ok(MonitoredRuntimeExit {
+        status: exit.status,
+        kind: monitored_runtime_exit_kind(exit.exit_kind),
+    })
+}
+
+struct SupervisedRuntimeLaunch<'a> {
+    launch_id: &'a str,
+    runtime_command: &'a OsStr,
+    runtime_entry: &'a Path,
+    launch_config: &'a Path,
+    crash_loop_policy: SupervisorCrashLoopPolicy,
+    retry_command: &'a str,
+    stdio: SupervisedRuntimeStdio<'a>,
+}
+
+enum SupervisedRuntimeStdio<'a> {
+    Foreground,
+    Background { log_path: &'a Path },
+}
+
+fn supervisor_crash_loop_policy_from_args(
     args: &GatewaySupervisorArgs,
+) -> SupervisorCrashLoopPolicy {
+    SupervisorCrashLoopPolicy::bounded(
+        args.crash_loop_max_restarts,
+        Duration::from_millis(args.crash_loop_initial_backoff_ms),
+        Duration::from_millis(args.crash_loop_max_backoff_ms),
+    )
+}
+
+async fn run_supervised_runtime_to_exit(
+    state: &GatewayRuntimeState,
+    launch: SupervisedRuntimeLaunch<'_>,
+    command_line: &str,
+) -> Result<SupervisedRuntimeExit, CliError> {
+    let supervisor = supervisor_identity(std::process::id());
+    let mut machine = SupervisorMachine::new();
+
+    loop {
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::LaunchRequested,
+            supervisor_effect_context(state, &supervisor, launch.launch_id, None, command_line),
+            None,
+        )
+        .await?;
+
+        let mut child = match spawn_supervised_runtime(&launch, command_line) {
+            Ok(child) => child,
+            Err(error) => {
+                let _ = dispatch_supervisor_event(
+                    &mut machine,
+                    SupervisorEvent::LaunchFailed {
+                        message: error.to_string(),
+                    },
+                    supervisor_effect_context(
+                        state,
+                        &supervisor,
+                        launch.launch_id,
+                        None,
+                        command_line,
+                    ),
+                    None,
+                )
+                .await;
+                return Err(error);
+            }
+        };
+        let runtime_pid = child.id();
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::ChildSpawned { runtime_pid },
+            supervisor_effect_context(
+                state,
+                &supervisor,
+                launch.launch_id,
+                Some(runtime_pid),
+                command_line,
+            ),
+            None,
+        )
+        .await?;
+
+        let startup_outcome = wait_for_supervised_runtime_ready(
+            state,
+            &supervisor,
+            launch.launch_id,
+            runtime_pid,
+            &mut child,
+            &mut machine,
+            command_line,
+            launch.retry_command,
+        )
+        .await?;
+
+        if let SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } = startup_outcome {
+            let restart_backoff = restart_backoff_after_unexpected_exit(
+                state,
+                &supervisor,
+                launch.launch_id,
+                launch.crash_loop_policy,
+                command_line,
+                &mut machine,
+            )
+            .await?;
+
+            if let Some(backoff) = restart_backoff {
+                sleep(backoff).await;
+                continue;
+            }
+
+            return Err(error);
+        }
+
+        let mut exit = monitor_supervised_runtime(
+            state,
+            &supervisor,
+            launch.launch_id,
+            runtime_pid,
+            &mut child,
+            command_line,
+            launch.retry_command,
+            machine,
+        )
+        .await?;
+
+        let restart_backoff = restart_backoff_after_unexpected_exit(
+            state,
+            &supervisor,
+            launch.launch_id,
+            launch.crash_loop_policy,
+            command_line,
+            &mut exit.machine,
+        )
+        .await?;
+
+        if let Some(backoff) = restart_backoff {
+            machine = exit.machine;
+            sleep(backoff).await;
+            continue;
+        }
+
+        return Ok(exit);
+    }
+}
+
+async fn restart_backoff_after_unexpected_exit(
+    state: &GatewayRuntimeState,
+    supervisor: &types::SupervisorIdentity,
+    launch_id: &str,
+    crash_loop_policy: SupervisorCrashLoopPolicy,
+    command_line: &str,
+    machine: &mut SupervisorMachine,
+) -> Result<Option<Duration>, CliError> {
+    if machine.state() != SupervisorMachineState::Failed {
+        return Ok(None);
+    }
+
+    let SupervisorCrashLoopDecision::Restart { attempt, backoff } =
+        crash_loop_policy.decision_after_unexpected_exit(machine.restart_count())
+    else {
+        return Ok(None);
+    };
+
+    let report = dispatch_supervisor_event(
+        machine,
+        SupervisorEvent::RestartScheduled {
+            restart_attempt: attempt,
+            backoff,
+        },
+        supervisor_effect_context(state, supervisor, launch_id, None, command_line),
+        None,
+    )
+    .await?;
+
+    report.restart_backoff(command_line).map(Some)
+}
+
+fn spawn_supervised_runtime(
+    launch: &SupervisedRuntimeLaunch<'_>,
     command_line: &str,
 ) -> Result<Child, CliError> {
-    let mut child = ProcessCommand::new(&args.runtime_command);
-    child.arg(&args.runtime_entry);
-    child.arg(&args.launch_config);
-    child.stdin(Stdio::null());
-    child.stdout(background_log_stdio(
-        state.paths.server_log_path.as_path(),
-        command_line,
-        BACKGROUND_GATEWAY_RETRY_COMMAND,
-    )?);
-    child.stderr(background_log_stdio(
-        state.paths.server_log_path.as_path(),
-        command_line,
-        BACKGROUND_GATEWAY_RETRY_COMMAND,
-    )?);
+    let mut child = ProcessCommand::new(launch.runtime_command);
+    child.arg(launch.runtime_entry);
+    child.arg(launch.launch_config);
+
+    match launch.stdio {
+        SupervisedRuntimeStdio::Foreground => {
+            child
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit());
+        }
+        SupervisedRuntimeStdio::Background { log_path } => {
+            child.stdin(Stdio::null());
+            child.stdout(background_log_stdio(
+                log_path,
+                command_line,
+                launch.retry_command,
+            )?);
+            child.stderr(background_log_stdio(
+                log_path,
+                command_line,
+                launch.retry_command,
+            )?);
+        }
+    }
 
     child.spawn().map_err(|spawn_error| {
         spawn_launch_error(
             &spawn_error,
-            &args.runtime_command,
-            args.runtime_entry.as_path(),
+            launch.runtime_command,
+            launch.runtime_entry,
             command_line,
-            BACKGROUND_GATEWAY_RETRY_COMMAND,
+            launch.retry_command,
         )
     })
 }
 
-pub(super) async fn monitor_foreground_runtime(
-    state: &GatewayRuntimeState,
-    launch_id: &str,
-    runtime_pid: u32,
-    child: &mut Child,
-    command_line: &str,
-) -> Result<ExitStatus, CliError> {
-    let supervisor = supervisor_identity(std::process::id());
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) enum MonitoredRuntimeExitKind {
+    Expected,
+    Unexpected,
+}
 
-    write_supervisor_status_snapshot(
-        &state.paths,
-        &supervisor,
-        launch_id,
-        types::SupervisorPhase::SUPERVISOR_PHASE_READY,
-        1,
-        Some(runtime_pid),
-        command_line,
-    )?;
-
-    let exit = monitor_supervised_runtime(
-        state,
-        &supervisor,
-        launch_id,
-        runtime_pid,
-        child,
-        command_line,
-        1,
-    )
-    .await?;
-
-    finalize_supervisor_state(
-        state,
-        &supervisor,
-        launch_id,
-        runtime_pid,
-        exit.status,
-        exit.supervisor_sequence + 1,
-        command_line,
-    );
-
-    Ok(exit.status)
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(super) struct MonitoredRuntimeExit {
+    pub(super) status: ExitStatus,
+    pub(super) kind: MonitoredRuntimeExitKind,
 }
 
 struct SupervisedRuntimeExit {
+    runtime_pid: u32,
     status: ExitStatus,
-    supervisor_sequence: u64,
+    exit_kind: SupervisorChildExitKind,
+    machine: SupervisorMachine,
+}
+
+struct SupervisedRuntimeStartupCheck<'a> {
+    state: &'a GatewayRuntimeState,
+    launch_id: &'a str,
+    runtime_pid: u32,
+    supervisor_id: &'a str,
+    command_line: &'a str,
+    retry_command: &'a str,
+}
+
+enum StartupWatchReadiness {
+    Ready(u32),
+    Pending { stream_established: bool },
+    StreamError(Box<ConnectError>),
+    Terminal(types::RuntimePhase),
+}
+
+enum SupervisedRuntimeStartupOutcome {
+    Ready,
+    ExitedBeforeReady { error: CliError },
+}
+
+async fn wait_for_supervised_runtime_ready(
+    state: &GatewayRuntimeState,
+    supervisor: &types::SupervisorIdentity,
+    launch_id: &str,
+    runtime_pid: u32,
+    child: &mut Child,
+    machine: &mut SupervisorMachine,
+    command_line: &str,
+    retry_command: &str,
+) -> Result<SupervisedRuntimeStartupOutcome, CliError> {
+    let supervisor_id = supervisor
+        .supervisor_id
+        .as_deref()
+        .ok_or_else(|| CliError::internal(command_line.to_owned(), "supervisor omitted id"))?;
+    let check = SupervisedRuntimeStartupCheck {
+        state,
+        launch_id,
+        runtime_pid,
+        supervisor_id,
+        command_line,
+        retry_command,
+    };
+    let startup_deadline = Instant::now()
+        + Duration::from_millis(
+            GATEWAY_START_POLL_ATTEMPTS as u64 * GATEWAY_START_POLL_INTERVAL_MS,
+        );
+    let poll_interval = Duration::from_millis(GATEWAY_START_POLL_INTERVAL_MS);
+    let mut control_stream_established = false;
+    let mut control_socket_observed = false;
+    let mut last_watch_error = None;
+
+    while Instant::now() < startup_deadline {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| supervised_runtime_monitor_error(&check, error))?
+        {
+            let exit_kind = supervisor_child_exit_kind(machine, status);
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::ChildExited {
+                    runtime_pid,
+                    exit_kind,
+                    exit_code: status.code(),
+                    signal: exit_signal_label(status),
+                    message: describe_exit_status(status),
+                },
+                supervisor_effect_context(
+                    state,
+                    supervisor,
+                    launch_id,
+                    Some(runtime_pid),
+                    command_line,
+                ),
+                None,
+            )
+            .await?;
+            return Ok(SupervisedRuntimeStartupOutcome::ExitedBeforeReady {
+                error: supervised_runtime_exited_during_startup_error(&check, status),
+            });
+        }
+
+        let poll_deadline = Instant::now()
+            + poll_interval.min(startup_deadline.saturating_duration_since(Instant::now()));
+        match poll_runtime_control_startup_readiness(&check, poll_deadline).await {
+            Ok(StartupWatchReadiness::Ready(ready_pid)) => {
+                ensure_startup_ready_pid_matches(&check, ready_pid)?;
+                dispatch_supervisor_event(
+                    machine,
+                    SupervisorEvent::WatchReady,
+                    supervisor_effect_context(
+                        state,
+                        supervisor,
+                        launch_id,
+                        Some(runtime_pid),
+                        command_line,
+                    ),
+                    None,
+                )
+                .await?;
+                return Ok(SupervisedRuntimeStartupOutcome::Ready);
+            }
+            Ok(StartupWatchReadiness::Pending { stream_established }) => {
+                control_stream_established |= stream_established;
+            }
+            Ok(StartupWatchReadiness::StreamError(error)) => {
+                control_stream_established = true;
+                if !runtime_control_error_allows_fallback(error.as_ref()) {
+                    return Err(runtime_control_startup_watch_error(&check, error.as_ref()));
+                }
+                last_watch_error = Some(*error);
+            }
+            Ok(StartupWatchReadiness::Terminal(phase)) => {
+                let message = format!(
+                    "runtime control WatchStatus reported terminal phase {}",
+                    runtime_control_phase_label(phase)
+                );
+                dispatch_supervisor_event(
+                    machine,
+                    SupervisorEvent::StartupDeadlineElapsed { message },
+                    supervisor_effect_context(
+                        state,
+                        supervisor,
+                        launch_id,
+                        Some(runtime_pid),
+                        command_line,
+                    ),
+                    None,
+                )
+                .await?;
+                return Err(runtime_control_terminal_startup_error(&check, phase));
+            }
+            Err(error) => {
+                if !runtime_control_error_allows_fallback(&error) {
+                    return Err(runtime_control_startup_watch_error(&check, &error));
+                }
+                last_watch_error = Some(error);
+            }
+        }
+
+        if control_stream_established && !control_socket_observed {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::ControlSocketObserved,
+                supervisor_effect_context(
+                    state,
+                    supervisor,
+                    launch_id,
+                    Some(runtime_pid),
+                    command_line,
+                ),
+                None,
+            )
+            .await?;
+            control_socket_observed = true;
+        }
+
+        sleep(poll_interval.min(startup_deadline.saturating_duration_since(Instant::now()))).await;
+    }
+
+    let message = startup_timeout_detail(&check, last_watch_error.as_ref())?;
+    dispatch_supervisor_event(
+        machine,
+        SupervisorEvent::StartupDeadlineElapsed {
+            message: message.clone(),
+        },
+        supervisor_effect_context(
+            state,
+            supervisor,
+            launch_id,
+            Some(runtime_pid),
+            command_line,
+        ),
+        None,
+    )
+    .await?;
+    Err(startup_timeout_error(&check, message))
 }
 
 async fn monitor_supervised_runtime(
@@ -220,12 +555,11 @@ async fn monitor_supervised_runtime(
     runtime_pid: u32,
     child: &mut Child,
     command_line: &str,
-    initial_supervisor_sequence: u64,
+    retry_command: &str,
+    mut machine: SupervisorMachine,
 ) -> Result<SupervisedRuntimeExit, CliError> {
     let mut stop_signal = SupervisorStopSignal::new(command_line)?;
-    let mut stop_deadline = None;
-    let mut terminate_deadline = None;
-    let mut supervisor_sequence = initial_supervisor_sequence;
+    let mut timers = SupervisorTimers::default();
 
     loop {
         if let Some(status) = child.try_wait().map_err(|error| {
@@ -234,81 +568,170 @@ async fn monitor_supervised_runtime(
                 command_line,
                 ErrorStage::Internal,
                 error.to_string(),
-                vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
+                vec![retry_command_hint(retry_command)],
             )
         })? {
+            let exit_kind = supervisor_child_exit_kind(&machine, status);
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::ChildExited {
+                    runtime_pid,
+                    exit_kind,
+                    exit_code: status.code(),
+                    signal: exit_signal_label(status),
+                    message: describe_exit_status(status),
+                },
+                supervisor_effect_context(
+                    state,
+                    supervisor,
+                    launch_id,
+                    Some(runtime_pid),
+                    command_line,
+                ),
+                Some(&mut timers),
+            )
+            .await?;
             return Ok(SupervisedRuntimeExit {
+                runtime_pid,
                 status,
-                supervisor_sequence,
+                exit_kind,
+                machine,
             });
         }
 
-        if stop_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-            supervisor_sequence += 1;
-            write_supervisor_status_snapshot(
-                &state.paths,
-                supervisor,
-                launch_id,
-                types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING,
-                supervisor_sequence,
-                Some(runtime_pid),
+        if timers.kill_deadline_elapsed() {
+            let message = format!("pid {runtime_pid} remained active after supervisor hard kill");
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::EscalationDeadlineElapsed {
+                    message: message.clone(),
+                },
+                supervisor_effect_context(
+                    state,
+                    supervisor,
+                    launch_id,
+                    Some(runtime_pid),
+                    command_line,
+                ),
+                Some(&mut timers),
+            )
+            .await?;
+            return Err(supervisor_termination_timeout_error(
                 command_line,
-            )?;
-            terminate_process(runtime_pid, command_line)?;
-            stop_deadline = None;
-            terminate_deadline = Some(Instant::now() + SUPERVISOR_RUNTIME_TERMINATE_TIMEOUT);
-        }
-
-        if terminate_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-            return Err(CliError::new(
-                "self-host runtime did not stop cleanly",
-                command_line,
-                ErrorStage::Internal,
-                format!("pid {runtime_pid} remained active after supervisor termination"),
-                vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
+                retry_command,
+                message,
             ));
         }
 
-        let poll_interval = next_supervisor_poll_interval(stop_deadline, terminate_deadline);
-        tokio::select! {
-            () = stop_signal.recv(), if stop_deadline.is_none() && terminate_deadline.is_none() => {
-                supervisor_sequence += 1;
-                write_supervisor_status_snapshot(
-                    &state.paths,
+        if timers.terminate_deadline_elapsed() {
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::TerminateDeadlineElapsed,
+                supervisor_effect_context(
+                    state,
                     supervisor,
                     launch_id,
-                    types::SupervisorPhase::SUPERVISOR_PHASE_STOP_REQUESTED,
-                    supervisor_sequence,
                     Some(runtime_pid),
                     command_line,
-                )?;
+                ),
+                Some(&mut timers),
+            )
+            .await?;
+        }
 
-                match request_supervised_runtime_stop(
-                    &state.paths,
+        if timers.stop_deadline_elapsed() {
+            dispatch_supervisor_event(
+                &mut machine,
+                SupervisorEvent::GraceDeadlineElapsed,
+                supervisor_effect_context(
+                    state,
                     supervisor,
                     launch_id,
-                    runtime_pid,
+                    Some(runtime_pid),
+                    command_line,
+                ),
+                Some(&mut timers),
+            )
+            .await?;
+        }
+
+        let poll_interval = timers.next_poll_interval();
+        tokio::select! {
+            () = stop_signal.recv(), if timers.no_active_deadlines() => {
+                let stop_operation_id = Uuid::new_v4().to_string();
+                let report = dispatch_supervisor_event(
+                    &mut machine,
+                    SupervisorEvent::StopIntentReceived {
+                        operation_id: stop_operation_id.clone(),
+                    },
+                    supervisor_effect_context(
+                        state,
+                        supervisor,
+                        launch_id,
+                        Some(runtime_pid),
+                        command_line,
+                    ),
+                    Some(&mut timers),
                 )
-                .await
-                {
+                .await?;
+
+                match report.runtime_stop_result(command_line)? {
                     Ok(()) => {
-                        stop_deadline = Some(Instant::now() + SUPERVISOR_RUNTIME_STOP_GRACE_TIMEOUT);
+                        dispatch_supervisor_event(
+                            &mut machine,
+                            SupervisorEvent::StopRpcAccepted {
+                                operation_id: stop_operation_id.clone(),
+                            },
+                            supervisor_effect_context(
+                                state,
+                                supervisor,
+                                launch_id,
+                                Some(runtime_pid),
+                                command_line,
+                            ),
+                            Some(&mut timers),
+                        )
+                        .await?;
                     }
                     Err(error) if runtime_control_error_allows_fallback(&error) => {
-                        supervisor_sequence += 1;
-                        write_supervisor_status_snapshot(
-                            &state.paths,
-                            supervisor,
-                            launch_id,
-                            types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING,
-                            supervisor_sequence,
-                            Some(runtime_pid),
-                            command_line,
-                        )?;
-                        terminate_process(runtime_pid, command_line)?;
-                        terminate_deadline = Some(Instant::now() + SUPERVISOR_RUNTIME_TERMINATE_TIMEOUT);
+                        dispatch_supervisor_event(
+                            &mut machine,
+                            SupervisorEvent::StopRpcFailed {
+                                operation_id: stop_operation_id.clone(),
+                                disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
+                                message: runtime_control_stop_failure_message(&error),
+                            },
+                            supervisor_effect_context(
+                                state,
+                                supervisor,
+                                launch_id,
+                                Some(runtime_pid),
+                                command_line,
+                            ),
+                            Some(&mut timers),
+                        )
+                        .await?;
                     }
-                    Err(error) => return Err(runtime_control_stop_error(error, command_line)),
+                    Err(error) => {
+                        dispatch_supervisor_event(
+                            &mut machine,
+                            SupervisorEvent::StopRpcFailed {
+                                operation_id: stop_operation_id,
+                                disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
+                                message: runtime_control_stop_failure_message(&error),
+                            },
+                            supervisor_effect_context(
+                                state,
+                                supervisor,
+                                launch_id,
+                                Some(runtime_pid),
+                                command_line,
+                            ),
+                            Some(&mut timers),
+                        )
+                        .await?;
+                        return Err(runtime_control_stop_error(error, command_line, retry_command));
+                    }
                 }
             }
             () = sleep(poll_interval) => {}
@@ -316,36 +739,331 @@ async fn monitor_supervised_runtime(
     }
 }
 
-async fn request_supervised_runtime_stop(
-    paths: &SelfHostRuntimePaths,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    runtime_pid: u32,
-) -> Result<(), ConnectError> {
-    let identity = ManagedRuntimeIdentity {
-        launch_id: launch_id.to_owned(),
-        pid: runtime_pid,
-        supervisor_pid: supervisor.pid,
-        supervisor_generation: supervisor.generation,
-    };
-
-    let supervisor_id = supervisor.supervisor_id.as_deref().ok_or_else(|| {
-        ConnectError::internal("supervisor identity omitted supervisor id for runtime stop")
-    })?;
-
-    request_runtime_control_stop(
-        paths,
-        &identity,
-        supervisor_id,
-        SUPERVISOR_RUNTIME_STOP_REASON,
-        SUPERVISOR_RUNTIME_STOP_GRACE_TIMEOUT,
+async fn poll_runtime_control_startup_readiness(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    startup_deadline: Instant,
+) -> Result<StartupWatchReadiness, ConnectError> {
+    let mut stream = watch_runtime_control_status(
+        &check.state.paths,
+        check.launch_id,
+        RuntimeControlCallHeaders::for_launch(check.launch_id)
+            .with_supervisor_id(check.supervisor_id),
     )
-    .await
-    .map(|_| ())
+    .await?;
+    let mut latest_status = None;
+
+    loop {
+        let remaining = startup_deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(StartupWatchReadiness::Pending {
+                stream_established: true,
+            });
+        }
+
+        let response = match timeout(remaining, stream.message()).await {
+            Ok(Ok(Some(response))) => response.to_owned_message(),
+            Ok(Ok(None)) => {
+                if let Some(error) = stream.error() {
+                    return Ok(StartupWatchReadiness::StreamError(Box::new(error.clone())));
+                }
+
+                return Ok(StartupWatchReadiness::Pending {
+                    stream_established: true,
+                });
+            }
+            Ok(Err(error)) => return Ok(StartupWatchReadiness::StreamError(Box::new(error))),
+            Err(_) => {
+                return Ok(StartupWatchReadiness::Pending {
+                    stream_established: true,
+                });
+            }
+        };
+
+        match runtime_control_watch_event_from_proto(response) {
+            Some(RuntimeControlStatusWatchEvent::Snapshot(status)) => {
+                if status.phase == types::RuntimePhase::RUNTIME_PHASE_READY {
+                    return runtime_ready_pid_from_status(status).map(StartupWatchReadiness::Ready);
+                }
+                if runtime_control_phase_is_terminal(status.phase) {
+                    return Ok(StartupWatchReadiness::Terminal(status.phase));
+                }
+                latest_status = Some(status);
+            }
+            Some(RuntimeControlStatusWatchEvent::Transition { phase, .. }) => {
+                if phase == types::RuntimePhase::RUNTIME_PHASE_READY {
+                    let Some(status) = latest_status else {
+                        return Err(ConnectError::internal(
+                            "runtime control WatchStatus reported READY before an identity snapshot",
+                        ));
+                    };
+
+                    return runtime_ready_pid_from_status(status).map(StartupWatchReadiness::Ready);
+                }
+                if runtime_control_phase_is_terminal(phase) {
+                    return Ok(StartupWatchReadiness::Terminal(phase));
+                }
+            }
+            None => {}
+        }
+    }
 }
 
-fn runtime_control_stop_error(error: ConnectError, command_line: &str) -> CliError {
-    let detail = runtime_control_connect_error_summary(&error).map_or_else(
+fn runtime_ready_pid_from_status(status: RuntimeControlStatus) -> Result<u32, ConnectError> {
+    status.pid.ok_or_else(|| {
+        ConnectError::internal("runtime control WatchStatus READY event omitted runtime pid")
+    })
+}
+
+fn ensure_startup_ready_pid_matches(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    ready_pid: u32,
+) -> Result<(), CliError> {
+    if ready_pid == check.runtime_pid {
+        return Ok(());
+    }
+
+    Err(CliError::new(
+        "self-host server reported mismatched runtime pid",
+        check.command_line,
+        ErrorStage::Internal,
+        format!(
+            "startup readiness for launch {} reported pid {ready_pid}, but supervisor spawned pid {}",
+            check.launch_id, check.runtime_pid
+        ),
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    ))
+}
+
+fn supervised_runtime_monitor_error(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    error: std::io::Error,
+) -> CliError {
+    CliError::new(
+        "failed while monitoring supervised gateway startup",
+        check.command_line,
+        ErrorStage::Internal,
+        error.to_string(),
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    )
+}
+
+fn supervised_runtime_exited_during_startup_error(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    status: ExitStatus,
+) -> CliError {
+    CliError::new(
+        "self-host server exited before startup completed",
+        check.command_line,
+        ErrorStage::Internal,
+        describe_exit_status(status),
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    )
+}
+
+fn runtime_control_terminal_startup_error(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    phase: types::RuntimePhase,
+) -> CliError {
+    CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        format!(
+            "runtime control WatchStatus reported terminal phase {} for launch {} in {}",
+            runtime_control_phase_label(phase),
+            check.launch_id,
+            check.state.paths.data_dir.display()
+        ),
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    )
+}
+
+fn runtime_control_startup_watch_error(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    error: &ConnectError,
+) -> CliError {
+    let detail = runtime_control_connect_error_summary(error).map_or_else(
+        || {
+            format!(
+                "runtime control WatchStatus failed for launch {} in {}: {error}",
+                check.launch_id,
+                check.state.paths.data_dir.display()
+            )
+        },
+        |summary| {
+            format!(
+                "runtime control WatchStatus failed for launch {} in {}: {summary}",
+                check.launch_id,
+                check.state.paths.data_dir.display()
+            )
+        },
+    );
+
+    let cli_error = CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        detail,
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    );
+
+    with_runtime_control_connect_error_metadata(error, cli_error, None)
+}
+
+fn startup_timeout_detail(
+    check: &SupervisedRuntimeStartupCheck<'_>,
+    last_watch_error: Option<&ConnectError>,
+) -> Result<String, CliError> {
+    if let Some(error) = last_watch_error {
+        let last_error =
+            runtime_control_connect_error_summary(error).unwrap_or_else(|| error.to_string());
+
+        return Ok(format!(
+            "runtime control WatchStatus did not report READY for launch {} in {} (last error: {last_error})",
+            check.launch_id,
+            check.state.paths.data_dir.display()
+        ));
+    }
+
+    let probe_host = runtime_probe_host(startup_listen_host(check)?);
+    let runtime_status_snapshot =
+        read_runtime_status_snapshot_for_recovery(&check.state.paths, check.command_line)?;
+
+    if runtime_status_snapshot.as_ref().is_some_and(|snapshot| {
+        let Some(status) = snapshot.status.as_option() else {
+            return false;
+        };
+        let Some(identity) = status.identity.as_option() else {
+            return false;
+        };
+        let Some(phase) = status.phase.and_then(|phase| phase.as_known()) else {
+            return false;
+        };
+
+        phase == types::RuntimePhase::RUNTIME_PHASE_READY
+            && runtime_launch_id_matches(identity.launch_id.as_deref(), check.launch_id)
+            && identity
+                .data_dir
+                .as_deref()
+                .is_some_and(|data_dir| Path::new(data_dir) == check.state.paths.data_dir.as_path())
+    }) {
+        let phase = runtime_status_snapshot
+            .as_ref()
+            .and_then(runtime_status_snapshot_pid_and_phase)
+            .map(|(_pid, phase)| runtime_phase_label(phase))
+            .unwrap_or("unknown");
+        let runtime_pid = runtime_status_snapshot
+            .as_ref()
+            .and_then(runtime_status_snapshot_pid_and_phase)
+            .map(|(pid, _phase)| pid)
+            .unwrap_or(0);
+
+        return Ok(format!(
+            "runtime control WatchStatus did not report READY for launch {} in {}; durable snapshot reported pid {} as {phase} for listener {probe_host}:{}",
+            check.launch_id,
+            check.state.paths.data_dir.display(),
+            runtime_pid,
+            startup_listen_port(check)?,
+        ));
+    }
+
+    Ok(format!(
+        "runtime control WatchStatus did not report READY for launch {} in {}",
+        check.launch_id,
+        check.state.paths.data_dir.display()
+    ))
+}
+
+fn startup_timeout_error(check: &SupervisedRuntimeStartupCheck<'_>, detail: String) -> CliError {
+    CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        detail,
+        vec![
+            format!(
+                "check log file {}",
+                check.state.paths.server_log_path.display()
+            ),
+            retry_command_hint(check.retry_command),
+        ],
+    )
+}
+
+fn startup_listen_host<'a>(
+    check: &'a SupervisedRuntimeStartupCheck<'_>,
+) -> Result<&'a str, CliError> {
+    let config = check.state.config.as_ref().ok_or_else(|| {
+        CliError::internal(
+            check.command_line.to_owned(),
+            "gateway supervisor startup handshake requires a resolved self-host config",
+        )
+    })?;
+
+    Ok(config.server.listen_host.as_str())
+}
+
+fn startup_listen_port(check: &SupervisedRuntimeStartupCheck<'_>) -> Result<u16, CliError> {
+    let config = check.state.config.as_ref().ok_or_else(|| {
+        CliError::internal(
+            check.command_line.to_owned(),
+            "gateway supervisor startup handshake requires a resolved self-host config",
+        )
+    })?;
+
+    Ok(config.server.port)
+}
+
+fn runtime_control_stop_error(
+    error: ConnectError,
+    command_line: &str,
+    retry_command: &str,
+) -> CliError {
+    let detail = runtime_control_stop_failure_message(&error);
+    let fallback_code = Some(format!("runtime_control_{}", error.code.as_str()));
+    let cli_error = CliError::new(
+        "failed to request self-host runtime stop",
+        command_line,
+        ErrorStage::Internal,
+        detail,
+        vec![retry_command_hint(retry_command)],
+    );
+
+    with_runtime_control_connect_error_metadata(&error, cli_error, fallback_code)
+}
+
+fn runtime_control_stop_failure_message(error: &ConnectError) -> String {
+    runtime_control_connect_error_summary(error).map_or_else(
         || {
             format!(
                 "runtime control RPC returned {}: {error}",
@@ -358,34 +1076,42 @@ fn runtime_control_stop_error(error: ConnectError, command_line: &str) -> CliErr
                 error.code.as_str()
             )
         },
-    );
-    let fallback_code = Some(format!("runtime_control_{}", error.code.as_str()));
-    let cli_error = CliError::new(
-        "failed to request self-host runtime stop",
+    )
+}
+
+fn supervisor_child_exit_kind(
+    machine: &SupervisorMachine,
+    status: ExitStatus,
+) -> SupervisorChildExitKind {
+    if status.success()
+        || is_expected_termination(status)
+        || machine.state() == SupervisorMachineState::Escalating
+    {
+        SupervisorChildExitKind::Expected
+    } else {
+        SupervisorChildExitKind::Unexpected
+    }
+}
+
+fn monitored_runtime_exit_kind(exit_kind: SupervisorChildExitKind) -> MonitoredRuntimeExitKind {
+    match exit_kind {
+        SupervisorChildExitKind::Expected => MonitoredRuntimeExitKind::Expected,
+        SupervisorChildExitKind::Unexpected => MonitoredRuntimeExitKind::Unexpected,
+    }
+}
+
+fn supervisor_termination_timeout_error(
+    command_line: &str,
+    retry_command: &str,
+    detail: String,
+) -> CliError {
+    CliError::new(
+        "self-host runtime did not stop cleanly",
         command_line,
         ErrorStage::Internal,
         detail,
-        vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
-    );
-
-    with_runtime_control_connect_error_metadata(&error, cli_error, fallback_code)
-}
-
-fn next_supervisor_poll_interval(
-    stop_deadline: Option<Instant>,
-    terminate_deadline: Option<Instant>,
-) -> Duration {
-    let mut interval = SUPERVISOR_POLL_INTERVAL;
-    let now = Instant::now();
-
-    if let Some(deadline) = stop_deadline {
-        interval = interval.min(deadline.saturating_duration_since(now));
-    }
-    if let Some(deadline) = terminate_deadline {
-        interval = interval.min(deadline.saturating_duration_since(now));
-    }
-
-    interval
+        vec![retry_command_hint(retry_command)],
+    )
 }
 
 #[cfg(unix)]
@@ -438,32 +1164,6 @@ fn supervisor_signal_error(error: std::io::Error, command_line: &str) -> CliErro
     )
 }
 
-fn finalize_supervisor_state(
-    state: &GatewayRuntimeState,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    runtime_pid: u32,
-    status: ExitStatus,
-    supervisor_sequence: u64,
-    command_line: &str,
-) {
-    let phase = if status.success() || is_expected_termination(status) {
-        types::SupervisorPhase::SUPERVISOR_PHASE_EXITED
-    } else {
-        types::SupervisorPhase::SUPERVISOR_PHASE_FAILED
-    };
-
-    let _ = write_supervisor_status_snapshot(
-        &state.paths,
-        supervisor,
-        launch_id,
-        phase,
-        supervisor_sequence,
-        Some(runtime_pid),
-        command_line,
-    );
-}
-
 fn read_supervised_launch_id(
     path: &std::path::Path,
     command_line: &str,
@@ -511,97 +1211,9 @@ fn supervisor_identity(supervisor_pid: u32) -> types::SupervisorIdentity {
     types::SupervisorIdentity {
         supervisor_id: Some(supervisor_id_for_pid(supervisor_pid)),
         pid: Some(supervisor_pid),
-        // Comment: durable supervisor generation is fixed until the explicit
-        // Rust supervisor state machine owns generation allocation.
+        // Comment: durable supervisor generation allocation is still fixed;
+        // the reducer owns transitions, not generation persistence yet.
         generation: Some(SUPERVISOR_GENERATION),
-        ..Default::default()
-    }
-}
-
-fn write_supervisor_status_snapshot(
-    paths: &SelfHostRuntimePaths,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    phase: types::SupervisorPhase,
-    supervisor_sequence: u64,
-    runtime_pid: Option<u32>,
-    command_line: &str,
-) -> Result<(), CliError> {
-    let now = Utc::now();
-    let data_dir = paths.data_dir.display().to_string();
-    let runtime = runtime_pid.map(|pid| types::RuntimeIdentity {
-        pid: Some(pid),
-        launch_id: Some(launch_id.to_owned()),
-        data_dir: Some(data_dir.clone()),
-        ..Default::default()
-    });
-    let snapshot = types::SupervisorStatusSnapshot {
-        header: MessageField::some(types::LifecycleRecordHeader {
-            schema_version: Some(LIFECYCLE_SCHEMA_VERSION),
-            writer: MessageField::some(types::LifecycleRecordWriterIdentity {
-                writer: Some(
-                    types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR.into(),
-                ),
-                writer_id: supervisor.supervisor_id.clone(),
-                ..Default::default()
-            }),
-            launch: MessageField::some(types::LifecycleLaunchIdentity {
-                launch_id: Some(launch_id.to_owned()),
-                data_dir: Some(data_dir.clone()),
-                runtime_pid,
-                supervisor_pid: supervisor.pid,
-                supervisor_generation: supervisor.generation,
-                ..Default::default()
-            }),
-            written_at: MessageField::some(protobuf_timestamp(now)),
-            ..Default::default()
-        }),
-        status: MessageField::some(types::SupervisorStatus {
-            identity: MessageField::some(supervisor.clone()),
-            launch: MessageField::some(types::LifecycleLaunchIdentity {
-                launch_id: Some(launch_id.to_owned()),
-                data_dir: Some(data_dir),
-                runtime_pid,
-                supervisor_pid: supervisor.pid,
-                supervisor_generation: supervisor.generation,
-                ..Default::default()
-            }),
-            phase: Some(phase.into()),
-            supervisor_sequence: Some(supervisor_sequence),
-            updated_at: MessageField::some(protobuf_timestamp(now)),
-            runtime: runtime.map(MessageField::some).unwrap_or_default(),
-            ..Default::default()
-        }),
-        snapshot_at: MessageField::some(protobuf_timestamp(now)),
-        ..Default::default()
-    };
-    let serialized =
-        lifecycle_records::encode_supervisor_status_snapshot(&snapshot).map_err(|error| {
-            CliError::new(
-                "failed to serialize gateway supervisor status snapshot",
-                command_line,
-                ErrorStage::Internal,
-                format!(
-                    "{error} (encoding={})",
-                    lifecycle_records::DURABLE_STATE_FILE_ENCODING
-                ),
-                vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
-            )
-        })?;
-
-    path_utils::atomic_write_private_file(
-        paths.supervisor_status_snapshot_path.as_path(),
-        &serialized,
-        command_line,
-        ErrorStage::Internal,
-        "gateway supervisor status snapshot",
-    )
-}
-
-fn protobuf_timestamp(value: chrono::DateTime<Utc>) -> buffa_types::google::protobuf::Timestamp {
-    buffa_types::google::protobuf::Timestamp {
-        seconds: value.timestamp(),
-        nanos: value.timestamp_subsec_nanos() as i32,
         ..Default::default()
     }
 }

@@ -1,5 +1,7 @@
 #![cfg(unix)]
 
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Child;
 use std::process::Command;
@@ -15,6 +17,7 @@ use http::StatusCode;
 use http_body_util::BodyExt as _;
 use onequery_proto_runtime::onequery::runtime::v1 as runtime;
 use pretty_assertions::assert_eq;
+use tempfile::TempDir;
 use tempfile::tempdir;
 
 const GET_STATUS_PATH: &str = "/onequery.runtime.v1.RuntimeControlService/GetStatus";
@@ -24,8 +27,7 @@ const READY_WAIT_INTERVAL: Duration = Duration::from_millis(50);
 
 #[tokio::test]
 async fn rust_http2_connect_unix_calls_node_runtime_control_listener() {
-    let temp_dir =
-        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    let temp_dir = private_runtime_control_tempdir();
     let socket_path = temp_dir.path().join("runtime-control.sock");
     let ready_path = temp_dir.path().join("runtime-control.ready");
     let mut server = RuntimeControlServerProcess::spawn(&socket_path, &ready_path);
@@ -73,8 +75,7 @@ async fn rust_http2_connect_unix_calls_node_runtime_control_listener() {
 
 #[tokio::test]
 async fn rust_generated_watch_status_client_receives_ready_snapshot() {
-    let temp_dir =
-        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    let temp_dir = private_runtime_control_tempdir();
     let socket_path = temp_dir.path().join("runtime-control.sock");
     let ready_path = temp_dir.path().join("runtime-control.ready");
     let mut server =
@@ -135,8 +136,7 @@ async fn rust_generated_watch_status_client_receives_ready_snapshot() {
 
 #[tokio::test]
 async fn rust_generated_stop_status_sequence_drives_follow_up_watch_status() {
-    let temp_dir =
-        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    let temp_dir = private_runtime_control_tempdir();
     let socket_path = temp_dir.path().join("runtime-control.sock");
     let ready_path = temp_dir.path().join("runtime-control.ready");
     let mut server = RuntimeControlServerProcess::spawn(&socket_path, &ready_path);
@@ -244,6 +244,21 @@ fn runtime_control_test_call_options() -> CallOptions {
             "launch-rust-connect-unix",
         )
         .with_header("x-onequery-cli-version", env!("CARGO_PKG_VERSION"))
+}
+
+fn private_runtime_control_tempdir() -> TempDir {
+    let temp_dir =
+        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    // Comment: macOS test tempdirs can inherit group bits from TMPDIR; the
+    // runtime-control server intentionally refuses such socket parents.
+    let mut permissions = fs::metadata(temp_dir.path())
+        .unwrap_or_else(|error| panic!("expected runtime control temp dir metadata: {error}"))
+        .permissions();
+    permissions.set_mode(0o700);
+    fs::set_permissions(temp_dir.path(), permissions)
+        .unwrap_or_else(|error| panic!("expected private runtime control temp dir: {error}"));
+
+    temp_dir
 }
 
 struct RuntimeControlServerProcess {

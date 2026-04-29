@@ -25,6 +25,7 @@ export async function ensureRuntimeDirectories(
       ...new Set([
         paths.dataDir,
         paths.logsDir,
+        dirname(paths.lifecycleEventLogPath),
         dirname(paths.runtimeLeasePath),
         dirname(paths.runtimeStatusSnapshotPath),
       ]),

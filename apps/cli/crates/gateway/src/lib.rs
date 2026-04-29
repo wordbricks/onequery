@@ -10,10 +10,7 @@ mod state;
 mod tests;
 
 use std::ffi::OsString;
-use std::net::TcpStream;
-use std::net::ToSocketAddrs;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
@@ -45,7 +42,9 @@ const CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP: &str =
 const REINSTALL_CLI_PACKAGE_COMMAND: &str = "reinstall the CLI package";
 const FOREGROUND_GATEWAY_RETRY_COMMAND: &str = "onequery gateway";
 const BACKGROUND_GATEWAY_RETRY_COMMAND: &str = "onequery gateway start";
-const LOCAL_CONNECTION_PROBE_TIMEOUT_MS: u64 = 100;
+pub const DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS: u32 = 0;
+pub const DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS: u64 = 500;
+pub const DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS: u64 = 30_000;
 
 /// Gateway command selected by the CLI front-end.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -71,6 +70,12 @@ pub struct GatewaySupervisorArgs {
     pub runtime_entry: PathBuf,
     /// Runtime launch config path prepared by `onequery gateway start`.
     pub launch_config: PathBuf,
+    /// Maximum supervised runtime restarts after unexpected exits. Zero disables restarts.
+    pub crash_loop_max_restarts: u32,
+    /// Initial restart backoff in milliseconds for bounded crash-loop policy.
+    pub crash_loop_initial_backoff_ms: u64,
+    /// Maximum restart backoff in milliseconds for bounded crash-loop policy.
+    pub crash_loop_max_backoff_ms: u64,
 }
 
 /// Gateway command output before the CLI applies its top-level output envelope.
@@ -186,18 +191,6 @@ pub fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(), CliE
             "use a supported host and point remote clients at that server".to_owned(),
         ],
     ))
-}
-
-/// Returns whether a local runtime listener accepts TCP connections.
-pub fn runtime_accepting_connections(listen_host: &str, listen_port: u16) -> bool {
-    let timeout = Duration::from_millis(LOCAL_CONNECTION_PROBE_TIMEOUT_MS);
-
-    (runtime_probe_host(listen_host), listen_port)
-        .to_socket_addrs()
-        .ok()
-        .into_iter()
-        .flatten()
-        .any(|address| TcpStream::connect_timeout(&address, timeout).is_ok())
 }
 
 /// Maps unspecified bind addresses to loopback hosts suitable for local probing.

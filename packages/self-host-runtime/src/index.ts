@@ -29,6 +29,7 @@ import {
   acquireRuntimeLifecycleLeaseResult,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
+  toLifecyclePathsResult,
 } from "./self-host/lifecycle";
 import type {
   GracefulShutdownController,
@@ -94,6 +95,7 @@ type LaunchLifecycleMode =
   | {
       kind: "managed";
       launchConfig: SelfHostLaunchConfig;
+      lifecyclePaths: SelfHostLifecyclePaths;
     }
   | {
       kind: "unmanaged";
@@ -288,23 +290,31 @@ function resolveLaunchLifecycleModeResult(
     );
   }
 
+  const resolution = toLifecyclePathsResult(launchConfig).mapError((cause) =>
+    createWorkflowError(
+      "resolve_lifecycle_paths",
+      "failed to resolve self-host lifecycle paths",
+      cause
+    )
+  );
+  if (resolution.isErr()) {
+    return Result.err(resolution.error);
+  }
+  if (resolution.value.kind !== "self-host") {
+    return Result.err(
+      createWorkflowError(
+        "resolve_lifecycle_paths",
+        "self-host launch config resolved to unmanaged lifecycle paths",
+        resolution.value
+      )
+    );
+  }
+
   return Result.ok({
     kind: "managed",
     launchConfig,
+    lifecyclePaths: resolution.value.paths,
   });
-}
-
-function createSelfHostLifecyclePaths(
-  launchConfig: SelfHostLaunchConfig
-): SelfHostLifecyclePaths {
-  return {
-    controlEndpoint: launchConfig.runtimeControl,
-    dataDir: launchConfig.runtimePaths.dataDir,
-    logsDir: launchConfig.runtimePaths.logsDir,
-    runtimeLeasePath: launchConfig.runtimePaths.runtimeLeasePath,
-    runtimeStatusSnapshotPath:
-      launchConfig.runtimePaths.runtimeStatusSnapshotPath,
-  };
 }
 
 function createWorkflowError(
@@ -397,9 +407,7 @@ async function resolveLifecycleContextResult(
       case "unmanaged":
         return Result.ok(createUnmanagedLifecycleContext());
       case "managed": {
-        const lifecyclePaths = createSelfHostLifecyclePaths(
-          launchLifecycleMode.launchConfig
-        );
+        const lifecyclePaths = launchLifecycleMode.lifecyclePaths;
         const logWriter = createLifecycleLogWriter(
           lifecyclePaths,
           dependencies.appendLifecycleLog
@@ -603,6 +611,7 @@ export function createStartServerResult(
                 },
                 {
                   close: () => storageHandle.close(),
+                  failureCode: "checkpoint_failed",
                   name: "server-storage",
                 },
               ],

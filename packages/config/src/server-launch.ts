@@ -20,6 +20,7 @@ export const serverLaunchRuntimePathsSchema = z
   .object({
     backupsDir: nonEmptyStringSchema,
     dataDir: nonEmptyStringSchema,
+    lifecycleEventLogPath: nonEmptyStringSchema,
     logsDir: nonEmptyStringSchema,
     runDir: nonEmptyStringSchema,
     runtimeLeasePath: nonEmptyStringSchema,
@@ -27,17 +28,54 @@ export const serverLaunchRuntimePathsSchema = z
   })
   .strict();
 
-export const serverLaunchRuntimeControlSchema = z.discriminatedUnion(
-  "transport",
+const serverLaunchRuntimeControlBearerAuthSchema = z
+  .object({
+    kind: z.literal("bearer"),
+    token: nonEmptyStringSchema,
+  })
+  .strict();
+
+const serverLaunchRuntimeControlFencingSchema = z
+  .object({
+    dataDir: nonEmptyStringSchema,
+    launchId: nonEmptyStringSchema,
+  })
+  .strict();
+
+export const serverLaunchRuntimeControlTransportSchema = z.discriminatedUnion(
+  "kind",
   [
     z
       .object({
+        kind: z.literal("unix"),
         socketPath: nonEmptyStringSchema,
-        transport: z.literal("unix"),
+      })
+      .strict(),
+    z
+      .object({
+        auth: serverLaunchRuntimeControlBearerAuthSchema,
+        fencing: serverLaunchRuntimeControlFencingSchema,
+        host: nonEmptyStringSchema,
+        kind: z.literal("loopback-h2c"),
+        port: portSchema,
+      })
+      .strict(),
+    z
+      .object({
+        auth: serverLaunchRuntimeControlBearerAuthSchema,
+        fencing: serverLaunchRuntimeControlFencingSchema,
+        kind: z.literal("windows-named-pipe"),
+        pipeName: nonEmptyStringSchema,
       })
       .strict(),
   ]
 );
+
+export const serverLaunchRuntimeControlSchema = z
+  .object({
+    transport: serverLaunchRuntimeControlTransportSchema,
+  })
+  .strict();
 
 export const serverLaunchMigrationsSchema = z
   .object({
@@ -152,11 +190,52 @@ export const serverLaunchConfigSchema = z
         path: ["launchId"],
       });
     }
+
+    const runtimeControlTransport = value.runtimeControl?.transport;
+    if (
+      runtimeControlTransport !== undefined &&
+      runtimeControlTransport.kind !== "unix"
+    ) {
+      if (value.launchId === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "Non-UDS runtime control requires launchId.",
+          path: ["launchId"],
+        });
+      } else if (runtimeControlTransport.fencing.launchId !== value.launchId) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Non-UDS runtime control fencing launchId must match launchId.",
+          path: ["runtimeControl", "transport", "fencing", "launchId"],
+        });
+      }
+
+      if (value.runtimePaths === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "Non-UDS runtime control requires runtimePaths.",
+          path: ["runtimePaths"],
+        });
+      } else if (
+        runtimeControlTransport.fencing.dataDir !== value.runtimePaths.dataDir
+      ) {
+        context.addIssue({
+          code: "custom",
+          message:
+            "Non-UDS runtime control fencing dataDir must match runtimePaths.dataDir.",
+          path: ["runtimeControl", "transport", "fencing", "dataDir"],
+        });
+      }
+    }
   });
 
 export type ServerLaunchConfig = z.infer<typeof serverLaunchConfigSchema>;
 export type ServerLaunchRuntimeControlConfig = z.infer<
   typeof serverLaunchRuntimeControlSchema
+>;
+export type ServerLaunchRuntimeControlTransportConfig = z.infer<
+  typeof serverLaunchRuntimeControlTransportSchema
 >;
 export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
 

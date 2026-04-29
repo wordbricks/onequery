@@ -26,6 +26,7 @@ pub(super) fn exit_signal_label(status: ExitStatus) -> Option<String> {
         let signal = status.signal()?;
         let label = match signal {
             2 => "SIGINT",
+            9 => "SIGKILL",
             15 => "SIGTERM",
             _ => return Some(signal.to_string()),
         };

@@ -16,14 +16,18 @@ if (!socketPath || !readyPath) {
 const lease = {
   paths: {
     controlEndpoint: {
-      socketPath,
-      transport: "unix" as const,
+      transport: {
+        kind: "unix" as const,
+        socketPath,
+      },
     },
     dataDir: "/tmp/onequery-data",
+    lifecycleEventLogPath: "/tmp/onequery-run/lifecycle.events.pb",
     logsDir: "/tmp/onequery-logs",
     runtimeLeasePath: "/tmp/onequery-run/runtime.lease.json",
     runtimeStatusSnapshotPath: "/tmp/onequery-run/runtime.status.json",
   },
+  persistTransition: async () => undefined,
   release: async () => undefined,
   transition: async () => undefined,
 };
@@ -39,10 +43,10 @@ const actor = createRuntimeControlActor({
 });
 actor.attachShutdownController({
   dispose: () => undefined,
-  shutdown: async (reason, completion = "cleanup_only") => {
+  shutdown: async (request) => {
     await actor.lease.release({
-      reason,
-      stopServer: completion === "cleanup_and_exit",
+      reason: request.reason,
+      stopServer: request.completion === "cleanup_and_exit",
     });
   },
 });

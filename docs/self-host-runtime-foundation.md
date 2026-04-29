@@ -51,6 +51,7 @@ The runtime-managed files under those roots are:
 - `run/runtime.lease.json`
 - `run/runtime.status.json`
 - `run/supervisor.status.json`
+- `run/lifecycle.events.pb`
 
 The self-host secrets file is therefore resolved at:
 

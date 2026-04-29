@@ -30,6 +30,7 @@ describe("createServerRuntimeConfig", () => {
         runtimePaths: {
           backupsDir: "/tmp/runtime/backups",
           dataDir: "/tmp/runtime/data",
+          lifecycleEventLogPath: "/tmp/runtime/run/lifecycle.events.pb",
           logsDir: "/tmp/runtime/logs",
           runDir: "/tmp/runtime/run",
           runtimeLeasePath: "/tmp/runtime/run/runtime.lease.json",

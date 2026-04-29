@@ -1,15 +1,19 @@
-import { chmod, mkdir, rm } from "node:fs/promises";
+import { chmod, lstat, mkdir, rm } from "node:fs/promises";
 import http2 from "node:http2";
+import net from "node:net";
 import { dirname } from "node:path";
 
 import type { MessageInitShape } from "@bufbuild/protobuf";
-import { Code, ConnectError } from "@connectrpc/connect";
+import { Code, ConnectError, createClient } from "@connectrpc/connect";
 import type {
   ConnectRouterOptions,
   Interceptor,
   ServiceImpl,
 } from "@connectrpc/connect";
-import { connectNodeAdapter } from "@connectrpc/connect-node";
+import {
+  connectNodeAdapter,
+  createConnectTransport,
+} from "@connectrpc/connect-node";
 import { createValidateInterceptor } from "@connectrpc/validate";
 import { ViolationsSchema } from "@onequery/proto-runtime/buf/validate/validate_pb";
 import {
@@ -34,14 +38,15 @@ export class RuntimeControlServerError extends TaggedError(
   "RuntimeControlServerError"
 )<{
   cause: unknown;
+  endpoint?: string;
   message: string;
-  socketPath: string;
+  socketPath?: string;
 }>() {}
 
 export interface RuntimeControlServer {
   close(): Promise<void>;
+  endpoint: RuntimeControlEndpoint;
   name: "runtime-control";
-  socketPath: string;
 }
 
 export const RUNTIME_CONTROL_CONNECT_MAX_MESSAGE_BYTES = 64 * 1024;
@@ -50,6 +55,7 @@ export const RUNTIME_CONTROL_ERROR_INFO_DOMAIN = "onequery.runtime.v1";
 
 const RUNTIME_CONTROL_SESSION_CLOSE_GRACE_MS = 250;
 const RUNTIME_CONTROL_RETRY_DELAY_MS = 250;
+const RUNTIME_CONTROL_SOCKET_PROBE_TIMEOUT_MS = 250;
 
 type RuntimeControlConnectErrorDetails = NonNullable<
   ConstructorParameters<typeof ConnectError>[3]
@@ -121,22 +127,82 @@ export async function serveRuntimeControl(input: {
   actor: RuntimeControlActor;
   endpoint: RuntimeControlEndpoint;
 }): Promise<RuntimeControlServer> {
-  switch (input.endpoint.transport) {
+  switch (input.endpoint.transport.kind) {
     case "unix":
-      return serveUnixRuntimeControl(input.actor, input.endpoint.socketPath);
-    default:
-      throw new RuntimeControlServerError({
-        cause: null,
-        message: "unsupported runtime control transport",
-        socketPath: input.endpoint.socketPath,
-      });
+      return serveUnixRuntimeControl(
+        input.actor,
+        input.endpoint,
+        input.endpoint.transport.socketPath
+      );
+    case "loopback-h2c":
+    case "windows-named-pipe":
+      throw disabledNonUnixRuntimeControlTransportError(
+        input.endpoint.transport
+      );
   }
 }
 
-function createRuntimeControlConnectHandler(
-  actor: RuntimeControlActor,
-  shutdownSignal: AbortSignal
-) {
+function disabledNonUnixRuntimeControlTransportError(
+  transport: Extract<
+    RuntimeControlEndpoint["transport"],
+    { kind: "loopback-h2c" | "windows-named-pipe" }
+  >
+): RuntimeControlServerError {
+  const missing = missingNonUnixRuntimeControlSecurity(transport);
+
+  if (missing.length > 0) {
+    return new RuntimeControlServerError({
+      cause: null,
+      endpoint: describeRuntimeControlTransport(transport),
+      message: `runtime control ${transport.kind} transport requires launch-scoped bearer auth and fencing metadata before it can be enabled (missing ${missing.join(", ")})`,
+    });
+  }
+
+  return new RuntimeControlServerError({
+    cause: null,
+    endpoint: describeRuntimeControlTransport(transport),
+    message: `runtime control ${transport.kind} transport is not enabled by this runtime`,
+  });
+}
+
+function missingNonUnixRuntimeControlSecurity(
+  transport: Extract<
+    RuntimeControlEndpoint["transport"],
+    { kind: "loopback-h2c" | "windows-named-pipe" }
+  >
+): string[] {
+  const missing: string[] = [];
+  if (
+    !transport.auth ||
+    transport.auth.kind !== "bearer" ||
+    transport.auth.token.trim().length === 0
+  ) {
+    missing.push("auth");
+  }
+  if (!transport.fencing || transport.fencing.launchId.trim().length === 0) {
+    missing.push("launchId");
+  }
+  if (!transport.fencing || transport.fencing.dataDir.trim().length === 0) {
+    missing.push("dataDir");
+  }
+
+  return missing;
+}
+
+function describeRuntimeControlTransport(
+  transport: RuntimeControlEndpoint["transport"]
+): string {
+  switch (transport.kind) {
+    case "unix":
+      return transport.socketPath;
+    case "loopback-h2c":
+      return `${transport.host}:${transport.port}`;
+    case "windows-named-pipe":
+      return transport.pipeName;
+  }
+}
+
+function createRuntimeControlConnectHandler(actor: RuntimeControlActor) {
   const implementation: ServiceImpl<typeof RuntimeControlService> = {
     async getStatus(request) {
       return mapRuntimeControlError(async () => ({
@@ -155,7 +221,6 @@ function createRuntimeControlConnectHandler(
 
   return connectNodeAdapter({
     ...runtimeControlConnectRouterOptions,
-    shutdownSignal,
     routes(router) {
       router.service(RuntimeControlService, implementation);
     },
@@ -471,21 +536,18 @@ function classifyRuntimeControlActorError(error: RuntimeControlActorError): {
 
 async function serveUnixRuntimeControl(
   actor: RuntimeControlActor,
+  endpoint: RuntimeControlEndpoint,
   socketPath: string
 ): Promise<RuntimeControlServer> {
   await mkdir(dirname(socketPath), {
     recursive: true,
     mode: 0o700,
   });
-  await rm(socketPath, {
-    force: true,
-  });
+  await verifyRuntimeControlSocketParentDirectory(socketPath);
+  await removeUnreachableRuntimeControlSocket(actor, socketPath);
 
   const sessions = new Set<http2.ServerHttp2Session>();
-  const shutdownController = new AbortController();
-  const server = http2.createServer(
-    createRuntimeControlConnectHandler(actor, shutdownController.signal)
-  );
+  const server = http2.createServer(createRuntimeControlConnectHandler(actor));
   server.on("session", (session) => {
     sessions.add(session);
     session.once("close", () => {
@@ -495,6 +557,7 @@ async function serveUnixRuntimeControl(
 
   await listen(server, socketPath);
   await chmod(socketPath, 0o600);
+  await verifyRuntimeControlSocketMode(socketPath);
 
   let closed = false;
   return {
@@ -504,12 +567,7 @@ async function serveUnixRuntimeControl(
       }
 
       closed = true;
-      shutdownController.abort(
-        new ConnectError(
-          "runtime control server shutting down",
-          Code.Unavailable
-        )
-      );
+      await closeRuntimeControlStatusWatches(actor);
       for (const session of sessions) {
         session.close();
       }
@@ -532,9 +590,290 @@ async function serveUnixRuntimeControl(
         force: true,
       });
     },
+    endpoint,
     name: "runtime-control",
-    socketPath,
   };
+}
+
+async function closeRuntimeControlStatusWatches(
+  actor: RuntimeControlActor
+): Promise<void> {
+  try {
+    await actor.closeStatusWatches();
+  } catch {
+    // Closing sessions below is the bounded fallback when the actor is already
+    // unavailable during shutdown.
+  }
+}
+
+async function verifyRuntimeControlSocketParentDirectory(
+  socketPath: string
+): Promise<void> {
+  const parentDir = dirname(socketPath);
+  const stat = await lstat(parentDir).catch((cause: unknown) => {
+    throw new RuntimeControlServerError({
+      cause,
+      message: `failed to inspect runtime control socket parent directory ${parentDir}`,
+      socketPath,
+    });
+  });
+
+  if (!stat.isDirectory()) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control socket parent ${parentDir} exists but is not a directory`,
+      socketPath,
+    });
+  }
+
+  const currentUid = process.getuid?.();
+  if (currentUid !== undefined && stat.uid !== currentUid) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control socket parent ${parentDir} is owned by uid ${stat.uid}; expected current uid ${currentUid}`,
+      socketPath,
+    });
+  }
+
+  const sharedMode = stat.mode & 0o077;
+  if (sharedMode !== 0) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control socket parent ${parentDir} must not be accessible by group or others`,
+      socketPath,
+    });
+  }
+}
+
+async function verifyRuntimeControlSocketMode(
+  socketPath: string
+): Promise<void> {
+  const stat = await lstat(socketPath).catch((cause: unknown) => {
+    throw new RuntimeControlServerError({
+      cause,
+      message: `failed to inspect runtime control socket ${socketPath}`,
+      socketPath,
+    });
+  });
+
+  if (!stat.isSocket()) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control path ${socketPath} exists but is not a Unix socket`,
+      socketPath,
+    });
+  }
+
+  const permissions = stat.mode & 0o777;
+  if (permissions !== 0o600) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control socket ${socketPath} must have mode 0600`,
+      socketPath,
+    });
+  }
+}
+
+async function removeUnreachableRuntimeControlSocket(
+  actor: RuntimeControlActor,
+  socketPath: string
+): Promise<void> {
+  const existing = await inspectExistingRuntimeControlSocket(actor, socketPath);
+
+  switch (existing.kind) {
+    case "absent":
+      return;
+    case "unreachable":
+      await rm(socketPath, {
+        force: true,
+      });
+      return;
+    case "reachable":
+      throw new RuntimeControlServerError({
+        cause: null,
+        message: existing.matchesExpected
+          ? `runtime control socket ${socketPath} is already reachable for current launch ${existing.actual.launchId}`
+          : `runtime control socket ${socketPath} is already reachable for launch ${existing.actual.launchId}; expected ${existing.expected.launchId}`,
+        socketPath,
+      });
+  }
+}
+
+type RuntimeControlSocketInspection =
+  | {
+      kind: "absent" | "unreachable";
+    }
+  | {
+      actual: RuntimeControlSocketIdentity;
+      expected: RuntimeControlSocketIdentity;
+      kind: "reachable";
+      matchesExpected: boolean;
+    };
+
+type RuntimeControlSocketIdentity = {
+  dataDir: string;
+  launchId: string;
+  pid: number;
+};
+
+async function inspectExistingRuntimeControlSocket(
+  actor: RuntimeControlActor,
+  socketPath: string
+): Promise<RuntimeControlSocketInspection> {
+  const stat = await lstat(socketPath).catch((cause: unknown) => {
+    if (isErrnoException(cause) && cause.code === "ENOENT") {
+      return null;
+    }
+
+    throw new RuntimeControlServerError({
+      cause,
+      message: `failed to inspect runtime control socket ${socketPath}`,
+      socketPath,
+    });
+  });
+  if (stat === null) {
+    return {
+      kind: "absent",
+    };
+  }
+  if (!stat.isSocket()) {
+    throw new RuntimeControlServerError({
+      cause: null,
+      message: `runtime control path ${socketPath} exists but is not a Unix socket`,
+      socketPath,
+    });
+  }
+
+  const reachable = await runtimeControlSocketAcceptsConnection(socketPath);
+  if (!reachable) {
+    return {
+      kind: "unreachable",
+    };
+  }
+
+  const [expectedStatus, actualStatus] = await Promise.all([
+    actor.getStatus(),
+    getRuntimeControlStatusFromSocket(socketPath),
+  ]);
+  const expected = runtimeControlSocketIdentity(expectedStatus);
+  const actual = runtimeControlSocketIdentity(actualStatus);
+
+  return {
+    actual,
+    expected,
+    kind: "reachable",
+    matchesExpected: runtimeControlSocketIdentityMatches(actual, expected),
+  };
+}
+
+function runtimeControlSocketAcceptsConnection(
+  socketPath: string
+): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    const socket = net.connect(socketPath);
+    const timeout = setTimeout(() => {
+      cleanup();
+      socket.destroy();
+      resolve(false);
+    }, RUNTIME_CONTROL_SOCKET_PROBE_TIMEOUT_MS);
+    timeout.unref();
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      socket.off("connect", handleConnect);
+      socket.off("error", handleError);
+    };
+    const handleConnect = () => {
+      cleanup();
+      socket.end();
+      resolve(true);
+    };
+    const handleError = (cause: unknown) => {
+      cleanup();
+      socket.destroy();
+      if (
+        isErrnoException(cause) &&
+        (cause.code === "ENOENT" || cause.code === "ECONNREFUSED")
+      ) {
+        resolve(false);
+        return;
+      }
+
+      reject(cause);
+    };
+
+    socket.once("connect", handleConnect);
+    socket.once("error", handleError);
+  });
+}
+
+async function getRuntimeControlStatusFromSocket(socketPath: string) {
+  const client = createClient(
+    RuntimeControlService,
+    createConnectTransport({
+      baseUrl: "http://onequery-runtime",
+      httpVersion: "2",
+      nodeOptions: {
+        createConnection: () => net.connect(socketPath),
+      },
+    })
+  );
+  const abort = new AbortController();
+  const timeout = setTimeout(() => {
+    abort.abort();
+  }, RUNTIME_CONTROL_SOCKET_PROBE_TIMEOUT_MS);
+  timeout.unref();
+
+  try {
+    const response = await client.getStatus({}, { signal: abort.signal });
+    if (!response.status) {
+      throw new RuntimeControlServerError({
+        cause: response,
+        message: `runtime control socket ${socketPath} returned no status`,
+        socketPath,
+      });
+    }
+
+    return response.status;
+  } catch (cause) {
+    if (cause instanceof RuntimeControlServerError) {
+      throw cause;
+    }
+
+    throw new RuntimeControlServerError({
+      cause,
+      message: `runtime control socket ${socketPath} is reachable but did not return runtime status`,
+      socketPath,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function runtimeControlSocketIdentity(
+  status: NonNullable<Awaited<ReturnType<RuntimeControlActor["getStatus"]>>>
+): RuntimeControlSocketIdentity {
+  const identity = status.identity;
+  return {
+    dataDir: identity?.dataDir ?? "",
+    launchId: identity?.launchId ?? "",
+    pid: identity?.pid ?? 0,
+  };
+}
+
+function runtimeControlSocketIdentityMatches(
+  actual: RuntimeControlSocketIdentity,
+  expected: RuntimeControlSocketIdentity
+): boolean {
+  return (
+    actual.dataDir === expected.dataDir &&
+    actual.launchId === expected.launchId &&
+    actual.pid === expected.pid
+  );
+}
+
+function isErrnoException(cause: unknown): cause is NodeJS.ErrnoException {
+  return cause instanceof Error && "code" in cause;
 }
 
 function listen(server: http2.Http2Server, socketPath: string): Promise<void> {

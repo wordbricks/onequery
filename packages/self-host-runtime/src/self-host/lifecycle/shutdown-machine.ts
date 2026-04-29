@@ -3,8 +3,12 @@ import type { OneshotSender } from "antiox/sync/oneshot";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import { RuntimeShutdownError } from "./errors";
-import type { RuntimeShutdownCompletion } from "./types";
+import { createRuntimeShutdownError } from "./errors";
+import type { RuntimeShutdownError } from "./errors";
+import type {
+  RuntimeShutdownCompletion,
+  RuntimeShutdownRequest,
+} from "./types";
 
 export type ShutdownResult = ResultType<void, RuntimeShutdownError>;
 
@@ -15,10 +19,9 @@ export type ShutdownMachineEvent =
       type: "controller_disposed";
     }
   | {
-      type: "shutdown_requested";
-      completion: ShutdownCompletion;
-      reason: string;
+      request: RuntimeShutdownRequest;
       responseTx: OneshotSender<ShutdownResult>;
+      type: "shutdown_requested";
     }
   | {
       type: "shutdown_finished";
@@ -31,9 +34,8 @@ export type ShutdownMachineState =
     }
   | {
       status: "shutting_down";
-      completion: ShutdownCompletion;
       disposeRequested: boolean;
-      reason: string;
+      request: RuntimeShutdownRequest;
       responders: readonly OneshotSender<ShutdownResult>[];
     }
   | {
@@ -59,8 +61,8 @@ export type ShutdownMachineEffect =
       result: ShutdownResult;
     }
   | {
+      request: RuntimeShutdownRequest;
       type: "start_shutdown";
-      reason: string;
     };
 
 export const initialShutdownMachineState: ShutdownMachineState = {
@@ -92,15 +94,14 @@ export function reduceShutdownMachine(
           return {
             effects: [
               {
+                request: event.request,
                 type: "start_shutdown",
-                reason: event.reason,
               },
             ],
             state: {
               status: "shutting_down",
-              completion: event.completion,
               disposeRequested: false,
-              reason: event.reason,
+              request: event.request,
               responders: [event.responseTx],
             },
           };
@@ -128,15 +129,15 @@ export function reduceShutdownMachine(
             effects: [],
             state: {
               ...state,
-              completion: mergeShutdownCompletion(
-                state.completion,
-                event.completion
+              request: mergeShutdownRequestCompletion(
+                state.request,
+                event.request
               ),
               responders: [...state.responders, event.responseTx],
             },
           };
         case "shutdown_finished": {
-          const shouldExit = state.completion === "cleanup_and_exit";
+          const shouldExit = state.request.completion === "cleanup_and_exit";
 
           return {
             effects: [
@@ -191,7 +192,8 @@ export function reduceShutdownMachine(
           };
         case "shutdown_requested": {
           const shouldExit =
-            event.completion === "cleanup_and_exit" && !state.exitHandled;
+            event.request.completion === "cleanup_and_exit" &&
+            !state.exitHandled;
 
           return {
             effects: [
@@ -238,7 +240,9 @@ export function reduceShutdownMachine(
               {
                 type: "respond",
                 responders: [event.responseTx],
-                result: Result.err(createDisposedShutdownError(event.reason)),
+                result: Result.err(
+                  createDisposedShutdownError(event.request.reason)
+                ),
               },
             ],
             state,
@@ -255,11 +259,22 @@ export function reduceShutdownMachine(
 export function createDisposedShutdownError(
   reason: string
 ): RuntimeShutdownError {
-  return new RuntimeShutdownError({
+  return createRuntimeShutdownError({
     cause: null,
+    code: "shutdown_rejected",
     message: `runtime shutdown controller is disposed for ${reason}`,
     reason,
   });
+}
+
+function mergeShutdownRequestCompletion(
+  current: RuntimeShutdownRequest,
+  next: RuntimeShutdownRequest
+): RuntimeShutdownRequest {
+  return {
+    ...current,
+    completion: mergeShutdownCompletion(current.completion, next.completion),
+  };
 }
 
 function mergeShutdownCompletion(

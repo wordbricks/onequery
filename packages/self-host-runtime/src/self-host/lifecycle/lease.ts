@@ -14,6 +14,7 @@ import {
   RuntimeLeaseRecordReadError,
   RuntimeLifecycleFileError,
   RuntimeLifecycleOptionsError,
+  RuntimeLifecycleTransitionError,
 } from "./errors";
 import type {
   AcquireRuntimeLifecycleLeaseError,
@@ -39,8 +40,10 @@ import {
 import type {
   CleanupOptions,
   LifecycleOptions,
-  RuntimeLifecycleLease,
+  RuntimeLifecycleDurableLease,
+  RuntimeLifecycleFailure,
   RuntimeLifecyclePhase,
+  RuntimeLifecycleTransitionPersistence,
   SelfHostLifecyclePaths,
 } from "./types";
 
@@ -48,6 +51,8 @@ type ResolvedLifecycleOptions = Required<Omit<LifecycleOptions, "launchId">> &
   Pick<LifecycleOptions, "launchId">;
 
 type ActiveRuntimeLeaseRecord = {
+  failure?: RuntimeLifecycleFailure;
+  phase: RuntimeLifecyclePhase;
   record: RuntimeLeaseRecord;
   runtimeSequence: bigint;
 };
@@ -66,7 +71,7 @@ export async function acquireRuntimeLifecycleLeaseResult(
   paths: SelfHostLifecyclePaths,
   options: LifecycleOptions
 ): Promise<
-  ResultType<RuntimeLifecycleLease, AcquireRuntimeLifecycleLeaseError>
+  ResultType<RuntimeLifecycleDurableLease, AcquireRuntimeLifecycleLeaseError>
 > {
   const resolvedResult = resolveLifecycleOptions(options);
   if (resolvedResult.isErr()) {
@@ -80,6 +85,7 @@ export async function acquireRuntimeLifecycleLeaseResult(
     yield* Result.await(ensureRuntimeDirectories(paths));
     activeRecord = yield* Result.await(acquireLease(paths, resolved));
     const activeLease: ActiveRuntimeLeaseRecord = {
+      phase: "starting",
       record: activeRecord,
       runtimeSequence: initialRuntimeSequence,
     };
@@ -111,11 +117,34 @@ export async function acquireRuntimeLifecycleLeaseResult(
 
     return Result.ok({
       paths,
-      async transition(phase) {
+      async transition(phase, failure) {
+        const occurredAt = resolved.now();
+        const transition = createStandaloneLifecycleTransition(
+          activeLease,
+          phase,
+          occurredAt,
+          failure
+        );
+        if (transition === null) {
+          return;
+        }
+
         const transitionResult = await transitionRuntimeLifecycleLease(
           paths,
           activeLease,
-          phase,
+          transition,
+          resolved
+        );
+
+        if (transitionResult.isErr()) {
+          throw transitionResult.error;
+        }
+      },
+      async persistTransition(transition) {
+        const transitionResult = await transitionRuntimeLifecycleLease(
+          paths,
+          activeLease,
+          transition,
           resolved
         );
 
@@ -143,7 +172,7 @@ export async function acquireRuntimeLifecycleLeaseResult(
           throw releaseResult.error;
         }
       },
-    } satisfies RuntimeLifecycleLease);
+    } satisfies RuntimeLifecycleDurableLease);
   });
   if (acquisition.isErr() && activeRecord !== null) {
     await cleanupLeaseArtifacts(paths);
@@ -155,7 +184,7 @@ export async function acquireRuntimeLifecycleLeaseResult(
 export async function acquireRuntimeLifecycleLease(
   paths: SelfHostLifecyclePaths,
   options: LifecycleOptions
-): Promise<RuntimeLifecycleLease> {
+): Promise<RuntimeLifecycleDurableLease> {
   const lease = await acquireRuntimeLifecycleLeaseResult(paths, options);
 
   if (lease.isErr()) {
@@ -168,30 +197,34 @@ export async function acquireRuntimeLifecycleLease(
 async function transitionRuntimeLifecycleLease(
   paths: SelfHostLifecyclePaths,
   activeLease: ActiveRuntimeLeaseRecord,
-  phase: RuntimeLifecyclePhase,
+  transition: RuntimeLifecycleTransitionPersistence,
   options: ResolvedLifecycleOptions
 ): Promise<ResultType<void, RuntimeLifecycleMutationError>> {
-  const now = options.now();
-  activeLease.runtimeSequence += 1n;
-  activeLease.record = renewRuntimeLeaseRecord(
+  const validation = validateLifecycleTransition(activeLease, transition);
+  if (validation.isErr()) {
+    return Result.err(validation.error);
+  }
+
+  const nextRecord = renewRuntimeLeaseRecord(
     activeLease.record,
-    now,
-    activeLease.runtimeSequence
+    transition.occurredAt,
+    transition.runtimeSequence
   );
 
-  return Result.gen(async function* transitionLeaseFlow() {
-    yield* Result.await(writeRuntimeLeaseRecord(paths, activeLease.record));
+  const persisted = await Result.gen(async function* transitionLeaseFlow() {
+    yield* Result.await(writeRuntimeLeaseRecord(paths, nextRecord));
     yield* Result.await(
       writeRuntimeStatusSnapshot(
         paths,
         encodeRuntimeStatusSnapshot(
           createRuntimeStatusSnapshot({
+            failure: transition.failure,
             launchId: options.launchId,
             paths,
-            phase,
+            phase: transition.phase,
             pid: options.pid,
-            runtimeSequence: activeLease.runtimeSequence,
-            snapshotAt: now,
+            runtimeSequence: transition.runtimeSequence,
+            snapshotAt: transition.occurredAt,
             supervisor: options.supervisor,
           })
         )
@@ -200,6 +233,64 @@ async function transitionRuntimeLifecycleLease(
 
     return Result.ok(undefined);
   });
+  if (persisted.isErr()) {
+    return Result.err(persisted.error);
+  }
+
+  // Comment: runtime_sequence is allocated by the runtime-control reducer;
+  // durable lease state only adopts it after the snapshot writes complete.
+  activeLease.failure = transition.failure;
+  activeLease.phase = transition.phase;
+  activeLease.record = nextRecord;
+  activeLease.runtimeSequence = transition.runtimeSequence;
+
+  return Result.ok(undefined);
+}
+
+function createStandaloneLifecycleTransition(
+  activeLease: ActiveRuntimeLeaseRecord,
+  phase: RuntimeLifecyclePhase,
+  occurredAt: Date,
+  failure?: RuntimeLifecycleFailure
+): RuntimeLifecycleTransitionPersistence | null {
+  if (activeLease.phase === phase) {
+    return null;
+  }
+
+  return {
+    occurredAt,
+    ...(failure ? { failure } : {}),
+    phase,
+    runtimeSequence: activeLease.runtimeSequence + 1n,
+  };
+}
+
+function validateLifecycleTransition(
+  activeLease: ActiveRuntimeLeaseRecord,
+  transition: RuntimeLifecycleTransitionPersistence
+): ResultType<void, RuntimeLifecycleTransitionError> {
+  if (transition.phase === activeLease.phase) {
+    return Result.err(
+      new RuntimeLifecycleTransitionError({
+        message: `runtime lifecycle phase ${transition.phase} cannot advance sequence ${transition.runtimeSequence.toString()} without changing phase`,
+        phase: transition.phase,
+        runtimeSequence: transition.runtimeSequence.toString(),
+      })
+    );
+  }
+
+  const nextRuntimeSequence = activeLease.runtimeSequence + 1n;
+  if (transition.runtimeSequence !== nextRuntimeSequence) {
+    return Result.err(
+      new RuntimeLifecycleTransitionError({
+        message: `runtime lifecycle transition to ${transition.phase} used sequence ${transition.runtimeSequence.toString()} but expected ${nextRuntimeSequence.toString()}`,
+        phase: transition.phase,
+        runtimeSequence: transition.runtimeSequence.toString(),
+      })
+    );
+  }
+
+  return Result.ok(undefined);
 }
 
 async function releaseRuntimeLifecycleLease(

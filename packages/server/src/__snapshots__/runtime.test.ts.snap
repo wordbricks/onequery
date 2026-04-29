@@ -52,7 +52,6 @@ exports[`createServerRuntimeConfig > maps a postgres launch contract into a type
     "host": "127.0.0.1",
     "port": 4555,
   },
-  "mode": "workspace-dev",
   "publicOrigin": "http://localhost:4545",
   "rateLimit": {
     "api": {

@@ -58,6 +58,7 @@ export function createWorkspaceDevLaunchConfig(input?: {
 export function createSelfHostRuntimePaths(input?: {
   backupsDir?: string;
   dataDir?: string;
+  lifecycleEventLogPath?: string;
   logsDir?: string;
   runDir?: string;
   runtimeLeasePath?: string;
@@ -66,6 +67,8 @@ export function createSelfHostRuntimePaths(input?: {
   return {
     backupsDir: input?.backupsDir ?? "/tmp/onequery/backups",
     dataDir: input?.dataDir ?? "/tmp/onequery/data",
+    lifecycleEventLogPath:
+      input?.lifecycleEventLogPath ?? "/tmp/onequery/run/lifecycle.events.pb",
     logsDir: input?.logsDir ?? "/tmp/onequery/logs",
     runDir: input?.runDir ?? "/tmp/onequery/run",
     runtimeLeasePath:
@@ -80,8 +83,10 @@ export function createSelfHostRuntimeControl(input?: {
   socketPath?: string;
 }): NonNullable<ServerLaunchConfig["runtimeControl"]> {
   return {
-    socketPath: input?.socketPath ?? "/tmp/onequery/run/runtime-control.sock",
-    transport: "unix",
+    transport: {
+      kind: "unix",
+      socketPath: input?.socketPath ?? "/tmp/onequery/run/runtime-control.sock",
+    },
   };
 }
 

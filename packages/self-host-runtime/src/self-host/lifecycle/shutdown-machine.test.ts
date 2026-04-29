@@ -18,23 +18,21 @@ describe("shutdown machine", () => {
     const responseTx = createResponseSender();
 
     const transition = reduceShutdownMachine(initialShutdownMachineState, {
-      type: "shutdown_requested",
-      completion: "cleanup_only",
-      reason: "manual",
+      request: shutdownRequest("manual", "cleanup_only"),
       responseTx,
+      type: "shutdown_requested",
     });
 
     expect(transition.effects).toEqual([
       {
+        request: shutdownRequest("manual", "cleanup_only"),
         type: "start_shutdown",
-        reason: "manual",
       },
     ]);
     expect(transition.state).toMatchObject({
       status: "shutting_down",
-      completion: "cleanup_only",
       disposeRequested: false,
-      reason: "manual",
+      request: shutdownRequest("manual", "cleanup_only"),
     });
     expectShuttingDown(transition.state);
     expect(transition.state.responders).toHaveLength(1);
@@ -45,23 +43,22 @@ describe("shutdown machine", () => {
     const firstResponseTx = createResponseSender();
     const secondResponseTx = createResponseSender();
     const started = reduceShutdownMachine(initialShutdownMachineState, {
-      type: "shutdown_requested",
-      completion: "cleanup_only",
-      reason: "manual",
+      request: shutdownRequest("manual", "cleanup_only"),
       responseTx: firstResponseTx,
+      type: "shutdown_requested",
     });
 
     const transition = reduceShutdownMachine(started.state, {
-      type: "shutdown_requested",
-      completion: "cleanup_and_exit",
-      reason: "SIGTERM",
+      request: shutdownRequest("SIGTERM", "cleanup_and_exit"),
       responseTx: secondResponseTx,
+      type: "shutdown_requested",
     });
 
     expect(transition.effects).toEqual([]);
     expectShuttingDown(transition.state);
-    expect(transition.state.completion).toBe("cleanup_and_exit");
-    expect(transition.state.reason).toBe("manual");
+    expect(transition.state.request).toEqual(
+      shutdownRequest("manual", "cleanup_and_exit")
+    );
     expect(transition.state.responders).toEqual([
       firstResponseTx,
       secondResponseTx,
@@ -74,9 +71,8 @@ describe("shutdown machine", () => {
     const result: ShutdownResult = Result.ok(undefined);
     const state: ShutdownMachineState = {
       status: "shutting_down",
-      completion: "cleanup_and_exit",
       disposeRequested: false,
-      reason: "SIGTERM",
+      request: shutdownRequest("SIGTERM", "cleanup_and_exit"),
       responders: [firstResponseTx, secondResponseTx],
     };
 
@@ -105,10 +101,9 @@ describe("shutdown machine", () => {
     const responseTx = createResponseSender();
     const result: ShutdownResult = Result.ok(undefined);
     const started = reduceShutdownMachine(initialShutdownMachineState, {
-      type: "shutdown_requested",
-      completion: "cleanup_only",
-      reason: "manual",
+      request: shutdownRequest("manual", "cleanup_only"),
       responseTx,
+      type: "shutdown_requested",
     });
     const disposed = reduceShutdownMachine(started.state, {
       type: "controller_disposed",
@@ -140,10 +135,9 @@ describe("shutdown machine", () => {
     };
 
     const firstTransition = reduceShutdownMachine(state, {
-      type: "shutdown_requested",
-      completion: "cleanup_and_exit",
-      reason: "SIGTERM",
+      request: shutdownRequest("SIGTERM", "cleanup_and_exit"),
       responseTx: firstResponseTx,
+      type: "shutdown_requested",
     });
 
     expect(firstTransition.effects).toHaveLength(2);
@@ -156,10 +150,9 @@ describe("shutdown machine", () => {
     expect(firstTransition.state.exitHandled).toBe(true);
 
     const secondTransition = reduceShutdownMachine(firstTransition.state, {
-      type: "shutdown_requested",
-      completion: "cleanup_and_exit",
-      reason: "SIGINT",
+      request: shutdownRequest("SIGINT", "cleanup_and_exit"),
       responseTx: secondResponseTx,
+      type: "shutdown_requested",
     });
 
     expect(secondTransition.effects).toHaveLength(1);
@@ -178,10 +171,9 @@ describe("shutdown machine", () => {
         status: "disposed",
       },
       {
-        type: "shutdown_requested",
-        completion: "cleanup_only",
-        reason: "manual",
+        request: shutdownRequest("manual", "cleanup_only"),
         responseTx,
+        type: "shutdown_requested",
       }
     );
 
@@ -214,6 +206,16 @@ describe("shutdown machine", () => {
 
 function createResponseSender() {
   return oneshot<ShutdownResult>()[0];
+}
+
+function shutdownRequest(
+  reason: string,
+  completion: "cleanup_and_exit" | "cleanup_only"
+) {
+  return {
+    completion,
+    reason,
+  };
 }
 
 function shutdownFailure(reason: string): ShutdownResult {

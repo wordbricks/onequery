@@ -34,6 +34,7 @@ export function toLifecyclePathsResult(
     paths: {
       controlEndpoint: launchConfig.runtimeControl,
       dataDir: launchConfig.runtimePaths.dataDir,
+      lifecycleEventLogPath: launchConfig.runtimePaths.lifecycleEventLogPath,
       logsDir: launchConfig.runtimePaths.logsDir,
       runtimeLeasePath: launchConfig.runtimePaths.runtimeLeasePath,
       runtimeStatusSnapshotPath:

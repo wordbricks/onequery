@@ -28,7 +28,6 @@ export interface ServerRuntimeConfig {
     readonly masterEncryptionKey: Uint8Array;
   };
   readonly listen: ServerLaunchConfig["listen"];
-  readonly mode: ServerLaunchConfig["mode"];
   readonly publicOrigin: string;
   readonly rateLimit: {
     readonly api: {
@@ -99,7 +98,6 @@ export function createServerRuntimeConfig(
       ),
     },
     listen: launchConfig.listen,
-    mode: launchConfig.mode,
     publicOrigin: launchConfig.publicOrigin,
     rateLimit: {
       api: {

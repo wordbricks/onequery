@@ -2,6 +2,7 @@ import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import {
   LifecycleRecordWriter,
+  RuntimeFailureCode,
   RuntimeLeaseRecordSchema,
   RuntimePhase,
   RuntimeStatusSnapshotSchema,
@@ -16,7 +17,11 @@ import type { Result as ResultType } from "better-result";
 import { z } from "zod";
 
 import { RuntimeLeaseRecordReadError } from "./errors";
-import type { RuntimeLifecyclePhase, SelfHostLifecyclePaths } from "./types";
+import type {
+  RuntimeLifecycleFailure,
+  RuntimeLifecyclePhase,
+  SelfHostLifecyclePaths,
+} from "./types";
 
 const lifecycleSchemaVersion = 1;
 const defaultLeaseTtlSeconds = 60n;
@@ -83,6 +88,7 @@ export function renewRuntimeLeaseRecord(
 }
 
 export function createRuntimeStatusSnapshot(input: {
+  failure?: RuntimeLifecycleFailure;
   launchId: string;
   paths: SelfHostLifecyclePaths;
   phase: RuntimeLifecyclePhase;
@@ -109,6 +115,9 @@ export function createRuntimeStatusSnapshot(input: {
       phase: toProtoRuntimePhase(input.phase),
       runtimeSequence: input.runtimeSequence,
       updatedAt: timestampFromDate(input.snapshotAt),
+      ...(input.failure
+        ? { failure: toProtoRuntimeFailure(input.failure) }
+        : {}),
     },
   });
 }
@@ -180,5 +189,30 @@ function toProtoRuntimePhase(phase: RuntimeLifecyclePhase): RuntimePhase {
       return RuntimePhase.STARTING;
     case "stopping":
       return RuntimePhase.STOPPING;
+  }
+}
+
+function toProtoRuntimeFailure(failure: RuntimeLifecycleFailure) {
+  return {
+    code: toProtoRuntimeFailureCode(failure.code),
+    message: failure.message,
+    retryable: failure.retryable,
+  };
+}
+
+function toProtoRuntimeFailureCode(
+  code: RuntimeLifecycleFailure["code"]
+): RuntimeFailureCode {
+  switch (code) {
+    case "checkpoint_failed":
+      return RuntimeFailureCode.CHECKPOINT_FAILED;
+    case "internal":
+      return RuntimeFailureCode.INTERNAL;
+    case "resource_close_failed":
+      return RuntimeFailureCode.RESOURCE_CLOSE_FAILED;
+    case "shutdown_rejected":
+      return RuntimeFailureCode.SHUTDOWN_REJECTED;
+    case "shutdown_timeout":
+      return RuntimeFailureCode.SHUTDOWN_TIMEOUT;
   }
 }

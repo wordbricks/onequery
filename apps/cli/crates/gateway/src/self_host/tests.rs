@@ -90,6 +90,7 @@ fn runtime_paths_follow_self_host_layout_contract() {
         runtime_lease_path: PathBuf::from("/data/onequery/run/runtime.lease.json"),
         runtime_status_snapshot_path: PathBuf::from("/data/onequery/run/runtime.status.json"),
         supervisor_status_snapshot_path: PathBuf::from("/data/onequery/run/supervisor.status.json"),
+        lifecycle_event_log_path: PathBuf::from("/data/onequery/run/lifecycle.events.pb"),
         releases_dir: PathBuf::from("/data/onequery/releases"),
         active_release_path: PathBuf::from("/data/onequery/releases/active.json"),
         recovery_points_dir: PathBuf::from("/data/onequery/recovery-points"),

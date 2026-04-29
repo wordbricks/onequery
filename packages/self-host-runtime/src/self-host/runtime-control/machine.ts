@@ -1,13 +1,19 @@
 import { unreachable } from "antiox/panic";
 
 import type {
+  RuntimeLifecycleFailure,
   RuntimeLifecyclePhase,
   RuntimeShutdownCompletion,
+  RuntimeShutdownGraceTimeout,
+  RuntimeShutdownTarget,
 } from "../lifecycle/types";
 
+// Internal actor state extends lifecycle shutdown phases with terminal states
+// that are observed by control-plane clients. actor.ts maps this state to the
+// generated RuntimePhase enum at the Connect boundary.
 export type RuntimeControlPhase = RuntimeLifecyclePhase | "failed" | "stopped";
 
-export type RuntimeControlFailureCode = "internal";
+export type RuntimeControlFailureCode = RuntimeLifecycleFailure["code"];
 
 export interface RuntimeControlIdentity {
   dataDir: string;
@@ -43,23 +49,9 @@ export interface RuntimeControlStatusSnapshot {
   updatedAt: Date;
 }
 
-export interface RuntimeControlWatcher {
-  afterRuntimeSequence: bigint;
-  id: number;
-}
+export type RuntimeControlStopRequestTarget = RuntimeShutdownTarget;
 
-export interface RuntimeControlStopRequestTarget {
-  dataDir: string;
-  launchId: string;
-  pid?: number;
-  supervisorGeneration?: bigint;
-  supervisorPid?: number;
-}
-
-export interface RuntimeControlStopRequestGraceTimeout {
-  nanos: number;
-  seconds: bigint;
-}
+export type RuntimeControlStopRequestGraceTimeout = RuntimeShutdownGraceTimeout;
 
 export interface RuntimeControlStopRequest {
   completion: RuntimeShutdownCompletion;
@@ -95,7 +87,6 @@ export interface RuntimeControlStopOperationOutcome {
 
 export interface RuntimeControlMachineState extends RuntimeControlStatusSnapshot {
   recentStopOperationOutcomes: readonly RuntimeControlStopOperationOutcome[];
-  watchers: readonly RuntimeControlWatcher[];
 }
 
 export type RuntimeControlStopDisposition =
@@ -105,6 +96,7 @@ export type RuntimeControlStopDisposition =
 
 export type RuntimeControlMachineEvent =
   | {
+      failure?: RuntimeLifecycleFailure;
       occurredAt: Date;
       phase: RuntimeLifecyclePhase;
       reason: string;
@@ -122,19 +114,17 @@ export type RuntimeControlMachineEvent =
       type: "lifecycle_release_failed";
     }
   | {
+      graceTimeout: RuntimeControlStopRequestGraceTimeout;
+      occurredAt: Date;
+      operationId: string;
+      reason: string;
+      type: "shutdown_timeout_elapsed";
+    }
+  | {
       occurredAt: Date;
       operationId: string;
       request: RuntimeControlStopRequest;
       type: "stop_requested";
-    }
-  | {
-      afterRuntimeSequence: bigint;
-      id: number;
-      type: "watch_registered";
-    }
-  | {
-      id: number;
-      type: "watch_closed";
     };
 
 export type RuntimeControlMachineReduction =
@@ -156,10 +146,6 @@ export type RuntimeControlMachineReduction =
       state: RuntimeControlMachineState;
       transition?: RuntimeControlTransition;
       type: "transition";
-    }
-  | {
-      state: RuntimeControlMachineState;
-      type: "watch";
     };
 
 export function createInitialRuntimeControlState(input: {
@@ -172,7 +158,6 @@ export function createInitialRuntimeControlState(input: {
     recentStopOperationOutcomes: [],
     runtimeSequence: 1n,
     updatedAt: input.now,
-    watchers: [],
   };
 }
 
@@ -184,8 +169,16 @@ export function reduceRuntimeControlMachine(
 ): RuntimeControlMachineReduction {
   switch (event.type) {
     case "lifecycle_transition_requested": {
+      if (isFinishedPhase(state.phase)) {
+        return {
+          state,
+          type: "transition",
+        };
+      }
+
       const transition = createRuntimeControlTransition(state, {
         currentPhase: event.phase,
+        ...(event.failure ? { failure: event.failure } : {}),
         occurredAt: event.occurredAt,
         reason: event.reason,
       });
@@ -197,6 +190,13 @@ export function reduceRuntimeControlMachine(
       };
     }
     case "lifecycle_release_succeeded": {
+      if (isFinishedPhase(state.phase)) {
+        return {
+          state,
+          type: "transition",
+        };
+      }
+
       const transition = createRuntimeControlTransition(state, {
         currentPhase: "stopped",
         occurredAt: event.occurredAt,
@@ -210,12 +210,48 @@ export function reduceRuntimeControlMachine(
       };
     }
     case "lifecycle_release_failed": {
+      if (isFinishedPhase(state.phase)) {
+        return {
+          state,
+          type: "transition",
+        };
+      }
+
       const failure: RuntimeControlFailure = {
         code: "internal",
         message: event.message,
         retryable: false,
       };
       const transition = createRuntimeControlTransition(state, {
+        currentPhase: "shutdown_failed",
+        failure,
+        occurredAt: event.occurredAt,
+        reason: event.reason,
+      });
+
+      return {
+        state: transition
+          ? applyTransition(state, transition)
+          : { ...state, failure, updatedAt: event.occurredAt },
+        transition,
+        type: "transition",
+      };
+    }
+    case "shutdown_timeout_elapsed": {
+      if (!isStoppingPhase(state.phase)) {
+        return {
+          state,
+          type: "transition",
+        };
+      }
+
+      const failure: RuntimeControlFailure = {
+        code: "shutdown_timeout",
+        message: `runtime shutdown timed out after ${formatStopGraceTimeout(event.graceTimeout)} for ${event.reason}`,
+        retryable: false,
+      };
+      const transition = createRuntimeControlTransition(state, {
+        callerOperationId: event.operationId,
         currentPhase: "shutdown_failed",
         failure,
         occurredAt: event.occurredAt,
@@ -316,30 +352,6 @@ export function reduceRuntimeControlMachine(
         type: "stop",
       };
     }
-    case "watch_registered":
-      return {
-        state: state.watchers.some((watcher) => watcher.id === event.id)
-          ? state
-          : {
-              ...state,
-              watchers: [
-                ...state.watchers,
-                {
-                  afterRuntimeSequence: event.afterRuntimeSequence,
-                  id: event.id,
-                },
-              ],
-            },
-        type: "watch",
-      };
-    case "watch_closed":
-      return {
-        state: {
-          ...state,
-          watchers: state.watchers.filter((watcher) => watcher.id !== event.id),
-        },
-        type: "watch",
-      };
     default:
       return unreachable(event);
   }
@@ -605,4 +617,10 @@ function isStoppingPhase(phase: RuntimeControlPhase): boolean {
     default:
       return unreachable(phase);
   }
+}
+
+export function isRuntimeControlTerminalPhase(
+  phase: RuntimeControlPhase
+): boolean {
+  return isFinishedPhase(phase);
 }

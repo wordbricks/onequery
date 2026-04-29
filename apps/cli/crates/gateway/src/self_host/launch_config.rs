@@ -102,6 +102,7 @@ pub(crate) struct ServerLaunchApiRateLimitConfig {
 pub(crate) struct ServerLaunchRuntimePathsConfig {
     pub(crate) backups_dir: String,
     pub(crate) data_dir: String,
+    pub(crate) lifecycle_event_log_path: String,
     pub(crate) logs_dir: String,
     pub(crate) run_dir: String,
     pub(crate) runtime_lease_path: String,
@@ -111,14 +112,16 @@ pub(crate) struct ServerLaunchRuntimePathsConfig {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchRuntimeControlConfig {
-    pub(crate) socket_path: String,
-    pub(crate) transport: ServerLaunchRuntimeControlTransport,
+    pub(crate) transport: ServerLaunchRuntimeControlTransportConfig,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum ServerLaunchRuntimeControlTransport {
-    Unix,
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "kind")]
+pub(crate) enum ServerLaunchRuntimeControlTransportConfig {
+    Unix {
+        #[serde(rename = "socketPath")]
+        socket_path: String,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -225,12 +228,14 @@ fn resolve_self_host_launch_config(
             enabled: true,
         },
         runtime_control: ServerLaunchRuntimeControlConfig {
-            socket_path: paths.runtime_control_socket_path.display().to_string(),
-            transport: ServerLaunchRuntimeControlTransport::Unix,
+            transport: ServerLaunchRuntimeControlTransportConfig::Unix {
+                socket_path: paths.runtime_control_socket_path.display().to_string(),
+            },
         },
         runtime_paths: ServerLaunchRuntimePathsConfig {
             backups_dir: paths.backups_dir.display().to_string(),
             data_dir: paths.data_dir.display().to_string(),
+            lifecycle_event_log_path: paths.lifecycle_event_log_path.display().to_string(),
             logs_dir: paths.logs_dir.display().to_string(),
             run_dir: paths.run_dir.display().to_string(),
             runtime_lease_path: paths.runtime_lease_path.display().to_string(),

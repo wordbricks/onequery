@@ -26,14 +26,20 @@ import type { JoinHandle } from "antiox/task";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
+import { RuntimeShutdownError } from "../lifecycle/errors";
 import type {
   GracefulShutdownController,
+  RuntimeLifecycleFailure,
+  RuntimeLifecycleDurableLease,
   RuntimeLifecycleLease,
   RuntimeLifecyclePhase,
+  RuntimeLifecycleTransitionPersistence,
   RuntimeShutdownCompletion,
+  RuntimeShutdownRequest,
 } from "../lifecycle/types";
 import {
   createInitialRuntimeControlState,
+  isRuntimeControlTerminalPhase,
   reduceRuntimeControlMachine,
 } from "./machine";
 import type {
@@ -93,6 +99,11 @@ type WatchStatusResponseInit = MessageInitShape<
   typeof WatchStatusResponseSchema
 >;
 
+type RuntimeControlWatcherSubscription = {
+  afterRuntimeSequence: bigint;
+  eventTx: Sender<WatchStatusResponseInit>;
+};
+
 type RuntimeControlActorFailure =
   | RuntimeControlActorError
   | RuntimeControlOperationConflictError
@@ -107,6 +118,7 @@ type RuntimeControlActorMessage =
       type: "get_status";
     }
   | {
+      failure?: RuntimeLifecycleFailure;
       phase: RuntimeLifecyclePhase;
       reason: string;
       responseTx: OneshotSender<RuntimeControlActorResult<void>>;
@@ -124,6 +136,11 @@ type RuntimeControlActorMessage =
       type: "stop";
     }
   | {
+      operationId: string;
+      request: RuntimeControlStopRequest;
+      type: "shutdown_timeout_elapsed";
+    }
+  | {
       afterRuntimeSequence: bigint;
       eventTx: Sender<WatchStatusResponseInit>;
       includeSnapshot: boolean;
@@ -137,11 +154,16 @@ type RuntimeControlActorMessage =
       watcherId: number;
     }
   | {
+      responseTx: OneshotSender<RuntimeControlActorResult<void>>;
+      type: "close_all_watches";
+    }
+  | {
       type: "dispose";
     };
 
 export interface RuntimeControlActor {
   attachShutdownController(controller: GracefulShutdownController): void;
+  closeStatusWatches(): Promise<void>;
   dispose(): void;
   getStatus(
     target?: GetStatusRequestInit["target"]
@@ -156,7 +178,7 @@ export interface RuntimeControlActor {
 
 export function createRuntimeControlActor(input: {
   identity: RuntimeControlIdentity;
-  lease: RuntimeLifecycleLease;
+  lease: RuntimeLifecycleDurableLease;
   now?: () => Date;
 }): RuntimeControlActor {
   const now = input.now ?? (() => new Date());
@@ -166,7 +188,7 @@ export function createRuntimeControlActor(input: {
   } = {
     current: null,
   };
-  const watcherTxById = new Map<number, Sender<WatchStatusResponseInit>>();
+  const watcherRegistry = new Map<number, RuntimeControlWatcherSubscription>();
   let nextWatcherId = 1;
 
   const coordinatorTask = spawn(async (signal) => {
@@ -181,7 +203,7 @@ export function createRuntimeControlActor(input: {
       now,
       shutdownControllerRef,
       signal,
-      watcherTxById,
+      watcherRegistry,
     });
   });
   observeRuntimeControlActor(coordinatorTask);
@@ -218,6 +240,15 @@ export function createRuntimeControlActor(input: {
     attachShutdownController(controller) {
       shutdownControllerRef.current = controller;
     },
+    closeStatusWatches() {
+      return request(
+        (responseTx) => ({
+          responseTx,
+          type: "close_all_watches",
+        }),
+        "close_status_watches"
+      );
+    },
     dispose() {
       void Result.tryPromise({
         try: () =>
@@ -250,9 +281,10 @@ export function createRuntimeControlActor(input: {
           "release"
         );
       },
-      transition(phase) {
+      transition(phase, failure) {
         return request(
           (responseTx) => ({
+            ...(failure ? { failure } : {}),
             phase,
             reason: `lifecycle:${phase}`,
             responseTx,
@@ -291,13 +323,13 @@ async function runRuntimeControlActor(args: {
   eventRx: Receiver<RuntimeControlActorMessage>;
   eventTx: Sender<RuntimeControlActorMessage>;
   initialState: RuntimeControlMachineState;
-  lease: RuntimeLifecycleLease;
+  lease: RuntimeLifecycleDurableLease;
   now: () => Date;
   shutdownControllerRef: {
     current: GracefulShutdownController | null;
   };
   signal: AbortSignal;
-  watcherTxById: Map<number, Sender<WatchStatusResponseInit>>;
+  watcherRegistry: Map<number, RuntimeControlWatcherSubscription>;
 }): Promise<void> {
   let state = args.initialState;
 
@@ -333,7 +365,7 @@ async function runRuntimeControlActor(args: {
         if (result.isOk()) {
           state = await commitRuntimeControlReduction(
             result.value,
-            args.watcherTxById
+            args.watcherRegistry
           );
         }
         respond(
@@ -351,7 +383,7 @@ async function runRuntimeControlActor(args: {
         });
         state = await commitRuntimeControlReduction(
           result.reduction,
-          args.watcherTxById
+          args.watcherRegistry
         );
         respond(message.responseTx, result.result);
         break;
@@ -368,10 +400,25 @@ async function runRuntimeControlActor(args: {
         if (result.reduction) {
           state = await commitRuntimeControlReduction(
             result.reduction,
-            args.watcherTxById
+            args.watcherRegistry
           );
         }
         respond(message.responseTx, result.result);
+        break;
+      }
+      case "shutdown_timeout_elapsed": {
+        const result = await recordShutdownTimeout({
+          lease: args.lease,
+          message,
+          now: args.now,
+          state,
+        });
+        if (result.isOk()) {
+          state = await commitRuntimeControlReduction(
+            result.value,
+            args.watcherRegistry
+          );
+        }
         break;
       }
       case "watch_status": {
@@ -385,13 +432,10 @@ async function runRuntimeControlActor(args: {
           respond(message.responseTx, Result.err(targetResult.error));
           break;
         }
-        const reduction = reduceRuntimeControlMachine(state, {
+        args.watcherRegistry.set(message.watcherId, {
           afterRuntimeSequence: message.afterRuntimeSequence,
-          id: message.watcherId,
-          type: "watch_registered",
+          eventTx: message.eventTx,
         });
-        state = reduction.state;
-        args.watcherTxById.set(message.watcherId, message.eventTx);
         if (
           message.includeSnapshot &&
           state.runtimeSequence > message.afterRuntimeSequence
@@ -407,19 +451,22 @@ async function runRuntimeControlActor(args: {
         break;
       }
       case "close_watch": {
-        const reduction = reduceRuntimeControlMachine(state, {
-          id: message.watcherId,
-          type: "watch_closed",
-        });
-        state = reduction.state;
-        args.watcherTxById.delete(message.watcherId);
+        args.watcherRegistry.delete(message.watcherId);
+        break;
+      }
+      case "close_all_watches": {
+        for (const watcher of args.watcherRegistry.values()) {
+          watcher.eventTx.close();
+        }
+        args.watcherRegistry.clear();
+        respond(message.responseTx, Result.ok(undefined));
         break;
       }
       case "dispose":
-        for (const watcherTx of args.watcherTxById.values()) {
-          watcherTx.close();
+        for (const watcher of args.watcherRegistry.values()) {
+          watcher.eventTx.close();
         }
-        args.watcherTxById.clear();
+        args.watcherRegistry.clear();
         args.eventRx.close();
         return;
       default:
@@ -429,7 +476,7 @@ async function runRuntimeControlActor(args: {
 }
 
 async function transitionLifecycleState(args: {
-  lease: RuntimeLifecycleLease;
+  lease: RuntimeLifecycleDurableLease;
   message: Extract<RuntimeControlActorMessage, { type: "transition" }>;
   now: () => Date;
   state: RuntimeControlMachineState;
@@ -440,6 +487,7 @@ async function transitionLifecycleState(args: {
   >
 > {
   const reduction = reduceRuntimeControlMachine(args.state, {
+    ...(args.message.failure ? { failure: args.message.failure } : {}),
     occurredAt: args.now(),
     phase: args.message.phase,
     reason: args.message.reason,
@@ -453,17 +501,82 @@ async function transitionLifecycleState(args: {
     });
   }
 
-  if (reduction.transition === undefined) {
+  const transition = reduction.transition;
+  if (transition === undefined) {
     return Result.ok(reduction);
   }
 
   const persisted = await Result.tryPromise({
-    try: () => args.lease.transition(args.message.phase),
+    try: () =>
+      args.lease.persistTransition(
+        toRuntimeLifecycleTransitionPersistence(transition)
+      ),
     catch: (cause) =>
       new RuntimeControlActorError({
         cause,
         message: `failed to persist runtime lifecycle transition to ${args.message.phase}`,
         operation: "transition",
+      }),
+  });
+  if (persisted.isErr()) {
+    return Result.err(persisted.error);
+  }
+
+  return Result.ok(reduction);
+}
+
+async function recordShutdownTimeout(args: {
+  lease: RuntimeLifecycleDurableLease;
+  message: Extract<
+    RuntimeControlActorMessage,
+    { type: "shutdown_timeout_elapsed" }
+  >;
+  now: () => Date;
+  state: RuntimeControlMachineState;
+}): Promise<
+  ResultType<
+    Extract<RuntimeControlMachineReduction, { type: "transition" }>,
+    RuntimeControlActorError
+  >
+> {
+  if (args.message.request.graceTimeout === undefined) {
+    return Result.ok({
+      state: args.state,
+      type: "transition",
+    });
+  }
+
+  const reduction = reduceRuntimeControlMachine(args.state, {
+    graceTimeout: args.message.request.graceTimeout,
+    occurredAt: args.now(),
+    operationId: args.message.operationId,
+    reason: args.message.request.reason,
+    type: "shutdown_timeout_elapsed",
+  });
+  if (reduction.type !== "transition") {
+    throw new RuntimeControlActorError({
+      cause: reduction,
+      message:
+        "runtime control reducer returned an invalid shutdown timeout result",
+      operation: "shutdown_timeout_elapsed",
+    });
+  }
+
+  const transition = reduction.transition;
+  if (transition === undefined) {
+    return Result.ok(reduction);
+  }
+
+  const persisted = await Result.tryPromise({
+    try: () =>
+      args.lease.persistTransition(
+        toRuntimeLifecycleTransitionPersistence(transition)
+      ),
+    catch: (cause) =>
+      new RuntimeControlActorError({
+        cause,
+        message: "failed to persist runtime shutdown timeout transition",
+        operation: "shutdown_timeout_elapsed",
       }),
   });
   if (persisted.isErr()) {
@@ -482,6 +595,19 @@ async function releaseLifecycleLease(args: {
   reduction: RuntimeControlMachineReduction;
   result: RuntimeControlActorResult<void>;
 }> {
+  // Comment: after a shutdown timeout, the original shutdown worker may still
+  // finish and request release; terminal actor state must keep its durable
+  // failure record for the supervisor to observe.
+  if (isRuntimeControlTerminalPhase(args.state.phase)) {
+    return {
+      reduction: {
+        state: args.state,
+        type: "transition",
+      },
+      result: Result.ok(undefined),
+    };
+  }
+
   const released = await Result.tryPromise({
     try: () =>
       args.lease.release({
@@ -520,7 +646,7 @@ async function releaseLifecycleLease(args: {
 
 async function stopRuntime(args: {
   eventTx: Sender<RuntimeControlActorMessage>;
-  lease: RuntimeLifecycleLease;
+  lease: RuntimeLifecycleDurableLease;
   message: Extract<RuntimeControlActorMessage, { type: "stop" }>;
   now: () => Date;
   shutdownController: GracefulShutdownController | null;
@@ -540,6 +666,7 @@ async function stopRuntime(args: {
       result: Result.err(targetResult.error),
     };
   }
+  const target = targetResult.value;
 
   const completion = toRuntimeShutdownCompletion(
     args.message.request.completion ?? RuntimeStopCompletion.UNSPECIFIED
@@ -554,18 +681,6 @@ async function stopRuntime(args: {
         new RuntimeControlActorError({
           cause: null,
           message: "runtime control stop request operation_id is required",
-          operation: "stop",
-        })
-      ),
-    };
-  }
-  const target = args.message.request.target;
-  if (!target) {
-    return {
-      result: Result.err(
-        new RuntimeControlActorError({
-          cause: null,
-          message: "runtime control stop request target is required",
           operation: "stop",
         })
       ),
@@ -602,21 +717,29 @@ async function stopRuntime(args: {
 
   const shouldStartShutdown =
     reduction.disposition === "accepted" && !reduction.idempotentReplay;
-  if (shouldStartShutdown && !args.shutdownController) {
-    return {
-      result: Result.err(
-        new RuntimeControlActorError({
-          cause: null,
-          message: "runtime shutdown controller is not attached",
-          operation: "stop",
-        })
-      ),
-    };
+  let shutdownController: GracefulShutdownController | null = null;
+  if (shouldStartShutdown) {
+    if (!args.shutdownController) {
+      return {
+        result: Result.err(
+          new RuntimeControlActorError({
+            cause: null,
+            message: "runtime shutdown controller is not attached",
+            operation: "stop",
+          })
+        ),
+      };
+    }
+    shutdownController = args.shutdownController;
   }
 
-  if (reduction.transition !== undefined) {
+  const transition = reduction.transition;
+  if (transition !== undefined) {
     const persisted = await Result.tryPromise({
-      try: () => args.lease.transition("stopping"),
+      try: () =>
+        args.lease.persistTransition(
+          toRuntimeLifecycleTransitionPersistence(transition)
+        ),
       catch: (cause) =>
         new RuntimeControlActorError({
           cause,
@@ -631,25 +754,18 @@ async function stopRuntime(args: {
     }
   }
 
-  if (shouldStartShutdown) {
-    const shutdownController = args.shutdownController;
-    if (!shutdownController) {
-      return {
-        result: Result.err(
-          new RuntimeControlActorError({
-            cause: null,
-            message: "runtime shutdown controller is not attached",
-            operation: "stop",
-          })
-        ),
-      };
-    }
-
-    observeRuntimeShutdown(
-      shutdownController.shutdown(reason, completion),
-      args.eventTx,
-      reason
-    );
+  if (shutdownController) {
+    observeRuntimeShutdown({
+      eventTx: args.eventTx,
+      operationId,
+      request,
+      shutdown: shutdownController.shutdown(
+        toRuntimeShutdownRequest({
+          operationId,
+          request,
+        })
+      ),
+    });
   }
 
   return {
@@ -662,6 +778,40 @@ async function stopRuntime(args: {
         : undefined,
     }),
   };
+}
+
+function toRuntimeLifecycleTransitionPersistence(
+  transition: RuntimeControlTransition
+): RuntimeLifecycleTransitionPersistence {
+  return {
+    ...(transition.failure ? { failure: transition.failure } : {}),
+    occurredAt: transition.occurredAt,
+    phase: toRuntimeLifecyclePhase(transition.currentPhase),
+    runtimeSequence: transition.runtimeSequence,
+  };
+}
+
+function toRuntimeLifecyclePhase(
+  phase: RuntimeControlPhase
+): RuntimeLifecyclePhase {
+  switch (phase) {
+    case "checkpointing":
+    case "draining":
+    case "ready":
+    case "shutdown_failed":
+    case "starting":
+    case "stopping":
+      return phase;
+    case "failed":
+    case "stopped":
+      throw new RuntimeControlActorError({
+        cause: null,
+        message: `runtime phase ${phase} is not persisted by runtime lease transitions`,
+        operation: "transition",
+      });
+    default:
+      return unreachable(phase);
+  }
 }
 
 function createRuntimeControlStopRequest(input: {
@@ -680,6 +830,28 @@ function createRuntimeControlStopRequest(input: {
       : undefined,
     reason: input.reason,
     target: createRuntimeControlStopRequestTarget(input.target),
+  };
+}
+
+function toRuntimeShutdownRequest(input: {
+  operationId: string;
+  request: RuntimeControlStopRequest;
+}): RuntimeShutdownRequest {
+  return {
+    completion: input.request.completion,
+    ...(input.request.graceTimeout
+      ? {
+          graceTimeout: {
+            nanos: input.request.graceTimeout.nanos,
+            seconds: input.request.graceTimeout.seconds,
+          },
+        }
+      : {}),
+    operationId: input.operationId,
+    reason: input.request.reason,
+    target: {
+      ...input.request.target,
+    },
   };
 }
 
@@ -719,10 +891,28 @@ function toRuntimeControlOperationConflictError(
 
 function validateRuntimeTarget(args: {
   operation: string;
+  required: true;
+  state: RuntimeControlMachineState;
+  target?: RuntimeTargetInit;
+}): ResultType<RuntimeTargetInit, RuntimeControlTargetPreconditionError>;
+function validateRuntimeTarget(args: {
+  operation: string;
+  required: false;
+  state: RuntimeControlMachineState;
+  target?: RuntimeTargetInit;
+}): ResultType<
+  RuntimeTargetInit | undefined,
+  RuntimeControlTargetPreconditionError
+>;
+function validateRuntimeTarget(args: {
+  operation: string;
   required: boolean;
   state: RuntimeControlMachineState;
   target?: RuntimeTargetInit;
-}): ResultType<void, RuntimeControlTargetPreconditionError> {
+}): ResultType<
+  RuntimeTargetInit | undefined,
+  RuntimeControlTargetPreconditionError
+> {
   if (args.target === undefined) {
     return args.required
       ? Result.err(
@@ -747,7 +937,7 @@ function validateRuntimeTarget(args: {
   const mismatchedField = findRuntimeTargetMismatch(args.target, expected);
 
   if (mismatchedField === undefined) {
-    return Result.ok(undefined);
+    return Result.ok(args.target);
   }
 
   return Result.err(
@@ -850,12 +1040,8 @@ function isRuntimeTargetMessage(
 
 async function commitRuntimeControlReduction(
   reduction: RuntimeControlMachineReduction,
-  watcherTxById: Map<number, Sender<WatchStatusResponseInit>>
+  watcherRegistry: Map<number, RuntimeControlWatcherSubscription>
 ): Promise<RuntimeControlMachineState> {
-  if (reduction.type === "watch") {
-    return reduction.state;
-  }
-
   const transition =
     "transition" in reduction ? reduction.transition : undefined;
   if (transition === undefined) {
@@ -870,20 +1056,14 @@ async function commitRuntimeControlReduction(
     },
   } satisfies WatchStatusResponseInit;
 
-  for (const watcher of reduction.state.watchers) {
+  for (const [watcherId, watcher] of watcherRegistry) {
     if (transition.runtimeSequence <= watcher.afterRuntimeSequence) {
       continue;
     }
 
-    const watcherTx = watcherTxById.get(watcher.id);
-    if (!watcherTx) {
-      staleWatcherIds.push(watcher.id);
-      continue;
-    }
-
-    const sent = await sendWatchEvent(watcherTx, event);
+    const sent = await sendWatchEvent(watcher.eventTx, event);
     if (sent.isErr()) {
-      staleWatcherIds.push(watcher.id);
+      staleWatcherIds.push(watcherId);
     }
   }
 
@@ -892,15 +1072,10 @@ async function commitRuntimeControlReduction(
   }
 
   for (const watcherId of staleWatcherIds) {
-    watcherTxById.delete(watcherId);
+    watcherRegistry.delete(watcherId);
   }
 
-  return {
-    ...reduction.state,
-    watchers: reduction.state.watchers.filter(
-      (watcher) => !staleWatcherIds.includes(watcher.id)
-    ),
-  };
+  return reduction.state;
 }
 
 async function sendWatchEvent(
@@ -970,21 +1145,56 @@ async function* watchRuntimeStatus(args: {
   }
 }
 
-function observeRuntimeShutdown(
-  shutdown: Promise<void>,
-  eventTx: Sender<RuntimeControlActorMessage>,
-  reason: string
-): void {
+const MAX_RUNTIME_CONTROL_GRACE_TIMEOUT_MS = 300_000;
+
+function observeRuntimeShutdown(args: {
+  eventTx: Sender<RuntimeControlActorMessage>;
+  operationId: string;
+  request: RuntimeControlStopRequest;
+  shutdown: Promise<void>;
+}): void {
+  let timedOut = false;
+  const timeoutMs = runtimeControlGraceTimeoutMs(args.request.graceTimeout);
+  const timeoutId =
+    timeoutMs === undefined
+      ? undefined
+      : setTimeout(() => {
+          timedOut = true;
+          void Result.tryPromise({
+            try: () =>
+              args.eventTx.send({
+                operationId: args.operationId,
+                request: args.request,
+                type: "shutdown_timeout_elapsed",
+              }),
+            catch: () => undefined,
+          });
+        }, timeoutMs);
+
   void Result.tryPromise({
     try: async () => {
-      await shutdown;
+      await args.shutdown;
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
     },
-    catch: async () => {
+    catch: async (cause) => {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+      if (timedOut) {
+        return;
+      }
+
       await Result.tryPromise({
         try: () =>
-          eventTx.send({
+          args.eventTx.send({
+            failure: runtimeShutdownFailureFromCause(
+              cause,
+              args.request.reason
+            ),
             phase: "shutdown_failed",
-            reason,
+            reason: args.request.reason,
             responseTx: oneshot<RuntimeControlActorResult<void>>()[0],
             type: "transition",
           }),
@@ -992,6 +1202,38 @@ function observeRuntimeShutdown(
       });
     },
   });
+}
+
+function runtimeShutdownFailureFromCause(
+  cause: unknown,
+  reason: string
+): RuntimeControlFailure {
+  if (cause instanceof RuntimeShutdownError) {
+    return cause.failure;
+  }
+
+  return {
+    code: "internal",
+    message: `runtime shutdown failed for ${reason}`,
+    retryable: false,
+  };
+}
+
+function runtimeControlGraceTimeoutMs(
+  timeout: RuntimeControlStopRequest["graceTimeout"]
+): number | undefined {
+  if (timeout === undefined) {
+    return undefined;
+  }
+
+  const seconds = timeout.seconds > 0n ? timeout.seconds : 0n;
+  const secondsMs =
+    seconds > BigInt(MAX_RUNTIME_CONTROL_GRACE_TIMEOUT_MS / 1000)
+      ? MAX_RUNTIME_CONTROL_GRACE_TIMEOUT_MS
+      : Number(seconds) * 1000;
+  const nanosMs = timeout.nanos > 0 ? Math.ceil(timeout.nanos / 1_000_000) : 0;
+
+  return Math.min(MAX_RUNTIME_CONTROL_GRACE_TIMEOUT_MS, secondsMs + nanosMs);
 }
 
 function observeRuntimeControlActor(handle: JoinHandle<void>): void {
@@ -1110,8 +1352,16 @@ function toProtoPhase(phase: RuntimeControlPhase) {
 
 function toProtoFailureCode(code: RuntimeControlFailure["code"]) {
   switch (code) {
+    case "checkpoint_failed":
+      return RuntimeFailureCode.CHECKPOINT_FAILED;
     case "internal":
       return RuntimeFailureCode.INTERNAL;
+    case "resource_close_failed":
+      return RuntimeFailureCode.RESOURCE_CLOSE_FAILED;
+    case "shutdown_rejected":
+      return RuntimeFailureCode.SHUTDOWN_REJECTED;
+    case "shutdown_timeout":
+      return RuntimeFailureCode.SHUTDOWN_TIMEOUT;
     default:
       return unreachable(code);
   }

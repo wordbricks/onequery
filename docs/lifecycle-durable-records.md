@@ -11,6 +11,8 @@ Inspectable state files use UTF-8 protobuf JSON:
 - `run/runtime.lease.json` stores a `RuntimeLeaseRecord`
 - `run/runtime.status.json` stores a `RuntimeStatusSnapshot`
 - `run/supervisor.status.json` stores a `SupervisorStatusSnapshot`
+- `run/lifecycle.events.pb` stores length-delimited `LifecycleEventLogEntry`
+  frames
 
 These files are complete-record snapshots. Writers replace the whole file
 atomically and terminate the JSON document with one newline. Readers must parse
@@ -35,9 +37,9 @@ Crash recovery resolves durable lifecycle evidence in one fixed order:
 4. runtime lease record
 5. process liveness check
 
-The lifecycle event log is the highest-precedence source once the binary log
-reader exists. Until then, readers have no event-log evidence and continue to
-the snapshot steps below.
+The lifecycle event log is the highest-precedence source once recovery folding
+is wired to the binary log reader. Until then, recovery has no event-log
+decision and continues to the snapshot steps below.
 
 Runtime status snapshots are the first decisive state-file source. A
 non-terminal runtime status snapshot (`starting`, `ready`, `draining`,

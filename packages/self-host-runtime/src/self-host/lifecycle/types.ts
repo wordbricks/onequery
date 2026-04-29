@@ -8,6 +8,7 @@ export type RuntimeControlEndpoint = NonNullable<
 export interface SelfHostLifecyclePaths {
   controlEndpoint: RuntimeControlEndpoint;
   dataDir: string;
+  lifecycleEventLogPath: string;
   logsDir: string;
   runtimeLeasePath: string;
   runtimeStatusSnapshotPath: string;
@@ -37,10 +38,35 @@ export interface ServerHandle {
 
 export interface RuntimeShutdownResource {
   close(): Promise<void> | void;
+  failureCode?: Extract<
+    RuntimeLifecycleFailureCode,
+    "checkpoint_failed" | "resource_close_failed"
+  >;
   name: string;
 }
 
 export type RuntimeShutdownCompletion = "cleanup_only" | "cleanup_and_exit";
+
+export interface RuntimeShutdownGraceTimeout {
+  nanos: number;
+  seconds: bigint;
+}
+
+export interface RuntimeShutdownTarget {
+  dataDir: string;
+  launchId: string;
+  pid?: number;
+  supervisorGeneration?: bigint;
+  supervisorPid?: number;
+}
+
+export interface RuntimeShutdownRequest {
+  completion: RuntimeShutdownCompletion;
+  graceTimeout?: RuntimeShutdownGraceTimeout;
+  operationId?: string;
+  reason: string;
+  target?: RuntimeShutdownTarget;
+}
 
 export interface LifecycleOptions {
   isProcessRunning?: (pid: number) => boolean;
@@ -56,6 +82,9 @@ export interface CleanupOptions {
   stopServer: boolean;
 }
 
+// Internal lifecycle phases owned by the runtime shutdown reducer. Durable
+// records map these string states to generated RuntimePhase values in
+// lifecycle/records.ts; terminal actor-only states stay in runtime-control.
 export type RuntimeLifecyclePhase =
   | "checkpointing"
   | "draining"
@@ -64,18 +93,44 @@ export type RuntimeLifecyclePhase =
   | "starting"
   | "stopping";
 
+export type RuntimeLifecycleFailureCode =
+  | "checkpoint_failed"
+  | "internal"
+  | "resource_close_failed"
+  | "shutdown_rejected"
+  | "shutdown_timeout";
+
+export interface RuntimeLifecycleFailure {
+  code: RuntimeLifecycleFailureCode;
+  message: string;
+  retryable: boolean;
+}
+
+export interface RuntimeLifecycleTransitionPersistence {
+  occurredAt: Date;
+  failure?: RuntimeLifecycleFailure;
+  phase: RuntimeLifecyclePhase;
+  runtimeSequence: bigint;
+}
+
 export interface RuntimeLifecycleLease {
   paths: SelfHostLifecyclePaths;
-  transition(phase: RuntimeLifecyclePhase): Promise<void>;
+  transition(
+    phase: RuntimeLifecyclePhase,
+    failure?: RuntimeLifecycleFailure
+  ): Promise<void>;
   release(options: CleanupOptions): Promise<void>;
+}
+
+export interface RuntimeLifecycleDurableLease extends RuntimeLifecycleLease {
+  persistTransition(
+    transition: RuntimeLifecycleTransitionPersistence
+  ): Promise<void>;
 }
 
 export interface GracefulShutdownController {
   dispose(): void;
-  shutdown(
-    reason: string,
-    completion?: RuntimeShutdownCompletion
-  ): Promise<void>;
+  shutdown(request: RuntimeShutdownRequest): Promise<void>;
 }
 
 export type LifecycleLaunchConfig = Pick<

@@ -5,24 +5,23 @@ import { spawn } from "antiox/task";
 import type { JoinHandle } from "antiox/task";
 import { Result } from "better-result";
 
-import { RuntimeShutdownError } from "./errors";
+import { RuntimeShutdownError, createRuntimeShutdownError } from "./errors";
 import { runShutdownMachineEffects } from "./shutdown-effects";
 import {
   createDisposedShutdownError,
   initialShutdownMachineState,
   reduceShutdownMachine,
 } from "./shutdown-machine";
-import type {
-  ShutdownCompletion,
-  ShutdownMachineEvent,
-  ShutdownResult,
-} from "./shutdown-machine";
+import type { ShutdownMachineEvent, ShutdownResult } from "./shutdown-machine";
 import type {
   GracefulShutdownController,
   LifecycleLogWriter,
   ProcessSignalSource,
   RuntimeLifecycleLease,
+  RuntimeLifecycleFailure,
+  RuntimeLifecycleFailureCode,
   RuntimeLifecyclePhase,
+  RuntimeShutdownRequest,
   RuntimeShutdownResource,
   ServerHandle,
 } from "./types";
@@ -51,11 +50,11 @@ export function attachGracefulShutdownHandlers(args: {
     await runShutdownCoordinator({
       eventRx,
       eventTx,
-      executeShutdown: (reason) =>
+      executeShutdown: (request) =>
         executeShutdown({
           lease: args.lease,
           logWriter,
-          reason,
+          request,
           server: args.server,
           shutdownResources: args.shutdownResources ?? [],
         }),
@@ -65,30 +64,27 @@ export function attachGracefulShutdownHandlers(args: {
   });
   observeShutdownCoordinator(coordinatorTask, logWriter);
 
-  const requestShutdown = async (
-    reason: string,
-    completion: ShutdownCompletion = "cleanup_only"
-  ) => {
+  const requestShutdown = async (request: RuntimeShutdownRequest) => {
     if (disposed) {
-      throw createDisposedShutdownError(reason);
+      throw createDisposedShutdownError(request.reason);
     }
 
     const [responseTx, responseRx] = oneshot<ShutdownResult>();
     const coordination = await Result.tryPromise({
       try: async () => {
         await eventTx.send({
-          type: "shutdown_requested",
-          completion,
-          reason,
+          request,
           responseTx,
+          type: "shutdown_requested",
         });
         return responseRx;
       },
       catch: (cause) =>
-        new RuntimeShutdownError({
+        createRuntimeShutdownError({
           cause,
-          message: `failed to coordinate runtime shutdown for ${reason}`,
-          reason,
+          code: "internal",
+          message: `failed to coordinate runtime shutdown for ${request.reason}`,
+          reason: request.reason,
         }),
     });
     if (coordination.isErr()) {
@@ -103,7 +99,11 @@ export function attachGracefulShutdownHandlers(args: {
 
   const requestSignalShutdown = (reason: "SIGINT" | "SIGTERM") => {
     void Result.tryPromise({
-      try: () => requestShutdown(reason, "cleanup_and_exit"),
+      try: () =>
+        requestShutdown({
+          completion: "cleanup_and_exit",
+          reason,
+        }),
       catch: () => undefined,
     });
   };
@@ -128,8 +128,8 @@ export function attachGracefulShutdownHandlers(args: {
         catch: () => undefined,
       });
     },
-    shutdown(reason: string, completion?: ShutdownCompletion) {
-      return requestShutdown(reason, completion);
+    shutdown(request) {
+      return requestShutdown(request);
     },
   };
 }
@@ -137,7 +137,7 @@ export function attachGracefulShutdownHandlers(args: {
 async function runShutdownCoordinator(args: {
   eventRx: Receiver<ShutdownMachineEvent>;
   eventTx: Sender<ShutdownMachineEvent>;
-  executeShutdown(reason: string): Promise<ShutdownResult>;
+  executeShutdown(request: RuntimeShutdownRequest): Promise<ShutdownResult>;
   exitProcess(code: number): void;
   signal: AbortSignal;
 }): Promise<void> {
@@ -154,7 +154,7 @@ async function runShutdownCoordinator(args: {
     runShutdownMachineEffects(transition.effects, {
       eventRx: args.eventRx,
       eventTx: args.eventTx,
-      executeShutdown: (reason) => args.executeShutdown(reason),
+      executeShutdown: (request) => args.executeShutdown(request),
       exitProcess: (code) => args.exitProcess(code),
     });
   }
@@ -181,20 +181,22 @@ function observeShutdownCoordinator(
 async function executeShutdown(args: {
   lease: RuntimeLifecycleLease;
   logWriter: LifecycleLogWriter;
-  reason: string;
+  request: RuntimeShutdownRequest;
   server: ServerHandle;
   shutdownResources: readonly RuntimeShutdownResource[];
 }): Promise<ShutdownResult> {
+  const reason = args.request.reason;
   const requestLogResult = await Result.tryPromise({
     try: async () =>
       args.logWriter.append(
-        `[runtime] graceful shutdown requested reason=${args.reason}`
+        `[runtime] graceful shutdown requested reason=${reason}`
       ),
     catch: (cause) =>
-      new RuntimeShutdownError({
+      createRuntimeShutdownError({
         cause,
-        message: `failed to record runtime shutdown request for ${args.reason}`,
-        reason: args.reason,
+        code: "internal",
+        message: `failed to record runtime shutdown request for ${reason}`,
+        reason,
       }),
   });
   if (requestLogResult.isErr()) {
@@ -202,11 +204,11 @@ async function executeShutdown(args: {
   }
 
   const stoppingTransitionResult = await transitionShutdownPhase(args, {
-    message: `failed to record runtime shutdown state for ${args.reason}`,
+    message: `failed to record runtime shutdown state for ${reason}`,
     phase: "stopping",
   });
   const drainingTransitionResult = await transitionShutdownPhase(args, {
-    message: `failed to record runtime drain state for ${args.reason}`,
+    message: `failed to record runtime drain state for ${reason}`,
     phase: "draining",
   });
   const stopResult = await Result.tryPromise({
@@ -214,41 +216,59 @@ async function executeShutdown(args: {
       await args.server.stop(true);
     },
     catch: (cause) =>
-      new RuntimeShutdownError({
+      createRuntimeShutdownError({
         cause,
-        message: `failed to stop runtime server for ${args.reason}`,
-        reason: args.reason,
+        code: "shutdown_rejected",
+        message: `failed to stop runtime server for ${reason}`,
+        reason,
       }),
   });
   const checkpointingTransitionResult = await transitionShutdownPhase(args, {
-    message: `failed to record runtime storage checkpoint state for ${args.reason}`,
+    failureCode: "checkpoint_failed",
+    message: `failed to record runtime storage checkpoint state for ${reason}`,
     phase: "checkpointing",
   });
   const closeResourcesResult = await closeShutdownResources(
     args.shutdownResources,
-    args.reason
+    reason
   );
 
   let releaseResult: ShutdownResult | null = null;
   let failedTransitionResult: ShutdownResult | null = null;
-  if (stopResult.isOk() && closeResourcesResult.isOk()) {
+  const shutdownWorkSucceeded =
+    stoppingTransitionResult.isOk() &&
+    drainingTransitionResult.isOk() &&
+    stopResult.isOk() &&
+    checkpointingTransitionResult.isOk() &&
+    closeResourcesResult.isOk();
+
+  if (shutdownWorkSucceeded) {
     releaseResult = await Result.tryPromise({
       try: async () => {
         await args.lease.release({
-          reason: args.reason,
+          reason,
           stopServer: true,
         });
       },
       catch: (cause) =>
-        new RuntimeShutdownError({
+        createRuntimeShutdownError({
           cause,
-          message: `failed to release lifecycle lease for ${args.reason}`,
-          reason: args.reason,
+          code: "internal",
+          message: `failed to release lifecycle lease for ${reason}`,
+          reason,
         }),
     });
   } else {
+    const failure = selectShutdownFailure([
+      stoppingTransitionResult,
+      drainingTransitionResult,
+      stopResult,
+      checkpointingTransitionResult,
+      closeResourcesResult,
+    ]);
     failedTransitionResult = await transitionShutdownPhase(args, {
-      message: `failed to record runtime shutdown failure state for ${args.reason}`,
+      failure,
+      message: `failed to record runtime shutdown failure state for ${reason}`,
       phase: "shutdown_failed",
     });
   }
@@ -287,10 +307,18 @@ async function executeShutdown(args: {
           ? causes[0]
           : new AggregateError(
               causes,
-              `failed to shut down runtime for ${args.reason}`
+              `failed to shut down runtime for ${reason}`
             ),
-      message: `failed to shut down runtime for ${args.reason}`,
-      reason: args.reason,
+      message: `failed to shut down runtime for ${reason}`,
+      reason,
+      failure: selectShutdownFailure([
+        stoppingTransitionResult,
+        drainingTransitionResult,
+        stopResult,
+        checkpointingTransitionResult,
+        closeResourcesResult,
+        ...(releaseResult ? [releaseResult] : []),
+      ]),
     })
   );
 }
@@ -298,22 +326,25 @@ async function executeShutdown(args: {
 async function transitionShutdownPhase(
   args: {
     lease: RuntimeLifecycleLease;
-    reason: string;
+    request: RuntimeShutdownRequest;
   },
   transition: {
+    failure?: RuntimeLifecycleFailure;
+    failureCode?: RuntimeLifecycleFailureCode;
     message: string;
     phase: RuntimeLifecyclePhase;
   }
 ): Promise<ShutdownResult> {
   return Result.tryPromise({
     try: async () => {
-      await args.lease.transition(transition.phase);
+      await args.lease.transition(transition.phase, transition.failure);
     },
     catch: (cause) =>
-      new RuntimeShutdownError({
+      createRuntimeShutdownError({
         cause,
+        code: transition.failureCode ?? transition.failure?.code ?? "internal",
         message: transition.message,
-        reason: args.reason,
+        reason: args.request.reason,
       }),
   });
 }
@@ -330,8 +361,9 @@ async function closeShutdownResources(
         await resource.close();
       },
       catch: (cause) =>
-        new RuntimeShutdownError({
+        createRuntimeShutdownError({
           cause,
+          code: resource.failureCode ?? "resource_close_failed",
           message: `failed to close runtime resource ${resource.name} for ${reason}`,
           reason,
         }),
@@ -357,6 +389,23 @@ async function closeShutdownResources(
             ),
       message: `failed to close runtime resources for ${reason}`,
       reason,
+      failure: selectShutdownFailure(errors.map((error) => Result.err(error))),
     })
   );
+}
+
+function selectShutdownFailure(
+  results: readonly ShutdownResult[]
+): RuntimeLifecycleFailure {
+  for (const result of results) {
+    if (result.isErr()) {
+      return result.error.failure;
+    }
+  }
+
+  return {
+    code: "internal",
+    message: "runtime shutdown failed without a classified cause",
+    retryable: false,
+  };
 }

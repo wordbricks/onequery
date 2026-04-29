@@ -12,6 +12,7 @@ use tokio::time::sleep;
 use tokio::time::timeout;
 
 use crate::GatewayCommandOutput;
+use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
 
 use super::super::CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP;
@@ -24,8 +25,8 @@ use super::super::state::GatewayRuntimeState;
 use super::super::state::GatewayStateAccessMode;
 use super::super::state::resolve_runtime_state;
 use super::control::RuntimeControlCallHeaders;
-use super::control::RuntimeControlPhase;
 use super::control::RuntimeControlStatusWatchEvent;
+use super::control::runtime_control_phase_label;
 use super::control::runtime_control_watch_event_from_proto;
 use super::control::watch_runtime_control_status_after;
 use super::control_error::runtime_control_connect_error_summary;
@@ -282,14 +283,14 @@ fn runtime_control_stop_timeout_error(
     }
 }
 
-fn runtime_control_stop_terminal_error(phase: RuntimeControlPhase, command_line: &str) -> CliError {
+fn runtime_control_stop_terminal_error(phase: types::RuntimePhase, command_line: &str) -> CliError {
     CliError::new(
         "self-host runtime did not stop cleanly",
         command_line,
         ErrorStage::Internal,
         format!(
             "runtime control WatchStatus reported terminal phase {}",
-            phase.label()
+            runtime_control_phase_label(phase)
         ),
         vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
     )
@@ -299,15 +300,16 @@ fn runtime_control_stop_terminal_error(phase: RuntimeControlPhase, command_line:
 enum RuntimeControlStopPhaseOutcome {
     Pending,
     Stopped,
-    Failed(RuntimeControlPhase),
+    Failed(types::RuntimePhase),
 }
 
 fn runtime_control_stop_phase_outcome(
-    phase: RuntimeControlPhase,
+    phase: types::RuntimePhase,
 ) -> RuntimeControlStopPhaseOutcome {
     match phase {
-        RuntimeControlPhase::Stopped => RuntimeControlStopPhaseOutcome::Stopped,
-        RuntimeControlPhase::ShutdownFailed | RuntimeControlPhase::Failed => {
+        types::RuntimePhase::RUNTIME_PHASE_STOPPED => RuntimeControlStopPhaseOutcome::Stopped,
+        types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED
+        | types::RuntimePhase::RUNTIME_PHASE_FAILED => {
             RuntimeControlStopPhaseOutcome::Failed(phase)
         }
         _ => RuntimeControlStopPhaseOutcome::Pending,
@@ -402,6 +404,75 @@ pub(super) fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliE
             command_line,
             ErrorStage::Internal,
             "process signaling is unavailable".to_owned(),
+            vec!["stop the runtime manually".to_owned()],
+        ))
+    }
+}
+
+pub(super) fn hard_kill_process(pid: u32, command_line: &str) -> Result<(), CliError> {
+    #[cfg(unix)]
+    {
+        let result = unsafe { libc::kill(pid as i32, libc::SIGKILL) };
+        if result == 0 {
+            return Ok(());
+        }
+
+        let error = std::io::Error::last_os_error();
+        if error.raw_os_error() == Some(libc::ESRCH) {
+            return Ok(());
+        }
+
+        Err(CliError::new(
+            "failed to hard-kill self-host runtime",
+            command_line,
+            ErrorStage::Internal,
+            format!("unable to send SIGKILL to pid {pid}: {error}"),
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
+        ))
+    }
+
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::OpenProcess;
+        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
+        use windows_sys::Win32::System::Threading::TerminateProcess;
+
+        let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
+        if handle.is_null() {
+            return Err(CliError::new(
+                "failed to hard-kill self-host runtime",
+                command_line,
+                ErrorStage::Internal,
+                format!("unable to open pid {pid} for hard kill"),
+                vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
+            ));
+        }
+
+        let result = unsafe { TerminateProcess(handle, 1) };
+        let _ = unsafe { CloseHandle(handle) };
+
+        if result != 0 {
+            return Ok(());
+        }
+
+        Err(CliError::new(
+            "failed to hard-kill self-host runtime",
+            command_line,
+            ErrorStage::Internal,
+            format!("unable to hard-kill pid {pid}"),
+            vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
+        ))
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = pid;
+        Err(CliError::new(
+            "gateway stop is not supported on this platform",
+            command_line,
+            ErrorStage::Internal,
+            "process hard kill is unavailable".to_owned(),
             vec!["stop the runtime manually".to_owned()],
         ))
     }

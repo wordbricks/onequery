@@ -1,4 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { chmod, mkdtemp, rm, stat } from "node:fs/promises";
 import http2 from "node:http2";
 import net from "node:net";
 import { tmpdir } from "node:os";
@@ -15,6 +17,7 @@ import {
   RetryInfoSchema,
 } from "@onequery/proto-runtime/google/rpc/error_details_pb";
 import {
+  RuntimeFailureCode,
   RuntimePhase,
   RuntimeStopCompletion,
   RuntimeStopDisposition,
@@ -22,7 +25,9 @@ import {
 import { RuntimeControlService } from "@onequery/proto-runtime/runtime/v1/control_pb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { RuntimeLifecycleLease } from "./lifecycle";
+import type { RuntimeLifecycleDurableLease } from "./lifecycle";
+import { RuntimeShutdownError } from "./lifecycle";
+import type { RuntimeControlEndpoint } from "./lifecycle/types";
 import {
   createRuntimeControlActor,
   serveRuntimeControl,
@@ -33,18 +38,22 @@ import {
   RUNTIME_CONTROL_ERROR_INFO_DOMAIN,
 } from "./runtime-control/server";
 
-function createLease(): RuntimeLifecycleLease {
+function createLease(): RuntimeLifecycleDurableLease {
   return {
     paths: {
       controlEndpoint: {
-        socketPath: "/tmp/onequery-runtime-control.sock",
-        transport: "unix",
+        transport: {
+          kind: "unix",
+          socketPath: "/tmp/onequery-runtime-control.sock",
+        },
       },
       dataDir: "/tmp/onequery-data",
+      lifecycleEventLogPath: "/tmp/onequery-run/lifecycle.events.pb",
       logsDir: "/tmp/onequery-logs",
       runtimeLeasePath: "/tmp/onequery-run/runtime.lease.json",
       runtimeStatusSnapshotPath: "/tmp/onequery-run/runtime.status.json",
     },
+    persistTransition: vi.fn(async () => undefined),
     release: vi.fn(async () => undefined),
     transition: vi.fn(async () => undefined),
   };
@@ -62,6 +71,19 @@ function runtimeTarget(
     launchId: "launch-a",
     pid: 123,
     ...overrides,
+  };
+}
+
+function runtimeShutdownRequest(input: {
+  graceTimeout?: { nanos: number; seconds: bigint };
+  operationId: string;
+}) {
+  return {
+    completion: "cleanup_and_exit",
+    ...(input.graceTimeout ? { graceTimeout: input.graceTimeout } : {}),
+    operationId: input.operationId,
+    reason: "gateway_stop",
+    target: runtimeTarget(),
   };
 }
 
@@ -113,9 +135,18 @@ describe("runtime control actor", () => {
       phase: RuntimePhase.STOPPING,
       runtimeSequence: 2n,
     });
-    expect(lease.transition).toHaveBeenCalledWith("stopping");
+    expect(lease.persistTransition).toHaveBeenCalledWith({
+      occurredAt: new Date("2026-04-27T00:00:00.000Z"),
+      phase: "stopping",
+      runtimeSequence: 2n,
+    });
+    expect(lease.transition).not.toHaveBeenCalled();
     expect(shutdown).toHaveBeenCalledTimes(1);
-    expect(shutdown).toHaveBeenCalledWith("gateway_stop", "cleanup_and_exit");
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        operationId: firstOperationId,
+      })
+    );
 
     actor.dispose();
   });
@@ -161,11 +192,166 @@ describe("runtime control actor", () => {
       phase: RuntimePhase.DRAINING,
       runtimeSequence: 3n,
     });
-    expect(lease.transition).toHaveBeenCalledTimes(2);
-    expect(lease.transition).toHaveBeenNthCalledWith(1, "stopping");
-    expect(lease.transition).toHaveBeenNthCalledWith(2, "draining");
+    expect(lease.persistTransition).toHaveBeenCalledTimes(2);
+    expect(lease.persistTransition).toHaveBeenNthCalledWith(1, {
+      occurredAt: new Date("2026-04-27T00:00:01.000Z"),
+      phase: "stopping",
+      runtimeSequence: 2n,
+    });
+    expect(lease.persistTransition).toHaveBeenNthCalledWith(2, {
+      occurredAt: new Date("2026-04-27T00:00:02.000Z"),
+      phase: "draining",
+      runtimeSequence: 3n,
+    });
+    expect(lease.transition).not.toHaveBeenCalled();
     expect(shutdown).toHaveBeenCalledTimes(1);
-    expect(shutdown).toHaveBeenCalledWith("gateway_stop", "cleanup_and_exit");
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        operationId,
+      })
+    );
+
+    actor.dispose();
+  });
+
+  it("records shutdown timeout when stop grace timeout elapses", async () => {
+    const lease = createLease();
+    const shutdown = vi.fn(() => new Promise<void>(() => undefined));
+    const timestamps = [
+      new Date("2026-04-27T00:00:00.000Z"),
+      new Date("2026-04-27T00:00:01.000Z"),
+      new Date("2026-04-27T00:00:02.000Z"),
+    ];
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
+    });
+    actor.attachShutdownController({
+      dispose: vi.fn(),
+      shutdown,
+    });
+    const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a099";
+
+    const accepted = await actor.stop({
+      completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
+      graceTimeout: durationFromMs(5),
+      operationId,
+      reason: "gateway_stop",
+      target: runtimeTarget(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const status = await actor.getStatus();
+    const failure = {
+      code: RuntimeFailureCode.SHUTDOWN_TIMEOUT,
+      message: "runtime shutdown timed out after 0s/5000000ns for gateway_stop",
+      retryable: false,
+    };
+
+    expect(accepted).toMatchObject({
+      disposition: RuntimeStopDisposition.ACCEPTED,
+      status: {
+        phase: RuntimePhase.STOPPING,
+        runtimeSequence: 2n,
+      },
+    });
+    expect(status).toMatchObject({
+      failure,
+      phase: RuntimePhase.SHUTDOWN_FAILED,
+      runtimeSequence: 3n,
+    });
+    expect(lease.persistTransition).toHaveBeenCalledTimes(2);
+    expect(lease.persistTransition).toHaveBeenNthCalledWith(2, {
+      failure: {
+        code: "shutdown_timeout",
+        message:
+          "runtime shutdown timed out after 0s/5000000ns for gateway_stop",
+        retryable: false,
+      },
+      occurredAt: new Date("2026-04-27T00:00:02.000Z"),
+      phase: "shutdown_failed",
+      runtimeSequence: 3n,
+    });
+    expect(lease.release).not.toHaveBeenCalled();
+    expect(shutdown).toHaveBeenCalledTimes(1);
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        graceTimeout: {
+          nanos: 5_000_000,
+          seconds: 0n,
+        },
+        operationId,
+      })
+    );
+
+    actor.dispose();
+  });
+
+  it("preserves shutdown rejection detail from the shutdown controller", async () => {
+    const lease = createLease();
+    const failure = {
+      code: "shutdown_rejected",
+      message: "runtime shutdown controller rejected gateway_stop",
+      retryable: false,
+    } as const;
+    const shutdown = vi.fn(async () => {
+      throw new RuntimeShutdownError({
+        cause: new Error("refused"),
+        failure,
+        message: failure.message,
+        reason: "gateway_stop",
+      });
+    });
+    const timestamps = [
+      new Date("2026-04-27T00:00:00.000Z"),
+      new Date("2026-04-27T00:00:01.000Z"),
+      new Date("2026-04-27T00:00:02.000Z"),
+    ];
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
+    });
+    actor.attachShutdownController({
+      dispose: vi.fn(),
+      shutdown,
+    });
+    const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a100";
+
+    const accepted = await actor.stop({
+      completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
+      operationId,
+      reason: "gateway_stop",
+      target: runtimeTarget(),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const status = await actor.getStatus();
+
+    expect(accepted.disposition).toBe(RuntimeStopDisposition.ACCEPTED);
+    expect(status).toMatchObject({
+      failure: {
+        code: RuntimeFailureCode.SHUTDOWN_REJECTED,
+        message: failure.message,
+        retryable: false,
+      },
+      phase: RuntimePhase.SHUTDOWN_FAILED,
+      runtimeSequence: 3n,
+    });
+    expect(lease.persistTransition).toHaveBeenCalledTimes(2);
+    expect(lease.persistTransition).toHaveBeenNthCalledWith(2, {
+      failure,
+      occurredAt: new Date("2026-04-27T00:00:02.000Z"),
+      phase: "shutdown_failed",
+      runtimeSequence: 3n,
+    });
 
     actor.dispose();
   });
@@ -215,9 +401,99 @@ describe("runtime control actor", () => {
       operation: "stop",
       operationId,
     });
-    expect(lease.transition).toHaveBeenCalledTimes(1);
-    expect(lease.transition).toHaveBeenCalledWith("stopping");
+    expect(lease.persistTransition).toHaveBeenCalledTimes(1);
+    expect(lease.persistTransition).toHaveBeenCalledWith({
+      occurredAt: new Date("2026-04-27T00:00:00.000Z"),
+      phase: "stopping",
+      runtimeSequence: 2n,
+    });
+    expect(lease.transition).not.toHaveBeenCalled();
     expect(shutdown).toHaveBeenCalledTimes(1);
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        graceTimeout: {
+          nanos: 0,
+          seconds: 30n,
+        },
+        operationId,
+      })
+    );
+
+    actor.dispose();
+  });
+
+  it("retries a failed durable stop transition with the original runtime sequence", async () => {
+    const lease = createLease();
+    const persistTransition = vi.mocked(lease.persistTransition);
+    persistTransition.mockRejectedValueOnce(new Error("disk full"));
+    const shutdown = vi.fn(async () => undefined);
+    const timestamps = [
+      new Date("2026-04-27T00:00:00.000Z"),
+      new Date("2026-04-27T00:00:01.000Z"),
+      new Date("2026-04-27T00:00:02.000Z"),
+    ];
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
+    });
+    actor.attachShutdownController({
+      dispose: vi.fn(),
+      shutdown,
+    });
+    const request = {
+      completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
+      operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a005",
+      reason: "gateway_stop",
+      target: runtimeTarget(),
+    };
+
+    await expect(actor.stop(request)).rejects.toMatchObject({
+      cause: expect.objectContaining({
+        message: "disk full",
+      }),
+      message: "failed to persist runtime stop transition",
+    });
+    await expect(actor.getStatus()).resolves.toMatchObject({
+      phase: RuntimePhase.STARTING,
+      runtimeSequence: 1n,
+    });
+
+    const retry = await actor.stop(request);
+
+    expect(retry).toMatchObject({
+      disposition: RuntimeStopDisposition.ACCEPTED,
+      status: {
+        phase: RuntimePhase.STOPPING,
+        runtimeSequence: 2n,
+      },
+      transition: {
+        currentPhase: RuntimePhase.STOPPING,
+        runtimeSequence: 2n,
+        transitionId: "runtime:2",
+      },
+    });
+    expect(persistTransition).toHaveBeenCalledTimes(2);
+    expect(persistTransition).toHaveBeenNthCalledWith(1, {
+      occurredAt: new Date("2026-04-27T00:00:01.000Z"),
+      phase: "stopping",
+      runtimeSequence: 2n,
+    });
+    expect(persistTransition).toHaveBeenNthCalledWith(2, {
+      occurredAt: new Date("2026-04-27T00:00:02.000Z"),
+      phase: "stopping",
+      runtimeSequence: 2n,
+    });
+    expect(shutdown).toHaveBeenCalledTimes(1);
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        operationId: request.operationId,
+      })
+    );
 
     actor.dispose();
   });
@@ -316,8 +592,10 @@ describe("runtime control Connect server", () => {
     const socketPath = join(root, "runtime-control.sock");
     const lease = createLease();
     lease.paths.controlEndpoint = {
-      socketPath,
-      transport: "unix",
+      transport: {
+        kind: "unix",
+        socketPath,
+      },
     };
     const actor = createRuntimeControlActor({
       identity: {
@@ -345,6 +623,7 @@ describe("runtime control Connect server", () => {
     });
 
     return {
+      server,
       shutdown,
       socketPath,
     };
@@ -363,6 +642,73 @@ describe("runtime control Connect server", () => {
     );
 
     return client;
+  }
+
+  function createUnreachableUnixSocket(socketPath: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const child = spawn(
+        process.execPath,
+        [
+          "-e",
+          [
+            'const net = require("node:net");',
+            "const server = net.createServer();",
+            'server.listen(process.argv[1], () => console.log("ready"));',
+            "setInterval(() => undefined, 1000);",
+          ].join(" "),
+          socketPath,
+        ],
+        {
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      );
+      let stderr = "";
+      const timeout = setTimeout(() => {
+        cleanup();
+        child.kill("SIGKILL");
+        reject(new Error(`timed out creating stale socket ${socketPath}`));
+      }, 5_000);
+      timeout.unref();
+      const cleanup = () => {
+        clearTimeout(timeout);
+        child.off("error", fail);
+        child.off("exit", handleExit);
+        child.stderr.off("data", collectStderr);
+        child.stdout.off("data", handleReady);
+      };
+      const fail = (cause: unknown) => {
+        cleanup();
+        child.kill("SIGKILL");
+        reject(cause);
+      };
+      const collectStderr = (chunk: Buffer) => {
+        stderr += chunk.toString("utf8");
+      };
+      const handleReady = () => {
+        child.kill("SIGKILL");
+      };
+      const handleExit = (
+        code: number | null,
+        signal: NodeJS.Signals | null
+      ) => {
+        cleanup();
+        if (existsSync(socketPath)) {
+          resolve();
+          return;
+        }
+
+        reject(
+          new Error(
+            `stale socket ${socketPath} was not left behind after child exit code=${code} signal=${signal}: ${stderr}`
+          )
+        );
+      };
+
+      child.once("error", fail);
+      child.once("exit", handleExit);
+      child.stderr.on("data", collectStderr);
+      child.stdout.on("data", handleReady);
+    });
   }
 
   function summarizeRuntimeControlConnectError(error: ConnectError) {
@@ -404,6 +750,196 @@ describe("runtime control Connect server", () => {
     };
   }
 
+  it("removes an unreachable stale Unix socket before listening", async () => {
+    const root = await mkdtemp(join(tmpdir(), "onequery-runtime-control-"));
+    tempRoots.push(root);
+    const socketPath = join(root, "runtime-control.sock");
+    await createUnreachableUnixSocket(socketPath);
+    expect(existsSync(socketPath)).toBe(true);
+
+    const lease = createLease();
+    lease.paths.controlEndpoint = {
+      transport: {
+        kind: "unix",
+        socketPath,
+      },
+    };
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+    const server = await serveRuntimeControl({
+      actor,
+      endpoint: lease.paths.controlEndpoint,
+    });
+    activeRuntimeControls.push({
+      actor,
+      server,
+    });
+    const client = createRuntimeControlClient(socketPath);
+
+    const status = await client.getStatus({});
+
+    expect(status.status).toMatchObject({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+    });
+  });
+
+  it("keeps non-UDS transports disabled behind launch-scoped auth and fencing", async () => {
+    const lease = createLease();
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+    const insecureEndpoint = {
+      transport: {
+        host: "127.0.0.1",
+        kind: "loopback-h2c",
+        port: 5657,
+      },
+    } as RuntimeControlEndpoint;
+    const fencedEndpoint = {
+      transport: {
+        auth: {
+          kind: "bearer" as const,
+          token: "launch-token",
+        },
+        fencing: {
+          dataDir: "/tmp/onequery-data",
+          launchId: "launch-a",
+        },
+        host: "127.0.0.1",
+        kind: "loopback-h2c" as const,
+        port: 5657,
+      },
+    };
+
+    try {
+      await expect(
+        serveRuntimeControl({
+          actor,
+          endpoint: insecureEndpoint,
+        })
+      ).rejects.toThrow(
+        "runtime control loopback-h2c transport requires launch-scoped bearer auth and fencing metadata before it can be enabled (missing auth, launchId, dataDir)"
+      );
+      await expect(
+        serveRuntimeControl({
+          actor,
+          endpoint: fencedEndpoint,
+        })
+      ).rejects.toThrow(
+        "runtime control loopback-h2c transport is not enabled by this runtime"
+      );
+    } finally {
+      actor.dispose();
+    }
+  });
+
+  it("refuses runtime control socket parent directories accessible by group or others", async () => {
+    const root = await mkdtemp(join(tmpdir(), "onequery-runtime-control-"));
+    tempRoots.push(root);
+    await chmod(root, 0o755);
+    const socketPath = join(root, "runtime-control.sock");
+    const lease = createLease();
+    lease.paths.controlEndpoint = {
+      transport: {
+        kind: "unix",
+        socketPath,
+      },
+    };
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+
+    try {
+      await expect(
+        serveRuntimeControl({
+          actor,
+          endpoint: lease.paths.controlEndpoint,
+        })
+      ).rejects.toThrow(
+        `runtime control socket parent ${root} must not be accessible by group or others`
+      );
+    } finally {
+      actor.dispose();
+    }
+
+    expect(existsSync(socketPath)).toBe(false);
+  });
+
+  it("refuses to remove a reachable runtime control socket", async () => {
+    const { socketPath } = await startRuntimeControlServer();
+    const lease = createLease();
+    lease.paths.controlEndpoint = {
+      transport: {
+        kind: "unix",
+        socketPath,
+      },
+    };
+    const actor = createRuntimeControlActor({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-b",
+        pid: 456,
+      },
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+
+    try {
+      await expect(
+        serveRuntimeControl({
+          actor,
+          endpoint: lease.paths.controlEndpoint,
+        })
+      ).rejects.toThrow(
+        `runtime control socket ${socketPath} is already reachable for launch launch-a; expected launch-b`
+      );
+    } finally {
+      actor.dispose();
+    }
+
+    const client = createRuntimeControlClient(socketPath);
+    const status = await client.getStatus({});
+    expect(status.status).toMatchObject({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+    });
+  });
+
+  it("keeps the runtime control socket mode at 0600", async () => {
+    const { socketPath } = await startRuntimeControlServer();
+
+    const socketStat = await stat(socketPath);
+    const permissions = socketStat.mode & 0o777;
+
+    expect(permissions).toBe(0o600);
+  });
+
   it("serves Connect over HTTP/2 on a Unix socket", async () => {
     const { shutdown, socketPath } = await startRuntimeControlServer();
     const client = createRuntimeControlClient(socketPath);
@@ -431,7 +967,45 @@ describe("runtime control Connect server", () => {
       phase: RuntimePhase.STOPPING,
       runtimeSequence: 2n,
     });
-    expect(shutdown).toHaveBeenCalledWith("gateway_stop", "cleanup_and_exit");
+    expect(shutdown).toHaveBeenCalledWith(
+      runtimeShutdownRequest({
+        graceTimeout: {
+          nanos: 0,
+          seconds: 30n,
+        },
+        operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a001",
+      })
+    );
+  });
+
+  it("closes active WatchStatus streams when the runtime control server closes", async () => {
+    const { server, socketPath } = await startRuntimeControlServer();
+    const client = createRuntimeControlClient(socketPath);
+    const stream = client.watchStatus({
+      includeSnapshot: true,
+      target: runtimeTarget(),
+    });
+    const iterator = stream[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: {
+        event: {
+          case: "snapshot",
+          value: {
+            phase: RuntimePhase.STARTING,
+            runtimeSequence: 1n,
+          },
+        },
+      },
+    });
+    const closed = iterator.next();
+
+    await server.close();
+
+    await expect(closed).resolves.toMatchObject({
+      done: true,
+    });
   });
 
   it("rejects stale runtime targets with failed precondition", async () => {

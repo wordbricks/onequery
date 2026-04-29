@@ -285,6 +285,11 @@ message SupervisorTransition {
   google.protobuf.Timestamp occurred_at = 6 [(buf.validate.field).required = true];
   RuntimeIdentity runtime = 7;
   SupervisorFailure failure = 8;
+  int32 exit_code = 9 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 255
+  ];
+  string signal = 10 [(buf.validate.field).string.max_len = 64];
 }
 
 message LifecycleProcessExit {
@@ -340,6 +345,10 @@ message LifecycleEventLogEntry {
   string caller_operation_id = 7 [(buf.validate.field).string.max_len = 64];
   string transition_id = 8 [(buf.validate.field).string.max_len = 128];
   string correlation_id = 9 [(buf.validate.field).string.max_len = 128];
+  uint64 monotonic_timestamp_nanos = 18 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
 
   oneof payload {
     option (buf.validate.oneof).required = true;

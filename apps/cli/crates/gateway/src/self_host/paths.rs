@@ -16,6 +16,7 @@ const SERVER_LOG_FILENAME: &str = "server.log";
 const RUNTIME_LEASE_FILENAME: &str = "runtime.lease.json";
 const RUNTIME_STATUS_SNAPSHOT_FILENAME: &str = "runtime.status.json";
 const SUPERVISOR_STATUS_SNAPSHOT_FILENAME: &str = "supervisor.status.json";
+const LIFECYCLE_EVENT_LOG_FILENAME: &str = "lifecycle.events.pb";
 const RELEASES_DIR_NAME: &str = "releases";
 const ACTIVE_RELEASE_FILENAME: &str = "active.json";
 const RECOVERY_POINTS_DIR_NAME: &str = "recovery-points";
@@ -36,6 +37,7 @@ pub struct SelfHostRuntimePaths {
     pub runtime_lease_path: PathBuf,
     pub runtime_status_snapshot_path: PathBuf,
     pub supervisor_status_snapshot_path: PathBuf,
+    pub lifecycle_event_log_path: PathBuf,
     pub releases_dir: PathBuf,
     pub active_release_path: PathBuf,
     pub recovery_points_dir: PathBuf,
@@ -56,6 +58,7 @@ impl SelfHostRuntimePaths {
         let runtime_lease_path = run_dir.join(RUNTIME_LEASE_FILENAME);
         let runtime_status_snapshot_path = run_dir.join(RUNTIME_STATUS_SNAPSHOT_FILENAME);
         let supervisor_status_snapshot_path = run_dir.join(SUPERVISOR_STATUS_SNAPSHOT_FILENAME);
+        let lifecycle_event_log_path = run_dir.join(LIFECYCLE_EVENT_LOG_FILENAME);
         let releases_dir = data_dir.join(RELEASES_DIR_NAME);
         let active_release_path = releases_dir.join(ACTIVE_RELEASE_FILENAME);
         let recovery_points_dir = data_dir.join(RECOVERY_POINTS_DIR_NAME);
@@ -75,6 +78,7 @@ impl SelfHostRuntimePaths {
             runtime_lease_path,
             runtime_status_snapshot_path,
             supervisor_status_snapshot_path,
+            lifecycle_event_log_path,
             releases_dir,
             active_release_path,
             recovery_points_dir,

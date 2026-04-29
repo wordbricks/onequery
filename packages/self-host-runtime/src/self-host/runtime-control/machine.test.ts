@@ -5,6 +5,7 @@ import {
   reduceRuntimeControlMachine,
 } from "./machine";
 import type {
+  RuntimeControlFailure,
   RuntimeControlStopOperationConflict,
   RuntimeControlStopRequest,
 } from "./machine";
@@ -29,6 +30,31 @@ function stopRequest(
 }
 
 describe("runtime control machine", () => {
+  it("keeps watcher registry out of lifecycle machine state", () => {
+    const startedAt = new Date("2026-04-27T00:00:00.000Z");
+    const state = createInitialRuntimeControlState({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      now: startedAt,
+    });
+
+    expect(state).toEqual({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      phase: "starting",
+      recentStopOperationOutcomes: [],
+      runtimeSequence: 1n,
+      updatedAt: startedAt,
+    });
+    expect("watchers" in state).toBe(false);
+  });
+
   it("records lifecycle shutdown failure transitions", () => {
     const startedAt = new Date("2026-04-27T00:00:00.000Z");
     const stoppedAt = new Date("2026-04-27T00:00:01.000Z");
@@ -75,6 +101,66 @@ describe("runtime control machine", () => {
       type: "transition",
     });
   });
+
+  it.each([
+    "checkpoint_failed",
+    "internal",
+    "resource_close_failed",
+    "shutdown_rejected",
+    "shutdown_timeout",
+  ] satisfies RuntimeControlFailure["code"][])(
+    "preserves lifecycle failure detail for %s transitions",
+    (code) => {
+      const startedAt = new Date("2026-04-27T00:00:00.000Z");
+      const stoppedAt = new Date("2026-04-27T00:00:01.000Z");
+      const failedAt = new Date("2026-04-27T00:00:02.000Z");
+      const initialState = createInitialRuntimeControlState({
+        identity: {
+          dataDir: "/tmp/onequery-data",
+          launchId: "launch-a",
+          pid: 123,
+        },
+        now: startedAt,
+      });
+      const stopping = reduceRuntimeControlMachine(initialState, {
+        occurredAt: stoppedAt,
+        operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a101",
+        request: stopRequest(),
+        type: "stop_requested",
+      });
+      const failure = {
+        code,
+        message: `runtime failure ${code}`,
+        retryable: false,
+      } satisfies RuntimeControlFailure;
+
+      const reduction = reduceRuntimeControlMachine(stopping.state, {
+        failure,
+        occurredAt: failedAt,
+        phase: "shutdown_failed",
+        reason: "gateway_stop",
+        type: "lifecycle_transition_requested",
+      });
+
+      expect(reduction).toMatchObject({
+        state: {
+          failure,
+          phase: "shutdown_failed",
+          runtimeSequence: 3n,
+          updatedAt: failedAt,
+        },
+        transition: {
+          currentPhase: "shutdown_failed",
+          failure,
+          previousPhase: "stopping",
+          reason: "gateway_stop",
+          runtimeSequence: 3n,
+          transitionId: "runtime:3",
+        },
+        type: "transition",
+      });
+    }
+  );
 
   it("records lifecycle release failures as terminal shutdown failures", () => {
     const startedAt = new Date("2026-04-27T00:00:00.000Z");
@@ -124,6 +210,89 @@ describe("runtime control machine", () => {
         runtimeSequence: 3n,
         transitionId: "runtime:3",
       },
+      type: "transition",
+    });
+  });
+
+  it("records shutdown timeout as a terminal failure", () => {
+    const startedAt = new Date("2026-04-27T00:00:00.000Z");
+    const stoppingAt = new Date("2026-04-27T00:00:01.000Z");
+    const timedOutAt = new Date("2026-04-27T00:00:02.000Z");
+    const staleTransitionAt = new Date("2026-04-27T00:00:03.000Z");
+    const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a003";
+    const graceTimeout = {
+      nanos: 0,
+      seconds: 30n,
+    };
+    const initialState = createInitialRuntimeControlState({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      now: startedAt,
+    });
+    const stopping = reduceRuntimeControlMachine(initialState, {
+      occurredAt: stoppingAt,
+      operationId,
+      request: stopRequest({
+        graceTimeout,
+      }),
+      type: "stop_requested",
+    });
+
+    const timedOut = reduceRuntimeControlMachine(stopping.state, {
+      graceTimeout,
+      occurredAt: timedOutAt,
+      operationId,
+      reason: "gateway_stop",
+      type: "shutdown_timeout_elapsed",
+    });
+    const failure = {
+      code: "shutdown_timeout",
+      message: "runtime shutdown timed out after 30s/0ns for gateway_stop",
+      retryable: false,
+    } as const;
+
+    expect(timedOut).toEqual({
+      state: {
+        ...stopping.state,
+        failure,
+        phase: "shutdown_failed",
+        runtimeSequence: 3n,
+        updatedAt: timedOutAt,
+      },
+      transition: {
+        callerOperationId: operationId,
+        currentPhase: "shutdown_failed",
+        failure,
+        occurredAt: timedOutAt,
+        previousPhase: "stopping",
+        reason: "gateway_stop",
+        runtimeSequence: 3n,
+        transitionId: "runtime:3",
+      },
+      type: "transition",
+    });
+
+    const staleCheckpoint = reduceRuntimeControlMachine(timedOut.state, {
+      occurredAt: staleTransitionAt,
+      phase: "checkpointing",
+      reason: "gateway_stop",
+      type: "lifecycle_transition_requested",
+    });
+    const staleRelease = reduceRuntimeControlMachine(timedOut.state, {
+      occurredAt: staleTransitionAt,
+      reason: "gateway_stop",
+      type: "lifecycle_release_succeeded",
+    });
+
+    expect(staleCheckpoint).toEqual({
+      state: timedOut.state,
+      type: "transition",
+    });
+    expect(staleRelease).toEqual({
+      state: timedOut.state,
       type: "transition",
     });
   });

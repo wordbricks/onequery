@@ -2,8 +2,14 @@
 //!
 //! State and snapshot files are newline-terminated protobuf JSON so operators
 //! can inspect recovery state without custom tooling. Append-only lifecycle
-//! event logs use length-delimited binary protobuf frames when implemented.
+//! event logs use length-delimited binary protobuf frames.
 
+use std::sync::OnceLock;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
+use std::time::Instant;
+
+use buffa::Message;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -12,6 +18,8 @@ use crate::runtime_control::types;
 pub(super) const DURABLE_STATE_FILE_ENCODING: &str = "proto-json";
 #[allow(dead_code)]
 pub(super) const DURABLE_EVENT_LOG_ENCODING: &str = "length-delimited-binary-protobuf";
+static MONOTONIC_TIMESTAMP_START: OnceLock<Instant> = OnceLock::new();
+static LAST_MONOTONIC_TIMESTAMP_NANOS: AtomicU64 = AtomicU64::new(0);
 
 pub(super) fn decode_runtime_lease_record(
     contents: &str,
@@ -37,6 +45,50 @@ pub(super) fn encode_supervisor_status_snapshot(
     encode_proto_json(snapshot)
 }
 
+pub(super) fn encode_runtime_status_snapshot(
+    snapshot: &types::RuntimeStatusSnapshot,
+) -> Result<String, serde_json::Error> {
+    encode_proto_json(snapshot)
+}
+
+pub(super) fn encode_lifecycle_event_log_entry(entry: &types::LifecycleEventLogEntry) -> Vec<u8> {
+    let mut encoded = Vec::new();
+    entry.encode_length_delimited(&mut encoded);
+    encoded
+}
+
+pub(super) fn decode_lifecycle_event_log_entries(
+    contents: &[u8],
+) -> Result<Vec<types::LifecycleEventLogEntry>, buffa::DecodeError> {
+    let mut entries = Vec::new();
+    let mut cursor = contents;
+
+    while !cursor.is_empty() {
+        entries.push(types::LifecycleEventLogEntry::decode_length_delimited(
+            &mut cursor,
+        )?);
+    }
+
+    Ok(entries)
+}
+
+pub(super) fn next_monotonic_timestamp_nanos() -> u64 {
+    let start = MONOTONIC_TIMESTAMP_START.get_or_init(Instant::now);
+    let elapsed = start.elapsed().as_nanos().min(u64::MAX as u128) as u64;
+    let candidate = elapsed.max(1);
+
+    loop {
+        let previous = LAST_MONOTONIC_TIMESTAMP_NANOS.load(Ordering::Relaxed);
+        let next = candidate.max(previous.saturating_add(1));
+        if LAST_MONOTONIC_TIMESTAMP_NANOS
+            .compare_exchange(previous, next, Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok()
+        {
+            return next;
+        }
+    }
+}
+
 fn decode_proto_json<T>(contents: &str) -> Result<T, serde_json::Error>
 where
     T: DeserializeOwned,
@@ -60,7 +112,9 @@ mod tests {
 
     use super::DURABLE_EVENT_LOG_ENCODING;
     use super::DURABLE_STATE_FILE_ENCODING;
+    use super::decode_lifecycle_event_log_entries;
     use super::decode_runtime_status_snapshot;
+    use super::encode_lifecycle_event_log_entry;
     use super::encode_supervisor_status_snapshot;
     use crate::runtime_control::types;
 
@@ -113,5 +167,36 @@ mod tests {
         assert!(encoded.ends_with('\n'));
         assert!(encoded.contains("\"phase\":\"SUPERVISOR_PHASE_READY\""));
         assert!(encoded.contains("\"supervisorSequence\":\"1\""));
+    }
+
+    #[test]
+    fn encodes_lifecycle_event_log_entries_as_length_delimited_frames() {
+        let first = types::LifecycleEventLogEntry {
+            lifecycle_sequence: Some(1),
+            kind: Some(
+                types::LifecycleEventKind::LIFECYCLE_EVENT_KIND_SUPERVISOR_TRANSITION_RECORDED
+                    .into(),
+            ),
+            monotonic_timestamp_nanos: Some(1),
+            ..Default::default()
+        };
+        let second = types::LifecycleEventLogEntry {
+            lifecycle_sequence: Some(2),
+            kind: Some(
+                types::LifecycleEventKind::LIFECYCLE_EVENT_KIND_SUPERVISOR_TRANSITION_RECORDED
+                    .into(),
+            ),
+            monotonic_timestamp_nanos: Some(2),
+            ..Default::default()
+        };
+        let mut encoded = encode_lifecycle_event_log_entry(&first);
+        encoded.extend(encode_lifecycle_event_log_entry(&second));
+
+        let decoded = decode_lifecycle_event_log_entries(&encoded)
+            .expect("expected framed lifecycle entries to decode");
+
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(decoded[0].lifecycle_sequence, Some(1));
+        assert_eq!(decoded[1].lifecycle_sequence, Some(2));
     }
 }

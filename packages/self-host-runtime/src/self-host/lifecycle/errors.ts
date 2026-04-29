@@ -1,6 +1,10 @@
 import { TaggedError } from "better-result";
 
-import type { SelfHostLifecyclePaths } from "./types";
+import type {
+  RuntimeLifecycleFailure,
+  RuntimeLifecycleFailureCode,
+  SelfHostLifecyclePaths,
+} from "./types";
 
 export class DuplicateRuntimeStartError extends TaggedError(
   "DuplicateRuntimeStartError"
@@ -59,6 +63,14 @@ export class RuntimeLifecycleOptionsError extends TaggedError(
   message: string;
 }>() {}
 
+export class RuntimeLifecycleTransitionError extends TaggedError(
+  "RuntimeLifecycleTransitionError"
+)<{
+  message: string;
+  phase: string;
+  runtimeSequence: string;
+}>() {}
+
 export class RuntimeLeaseRecordReadError extends TaggedError(
   "RuntimeLeaseRecordReadError"
 )<{
@@ -69,9 +81,55 @@ export class RuntimeLeaseRecordReadError extends TaggedError(
 
 export class RuntimeShutdownError extends TaggedError("RuntimeShutdownError")<{
   cause: unknown;
+  failure: RuntimeLifecycleFailure;
   message: string;
   reason: string;
-}>() {}
+}>() {
+  constructor(input: {
+    cause: unknown;
+    failure?: RuntimeLifecycleFailure;
+    message: string;
+    reason: string;
+  }) {
+    super({
+      ...input,
+      failure:
+        input.failure ??
+        createRuntimeShutdownFailure("internal", input.message),
+    });
+  }
+}
+
+export function createRuntimeShutdownFailure(
+  code: RuntimeLifecycleFailureCode,
+  message: string,
+  retryable = false
+): RuntimeLifecycleFailure {
+  return {
+    code,
+    message,
+    retryable,
+  };
+}
+
+export function createRuntimeShutdownError(input: {
+  cause: unknown;
+  code: RuntimeLifecycleFailureCode;
+  message: string;
+  reason: string;
+  retryable?: boolean;
+}): RuntimeShutdownError {
+  return new RuntimeShutdownError({
+    cause: input.cause,
+    failure: createRuntimeShutdownFailure(
+      input.code,
+      input.message,
+      input.retryable ?? false
+    ),
+    message: input.message,
+    reason: input.reason,
+  });
+}
 
 export class SelfHostRuntimePathsMissingError extends TaggedError(
   "SelfHostRuntimePathsMissingError"
@@ -93,4 +151,5 @@ export type AcquireRuntimeLifecycleLeaseError =
 
 export type RuntimeLifecycleMutationError =
   | RuntimeLifecycleFileError
-  | RuntimeLifecycleLogWriteError;
+  | RuntimeLifecycleLogWriteError
+  | RuntimeLifecycleTransitionError;

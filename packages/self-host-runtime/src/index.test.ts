@@ -38,6 +38,7 @@ function createTempSelfHostRuntimePaths() {
   return createSelfHostRuntimePaths({
     backupsDir: join(root, "backups"),
     dataDir: join(root, "data"),
+    lifecycleEventLogPath: join(root, "run", "lifecycle.events.pb"),
     logsDir: join(root, "logs"),
     runDir: join(root, "run"),
     runtimeLeasePath: join(root, "run", "runtime.lease.json"),
@@ -49,8 +50,10 @@ function createTempRuntimeControlEndpoint(
   runtimePaths: ReturnType<typeof createTempSelfHostRuntimePaths>
 ) {
   return {
-    socketPath: join(runtimePaths.runDir, "runtime-control.sock"),
-    transport: "unix" as const,
+    transport: {
+      kind: "unix" as const,
+      socketPath: join(runtimePaths.runDir, "runtime-control.sock"),
+    },
   };
 }
 
@@ -81,7 +84,6 @@ function createMocks() {
           masterEncryptionKey: new Uint8Array(32),
         },
         listen: launchConfig.listen,
-        mode: launchConfig.mode,
         publicOrigin: launchConfig.publicOrigin,
         rateLimit: {
           api: {
@@ -121,6 +123,7 @@ function createMocks() {
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
   const transitionLifecycleLease = vi.fn(async () => undefined);
+  const persistLifecycleTransition = vi.fn(async () => undefined);
   const attachRuntimeControlShutdownController = vi.fn();
   const disposeRuntimeControlActor = vi.fn();
   const runtimeControlServerClose = vi.fn(async () => undefined);
@@ -128,6 +131,7 @@ function createMocks() {
     vi.fn(async (paths) =>
       Result.ok({
         paths,
+        persistTransition: persistLifecycleTransition,
         transition: transitionLifecycleLease,
         release: releaseLifecycleLease,
       })
@@ -135,6 +139,7 @@ function createMocks() {
   const createRuntimeControlActor: StartServerDependencies["createRuntimeControlActor"] =
     vi.fn(({ lease }) => ({
       attachShutdownController: attachRuntimeControlShutdownController,
+      closeStatusWatches: vi.fn(async () => undefined),
       dispose: disposeRuntimeControlActor,
       getStatus: vi.fn(async () => ({
         identity: {
@@ -163,8 +168,8 @@ function createMocks() {
   const serveRuntimeControl: StartServerDependencies["serveRuntimeControl"] =
     vi.fn(async ({ endpoint }) => ({
       close: runtimeControlServerClose,
+      endpoint,
       name: "runtime-control" as const,
-      socketPath: endpoint.socketPath,
     }));
   const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
     vi.fn(async () => undefined);
@@ -196,6 +201,7 @@ function createMocks() {
     disposeRuntimeControlActor,
     prepareRuntimeDatabaseResult,
     releaseLifecycleLease,
+    persistLifecycleTransition,
     runtimeControlServerClose,
     shutdownController,
     transitionLifecycleLease,
@@ -308,6 +314,7 @@ describe("startServer", () => {
       {
         controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
+        lifecycleEventLogPath: runtimePaths.lifecycleEventLogPath,
         logsDir: runtimePaths.logsDir,
         runtimeLeasePath: runtimePaths.runtimeLeasePath,
         runtimeStatusSnapshotPath: runtimePaths.runtimeStatusSnapshotPath,
@@ -358,6 +365,7 @@ describe("startServer", () => {
       {
         controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
+        lifecycleEventLogPath: runtimePaths.lifecycleEventLogPath,
         logsDir: runtimePaths.logsDir,
         runtimeLeasePath: runtimePaths.runtimeLeasePath,
         runtimeStatusSnapshotPath: runtimePaths.runtimeStatusSnapshotPath,

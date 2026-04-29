@@ -4,19 +4,20 @@ import type { OneshotSender } from "antiox/sync/oneshot";
 import { spawn } from "antiox/task";
 import { Result } from "better-result";
 
-import { RuntimeShutdownError } from "./errors";
+import { createRuntimeShutdownError } from "./errors";
 import type {
   ShutdownMachineEffect,
   ShutdownMachineEvent,
   ShutdownResult,
 } from "./shutdown-machine";
+import type { RuntimeShutdownRequest } from "./types";
 
 export function runShutdownMachineEffects(
   effects: readonly ShutdownMachineEffect[],
   args: {
     eventRx: Receiver<ShutdownMachineEvent>;
     eventTx: Sender<ShutdownMachineEvent>;
-    executeShutdown(reason: string): Promise<ShutdownResult>;
+    executeShutdown(request: RuntimeShutdownRequest): Promise<ShutdownResult>;
     exitProcess(code: number): void;
   }
 ): void {
@@ -26,7 +27,7 @@ export function runShutdownMachineEffects(
         args.eventRx.close();
         break;
       case "start_shutdown":
-        spawnShutdownWorker(effect.reason, args);
+        spawnShutdownWorker(effect.request, args);
         break;
       case "respond":
         respondToShutdownRequests(effect.responders, effect.result);
@@ -41,20 +42,21 @@ export function runShutdownMachineEffects(
 }
 
 function spawnShutdownWorker(
-  reason: string,
+  request: RuntimeShutdownRequest,
   args: {
     eventTx: Sender<ShutdownMachineEvent>;
-    executeShutdown(reason: string): Promise<ShutdownResult>;
+    executeShutdown(request: RuntimeShutdownRequest): Promise<ShutdownResult>;
   }
 ): void {
   const handle = spawn(async () => {
     const execution = await Result.tryPromise({
-      try: () => args.executeShutdown(reason),
+      try: () => args.executeShutdown(request),
       catch: (cause) =>
-        new RuntimeShutdownError({
+        createRuntimeShutdownError({
           cause,
-          message: `failed to execute runtime shutdown for ${reason}`,
-          reason,
+          code: "internal",
+          message: `failed to execute runtime shutdown for ${request.reason}`,
+          reason: request.reason,
         }),
     });
     const result = execution.isOk()

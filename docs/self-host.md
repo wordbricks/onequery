@@ -127,6 +127,7 @@ Files under those roots:
 - `run/runtime.lease.json`
 - `run/runtime.status.json`
 - `run/supervisor.status.json`
+- `run/lifecycle.events.pb`
 
 The CLI creates these paths on first `onequery gateway` or
 `onequery gateway start`. `run/launch.json` is a resolved runtime artifact

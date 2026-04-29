@@ -10,6 +10,9 @@ use clap::ValueHint;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use onequery_config::parse_cli_overrides;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS;
 use onequery_gateway::GatewayCommand;
 
 use crate::config::RawCliConfigOverrides;
@@ -407,6 +410,15 @@ pub(crate) struct GatewaySupervisorArgs {
     /// Runtime launch config path prepared by `onequery gateway start`.
     #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
     pub(crate) launch_config: PathBuf,
+    /// Maximum unexpected-exit restarts before terminal failed.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS, value_name = "COUNT")]
+    pub(crate) crash_loop_max_restarts: u32,
+    /// Initial bounded restart backoff in milliseconds.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS, value_name = "MILLISECONDS")]
+    pub(crate) crash_loop_initial_backoff_ms: u64,
+    /// Maximum bounded restart backoff in milliseconds.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS, value_name = "MILLISECONDS")]
+    pub(crate) crash_loop_max_backoff_ms: u64,
 }
 
 impl GatewaySupervisorArgs {
@@ -415,6 +427,9 @@ impl GatewaySupervisorArgs {
             runtime_command: self.runtime_command,
             runtime_entry: self.runtime_entry,
             launch_config: self.launch_config,
+            crash_loop_max_restarts: self.crash_loop_max_restarts,
+            crash_loop_initial_backoff_ms: self.crash_loop_initial_backoff_ms,
+            crash_loop_max_backoff_ms: self.crash_loop_max_backoff_ms,
         }
     }
 }

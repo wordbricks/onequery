@@ -1,3 +1,5 @@
+#[cfg(unix)]
+use std::path::Path;
 use std::time::Duration as StdDuration;
 
 use buffa::EnumValue;
@@ -38,29 +40,15 @@ pub(crate) struct RuntimeControlStatus {
     pub(crate) pid: Option<u32>,
     pub(crate) launch_id: Option<String>,
     pub(crate) data_dir: Option<String>,
-    pub(crate) phase: RuntimeControlPhase,
+    pub(crate) phase: types::RuntimePhase,
     pub(crate) runtime_sequence: Option<u64>,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum RuntimeControlPhase {
-    Unspecified,
-    Starting,
-    Ready,
-    Draining,
-    Checkpointing,
-    Stopping,
-    Stopped,
-    ShutdownFailed,
-    Failed,
-    Unknown(i32),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum RuntimeControlStatusWatchEvent {
     Snapshot(RuntimeControlStatus),
     Transition {
-        phase: RuntimeControlPhase,
+        phase: types::RuntimePhase,
         runtime_sequence: Option<u64>,
     },
 }
@@ -76,6 +64,12 @@ pub(crate) struct RuntimeControlCallHeaders<'a> {
     supervisor_id: Option<&'a str>,
 }
 
+#[cfg(unix)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum RuntimeControlTransportEndpoint<'a> {
+    UnixSocket { path: &'a Path },
+}
+
 type RuntimeControlResponseBody =
     <connectrpc::client::SharedHttp2Connection as ClientTransport>::ResponseBody;
 
@@ -84,44 +78,35 @@ pub(crate) type RuntimeControlStatusStream = connectrpc::client::ServerStream<
     types::WatchStatusResponseView<'static>,
 >;
 
-impl RuntimeControlPhase {
-    pub(crate) const fn label(self) -> &'static str {
-        match self {
-            Self::Unspecified => "unspecified",
-            Self::Starting => "starting",
-            Self::Ready => "ready",
-            Self::Draining => "draining",
-            Self::Checkpointing => "checkpointing",
-            Self::Stopping => "stopping",
-            Self::Stopped => "stopped",
-            Self::ShutdownFailed => "shutdown_failed",
-            Self::Failed => "failed",
-            Self::Unknown(_) => "unknown",
-        }
+pub(crate) const fn runtime_control_phase_label(phase: types::RuntimePhase) -> &'static str {
+    match phase {
+        types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED => "unspecified",
+        types::RuntimePhase::RUNTIME_PHASE_STARTING => "starting",
+        types::RuntimePhase::RUNTIME_PHASE_READY => "ready",
+        types::RuntimePhase::RUNTIME_PHASE_DRAINING => "draining",
+        types::RuntimePhase::RUNTIME_PHASE_CHECKPOINTING => "checkpointing",
+        types::RuntimePhase::RUNTIME_PHASE_STOPPING => "stopping",
+        types::RuntimePhase::RUNTIME_PHASE_STOPPED => "stopped",
+        types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED => "shutdown_failed",
+        types::RuntimePhase::RUNTIME_PHASE_FAILED => "failed",
     }
+}
 
-    pub(crate) const fn is_terminal(self) -> bool {
-        matches!(self, Self::Stopped | Self::ShutdownFailed | Self::Failed)
-    }
+pub(crate) const fn runtime_control_phase_is_terminal(phase: types::RuntimePhase) -> bool {
+    matches!(
+        phase,
+        types::RuntimePhase::RUNTIME_PHASE_STOPPED
+            | types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED
+            | types::RuntimePhase::RUNTIME_PHASE_FAILED
+    )
+}
 
-    fn from_proto(value: Option<EnumValue<types::RuntimePhase>>) -> Self {
-        let Some(value) = value else {
-            return Self::Unspecified;
-        };
-
-        match value.as_known() {
-            Some(types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED) => Self::Unspecified,
-            Some(types::RuntimePhase::RUNTIME_PHASE_STARTING) => Self::Starting,
-            Some(types::RuntimePhase::RUNTIME_PHASE_READY) => Self::Ready,
-            Some(types::RuntimePhase::RUNTIME_PHASE_DRAINING) => Self::Draining,
-            Some(types::RuntimePhase::RUNTIME_PHASE_CHECKPOINTING) => Self::Checkpointing,
-            Some(types::RuntimePhase::RUNTIME_PHASE_STOPPING) => Self::Stopping,
-            Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED) => Self::Stopped,
-            Some(types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED) => Self::ShutdownFailed,
-            Some(types::RuntimePhase::RUNTIME_PHASE_FAILED) => Self::Failed,
-            None => Self::Unknown(value.to_i32()),
-        }
-    }
+fn runtime_control_phase_from_proto(
+    value: Option<EnumValue<types::RuntimePhase>>,
+) -> types::RuntimePhase {
+    value
+        .and_then(|value| value.as_known())
+        .unwrap_or(types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED)
 }
 
 impl<'a> RuntimeControlCallHeaders<'a> {
@@ -164,14 +149,14 @@ pub(crate) async fn request_runtime_control_stop(
     paths: &SelfHostRuntimePaths,
     identity: &ManagedRuntimeIdentity,
     supervisor_id: &str,
+    operation_id: &str,
     reason: &str,
     grace_timeout: StdDuration,
 ) -> Result<RuntimeControlStopResponse, ConnectError> {
     let client = runtime_control_client(paths).await?;
-    let operation_id = Uuid::new_v4().to_string();
     let request = stop_request(
         runtime_target(paths, identity),
-        &operation_id,
+        operation_id,
         reason,
         grace_timeout,
     );
@@ -220,7 +205,7 @@ pub(crate) fn runtime_control_watch_event_from_proto(
         ),
         types::watch_status_response::Event::Transition(transition) => {
             Some(RuntimeControlStatusWatchEvent::Transition {
-                phase: RuntimeControlPhase::from_proto(transition.current_phase),
+                phase: runtime_control_phase_from_proto(transition.current_phase),
                 runtime_sequence: transition.runtime_sequence,
             })
         }
@@ -251,15 +236,38 @@ async fn runtime_control_client(
     paths: &SelfHostRuntimePaths,
 ) -> Result<RuntimeControlClient, ConnectError> {
     let authority = runtime_control_authority()?;
-    let connection =
-        Http2Connection::connect_unix(&paths.runtime_control_socket_path, authority.clone())
-            .await?;
+    let endpoint = runtime_control_transport_endpoint(paths);
+    let connection = runtime_control_connection(endpoint, authority.clone()).await?;
     let config = connectrpc::client::ClientConfig::new(authority);
 
     Ok(RuntimeControlClient::new(
         connection.shared(RUNTIME_CONTROL_SHARED_STREAM_BOUND),
         config,
     ))
+}
+
+#[cfg(unix)]
+fn runtime_control_transport_endpoint(
+    paths: &SelfHostRuntimePaths,
+) -> RuntimeControlTransportEndpoint<'_> {
+    RuntimeControlTransportEndpoint::UnixSocket {
+        path: paths.runtime_control_socket_path.as_path(),
+    }
+}
+
+#[cfg(unix)]
+async fn runtime_control_connection(
+    endpoint: RuntimeControlTransportEndpoint<'_>,
+    authority: http::Uri,
+) -> Result<Http2Connection, ConnectError> {
+    match endpoint {
+        RuntimeControlTransportEndpoint::UnixSocket { path } => {
+            // CONTEXT: `connect_unix` is connect-rust's custom connector path
+            // for UDS h2c. Future named-pipe transports should add another
+            // connector branch here and still return the same generated client.
+            Http2Connection::connect_unix(path, authority).await
+        }
+    }
 }
 
 #[cfg(not(unix))]
@@ -435,7 +443,7 @@ fn status_from_proto(status: types::RuntimeStatus) -> RuntimeControlStatus {
         pid,
         launch_id,
         data_dir,
-        phase: RuntimeControlPhase::from_proto(status.phase),
+        phase: runtime_control_phase_from_proto(status.phase),
         runtime_sequence: status.runtime_sequence,
     }
 }
@@ -456,9 +464,12 @@ mod tests {
     use super::RUNTIME_CONTROL_REQUEST_TIMEOUT;
     use super::RUNTIME_CONTROL_SUPERVISOR_ID_HEADER_NAME;
     use super::RuntimeControlCallHeaders;
-    use super::RuntimeControlPhase;
+    #[cfg(unix)]
+    use super::RuntimeControlTransportEndpoint;
     use super::protobuf_duration;
     use super::runtime_control_call_options_with_request_id;
+    #[cfg(unix)]
+    use super::runtime_control_transport_endpoint;
     use super::runtime_control_watch_event_from_proto;
     use super::runtime_target;
     use super::status_from_proto;
@@ -486,7 +497,7 @@ mod tests {
         assert_eq!(status.pid, Some(4242));
         assert_eq!(status.launch_id.as_deref(), Some("launch-a"));
         assert_eq!(status.data_dir.as_deref(), Some("/tmp/onequery-data"));
-        assert_eq!(status.phase, RuntimeControlPhase::Ready);
+        assert_eq!(status.phase, types::RuntimePhase::RUNTIME_PHASE_READY);
         assert_eq!(status.runtime_sequence, Some(17));
     }
 
@@ -624,6 +635,24 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn runtime_control_transport_endpoint_uses_unix_socket_connector_path() {
+        let paths = SelfHostRuntimePaths::from_dirs(
+            "/tmp/onequery-config".into(),
+            "/tmp/onequery-data".into(),
+        );
+
+        let endpoint = runtime_control_transport_endpoint(&paths);
+
+        assert_eq!(
+            endpoint,
+            RuntimeControlTransportEndpoint::UnixSocket {
+                path: paths.runtime_control_socket_path.as_path(),
+            }
+        );
+    }
+
     #[test]
     fn validate_stop_response_accepts_idempotent_stop_dispositions() {
         for disposition in [
@@ -648,7 +677,10 @@ mod tests {
             })
             .unwrap_or_else(|error| panic!("expected stop disposition to pass: {error}"));
 
-            assert_eq!(response.status.phase, RuntimeControlPhase::Stopping);
+            assert_eq!(
+                response.status.phase,
+                types::RuntimePhase::RUNTIME_PHASE_STOPPING
+            );
             assert_eq!(response.status.runtime_sequence, Some(2));
         }
     }
@@ -700,7 +732,7 @@ mod tests {
         assert_eq!(
             event,
             Some(super::RuntimeControlStatusWatchEvent::Transition {
-                phase: RuntimeControlPhase::Ready,
+                phase: types::RuntimePhase::RUNTIME_PHASE_READY,
                 runtime_sequence: Some(2),
             })
         );

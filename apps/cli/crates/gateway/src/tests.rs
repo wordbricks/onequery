@@ -1,5 +1,4 @@
 use std::fs;
-use std::net::TcpListener;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -23,11 +22,10 @@ use super::render::render_gateway_start_output;
 use super::render::render_gateway_status_output;
 use super::render::render_gateway_status_output_with_live_status;
 use super::runtime::LogPreview;
-use super::runtime::RuntimeControlPhase;
 use super::runtime::RuntimeControlStatus;
 use super::state::GatewayRuntimeState;
 use super::state::GatewayStateAccessMode;
-use crate::runtime_accepting_connections;
+use crate::runtime_control::types;
 use crate::runtime_probe_host;
 use crate::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
 use crate::self_host::SelfHostConfig;
@@ -83,7 +81,7 @@ fn render_gateway_status_output_prefers_live_runtime_control_phase() {
         pid: Some(4242),
         launch_id: Some("launch-a".to_owned()),
         data_dir: Some("/tmp/onequery-data".to_owned()),
-        phase: RuntimeControlPhase::Ready,
+        phase: types::RuntimePhase::RUNTIME_PHASE_READY,
         runtime_sequence: Some(17),
     };
 
@@ -97,11 +95,8 @@ fn render_gateway_status_output_prefers_live_runtime_control_phase() {
             .and_then(serde_json::Value::as_str),
         Some("ready")
     );
-    assert_eq!(
-        data.pointer("/runtimeState/runtimeControlReachable")
-            .and_then(serde_json::Value::as_bool),
-        Some(true)
-    );
+    assert_eq!(data.pointer("/runtimeState/running"), None);
+    assert_eq!(data.pointer("/runtimeState/runtimeControlReachable"), None);
     assert_eq!(
         data.pointer("/runtimeState/runtimePid")
             .and_then(serde_json::Value::as_u64),
@@ -465,11 +460,11 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
         Some(&serde_json::Value::String("launch-a".to_owned()))
     );
     assert_eq!(
-        launch_config.pointer("/runtimeControl/transport"),
+        launch_config.pointer("/runtimeControl/transport/kind"),
         Some(&serde_json::Value::String("unix".to_owned()))
     );
     assert_eq!(
-        launch_config.pointer("/runtimeControl/socketPath"),
+        launch_config.pointer("/runtimeControl/transport/socketPath"),
         Some(&serde_json::Value::String(
             state
                 .paths
@@ -494,18 +489,6 @@ fn runtime_probe_host_normalizes_unspecified_bind_addresses() {
     assert_eq!(runtime_probe_host("0.0.0.0"), "127.0.0.1");
     assert_eq!(runtime_probe_host("::"), "::1");
     assert_eq!(runtime_probe_host("localhost"), "localhost");
-}
-
-#[test]
-fn runtime_accepting_connections_treats_unspecified_ipv4_bind_as_localhost() {
-    let listener = TcpListener::bind(("127.0.0.1", 0))
-        .unwrap_or_else(|error| panic!("expected test listener bind to succeed: {error}"));
-    let port = listener
-        .local_addr()
-        .unwrap_or_else(|error| panic!("expected test listener local addr: {error}"))
-        .port();
-
-    assert!(runtime_accepting_connections("0.0.0.0", port));
 }
 
 fn resolve_runtime_state_with_paths_for_test(
