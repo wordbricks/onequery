@@ -576,6 +576,11 @@ function mockRuntimeStatus(
   phase = RuntimePhase.READY
 ) {
   return create(RuntimeStatusSchema, {
+    identity: {
+      dataDir: "/tmp/onequery-data",
+      launchId: "launch-a",
+      pid: 4242,
+    },
     phase,
     runtimeSequence,
     updatedAt: timestampFromDate(new Date("2026-04-29T00:00:00.000Z")),

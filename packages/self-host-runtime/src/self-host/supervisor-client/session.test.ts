@@ -62,6 +62,7 @@ describe("openSupervisorRuntimeSession", () => {
       now: () => new Date("2026-04-29T00:00:00.000Z"),
       onStopCommand: async () => ({
         status: create(RuntimeStatusSchema, {
+          identity: testRuntimeIdentity(),
           phase: RuntimePhase.STOPPED,
           runtimeSequence: 3n,
           updatedAt: timestampFromDate(new Date("2026-04-29T00:00:02.000Z")),
@@ -185,6 +186,7 @@ describe("openSupervisorRuntimeSession", () => {
 
     await session.ready(
       create(RuntimeStatusSchema, {
+        identity: testRuntimeIdentity(),
         phase: RuntimePhase.READY,
         runtimeSequence: 2n,
         updatedAt: timestampFromDate(new Date("2026-04-29T00:00:01.000Z")),
@@ -346,6 +348,14 @@ function abortableEmptyResponseStream(
         },
       };
     },
+  };
+}
+
+function testRuntimeIdentity() {
+  return {
+    dataDir: "/tmp/onequery-data",
+    launchId: "launch-a",
+    pid: 4242,
   };
 }
 

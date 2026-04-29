@@ -1,8 +1,18 @@
 use dirs::home_dir;
 use onequery_utils_absolute_path::AbsolutePathBuf;
+#[cfg(unix)]
+use std::fs;
+use std::io;
+use std::path::Path;
 use std::path::PathBuf;
 
 const ONEQUERY_HOME_ENV_VAR: &str = "ONEQUERY_HOME";
+const ONEQUERY_HOME_DIR_NAME: &str = ".onequery";
+
+#[cfg(unix)]
+const LEGACY_CONFIG_DIR: &str = ".config/onequery";
+#[cfg(unix)]
+const LEGACY_DATA_DIR: &str = ".local/share/onequery";
 
 /// Returns the path to the OneQuery home directory, which can be specified by
 /// the `ONEQUERY_HOME` environment variable. If not set, defaults to
@@ -21,6 +31,14 @@ pub fn find_onequery_home() -> std::io::Result<AbsolutePathBuf> {
 
 fn find_onequery_home_from_env(
     onequery_home_env: Option<&str>,
+) -> std::io::Result<AbsolutePathBuf> {
+    let default_home = home_dir();
+    find_onequery_home_from_env_with_home(onequery_home_env, default_home.as_deref())
+}
+
+fn find_onequery_home_from_env_with_home(
+    onequery_home_env: Option<&str>,
+    default_home: Option<&Path>,
 ) -> std::io::Result<AbsolutePathBuf> {
     match onequery_home_env {
         Some(val) => {
@@ -56,22 +74,99 @@ fn find_onequery_home_from_env(
             }
         }
         None => {
-            let mut path = home_dir().ok_or_else(|| {
+            let home = default_home.ok_or_else(|| {
                 std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     "Could not find home directory",
                 )
             })?;
-            path.push(".onequery");
+            let path = default_onequery_home(home);
+            migrate_legacy_default_onequery_home(home, &path)?;
             AbsolutePathBuf::from_absolute_path(path)
         }
     }
 }
 
+fn default_onequery_home(home: &Path) -> PathBuf {
+    home.join(ONEQUERY_HOME_DIR_NAME)
+}
+
+#[cfg(unix)]
+fn migrate_legacy_default_onequery_home(home: &Path, onequery_home: &Path) -> io::Result<()> {
+    let legacy_config_dir = home.join(LEGACY_CONFIG_DIR);
+    let legacy_data_dir = home.join(LEGACY_DATA_DIR);
+    if !legacy_config_dir.exists() && !legacy_data_dir.exists() {
+        return Ok(());
+    }
+
+    // Drop this legacy default-path migration after the 0.50 release.
+    fs::create_dir_all(onequery_home)?;
+    eprintln!(
+        "Migrating OneQuery data from {} and {} to {}",
+        legacy_config_dir.display(),
+        legacy_data_dir.display(),
+        onequery_home.display()
+    );
+    move_legacy_children(&legacy_config_dir, onequery_home)?;
+    move_legacy_children(&legacy_data_dir, onequery_home)?;
+    remove_dir_if_empty(&legacy_config_dir)?;
+    remove_dir_if_empty(&legacy_data_dir)?;
+
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn migrate_legacy_default_onequery_home(_home: &Path, _onequery_home: &Path) -> io::Result<()> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn move_legacy_children(source_dir: &Path, target_dir: &Path) -> io::Result<()> {
+    match fs::read_dir(source_dir) {
+        Ok(entries) => {
+            for entry in entries {
+                let entry = entry?;
+                let source_path = entry.path();
+                let target_path = target_dir.join(entry.file_name());
+                if target_path.exists() {
+                    return Err(io::Error::new(
+                        io::ErrorKind::AlreadyExists,
+                        format!(
+                            "cannot migrate legacy onequery path {} because {} already exists",
+                            source_path.display(),
+                            target_path.display()
+                        ),
+                    ));
+                }
+                fs::rename(source_path, target_path)?;
+            }
+            Ok(())
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+#[cfg(unix)]
+fn remove_dir_if_empty(path: &Path) -> io::Result<()> {
+    match fs::remove_dir(path) {
+        Ok(()) => Ok(()),
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::DirectoryNotEmpty
+            ) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(error),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::default_onequery_home;
     use super::find_onequery_home_from_env;
-    use dirs::home_dir;
     use onequery_utils_absolute_path::AbsolutePathBuf;
     use pretty_assertions::assert_eq;
     use std::fs;
@@ -131,11 +226,73 @@ mod tests {
 
     #[test]
     fn find_onequery_home_without_env_uses_default_home_dir() {
-        let resolved =
-            find_onequery_home_from_env(/*onequery_home_env*/ None).expect("default ONEQUERY_HOME");
-        let mut expected = home_dir().expect("home dir");
-        expected.push(".onequery");
+        let temp_home = TempDir::new().expect("temp home");
+        let resolved = super::find_onequery_home_from_env_with_home(
+            /*onequery_home_env*/ None,
+            Some(temp_home.path()),
+        )
+        .expect("default ONEQUERY_HOME");
+        let expected = temp_home.path().join(super::ONEQUERY_HOME_DIR_NAME);
         let expected = AbsolutePathBuf::from_absolute_path(expected).expect("absolute home");
         assert_eq!(resolved, expected);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn migrate_legacy_default_onequery_home_moves_config_and_data_into_onequery_home() {
+        let temp_home = TempDir::new().expect("temp home");
+        let legacy_config_dir = temp_home.path().join(super::LEGACY_CONFIG_DIR);
+        let legacy_data_dir = temp_home.path().join(super::LEGACY_DATA_DIR);
+        fs::create_dir_all(legacy_config_dir.join("self-host")).expect("legacy config dir");
+        fs::create_dir_all(legacy_data_dir.join("logs")).expect("legacy data dir");
+        fs::write(
+            legacy_config_dir.join("config.toml"),
+            "[org]\nactive = \"acme\"\n",
+        )
+        .expect("legacy config");
+        fs::write(legacy_config_dir.join("auth.json"), "{}").expect("legacy auth");
+        fs::write(legacy_data_dir.join("logs/server.log"), "started").expect("legacy log");
+
+        let onequery_home = default_onequery_home(temp_home.path());
+        super::migrate_legacy_default_onequery_home(temp_home.path(), onequery_home.as_path())
+            .expect("legacy migration");
+
+        assert_eq!(
+            (
+                onequery_home.join("config.toml").is_file(),
+                onequery_home.join("auth.json").is_file(),
+                onequery_home.join("self-host").is_dir(),
+                onequery_home.join("logs/server.log").is_file(),
+                legacy_config_dir.exists(),
+                legacy_data_dir.exists(),
+            ),
+            (true, true, true, true, false, false)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn migrate_legacy_default_onequery_home_merges_into_existing_onequery_home() {
+        let temp_home = TempDir::new().expect("temp home");
+        let onequery_home = default_onequery_home(temp_home.path());
+        let legacy_config_dir = temp_home.path().join(super::LEGACY_CONFIG_DIR);
+        fs::create_dir_all(&onequery_home).expect("onequery home");
+        fs::create_dir_all(&legacy_config_dir).expect("legacy config dir");
+        fs::write(
+            legacy_config_dir.join("config.toml"),
+            "[org]\nactive = \"acme\"\n",
+        )
+        .expect("legacy config");
+
+        super::migrate_legacy_default_onequery_home(temp_home.path(), onequery_home.as_path())
+            .expect("legacy migration");
+
+        assert_eq!(
+            (
+                onequery_home.join("config.toml").is_file(),
+                legacy_config_dir.exists(),
+            ),
+            (true, false)
+        );
     }
 }

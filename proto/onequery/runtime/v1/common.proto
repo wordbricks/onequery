@@ -164,6 +164,7 @@ message RuntimeStatus {
   uint64 runtime_sequence = 2 [(buf.validate.field).uint64.gte = 0];
   google.protobuf.Timestamp updated_at = 3 [(buf.validate.field).required = true];
   RuntimeFailure failure = 4;
+  RuntimeIdentity identity = 5 [(buf.validate.field).required = true];
 }
 
 message LifecycleRecordWriterIdentity {

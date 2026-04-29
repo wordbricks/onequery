@@ -784,8 +784,8 @@ fn read_managed_runtime_pid_ignores_snapshot_with_mismatched_launch_identity() {
         &paths.runtime_status_snapshot_path,
         runtime_status_snapshot_json_with_header_pid(
             &paths.data_dir.display().to_string(),
-            pid,
             pid.saturating_add(1),
+            pid,
             "launch-a",
             "RUNTIME_PHASE_READY",
         ),

@@ -56,6 +56,7 @@ const lifecyclePaths: SelfHostLifecyclePaths = {
   runtimeLeasePath: launchView.runtimePaths.runtimeLeasePath,
   runtimeStatusSnapshotPath: launchView.runtimePaths.runtimeStatusSnapshotPath,
 };
+const launchId = launchView.launchId;
 const launchSupervisor = launchView.supervisor;
 
 await mkdir(dirname(socketPath), {
@@ -64,7 +65,7 @@ await mkdir(dirname(socketPath), {
 });
 
 const lease = await acquireRuntimeLifecycleLease(lifecyclePaths, {
-  launchId: launchView.launchId,
+  launchId,
   pid: process.pid,
   supervisor: launchSupervisor,
 });
@@ -76,7 +77,7 @@ const supervisorSession = openSupervisorRuntimeSession({
   }),
   dataDir: lifecyclePaths.dataDir,
   heartbeatIntervalMs: 50,
-  launchId: launchView.launchId,
+  launchId,
   onStopCommand: async (command) => {
     if (modeSet.has("ignore-graceful-stop")) {
       if (modeSet.has("exit-on-sigterm")) {
@@ -85,9 +86,8 @@ const supervisorSession = openSupervisorRuntimeSession({
         // the supervisor observes the terminate phase.
         await new Promise((resolve) => setTimeout(resolve, 250));
         exitSoon(0);
-        return;
       }
-      return new Promise<void>(() => undefined);
+      return new Promise<never>(() => undefined);
     }
 
     void lease
@@ -179,6 +179,11 @@ await new Promise<void>(() => undefined);
 
 function runtimeStatus(phase: RuntimePhase) {
   return create(RuntimeStatusSchema, {
+    identity: {
+      dataDir: lifecyclePaths.dataDir,
+      launchId,
+      pid: process.pid,
+    },
     phase,
     runtimeSequence,
     updatedAt: timestampFromDate(new Date()),

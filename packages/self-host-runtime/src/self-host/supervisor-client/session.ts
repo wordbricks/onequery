@@ -22,6 +22,7 @@ type OpenRuntimeSessionRequestInit = MessageInitShape<
   typeof OpenRuntimeSessionRequestSchema
 >;
 type RuntimeStatusInit = MessageInitShape<typeof RuntimeStatusSchema>;
+type RuntimeIdentityInit = NonNullable<RuntimeStatusInit["identity"]>;
 type SupervisorIdentityInit = MessageInitShape<typeof SupervisorIdentitySchema>;
 type SupervisorStopCommandResult = {
   status: RuntimeStatusInit;
@@ -64,6 +65,11 @@ export function openSupervisorRuntimeSession(input: {
 }): SupervisorRuntimeSession {
   const now = input.now ?? (() => new Date());
   const runtimePid = input.runtimePid ?? process.pid;
+  const runtimeIdentity = {
+    dataDir: input.dataDir,
+    launchId: input.launchId,
+    pid: runtimePid,
+  } satisfies RuntimeIdentityInit;
   const [eventTx, eventRx] = channel<OpenRuntimeSessionRequestInit>(16);
   const openedHandshake = deferred<void>();
   let closed = false;
@@ -136,6 +142,7 @@ export function openSupervisorRuntimeSession(input: {
         now,
         onStopCommand: input.onStopCommand,
         responseStream,
+        runtimeIdentity,
         runtimePid,
         signal,
         sendEvent,
@@ -342,6 +349,7 @@ async function observeCommands(input: {
   now: () => Date;
   onStopCommand?: SupervisorStopCommandHandler;
   responseStream: AsyncIterable<OpenRuntimeSessionResponse>;
+  runtimeIdentity: RuntimeIdentityInit;
   sendEvent: SupervisorSessionSendEvent;
   runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
@@ -376,6 +384,7 @@ async function observeCommands(input: {
           launchId: input.launchId,
           now: input.now,
           onStopCommand: input.onStopCommand,
+          runtimeIdentity: input.runtimeIdentity,
           runtimePid: input.runtimePid,
           sendEvent: input.sendEvent,
           setRuntimeStatus: input.setRuntimeStatus,
@@ -404,6 +413,7 @@ async function handleStopCommand(input: {
   launchId: string;
   now: () => Date;
   onStopCommand?: SupervisorStopCommandHandler;
+  runtimeIdentity: RuntimeIdentityInit;
   sendEvent: SupervisorSessionSendEvent;
   runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
@@ -435,7 +445,7 @@ async function handleStopCommand(input: {
           "received supervisor stop command without a stop handler"
         );
       }
-      return await input.onStopCommand(input.command);
+      return input.onStopCommand(input.command);
     },
     catch: (cause) => cause,
   });
@@ -469,10 +479,11 @@ async function handleStopCommand(input: {
   };
   const status = {
     failure,
+    identity: input.runtimeIdentity,
     phase: RuntimePhase.SHUTDOWN_FAILED,
     runtimeSequence: input.getRuntimeSequence() + 1n,
     updatedAt: timestampFromDate(failedAt),
-  };
+  } satisfies RuntimeStatusInit;
   input.setRuntimeStatus(status);
   await sendEventBestEffort(() =>
     input.sendEvent(

@@ -405,6 +405,15 @@ impl SupervisorControlActor {
         let runtime_sequence = runtime_status
             .runtime_sequence
             .ok_or_else(|| missing_required_field("runtime_status.runtime_sequence"))?;
+        let runtime_identity = runtime_status
+            .identity
+            .as_option()
+            .ok_or_else(|| missing_required_field("runtime_status.identity"))?;
+        if runtime_identity != &identity.runtime_identity() {
+            return Err(failed_precondition(
+                "runtime status identity must match active session",
+            ));
+        }
         validate_runtime_sequence_not_backward(
             status.runtime_sequence,
             runtime_sequence,

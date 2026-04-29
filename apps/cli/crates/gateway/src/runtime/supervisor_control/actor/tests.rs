@@ -421,6 +421,7 @@ fn session_identity() -> RuntimeSessionIdentity {
 fn runtime_ready() -> types::RuntimeReady {
     types::RuntimeReady {
         status: MessageField::some(types::RuntimeStatus {
+            identity: MessageField::some(session_identity().runtime_identity()),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_READY.into()),
             runtime_sequence: Some(2),
             updated_at: MessageField::some(timestamp(2)),
@@ -434,6 +435,7 @@ fn runtime_shutdown_finished() -> types::RuntimeShutdownFinished {
     types::RuntimeShutdownFinished {
         operation_id: Some(stop_operation_id()),
         status: MessageField::some(types::RuntimeStatus {
+            identity: MessageField::some(session_identity().runtime_identity()),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED.into()),
             runtime_sequence: Some(4),
             updated_at: MessageField::some(timestamp(4)),
@@ -451,6 +453,7 @@ fn runtime_shutdown_failed() -> types::RuntimeShutdownFailed {
         failure: MessageField::some(failure.clone()),
         status: MessageField::some(types::RuntimeStatus {
             failure: MessageField::some(failure),
+            identity: MessageField::some(session_identity().runtime_identity()),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED.into()),
             runtime_sequence: Some(5),
             updated_at: MessageField::some(timestamp(5)),

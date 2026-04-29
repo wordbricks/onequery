@@ -493,13 +493,14 @@ fn runtime_ready_pid_reported_during_startup_poll(
                     .header
                     .as_option()
                     .and_then(|header| header.launch.as_option())?;
-                let pid = launch.runtime_pid?;
+                let runtime = status.identity.as_option()?;
                 let phase = runtime_status_phase(status)?;
 
                 (phase == types::RuntimePhase::RUNTIME_PHASE_READY
                     && launch_identity_matches_data_dir(launch, expected_data_dir)
+                    && runtime_identity_matches_launch(runtime, launch, expected_data_dir)
                     && launch.launch_id.as_deref() == Some(expected_launch_id))
-                .then_some(pid)
+                .then_some(runtime.pid?)
             },
         ),
     )
@@ -510,10 +511,21 @@ fn runtime_status_snapshot_recovery_decision(
     expected_data_dir: &Path,
 ) -> Option<DurableRecoveryDecision> {
     let status = snapshot.status.as_option()?;
-    let launch = snapshot
-        .header
-        .as_option()
-        .and_then(|header| header.launch.as_option())?;
+    let header = snapshot.header.as_option()?;
+    let launch = header.launch.as_option()?;
+    let writer = header.writer.as_option()?;
+    let writer_kind = writer.writer.and_then(|writer| writer.as_known())?;
+    match writer_kind {
+        types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_RUNTIME => {
+            let runtime_pid = launch.runtime_pid?;
+            let expected_writer_id = format!("runtime:{runtime_pid}");
+            if writer.writer_id.as_deref() != Some(expected_writer_id.as_str()) {
+                return None;
+            }
+        }
+        types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR => {}
+        types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_UNSPECIFIED => return None,
+    }
     let identity = managed_runtime_identity_from_launch(launch, None, expected_data_dir)?;
 
     let phase = runtime_status_phase(status)?;
@@ -523,8 +535,20 @@ fn runtime_status_snapshot_recovery_decision(
     if !runtime_phase_is_active(phase) {
         return None;
     }
+    if writer_kind == types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR {
+        return None;
+    }
 
-    Some(DurableRecoveryDecision::ActiveRuntime { identity })
+    let runtime = status.identity.as_option()?;
+    let status_identity =
+        managed_runtime_identity_from_parts(runtime, launch, None, expected_data_dir)?;
+    if status_identity != identity {
+        return None;
+    }
+
+    Some(DurableRecoveryDecision::ActiveRuntime {
+        identity: status_identity,
+    })
 }
 
 fn supervisor_terminal_recovery_decision(
@@ -884,8 +908,12 @@ fn runtime_status_snapshot_pid_and_phase(
         .header
         .as_option()
         .and_then(|header| header.launch.as_option())?;
+    let runtime = status.identity.as_option()?;
+    if !runtime_identity_matches_launch(runtime, launch, Path::new(launch.data_dir.as_deref()?)) {
+        return None;
+    }
 
-    Some((launch.runtime_pid?, runtime_status_phase(status)?))
+    Some((runtime.pid?, runtime_status_phase(status)?))
 }
 
 fn runtime_status_phase(status: &types::RuntimeStatus) -> Option<types::RuntimePhase> {
