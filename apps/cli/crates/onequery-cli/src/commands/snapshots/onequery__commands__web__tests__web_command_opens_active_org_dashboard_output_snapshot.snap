@@ -1,0 +1,6 @@
+---
+source: crates/onequery-cli/src/commands/web.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Opened OneQuery dashboard in browser.
+URL: https://onequery.example.com/acme-west

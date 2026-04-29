@@ -220,6 +220,8 @@ pub(crate) enum Command {
     Gateway(GatewayArgs),
     /// Upgrade this published CLI installation in place.
     Upgrade,
+    /// Open the OneQuery dashboard in browser.
+    Web,
     /// Internal process supervisor for the managed gateway.
     #[command(name = "__gateway-supervisor", hide = true)]
     GatewaySupervisor(GatewaySupervisorArgs),
@@ -266,6 +268,7 @@ impl Command {
             Self::Restore(_) => "restore",
             Self::Gateway(args) => args.command_path(),
             Self::Upgrade => "upgrade",
+            Self::Web => "web",
             Self::GatewaySupervisor(_) => "__gateway-supervisor",
             Self::Api(_) => "api",
             Self::Explain(_) => "explain",
@@ -378,6 +381,7 @@ impl GatewayArgs {
             None => GatewayCommand::Foreground,
             Some(GatewaySubcommand::Start) => GatewayCommand::Start,
             Some(GatewaySubcommand::Stop) => GatewayCommand::Stop,
+            Some(GatewaySubcommand::Restart) => GatewayCommand::Restart,
             Some(GatewaySubcommand::Status) => GatewayCommand::Status,
             Some(GatewaySubcommand::Logs) => GatewayCommand::Logs,
         }
@@ -388,6 +392,7 @@ impl GatewayArgs {
             GatewayCommand::Foreground => "gateway",
             GatewayCommand::Start => "gateway start",
             GatewayCommand::Stop => "gateway stop",
+            GatewayCommand::Restart => "gateway restart",
             GatewayCommand::Status => "gateway status",
             GatewayCommand::Logs => "gateway logs",
         }
@@ -440,6 +445,8 @@ enum GatewaySubcommand {
     Start,
     /// Stop the self-host gateway if a managed process is present.
     Stop,
+    /// Restart the managed self-host gateway.
+    Restart,
     /// Show the current self-host gateway state and derived paths.
     Status,
     /// Show the current self-host gateway log path and any available preview.

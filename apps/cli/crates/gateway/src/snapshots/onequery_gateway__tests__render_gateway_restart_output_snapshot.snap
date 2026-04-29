@@ -1,0 +1,11 @@
+---
+source: crates/gateway/src/tests.rs
+assertion_line: 70
+expression: "output.lines.join(\"\\n\")"
+---
+Gateway restarted in background.
+Stopped pid: 1111
+Started pid: 4242
+Listen: 127.0.0.1:5656
+Log path: /tmp/onequery/logs/server.log
+Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop
