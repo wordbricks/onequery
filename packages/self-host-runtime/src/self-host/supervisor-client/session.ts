@@ -12,8 +12,9 @@ import type {
   SupervisorStopCommand,
 } from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import { channel } from "antiox/sync/mpsc";
-import type { Receiver } from "antiox/sync/mpsc";
-import { TaggedError } from "better-result";
+import { JoinError, spawn, yieldNow } from "antiox/task";
+import { interval } from "antiox/time";
+import { Result, TaggedError } from "better-result";
 
 import type { SupervisorLifecycleClient } from "./client";
 
@@ -22,6 +23,17 @@ type OpenRuntimeSessionRequestInit = MessageInitShape<
 >;
 type RuntimeStatusInit = MessageInitShape<typeof RuntimeStatusSchema>;
 type SupervisorIdentityInit = MessageInitShape<typeof SupervisorIdentitySchema>;
+type SupervisorStopCommandResult = {
+  status: RuntimeStatusInit;
+};
+type SupervisorStopCommandHandler = (
+  command: SupervisorStopCommand
+) => Promise<SupervisorStopCommandResult> | SupervisorStopCommandResult;
+type SupervisorSessionSendEvent = (
+  payload: OpenRuntimeSessionRequestInit["payload"],
+  operation: string,
+  signal?: AbortSignal
+) => Promise<void>;
 
 export class SupervisorRuntimeSessionError extends TaggedError(
   "SupervisorRuntimeSessionError"
@@ -45,12 +57,7 @@ export function openSupervisorRuntimeSession(input: {
   heartbeatIntervalMs?: number;
   launchId: string;
   now?: () => Date;
-  onStopCommand?: (
-    command: SupervisorStopCommand
-  ) =>
-    | Promise<{ status?: RuntimeStatusInit } | void>
-    | { status?: RuntimeStatusInit }
-    | void;
+  onStopCommand?: SupervisorStopCommandHandler;
   runtimePid?: number;
   runtimeSequence?: bigint;
   supervisor: SupervisorIdentityInit;
@@ -58,14 +65,15 @@ export function openSupervisorRuntimeSession(input: {
   const now = input.now ?? (() => new Date());
   const runtimePid = input.runtimePid ?? process.pid;
   const [eventTx, eventRx] = channel<OpenRuntimeSessionRequestInit>(16);
-  const abortController = new AbortController();
+  const openedHandshake = deferred<void>();
   let closed = false;
   let heartbeatSequence = 0n;
   let runtimeSequence = input.runtimeSequence ?? 1n;
 
   const sendEvent = async (
     payload: OpenRuntimeSessionRequestInit["payload"],
-    operation: string
+    operation: string,
+    signal?: AbortSignal
   ) => {
     if (closed) {
       throw new SupervisorRuntimeSessionError({
@@ -75,13 +83,23 @@ export function openSupervisorRuntimeSession(input: {
       });
     }
 
-    await eventTx.send({ payload });
+    const sendResult = await Result.tryPromise({
+      try: async () => {
+        await eventTx.send({ payload }, signal);
+      },
+      catch: (cause) =>
+        new SupervisorRuntimeSessionError({
+          cause,
+          message: `failed to send supervisor runtime session event for ${operation}`,
+          operation,
+        }),
+    });
+    if (sendResult.isErr()) {
+      throw sendResult.error;
+    }
   };
 
-  const responseStream = input.client.openRuntimeSession(readEvents(eventRx), {
-    signal: abortController.signal,
-  });
-  const opened = sendEvent(
+  const openedSend = sendEvent(
     {
       case: "hello",
       value: {
@@ -93,35 +111,85 @@ export function openSupervisorRuntimeSession(input: {
     },
     "hello"
   );
-  void opened.catch(() => {});
+  void openedSend.catch((cause: unknown) => {
+    openedHandshake.reject(cause);
+  });
 
-  const heartbeatTimer = setInterval(() => {
-    void sendHeartbeat({
-      now,
-      operation: "heartbeat_interval",
-      sendEvent,
-      sequence: (heartbeatSequence += 1n),
+  const commandTask = spawn(async (signal) => {
+    // Comment: Connect's streaming response iterator does not expose return(),
+    // so local handler failures must abort the call to release the server stream.
+    const connectCallAbortController = new AbortController();
+    const abortConnectCall = () => {
+      connectCallAbortController.abort(signal.reason);
+    };
+    signal.addEventListener("abort", abortConnectCall, { once: true });
+    const responseStream = input.client.openRuntimeSession(eventRx, {
+      signal: connectCallAbortController.signal,
     });
-  }, input.heartbeatIntervalMs ?? 10_000);
-  heartbeatTimer.unref?.();
-  const closedPromise = observeCommands({
-    abortController,
-    dataDir: input.dataDir,
-    launchId: input.launchId,
-    now,
-    onStopCommand: input.onStopCommand,
-    responseStream,
-    runtimePid,
-    sendEvent,
-    getRuntimeSequence: () => runtimeSequence,
-    setRuntimeStatus: (status) => {
-      runtimeSequence = status.runtimeSequence ?? runtimeSequence;
-    },
-  }).finally(() => {
+
+    try {
+      await openedSend;
+      await observeCommands({
+        dataDir: input.dataDir,
+        markOpened: openedHandshake.resolve,
+        launchId: input.launchId,
+        now,
+        onStopCommand: input.onStopCommand,
+        responseStream,
+        runtimePid,
+        signal,
+        sendEvent,
+        getRuntimeSequence: () => runtimeSequence,
+        setRuntimeStatus: (status) => {
+          runtimeSequence = status.runtimeSequence ?? runtimeSequence;
+        },
+      });
+    } catch (cause) {
+      openedHandshake.reject(cause);
+      await yieldNow();
+      connectCallAbortController.abort(cause);
+      throw cause;
+    } finally {
+      signal.removeEventListener("abort", abortConnectCall);
+      connectCallAbortController.abort();
+    }
+  });
+  const opened = openedHandshake.promise;
+  observePromise(opened);
+
+  const heartbeatTask = spawn(async (signal) => {
+    for await (const tick of interval(
+      input.heartbeatIntervalMs ?? 10_000,
+      signal
+    )) {
+      if (tick === 0) {
+        continue;
+      }
+
+      await sendHeartbeat({
+        now,
+        operation: "heartbeat_interval",
+        sendEvent,
+        sequence: (heartbeatSequence += 1n),
+        signal,
+      });
+    }
+  });
+
+  const closeSession = (input?: { abortCommandTask?: boolean }) => {
     closed = true;
-    clearHeartbeatTimer(heartbeatTimer);
+    heartbeatTask.abort();
+    if (input?.abortCommandTask === true) {
+      commandTask.abort();
+    }
     eventTx.close();
     eventRx.close();
+  };
+  const closedPromise = Promise.race([
+    commandTaskClosure(commandTask),
+    heartbeatTaskClosure(heartbeatTask),
+  ]).finally(() => {
+    closeSession({ abortCommandTask: true });
   });
 
   return {
@@ -130,18 +198,22 @@ export function openSupervisorRuntimeSession(input: {
         return;
       }
 
-      closed = true;
-      clearHeartbeatTimer(heartbeatTimer);
-      eventTx.close();
-      eventRx.close();
-      abortController.abort();
-      await closedPromise.catch((cause) => {
-        throw new SupervisorRuntimeSessionError({
-          cause,
-          message: "supervisor runtime session command stream failed",
-          operation: "close",
-        });
+      closeSession();
+      commandTask.abort();
+      const closeResult = await Result.tryPromise({
+        try: async () => {
+          await closedPromise;
+        },
+        catch: (cause) =>
+          new SupervisorRuntimeSessionError({
+            cause,
+            message: "supervisor runtime session command stream failed",
+            operation: "close",
+          }),
       });
+      if (closeResult.isErr()) {
+        throw closeResult.error;
+      }
     },
     closed: closedPromise,
     opened,
@@ -171,14 +243,83 @@ export function openSupervisorRuntimeSession(input: {
   };
 }
 
+function observePromise(promise: Promise<unknown>): void {
+  void Result.tryPromise({
+    try: async () => {
+      await promise;
+    },
+    catch: () => undefined,
+  });
+}
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  reject(cause: unknown): void;
+  resolve(value: T | PromiseLike<T>): void;
+} {
+  let resolveDeferred: (value: T | PromiseLike<T>) => void = () => undefined;
+  let rejectDeferred: (cause: unknown) => void = () => undefined;
+  const promise = new Promise<T>((resolve, reject) => {
+    resolveDeferred = resolve;
+    rejectDeferred = reject;
+  });
+
+  return { promise, reject: rejectDeferred, resolve: resolveDeferred };
+}
+
+async function commandTaskClosure(task: PromiseLike<void>): Promise<void> {
+  const result = await Result.tryPromise({
+    try: async () => {
+      await task;
+    },
+    catch: (cause) => cause,
+  });
+
+  if (result.isOk()) {
+    return;
+  }
+  if (isCancelledJoinError(result.error)) {
+    return;
+  }
+
+  throw unwrapJoinError(result.error);
+}
+
+async function heartbeatTaskClosure(task: PromiseLike<void>): Promise<void> {
+  const result = await Result.tryPromise({
+    try: async () => {
+      await task;
+    },
+    catch: (cause) => cause,
+  });
+
+  if (result.isOk()) {
+    return;
+  }
+  if (isCancelledJoinError(result.error)) {
+    await new Promise<void>(() => {});
+    return;
+  }
+
+  throw unwrapJoinError(result.error);
+}
+
+function isCancelledJoinError(cause: unknown): boolean {
+  return cause instanceof JoinError && cause.cancelled;
+}
+
+function unwrapJoinError(cause: unknown): unknown {
+  return cause instanceof JoinError && cause.cause !== undefined
+    ? cause.cause
+    : cause;
+}
+
 async function sendHeartbeat(input: {
   now: () => Date;
   operation: string;
-  sendEvent(
-    payload: OpenRuntimeSessionRequestInit["payload"],
-    operation: string
-  ): Promise<void>;
+  sendEvent: SupervisorSessionSendEvent;
   sequence: bigint;
+  signal?: AbortSignal;
 }): Promise<void> {
   await input.sendEvent(
     {
@@ -188,75 +329,71 @@ async function sendHeartbeat(input: {
         sentAt: timestampFromDate(input.now()),
       },
     },
-    input.operation
+    input.operation,
+    input.signal
   );
 }
 
-async function* readEvents(
-  eventRx: Receiver<OpenRuntimeSessionRequestInit>
-): AsyncIterable<OpenRuntimeSessionRequestInit> {
-  while (true) {
-    const event = await eventRx.recv();
-    if (event === null) {
-      return;
-    }
-
-    yield event;
-  }
-}
-
 async function observeCommands(input: {
-  abortController: AbortController;
   dataDir: string;
   getRuntimeSequence(): bigint;
   launchId: string;
+  markOpened(): void;
   now: () => Date;
-  onStopCommand?: (
-    command: SupervisorStopCommand
-  ) =>
-    | Promise<{ status?: RuntimeStatusInit } | void>
-    | { status?: RuntimeStatusInit }
-    | void;
+  onStopCommand?: SupervisorStopCommandHandler;
   responseStream: AsyncIterable<OpenRuntimeSessionResponse>;
-  sendEvent(
-    payload: OpenRuntimeSessionRequestInit["payload"],
-    operation: string
-  ): Promise<void>;
+  sendEvent: SupervisorSessionSendEvent;
   runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
+  signal: AbortSignal;
 }): Promise<void> {
-  try {
-    for await (const response of input.responseStream) {
-      const responsePayload = response.response;
-      switch (responsePayload.case) {
-        case "close":
-          input.abortController.abort();
-          return;
-        case "stop":
-          await handleStopCommand({
-            command: responsePayload.value,
-            dataDir: input.dataDir,
-            getRuntimeSequence: input.getRuntimeSequence,
-            launchId: input.launchId,
-            now: input.now,
-            onStopCommand: input.onStopCommand,
-            runtimePid: input.runtimePid,
-            sendEvent: input.sendEvent,
-            setRuntimeStatus: input.setRuntimeStatus,
-          });
-          break;
-        case undefined:
-          break;
-      }
+  let opened = false;
+  const markOpenedOnce = () => {
+    if (opened) {
+      return;
     }
-  } catch (cause) {
-    if (!input.abortController.signal.aborted) {
-      await new Promise<void>((resolve) => {
-        setImmediate(resolve);
-      });
-      input.abortController.abort();
-      throw cause;
+
+    opened = true;
+    input.markOpened();
+  };
+
+  for await (const response of input.responseStream) {
+    const responsePayload = response.response;
+    if (responsePayload.case !== undefined) {
+      markOpenedOnce();
     }
+
+    switch (responsePayload.case) {
+      case "opened":
+        break;
+      case "close":
+        return;
+      case "stop":
+        await handleStopCommand({
+          command: responsePayload.value,
+          dataDir: input.dataDir,
+          getRuntimeSequence: input.getRuntimeSequence,
+          launchId: input.launchId,
+          now: input.now,
+          onStopCommand: input.onStopCommand,
+          runtimePid: input.runtimePid,
+          sendEvent: input.sendEvent,
+          setRuntimeStatus: input.setRuntimeStatus,
+          signal: input.signal,
+        });
+        break;
+      case undefined:
+        break;
+    }
+  }
+
+  if (!opened) {
+    throw new SupervisorRuntimeSessionError({
+      cause: null,
+      message:
+        "supervisor runtime session closed before opened acknowledgement",
+      operation: "open",
+    });
   }
 }
 
@@ -266,24 +403,17 @@ async function handleStopCommand(input: {
   getRuntimeSequence(): bigint;
   launchId: string;
   now: () => Date;
-  onStopCommand?: (
-    command: SupervisorStopCommand
-  ) =>
-    | Promise<{ status?: RuntimeStatusInit } | void>
-    | { status?: RuntimeStatusInit }
-    | void;
-  sendEvent(
-    payload: OpenRuntimeSessionRequestInit["payload"],
-    operation: string
-  ): Promise<void>;
+  onStopCommand?: SupervisorStopCommandHandler;
+  sendEvent: SupervisorSessionSendEvent;
   runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
+  signal: AbortSignal;
 }): Promise<void> {
   const operationId = input.command.operationId;
   const reason = input.command.reason || "supervisor_stop";
 
-  void input
-    .sendEvent(
+  await sendEventBestEffort(() =>
+    input.sendEvent(
       {
         case: "shutdownStarted",
         value: {
@@ -293,71 +423,80 @@ async function handleStopCommand(input: {
           startedAt: timestampFromDate(input.now()),
         },
       },
-      "shutdown_started"
+      "shutdown_started",
+      input.signal
     )
-    .catch(() => {});
+  );
 
-  try {
-    const result = await input.onStopCommand?.(input.command);
-    const status = runtimeStatusFromStopResult(result);
-    if (status) {
-      input.setRuntimeStatus(status);
-      void input
-        .sendEvent(
-          {
-            case: "shutdownFinished",
-            value: {
-              finishedAt: timestampFromDate(input.now()),
-              operationId,
-              status,
-            },
-          },
-          "shutdown_finished"
-        )
-        .catch(() => {});
-    }
-  } catch (cause) {
-    const failedAt = input.now();
-    const failure = {
-      code: RuntimeFailureCode.INTERNAL,
-      message: cause instanceof Error ? cause.message : String(cause),
-      retryable: false,
-    };
-    const status = {
-      failure,
-      phase: RuntimePhase.SHUTDOWN_FAILED,
-      runtimeSequence: input.getRuntimeSequence() + 1n,
-      updatedAt: timestampFromDate(failedAt),
-    };
+  const stopResult = await Result.tryPromise({
+    try: async () => {
+      if (!input.onStopCommand) {
+        throw new Error(
+          "received supervisor stop command without a stop handler"
+        );
+      }
+      return await input.onStopCommand(input.command);
+    },
+    catch: (cause) => cause,
+  });
+
+  if (stopResult.isOk()) {
+    const { status } = stopResult.value;
     input.setRuntimeStatus(status);
-    void input
-      .sendEvent(
+    await sendEventBestEffort(() =>
+      input.sendEvent(
         {
-          case: "shutdownFailed",
+          case: "shutdownFinished",
           value: {
-            failedAt: timestampFromDate(failedAt),
-            failure,
+            finishedAt: timestampFromDate(input.now()),
             operationId,
             status,
           },
         },
-        "shutdown_failed"
+        "shutdown_finished",
+        input.signal
       )
-      .catch(() => {});
-    throw cause;
+    );
+    return;
   }
+
+  const cause = stopResult.error;
+  const failedAt = input.now();
+  const failure = {
+    code: RuntimeFailureCode.INTERNAL,
+    message: cause instanceof Error ? cause.message : String(cause),
+    retryable: false,
+  };
+  const status = {
+    failure,
+    phase: RuntimePhase.SHUTDOWN_FAILED,
+    runtimeSequence: input.getRuntimeSequence() + 1n,
+    updatedAt: timestampFromDate(failedAt),
+  };
+  input.setRuntimeStatus(status);
+  await sendEventBestEffort(() =>
+    input.sendEvent(
+      {
+        case: "shutdownFailed",
+        value: {
+          failedAt: timestampFromDate(failedAt),
+          failure,
+          operationId,
+          status,
+        },
+      },
+      "shutdown_failed",
+      input.signal
+    )
+  );
+  throw cause;
 }
 
-function runtimeStatusFromStopResult(
-  result: { status?: RuntimeStatusInit } | void
-): RuntimeStatusInit | undefined {
-  return result?.status;
-}
-
-function clearHeartbeatTimer(
-  heartbeatTimer: ReturnType<typeof setInterval> | undefined
-): void {
-  if (heartbeatTimer !== undefined) {
-    clearInterval(heartbeatTimer);
-  }
+async function sendEventBestEffort(
+  sendEvent: () => Promise<void>
+): Promise<void> {
+  await Result.tryPromise({
+    try: sendEvent,
+    catch: () => undefined,
+  });
 }

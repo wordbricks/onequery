@@ -313,6 +313,10 @@ mod tests {
     use super::render_upgrade_output;
     use super::unsupported_install_context_message;
 
+    type CommandArgs = (&'static str, &'static [&'static str]);
+    type UpgradeActionCommandCase = (UpgradeAction, CommandArgs, String);
+    type GatewayActionCommandCase = (GatewayAction, CommandArgs, String);
+
     #[test]
     fn upgrade_action_maps_install_contexts_to_upgrade_actions() {
         let cases = [
@@ -363,11 +367,7 @@ mod tests {
 
     #[test]
     fn upgrade_action_commands_rerun_latest_installer() {
-        let cases: [(
-            UpgradeAction,
-            (&'static str, &'static [&'static str]),
-            String,
-        ); 4] = [
+        let cases: [UpgradeActionCommandCase; 4] = [
             (
                 UpgradeAction::StandaloneUnix,
                 (
@@ -403,11 +403,7 @@ mod tests {
 
     #[test]
     fn gateway_action_commands_match_upgrade_recovery_guidance() {
-        let cases: [(
-            GatewayAction,
-            (&'static str, &'static [&'static str]),
-            String,
-        ); 2] = [
+        let cases: [GatewayActionCommandCase; 2] = [
             (
                 GatewayAction::Stop,
                 ("onequery", &["gateway", "stop"]),

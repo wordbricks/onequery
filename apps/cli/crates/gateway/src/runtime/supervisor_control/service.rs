@@ -1,10 +1,4 @@
 use std::pin::Pin;
-#[cfg(test)]
-use std::sync::Arc;
-#[cfg(test)]
-use std::sync::atomic::AtomicBool;
-#[cfg(test)]
-use std::sync::atomic::Ordering;
 
 use buffa::MessageView;
 use buffa::view::OwnedView;
@@ -16,29 +10,16 @@ use crate::supervisor_control_proto::types;
 
 use super::actor::SupervisorControlActor;
 use super::errors::failed_precondition;
+use super::errors::missing_required_field;
 
 #[derive(Clone)]
 pub(crate) struct SupervisorControlService {
     actor: SupervisorControlActor,
-    #[cfg(test)]
-    panic_next_get_status: Arc<AtomicBool>,
 }
 
 impl SupervisorControlService {
     pub(crate) fn new(actor: SupervisorControlActor) -> Self {
-        Self {
-            actor,
-            #[cfg(test)]
-            panic_next_get_status: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn new_with_next_get_status_panic(actor: SupervisorControlActor) -> Self {
-        Self {
-            actor,
-            panic_next_get_status: Arc::new(AtomicBool::new(true)),
-        }
+        Self { actor }
     }
 }
 
@@ -77,13 +58,28 @@ impl SupervisorLifecycleService for SupervisorControlService {
             .await
             .ok_or_else(|| failed_precondition("runtime session closed before hello"))??;
         let hello = match first_request.payload.as_ref() {
-            Some(types::open_runtime_session_request::PayloadView::Hello(hello)) => {
-                Some(hello.as_ref())
+            Some(types::open_runtime_session_request::PayloadView::Hello(hello)) => hello.as_ref(),
+            Some(_) => {
+                return Err(failed_precondition(
+                    "runtime session hello is required before lifecycle events",
+                ));
             }
-            _ => None,
+            None => {
+                return Err(missing_required_field(
+                    "open_runtime_session_request.payload",
+                ));
+            }
         };
         let identity = self.actor.validate_session_hello(hello).await?;
         let (session_id, command_rx) = self.actor.open_runtime_session_commands(identity).await?;
+        let opened = types::OpenRuntimeSessionResponse {
+            response: Some(types::open_runtime_session_response::Response::Opened(
+                Box::new(types::RuntimeSessionOpened {
+                    ..Default::default()
+                }),
+            )),
+            ..Default::default()
+        };
 
         let actor = self.actor.clone();
         let (error_tx, error_rx) = tokio::sync::mpsc::channel(1);
@@ -107,13 +103,6 @@ impl SupervisorLifecycleService for SupervisorControlService {
                     )) => {
                         actor
                             .apply_runtime_heartbeat(session_id, &heartbeat.to_owned_message())
-                            .await
-                    }
-                    Some(types::open_runtime_session_request::PayloadView::RuntimeTransition(
-                        transition,
-                    )) => {
-                        actor
-                            .apply_runtime_transition(session_id, transition.to_owned_message())
                             .await
                     }
                     Some(types::open_runtime_session_request::PayloadView::RuntimeReady(ready)) => {
@@ -145,8 +134,8 @@ impl SupervisorLifecycleService for SupervisorControlService {
                             .apply_runtime_shutdown_failed(session_id, &failed.to_owned_message())
                             .await
                     }
-                    None => Err(failed_precondition(
-                        "runtime session request payload is required",
+                    None => Err(missing_required_field(
+                        "open_runtime_session_request.payload",
                     )),
                 };
                 if let Err(error) = result {
@@ -158,7 +147,7 @@ impl SupervisorLifecycleService for SupervisorControlService {
         });
 
         Ok((
-            Box::pin(runtime_session_command_stream(command_rx, error_rx)),
+            Box::pin(runtime_session_command_stream(opened, command_rx, error_rx)),
             ctx,
         ))
     }
@@ -166,7 +155,7 @@ impl SupervisorLifecycleService for SupervisorControlService {
     async fn get_status(
         &self,
         ctx: connectrpc::Context,
-        request: OwnedView<types::SupervisorLifecycleServiceGetStatusRequestView<'static>>,
+        _request: OwnedView<types::SupervisorLifecycleServiceGetStatusRequestView<'static>>,
     ) -> Result<
         (
             types::SupervisorLifecycleServiceGetStatusResponse,
@@ -174,15 +163,6 @@ impl SupervisorLifecycleService for SupervisorControlService {
         ),
         connectrpc::ConnectError,
     > {
-        #[cfg(test)]
-        if self.panic_next_get_status.swap(false, Ordering::SeqCst) {
-            panic!("test supervisor control get_status panic");
-        }
-
-        self.actor
-            .validate_target(request.target.as_option())
-            .await?;
-
         Ok((
             types::SupervisorLifecycleServiceGetStatusResponse {
                 status: buffa::MessageField::some(self.actor.snapshot().await),
@@ -203,12 +183,14 @@ impl SupervisorLifecycleService for SupervisorControlService {
         ),
         connectrpc::ConnectError,
     > {
-        self.actor
-            .validate_target(request.target.as_option())
-            .await?;
         Ok((
             self.actor
-                .request_stop(request.operation_id.map(str::to_owned).unwrap_or_default())
+                .request_stop(
+                    request
+                        .operation_id
+                        .ok_or_else(|| missing_required_field("stop_request.operation_id"))?
+                        .to_owned(),
+                )
                 .await?,
             _ctx,
         ))
@@ -234,12 +216,10 @@ impl SupervisorLifecycleService for SupervisorControlService {
         ),
         connectrpc::ConnectError,
     > {
-        self.actor
-            .validate_target(request.target.as_option())
-            .await?;
-
         let after_supervisor_sequence = request.after_supervisor_sequence.unwrap_or(0);
-        let include_snapshot = request.include_snapshot.unwrap_or(false);
+        let include_snapshot = request
+            .include_snapshot
+            .ok_or_else(|| missing_required_field("watch_status_request.include_snapshot"))?;
         Ok((
             self.actor
                 .watch_status(after_supervisor_sequence, include_snapshot)
@@ -250,11 +230,12 @@ impl SupervisorLifecycleService for SupervisorControlService {
 }
 
 fn runtime_session_command_stream(
+    opened: types::OpenRuntimeSessionResponse,
     command_rx: tokio::sync::mpsc::Receiver<types::OpenRuntimeSessionResponse>,
     error_rx: tokio::sync::mpsc::Receiver<connectrpc::ConnectError>,
 ) -> impl Stream<Item = Result<types::OpenRuntimeSessionResponse, connectrpc::ConnectError>> + Send
 {
-    futures::stream::unfold(
+    futures::stream::once(async move { Ok(opened) }).chain(futures::stream::unfold(
         (command_rx, error_rx),
         |(mut command_rx, mut error_rx)| async {
             if let Ok(error) = error_rx.try_recv() {
@@ -268,5 +249,5 @@ fn runtime_session_command_stream(
                 command = command_rx.recv() => command.map(|command| (Ok(command), (command_rx, error_rx))),
             }
         },
-    )
+    ))
 }

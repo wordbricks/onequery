@@ -174,6 +174,117 @@ async fn expected_child_exit_projects_terminal_runtime_status_to_durable_and_liv
     );
 }
 
+#[tokio::test]
+async fn expected_child_exit_advances_terminal_runtime_sequence_from_live_status() {
+    let (_temp_dir, paths) = test_paths();
+    let supervisor = test_supervisor_identity(123);
+    let data_dir = paths.data_dir.display().to_string();
+    let supervisor_control = SupervisorControlActor::new(types::SupervisorStatus {
+        identity: buffa::MessageField::some(supervisor.clone()),
+        launch: buffa::MessageField::some(types::LifecycleLaunchIdentity {
+            launch_id: Some("launch-a".to_owned()),
+            data_dir: Some(data_dir.clone()),
+            runtime_pid: Some(4242),
+            supervisor_pid: supervisor.pid,
+            supervisor_generation: supervisor.generation,
+            ..Default::default()
+        }),
+        phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_STARTING.into()),
+        supervisor_sequence: Some(0),
+        active_session: Some(false),
+        ..Default::default()
+    });
+    let mut machine = SupervisorMachine::new();
+
+    for event in [
+        SupervisorEvent::LaunchRequested,
+        SupervisorEvent::ChildSpawned { runtime_pid: 4242 },
+        SupervisorEvent::ControlSocketObserved,
+        SupervisorEvent::WatchReady,
+    ] {
+        dispatch_supervisor_event(
+            &mut machine,
+            event,
+            SupervisorEffectContext {
+                paths: &paths,
+                supervisor_control: &supervisor_control,
+                supervisor: &supervisor,
+                launch_id: "launch-a",
+                command_line: "onequery gateway start",
+            },
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected supervisor event dispatch: {error}"));
+    }
+
+    let _ = fs::remove_file(&paths.runtime_status_snapshot_path);
+    supervisor_control
+        .replace_status(types::SupervisorStatus {
+            identity: buffa::MessageField::some(supervisor.clone()),
+            launch: buffa::MessageField::some(types::LifecycleLaunchIdentity {
+                launch_id: Some("launch-a".to_owned()),
+                data_dir: Some(data_dir.clone()),
+                runtime_pid: Some(4242),
+                supervisor_pid: supervisor.pid,
+                supervisor_generation: supervisor.generation,
+                ..Default::default()
+            }),
+            phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_READY.into()),
+            supervisor_sequence: Some(4),
+            runtime: buffa::MessageField::some(types::RuntimeIdentity {
+                pid: Some(4242),
+                launch_id: Some("launch-a".to_owned()),
+                data_dir: Some(data_dir),
+                ..Default::default()
+            }),
+            runtime_phase: Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED.into()),
+            runtime_sequence: Some(6),
+            active_session: Some(true),
+            ..Default::default()
+        })
+        .await;
+
+    dispatch_supervisor_event(
+        &mut machine,
+        expected_child_exit_event(),
+        SupervisorEffectContext {
+            paths: &paths,
+            supervisor_control: &supervisor_control,
+            supervisor: &supervisor,
+            launch_id: "launch-a",
+            command_line: "onequery gateway start",
+        },
+        None,
+    )
+    .await
+    .unwrap_or_else(|error| panic!("expected supervisor event dispatch: {error}"));
+
+    assert_eq!(machine.state(), SupervisorMachineState::Exited);
+
+    let runtime_snapshot = lifecycle_records::decode_runtime_status_snapshot(
+        &fs::read_to_string(&paths.runtime_status_snapshot_path)
+            .unwrap_or_else(|error| panic!("expected runtime snapshot read: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("expected runtime snapshot decode: {error}"));
+    let runtime_status = runtime_snapshot
+        .status
+        .as_option()
+        .expect("expected runtime status");
+    assert_eq!(runtime_status.runtime_sequence, Some(7));
+
+    let live_status = supervisor_control.snapshot().await;
+    assert_eq!(live_status.runtime_sequence, Some(7));
+
+    let entries = lifecycle_records::decode_lifecycle_event_log_entries(
+        &fs::read(&paths.lifecycle_event_log_path)
+            .unwrap_or_else(|error| panic!("expected event log read: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("expected event log decode: {error}"));
+    let process_exit = entries.last().expect("expected process exit event");
+    assert_eq!(process_exit.runtime_sequence, Some(7));
+}
+
 #[test]
 fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_failure() {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
@@ -215,6 +326,7 @@ fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_f
             launch_id: "launch-a",
             phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
             runtime_pid: 4242,
+            live_runtime_sequence: None,
             failure: Some(&SupervisorRuntimeFailureInfo {
                 code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
                 message: "self-host server exited with code 1".to_owned(),

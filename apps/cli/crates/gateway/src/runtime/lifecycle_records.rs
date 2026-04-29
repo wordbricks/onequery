@@ -129,7 +129,6 @@ mod tests {
     use super::DURABLE_EVENT_LOG_ENCODING;
     use super::DURABLE_STATE_FILE_ENCODING;
     use super::decode_lifecycle_event_log_entries;
-    use super::decode_runtime_status_snapshot;
     use super::durable_lifecycle_record_encoding_label;
     use super::encode_lifecycle_event_log_entry;
     use super::encode_supervisor_status_snapshot;
@@ -153,29 +152,6 @@ mod tests {
             durable_lifecycle_record_encoding_label(DURABLE_STATE_FILE_ENCODING),
             "proto-json"
         );
-    }
-
-    #[test]
-    fn decodes_runtime_status_snapshot_from_proto_json() {
-        let snapshot = decode_runtime_status_snapshot(
-            r#"{
-  "status": {
-    "identity": {"pid": 4242, "launchId": "launch-a", "dataDir": "/tmp/onequery"},
-    "phase": "RUNTIME_PHASE_READY",
-    "runtimeSequence": "1",
-    "updatedAt": "2026-03-25T00:00:00Z"
-  },
-  "snapshotAt": "2026-03-25T00:00:00Z"
-}"#,
-        )
-        .expect("expected proto JSON runtime status snapshot decode");
-
-        let status = snapshot
-            .status
-            .as_option()
-            .expect("expected decoded runtime status");
-
-        assert_eq!(status.runtime_sequence, Some(1));
     }
 
     #[test]

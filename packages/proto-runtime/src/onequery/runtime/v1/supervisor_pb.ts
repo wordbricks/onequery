@@ -39,7 +39,7 @@ import { file_onequery_runtime_v1_common } from "./common_pb.js";
  */
 export const file_onequery_runtime_v1_supervisor: GenFile /*@__PURE__*/ =
   fileDesc(
-    "CiRvbmVxdWVyeS9ydW50aW1lL3YxL3N1cGVydmlzb3IucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEi6AEKE1J1bnRpbWVTZXNzaW9uSGVsbG8SIAoJbGF1bmNoX2lkGAEgASgJQg26SArIAQFyBRABGIABEh8KCGRhdGFfZGlyGAIgASgJQg26SArIAQFyBRABGIAgEh8KC3J1bnRpbWVfcGlkGAMgASgNQgq6SAfIAQEqAiAAEkMKCnN1cGVydmlzb3IYBCABKAsyJy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JJZGVudGl0eUIGukgDyAEBSgQIBRAGSgQIBhAHUhBydW50aW1lX3NlcXVlbmNlUgpzdGFydGVkX2F0IqABChdSdW50aW1lU2Vzc2lvbkhlYXJ0YmVhdBIjChJoZWFydGJlYXRfc2VxdWVuY2UYASABKARCB7pIBDICKAESMwoHc2VudF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBAUoECAIQA0oECAMQBFINcnVudGltZV9waGFzZVIQcnVudGltZV9zZXF1ZW5jZSJKCgxSdW50aW1lUmVhZHkSOgoGc3RhdHVzGAEgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQEiuAEKFlJ1bnRpbWVTaHV0ZG93blN0YXJ0ZWQSIQoMb3BlcmF0aW9uX2lkGAEgASgJQgu6SAjIAQFyA7ABARIdCgZyZWFzb24YAiABKAlCDbpICsgBAXIFEAEYgAQSJAoQcnVudGltZV9zZXF1ZW5jZRgDIAEoBEIKukgHyAEBMgIoARI2CgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIrEBChdSdW50aW1lU2h1dGRvd25GaW5pc2hlZBIhCgxvcGVyYXRpb25faWQYASABKAlCC7pICMgBAXIDsAEBEjoKBnN0YXR1cxgCIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c0IGukgDyAEBEjcKC2ZpbmlzaGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIusBChVSdW50aW1lU2h1dGRvd25GYWlsZWQSIQoMb3BlcmF0aW9uX2lkGAEgASgJQgu6SAjIAQFyA7ABARI8CgdmYWlsdXJlGAIgASgLMiMub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lRmFpbHVyZUIGukgDyAEBEjoKBnN0YXR1cxgDIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c0IGukgDyAEBEjUKCWZhaWxlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBASKYBAoZT3BlblJ1bnRpbWVTZXNzaW9uUmVxdWVzdBI5CgVoZWxsbxgCIAEoCzIoLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNlc3Npb25IZWxsb0gAEkEKCWhlYXJ0YmVhdBgDIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNlc3Npb25IZWFydGJlYXRIABJEChJydW50aW1lX3RyYW5zaXRpb24YBCABKAsyJi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUcmFuc2l0aW9uSAASOgoNcnVudGltZV9yZWFkeRgFIAEoCzIhLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVJlYWR5SAASRwoQc2h1dGRvd25fc3RhcnRlZBgGIAEoCzIrLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNodXRkb3duU3RhcnRlZEgAEkkKEXNodXRkb3duX2ZpbmlzaGVkGAcgASgLMiwub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU2h1dGRvd25GaW5pc2hlZEgAEkUKD3NodXRkb3duX2ZhaWxlZBgIIAEoCzIqLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNodXRkb3duRmFpbGVkSABCEAoHcGF5bG9hZBIFukgCCAFKBAgBEAJSCGV2ZW50X2lkIsIBChdTdXBlcnZpc29yQ29udHJvbFRhcmdldBIgCglsYXVuY2hfaWQYASABKAlCDbpICsgBAXIFEAEYgAESHwoIZGF0YV9kaXIYAiABKAlCDbpICsgBAXIFEAEYgCASHwoLcnVudGltZV9waWQYAyABKA1CCrpIB8gBASoCIAASQwoKc3VwZXJ2aXNvchgEIAEoCzInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvcklkZW50aXR5Qga6SAPIAQEi+gEKFVN1cGVydmlzb3JTdG9wQ29tbWFuZBIhCgxvcGVyYXRpb25faWQYASABKAlCC7pICMgBAXIDsAEBEh0KBnJlYXNvbhgCIAEoCUINukgKyAEBcgUQARiABBJNCgpjb21wbGV0aW9uGAMgASgOMioub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RvcENvbXBsZXRpb25CDbpICsgBAYIBBBABIAASQgoNZ3JhY2VfdGltZW91dBgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbkIQukgNyAEBqgEHIgMIrAIqAEoECAUQBlIGdGFyZ2V0IjcKFlN1cGVydmlzb3JDbG9zZUNvbW1hbmQSHQoGcmVhc29uGAEgASgJQg26SArIAQFyBRABGIAEIrQBChpPcGVuUnVudGltZVNlc3Npb25SZXNwb25zZRI6CgRzdG9wGAMgASgLMioub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RvcENvbW1hbmRIABI8CgVjbG9zZRgEIAEoCzIrLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckNsb3NlQ29tbWFuZEgAQhEKCHJlc3BvbnNlEgW6SAIIAUoECAIQA1IDYWNrInIKKlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlR2V0U3RhdHVzUmVxdWVzdBJECgZ0YXJnZXQYASABKAsyLC5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JDb250cm9sVGFyZ2V0Qga6SAPIAQEibAorU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VHZXRTdGF0dXNSZXNwb25zZRI9CgZzdGF0dXMYASABKAsyJS5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JTdGF0dXNCBrpIA8gBASKQAQolU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VTdG9wUmVxdWVzdBIhCgxvcGVyYXRpb25faWQYASABKAlCC7pICMgBAXIDsAEBEkQKBnRhcmdldBgCIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckNvbnRyb2xUYXJnZXRCBrpIA8gBASK4AQomU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VTdG9wUmVzcG9uc2USTwoLZGlzcG9zaXRpb24YASABKA4yKy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wRGlzcG9zaXRpb25CDbpICsgBAYIBBBABIAASPQoGc3RhdHVzGAIgASgLMiUub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RhdHVzQga6SAPIAQEiwgEKLFN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlV2F0Y2hTdGF0dXNSZXF1ZXN0EioKGWFmdGVyX3N1cGVydmlzb3Jfc2VxdWVuY2UYASABKARCB7pIBDICKAASIAoQaW5jbHVkZV9zbmFwc2hvdBgCIAEoCEIGukgDyAEBEkQKBnRhcmdldBgDIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckNvbnRyb2xUYXJnZXRCBrpIA8gBASKMAgotU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VXYXRjaFN0YXR1c1Jlc3BvbnNlEjkKCHNuYXBzaG90GAEgASgLMiUub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RhdHVzSAASSgoVc3VwZXJ2aXNvcl90cmFuc2l0aW9uGAIgASgLMikub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yVHJhbnNpdGlvbkgAEkQKEnJ1bnRpbWVfdHJhbnNpdGlvbhgDIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRyYW5zaXRpb25IAEIOCgVldmVudBIFukgCCAEyzAQKGlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlEnkKEk9wZW5SdW50aW1lU2Vzc2lvbhIuLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuT3BlblJ1bnRpbWVTZXNzaW9uUmVxdWVzdBovLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuT3BlblJ1bnRpbWVTZXNzaW9uUmVzcG9uc2UoATABEpMBCglHZXRTdGF0dXMSPy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlR2V0U3RhdHVzUmVxdWVzdBpALm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VHZXRTdGF0dXNSZXNwb25zZSIDkAIBEn8KBFN0b3ASOi5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlU3RvcFJlcXVlc3QaOy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlU3RvcFJlc3BvbnNlEpsBCgtXYXRjaFN0YXR1cxJBLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VXYXRjaFN0YXR1c1JlcXVlc3QaQi5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlV2F0Y2hTdGF0dXNSZXNwb25zZSIDkAIBMAFiCGVkaXRpb25zcOgH",
+    "CiRvbmVxdWVyeS9ydW50aW1lL3YxL3N1cGVydmlzb3IucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEivgEKE1J1bnRpbWVTZXNzaW9uSGVsbG8SIAoJbGF1bmNoX2lkGAEgASgJQg26SArIAQFyBRABGIABEh8KCGRhdGFfZGlyGAIgASgJQg26SArIAQFyBRABGIAgEh8KC3J1bnRpbWVfcGlkGAMgASgNQgq6SAfIAQEqAiAAEkMKCnN1cGVydmlzb3IYBCABKAsyJy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JJZGVudGl0eUIGukgDyAEBInMKF1J1bnRpbWVTZXNzaW9uSGVhcnRiZWF0EiMKEmhlYXJ0YmVhdF9zZXF1ZW5jZRgBIAEoBEIHukgEMgIoARIzCgdzZW50X2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIkoKDFJ1bnRpbWVSZWFkeRI6CgZzdGF0dXMYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNCBrpIA8gBASKzAQoWUnVudGltZVNodXRkb3duU3RhcnRlZBIcCgxvcGVyYXRpb25faWQYASABKAlCBrpIA8gBARIdCgZyZWFzb24YAiABKAlCDbpICsgBAXIFEAEYgAQSJAoQcnVudGltZV9zZXF1ZW5jZRgDIAEoBEIKukgHyAEBMgIoARI2CgpzdGFydGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIqwBChdSdW50aW1lU2h1dGRvd25GaW5pc2hlZBIcCgxvcGVyYXRpb25faWQYASABKAlCBrpIA8gBARI6CgZzdGF0dXMYAiABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNCBrpIA8gBARI3CgtmaW5pc2hlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBASLmAQoVUnVudGltZVNodXRkb3duRmFpbGVkEhwKDG9wZXJhdGlvbl9pZBgBIAEoCUIGukgDyAEBEjwKB2ZhaWx1cmUYAiABKAsyIy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVGYWlsdXJlQga6SAPIAQESOgoGc3RhdHVzGAMgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQESNQoJZmFpbGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBIsIDChlPcGVuUnVudGltZVNlc3Npb25SZXF1ZXN0EjkKBWhlbGxvGAEgASgLMigub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU2Vzc2lvbkhlbGxvSAASQQoJaGVhcnRiZWF0GAIgASgLMiwub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU2Vzc2lvbkhlYXJ0YmVhdEgAEjoKDXJ1bnRpbWVfcmVhZHkYAyABKAsyIS5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVSZWFkeUgAEkcKEHNodXRkb3duX3N0YXJ0ZWQYBCABKAsyKy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTaHV0ZG93blN0YXJ0ZWRIABJJChFzaHV0ZG93bl9maW5pc2hlZBgFIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNodXRkb3duRmluaXNoZWRIABJFCg9zaHV0ZG93bl9mYWlsZWQYBiABKAsyKi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTaHV0ZG93bkZhaWxlZEgAQhAKB3BheWxvYWQSBbpIAggBIucBChVTdXBlcnZpc29yU3RvcENvbW1hbmQSHAoMb3BlcmF0aW9uX2lkGAEgASgJQga6SAPIAQESHQoGcmVhc29uGAIgASgJQg26SArIAQFyBRABGIAEEk0KCmNvbXBsZXRpb24YAyABKA4yKi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wQ29tcGxldGlvbkINukgKyAEBggEEEAEgABJCCg1ncmFjZV90aW1lb3V0GAQgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uQhC6SA3IAQGqAQciAwisAioAIjcKFlN1cGVydmlzb3JDbG9zZUNvbW1hbmQSHQoGcmVhc29uGAEgASgJQg26SArIAQFyBRABGIAEIhYKFFJ1bnRpbWVTZXNzaW9uT3BlbmVkIuYBChpPcGVuUnVudGltZVNlc3Npb25SZXNwb25zZRI6CgRzdG9wGAEgASgLMioub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RvcENvbW1hbmRIABI8CgVjbG9zZRgCIAEoCzIrLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckNsb3NlQ29tbWFuZEgAEjsKBm9wZW5lZBgDIAEoCzIpLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVNlc3Npb25PcGVuZWRIAEIRCghyZXNwb25zZRIFukgCCAEiLAoqU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VHZXRTdGF0dXNSZXF1ZXN0ImwKK1N1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlR2V0U3RhdHVzUmVzcG9uc2USPQoGc3RhdHVzGAEgASgLMiUub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RhdHVzQga6SAPIAQEiRQolU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VTdG9wUmVxdWVzdBIcCgxvcGVyYXRpb25faWQYASABKAlCBrpIA8gBASK4AQomU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VTdG9wUmVzcG9uc2USTwoLZGlzcG9zaXRpb24YASABKA4yKy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wRGlzcG9zaXRpb25CDbpICsgBAYIBBBABIAASPQoGc3RhdHVzGAIgASgLMiUub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RhdHVzQga6SAPIAQEifAosU3VwZXJ2aXNvckxpZmVjeWNsZVNlcnZpY2VXYXRjaFN0YXR1c1JlcXVlc3QSKgoZYWZ0ZXJfc3VwZXJ2aXNvcl9zZXF1ZW5jZRgBIAEoBEIHukgEMgIoABIgChBpbmNsdWRlX3NuYXBzaG90GAIgASgIQga6SAPIAQEijAIKLVN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlV2F0Y2hTdGF0dXNSZXNwb25zZRI5CghzbmFwc2hvdBgBIAEoCzIlLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvclN0YXR1c0gAEkoKFXN1cGVydmlzb3JfdHJhbnNpdGlvbhgCIAEoCzIpLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvclRyYW5zaXRpb25IABJEChJydW50aW1lX3RyYW5zaXRpb24YAyABKAsyJi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUcmFuc2l0aW9uSABCDgoFZXZlbnQSBbpIAggBMswEChpTdXBlcnZpc29yTGlmZWN5Y2xlU2VydmljZRJ5ChJPcGVuUnVudGltZVNlc3Npb24SLi5vbmVxdWVyeS5ydW50aW1lLnYxLk9wZW5SdW50aW1lU2Vzc2lvblJlcXVlc3QaLy5vbmVxdWVyeS5ydW50aW1lLnYxLk9wZW5SdW50aW1lU2Vzc2lvblJlc3BvbnNlKAEwARKTAQoJR2V0U3RhdHVzEj8ub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yTGlmZWN5Y2xlU2VydmljZUdldFN0YXR1c1JlcXVlc3QaQC5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlR2V0U3RhdHVzUmVzcG9uc2UiA5ACARJ/CgRTdG9wEjoub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yTGlmZWN5Y2xlU2VydmljZVN0b3BSZXF1ZXN0Gjsub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yTGlmZWN5Y2xlU2VydmljZVN0b3BSZXNwb25zZRKbAQoLV2F0Y2hTdGF0dXMSQS5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JMaWZlY3ljbGVTZXJ2aWNlV2F0Y2hTdGF0dXNSZXF1ZXN0GkIub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yTGlmZWN5Y2xlU2VydmljZVdhdGNoU3RhdHVzUmVzcG9uc2UiA5ACATABYghlZGl0aW9uc3DoBw",
     [
       file_buf_validate_validate,
       file_google_protobuf_duration,
@@ -92,7 +92,7 @@ export type RuntimeSessionHeartbeat =
     heartbeatSequence: bigint;
 
     /**
-     * @generated from field: google.protobuf.Timestamp sent_at = 4;
+     * @generated from field: google.protobuf.Timestamp sent_at = 2;
      */
     sentAt?: Timestamp;
   };
@@ -226,49 +226,42 @@ export type OpenRuntimeSessionRequest =
     payload:
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeSessionHello hello = 2;
+           * @generated from field: onequery.runtime.v1.RuntimeSessionHello hello = 1;
            */
           value: RuntimeSessionHello;
           case: "hello";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeSessionHeartbeat heartbeat = 3;
+           * @generated from field: onequery.runtime.v1.RuntimeSessionHeartbeat heartbeat = 2;
            */
           value: RuntimeSessionHeartbeat;
           case: "heartbeat";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeTransition runtime_transition = 4;
-           */
-          value: RuntimeTransition;
-          case: "runtimeTransition";
-        }
-      | {
-          /**
-           * @generated from field: onequery.runtime.v1.RuntimeReady runtime_ready = 5;
+           * @generated from field: onequery.runtime.v1.RuntimeReady runtime_ready = 3;
            */
           value: RuntimeReady;
           case: "runtimeReady";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeShutdownStarted shutdown_started = 6;
+           * @generated from field: onequery.runtime.v1.RuntimeShutdownStarted shutdown_started = 4;
            */
           value: RuntimeShutdownStarted;
           case: "shutdownStarted";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeShutdownFinished shutdown_finished = 7;
+           * @generated from field: onequery.runtime.v1.RuntimeShutdownFinished shutdown_finished = 5;
            */
           value: RuntimeShutdownFinished;
           case: "shutdownFinished";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.RuntimeShutdownFailed shutdown_failed = 8;
+           * @generated from field: onequery.runtime.v1.RuntimeShutdownFailed shutdown_failed = 6;
            */
           value: RuntimeShutdownFailed;
           case: "shutdownFailed";
@@ -282,39 +275,6 @@ export type OpenRuntimeSessionRequest =
  */
 export const OpenRuntimeSessionRequestSchema: GenMessage<OpenRuntimeSessionRequest> /*@__PURE__*/ =
   messageDesc(file_onequery_runtime_v1_supervisor, 6);
-
-/**
- * @generated from message onequery.runtime.v1.SupervisorControlTarget
- */
-export type SupervisorControlTarget =
-  Message<"onequery.runtime.v1.SupervisorControlTarget"> & {
-    /**
-     * @generated from field: string launch_id = 1;
-     */
-    launchId: string;
-
-    /**
-     * @generated from field: string data_dir = 2;
-     */
-    dataDir: string;
-
-    /**
-     * @generated from field: uint32 runtime_pid = 3;
-     */
-    runtimePid: number;
-
-    /**
-     * @generated from field: onequery.runtime.v1.SupervisorIdentity supervisor = 4;
-     */
-    supervisor?: SupervisorIdentity;
-  };
-
-/**
- * Describes the message onequery.runtime.v1.SupervisorControlTarget.
- * Use `create(SupervisorControlTargetSchema)` to create a new message.
- */
-export const SupervisorControlTargetSchema: GenMessage<SupervisorControlTarget> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_supervisor, 7);
 
 /**
  * @generated from message onequery.runtime.v1.SupervisorStopCommand
@@ -347,7 +307,7 @@ export type SupervisorStopCommand =
  * Use `create(SupervisorStopCommandSchema)` to create a new message.
  */
 export const SupervisorStopCommandSchema: GenMessage<SupervisorStopCommand> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_supervisor, 8);
+  messageDesc(file_onequery_runtime_v1_supervisor, 7);
 
 /**
  * @generated from message onequery.runtime.v1.SupervisorCloseCommand
@@ -365,6 +325,19 @@ export type SupervisorCloseCommand =
  * Use `create(SupervisorCloseCommandSchema)` to create a new message.
  */
 export const SupervisorCloseCommandSchema: GenMessage<SupervisorCloseCommand> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_supervisor, 8);
+
+/**
+ * @generated from message onequery.runtime.v1.RuntimeSessionOpened
+ */
+export type RuntimeSessionOpened =
+  Message<"onequery.runtime.v1.RuntimeSessionOpened"> & {};
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeSessionOpened.
+ * Use `create(RuntimeSessionOpenedSchema)` to create a new message.
+ */
+export const RuntimeSessionOpenedSchema: GenMessage<RuntimeSessionOpened> /*@__PURE__*/ =
   messageDesc(file_onequery_runtime_v1_supervisor, 9);
 
 /**
@@ -378,17 +351,24 @@ export type OpenRuntimeSessionResponse =
     response:
       | {
           /**
-           * @generated from field: onequery.runtime.v1.SupervisorStopCommand stop = 3;
+           * @generated from field: onequery.runtime.v1.SupervisorStopCommand stop = 1;
            */
           value: SupervisorStopCommand;
           case: "stop";
         }
       | {
           /**
-           * @generated from field: onequery.runtime.v1.SupervisorCloseCommand close = 4;
+           * @generated from field: onequery.runtime.v1.SupervisorCloseCommand close = 2;
            */
           value: SupervisorCloseCommand;
           case: "close";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.RuntimeSessionOpened opened = 3;
+           */
+          value: RuntimeSessionOpened;
+          case: "opened";
         }
       | { case: undefined; value?: undefined };
   };
@@ -404,12 +384,7 @@ export const OpenRuntimeSessionResponseSchema: GenMessage<OpenRuntimeSessionResp
  * @generated from message onequery.runtime.v1.SupervisorLifecycleServiceGetStatusRequest
  */
 export type SupervisorLifecycleServiceGetStatusRequest =
-  Message<"onequery.runtime.v1.SupervisorLifecycleServiceGetStatusRequest"> & {
-    /**
-     * @generated from field: onequery.runtime.v1.SupervisorControlTarget target = 1;
-     */
-    target?: SupervisorControlTarget;
-  };
+  Message<"onequery.runtime.v1.SupervisorLifecycleServiceGetStatusRequest"> & {};
 
 /**
  * Describes the message onequery.runtime.v1.SupervisorLifecycleServiceGetStatusRequest.
@@ -445,11 +420,6 @@ export type SupervisorLifecycleServiceStopRequest =
      * @generated from field: string operation_id = 1;
      */
     operationId: string;
-
-    /**
-     * @generated from field: onequery.runtime.v1.SupervisorControlTarget target = 2;
-     */
-    target?: SupervisorControlTarget;
   };
 
 /**
@@ -496,11 +466,6 @@ export type SupervisorLifecycleServiceWatchStatusRequest =
      * @generated from field: bool include_snapshot = 2;
      */
     includeSnapshot: boolean;
-
-    /**
-     * @generated from field: onequery.runtime.v1.SupervisorControlTarget target = 3;
-     */
-    target?: SupervisorControlTarget;
   };
 
 /**

@@ -60,6 +60,47 @@ describe("serveWithNode", () => {
     });
   });
 
+  it("closes active HTTP connections when forced stop is requested", async () => {
+    let markStreamStarted: () => void = () => {};
+    const streamStarted = new Promise<void>((resolve) => {
+      markStreamStarted = resolve;
+    });
+    const app = new Hono();
+
+    app.get("/stream", () => {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("open\n"));
+          markStreamStarted();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "content-type": "text/plain",
+        },
+      });
+    });
+
+    startedServer = await serveWithNode({
+      fetch: app.fetch.bind(app),
+      hostname: "127.0.0.1",
+      idleTimeout: 1,
+      port: 0,
+    });
+
+    const response = await fetch(
+      `http://${startedServer.hostname}:${startedServer.port}/stream`
+    );
+    const reader = response.body?.getReader();
+    await reader?.read();
+    await streamStarted;
+
+    await expect(startedServer.stop(true)).resolves.toBeUndefined();
+    await reader?.cancel().catch(() => undefined);
+    startedServer = undefined;
+  });
+
   it("returns a listen error when the configured port is already occupied", async () => {
     const blocker = createServer();
 

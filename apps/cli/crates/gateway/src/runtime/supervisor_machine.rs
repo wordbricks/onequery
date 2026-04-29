@@ -10,7 +10,7 @@
 //! | `starting`, `handshaking` | `startup_deadline_elapsed` | runtime pid optional | `failed` | write status snapshot; signal terminate and schedule terminate deadline when runtime pid is known | `SupervisorStatusSnapshot(failed)` | terminal states reject |
 //! | `handshaking` | `control_socket_observed` | none | `handshaking` | none | none | all other states reject |
 //! | `handshaking` | `watch_ready` | runtime pid known | `ready` | write status snapshot | `SupervisorStatusSnapshot(ready)` | all other states reject |
-//! | `ready` | `stop_intent_received` | runtime pid known | `stop_requested` | write status snapshot, request runtime stop | `SupervisorStatusSnapshot(stop_requested)` | states without a runtime reject |
+//! | `handshaking`, `ready` | `stop_intent_received` | runtime pid known | `stop_requested` | write status snapshot, request runtime stop | `SupervisorStatusSnapshot(stop_requested)` | states without a runtime reject |
 //! | `stop_requested` | `stop_rpc_accepted` | none | `stop_requested` | schedule grace deadline | none | all other states reject |
 //! | `stop_requested` | `stop_rpc_failed` | stop-control escalation allowed | `terminating` | write status snapshot, signal terminate, schedule terminate deadline | `SupervisorStatusSnapshot(terminating)` | all other states reject |
 //! | `stop_requested` | `stop_rpc_failed` | stop-control escalation denied | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | all other states reject |
@@ -449,7 +449,7 @@ pub(super) fn reduce_supervisor_machine(
             Ok(snapshot_transition(machine, SupervisorMachineState::Ready))
         }
         (
-            SupervisorMachineState::Ready,
+            SupervisorMachineState::Handshaking | SupervisorMachineState::Ready,
             SupervisorEvent::StopIntentReceived { operation_id },
         ) => {
             let runtime_pid =
@@ -646,13 +646,15 @@ pub(super) fn reduce_supervisor_machine(
                 ));
             };
 
-            if failure.code
-                != types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY
-            {
+            if !matches!(
+                failure.code,
+                types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY
+                    | types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT
+            ) {
                 return Err(rejected(
                     machine.state,
                     event_kind,
-                    "restart scheduling requires an unexpected child exit failure",
+                    "restart scheduling requires a restartable failure",
                 ));
             }
 

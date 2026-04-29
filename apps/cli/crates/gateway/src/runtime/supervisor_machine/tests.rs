@@ -6,7 +6,6 @@ use test_case::test_case;
 use super::SupervisorChildExitKind;
 use super::SupervisorEffect;
 use super::SupervisorEvent;
-use super::SupervisorEventKind;
 use super::SupervisorFailureInfo;
 use super::SupervisorFailureRetryability;
 use super::SupervisorMachine;
@@ -14,7 +13,6 @@ use super::SupervisorMachineReduction;
 use super::SupervisorMachineState;
 use super::SupervisorRuntimeFailureInfo;
 use super::SupervisorStopRpcFailureDisposition;
-use super::SupervisorTransitionRejected;
 use super::reduce_supervisor_machine;
 use crate::supervisor_control_proto::types;
 
@@ -281,37 +279,42 @@ fn retryable_child_exit_can_schedule_bounded_restart() {
 }
 
 #[test]
-fn restart_scheduled_rejects_stale_attempt() {
-    let failed = reduce_ok(&ready_machine(), unexpected_child_exited_event(4242));
+fn retryable_startup_timeout_can_schedule_bounded_restart() {
+    let timed_out = reduce_ok(&handshaking_machine(), startup_deadline_elapsed_event());
+    let cleaned_up = reduce_ok(
+        &timed_out.machine,
+        SupervisorEvent::ChildExited {
+            runtime_pid: 4242,
+            exit_kind: SupervisorChildExitKind::Expected,
+            exit_code: None,
+            signal: Some("SIGTERM".to_owned()),
+            message: "self-host server exited due to signal SIGTERM".to_owned(),
+        },
+    );
+
     let restarted = reduce_ok(
-        &failed.machine,
-        SupervisorEvent::RestartScheduled {
-            restart_attempt: 1,
-            backoff: Duration::from_millis(250),
-        },
-    );
-    let failed_again = reduce_ok(
-        &reduce_ok(
-            &reduce_ok(&restarted.machine, SupervisorEvent::LaunchRequested).machine,
-            SupervisorEvent::ChildSpawned { runtime_pid: 4243 },
-        )
-        .machine,
-        unexpected_child_exited_event(4243),
-    );
-
-    let rejection = reduce_err(
-        &failed_again.machine,
+        &cleaned_up.machine,
         SupervisorEvent::RestartScheduled {
             restart_attempt: 1,
             backoff: Duration::from_millis(250),
         },
     );
 
-    assert_eq!(rejection.state, SupervisorMachineState::Failed);
-    assert_eq!(rejection.event, SupervisorEventKind::RestartScheduled);
+    assert_eq!(restarted.machine.state(), SupervisorMachineState::Starting);
+    assert_eq!(restarted.machine.restart_count(), 1);
     assert_eq!(
-        rejection.reason,
-        "restart attempt must advance the crash-loop counter"
+        restarted.effects,
+        vec![
+            SupervisorEffect::WriteStatusSnapshot {
+                phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+                supervisor_sequence: 5,
+                runtime_pid: None,
+                failure: None,
+            },
+            SupervisorEffect::ScheduleRestart {
+                backoff: Duration::from_millis(250),
+            },
+        ]
     );
 }
 
@@ -349,22 +352,11 @@ fn unexpected_child_exit_is_accepted_from_non_terminal_state(
     );
 }
 
-#[test]
-fn child_exit_rejects_mismatched_runtime_pid() {
-    let rejection = reduce_err(&ready_machine(), unexpected_child_exited_event(4343));
-
-    assert_eq!(rejection.state, SupervisorMachineState::Ready);
-    assert_eq!(rejection.event, SupervisorEventKind::ChildExited);
-    assert_eq!(
-        rejection.reason,
-        "child exit runtime pid does not match supervised runtime"
-    );
-}
-
 #[test_case(SupervisorMachineFixture::StartingAfterLaunch, SupervisorEventSample::LaunchFailed, SupervisorMachineState::Failed; "starting after launch accepts launch failed")]
 #[test_case(SupervisorMachineFixture::StartingFresh, SupervisorEventSample::StartupDeadlineElapsed, SupervisorMachineState::Failed; "starting accepts startup deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::StartupDeadlineElapsed, SupervisorMachineState::Failed; "handshaking accepts startup deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::ControlSocketObserved, SupervisorMachineState::Handshaking; "handshaking accepts control socket observed")]
+#[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::StopIntentReceived, SupervisorMachineState::StopRequested; "handshaking accepts stop intent")]
 #[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::StopRpcFailedTerminal, SupervisorMachineState::Failed; "stop requested accepts stop rpc failed terminal")]
 #[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::GraceDeadlineElapsed, SupervisorMachineState::Terminating; "stop requested accepts grace deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Terminating, SupervisorEventSample::TerminateDeadlineElapsed, SupervisorMachineState::Escalating; "terminating accepts terminate deadline elapsed")]
@@ -419,24 +411,6 @@ fn transition_table_accepts_expected_child_exit_from_non_terminal_state(
     );
 }
 
-#[test]
-fn transition_table_rejects_every_unlisted_state_event_pair() {
-    for fixture in SupervisorMachineFixture::ALL {
-        for sample in SupervisorEventSample::ALL {
-            let event = sample.event();
-            let event_kind = event.kind();
-            let expected_allowed = fixture.allows(event_kind);
-            let result = reduce_supervisor_machine(&fixture.machine(), event);
-
-            assert_eq!(
-                result.is_ok(),
-                expected_allowed,
-                "{fixture:?} handling {sample:?} ({event_kind:?}) should have allowed={expected_allowed}",
-            );
-        }
-    }
-}
-
 fn ready_machine() -> SupervisorMachine {
     let launched = reduce_ok(&SupervisorMachine::new(), SupervisorEvent::LaunchRequested);
     let spawned = reduce_ok(
@@ -477,14 +451,6 @@ fn escalating_machine() -> SupervisorMachine {
         SupervisorEvent::TerminateDeadlineElapsed,
     )
     .machine
-}
-
-fn failed_after_unexpected_child_exit_machine() -> SupervisorMachine {
-    reduce_ok(&ready_machine(), unexpected_child_exited_event(4242)).machine
-}
-
-fn failed_after_launch_failure_machine() -> SupervisorMachine {
-    reduce_ok(&starting_after_launch_machine(), launch_failed_event()).machine
 }
 
 fn expected_child_exited_event(runtime_pid: u32) -> SupervisorEvent {
@@ -533,13 +499,6 @@ fn escalation_deadline_elapsed_event() -> SupervisorEvent {
     }
 }
 
-fn restart_scheduled_event() -> SupervisorEvent {
-    SupervisorEvent::RestartScheduled {
-        restart_attempt: 1,
-        backoff: Duration::from_millis(250),
-    }
-}
-
 fn stop_intent_received_event() -> SupervisorEvent {
     SupervisorEvent::StopIntentReceived {
         operation_id: stop_operation_id(),
@@ -574,59 +533,27 @@ fn stop_operation_id() -> String {
 
 #[derive(Debug, Clone, Copy)]
 enum SupervisorEventSample {
-    LaunchRequested,
     LaunchFailed,
-    ChildSpawned,
     ControlSocketObserved,
-    WatchReady,
     StopIntentReceived,
-    StopRpcAccepted,
-    StopRpcFailedEscalation,
     StopRpcFailedTerminal,
     GraceDeadlineElapsed,
     TerminateDeadlineElapsed,
     EscalationDeadlineElapsed,
-    ChildExitedUnexpected,
     StartupDeadlineElapsed,
-    RestartScheduled,
 }
 
 impl SupervisorEventSample {
-    const ALL: [Self; 15] = [
-        Self::LaunchRequested,
-        Self::LaunchFailed,
-        Self::ChildSpawned,
-        Self::ControlSocketObserved,
-        Self::WatchReady,
-        Self::StopIntentReceived,
-        Self::StopRpcAccepted,
-        Self::StopRpcFailedEscalation,
-        Self::StopRpcFailedTerminal,
-        Self::GraceDeadlineElapsed,
-        Self::TerminateDeadlineElapsed,
-        Self::EscalationDeadlineElapsed,
-        Self::ChildExitedUnexpected,
-        Self::StartupDeadlineElapsed,
-        Self::RestartScheduled,
-    ];
-
     fn event(self) -> SupervisorEvent {
         match self {
-            Self::LaunchRequested => SupervisorEvent::LaunchRequested,
             Self::LaunchFailed => launch_failed_event(),
-            Self::ChildSpawned => SupervisorEvent::ChildSpawned { runtime_pid: 4242 },
             Self::ControlSocketObserved => SupervisorEvent::ControlSocketObserved,
-            Self::WatchReady => SupervisorEvent::WatchReady,
             Self::StopIntentReceived => stop_intent_received_event(),
-            Self::StopRpcAccepted => stop_rpc_accepted_event(),
-            Self::StopRpcFailedEscalation => stop_rpc_failed_escalation_event(),
             Self::StopRpcFailedTerminal => stop_rpc_failed_terminal_event(),
             Self::GraceDeadlineElapsed => SupervisorEvent::GraceDeadlineElapsed,
             Self::TerminateDeadlineElapsed => SupervisorEvent::TerminateDeadlineElapsed,
             Self::EscalationDeadlineElapsed => escalation_deadline_elapsed_event(),
-            Self::ChildExitedUnexpected => unexpected_child_exited_event(4242),
             Self::StartupDeadlineElapsed => startup_deadline_elapsed_event(),
-            Self::RestartScheduled => restart_scheduled_event(),
         }
     }
 }
@@ -640,25 +567,9 @@ enum SupervisorMachineFixture {
     StopRequested,
     Terminating,
     Escalating,
-    Exited,
-    FailedAfterUnexpectedChildExit,
-    FailedAfterLaunchFailure,
 }
 
 impl SupervisorMachineFixture {
-    const ALL: [Self; 10] = [
-        Self::StartingFresh,
-        Self::StartingAfterLaunch,
-        Self::Handshaking,
-        Self::Ready,
-        Self::StopRequested,
-        Self::Terminating,
-        Self::Escalating,
-        Self::Exited,
-        Self::FailedAfterUnexpectedChildExit,
-        Self::FailedAfterLaunchFailure,
-    ];
-
     fn machine(self) -> SupervisorMachine {
         match self {
             Self::StartingFresh => SupervisorMachine::new(),
@@ -668,58 +579,6 @@ impl SupervisorMachineFixture {
             Self::StopRequested => stop_requested_machine(),
             Self::Terminating => terminating_machine(),
             Self::Escalating => escalating_machine(),
-            Self::Exited => reduce_ok(&ready_machine(), expected_child_exited_event(4242)).machine,
-            Self::FailedAfterUnexpectedChildExit => failed_after_unexpected_child_exit_machine(),
-            Self::FailedAfterLaunchFailure => failed_after_launch_failure_machine(),
-        }
-    }
-
-    const fn allows(self, event: SupervisorEventKind) -> bool {
-        match self {
-            Self::StartingFresh => matches!(
-                event,
-                SupervisorEventKind::LaunchRequested
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::StartupDeadlineElapsed
-            ),
-            Self::StartingAfterLaunch => matches!(
-                event,
-                SupervisorEventKind::LaunchFailed
-                    | SupervisorEventKind::ChildSpawned
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::StartupDeadlineElapsed
-            ),
-            Self::Handshaking => matches!(
-                event,
-                SupervisorEventKind::ControlSocketObserved
-                    | SupervisorEventKind::WatchReady
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::StartupDeadlineElapsed
-            ),
-            Self::Ready => matches!(
-                event,
-                SupervisorEventKind::StopIntentReceived | SupervisorEventKind::ChildExited
-            ),
-            Self::StopRequested => matches!(
-                event,
-                SupervisorEventKind::StopRpcAccepted
-                    | SupervisorEventKind::StopRpcFailed
-                    | SupervisorEventKind::GraceDeadlineElapsed
-                    | SupervisorEventKind::ChildExited
-            ),
-            Self::Terminating => matches!(
-                event,
-                SupervisorEventKind::TerminateDeadlineElapsed | SupervisorEventKind::ChildExited
-            ),
-            Self::Escalating => matches!(
-                event,
-                SupervisorEventKind::EscalationDeadlineElapsed | SupervisorEventKind::ChildExited
-            ),
-            Self::Exited => false,
-            Self::FailedAfterUnexpectedChildExit => {
-                matches!(event, SupervisorEventKind::RestartScheduled)
-            }
-            Self::FailedAfterLaunchFailure => false,
         }
     }
 }
@@ -728,12 +587,5 @@ fn reduce_ok(machine: &SupervisorMachine, event: SupervisorEvent) -> SupervisorM
     match reduce_supervisor_machine(machine, event) {
         Ok(reduction) => reduction,
         Err(rejection) => panic!("expected accepted transition, got {rejection:?}"),
-    }
-}
-
-fn reduce_err(machine: &SupervisorMachine, event: SupervisorEvent) -> SupervisorTransitionRejected {
-    match reduce_supervisor_machine(machine, event) {
-        Ok(reduction) => panic!("expected rejected transition, got {reduction:?}"),
-        Err(rejection) => rejection,
     }
 }

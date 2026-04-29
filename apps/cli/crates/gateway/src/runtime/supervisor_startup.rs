@@ -7,7 +7,6 @@ use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use tokio::time::Instant;
 use tokio::time::sleep;
-use tokio::time::timeout;
 
 use crate::runtime_probe_host;
 use crate::supervisor_control_proto::types;
@@ -20,11 +19,13 @@ use super::lifecycle::runtime_phase_label;
 use super::status::describe_exit_status;
 use super::status::exit_signal_label;
 use super::supervisor::SupervisedRuntimeContext;
+use super::supervisor::SupervisedRuntimeExit;
 use super::supervisor::supervisor_child_exit_kind;
 use super::supervisor_effects::SupervisorTimers;
 use super::supervisor_effects::dispatch_supervisor_event;
 use super::supervisor_machine::SupervisorEvent;
 use super::supervisor_machine::SupervisorMachine;
+use super::supervisor_monitor::handle_supervisor_stop_request;
 use super::transport::retry_command_hint;
 
 struct SupervisedRuntimeStartupCheck<'a> {
@@ -38,6 +39,7 @@ struct SupervisedRuntimeStartupCheck<'a> {
 pub(super) enum SupervisedRuntimeStartupOutcome {
     Ready,
     ExitedBeforeReady { error: CliError },
+    StoppedBeforeReady { exit: SupervisedRuntimeExit },
 }
 
 pub(super) async fn wait_for_supervised_runtime_ready(
@@ -64,6 +66,7 @@ pub(super) async fn wait_for_supervised_runtime_ready(
         None,
     )
     .await?;
+    let mut timers = SupervisorTimers::default();
 
     while Instant::now() < startup_deadline {
         if let Some(status) = child
@@ -94,21 +97,39 @@ pub(super) async fn wait_for_supervised_runtime_ready(
             break;
         }
 
-        if let Ok(ready_pid) = timeout(
-            poll_interval.min(remaining),
-            context.supervisor_control.wait_for_runtime_ready(),
-        )
-        .await
-        {
-            ensure_startup_ready_pid_matches(&check, ready_pid)?;
-            dispatch_supervisor_event(
-                machine,
-                SupervisorEvent::WatchReady,
-                context.effect_context(),
-                None,
-            )
-            .await?;
-            return Ok(SupervisedRuntimeStartupOutcome::Ready);
+        tokio::select! {
+            ready_pid = context.supervisor_control.wait_for_runtime_ready() => {
+                ensure_startup_ready_pid_matches(&check, ready_pid)?;
+                dispatch_supervisor_event(
+                    machine,
+                    SupervisorEvent::WatchReady,
+                    context.effect_context(),
+                    None,
+                )
+                .await?;
+                return Ok(SupervisedRuntimeStartupOutcome::Ready);
+            }
+            stop_request = context.supervisor_control.recv_stop_request(), if timers.no_active_deadlines() => {
+                if let Some(stop_request) = stop_request {
+                    handle_supervisor_stop_request(
+                        context,
+                        machine,
+                        &mut timers,
+                        stop_request,
+                    )
+                    .await?;
+                    let exit = monitor_startup_stop_to_exit(
+                        context,
+                        child,
+                        machine,
+                        &mut timers,
+                        &check,
+                    )
+                    .await?;
+                    return Ok(SupervisedRuntimeStartupOutcome::StoppedBeforeReady { exit });
+                }
+            }
+            () = sleep(poll_interval.min(remaining)) => {}
         }
     }
 
@@ -132,7 +153,87 @@ pub(super) async fn wait_for_supervised_runtime_ready(
         &message,
     )
     .await?;
-    Err(startup_timeout_error(&check, message))
+    Ok(SupervisedRuntimeStartupOutcome::ExitedBeforeReady {
+        error: startup_timeout_error(&check, message),
+    })
+}
+
+async fn monitor_startup_stop_to_exit(
+    context: SupervisedRuntimeContext<'_>,
+    child: &mut Child,
+    machine: &mut SupervisorMachine,
+    timers: &mut SupervisorTimers,
+    check: &SupervisedRuntimeStartupCheck<'_>,
+) -> Result<SupervisedRuntimeExit, CliError> {
+    loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| supervised_runtime_monitor_error(check, error))?
+        {
+            let exit_kind = supervisor_child_exit_kind(machine, status);
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::ChildExited {
+                    runtime_pid: context.runtime_pid,
+                    exit_kind,
+                    exit_code: status.code(),
+                    signal: exit_signal_label(status),
+                    message: describe_exit_status(status),
+                },
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+            return Ok(SupervisedRuntimeExit {
+                runtime_pid: context.runtime_pid,
+                status,
+                exit_kind,
+                machine: std::mem::replace(machine, SupervisorMachine::new()),
+            });
+        }
+
+        if timers.kill_deadline_elapsed() {
+            let message = format!(
+                "pid {} remained active after supervisor startup stop hard kill",
+                context.runtime_pid
+            );
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::EscalationDeadlineElapsed {
+                    message: message.clone(),
+                },
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+            return Err(supervised_runtime_monitor_error(
+                check,
+                std::io::Error::new(std::io::ErrorKind::TimedOut, message),
+            ));
+        }
+
+        if timers.terminate_deadline_elapsed() {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::TerminateDeadlineElapsed,
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+        }
+
+        if timers.stop_deadline_elapsed() {
+            dispatch_supervisor_event(
+                machine,
+                SupervisorEvent::GraceDeadlineElapsed,
+                context.effect_context(),
+                Some(&mut *timers),
+            )
+            .await?;
+        }
+
+        sleep(timers.next_poll_interval()).await;
+    }
 }
 
 async fn cleanup_supervised_runtime_after_startup_timeout(

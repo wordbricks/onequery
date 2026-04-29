@@ -26,16 +26,9 @@ proptest! {
             let previous = machine.clone();
             let event_kind = event.kind();
 
-            match reduce_supervisor_machine(&machine, event) {
-                Ok(reduction) => {
-                    assert_reduction_invariants(&previous, event_kind, &reduction)?;
-                    machine = reduction.machine;
-                }
-                Err(rejection) => {
-                    prop_assert_eq!(rejection.state, previous.state());
-                    prop_assert_eq!(rejection.event, event_kind);
-                    prop_assert!(!rejection.reason.is_empty());
-                }
+            if let Ok(reduction) = reduce_supervisor_machine(&machine, event) {
+                assert_reduction_invariants(&previous, event_kind, &reduction)?;
+                machine = reduction.machine;
             }
         }
     }

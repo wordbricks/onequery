@@ -4,14 +4,11 @@ use std::path::PathBuf;
 
 use insta::assert_snapshot;
 use pretty_assertions::assert_eq;
-use tempfile::tempdir;
 use uuid::Uuid;
 
 use onequery_core::packaged_runtime::packaged_cli_relative_path;
-use onequery_core::packaged_runtime::packaged_server_relative_path;
 use onequery_core::packaged_runtime::runtime_root_env_var;
 
-use super::PACKAGED_SERVER_BUNDLE_FILENAME;
 use super::launch::RuntimeBundleRoot;
 use super::launch::RuntimeBundleRootLocator;
 use super::launch::RuntimeBundleRootSource;
@@ -26,7 +23,6 @@ use super::runtime::LogPreview;
 use super::runtime::read_live_runtime_status;
 use super::state::GatewayRuntimeState;
 use super::state::GatewayStateAccessMode;
-use crate::runtime_probe_host;
 use crate::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
 use crate::self_host::SelfHostConfig;
 use crate::self_host::SelfHostRuntimePaths;
@@ -321,21 +317,6 @@ fn render_gateway_logs_output_snapshot() {
 }
 
 #[test]
-fn runtime_state_json_reports_stale_durable_records_when_lease_or_snapshot_is_present() {
-    let state = GatewayRuntimeState {
-        runtime_lease_present: true,
-        ..sample_state()
-    };
-
-    assert_eq!(
-        super::render::runtime_state_json(&state)
-            .get("status")
-            .and_then(serde_json::Value::as_str),
-        Some("stale_durable_records")
-    );
-}
-
-#[test]
 fn resolve_runtime_bundle_root_from_locator_accepts_runtime_root_override() {
     let runtime_root_override = Path::new("/tmp/staged-runtime");
     let resolved = resolve_runtime_bundle_root_from_locator(
@@ -401,22 +382,6 @@ fn resolve_runtime_bundle_root_from_locator_reports_cargo_output_guidance() {
             "set {}=<bundle-root> and retry onequery gateway",
             runtime_root_env_var()
         )]
-    );
-}
-
-#[test]
-fn packaged_server_bundle_uses_single_cross_platform_filename() {
-    let temp_dir = tempdir().unwrap();
-    let server_dir = temp_dir.path().join(packaged_server_relative_path());
-    fs::create_dir_all(&server_dir)
-        .unwrap_or_else(|error| panic!("expected packaged server dir: {error}"));
-
-    assert_eq!(
-        server_dir.join(PACKAGED_SERVER_BUNDLE_FILENAME),
-        temp_dir
-            .path()
-            .join(packaged_server_relative_path())
-            .join("onequery-server.mjs")
     );
 }
 
@@ -550,13 +515,6 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
-}
-
-#[test]
-fn runtime_probe_host_normalizes_unspecified_bind_addresses() {
-    assert_eq!(runtime_probe_host("0.0.0.0"), "127.0.0.1");
-    assert_eq!(runtime_probe_host("::"), "::1");
-    assert_eq!(runtime_probe_host("localhost"), "localhost");
 }
 
 fn resolve_runtime_state_with_paths_for_test(

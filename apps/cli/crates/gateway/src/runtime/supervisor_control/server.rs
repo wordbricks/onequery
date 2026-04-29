@@ -26,6 +26,12 @@ use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTE
 
 type SupervisorControlServerResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
+#[derive(Clone, Copy)]
+struct SocketFileIdentity {
+    dev: u64,
+    ino: u64,
+}
+
 pub(super) fn connect_service(
     service: SupervisorControlService,
 ) -> SupervisorLifecycleServiceServer<SupervisorControlService> {
@@ -62,11 +68,19 @@ pub(crate) async fn start_supervisor_control_server(
     prepare_socket_path(socket_path.as_path()).await?;
     let listener = UnixListener::bind(socket_path.as_path())?;
     set_socket_permissions(socket_path.as_path())?;
+    let socket_file = socket_file_identity(socket_path.as_path()).await?;
 
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let task_socket_path = socket_path.clone();
     let task = tokio::spawn(async move {
-        run_supervisor_control_server(listener, service, shutdown_rx, task_socket_path).await
+        run_supervisor_control_server(
+            listener,
+            service,
+            shutdown_rx,
+            task_socket_path,
+            socket_file,
+        )
+        .await
     });
 
     Ok(SupervisorControlServer {
@@ -80,13 +94,14 @@ async fn run_supervisor_control_server(
     service: SupervisorControlService,
     shutdown: oneshot::Receiver<()>,
     socket_path: PathBuf,
+    socket_file: SocketFileIdentity,
 ) -> SupervisorControlServerResult<()> {
     let serve_result = AssertUnwindSafe(serve_unix_listener(listener, service, shutdown))
         .catch_unwind()
         .await
         .map_err(|panic| panic_error("supervisor control server", panic))
         .and_then(|result| result);
-    let cleanup_result = remove_socket_file(socket_path.as_path())
+    let cleanup_result = remove_socket_file_if_matches(socket_path.as_path(), socket_file)
         .await
         .map_err(Box::<dyn Error + Send + Sync>::from);
 
@@ -114,8 +129,9 @@ async fn serve_unix_listener(
         .max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES)
         .max_request_body_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
     // Comment: Connect Rust does not currently wire a Protovalidate interceptor
-    // for these buf.validate-heavy runtime protos; supervisor handlers perform
-    // the required boundary checks manually.
+    // for these buf.validate-heavy runtime protos. Keep supervisor handlers
+    // focused on stateful lifecycle checks; schema-level required/range checks
+    // belong in the proto contract to avoid duplicate Rust validation logic.
     let service = Arc::new(ConnectRpcService::new(connect_service(service)).with_limits(limits));
     let mut connections = JoinSet::new();
 
@@ -175,12 +191,9 @@ async fn serve_unix_stream(
         async move { service.call(request).await }
     });
 
-    AssertUnwindSafe(
-        Builder::new(TokioExecutor::new()).serve_connection(TokioIo::new(stream), svc),
-    )
-    .catch_unwind()
-    .await
-    .map_err(|panic| panic_error("supervisor control connection", panic))??;
+    Builder::new(TokioExecutor::new())
+        .serve_connection(TokioIo::new(stream), svc)
+        .await?;
 
     Ok(())
 }
@@ -226,7 +239,7 @@ fn set_parent_directory_permissions(parent: &Path) -> io::Result<()> {
 fn set_parent_directory_permissions(_parent: &Path) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
-        "supervisor control Unix sockets are not available on this platform",
+        "supervisor control is not supported on Windows yet",
     ))
 }
 
@@ -241,7 +254,7 @@ fn set_socket_permissions(socket_path: &Path) -> io::Result<()> {
 fn set_socket_permissions(_socket_path: &Path) -> io::Result<()> {
     Err(io::Error::new(
         io::ErrorKind::Unsupported,
-        "supervisor control Unix sockets are not available on this platform",
+        "supervisor control is not supported on Windows yet",
     ))
 }
 
@@ -292,6 +305,59 @@ fn is_socket_file(metadata: &std::fs::Metadata) -> bool {
 #[cfg(not(unix))]
 fn is_socket_file(_metadata: &std::fs::Metadata) -> bool {
     false
+}
+
+#[cfg(unix)]
+async fn socket_file_identity(socket_path: &Path) -> io::Result<SocketFileIdentity> {
+    use std::os::unix::fs::MetadataExt;
+
+    let metadata = tokio::fs::symlink_metadata(socket_path).await?;
+    Ok(SocketFileIdentity {
+        dev: metadata.dev(),
+        ino: metadata.ino(),
+    })
+}
+
+#[cfg(not(unix))]
+async fn socket_file_identity(_socket_path: &Path) -> io::Result<SocketFileIdentity> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "supervisor control is not supported on Windows yet",
+    ))
+}
+
+#[cfg(unix)]
+async fn remove_socket_file_if_matches(
+    socket_path: &Path,
+    expected: SocketFileIdentity,
+) -> io::Result<()> {
+    use std::os::unix::fs::MetadataExt;
+
+    let metadata = match tokio::fs::symlink_metadata(socket_path).await {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    if metadata.dev() != expected.dev || metadata.ino() != expected.ino {
+        tracing::debug!(
+            socket_path = %socket_path.display(),
+            "skipping supervisor control socket cleanup because path was rebound"
+        );
+        return Ok(());
+    }
+
+    remove_socket_file(socket_path).await
+}
+
+#[cfg(not(unix))]
+async fn remove_socket_file_if_matches(
+    _socket_path: &Path,
+    _expected: SocketFileIdentity,
+) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "supervisor control is not supported on Windows yet",
+    ))
 }
 
 async fn remove_socket_file(socket_path: &Path) -> io::Result<()> {
@@ -397,30 +463,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn server_contains_connection_handler_panic_and_keeps_serving() {
+    async fn socket_cleanup_skips_rebound_socket_path() {
         let temp_dir = tempfile::tempdir().expect("expected temp dir");
         let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(
-            socket_path.clone(),
-            test_service_with_next_get_status_panic(17),
-        )
-        .await
-        .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-
-        let _ = client
-            .get_status(types::SupervisorLifecycleServiceGetStatusRequest {
-                target: MessageField::some(test_target()),
-                ..Default::default()
-            })
+        tokio::fs::create_dir_all(socket_path.parent().unwrap())
             .await
-            .expect_err("expected first request to fail after handler panic");
+            .unwrap();
+        let old_listener = UnixListener::bind(socket_path.as_path()).unwrap();
+        let old_socket_file = socket_file_identity(socket_path.as_path()).await.unwrap();
+        drop(old_listener);
+        remove_socket_file(socket_path.as_path()).await.unwrap();
 
-        let status = get_status(socket_path.as_path()).await;
-        assert_eq!(status.supervisor_sequence, Some(17));
+        let new_listener = UnixListener::bind(socket_path.as_path()).unwrap();
 
-        server.stop().await.unwrap();
-        assert!(!socket_path.exists());
+        remove_socket_file_if_matches(socket_path.as_path(), old_socket_file)
+            .await
+            .unwrap();
+
+        assert!(socket_path.exists());
+        drop(new_listener);
+        remove_socket_file(socket_path.as_path()).await.unwrap();
     }
 
     #[tokio::test]
@@ -448,7 +510,6 @@ mod tests {
         let client = supervisor_client(socket_path).await;
         let response = client
             .get_status(types::SupervisorLifecycleServiceGetStatusRequest {
-                target: MessageField::some(test_target()),
                 ..Default::default()
             })
             .await
@@ -480,10 +541,6 @@ mod tests {
         SupervisorControlService::new(test_actor(sequence))
     }
 
-    fn test_service_with_next_get_status_panic(sequence: u64) -> SupervisorControlService {
-        SupervisorControlService::new_with_next_get_status_panic(test_actor(sequence))
-    }
-
     fn test_actor(sequence: u64) -> super::super::actor::SupervisorControlActor {
         super::super::actor::SupervisorControlActor::new(types::SupervisorStatus {
             identity: MessageField::some(types::SupervisorIdentity {
@@ -511,21 +568,6 @@ mod tests {
             active_session: Some(false),
             ..Default::default()
         })
-    }
-
-    fn test_target() -> types::SupervisorControlTarget {
-        types::SupervisorControlTarget {
-            launch_id: Some("launch-a".to_owned()),
-            data_dir: Some("/tmp/onequery-data".to_owned()),
-            runtime_pid: Some(4242),
-            supervisor: MessageField::some(types::SupervisorIdentity {
-                supervisor_id: Some("gateway-supervisor:test".to_owned()),
-                pid: Some(1),
-                generation: Some(1),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
     }
 
     fn test_session_hello() -> types::RuntimeSessionHello {

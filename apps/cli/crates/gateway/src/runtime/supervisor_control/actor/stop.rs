@@ -4,7 +4,6 @@ use crate::supervisor_control_proto::types;
 
 use super::super::errors::failed_precondition;
 use super::SupervisorControlActor;
-use super::validation::required_operation_id;
 
 pub(crate) struct SupervisorStopRequest {
     operation_id: String,
@@ -55,10 +54,6 @@ impl SupervisorControlActor {
         &self,
         operation_id: String,
     ) -> Result<types::SupervisorLifecycleServiceStopResponse, connectrpc::ConnectError> {
-        required_operation_id(
-            Some(operation_id.as_str()),
-            "supervisor control stop operation_id",
-        )?;
         {
             let mut current_stop = self.state.current_stop.lock().await;
             if current_stop.is_some() {

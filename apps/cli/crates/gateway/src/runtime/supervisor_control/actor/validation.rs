@@ -1,15 +1,10 @@
 use crate::supervisor_control_proto::types;
 
 use super::super::errors::failed_precondition;
-use super::super::errors::invalid_argument;
-
 pub(super) trait SupervisorStatusIdentityExt {
     fn launch_id(&self) -> Option<&str>;
     fn data_dir(&self) -> Option<&str>;
     fn runtime_pid(&self) -> Option<u32>;
-    fn supervisor_id(&self) -> Option<&str>;
-    fn supervisor_pid(&self) -> Option<u32>;
-    fn supervisor_generation(&self) -> Option<u64>;
 }
 
 impl SupervisorStatusIdentityExt for types::SupervisorStatus {
@@ -30,33 +25,17 @@ impl SupervisorStatusIdentityExt for types::SupervisorStatus {
             .as_option()
             .and_then(|launch| launch.runtime_pid)
     }
-
-    fn supervisor_id(&self) -> Option<&str> {
-        self.identity
-            .as_option()
-            .and_then(|identity| identity.supervisor_id.as_deref())
-    }
-
-    fn supervisor_pid(&self) -> Option<u32> {
-        self.identity.as_option().and_then(|identity| identity.pid)
-    }
-
-    fn supervisor_generation(&self) -> Option<u64> {
-        self.identity
-            .as_option()
-            .and_then(|identity| identity.generation)
-    }
 }
 
 pub(super) fn validate_target_field<T>(
     field: &'static str,
-    actual: Option<T>,
+    actual: T,
     expected: Option<T>,
 ) -> Result<(), connectrpc::ConnectError>
 where
     T: Copy + Eq,
 {
-    if actual == expected {
+    if Some(actual) == expected {
         return Ok(());
     }
 
@@ -65,43 +44,10 @@ where
     )))
 }
 
-pub(super) fn required_operation_id<'a>(
-    operation_id: Option<&'a str>,
-    field: &'static str,
-) -> Result<&'a str, connectrpc::ConnectError> {
-    let Some(operation_id) = operation_id.filter(|operation_id| !operation_id.is_empty()) else {
-        return Err(invalid_argument(format!("{field} is required")));
-    };
-    validate_uuid(operation_id, field)?;
-
-    Ok(operation_id)
-}
-
-pub(super) fn validate_uuid(
-    value: &str,
-    field: &'static str,
-) -> Result<(), connectrpc::ConnectError> {
-    uuid::Uuid::parse_str(value)
-        .map(|_| ())
-        .map_err(|_| invalid_argument(format!("{field} must be a UUID")))
-}
-
-pub(super) fn required_u64(
-    value: Option<u64>,
-    field: &'static str,
-) -> Result<u64, connectrpc::ConnectError> {
-    value
-        .filter(|value| *value >= 1)
-        .ok_or_else(|| invalid_argument(format!("{field} is required")))
-}
-
-pub(super) fn required_runtime_status_sequence(
-    status: &types::RuntimeStatus,
-    field: &'static str,
-) -> Result<u64, connectrpc::ConnectError> {
-    required_u64(status.runtime_sequence, field)
-}
-
+// Comment: keep this module limited to stateful supervisor-control validation.
+// Required fields, oneof presence, and scalar ranges are specified in the
+// runtime protos with buf.validate annotations; re-adding them here creates a
+// second source of truth.
 pub(super) fn validate_runtime_sequence_not_backward(
     current: Option<u64>,
     next: u64,

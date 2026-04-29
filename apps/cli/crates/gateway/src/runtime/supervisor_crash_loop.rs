@@ -74,52 +74,47 @@ impl SupervisorCrashLoopBounds {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
+    use proptest::prelude::*;
 
     use super::SupervisorCrashLoopDecision;
     use super::SupervisorCrashLoopPolicy;
     use std::time::Duration;
 
-    #[test]
-    fn disabled_policy_keeps_unexpected_exit_terminal() {
-        assert_eq!(
-            SupervisorCrashLoopPolicy::disabled().decision_after_unexpected_exit(0),
-            SupervisorCrashLoopDecision::TerminalFailure
-        );
-    }
+    proptest! {
+        #[test]
+        fn bounded_policy_caps_restarts_with_exponential_backoff(
+            max_restarts in 0_u32..128,
+            completed_restarts in 0_u32..160,
+            initial_backoff_millis in 0_u64..10_000,
+            max_backoff_millis in 0_u64..10_000,
+        ) {
+            let initial_backoff = Duration::from_millis(initial_backoff_millis);
+            let max_backoff = Duration::from_millis(max_backoff_millis);
+            let policy = SupervisorCrashLoopPolicy::bounded(
+                max_restarts,
+                initial_backoff,
+                max_backoff,
+            );
+            let decision = policy.decision_after_unexpected_exit(completed_restarts);
 
-    #[test]
-    fn bounded_policy_caps_restarts_with_exponential_backoff() {
-        let policy = SupervisorCrashLoopPolicy::bounded(
-            3,
-            Duration::from_millis(100),
-            Duration::from_millis(250),
-        );
+            if max_restarts == 0 || completed_restarts >= max_restarts {
+                prop_assert_eq!(decision, SupervisorCrashLoopDecision::TerminalFailure);
+            } else {
+                let attempt = completed_restarts + 1;
+                let exponent = attempt.saturating_sub(1).min(31);
+                let multiplier = 1_u32.checked_shl(exponent).unwrap_or(u32::MAX);
+                let expected_backoff = initial_backoff
+                    .saturating_mul(multiplier)
+                    .min(max_backoff.max(initial_backoff));
 
-        assert_eq!(
-            policy.decision_after_unexpected_exit(0),
-            SupervisorCrashLoopDecision::Restart {
-                attempt: 1,
-                backoff: Duration::from_millis(100),
+                prop_assert_eq!(
+                    decision,
+                    SupervisorCrashLoopDecision::Restart {
+                        attempt,
+                        backoff: expected_backoff,
+                    }
+                );
             }
-        );
-        assert_eq!(
-            policy.decision_after_unexpected_exit(1),
-            SupervisorCrashLoopDecision::Restart {
-                attempt: 2,
-                backoff: Duration::from_millis(200),
-            }
-        );
-        assert_eq!(
-            policy.decision_after_unexpected_exit(2),
-            SupervisorCrashLoopDecision::Restart {
-                attempt: 3,
-                backoff: Duration::from_millis(250),
-            }
-        );
-        assert_eq!(
-            policy.decision_after_unexpected_exit(3),
-            SupervisorCrashLoopDecision::TerminalFailure
-        );
+        }
     }
 }

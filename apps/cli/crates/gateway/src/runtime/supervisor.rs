@@ -243,24 +243,28 @@ async fn run_supervised_runtime_to_exit(
                 wait_for_supervised_runtime_ready(runtime_context, &mut child, &mut machine)
                     .await?;
 
-            if let SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } = startup_outcome {
-                let restart_backoff = restart_backoff_after_unexpected_exit(
-                    state,
-                    &supervisor_control,
-                    &supervisor,
-                    launch.launch_id,
-                    launch.crash_loop_policy,
-                    command_line,
-                    &mut machine,
-                )
-                .await?;
+            match startup_outcome {
+                SupervisedRuntimeStartupOutcome::Ready => {}
+                SupervisedRuntimeStartupOutcome::StoppedBeforeReady { exit } => return Ok(exit),
+                SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } => {
+                    let restart_backoff = restart_backoff_after_unexpected_exit(
+                        state,
+                        &supervisor_control,
+                        &supervisor,
+                        launch.launch_id,
+                        launch.crash_loop_policy,
+                        command_line,
+                        &mut machine,
+                    )
+                    .await?;
 
-                if let Some(backoff) = restart_backoff {
-                    sleep(backoff).await;
-                    continue;
+                    if let Some(backoff) = restart_backoff {
+                        sleep(backoff).await;
+                        continue;
+                    }
+
+                    return Err(error);
                 }
-
-                return Err(error);
             }
 
             let mut exit = monitor_supervised_runtime(runtime_context, &mut child, machine).await?;
@@ -741,6 +745,115 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn stop_rpc_during_startup_returns_before_runtime_ready() {
+        let fixture = SupervisorFixture::new();
+        let state = fixture.state();
+        let supervisor = supervisor_identity(std::process::id(), 1);
+        let supervisor_control = SupervisorControlActor::new(supervisor_control_status(
+            &state,
+            &supervisor,
+            LAUNCH_ID,
+            types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+            0,
+            None,
+        ));
+        let supervisor_control_server =
+            start_supervisor_control_fixture_server(&fixture, supervisor_control.clone()).await;
+        let mut machine = SupervisorMachine::new();
+
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::LaunchRequested,
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected launch request dispatch: {error}"));
+
+        let mut child = spawn_supervisor_fixture_runtime(&fixture, &["--ready-delay-ms=1000"]);
+        let runtime_pid = child.id();
+
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::ChildSpawned { runtime_pid },
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected child spawned dispatch: {error}"));
+
+        let runtime_context = SupervisedRuntimeContext {
+            state: &state,
+            supervisor_control: &supervisor_control,
+            supervisor: &supervisor,
+            launch_id: LAUNCH_ID,
+            runtime_pid,
+            command_line: COMMAND_LINE,
+            retry_command: RETRY_COMMAND,
+        };
+        let mut startup = Box::pin(wait_for_supervised_runtime_ready(
+            runtime_context,
+            &mut child,
+            &mut machine,
+        ));
+
+        loop {
+            tokio::select! {
+                outcome = &mut startup => {
+                    let _ = outcome;
+                    panic!("startup completed before stop request could be issued");
+                }
+                () = tokio::time::sleep(Duration::from_millis(10)) => {
+                    if supervisor_control.snapshot().await.active_session == Some(true) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let stop_request =
+            supervisor_control.request_stop("00000000-0000-4000-8000-000000000772".to_owned());
+        let (stop_response, startup_outcome) = tokio::join!(stop_request, startup);
+        let stop_response = stop_response
+            .unwrap_or_else(|error| panic!("expected accepted startup stop response: {error}"));
+        let startup_outcome =
+            startup_outcome.unwrap_or_else(|error| panic!("expected startup stop exit: {error}"));
+
+        assert_eq!(
+            stop_response.disposition.and_then(|value| value.as_known()),
+            Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED)
+        );
+        match startup_outcome {
+            SupervisedRuntimeStartupOutcome::StoppedBeforeReady { exit } => {
+                assert_eq!(exit.exit_kind, SupervisorChildExitKind::Expected);
+            }
+            SupervisedRuntimeStartupOutcome::Ready => {
+                panic!("startup unexpectedly reported ready after startup stop")
+            }
+            SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } => {
+                panic!("startup stop exited with an error: {error}")
+            }
+        }
+
+        supervisor_control_server
+            .stop()
+            .await
+            .unwrap_or_else(|error| panic!("expected supervisor control server stop: {error}"));
+    }
+
     async fn run_stop_escalation_fixture(modes: &[&str]) -> StopEscalationResult {
         let fixture = SupervisorFixture::new();
         let state = fixture.state();
@@ -805,6 +918,9 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected runtime fixture readiness: {error}"))
         {
             SupervisedRuntimeStartupOutcome::Ready => {}
+            SupervisedRuntimeStartupOutcome::StoppedBeforeReady { exit } => {
+                panic!("runtime fixture stopped before ready: {:?}", exit.status);
+            }
             SupervisedRuntimeStartupOutcome::ExitedBeforeReady { error } => {
                 panic!("runtime fixture exited before ready: {error}");
             }

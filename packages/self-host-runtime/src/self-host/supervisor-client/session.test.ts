@@ -9,6 +9,7 @@ import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { createSelfHostSupervisorControl } from "@onequery/config/testing";
 import {
   RuntimePhase,
+  RuntimeStopCompletion,
   RuntimeStatusSchema,
   SupervisorIdentitySchema,
   SupervisorPhase,
@@ -25,6 +26,7 @@ import type {
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createSupervisorLifecycleClient } from "./client";
+import type { SupervisorLifecycleClient } from "./client";
 import { openSupervisorRuntimeSession } from "./session";
 
 describe("openSupervisorRuntimeSession", () => {
@@ -40,7 +42,7 @@ describe("openSupervisorRuntimeSession", () => {
         response: {
           case: "stop",
           value: {
-            completion: 2,
+            completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
             graceTimeout: create(DurationSchema, { seconds: 30n }),
             operationId: "00000000-0000-4000-8000-000000000001",
             reason: "test stop",
@@ -102,7 +104,7 @@ describe("openSupervisorRuntimeSession", () => {
         response: {
           case: "stop",
           value: {
-            completion: 2,
+            completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
             graceTimeout: create(DurationSchema, { seconds: 30n }),
             operationId: "00000000-0000-4000-8000-000000000001",
             reason: "test stop",
@@ -213,6 +215,67 @@ describe("openSupervisorRuntimeSession", () => {
     });
   });
 
+  it("sends interval heartbeats over the supervisor session", async () => {
+    const service = createSessionCapturingSupervisorService();
+    const { socketPath } = await startSupervisorService(service.impl);
+    const client = createSupervisorLifecycleClient({
+      endpoint: createSelfHostSupervisorControl({ socketPath }),
+    });
+    const session = openSupervisorRuntimeSession({
+      client,
+      dataDir: "/tmp/onequery-data",
+      heartbeatIntervalMs: 1,
+      launchId: "launch-a",
+      now: () => new Date("2026-04-29T00:00:00.000Z"),
+      runtimePid: 4242,
+      runtimeSequence: 1n,
+      supervisor: create(SupervisorIdentitySchema, {
+        generation: 1n,
+        pid: 1001,
+        supervisorId: "gateway-supervisor:test",
+      }),
+    });
+    cleanupTasks.push(() => session.close());
+
+    const events = await service.waitForEvents(2);
+
+    expect(events.map((event) => event.payload.case)).toEqual([
+      "hello",
+      "heartbeat",
+    ]);
+    expect(events[1]?.payload.value).toMatchObject({
+      heartbeatSequence: 1n,
+    });
+  });
+
+  it("closes the session when the interval heartbeat task fails", async () => {
+    const failure = new Error("clock failed");
+    const session = openSupervisorRuntimeSession({
+      client: createIdleSupervisorLifecycleClient(),
+      dataDir: "/tmp/onequery-data",
+      heartbeatIntervalMs: 1,
+      launchId: "launch-a",
+      now: () => {
+        throw failure;
+      },
+      runtimePid: 4242,
+      runtimeSequence: 1n,
+      supervisor: create(SupervisorIdentitySchema, {
+        generation: 1n,
+        pid: 1001,
+        supervisorId: "gateway-supervisor:test",
+      }),
+    });
+    cleanupTasks.push(() => session.close());
+
+    const closeCause = await session.closed.then(
+      () => null,
+      (cause: unknown) => cause
+    );
+
+    expect(closeCause).toBe(failure);
+  });
+
   async function startSupervisorService(
     impl: ServiceImpl<typeof SupervisorLifecycleService>
   ) {
@@ -238,12 +301,70 @@ describe("openSupervisorRuntimeSession", () => {
   }
 });
 
+function createIdleSupervisorLifecycleClient(): SupervisorLifecycleClient {
+  const openRuntimeSession: SupervisorLifecycleClient["openRuntimeSession"] = (
+    _requests,
+    options
+  ) => abortableEmptyResponseStream(options?.signal);
+
+  return {
+    openRuntimeSession,
+  } as unknown as SupervisorLifecycleClient;
+}
+
+function abortableEmptyResponseStream(
+  signal: AbortSignal | undefined
+): AsyncIterable<OpenRuntimeSessionResponse> {
+  return {
+    [Symbol.asyncIterator]() {
+      let opened = false;
+      return {
+        async next() {
+          if (!opened) {
+            opened = true;
+            return {
+              done: false,
+              value: openedResponse(),
+            };
+          }
+
+          await new Promise<void>((_resolve, reject) => {
+            if (signal?.aborted) {
+              reject(signal.reason);
+              return;
+            }
+
+            signal?.addEventListener("abort", () => reject(signal.reason), {
+              once: true,
+            });
+          });
+
+          return {
+            done: true,
+            value: undefined,
+          };
+        },
+      };
+    },
+  };
+}
+
+function openedResponse(): OpenRuntimeSessionResponse {
+  return create(OpenRuntimeSessionResponseSchema, {
+    response: {
+      case: "opened",
+      value: {},
+    },
+  });
+}
+
 function createSessionCapturingSupervisorService(
   responses: OpenRuntimeSessionResponse[] = []
 ): {
   impl: ServiceImpl<typeof SupervisorLifecycleService>;
   waitForEvents(count: number): Promise<readonly OpenRuntimeSessionRequest[]>;
 } {
+  const supervisorResponses = [openedResponse(), ...responses];
   const events: OpenRuntimeSessionRequest[] = [];
   const waiters: Array<{
     count: number;
@@ -291,7 +412,7 @@ function createSessionCapturingSupervisorService(
 
           if (!sentResponses) {
             sentResponses = true;
-            for (const response of responses) {
+            for (const response of supervisorResponses) {
               yield response;
             }
           }

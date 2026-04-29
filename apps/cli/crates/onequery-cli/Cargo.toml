@@ -49,6 +49,7 @@ webbrowser = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 webpki-roots = { workspace = true }
 onequery-core = { workspace = true }
+onequery-connect-support = { workspace = true }
 onequery-config = { workspace = true }
 onequery-gateway = { workspace = true }
 onequery-install-context = { workspace = true }

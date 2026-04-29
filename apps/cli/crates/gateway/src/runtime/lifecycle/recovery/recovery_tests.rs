@@ -1,6 +1,9 @@
 use std::fs;
+use std::path::Path;
 
 use buffa::MessageField;
+use chrono::SecondsFormat;
+use chrono::Utc;
 use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 
@@ -57,7 +60,7 @@ fn runtime_lease_json_with_supervisor(
 }
 
 fn runtime_lease_json_with_data_dir(
-    data_dir: &std::path::Path,
+    data_dir: &Path,
     pid: u32,
     launch_id: &str,
     header_supervisor_pid: u32,
@@ -65,19 +68,54 @@ fn runtime_lease_json_with_data_dir(
     header_supervisor_generation: u64,
     supervisor_generation: u64,
 ) -> String {
+    runtime_lease_json_from(RuntimeLeaseJson {
+        data_dir,
+        pid,
+        launch_id,
+        header_supervisor_pid,
+        supervisor_pid,
+        header_supervisor_generation,
+        supervisor_generation,
+        renewed_at: &Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
+    })
+}
+
+struct RuntimeLeaseJson<'a> {
+    data_dir: &'a Path,
+    pid: u32,
+    launch_id: &'a str,
+    header_supervisor_pid: u32,
+    supervisor_pid: u32,
+    header_supervisor_generation: u64,
+    supervisor_generation: u64,
+    renewed_at: &'a str,
+}
+
+fn runtime_lease_json_from(input: RuntimeLeaseJson<'_>) -> String {
+    let RuntimeLeaseJson {
+        data_dir,
+        pid,
+        launch_id,
+        header_supervisor_pid,
+        supervisor_pid,
+        header_supervisor_generation,
+        supervisor_generation,
+        renewed_at,
+    } = input;
+
     format!(
         r#"{{
   "header": {{
     "schemaVersion": 1,
     "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_RUNTIME", "writerId": "runtime:{pid}"}},
     "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {pid}, "supervisorPid": {header_supervisor_pid}, "supervisorGeneration": "{header_supervisor_generation}"}},
-    "writtenAt": "2026-03-25T00:00:00Z"
+    "writtenAt": "{renewed_at}"
   }},
   "runtime": {{"pid": {pid}, "launchId": "{launch_id}", "dataDir": "{}"}},
   "supervisor": {{"supervisorId": "supervisor-a", "pid": {supervisor_pid}, "generation": "{supervisor_generation}"}},
   "runtimeSequence": "1",
-  "acquiredAt": "2026-03-25T00:00:00Z",
-  "renewedAt": "2026-03-25T00:00:00Z",
+  "acquiredAt": "{renewed_at}",
+  "renewedAt": "{renewed_at}",
   "leaseTtl": "60s"
 }}"#,
         data_dir.display(),
@@ -797,6 +835,33 @@ fn read_managed_runtime_pid_ignores_stale_lease_with_live_unrelated_pid() {
         ),
     )
     .unwrap_or_else(|error| panic!("expected stale lease write: {error}"));
+
+    assert_eq!(
+        read_managed_runtime_pid(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+        None
+    );
+}
+
+#[test]
+fn read_managed_runtime_pid_ignores_expired_lease_with_live_reused_pid() {
+    let (_temp_dir, paths) = test_paths();
+    let live_unrelated_pid = std::process::id();
+
+    fs::write(
+        &paths.runtime_lease_path,
+        runtime_lease_json_from(RuntimeLeaseJson {
+            data_dir: paths.data_dir.as_path(),
+            pid: live_unrelated_pid,
+            launch_id: "launch-stale",
+            header_supervisor_pid: 1,
+            supervisor_pid: 1,
+            header_supervisor_generation: 1,
+            supervisor_generation: 1,
+            renewed_at: "2026-03-25T00:00:00Z",
+        }),
+    )
+    .unwrap_or_else(|error| panic!("expected expired lease write: {error}"));
 
     assert_eq!(
         read_managed_runtime_pid(&paths, "onequery gateway status")

@@ -189,14 +189,28 @@ mod tests {
     use std::ffi::OsString;
 
     use pretty_assertions::assert_eq;
+    use proptest::prelude::*;
 
     use super::parse_runtime_major_version;
     use super::validate_runtime_version_output;
 
-    #[test]
-    fn parse_runtime_major_version_accepts_node_style_version_output() {
-        assert_eq!(parse_runtime_major_version("v22.13.1\n"), Some(22));
-        assert_eq!(parse_runtime_major_version("22.13.1\n"), Some(22));
+    proptest! {
+        #[test]
+        fn parse_runtime_major_version_accepts_node_style_version_output(
+            major in any::<u32>(),
+            minor in any::<u32>(),
+            patch in any::<u32>(),
+            prefixed in any::<bool>(),
+            whitespace in "[ \t\r\n]{0,8}",
+        ) {
+            let prefix = if prefixed { "v" } else { "" };
+            let version_output = format!("{whitespace}{prefix}{major}.{minor}.{patch}{whitespace}");
+
+            prop_assert_eq!(
+                parse_runtime_major_version(&version_output),
+                Some(major)
+            );
+        }
     }
 
     #[test]

@@ -23,6 +23,8 @@ import type {
   ServerStorageHandle,
 } from "@onequery/server/storage";
 import { unreachable } from "antiox/panic";
+import { JoinError, spawn } from "antiox/task";
+import type { JoinHandle } from "antiox/task";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import { createStorage } from "unstorage";
@@ -124,7 +126,9 @@ type ServerStartupShell =
   | {
       lifecycle: ManagedLifecycleContext;
       server: StartedServer;
+      shutdownController?: GracefulShutdownController;
       storageHandle: ServerStorageHandle;
+      supervisorSession?: SupervisorRuntimeSession;
       status: "serving_managed_starting";
     }
   | {
@@ -253,17 +257,14 @@ function resolveApiRateLimitStorageResult(
 function resolveApiRateLimitStorageLabel(
   commonView: ServerLaunchCommonView
 ): ResultType<"memory" | "persistent", PersistentRateLimitStorageConfigError> {
-  try {
-    return Result.ok(
-      serverLaunchApiRateLimitStorageLabel(commonView.apiRateLimit.storage)
-    );
-  } catch (cause) {
-    return Result.err(
+  return Result.try({
+    try: () =>
+      serverLaunchApiRateLimitStorageLabel(commonView.apiRateLimit.storage),
+    catch: (cause) =>
       new PersistentRateLimitStorageConfigError({
         message: toErrorMessage(cause),
-      })
-    );
-  }
+      }),
+  });
 }
 
 function toErrorMessage(error: unknown): string {
@@ -652,6 +653,13 @@ export function createStartServerResult(
               cause
             ),
         });
+        startupShellRef.current = {
+          lifecycle,
+          server: startedServer,
+          shutdownController,
+          storageHandle,
+          status: "serving_managed_starting",
+        };
         const supervisorClient = yield* Result.try({
           try: () =>
             resolvedDependencies.createSupervisorLifecycleClient({
@@ -694,6 +702,14 @@ export function createStartServerResult(
               cause
             ),
         });
+        startupShellRef.current = {
+          lifecycle,
+          server: startedServer,
+          shutdownController,
+          storageHandle,
+          supervisorSession,
+          status: "serving_managed_starting",
+        };
         yield* Result.await(
           Result.tryPromise({
             try: () => supervisorSession.opened,
@@ -804,7 +820,31 @@ export function createStartServerResult(
         }
         break;
       }
-      case "serving_managed_starting":
+      case "serving_managed_starting": {
+        startupShell.shutdownController?.dispose();
+        if (startupShell.supervisorSession !== undefined) {
+          const closeSupervisorSessionResult =
+            await closeSupervisorSessionAfterStartupFailure(
+              startupShell.supervisorSession
+            );
+          if (closeSupervisorSessionResult.isErr()) {
+            cleanupErrors.push(closeSupervisorSessionResult.error);
+          }
+        }
+        const stopServerResult = await stopServerAfterStartupFailure(
+          startupShell.server
+        );
+        if (stopServerResult.isErr()) {
+          cleanupErrors.push(stopServerResult.error);
+        }
+        const closeStorageResult = await closeStorageAfterStartupFailure(
+          startupShell.storageHandle
+        );
+        if (closeStorageResult.isErr()) {
+          cleanupErrors.push(closeStorageResult.error);
+        }
+        break;
+      }
       case "serving_unmanaged": {
         const stopServerResult = await stopServerAfterStartupFailure(
           startupShell.server
@@ -851,22 +891,43 @@ function observeSupervisorSessionClosed(input: {
   shutdownController: GracefulShutdownController;
   supervisorSession: SupervisorRuntimeSession;
 }): void {
-  void input.supervisorSession.closed
-    .then(
-      () =>
-        input.shutdownController.shutdown({
-          completion: "cleanup_and_exit",
-          reason: "supervisor_session_closed",
-        }),
-      () =>
-        input.shutdownController.shutdown({
-          completion: "cleanup_and_exit",
-          reason: "supervisor_session_failed",
-        })
-    )
-    .catch((cause) => {
-      console.error("[runtime] supervisor session shutdown failed", cause);
+  const sessionClosed = Result.tryPromise({
+    try: () => input.supervisorSession.closed,
+    catch: (cause) => cause,
+  });
+  const observerTask = spawn(async () => {
+    const closed = await sessionClosed;
+    await input.shutdownController.shutdown({
+      completion: "cleanup_and_exit",
+      reason: closed.isOk()
+        ? "supervisor_session_closed"
+        : "supervisor_session_failed",
     });
+  });
+  observeBackgroundTask(
+    observerTask,
+    "[runtime] supervisor session shutdown failed"
+  );
+}
+
+function observeBackgroundTask(
+  handle: JoinHandle<void>,
+  failureMessage: string
+): void {
+  void Result.tryPromise({
+    try: async () => {
+      await handle;
+    },
+    catch: (cause) => {
+      console.error(failureMessage, unwrapJoinError(cause));
+    },
+  });
+}
+
+function unwrapJoinError(cause: unknown): unknown {
+  return cause instanceof JoinError && cause.cause !== undefined
+    ? cause.cause
+    : cause;
 }
 
 export function createStartServer(

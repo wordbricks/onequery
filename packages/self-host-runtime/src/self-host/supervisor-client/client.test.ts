@@ -45,18 +45,7 @@ describe("createSupervisorLifecycleClient", () => {
     const client = createSupervisorLifecycleClient({
       endpoint: createSelfHostSupervisorControl({ socketPath }),
     });
-    const response = await client.getStatus({
-      target: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        runtimePid: 4242,
-        supervisor: {
-          generation: 1n,
-          pid: 1001,
-          supervisorId: "gateway-supervisor:test",
-        },
-      },
-    });
+    const response = await client.getStatus({});
 
     expect(response.status?.supervisorSequence).toEqual(7n);
     expect(response.status?.phase).toEqual(SupervisorPhase.READY);

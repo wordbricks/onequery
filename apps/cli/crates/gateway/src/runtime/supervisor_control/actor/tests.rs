@@ -56,52 +56,6 @@ async fn watch_status_filters_supervisor_transitions_by_sequence() {
 }
 
 #[tokio::test]
-async fn watch_status_delivers_runtime_transitions_after_subscription_when_sequence_filtered() {
-    let actor = SupervisorControlActor::new(supervisor_status(5));
-    let (session_id, _commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-    actor
-        .publish_supervisor_transition(supervisor_transition(5), supervisor_status(5))
-        .await;
-
-    let mut stream = actor.watch_status(5, false).await;
-    actor
-        .apply_runtime_transition(
-            session_id,
-            types::RuntimeTransition {
-                transition_id: Some("runtime-draining".to_owned()),
-                runtime_sequence: Some(8),
-                previous_phase: Some(types::RuntimePhase::RUNTIME_PHASE_READY.into()),
-                current_phase: Some(types::RuntimePhase::RUNTIME_PHASE_DRAINING.into()),
-                reason: Some("draining".to_owned()),
-                occurred_at: MessageField::some(timestamp(8)),
-                ..Default::default()
-            },
-        )
-        .await
-        .expect("runtime transition should be accepted");
-
-    let response = stream
-        .next()
-        .await
-        .expect("expected runtime transition response")
-        .expect("expected successful runtime transition response");
-    let Some(types::supervisor_lifecycle_service_watch_status_response::Event::RuntimeTransition(
-        transition,
-    )) = response.event
-    else {
-        panic!("expected runtime transition event");
-    };
-    assert_eq!(transition.runtime_sequence, Some(8));
-    assert_eq!(
-        transition.current_phase,
-        Some(types::RuntimePhase::RUNTIME_PHASE_DRAINING.into())
-    );
-}
-
-#[tokio::test]
 async fn close_runtime_session_publishes_active_session_snapshot() {
     let actor = SupervisorControlActor::new(supervisor_status(1));
     let (session_id, _commands) = actor
@@ -266,7 +220,7 @@ async fn stale_session_close_does_not_clear_newer_session() {
 }
 
 #[tokio::test]
-async fn duplicate_stop_operation_id_returns_already_stopping() {
+async fn active_stop_request_returns_already_stopping() {
     let actor = SupervisorControlActor::new(supervisor_status(1));
     let first_stop = {
         let actor = actor.clone();
@@ -278,9 +232,9 @@ async fn duplicate_stop_operation_id_returns_already_stopping() {
         .expect("first stop request should be present");
 
     let response = actor
-        .request_stop(stop_operation_id())
+        .request_stop("00000000-0000-4000-8000-000000000002".to_owned())
         .await
-        .expect("duplicate stop request should be idempotent");
+        .expect("overlapping stop request should return current stop disposition");
 
     assert_eq!(
         response.disposition.and_then(|value| value.as_known()),
@@ -295,37 +249,6 @@ async fn duplicate_stop_operation_id_returns_already_stopping() {
         .await
         .expect("first stop task should complete")
         .expect("first stop response should be successful");
-}
-
-#[tokio::test]
-async fn accepted_stop_remains_idempotent_until_lifecycle_terminal() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let first_stop = {
-        let actor = actor.clone();
-        tokio::spawn(async move { actor.request_stop(stop_operation_id()).await })
-    };
-    let first_request = timeout(Duration::from_secs(1), actor.recv_stop_request())
-        .await
-        .expect("first stop request should be received")
-        .expect("first stop request should be present");
-    first_request.complete(Ok(stop_response(
-        types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED,
-        actor.snapshot().await,
-    )));
-    first_stop
-        .await
-        .expect("first stop task should complete")
-        .expect("first stop response should be successful");
-
-    let response = actor
-        .request_stop(stop_operation_id())
-        .await
-        .expect("duplicate stop request should remain idempotent");
-
-    assert_eq!(
-        response.disposition.and_then(|value| value.as_known()),
-        Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING)
-    );
 }
 
 #[tokio::test]
@@ -371,106 +294,6 @@ async fn terminal_supervisor_transition_clears_stop_operation() {
         .await
         .expect("second stop task should complete")
         .expect("second stop response should be successful");
-}
-
-#[tokio::test]
-async fn runtime_shutdown_finished_keeps_stop_operation_until_terminal_lifecycle() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let (session_id, _commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-    let first_stop = {
-        let actor = actor.clone();
-        tokio::spawn(async move { actor.request_stop(stop_operation_id()).await })
-    };
-    let first_request = timeout(Duration::from_secs(1), actor.recv_stop_request())
-        .await
-        .expect("first stop request should be received")
-        .expect("first stop request should be present");
-    first_request.complete(Ok(stop_response(
-        types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED,
-        actor.snapshot().await,
-    )));
-    first_stop
-        .await
-        .expect("first stop task should complete")
-        .expect("first stop response should be successful");
-
-    actor
-        .apply_runtime_shutdown_finished(session_id, &runtime_shutdown_finished())
-        .await
-        .expect("shutdown_finished should be accepted");
-    let response = actor
-        .request_stop(stop_operation_id())
-        .await
-        .expect("duplicate stop request should remain idempotent");
-
-    assert_eq!(
-        response.disposition.and_then(|value| value.as_known()),
-        Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING)
-    );
-}
-
-#[tokio::test]
-async fn different_stop_operation_id_returns_already_stopping() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let first_stop = {
-        let actor = actor.clone();
-        tokio::spawn(async move { actor.request_stop(stop_operation_id()).await })
-    };
-    let first_request = timeout(Duration::from_secs(1), actor.recv_stop_request())
-        .await
-        .expect("first stop request should be received")
-        .expect("first stop request should be present");
-
-    let response = actor
-        .request_stop("00000000-0000-4000-8000-000000000002".to_owned())
-        .await
-        .expect("overlapping stop request should be idempotent");
-
-    assert_eq!(
-        response.disposition.and_then(|value| value.as_known()),
-        Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING)
-    );
-
-    first_request.complete(Ok(stop_response(
-        types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED,
-        actor.snapshot().await,
-    )));
-    first_stop
-        .await
-        .expect("first stop task should complete")
-        .expect("first stop response should be successful");
-}
-
-#[tokio::test]
-async fn runtime_ready_uses_session_identity_for_status() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let (session_id, _commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-    let ready = runtime_ready();
-
-    actor
-        .apply_runtime_ready(session_id, &ready)
-        .await
-        .expect("runtime_ready should be accepted");
-    let status = actor.snapshot().await;
-
-    assert_eq!(status.runtime_sequence, Some(2));
-    assert_eq!(
-        status.runtime_phase,
-        Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
-    );
-    assert_eq!(
-        status
-            .runtime
-            .as_option()
-            .and_then(|identity| identity.launch_id.as_deref()),
-        Some("launch-a")
-    );
 }
 
 #[tokio::test]

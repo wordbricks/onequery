@@ -15,10 +15,7 @@ serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros"] }
 
 [build-dependencies]
-buffa = { workspace = true, features = ["json"] }
-buffa-codegen = { workspace = true }
-connectrpc-build = { workspace = true }
-onequery-utils = { workspace = true }
+onequery-proto-build-support = { workspace = true }
 
 [lints]
 workspace = true

@@ -1,17 +1,11 @@
-use base64::Engine;
-use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
+use onequery_connect_support::error_details;
 use onequery_core::error::CliError;
 use onequery_core::error::CliValidationIssue;
 use onequery_proto_runtime::google::rpc;
 
 const SUPERVISOR_CONTROL_ERROR_INFO_DOMAIN: &str = "onequery.runtime.v1";
-const ERROR_INFO_DETAIL_TYPE: &str = "google.rpc.ErrorInfo";
-const BAD_REQUEST_DETAIL_TYPE: &str = "google.rpc.BadRequest";
-const RETRY_INFO_DETAIL_TYPE: &str = "google.rpc.RetryInfo";
-const RESOURCE_INFO_DETAIL_TYPE: &str = "google.rpc.ResourceInfo";
-const PRECONDITION_FAILURE_DETAIL_TYPE: &str = "google.rpc.PreconditionFailure";
 const ERROR_INFO_OPERATION_METADATA: &str = "operation";
 const ERROR_INFO_RETRYABLE_METADATA: &str = "retryable";
 
@@ -147,28 +141,32 @@ fn supervisor_control_problem_from_connect_error(
     error: &ConnectError,
 ) -> Option<SupervisorControlConnectProblem> {
     let error_info = supervisor_control_error_info(error)?;
-    let server_message = non_empty(error.message.clone());
+    let server_message = error_details::non_empty(error.message.clone());
     let retryable = error_info_retryable(&error_info);
     let operation =
-        metadata_value(&error_info, ERROR_INFO_OPERATION_METADATA).map(ToOwned::to_owned);
-    let reason = non_empty_string(error_info.reason)?;
+        error_details::metadata_value(&error_info.metadata, ERROR_INFO_OPERATION_METADATA)
+            .map(ToOwned::to_owned);
+    let reason = error_details::non_empty_string(error_info.reason)?;
     let mut parsed = ParsedSupervisorControlDetails::default();
 
     for detail in &error.details {
         match detail.type_url.as_str() {
-            ERROR_INFO_DETAIL_TYPE => {}
-            RETRY_INFO_DETAIL_TYPE => {
-                if let Some(retry_info) = decode_connect_detail::<rpc::RetryInfo>(detail)
+            error_details::ERROR_INFO_DETAIL_TYPE => {}
+            error_details::RETRY_INFO_DETAIL_TYPE => {
+                if let Ok(retry_info) =
+                    error_details::decode_connect_detail::<rpc::RetryInfo>(detail)
                     && let Some(retry_after_ms) = retry_info
                         .retry_delay
                         .into_option()
-                        .and_then(duration_to_ms)
+                        .and_then(error_details::protobuf_duration_to_ms)
                 {
                     parsed.retry_after_ms = Some(retry_after_ms);
                 }
             }
-            BAD_REQUEST_DETAIL_TYPE => {
-                if let Some(bad_request) = decode_connect_detail::<rpc::BadRequest>(detail) {
+            error_details::BAD_REQUEST_DETAIL_TYPE => {
+                if let Ok(bad_request) =
+                    error_details::decode_connect_detail::<rpc::BadRequest>(detail)
+                {
                     parsed.validation_issues.extend(
                         bad_request
                             .field_violations
@@ -177,9 +175,9 @@ fn supervisor_control_problem_from_connect_error(
                     );
                 }
             }
-            PRECONDITION_FAILURE_DETAIL_TYPE => {
-                if let Some(precondition_failure) =
-                    decode_connect_detail::<rpc::PreconditionFailure>(detail)
+            error_details::PRECONDITION_FAILURE_DETAIL_TYPE => {
+                if let Ok(precondition_failure) =
+                    error_details::decode_connect_detail::<rpc::PreconditionFailure>(detail)
                 {
                     parsed.preconditions.extend(
                         precondition_failure
@@ -189,8 +187,9 @@ fn supervisor_control_problem_from_connect_error(
                     );
                 }
             }
-            RESOURCE_INFO_DETAIL_TYPE => {
-                if let Some(resource_info) = decode_connect_detail::<rpc::ResourceInfo>(detail)
+            error_details::RESOURCE_INFO_DETAIL_TYPE => {
+                if let Ok(resource_info) =
+                    error_details::decode_connect_detail::<rpc::ResourceInfo>(detail)
                     && let Some(resource) = resource_from_generated(resource_info)
                 {
                     parsed.resources.push(resource);
@@ -213,34 +212,18 @@ fn supervisor_control_problem_from_connect_error(
 }
 
 fn supervisor_control_error_info(error: &ConnectError) -> Option<rpc::ErrorInfo> {
-    error.details.iter().find_map(|detail| {
-        if detail.type_url.as_str() != ERROR_INFO_DETAIL_TYPE {
-            return None;
-        }
-
-        let error_info = decode_connect_detail::<rpc::ErrorInfo>(detail)?;
-        if error_info.domain == SUPERVISOR_CONTROL_ERROR_INFO_DOMAIN {
-            Some(error_info)
-        } else {
-            None
-        }
-    })
+    error_details::first_decodable_domain_error_info(
+        error,
+        SUPERVISOR_CONTROL_ERROR_INFO_DOMAIN,
+        |error_info: &rpc::ErrorInfo| error_info.domain.as_str(),
+    )
 }
 
 fn error_info_retryable(error_info: &rpc::ErrorInfo) -> bool {
     matches!(
-        metadata_value(error_info, ERROR_INFO_RETRYABLE_METADATA),
+        error_details::metadata_value(&error_info.metadata, ERROR_INFO_RETRYABLE_METADATA),
         Some("true")
     )
-}
-
-fn metadata_value<'a>(error_info: &'a rpc::ErrorInfo, key: &str) -> Option<&'a str> {
-    error_info
-        .metadata
-        .get(key)
-        .map(String::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
 }
 
 #[derive(Default)]
@@ -257,7 +240,8 @@ fn validation_issue_from_generated(
     CliValidationIssue {
         field: violation.field,
         message: violation.description,
-        code: reason_to_code(violation.reason.as_str()).unwrap_or_else(|| "invalid".to_owned()),
+        code: error_details::reason_to_code(violation.reason.as_str())
+            .unwrap_or_else(|| "invalid".to_owned()),
     }
 }
 
@@ -275,36 +259,10 @@ fn resource_from_generated(
     resource_info: rpc::ResourceInfo,
 ) -> Option<SupervisorControlResourceInfo> {
     Some(SupervisorControlResourceInfo {
-        resource_type: non_empty_string(resource_info.resource_type)?,
-        resource_name: non_empty_string(resource_info.resource_name)?,
-        description: non_empty_string(resource_info.description),
+        resource_type: error_details::non_empty_string(resource_info.resource_type)?,
+        resource_name: error_details::non_empty_string(resource_info.resource_name)?,
+        description: error_details::non_empty_string(resource_info.description),
     })
-}
-
-fn duration_to_ms(duration: buffa_types::google::protobuf::Duration) -> Option<u64> {
-    if duration.seconds < 0 || duration.nanos < 0 {
-        return None;
-    }
-
-    let seconds = u64::try_from(duration.seconds).ok()?;
-    let nanos = u64::try_from(duration.nanos).ok()?;
-    let millis_from_seconds = seconds.checked_mul(1000)?;
-    let millis_from_nanos = nanos / 1_000_000;
-    millis_from_seconds.checked_add(millis_from_nanos)
-}
-
-fn decode_connect_detail<MessageType>(
-    detail: &connectrpc::error::ErrorDetail,
-) -> Option<MessageType>
-where
-    MessageType: Message,
-{
-    let value = detail.value.as_deref()?;
-    let bytes = base64::engine::general_purpose::STANDARD_NO_PAD
-        .decode(value)
-        .or_else(|_| base64::engine::general_purpose::STANDARD.decode(value))
-        .ok()?;
-    MessageType::decode_from_slice(bytes.as_slice()).ok()
 }
 
 fn supervisor_control_reason_summary(reason: &str) -> String {
@@ -362,27 +320,10 @@ fn resource_summary(resource: &SupervisorControlResourceInfo) -> String {
     }
 }
 
-fn reason_to_code(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    Some(trimmed.replace('-', "_").to_ascii_lowercase())
-}
-
 fn reason_to_label(value: &str) -> String {
-    reason_to_code(value)
+    error_details::reason_to_code(value)
         .unwrap_or_else(|| "unknown_error".to_owned())
         .replace('_', " ")
-}
-
-fn non_empty(value: Option<String>) -> Option<String> {
-    value.filter(|candidate| !candidate.trim().is_empty())
-}
-
-fn non_empty_string(value: String) -> Option<String> {
-    non_empty(Some(value))
 }
 
 #[cfg(test)]
@@ -507,6 +448,35 @@ mod tests {
         assert_eq!(
             supervisor_control_error_allows_stop_escalation(&error),
             false
+        );
+    }
+
+    #[test]
+    fn typed_supervisor_errors_skip_malformed_error_info_before_valid_match() {
+        let mut error = ConnectError::new(ErrorCode::Unavailable, "runtime is still starting");
+        error.details.push(connectrpc::error::ErrorDetail {
+            type_url: "google.rpc.ErrorInfo".to_owned(),
+            value: Some("not-base64".to_owned()),
+            debug: None,
+        });
+        error.details.push(error_detail(
+            "google.rpc.ErrorInfo",
+            &error_info(
+                "SUPERVISOR_CONTROL_STARTUP_NOT_READY",
+                &[("operation", "stop"), ("retryable", "true")],
+            ),
+        ));
+
+        assert_eq!(
+            supervisor_control_error_allows_stop_escalation(&error),
+            true
+        );
+        assert_eq!(
+            supervisor_control_connect_error_summary(&error),
+            Some(
+                "supervisor control is not ready yet for stop: runtime is still starting; retryable"
+                    .to_owned()
+            )
         );
     }
 

@@ -21,17 +21,11 @@ enum RuntimePhase {
 }
 
 enum RuntimeStopCompletion {
-  reserved 1;
-  reserved RUNTIME_STOP_COMPLETION_CLEANUP_ONLY;
-
   RUNTIME_STOP_COMPLETION_UNSPECIFIED = 0;
-  RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT = 2;
+  RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT = 1;
 }
 
 enum RuntimeStopDisposition {
-  reserved 3;
-  reserved RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED;
-
   RUNTIME_STOP_DISPOSITION_UNSPECIFIED = 0;
   RUNTIME_STOP_DISPOSITION_ACCEPTED = 1;
   RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING = 2;
@@ -162,17 +156,14 @@ message RuntimeTransition {
 }
 
 message RuntimeStatus {
-  reserved 1;
-  reserved identity;
-
-  RuntimePhase phase = 2 [
+  RuntimePhase phase = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  uint64 runtime_sequence = 3 [(buf.validate.field).uint64.gte = 0];
-  google.protobuf.Timestamp updated_at = 4 [(buf.validate.field).required = true];
-  RuntimeFailure failure = 5;
+  uint64 runtime_sequence = 2 [(buf.validate.field).uint64.gte = 0];
+  google.protobuf.Timestamp updated_at = 3 [(buf.validate.field).required = true];
+  RuntimeFailure failure = 4;
 }
 
 message LifecycleRecordWriterIdentity {

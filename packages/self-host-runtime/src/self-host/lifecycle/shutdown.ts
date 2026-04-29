@@ -187,6 +187,7 @@ async function executeShutdown(args: {
   shutdownResources: readonly RuntimeShutdownResource[];
 }): Promise<ShutdownResult> {
   const reason = args.request.reason;
+  const deadline = createShutdownDeadline(args.request);
   const requestLogResult = await Result.tryPromise({
     try: async () =>
       args.logWriter.append(
@@ -201,6 +202,7 @@ async function executeShutdown(args: {
       }),
   });
   if (requestLogResult.isErr()) {
+    deadline?.dispose();
     return Result.err(requestLogResult.error);
   }
 
@@ -214,15 +216,22 @@ async function executeShutdown(args: {
   });
   const stopResult = await Result.tryPromise({
     try: async () => {
-      await args.server.stop(true);
+      await withShutdownDeadline(
+        deadline,
+        () => args.server.stop(true),
+        `runtime server stop exceeded graceful shutdown timeout for ${reason}`,
+        reason
+      );
     },
     catch: (cause) =>
-      createRuntimeShutdownError({
-        cause,
-        code: "shutdown_rejected",
-        message: `failed to stop runtime server for ${reason}`,
-        reason,
-      }),
+      cause instanceof RuntimeShutdownError
+        ? cause
+        : createRuntimeShutdownError({
+            cause,
+            code: "shutdown_rejected",
+            message: `failed to stop runtime server for ${reason}`,
+            reason,
+          }),
   });
   const checkpointingTransitionResult = await transitionShutdownPhase(args, {
     failureCode: "checkpoint_failed",
@@ -231,6 +240,7 @@ async function executeShutdown(args: {
   });
   const closeResourcesResult = await closeShutdownResources(
     args.shutdownResources,
+    deadline,
     reason
   );
 
@@ -246,18 +256,26 @@ async function executeShutdown(args: {
   if (shutdownWorkSucceeded) {
     releaseResult = await Result.tryPromise({
       try: async () => {
-        await args.lease.release({
-          reason,
-          stopServer: true,
-        });
+        await withShutdownDeadline(
+          deadline,
+          () =>
+            args.lease.release({
+              reason,
+              stopServer: true,
+            }),
+          `runtime lifecycle lease release exceeded graceful shutdown timeout for ${reason}`,
+          reason
+        );
       },
       catch: (cause) =>
-        createRuntimeShutdownError({
-          cause,
-          code: "internal",
-          message: `failed to release lifecycle lease for ${reason}`,
-          reason,
-        }),
+        cause instanceof RuntimeShutdownError
+          ? cause
+          : createRuntimeShutdownError({
+              cause,
+              code: "internal",
+              message: `failed to release lifecycle lease for ${reason}`,
+              reason,
+            }),
     });
   } else {
     const failure = selectShutdownFailure([
@@ -273,6 +291,8 @@ async function executeShutdown(args: {
       phase: RuntimePhase.SHUTDOWN_FAILED,
     });
   }
+
+  deadline?.dispose();
 
   if (
     stoppingTransitionResult.isOk() &&
@@ -324,6 +344,99 @@ async function executeShutdown(args: {
   );
 }
 
+interface ShutdownDeadline {
+  dispose(): void;
+  signal: AbortSignal;
+  timeoutMs: number;
+}
+
+function createShutdownDeadline(
+  request: RuntimeShutdownRequest
+): ShutdownDeadline | null {
+  const timeoutMs = runtimeShutdownGraceTimeoutMs(request.graceTimeout);
+  if (timeoutMs === null) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(
+      new Error(
+        `runtime shutdown exceeded grace timeout after ${timeoutMs}ms for ${request.reason}`
+      )
+    );
+  }, timeoutMs);
+  timeout.unref?.();
+
+  return {
+    dispose() {
+      clearTimeout(timeout);
+    },
+    signal: controller.signal,
+    timeoutMs,
+  };
+}
+
+function runtimeShutdownGraceTimeoutMs(
+  graceTimeout: RuntimeShutdownRequest["graceTimeout"]
+): number | null {
+  if (!graceTimeout) {
+    return null;
+  }
+
+  const seconds = Number(graceTimeout.seconds);
+  if (!Number.isFinite(seconds)) {
+    return null;
+  }
+
+  const millis = seconds * 1000 + Math.ceil(graceTimeout.nanos / 1_000_000);
+  if (!Number.isFinite(millis) || millis < 0) {
+    return null;
+  }
+
+  return Math.min(millis, 2_147_483_647);
+}
+
+async function withShutdownDeadline<T>(
+  deadline: ShutdownDeadline | null,
+  work: () => Promise<T> | T,
+  timeoutMessage: string,
+  reason: string
+): Promise<T> {
+  if (deadline === null) {
+    return work();
+  }
+  if (deadline.signal.aborted) {
+    throw shutdownTimeoutError(deadline, timeoutMessage, reason);
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => {
+      reject(shutdownTimeoutError(deadline, timeoutMessage, reason));
+    };
+    deadline.signal.addEventListener("abort", abort, { once: true });
+    void Promise.resolve()
+      .then(work)
+      .then(resolve, reject)
+      .finally(() => {
+        deadline.signal.removeEventListener("abort", abort);
+      });
+  });
+}
+
+function shutdownTimeoutError(
+  deadline: ShutdownDeadline,
+  message: string,
+  reason: string
+): RuntimeShutdownError {
+  return createRuntimeShutdownError({
+    cause: deadline.signal.reason ?? new Error(message),
+    code: "shutdown_timeout",
+    message,
+    reason,
+  });
+}
+
 async function transitionShutdownPhase(
   args: {
     lease: RuntimeLifecycleLease;
@@ -352,6 +465,7 @@ async function transitionShutdownPhase(
 
 async function closeShutdownResources(
   resources: readonly RuntimeShutdownResource[],
+  deadline: ShutdownDeadline | null,
   reason: string
 ): Promise<ShutdownResult> {
   const errors: RuntimeShutdownError[] = [];
@@ -359,19 +473,29 @@ async function closeShutdownResources(
   for (const resource of resources) {
     const closeResult = await Result.tryPromise({
       try: async () => {
-        await resource.close();
+        await withShutdownDeadline(
+          deadline,
+          () => resource.close(),
+          `runtime resource ${resource.name} close exceeded graceful shutdown timeout for ${reason}`,
+          reason
+        );
       },
       catch: (cause) =>
-        createRuntimeShutdownError({
-          cause,
-          code: resource.failureCode ?? "resource_close_failed",
-          message: `failed to close runtime resource ${resource.name} for ${reason}`,
-          reason,
-        }),
+        cause instanceof RuntimeShutdownError
+          ? cause
+          : createRuntimeShutdownError({
+              cause,
+              code: resource.failureCode ?? "resource_close_failed",
+              message: `failed to close runtime resource ${resource.name} for ${reason}`,
+              reason,
+            }),
     });
 
     if (closeResult.isErr()) {
       errors.push(closeResult.error);
+      if (closeResult.error.failure.code === "shutdown_timeout") {
+        break;
+      }
     }
   }
 

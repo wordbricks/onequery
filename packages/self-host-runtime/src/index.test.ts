@@ -18,6 +18,7 @@ import {
 import type { DatabasePreparationResult } from "@onequery/db/server";
 import {
   RuntimePhase,
+  RuntimeStopCompletion,
   RuntimeStatusSchema,
   SupervisorIdentitySchema,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
@@ -354,7 +355,7 @@ describe("startServer", () => {
     const graceTimeout = create(DurationSchema, { seconds: 30n });
     await supervisorSessionInput?.onStopCommand?.(
       create(SupervisorStopCommandSchema, {
-        completion: 2,
+        completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
         graceTimeout,
         operationId: "00000000-0000-4000-8000-000000000001",
         reason: "test stop",
@@ -378,7 +379,7 @@ describe("startServer", () => {
     );
     expect(mocks.supervisorRuntimeSessionReady).toHaveBeenCalledWith(
       expect.objectContaining({
-        phase: 2,
+        phase: RuntimePhase.READY,
         runtimeSequence: 2n,
       })
     );
@@ -433,6 +434,40 @@ describe("startServer", () => {
     });
   });
 
+  it("shuts down when the supervisor session fails after ready", async () => {
+    const runtimePaths = createTempSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+        supervisorControl: createTempSupervisorControlEndpoint(runtimePaths),
+      })
+    );
+    let rejectClosed: ((cause: unknown) => void) | undefined;
+    vi.mocked(mocks.openSupervisorRuntimeSession).mockReturnValueOnce({
+      close: mocks.supervisorRuntimeSessionClose,
+      closed: new Promise<void>((_resolve, reject) => {
+        rejectClosed = reject;
+      }),
+      heartbeat: mocks.supervisorRuntimeSessionHeartbeat,
+      opened: Promise.resolve(),
+      ready: mocks.supervisorRuntimeSessionReady,
+    });
+
+    await startServer({ launchConfigPath });
+    expect(mocks.supervisorRuntimeSessionReady).toHaveBeenCalledTimes(1);
+    expect(mocks.shutdownController.shutdown).not.toHaveBeenCalled();
+
+    rejectClosed?.(new Error("session failed"));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
+      completion: "cleanup_and_exit",
+      reason: "supervisor_session_failed",
+    });
+  });
+
   it("disposes graceful shutdown handlers when startup cleanup runs after handler attachment", async () => {
     const runtimePaths = createTempSelfHostRuntimePaths();
     const launchConfigPath = writeLaunchConfigFile(
@@ -454,6 +489,76 @@ describe("startServer", () => {
     ).rejects.toMatchObject({
       _tag: "StartServerWorkflowError",
       step: "transition_lifecycle_ready",
+    });
+
+    expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.supervisorRuntimeSessionClose).toHaveBeenCalledTimes(1);
+    expect(mocks.closeServerStorage).toHaveBeenCalledTimes(1);
+    expect(mocks.releaseLifecycleLease).toHaveBeenCalledWith({
+      reason: "startup_failure",
+      stopServer: false,
+    });
+  });
+
+  it("disposes graceful shutdown handlers when supervisor client creation fails after handler attachment", async () => {
+    const runtimePaths = createTempSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+        supervisorControl: createTempSupervisorControlEndpoint(runtimePaths),
+      })
+    );
+    vi.mocked(mocks.createSupervisorLifecycleClient).mockImplementationOnce(
+      () => {
+        throw new Error("supervisor client creation failed");
+      }
+    );
+
+    await expect(
+      startServer({
+        launchConfigPath,
+      })
+    ).rejects.toMatchObject({
+      _tag: "StartServerWorkflowError",
+      step: "open_supervisor_session",
+    });
+
+    expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.supervisorRuntimeSessionClose).not.toHaveBeenCalled();
+    expect(mocks.closeServerStorage).toHaveBeenCalledTimes(1);
+    expect(mocks.releaseLifecycleLease).toHaveBeenCalledWith({
+      reason: "startup_failure",
+      stopServer: false,
+    });
+  });
+
+  it("closes supervisor sessions when session opening fails after handler attachment", async () => {
+    const runtimePaths = createTempSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+        supervisorControl: createTempSupervisorControlEndpoint(runtimePaths),
+      })
+    );
+    vi.mocked(mocks.openSupervisorRuntimeSession).mockReturnValueOnce({
+      close: mocks.supervisorRuntimeSessionClose,
+      closed: new Promise<void>(() => {}),
+      heartbeat: mocks.supervisorRuntimeSessionHeartbeat,
+      opened: Promise.reject(new Error("session open failed")),
+      ready: mocks.supervisorRuntimeSessionReady,
+    });
+
+    await expect(
+      startServer({
+        launchConfigPath,
+      })
+    ).rejects.toMatchObject({
+      _tag: "StartServerWorkflowError",
+      step: "open_supervisor_session",
     });
 
     expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);

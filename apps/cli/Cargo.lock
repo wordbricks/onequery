@@ -1579,6 +1579,7 @@ dependencies = [
  "jaq-json",
  "jaq-std",
  "onequery-config",
+ "onequery-connect-support",
  "onequery-core",
  "onequery-core-test-support",
  "onequery-gateway",
@@ -1619,6 +1620,17 @@ dependencies = [
  "serde_path_to_error",
  "toml",
  "toml_edit",
+]
+
+[[package]]
+name = "onequery-connect-support"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "buffa",
+ "buffa-types",
+ "connectrpc",
+ "pretty_assertions",
 ]
 
 [[package]]
@@ -1669,6 +1681,7 @@ dependencies = [
  "hyper-util",
  "insta",
  "libc",
+ "onequery-connect-support",
  "onequery-core",
  "onequery-proto-runtime",
  "onequery-utils",
@@ -1716,16 +1729,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "onequery-proto-cli"
+name = "onequery-proto-build-support"
 version = "0.0.0"
 dependencies = [
  "buffa",
  "buffa-codegen",
+ "connectrpc-build",
+ "onequery-utils",
+]
+
+[[package]]
+name = "onequery-proto-cli"
+version = "0.0.0"
+dependencies = [
+ "buffa",
  "buffa-types",
  "connectrpc",
- "connectrpc-build",
  "http-body",
- "onequery-utils",
+ "onequery-proto-build-support",
  "serde",
 ]
 
@@ -1734,13 +1755,11 @@ name = "onequery-proto-runtime"
 version = "0.0.0"
 dependencies = [
  "buffa",
- "buffa-codegen",
  "buffa-types",
  "connectrpc",
- "connectrpc-build",
  "futures",
  "http-body",
- "onequery-utils",
+ "onequery-proto-build-support",
  "serde",
  "tokio",
 ]

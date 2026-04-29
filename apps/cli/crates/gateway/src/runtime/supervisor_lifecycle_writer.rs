@@ -271,6 +271,7 @@ pub(super) struct TerminalRuntimeStatusSnapshotWrite<'a> {
     pub(super) launch_id: &'a str,
     pub(super) phase: types::RuntimePhase,
     pub(super) runtime_pid: u32,
+    pub(super) live_runtime_sequence: Option<u64>,
     pub(super) failure: Option<&'a SupervisorRuntimeFailureInfo>,
     pub(super) exit_code: Option<i32>,
     pub(super) signal: Option<&'a str>,
@@ -283,8 +284,13 @@ pub(super) fn write_terminal_runtime_status_snapshot(
 ) -> Result<types::RuntimeStatus, CliError> {
     let now = Utc::now();
     let data_dir = paths.data_dir.display().to_string();
-    let runtime_sequence =
-        next_terminal_runtime_sequence(paths, record.launch_id, record.runtime_pid, command_line)?;
+    let runtime_sequence = next_terminal_runtime_sequence(
+        paths,
+        record.launch_id,
+        record.runtime_pid,
+        record.live_runtime_sequence,
+        command_line,
+    )?;
     let failure = record.failure.map(|failure| {
         let failure_message = format!(
             "{}; exit_code={}; signal={}",
@@ -442,35 +448,44 @@ fn next_terminal_runtime_sequence(
     paths: &SelfHostRuntimePaths,
     launch_id: &str,
     runtime_pid: u32,
+    live_runtime_sequence: Option<u64>,
     command_line: &str,
 ) -> Result<u64, CliError> {
+    let mut latest_runtime_sequence = live_runtime_sequence.unwrap_or(0);
+
+    if let Some(runtime_sequence) =
+        runtime_sequence_from_runtime_status_snapshot(paths, launch_id, runtime_pid, command_line)?
+    {
+        latest_runtime_sequence = latest_runtime_sequence.max(runtime_sequence);
+    }
+
+    if let Some(runtime_sequence) =
+        runtime_sequence_from_supervisor_snapshot(paths, launch_id, runtime_pid, command_line)?
+    {
+        latest_runtime_sequence = latest_runtime_sequence.max(runtime_sequence);
+    }
+
+    Ok(latest_runtime_sequence.saturating_add(1))
+}
+
+fn runtime_sequence_from_runtime_status_snapshot(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+    runtime_pid: u32,
+    command_line: &str,
+) -> Result<Option<u64>, CliError> {
     let Some(snapshot) = read_runtime_status_snapshot_for_recovery(paths, command_line)? else {
-        return next_terminal_runtime_sequence_from_supervisor_snapshot(
-            paths,
-            launch_id,
-            runtime_pid,
-            command_line,
-        );
+        return Ok(None);
     };
     let Some(status) = snapshot.status.as_option() else {
-        return next_terminal_runtime_sequence_from_supervisor_snapshot(
-            paths,
-            launch_id,
-            runtime_pid,
-            command_line,
-        );
+        return Ok(None);
     };
     let Some(identity) = snapshot
         .header
         .as_option()
         .and_then(|header| header.launch.as_option())
     else {
-        return next_terminal_runtime_sequence_from_supervisor_snapshot(
-            paths,
-            launch_id,
-            runtime_pid,
-            command_line,
-        );
+        return Ok(None);
     };
 
     if identity.runtime_pid != Some(runtime_pid)
@@ -480,26 +495,21 @@ fn next_terminal_runtime_sequence(
             .as_deref()
             .is_none_or(|data_dir| std::path::Path::new(data_dir) != paths.data_dir.as_path())
     {
-        return next_terminal_runtime_sequence_from_supervisor_snapshot(
-            paths,
-            launch_id,
-            runtime_pid,
-            command_line,
-        );
+        return Ok(None);
     }
 
-    Ok(status.runtime_sequence.unwrap_or(0).saturating_add(1))
+    Ok(status.runtime_sequence)
 }
 
-fn next_terminal_runtime_sequence_from_supervisor_snapshot(
+fn runtime_sequence_from_supervisor_snapshot(
     paths: &SelfHostRuntimePaths,
     launch_id: &str,
     runtime_pid: u32,
     command_line: &str,
-) -> Result<u64, CliError> {
+) -> Result<Option<u64>, CliError> {
     let path = paths.supervisor_status_snapshot_path.as_path();
     if !path.exists() {
-        return Ok(1);
+        return Ok(None);
     }
 
     let contents = fs::read_to_string(path).map_err(|error| {
@@ -528,10 +538,10 @@ fn next_terminal_runtime_sequence_from_supervisor_snapshot(
             )
         })?;
     let Some(status) = snapshot.status.as_option() else {
-        return Ok(1);
+        return Ok(None);
     };
     let Some(runtime) = status.runtime.as_option() else {
-        return Ok(1);
+        return Ok(None);
     };
 
     if runtime.pid != Some(runtime_pid)
@@ -541,10 +551,10 @@ fn next_terminal_runtime_sequence_from_supervisor_snapshot(
             .as_deref()
             .is_none_or(|data_dir| std::path::Path::new(data_dir) != paths.data_dir.as_path())
     {
-        return Ok(1);
+        return Ok(None);
     }
 
-    Ok(status.runtime_sequence.unwrap_or(0).saturating_add(1))
+    Ok(status.runtime_sequence)
 }
 
 fn supervisor_failure_to_proto(failure: &SupervisorFailureInfo) -> types::SupervisorFailure {

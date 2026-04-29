@@ -148,7 +148,7 @@ pub(super) async fn monitor_supervised_runtime_with_stop_signal<
     }
 }
 
-async fn handle_supervisor_stop_request(
+pub(super) async fn handle_supervisor_stop_request(
     context: SupervisedRuntimeContext<'_>,
     machine: &mut SupervisorMachine,
     timers: &mut SupervisorTimers,

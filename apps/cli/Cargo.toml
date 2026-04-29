@@ -1,14 +1,16 @@
 [workspace]
 members = [
   "crates/async-utils",
+  "crates/config",
+  "crates/connect-support",
   "crates/core",
   "crates/core/tests/common",
+  "crates/gateway",
   "crates/git-utils",
   "crates/install-context",
   "crates/onequery-cli",
   "crates/process-hardening",
-  "crates/config",
-  "crates/gateway",
+  "crates/proto-build-support",
   "crates/proto-cli",
   "crates/proto-runtime",
   "crates/utils",
@@ -43,10 +45,12 @@ onequery-cli = { path = "crates/onequery-cli" }
 onequery-core = { path = "crates/core" }
 onequery-core-test-support = { path = "crates/core/tests/common" }
 onequery-config = { path = "crates/config" }
+onequery-connect-support = { path = "crates/connect-support" }
 onequery-gateway = { path = "crates/gateway" }
 onequery-git-utils = { path = "crates/git-utils" }
 onequery-install-context = { path = "crates/install-context" }
 onequery-process-hardening = { path = "crates/process-hardening" }
+onequery-proto-build-support = { path = "crates/proto-build-support" }
 onequery-proto-cli = { path = "crates/proto-cli" }
 onequery-proto-runtime = { path = "crates/proto-runtime" }
 onequery-utils = { path = "crates/utils" }

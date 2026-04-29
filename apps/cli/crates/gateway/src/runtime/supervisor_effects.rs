@@ -251,6 +251,7 @@ async fn execute_supervisor_effects(
                 exit_code,
                 signal,
             } => {
+                let live_status = context.supervisor_control.snapshot().await;
                 let terminal_status = write_terminal_runtime_status_snapshot(
                     context.paths,
                     TerminalRuntimeStatusSnapshotWrite {
@@ -258,6 +259,11 @@ async fn execute_supervisor_effects(
                         launch_id: context.launch_id,
                         phase: *phase,
                         runtime_pid: *runtime_pid,
+                        live_runtime_sequence: live_runtime_sequence_for_terminal_status(
+                            &live_status,
+                            context,
+                            *runtime_pid,
+                        ),
                         failure: failure.as_ref(),
                         exit_code: *exit_code,
                         signal: signal.as_deref(),
@@ -316,6 +322,33 @@ async fn execute_supervisor_effects(
     }
 
     Ok(report)
+}
+
+fn live_runtime_sequence_for_terminal_status(
+    status: &types::SupervisorStatus,
+    context: SupervisorEffectContext<'_>,
+    runtime_pid: u32,
+) -> Option<u64> {
+    let runtime_sequence = status.runtime_sequence?;
+    let data_dir = context.paths.data_dir.display().to_string();
+
+    if status.runtime.as_option().is_some_and(|runtime| {
+        runtime.pid == Some(runtime_pid)
+            && runtime.launch_id.as_deref() == Some(context.launch_id)
+            && runtime.data_dir.as_deref() == Some(data_dir.as_str())
+    }) {
+        return Some(runtime_sequence);
+    }
+
+    if status.launch.as_option().is_some_and(|launch| {
+        launch.runtime_pid == Some(runtime_pid)
+            && launch.launch_id.as_deref() == Some(context.launch_id)
+            && launch.data_dir.as_deref() == Some(data_dir.as_str())
+    }) {
+        return Some(runtime_sequence);
+    }
+
+    None
 }
 
 async fn request_supervised_runtime_stop(

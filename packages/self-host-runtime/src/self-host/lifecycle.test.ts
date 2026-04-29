@@ -156,6 +156,43 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
+  it("replaces an expired runtime lease even when the old pid is alive", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-expired-lease-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const oldLeaseTime = new Date("2026-04-29T00:00:00.000Z");
+    const newLeaseTime = new Date("2026-04-29T00:02:01.000Z");
+
+    await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: (pid) => pid === 111,
+      launchId: "launch-a",
+      now: () => oldLeaseTime,
+      pid: 111,
+      supervisor: createTestSupervisorIdentity(),
+    });
+
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: (pid) => pid === 111,
+      launchId: "launch-b",
+      now: () => newLeaseTime,
+      pid: 222,
+      supervisor: createTestSupervisorIdentity({
+        generation: 8n,
+        pid: 1002,
+      }),
+    });
+    const leaseContents = await readFile(paths.leasePath, "utf8");
+
+    expect(leaseContents).toContain('"pid":222');
+
+    await lease.release({
+      reason: "test_cleanup",
+      stopServer: false,
+    });
+  });
+
   it("rejects an empty launch id before creating lifecycle files", async () => {
     const root = await mkdtemp(
       join(tmpdir(), "onequery-self-host-empty-launch-id-")
@@ -228,10 +265,41 @@ describe("self-host lifecycle lease", () => {
       stopServer: false,
     });
 
-    await expect(access(paths.statusPath)).rejects.toBeDefined();
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_READY"'
+    );
+    await expect(access(paths.leasePath)).rejects.toBeDefined();
   });
 
-  it("stops the packaged server runtime and removes durable lifecycle files on SIGTERM", async () => {
+  it("serializes concurrent lifecycle transitions against the active lease state", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-concurrent-transition-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 334,
+      supervisor: createTestSupervisorIdentity(),
+    });
+
+    await Promise.all([
+      lease.transition(RuntimePhase.READY),
+      lease.transition(RuntimePhase.STOPPING),
+    ]);
+
+    const statusSnapshot = JSON.parse(await readFile(paths.statusPath, "utf8"));
+    expect(statusSnapshot.status.phase).toBe("RUNTIME_PHASE_STOPPING");
+    expect(statusSnapshot.status.runtimeSequence).toBe("3");
+
+    await lease.release({
+      reason: "test_cleanup",
+      stopServer: false,
+    });
+  });
+
+  it("stops the packaged server runtime and releases the lifecycle lease on SIGTERM", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-self-host-signal-"));
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -309,7 +377,9 @@ describe("self-host lifecycle lease", () => {
 
     await waitUntil(async () => {
       expect(exitProcess).toHaveBeenCalledWith(0);
-      await expect(access(paths.statusPath)).rejects.toBeDefined();
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"phase":"RUNTIME_PHASE_CHECKPOINTING"'
+      );
       await expect(access(paths.leasePath)).rejects.toBeDefined();
       expect(events).toEqual([
         "stop:start",
@@ -472,6 +542,62 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
+  it("fails shutdown locally when grace timeout expires during resource close", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-shutdown-timeout-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 447,
+      supervisor: createTestSupervisorIdentity(),
+    });
+    const processSignals = new EventEmitter();
+    const server = {
+      stop: vi.fn(async () => {}),
+    };
+    const storageResource = {
+      close: vi.fn(() => new Promise<void>(() => undefined)),
+      name: "server-storage",
+    };
+    const exitProcess = vi.fn();
+    const controller = attachGracefulShutdownHandlers({
+      exitProcess,
+      lease,
+      processSignals,
+      server,
+      shutdownResources: [storageResource],
+    });
+
+    const shutdown = controller.shutdown({
+      completion: "cleanup_only",
+      graceTimeout: {
+        nanos: 10_000_000,
+        seconds: 0n,
+      },
+      reason: "manual",
+    });
+
+    await expect(shutdown).rejects.toMatchObject({
+      failure: {
+        code: "shutdown_timeout",
+      },
+    });
+    expect(server.stop).toHaveBeenCalledWith(true);
+    expect(storageResource.close).toHaveBeenCalledTimes(1);
+    expect(exitProcess).not.toHaveBeenCalled();
+    await access(paths.statusPath);
+    await access(paths.leasePath);
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
+    );
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"code":"RUNTIME_FAILURE_CODE_SHUTDOWN_TIMEOUT"'
+    );
+  });
+
   it("disposes shutdown coordination without handling later process signals", async () => {
     const root = await mkdtemp(
       join(tmpdir(), "onequery-self-host-disposed-controller-")
@@ -561,7 +687,9 @@ describe("self-host lifecycle lease", () => {
     await expect(shutdown).resolves.toBeUndefined();
     expect(storageResource.close).toHaveBeenCalledTimes(1);
     expect(exitProcess).not.toHaveBeenCalled();
-    await expect(access(paths.statusPath)).rejects.toBeDefined();
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_CHECKPOINTING"'
+    );
     await expect(access(paths.leasePath)).rejects.toBeDefined();
   });
 

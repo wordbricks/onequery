@@ -6,6 +6,7 @@ import type {
   RuntimeStatusSnapshot,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { RuntimePhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import { Mutex } from "antiox/sync/mutex";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
@@ -116,33 +117,35 @@ export async function acquireRuntimeLifecycleLeaseResult(
     );
 
     let released = false;
+    const mutationLock = new Mutex(undefined);
 
     return Result.ok({
       paths,
       async transition(phase, failure) {
-        const occurredAt = resolved.now();
-        const transition = createStandaloneLifecycleTransition(
-          activeLease,
-          phase,
-          occurredAt,
-          failure
+        const transitionResult = await withMutationLock(
+          mutationLock,
+          async () => {
+            const occurredAt = resolved.now();
+            const transition = createStandaloneLifecycleTransition(
+              activeLease,
+              phase,
+              occurredAt,
+              failure
+            );
+            if (transition === null) {
+              return Result.ok(activeLease.status);
+            }
+
+            return transitionRuntimeLifecycleLease(
+              paths,
+              activeLease,
+              transition,
+              resolved
+            );
+          }
         );
-        if (transition === null) {
-          return activeLease.status;
-        }
 
-        const transitionResult = await transitionRuntimeLifecycleLease(
-          paths,
-          activeLease,
-          transition,
-          resolved
-        );
-
-        if (transitionResult.isErr()) {
-          throw transitionResult.error;
-        }
-
-        return transitionResult.value;
+        return unwrapRuntimeLifecycleMutationResult(transitionResult);
       },
       currentStatus() {
         return activeLease.status;
@@ -172,38 +175,41 @@ export async function acquireRuntimeLifecycleLeaseResult(
         return activeLease.status;
       },
       async persistTransition(transition) {
-        const transitionResult = await transitionRuntimeLifecycleLease(
-          paths,
-          activeLease,
-          transition,
-          resolved
+        const transitionResult = await withMutationLock(mutationLock, () =>
+          transitionRuntimeLifecycleLease(
+            paths,
+            activeLease,
+            transition,
+            resolved
+          )
         );
 
-        if (transitionResult.isErr()) {
-          throw transitionResult.error;
-        }
-
-        return transitionResult.value;
+        return unwrapRuntimeLifecycleMutationResult(transitionResult);
       },
       async release({ reason, stopServer }) {
-        if (released) {
-          return;
-        }
-
-        released = true;
-        const releaseResult = await releaseRuntimeLifecycleLease(
-          paths,
-          activeLease.record,
-          resolved.logWriter,
-          {
-            reason,
-            stopServer,
+        const releaseResult = await withMutationLock(mutationLock, async () => {
+          if (released) {
+            return Result.ok(undefined);
           }
-        );
 
-        if (releaseResult.isErr()) {
-          throw releaseResult.error;
-        }
+          const releaseResult = await releaseRuntimeLifecycleLease(
+            paths,
+            activeLease.record,
+            resolved.logWriter,
+            {
+              reason,
+              stopServer,
+            }
+          );
+
+          if (releaseResult.isOk()) {
+            released = true;
+          }
+
+          return releaseResult;
+        });
+
+        unwrapRuntimeLifecycleMutationResult(releaseResult);
       },
     } satisfies RuntimeLifecycleDurableLease);
   });
@@ -225,6 +231,24 @@ export async function acquireRuntimeLifecycleLease(
   }
 
   return lease.value;
+}
+
+async function withMutationLock<T>(
+  mutationLock: Mutex<undefined>,
+  mutation: () => Promise<T> | T
+): Promise<T> {
+  using _guard = await mutationLock.lock();
+  return await mutation();
+}
+
+function unwrapRuntimeLifecycleMutationResult<T>(
+  result: ResultType<T, RuntimeLifecycleMutationError>
+): T {
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
 }
 
 async function transitionRuntimeLifecycleLease(
@@ -350,12 +374,10 @@ async function releaseRuntimeLifecycleLease(
         `[runtime] releasing lifecycle lease pid=${leaseRecord.runtime?.pid ?? "unknown"} reason=${options.reason} stopServer=${options.stopServer ? "yes" : "no"}`
       )
     );
-    const [removeRuntimeStatusResult, removeLeaseResult] = await Promise.all([
-      removeIfPresent(paths.runtimeStatusSnapshotPath),
-      removeIfPresent(paths.runtimeLeasePath),
-    ]);
-
-    yield* removeRuntimeStatusResult;
+    // Comment: The supervisor records child exit after runtime cleanup. Keep
+    // the last runtime-authored snapshot available so the supervisor can
+    // advance runtime_sequence monotonically before overwriting it.
+    const removeLeaseResult = await removeIfPresent(paths.runtimeLeasePath);
     yield* removeLeaseResult;
 
     return Result.ok(undefined);
@@ -392,7 +414,14 @@ async function acquireLease(
   const existingPid = existingRecord.isOk()
     ? (existingRecord.value.runtime?.pid ?? null)
     : null;
-  if (existingPid !== null && options.isProcessRunning(existingPid)) {
+  const existingLeaseActive =
+    existingRecord.isOk() &&
+    runtimeLeaseIsActive(existingRecord.value, acquiredAt);
+  if (
+    existingPid !== null &&
+    existingLeaseActive &&
+    options.isProcessRunning(existingPid)
+  ) {
     const duplicateLogResult = await writeLogMessage(
       options.logWriter,
       `[runtime] duplicate start blocked pid=${existingPid} dataDir=${paths.dataDir}`
@@ -432,6 +461,44 @@ async function acquireLease(
   }
 
   return Result.ok(record);
+}
+
+function runtimeLeaseIsActive(record: RuntimeLeaseRecord, now: Date): boolean {
+  const renewedAtMs = timestampMilliseconds(record.renewedAt);
+  const leaseTtlMs = durationMilliseconds(record.leaseTtl);
+  if (renewedAtMs === null || leaseTtlMs === null) {
+    return false;
+  }
+
+  return renewedAtMs + leaseTtlMs > BigInt(now.getTime());
+}
+
+function timestampMilliseconds(
+  timestamp: RuntimeLeaseRecord["renewedAt"]
+): bigint | null {
+  if (!timestamp) {
+    return null;
+  }
+  if (timestamp.nanos < 0 || timestamp.nanos >= 1e9) {
+    return null;
+  }
+
+  return timestamp.seconds * 1000n + BigInt(Math.floor(timestamp.nanos / 1e6));
+}
+
+function durationMilliseconds(
+  duration: RuntimeLeaseRecord["leaseTtl"]
+): bigint | null {
+  if (
+    !duration ||
+    duration.seconds < 0n ||
+    duration.nanos < 0 ||
+    duration.nanos >= 1e9
+  ) {
+    return null;
+  }
+
+  return duration.seconds * 1000n + BigInt(Math.floor(duration.nanos / 1e6));
 }
 
 function resolveLifecycleOptions(

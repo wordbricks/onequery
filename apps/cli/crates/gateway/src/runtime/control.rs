@@ -11,7 +11,6 @@ use super::control_error::supervisor_control_connect_error_summary;
 use super::control_error::with_supervisor_control_connect_error_metadata;
 use super::lifecycle::ManagedRuntimeIdentity;
 use super::lifecycle::read_supervisor_control_identity_for_recovery;
-use super::shutdown::supervisor_stop_target;
 use super::supervisor_control::client::get_supervisor_status;
 
 pub(crate) use super::control_error::supervisor_control_error_allows_stop_escalation;
@@ -33,9 +32,7 @@ pub(crate) async fn read_live_runtime_status(
     else {
         return Ok(None);
     };
-    let target = supervisor_stop_target(&state.paths, &identity.runtime, &identity.supervisor);
-
-    get_supervisor_status(&state.paths, target)
+    get_supervisor_status(&state.paths)
         .await
         .map(|status| Some(status_from_supervisor_status(status, &identity.runtime)))
         .map_err(|error| live_supervisor_status_error(&error, command_line))

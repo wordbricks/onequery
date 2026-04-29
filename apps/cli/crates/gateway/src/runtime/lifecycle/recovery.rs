@@ -6,6 +6,7 @@ use std::path::Path;
 
 use buffa::MessageField;
 use chrono::Utc;
+use onequery_connect_support::error_details::protobuf_duration_to_ms;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use onequery_core::process::is_process_running;
@@ -157,9 +158,11 @@ pub(crate) fn read_managed_runtime_identity(
                 else {
                     continue;
                 };
-                if let Some(decision) =
-                    runtime_lease_recovery_decision(&lease_record, paths.data_dir.as_path())
-                {
+                if let Some(decision) = runtime_lease_recovery_decision(
+                    &lease_record,
+                    paths.data_dir.as_path(),
+                    Utc::now(),
+                ) {
                     return Ok(apply_process_liveness_recovery_step(
                         decision,
                         is_process_running,
@@ -555,7 +558,12 @@ fn supervisor_terminal_recovery_decision(
 fn runtime_lease_recovery_decision(
     lease_record: &types::RuntimeLeaseRecord,
     expected_data_dir: &Path,
+    now: chrono::DateTime<Utc>,
 ) -> Option<DurableRecoveryDecision> {
+    if !runtime_lease_is_active(lease_record, now) {
+        return None;
+    }
+
     let runtime = lease_record.runtime.as_option()?;
     let launch = lease_record
         .header
@@ -565,6 +573,43 @@ fn runtime_lease_recovery_decision(
 
     managed_runtime_identity_from_parts(runtime, launch, Some(supervisor), expected_data_dir)
         .map(|identity| DurableRecoveryDecision::ActiveRuntime { identity })
+}
+
+fn runtime_lease_is_active(
+    lease_record: &types::RuntimeLeaseRecord,
+    now: chrono::DateTime<Utc>,
+) -> bool {
+    let Some(renewed_at_ms) = lease_record
+        .renewed_at
+        .as_option()
+        .and_then(protobuf_timestamp_milliseconds)
+    else {
+        return false;
+    };
+    let Some(lease_ttl_ms) = lease_record
+        .lease_ttl
+        .as_option()
+        .cloned()
+        .and_then(protobuf_duration_to_ms)
+        .map(i128::from)
+    else {
+        return false;
+    };
+
+    renewed_at_ms
+        .checked_add(lease_ttl_ms)
+        .is_some_and(|expires_at_ms| expires_at_ms > i128::from(now.timestamp_millis()))
+}
+
+fn protobuf_timestamp_milliseconds(
+    timestamp: &buffa_types::google::protobuf::Timestamp,
+) -> Option<i128> {
+    if !(0..1_000_000_000).contains(&timestamp.nanos) {
+        return None;
+    }
+
+    let seconds_ms = i128::from(timestamp.seconds).checked_mul(1000)?;
+    seconds_ms.checked_add(i128::from(timestamp.nanos / 1_000_000))
 }
 
 fn managed_runtime_identity_from_parts(
@@ -603,15 +648,12 @@ fn managed_runtime_identity_from_launch(
     expected_data_dir: &Path,
 ) -> Option<ManagedRuntimeIdentity> {
     if !launch_identity_matches_data_dir(launch, expected_data_dir)
-        || !launch
-            .launch_id
-            .as_deref()
-            .is_some_and(|launch_id| !launch_id.is_empty())
-        || !launch.runtime_pid.is_some_and(|pid| pid > 0)
-        || !launch.supervisor_pid.is_some_and(|pid| pid > 0)
-        || !launch
+        || launch.launch_id.as_deref().is_none_or(str::is_empty)
+        || launch.runtime_pid.is_none_or(|pid| pid == 0)
+        || launch.supervisor_pid.is_none_or(|pid| pid == 0)
+        || launch
             .supervisor_generation
-            .is_some_and(|generation| generation > 0)
+            .is_none_or(|generation| generation == 0)
     {
         return None;
     }

@@ -60,26 +60,40 @@ mod tests {
     #[cfg(unix)]
     use std::path::PathBuf;
 
-    use pretty_assertions::assert_ne;
+    use proptest::prelude::*;
 
     use super::launch_config_path_for_launch;
+    use super::short_stable_hash;
     #[cfg(unix)]
     use super::supervisor_control_socket_path_for_runtime;
 
-    #[test]
-    fn launch_config_path_is_scoped_by_launch_id() {
-        let run_dir = Path::new("/home/alice/.onequery/run");
-
-        assert_ne!(
-            launch_config_path_for_launch(run_dir, "launch-a"),
-            launch_config_path_for_launch(run_dir, "launch-b")
-        );
-        assert!(
-            launch_config_path_for_launch(run_dir, "launch-a")
+    proptest! {
+        #[test]
+        fn launch_config_path_is_scoped_by_launch_id(launch_id in any::<String>()) {
+            let run_dir = Path::new("/home/alice/.onequery/run");
+            let path = launch_config_path_for_launch(run_dir, &launch_id);
+            let Some(file_name) = path
                 .file_name()
                 .and_then(|value| value.to_str())
-                .is_some_and(|value| value.starts_with("launch-") && value.ends_with(".json"))
-        );
+            else {
+                prop_assert!(false, "launch config path should have UTF-8 file name");
+                return Ok(());
+            };
+
+            prop_assert_eq!(path.parent(), Some(run_dir));
+            prop_assert!(file_name.starts_with("launch-"));
+            prop_assert!(file_name.ends_with(".json"));
+            prop_assert_eq!(file_name.len(), "launch-".len() + 16 + ".json".len());
+        }
+
+        #[test]
+        fn short_stable_hash_is_bounded_hex(input in proptest::collection::vec(any::<u8>(), 0..512)) {
+            let hash = short_stable_hash(&input);
+
+            prop_assert_eq!(hash.len(), 16);
+            prop_assert!(hash.bytes().all(|byte| byte.is_ascii_hexdigit()));
+            prop_assert_eq!(hash, short_stable_hash(&input));
+        }
     }
 
     #[cfg(unix)]

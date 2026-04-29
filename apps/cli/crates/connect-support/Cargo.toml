@@ -1,0 +1,17 @@
+[package]
+name = "onequery-connect-support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+base64 = { workspace = true }
+buffa = { workspace = true, features = ["json"] }
+buffa-types = { workspace = true, features = ["json"] }
+connectrpc = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
+[lints]
+workspace = true

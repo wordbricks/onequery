@@ -20,12 +20,10 @@ pub(crate) type SupervisorControlClient =
 
 pub(crate) async fn get_supervisor_status(
     paths: &SelfHostRuntimePaths,
-    target: types::SupervisorControlTarget,
 ) -> Result<types::SupervisorStatus, ConnectError> {
     let response = supervisor_control_client(paths)
         .await?
         .get_status(types::SupervisorLifecycleServiceGetStatusRequest {
-            target: buffa::MessageField::some(target),
             ..Default::default()
         })
         .await?
@@ -62,8 +60,11 @@ pub(crate) async fn supervisor_control_client(
 ) -> Result<SupervisorControlClient, ConnectError> {
     let _ = paths;
 
+    // Comment: Windows supervisor control is intentionally unsupported for now.
+    // The current supervisor protocol is Unix-socket-only; add a named-pipe or
+    // TCP transport before enabling self-host supervisor lifecycle on Windows.
     Err(ConnectError::unimplemented(
-        "supervisor control Connect over Unix socket is not available on this platform",
+        "supervisor control is not supported on Windows yet",
     ))
 }
 

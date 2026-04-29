@@ -21,6 +21,7 @@ hyper-util = { workspace = true, features = [
   "server",
   "tokio",
 ] }
+onequery-connect-support = { workspace = true }
 onequery-core = { workspace = true }
 onequery-proto-runtime = { workspace = true }
 onequery-utils-string = { workspace = true }
