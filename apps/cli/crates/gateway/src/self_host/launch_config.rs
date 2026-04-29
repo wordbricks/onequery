@@ -102,10 +102,10 @@ pub(crate) struct ServerLaunchApiRateLimitConfig {
 pub(crate) struct ServerLaunchRuntimePathsConfig {
     pub(crate) backups_dir: String,
     pub(crate) data_dir: String,
-    pub(crate) lock_path: String,
     pub(crate) logs_dir: String,
-    pub(crate) pid_path: String,
     pub(crate) run_dir: String,
+    pub(crate) runtime_lease_path: String,
+    pub(crate) runtime_status_snapshot_path: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -231,10 +231,10 @@ fn resolve_self_host_launch_config(
         runtime_paths: ServerLaunchRuntimePathsConfig {
             backups_dir: paths.backups_dir.display().to_string(),
             data_dir: paths.data_dir.display().to_string(),
-            lock_path: paths.lock_path.display().to_string(),
             logs_dir: paths.logs_dir.display().to_string(),
-            pid_path: paths.pid_path.display().to_string(),
             run_dir: paths.run_dir.display().to_string(),
+            runtime_lease_path: paths.runtime_lease_path.display().to_string(),
+            runtime_status_snapshot_path: paths.runtime_status_snapshot_path.display().to_string(),
         },
         smtp: resolve_self_host_launch_smtp(smtp, smtp_secrets),
         storage: ServerLaunchStorageConfig::Pglite {

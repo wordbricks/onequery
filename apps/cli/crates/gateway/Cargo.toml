@@ -19,6 +19,7 @@ onequery-cli-core = { workspace = true }
 onequery-proto-runtime = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "signal", "time"] }
 toml = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 

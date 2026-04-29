@@ -25,9 +25,10 @@ import {
 import type { SelfHostLifecyclePaths } from "./lifecycle";
 
 function createPaths(root: string): SelfHostLifecyclePaths & {
+  leasePath: string;
   runDir: string;
   serverLogPath: string;
-  statePath: string;
+  statusPath: string;
 } {
   const dataDir = join(root, "data");
   const logsDir = join(dataDir, "logs");
@@ -39,12 +40,13 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
       transport: "unix",
     },
     dataDir,
-    lockPath: join(runDir, "server.lock"),
     logsDir,
-    pidPath: join(runDir, "server.pid"),
+    runtimeLeasePath: join(runDir, "runtime.lease.json"),
+    runtimeStatusSnapshotPath: join(runDir, "runtime.status.json"),
+    leasePath: join(runDir, "runtime.lease.json"),
     runDir,
     serverLogPath: join(logsDir, "server.log"),
-    statePath: join(runDir, "server.state.json"),
+    statusPath: join(runDir, "runtime.status.json"),
   };
 }
 
@@ -62,7 +64,7 @@ describe("self-host lifecycle lease", () => {
     );
   });
 
-  it("blocks a duplicate start for the same data directory while the lock holder is alive", async () => {
+  it("blocks a duplicate start for the same data directory while the lease holder is alive", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-self-host-lifecycle-"));
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -92,9 +94,9 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
-  it("replaces a stale lock before acquiring a new lifecycle lease", async () => {
+  it("replaces a stale runtime lease before acquiring a new lifecycle lease", async () => {
     const root = await mkdtemp(
-      join(tmpdir(), "onequery-self-host-stale-lock-")
+      join(tmpdir(), "onequery-self-host-stale-lease-")
     );
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -102,25 +104,16 @@ describe("self-host lifecycle lease", () => {
     await mkdir(paths.runDir, {
       recursive: true,
     });
-    await writeFile(
-      paths.lockPath,
-      JSON.stringify({
-        pid: 999,
-        acquiredAt: "2026-03-25T00:00:00.000Z",
-        dataDir: paths.dataDir,
-        launchId: "stale-launch",
-      })
-    );
-    await writeFile(paths.pidPath, "999\n");
+    await writeFile(paths.leasePath, "{}\n");
 
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 222,
     });
-    const lockContents = await readFile(paths.lockPath, "utf8");
+    const leaseContents = await readFile(paths.leasePath, "utf8");
 
-    expect(lockContents).toContain('"pid":222');
+    expect(leaseContents).toContain('"pid":222');
 
     await lease.release({
       reason: "test_cleanup",
@@ -147,7 +140,7 @@ describe("self-host lifecycle lease", () => {
     await expect(access(paths.runDir)).rejects.toBeDefined();
   });
 
-  it("records startup and shutdown lifecycle phases in the runtime state file", async () => {
+  it("records startup and shutdown lifecycle phases in the runtime status snapshot", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-self-host-state-"));
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -158,17 +151,17 @@ describe("self-host lifecycle lease", () => {
       pid: 333,
     });
 
-    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-      '"phase":"starting"'
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_STARTING"'
     );
-    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
       '"launchId":"launch-a"'
     );
 
     await lease.transition("ready");
 
-    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-      '"phase":"ready"'
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_READY"'
     );
 
     await lease.release({
@@ -176,10 +169,10 @@ describe("self-host lifecycle lease", () => {
       stopServer: false,
     });
 
-    await expect(access(paths.statePath)).rejects.toBeDefined();
+    await expect(access(paths.statusPath)).rejects.toBeDefined();
   });
 
-  it("stops the packaged server runtime and removes pid and lock files on SIGTERM", async () => {
+  it("stops the packaged server runtime and removes durable lifecycle files on SIGTERM", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-self-host-signal-"));
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -236,10 +229,10 @@ describe("self-host lifecycle lease", () => {
       expect(server.stop).toHaveBeenCalledWith(true);
     });
     expect(exitProcess).not.toHaveBeenCalled();
-    await access(paths.pidPath);
-    await access(paths.lockPath);
-    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-      '"phase":"draining"'
+    await access(paths.statusPath);
+    await access(paths.leasePath);
+    await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+      '"phase":"RUNTIME_PHASE_DRAINING"'
     );
 
     resolveServerStop();
@@ -247,8 +240,8 @@ describe("self-host lifecycle lease", () => {
     await waitUntil(async () => {
       expect(storageResource.close).toHaveBeenCalledTimes(1);
       expect(exitProcess).not.toHaveBeenCalled();
-      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-        '"phase":"checkpointing"'
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"phase":"RUNTIME_PHASE_CHECKPOINTING"'
       );
     });
 
@@ -256,9 +249,8 @@ describe("self-host lifecycle lease", () => {
 
     await waitUntil(async () => {
       expect(exitProcess).toHaveBeenCalledWith(0);
-      await expect(access(paths.pidPath)).rejects.toBeDefined();
-      await expect(access(paths.lockPath)).rejects.toBeDefined();
-      await expect(access(paths.statePath)).rejects.toBeDefined();
+      await expect(access(paths.statusPath)).rejects.toBeDefined();
+      await expect(access(paths.leasePath)).rejects.toBeDefined();
       expect(events).toEqual([
         "stop:start",
         "stop:done",
@@ -307,10 +299,10 @@ describe("self-host lifecycle lease", () => {
       expect(server.stop).toHaveBeenCalledWith(true);
       expect(storageResource.close).toHaveBeenCalledTimes(1);
       expect(exitProcess).toHaveBeenCalledWith(1);
-      await access(paths.pidPath);
-      await access(paths.lockPath);
-      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-        '"phase":"shutdown_failed"'
+      await access(paths.statusPath);
+      await access(paths.leasePath);
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
       );
     });
   });
@@ -353,10 +345,10 @@ describe("self-host lifecycle lease", () => {
       expect(server.stop).toHaveBeenCalledWith(true);
       expect(storageResource.close).toHaveBeenCalledTimes(1);
       expect(exitProcess).toHaveBeenCalledWith(1);
-      await access(paths.pidPath);
-      await access(paths.lockPath);
-      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-        '"phase":"shutdown_failed"'
+      await access(paths.statusPath);
+      await access(paths.leasePath);
+      await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
+        '"phase":"RUNTIME_PHASE_SHUTDOWN_FAILED"'
       );
     });
   });
@@ -442,8 +434,8 @@ describe("self-host lifecycle lease", () => {
     await expect(shutdown).resolves.toBeUndefined();
     expect(storageResource.close).toHaveBeenCalledTimes(1);
     expect(exitProcess).not.toHaveBeenCalled();
-    await expect(access(paths.pidPath)).rejects.toBeDefined();
-    await expect(access(paths.lockPath)).rejects.toBeDefined();
+    await expect(access(paths.statusPath)).rejects.toBeDefined();
+    await expect(access(paths.leasePath)).rejects.toBeDefined();
   });
 
   it("appends lifecycle log lines into the configured server log file", async () => {
@@ -490,10 +482,10 @@ describe("self-host lifecycle lease", () => {
       runtimePaths: {
         backupsDir: join(root, "backups"),
         dataDir: paths.dataDir,
-        lockPath: paths.lockPath,
         logsDir: paths.logsDir,
-        pidPath: paths.pidPath,
         runDir: paths.runDir,
+        runtimeLeasePath: paths.leasePath,
+        runtimeStatusSnapshotPath: paths.statusPath,
       },
     });
 
@@ -506,16 +498,16 @@ describe("self-host lifecycle lease", () => {
       paths: {
         controlEndpoint: paths.controlEndpoint,
         dataDir: paths.dataDir,
-        lockPath: paths.lockPath,
         logsDir: paths.logsDir,
-        pidPath: paths.pidPath,
+        runtimeLeasePath: paths.leasePath,
+        runtimeStatusSnapshotPath: paths.statusPath,
       },
     });
   });
 
-  it("replaces an invalid lock record before acquiring a new lifecycle lease", async () => {
+  it("replaces an invalid lease record before acquiring a new lifecycle lease", async () => {
     const root = await mkdtemp(
-      join(tmpdir(), "onequery-self-host-invalid-lock-")
+      join(tmpdir(), "onequery-self-host-invalid-lease-")
     );
     tempRoots.push(root);
     const paths = createPaths(root);
@@ -523,15 +515,7 @@ describe("self-host lifecycle lease", () => {
     await mkdir(paths.runDir, {
       recursive: true,
     });
-    await writeFile(
-      paths.lockPath,
-      JSON.stringify({
-        acquiredAt: "2026-03-25T00:00:00.000Z",
-        dataDir: paths.dataDir,
-        pid: "invalid",
-      })
-    );
-    await writeFile(paths.pidPath, "999\n");
+    await writeFile(paths.leasePath, "{not-json");
 
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
@@ -539,7 +523,7 @@ describe("self-host lifecycle lease", () => {
       pid: 555,
     });
 
-    await expect(readFile(paths.lockPath, "utf8")).resolves.toContain(
+    await expect(readFile(paths.leasePath, "utf8")).resolves.toContain(
       '"pid":555'
     );
 

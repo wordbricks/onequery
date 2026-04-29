@@ -173,7 +173,8 @@ fn ensure_runtime_not_running(
     paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let Some(pid) = read_pid(paths.pid_path.as_path())? else {
+    let Some(pid) = onequery_gateway::read_running_gateway_pid_from_paths(paths, command_line)?
+    else {
         return Ok(());
     };
 
@@ -288,27 +289,6 @@ fn restore_error(title: &str, command_line: &str, error: impl std::fmt::Display)
         error.to_string(),
         vec!["retry onequery restore".to_owned()],
     )
-}
-
-fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
-    let Ok(contents) = fs::read_to_string(path) else {
-        return Ok(None);
-    };
-
-    let trimmed = contents.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-
-    trimmed.parse::<u32>().map(Some).map_err(|error| {
-        CliError::new(
-            "failed to parse runtime pid file",
-            "onequery restore",
-            ErrorStage::LoadConfig,
-            format!("{error} ({})", path.display()),
-            vec!["remove the stale pid file and retry".to_owned()],
-        )
-    })
 }
 
 #[cfg(test)]

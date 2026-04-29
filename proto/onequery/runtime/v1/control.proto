@@ -19,7 +19,34 @@ service RuntimeControlService {
   }
 }
 
-message GetStatusRequest {}
+message RuntimeTarget {
+  string launch_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string data_dir = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  uint32 pid = 3 [
+    features.field_presence = EXPLICIT,
+    (buf.validate.field).uint32.gte = 0
+  ];
+  uint32 supervisor_pid = 4 [
+    features.field_presence = EXPLICIT,
+    (buf.validate.field).uint32.gte = 0
+  ];
+  uint64 supervisor_generation = 5 [
+    features.field_presence = EXPLICIT,
+    (buf.validate.field).uint64.gte = 0
+  ];
+}
+
+message GetStatusRequest {
+  RuntimeTarget target = 1;
+}
 
 message GetStatusResponse {
   RuntimeStatus status = 1 [(buf.validate.field).required = true];
@@ -45,6 +72,7 @@ message StopRequest {
     (buf.validate.field).duration.gt = {},
     (buf.validate.field).duration.lte = {seconds: 300}
   ];
+  RuntimeTarget target = 5 [(buf.validate.field).required = true];
 }
 
 message StopResponse {
@@ -58,8 +86,9 @@ message StopResponse {
 }
 
 message WatchStatusRequest {
-  uint64 after_sequence = 1 [(buf.validate.field).uint64.gte = 0];
+  uint64 after_runtime_sequence = 1 [(buf.validate.field).uint64.gte = 0];
   bool include_snapshot = 2 [(buf.validate.field).required = true];
+  RuntimeTarget target = 3 [(buf.validate.field).required = true];
 }
 
 message WatchStatusResponse {

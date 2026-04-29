@@ -30,10 +30,10 @@ describe("createServerRuntimeConfig", () => {
         runtimePaths: {
           backupsDir: "/tmp/runtime/backups",
           dataDir: "/tmp/runtime/data",
-          lockPath: "/tmp/runtime/run/server.lock",
           logsDir: "/tmp/runtime/logs",
-          pidPath: "/tmp/runtime/run/server.pid",
           runDir: "/tmp/runtime/run",
+          runtimeLeasePath: "/tmp/runtime/run/runtime.lease.json",
+          runtimeStatusSnapshotPath: "/tmp/runtime/run/runtime.status.json",
         },
         smtp: createSelfHostSmtpConfig({
           fromName: "OneQuery",

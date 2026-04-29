@@ -22,10 +22,10 @@ describe("server launch contract", () => {
       runtimePaths: createSelfHostRuntimePaths({
         backupsDir: "/tmp/onequery/data/backups",
         dataDir: "/tmp/onequery/data",
-        lockPath: "/tmp/onequery/data/run/server.lock",
         logsDir: "/tmp/onequery/data/logs",
-        pidPath: "/tmp/onequery/data/run/server.pid",
         runDir: "/tmp/onequery/data/run",
+        runtimeLeasePath: "/tmp/onequery/data/run/runtime.lease.json",
+        runtimeStatusSnapshotPath: "/tmp/onequery/data/run/runtime.status.json",
       }),
       smtp: createSelfHostSmtpConfig({
         fromName: "OneQuery OSS",

@@ -5,14 +5,20 @@ use std::path::PathBuf;
 use std::process::Child;
 use std::process::Command as ProcessCommand;
 use std::process::Stdio;
+use std::time::Duration;
 
+use connectrpc::ConnectError;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use serde_json::json;
+use tokio::time::Instant;
+use tokio::time::sleep;
+use tokio::time::timeout;
 
 use crate::GatewayCommandOutput;
 use crate::runtime_accepting_connections;
 use crate::runtime_probe_host;
+use crate::self_host::SelfHostRuntimePaths;
 use crate::self_host::write_self_host_launch_config;
 use onequery_cli_core::process_context::ProcessContext;
 
@@ -24,17 +30,27 @@ use super::super::render::render_gateway_start_output;
 use super::super::state::GatewayRuntimeState;
 use super::super::state::GatewayStateAccessMode;
 use super::super::state::resolve_runtime_state;
+use super::control::RuntimeControlCallHeaders;
+use super::control::RuntimeControlPhase;
+use super::control::RuntimeControlStatus;
+use super::control::RuntimeControlStatusWatchEvent;
+use super::control::runtime_control_error_allows_fallback;
+use super::control::runtime_control_watch_event_from_proto;
+use super::control::watch_runtime_control_status;
+use super::control_error::runtime_control_connect_error_summary;
+use super::control_error::with_runtime_control_connect_error_metadata;
 use super::lifecycle::read_managed_runtime_pid;
-use super::lifecycle::read_runtime_state_record;
+use super::lifecycle::read_runtime_status_snapshot;
 use super::lifecycle::runtime_launch_id_matches;
 use super::lifecycle::runtime_phase_label;
 use super::lifecycle::runtime_ready_pid_reported_during_startup_poll;
-use super::lifecycle::runtime_state_path;
-use super::shutdown::remove_if_exists;
-use super::shutdown::stop_request_matches;
+use super::lifecycle::runtime_status_snapshot_path;
+use super::lifecycle::runtime_status_snapshot_pid_and_phase;
 use super::status::describe_exit_status;
 use super::status::exit_signal_label;
 use super::status::is_expected_termination;
+use super::supervisor::monitor_foreground_runtime;
+use super::supervisor::supervisor_id_for_pid;
 use super::transport::ensure_runtime_command_support;
 use super::transport::resolve_runtime_command;
 use super::transport::retry_command_hint;
@@ -47,7 +63,7 @@ struct PreparedRuntimeLaunch {
     runtime_command: OsString,
 }
 
-pub(crate) fn run_gateway_foreground(
+pub(crate) async fn run_gateway_foreground(
     state: &GatewayRuntimeState,
     process: &ProcessContext,
     command_line: &str,
@@ -71,21 +87,17 @@ pub(crate) fn run_gateway_foreground(
             retry_command,
         )
     })?;
-    let child_pid = child.id();
+    let runtime_pid = child.id();
+    let status = monitor_foreground_runtime(
+        state,
+        &launch.launch_id,
+        runtime_pid,
+        &mut child,
+        command_line,
+    )
+    .await?;
 
-    let status = child.wait().map_err(|wait_error| {
-        CliError::new(
-            "failed while waiting for self-host server",
-            command_line,
-            ErrorStage::Internal,
-            wait_error.to_string(),
-            vec![retry_command_hint(retry_command)],
-        )
-    })?;
-    let stop_requested = stop_request_matches(state.paths.stop_request_path.as_path(), child_pid);
-    remove_if_exists(state.paths.stop_request_path.as_path());
-
-    if status.success() || is_expected_termination(status) || stop_requested {
+    if status.success() || is_expected_termination(status) {
         return Ok(GatewayCommandOutput::structured(
             Vec::new(),
             json!({
@@ -109,7 +121,7 @@ pub(crate) fn run_gateway_foreground(
     ))
 }
 
-pub(crate) fn run_gateway_background(
+pub(crate) async fn run_gateway_background(
     state: &GatewayRuntimeState,
     process: &ProcessContext,
     command_line: &str,
@@ -160,21 +172,25 @@ pub(crate) fn run_gateway_background(
             retry_command,
         )
     })?;
-    let state_path = runtime_state_path(state.paths.run_dir.as_path());
+    let supervisor_id = supervisor_id_for_pid(child.id());
+    let status_snapshot_path = runtime_status_snapshot_path(state.paths.run_dir.as_path());
 
     let runtime_pid = wait_for_background_runtime_start(
         &mut child,
         BackgroundRuntimeStartCheck {
-            state_path: state_path.as_path(),
+            paths: &state.paths,
+            status_snapshot_path: status_snapshot_path.as_path(),
             data_dir: state.paths.data_dir.as_path(),
             log_path: state.paths.server_log_path.as_path(),
             listen_host: &config.server.listen_host,
             listen_port: config.server.port,
             launch_id: &launch.launch_id,
+            supervisor_id: supervisor_id.as_str(),
             command_line,
             retry_command,
         },
-    )?;
+    )
+    .await?;
 
     let refreshed_state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
     Ok(render_gateway_start_output(&refreshed_state, runtime_pid))
@@ -203,7 +219,6 @@ fn prepare_runtime_launch(
         &launch_plan.migrations_dir,
         &launch_id,
     )?;
-    remove_if_exists(state.paths.stop_request_path.as_path());
     Ok(PreparedRuntimeLaunch {
         launch_config_path,
         launch_id,
@@ -289,76 +304,122 @@ pub(super) fn configure_background_process(child: &mut ProcessCommand) {
 }
 
 struct BackgroundRuntimeStartCheck<'a> {
-    state_path: &'a Path,
+    paths: &'a SelfHostRuntimePaths,
+    status_snapshot_path: &'a Path,
     data_dir: &'a Path,
     log_path: &'a Path,
     listen_host: &'a str,
     listen_port: u16,
     launch_id: &'a str,
+    supervisor_id: &'a str,
     command_line: &'a str,
     retry_command: &'a str,
 }
 
-fn wait_for_background_runtime_start(
+enum StartupWatchReadiness {
+    Ready(u32),
+    Pending { stream_established: bool },
+    StreamError(Box<ConnectError>),
+    Terminal(RuntimeControlPhase),
+}
+
+async fn wait_for_background_runtime_start(
     child: &mut Child,
     check: BackgroundRuntimeStartCheck<'_>,
 ) -> Result<u32, CliError> {
     // CONTEXT: background start waits for a ready state carrying this launch
     // token instead of accepting any stale runtime that shares the data dir.
-    for _ in 0..GATEWAY_START_POLL_ATTEMPTS {
-        if let Some(status) = child.try_wait().map_err(|error| {
-            CliError::new(
-                "failed while monitoring self-host background start",
-                check.command_line,
-                ErrorStage::Internal,
-                error.to_string(),
-                vec![
-                    format!("check log file {}", check.log_path.display()),
-                    retry_command_hint(check.retry_command),
-                ],
-            )
-        })? {
-            return Err(CliError::new(
-                "gateway supervisor exited during background start",
-                check.command_line,
-                ErrorStage::Internal,
-                describe_exit_status(status),
-                vec![
-                    format!("check log file {}", check.log_path.display()),
-                    retry_command_hint(check.retry_command),
-                ],
-            ));
+    let startup_deadline = Instant::now()
+        + Duration::from_millis(
+            GATEWAY_START_POLL_ATTEMPTS as u64 * GATEWAY_START_POLL_INTERVAL_MS,
+        );
+    let poll_interval = Duration::from_millis(GATEWAY_START_POLL_INTERVAL_MS);
+    let mut control_stream_established = false;
+    let mut last_watch_error = None;
+
+    while Instant::now() < startup_deadline {
+        ensure_background_supervisor_still_running(child, &check)?;
+
+        match poll_runtime_control_startup_readiness(&check, startup_deadline).await {
+            Ok(StartupWatchReadiness::Ready(runtime_pid)) => return Ok(runtime_pid),
+            Ok(StartupWatchReadiness::Pending { stream_established }) => {
+                control_stream_established |= stream_established;
+            }
+            Ok(StartupWatchReadiness::StreamError(error)) => {
+                control_stream_established = true;
+                if !runtime_control_error_allows_fallback(error.as_ref()) {
+                    return Err(runtime_control_startup_watch_error(&check, error.as_ref()));
+                }
+                last_watch_error = Some(*error);
+            }
+            Ok(StartupWatchReadiness::Terminal(phase)) => {
+                return Err(runtime_control_terminal_startup_error(&check, phase));
+            }
+            Err(error) => {
+                if !runtime_control_error_allows_fallback(&error) {
+                    return Err(runtime_control_startup_watch_error(&check, &error));
+                }
+                last_watch_error = Some(error);
+            }
         }
 
-        if let Some(runtime_pid) = runtime_ready_pid_reported_during_startup_poll(
-            check.state_path,
-            check.data_dir,
-            check.launch_id,
-            check.command_line,
-        )? && runtime_accepting_connections(check.listen_host, check.listen_port)
+        if !control_stream_established
+            && let Some(runtime_pid) = runtime_ready_pid_reported_during_startup_poll(
+                check.status_snapshot_path,
+                check.data_dir,
+                check.launch_id,
+                check.command_line,
+            )?
+            && runtime_accepting_connections(check.listen_host, check.listen_port)
         {
             return Ok(runtime_pid);
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(
-            GATEWAY_START_POLL_INTERVAL_MS,
+        sleep(poll_interval.min(startup_deadline.saturating_duration_since(Instant::now()))).await;
+    }
+
+    ensure_background_supervisor_still_running(child, &check)?;
+
+    if control_stream_established {
+        return Err(runtime_control_startup_timeout_error(
+            &check,
+            last_watch_error.as_ref(),
         ));
     }
 
     let probe_host = runtime_probe_host(check.listen_host);
 
-    let runtime_state = read_runtime_state_record(check.state_path, check.command_line)?;
+    let runtime_status_snapshot =
+        read_runtime_status_snapshot(check.status_snapshot_path, check.command_line)?;
 
-    if runtime_state.as_ref().is_some_and(|state| {
-        state.phase == super::lifecycle::RuntimeLifecyclePhase::Ready
-            && runtime_launch_id_matches(&state.launch_id, check.launch_id)
-            && Path::new(&state.data_dir) == check.data_dir
+    if runtime_status_snapshot.as_ref().is_some_and(|snapshot| {
+        let Some(status) = snapshot.status.as_option() else {
+            return false;
+        };
+        let Some(identity) = status.identity.as_option() else {
+            return false;
+        };
+        let Some(phase) = status.phase.and_then(|phase| phase.as_known()) else {
+            return false;
+        };
+
+        phase == crate::runtime_control::types::RuntimePhase::RUNTIME_PHASE_READY
+            && runtime_launch_id_matches(identity.launch_id.as_deref(), check.launch_id)
+            && identity
+                .data_dir
+                .as_deref()
+                .is_some_and(|data_dir| Path::new(data_dir) == check.data_dir)
     }) {
-        let phase = runtime_state
+        let phase = runtime_status_snapshot
             .as_ref()
-            .map(|state| runtime_phase_label(state.phase))
+            .and_then(runtime_status_snapshot_pid_and_phase)
+            .map(|(_pid, phase)| runtime_phase_label(phase))
             .unwrap_or("unknown");
-        let runtime_pid = runtime_state.as_ref().map(|state| state.pid).unwrap_or(0);
+        let runtime_pid = runtime_status_snapshot
+            .as_ref()
+            .and_then(runtime_status_snapshot_pid_and_phase)
+            .map(|(pid, _phase)| pid)
+            .unwrap_or(0);
         return Err(CliError::new(
             "self-host server did not report startup",
             check.command_line,
@@ -379,8 +440,8 @@ fn wait_for_background_runtime_start(
         check.command_line,
         ErrorStage::Internal,
         format!(
-            "runtime state file {} did not report a ready runtime for launch {} in {}",
-            check.state_path.display(),
+            "runtime status snapshot {} did not report a ready runtime for launch {} in {}",
+            check.status_snapshot_path.display(),
             check.launch_id,
             check.data_dir.display()
         ),
@@ -389,4 +450,212 @@ fn wait_for_background_runtime_start(
             retry_command_hint(check.retry_command),
         ],
     ))
+}
+
+async fn poll_runtime_control_startup_readiness(
+    check: &BackgroundRuntimeStartCheck<'_>,
+    startup_deadline: Instant,
+) -> Result<StartupWatchReadiness, ConnectError> {
+    let mut stream = watch_runtime_control_status(
+        check.paths,
+        check.launch_id,
+        RuntimeControlCallHeaders::for_launch(check.launch_id)
+            .with_supervisor_id(check.supervisor_id),
+    )
+    .await?;
+    let mut latest_status = None;
+
+    loop {
+        let remaining = startup_deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(StartupWatchReadiness::Pending {
+                stream_established: true,
+            });
+        }
+
+        let response = match timeout(remaining, stream.message()).await {
+            Ok(Ok(Some(response))) => response.to_owned_message(),
+            Ok(Ok(None)) => {
+                if let Some(error) = stream.error() {
+                    return Ok(StartupWatchReadiness::StreamError(Box::new(error.clone())));
+                }
+
+                return Ok(StartupWatchReadiness::Pending {
+                    stream_established: true,
+                });
+            }
+            Ok(Err(error)) => return Ok(StartupWatchReadiness::StreamError(Box::new(error))),
+            Err(_) => {
+                return Ok(StartupWatchReadiness::Pending {
+                    stream_established: true,
+                });
+            }
+        };
+
+        match runtime_control_watch_event_from_proto(response) {
+            Some(RuntimeControlStatusWatchEvent::Snapshot(status)) => {
+                if status.phase == RuntimeControlPhase::Ready {
+                    return runtime_ready_pid_from_status(status).map(StartupWatchReadiness::Ready);
+                }
+                if runtime_control_phase_is_terminal(status.phase) {
+                    return Ok(StartupWatchReadiness::Terminal(status.phase));
+                }
+                latest_status = Some(status);
+            }
+            Some(RuntimeControlStatusWatchEvent::Transition { phase, .. }) => {
+                if phase == RuntimeControlPhase::Ready {
+                    let Some(status) = latest_status else {
+                        return Err(ConnectError::internal(
+                            "runtime control WatchStatus reported READY before an identity snapshot",
+                        ));
+                    };
+
+                    return runtime_ready_pid_from_status(status).map(StartupWatchReadiness::Ready);
+                }
+                if runtime_control_phase_is_terminal(phase) {
+                    return Ok(StartupWatchReadiness::Terminal(phase));
+                }
+            }
+            None => {}
+        }
+    }
+}
+
+fn runtime_ready_pid_from_status(status: RuntimeControlStatus) -> Result<u32, ConnectError> {
+    status.pid.ok_or_else(|| {
+        ConnectError::internal("runtime control WatchStatus READY event omitted runtime pid")
+    })
+}
+
+fn runtime_control_phase_is_terminal(phase: RuntimeControlPhase) -> bool {
+    phase.is_terminal()
+}
+
+fn ensure_background_supervisor_still_running(
+    child: &mut Child,
+    check: &BackgroundRuntimeStartCheck<'_>,
+) -> Result<(), CliError> {
+    if let Some(status) = child.try_wait().map_err(|error| {
+        CliError::new(
+            "failed while monitoring self-host background start",
+            check.command_line,
+            ErrorStage::Internal,
+            error.to_string(),
+            vec![
+                format!("check log file {}", check.log_path.display()),
+                retry_command_hint(check.retry_command),
+            ],
+        )
+    })? {
+        return Err(CliError::new(
+            "gateway supervisor exited during background start",
+            check.command_line,
+            ErrorStage::Internal,
+            describe_exit_status(status),
+            vec![
+                format!("check log file {}", check.log_path.display()),
+                retry_command_hint(check.retry_command),
+            ],
+        ));
+    }
+
+    Ok(())
+}
+
+fn runtime_control_terminal_startup_error(
+    check: &BackgroundRuntimeStartCheck<'_>,
+    phase: RuntimeControlPhase,
+) -> CliError {
+    CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        format!(
+            "runtime control WatchStatus reported terminal phase {} for launch {} in {}",
+            phase.label(),
+            check.launch_id,
+            check.data_dir.display()
+        ),
+        vec![
+            format!("check log file {}", check.log_path.display()),
+            retry_command_hint(check.retry_command),
+        ],
+    )
+}
+
+fn runtime_control_startup_watch_error(
+    check: &BackgroundRuntimeStartCheck<'_>,
+    error: &ConnectError,
+) -> CliError {
+    let detail = runtime_control_connect_error_summary(error).map_or_else(
+        || {
+            format!(
+                "runtime control WatchStatus failed for launch {} in {}: {error}",
+                check.launch_id,
+                check.data_dir.display()
+            )
+        },
+        |summary| {
+            format!(
+                "runtime control WatchStatus failed for launch {} in {}: {summary}",
+                check.launch_id,
+                check.data_dir.display()
+            )
+        },
+    );
+
+    let cli_error = CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        detail,
+        vec![
+            format!("check log file {}", check.log_path.display()),
+            retry_command_hint(check.retry_command),
+        ],
+    );
+
+    with_runtime_control_connect_error_metadata(error, cli_error, None)
+}
+
+fn runtime_control_startup_timeout_error(
+    check: &BackgroundRuntimeStartCheck<'_>,
+    last_watch_error: Option<&ConnectError>,
+) -> CliError {
+    let detail = last_watch_error.map_or_else(
+        || {
+            format!(
+                "runtime control WatchStatus did not report READY for launch {} in {}",
+                check.launch_id,
+                check.data_dir.display()
+            )
+        },
+        |error| {
+            let last_error = runtime_control_connect_error_summary(error)
+                .unwrap_or_else(|| error.to_string());
+
+            format!(
+                "runtime control WatchStatus did not report READY for launch {} in {} (last error: {last_error})",
+                check.launch_id,
+                check.data_dir.display()
+            )
+        },
+    );
+
+    let cli_error = CliError::new(
+        "self-host server did not report startup",
+        check.command_line,
+        ErrorStage::Internal,
+        detail,
+        vec![
+            format!("check log file {}", check.log_path.display()),
+            retry_command_hint(check.retry_command),
+        ],
+    );
+
+    if let Some(error) = last_watch_error {
+        with_runtime_control_connect_error_metadata(error, cli_error, None)
+    } else {
+        cli_error
+    }
 }

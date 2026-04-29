@@ -1,8 +1,9 @@
 ---
-source: crates/onequery-gateway/src/tests.rs
+source: crates/gateway/src/tests.rs
+assertion_line: 188
 expression: "output.lines.join(\"\\n\")"
 ---
 Gateway status
 Bootstrapped: yes
 Listen: 127.0.0.1:5656
-Runtime: stale_markers
+Runtime: running

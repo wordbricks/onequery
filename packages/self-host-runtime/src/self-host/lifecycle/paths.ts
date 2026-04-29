@@ -34,9 +34,10 @@ export function toLifecyclePathsResult(
     paths: {
       controlEndpoint: launchConfig.runtimeControl,
       dataDir: launchConfig.runtimePaths.dataDir,
-      lockPath: launchConfig.runtimePaths.lockPath,
       logsDir: launchConfig.runtimePaths.logsDir,
-      pidPath: launchConfig.runtimePaths.pidPath,
+      runtimeLeasePath: launchConfig.runtimePaths.runtimeLeasePath,
+      runtimeStatusSnapshotPath:
+        launchConfig.runtimePaths.runtimeStatusSnapshotPath,
     },
   });
 }

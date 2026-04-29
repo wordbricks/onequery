@@ -13,7 +13,7 @@ use super::state::GatewayRuntimeState;
 enum RuntimeStatus<'a> {
     Live(&'a RuntimeControlStatus),
     Running,
-    StaleMarkers,
+    StaleDurableRecords,
     NotRunning,
     NotInitialized,
 }
@@ -27,7 +27,7 @@ impl RuntimeStatus<'_> {
         match self {
             Self::Live(status) => status.phase.label(),
             Self::Running => "running",
-            Self::StaleMarkers => "stale_markers",
+            Self::StaleDurableRecords => "stale_durable_records",
             Self::NotRunning => "not_running",
             Self::NotInitialized => "not_initialized",
         }
@@ -193,8 +193,8 @@ fn runtime_state_json_with_status(
         "status": status.label(),
         "pgliteDirPresent": state.pglite_dir_present,
         "logFilePresent": state.log_file_present,
-        "pidFilePresent": state.pid_file_present,
-        "lockFilePresent": state.lock_file_present,
+        "runtimeLeasePresent": state.runtime_lease_present,
+        "runtimeStatusSnapshotPresent": state.runtime_status_snapshot_present,
     });
 
     if let RuntimeStatus::Live(live_status) = status
@@ -210,8 +210,8 @@ fn runtime_state_json_with_status(
         if let Some(data_dir) = &live_status.data_dir {
             object.insert("runtimeDataDir".to_owned(), json!(data_dir));
         }
-        if let Some(sequence) = live_status.sequence {
-            object.insert("runtimeSequence".to_owned(), json!(sequence));
+        if let Some(runtime_sequence) = live_status.runtime_sequence {
+            object.insert("runtimeSequence".to_owned(), json!(runtime_sequence));
         }
     }
 
@@ -234,8 +234,8 @@ fn resolve_runtime_status<'a>(
         return RuntimeStatus::Running;
     }
 
-    if state.pid_file_present || state.lock_file_present {
-        return RuntimeStatus::StaleMarkers;
+    if state.runtime_lease_present || state.runtime_status_snapshot_present {
+        return RuntimeStatus::StaleDurableRecords;
     }
 
     if state.bootstrapped {
@@ -256,11 +256,9 @@ pub(super) fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
         "serverLogPath": paths.server_log_path.display().to_string(),
         "backupsDir": paths.backups_dir.display().to_string(),
         "runDir": paths.run_dir.display().to_string(),
-        "pidPath": paths.pid_path.display().to_string(),
-        "lockPath": paths.lock_path.display().to_string(),
-        "stopRequestPath": paths.stop_request_path.display().to_string(),
-        "supervisorPidPath": paths.supervisor_pid_path.display().to_string(),
-        "supervisorStatePath": paths.supervisor_state_path.display().to_string(),
+        "runtimeLeasePath": paths.runtime_lease_path.display().to_string(),
+        "runtimeStatusSnapshotPath": paths.runtime_status_snapshot_path.display().to_string(),
+        "supervisorStatusSnapshotPath": paths.supervisor_status_snapshot_path.display().to_string(),
         "releasesDir": paths.releases_dir.display().to_string(),
         "activeReleasePath": paths.active_release_path.display().to_string(),
         "recoveryPointsDir": paths.recovery_points_dir.display().to_string(),

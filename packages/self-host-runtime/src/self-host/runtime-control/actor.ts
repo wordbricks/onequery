@@ -1,3 +1,4 @@
+import { isFieldSet } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import {
@@ -9,6 +10,8 @@ import {
   RuntimeTransitionSchema,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import {
+  GetStatusRequestSchema,
+  RuntimeTargetSchema,
   StopRequestSchema,
   WatchStatusRequestSchema,
   WatchStatusResponseSchema,
@@ -39,7 +42,10 @@ import type {
   RuntimeControlMachineReduction,
   RuntimeControlMachineState,
   RuntimeControlPhase,
+  RuntimeControlStatusSnapshot,
+  RuntimeControlStopOperationConflict,
   RuntimeControlStopDisposition,
+  RuntimeControlStopRequest,
   RuntimeControlTransition,
 } from "./machine";
 
@@ -51,8 +57,31 @@ export class RuntimeControlActorError extends TaggedError(
   operation: string;
 }>() {}
 
+export class RuntimeControlTargetPreconditionError extends TaggedError(
+  "RuntimeControlTargetPreconditionError"
+)<{
+  actual: string;
+  expected: string;
+  field: string;
+  message: string;
+  operation: string;
+}>() {}
+
+export class RuntimeControlOperationConflictError extends TaggedError(
+  "RuntimeControlOperationConflictError"
+)<{
+  actual: string;
+  expected: string;
+  field: string;
+  message: string;
+  operation: string;
+  operationId: string;
+}>() {}
+
 type RuntimeStatusInit = MessageInitShape<typeof RuntimeStatusSchema>;
 type RuntimeTransitionInit = MessageInitShape<typeof RuntimeTransitionSchema>;
+type GetStatusRequestInit = MessageInitShape<typeof GetStatusRequestSchema>;
+type RuntimeTargetInit = MessageInitShape<typeof RuntimeTargetSchema>;
 type StopRequestInit = MessageInitShape<typeof StopRequestSchema>;
 type StopResponseInit = {
   disposition: RuntimeStopDisposition;
@@ -64,10 +93,16 @@ type WatchStatusResponseInit = MessageInitShape<
   typeof WatchStatusResponseSchema
 >;
 
-type RuntimeControlActorResult<T> = ResultType<T, RuntimeControlActorError>;
+type RuntimeControlActorFailure =
+  | RuntimeControlActorError
+  | RuntimeControlOperationConflictError
+  | RuntimeControlTargetPreconditionError;
+
+type RuntimeControlActorResult<T> = ResultType<T, RuntimeControlActorFailure>;
 
 type RuntimeControlActorMessage =
   | {
+      target?: RuntimeTargetInit;
       responseTx: OneshotSender<RuntimeControlActorResult<RuntimeStatusInit>>;
       type: "get_status";
     }
@@ -89,10 +124,11 @@ type RuntimeControlActorMessage =
       type: "stop";
     }
   | {
-      afterSequence: bigint;
+      afterRuntimeSequence: bigint;
       eventTx: Sender<WatchStatusResponseInit>;
       includeSnapshot: boolean;
       responseTx: OneshotSender<RuntimeControlActorResult<void>>;
+      target?: RuntimeTargetInit;
       type: "watch_status";
       watcherId: number;
     }
@@ -107,7 +143,9 @@ type RuntimeControlActorMessage =
 export interface RuntimeControlActor {
   attachShutdownController(controller: GracefulShutdownController): void;
   dispose(): void;
-  getStatus(): Promise<RuntimeStatusInit>;
+  getStatus(
+    target?: GetStatusRequestInit["target"]
+  ): Promise<RuntimeStatusInit>;
   lease: RuntimeLifecycleLease;
   stop(request: StopRequestInit): Promise<StopResponseInit>;
   watchStatus(
@@ -189,10 +227,11 @@ export function createRuntimeControlActor(input: {
         catch: () => undefined,
       });
     },
-    getStatus() {
+    getStatus(target) {
       return request(
         (responseTx) => ({
           responseTx,
+          target,
           type: "get_status",
         }),
         "get_status"
@@ -269,9 +308,21 @@ async function runRuntimeControlActor(args: {
     }
 
     switch (message.type) {
-      case "get_status":
-        respond(message.responseTx, Result.ok(toRuntimeStatusInit(state)));
+      case "get_status": {
+        const targetResult = validateRuntimeTarget({
+          operation: "get_status",
+          required: false,
+          state,
+          target: message.target,
+        });
+        respond(
+          message.responseTx,
+          targetResult.isErr()
+            ? Result.err(targetResult.error)
+            : Result.ok(toRuntimeStatusInit(state))
+        );
         break;
+      }
       case "transition": {
         const result = await transitionLifecycleState({
           lease: args.lease,
@@ -324,14 +375,27 @@ async function runRuntimeControlActor(args: {
         break;
       }
       case "watch_status": {
+        const targetResult = validateRuntimeTarget({
+          operation: "watch_status",
+          required: true,
+          state,
+          target: message.target,
+        });
+        if (targetResult.isErr()) {
+          respond(message.responseTx, Result.err(targetResult.error));
+          break;
+        }
         const reduction = reduceRuntimeControlMachine(state, {
-          afterSequence: message.afterSequence,
+          afterRuntimeSequence: message.afterRuntimeSequence,
           id: message.watcherId,
           type: "watch_registered",
         });
         state = reduction.state;
         args.watcherTxById.set(message.watcherId, message.eventTx);
-        if (message.includeSnapshot && state.sequence > message.afterSequence) {
+        if (
+          message.includeSnapshot &&
+          state.runtimeSequence > message.afterRuntimeSequence
+        ) {
           await sendWatchEvent(message.eventTx, {
             event: {
               case: "snapshot",
@@ -465,15 +529,15 @@ async function stopRuntime(args: {
   reduction?: RuntimeControlMachineReduction;
   result: RuntimeControlActorResult<StopResponseInit>;
 }> {
-  if (!args.shutdownController) {
+  const targetResult = validateRuntimeTarget({
+    operation: "stop",
+    required: true,
+    state: args.state,
+    target: args.message.request.target,
+  });
+  if (targetResult.isErr()) {
     return {
-      result: Result.err(
-        new RuntimeControlActorError({
-          cause: null,
-          message: "runtime shutdown controller is not attached",
-          operation: "stop",
-        })
-      ),
+      result: Result.err(targetResult.error),
     };
   }
 
@@ -483,13 +547,42 @@ async function stopRuntime(args: {
   const requestReason = args.message.request.reason ?? "";
   const reason =
     requestReason.trim().length > 0 ? requestReason : "runtime_control_stop";
+  const operationId = args.message.request.operationId;
+  if (!operationId) {
+    return {
+      result: Result.err(
+        new RuntimeControlActorError({
+          cause: null,
+          message: "runtime control stop request operation_id is required",
+          operation: "stop",
+        })
+      ),
+    };
+  }
+  const target = args.message.request.target;
+  if (!target) {
+    return {
+      result: Result.err(
+        new RuntimeControlActorError({
+          cause: null,
+          message: "runtime control stop request target is required",
+          operation: "stop",
+        })
+      ),
+    };
+  }
+  const request = createRuntimeControlStopRequest({
+    completion,
+    graceTimeout: args.message.request.graceTimeout,
+    reason,
+    target,
+  });
+
   const occurredAt = args.now();
   const reduction = reduceRuntimeControlMachine(args.state, {
-    completion,
     occurredAt,
-    operationId:
-      args.message.request.operationId ?? `stop:${occurredAt.toISOString()}`,
-    reason,
+    operationId,
+    request,
     type: "stop_requested",
   });
   if (reduction.type !== "stop") {
@@ -498,6 +591,27 @@ async function stopRuntime(args: {
       message: "runtime control reducer returned an invalid stop result",
       operation: "stop",
     });
+  }
+  if ("conflict" in reduction) {
+    return {
+      result: Result.err(
+        toRuntimeControlOperationConflictError(reduction.conflict)
+      ),
+    };
+  }
+
+  const shouldStartShutdown =
+    reduction.disposition === "accepted" && !reduction.idempotentReplay;
+  if (shouldStartShutdown && !args.shutdownController) {
+    return {
+      result: Result.err(
+        new RuntimeControlActorError({
+          cause: null,
+          message: "runtime shutdown controller is not attached",
+          operation: "stop",
+        })
+      ),
+    };
   }
 
   if (reduction.transition !== undefined) {
@@ -517,9 +631,22 @@ async function stopRuntime(args: {
     }
   }
 
-  if (reduction.disposition === "accepted") {
+  if (shouldStartShutdown) {
+    const shutdownController = args.shutdownController;
+    if (!shutdownController) {
+      return {
+        result: Result.err(
+          new RuntimeControlActorError({
+            cause: null,
+            message: "runtime shutdown controller is not attached",
+            operation: "stop",
+          })
+        ),
+      };
+    }
+
     observeRuntimeShutdown(
-      args.shutdownController.shutdown(reason, completion),
+      shutdownController.shutdown(reason, completion),
       args.eventTx,
       reason
     );
@@ -528,13 +655,197 @@ async function stopRuntime(args: {
   return {
     reduction,
     result: Result.ok({
-      disposition: toProtoStopDisposition(reduction.disposition),
-      status: toRuntimeStatusInit(reduction.state),
-      transition: reduction.transition
-        ? toRuntimeTransitionInit(reduction.transition)
+      disposition: toProtoStopDisposition(reduction.response.disposition),
+      status: toRuntimeStatusInit(reduction.response.status),
+      transition: reduction.response.transition
+        ? toRuntimeTransitionInit(reduction.response.transition)
         : undefined,
     }),
   };
+}
+
+function createRuntimeControlStopRequest(input: {
+  completion: RuntimeShutdownCompletion;
+  graceTimeout: StopRequestInit["graceTimeout"];
+  reason: string;
+  target: RuntimeTargetInit;
+}): RuntimeControlStopRequest {
+  return {
+    completion: input.completion,
+    graceTimeout: input.graceTimeout
+      ? {
+          nanos: input.graceTimeout.nanos ?? 0,
+          seconds: input.graceTimeout.seconds ?? 0n,
+        }
+      : undefined,
+    reason: input.reason,
+    target: createRuntimeControlStopRequestTarget(input.target),
+  };
+}
+
+function createRuntimeControlStopRequestTarget(
+  target: RuntimeTargetInit
+): RuntimeControlStopRequest["target"] {
+  const requestTarget: RuntimeControlStopRequest["target"] = {
+    dataDir: target.dataDir ?? "",
+    launchId: target.launchId ?? "",
+  };
+
+  if (runtimeTargetFieldIsSet(target, "pid")) {
+    requestTarget.pid = target.pid ?? 0;
+  }
+  if (runtimeTargetFieldIsSet(target, "supervisorPid")) {
+    requestTarget.supervisorPid = target.supervisorPid ?? 0;
+  }
+  if (runtimeTargetFieldIsSet(target, "supervisorGeneration")) {
+    requestTarget.supervisorGeneration = target.supervisorGeneration ?? 0n;
+  }
+
+  return requestTarget;
+}
+
+function toRuntimeControlOperationConflictError(
+  conflict: RuntimeControlStopOperationConflict
+): RuntimeControlOperationConflictError {
+  return new RuntimeControlOperationConflictError({
+    actual: conflict.actual,
+    expected: conflict.expected,
+    field: conflict.field,
+    message: `runtime control stop request operation_id ${conflict.operationId} was already used with a different ${conflict.field}: expected ${conflict.expected}, got ${conflict.actual}`,
+    operation: "stop",
+    operationId: conflict.operationId,
+  });
+}
+
+function validateRuntimeTarget(args: {
+  operation: string;
+  required: boolean;
+  state: RuntimeControlMachineState;
+  target?: RuntimeTargetInit;
+}): ResultType<void, RuntimeControlTargetPreconditionError> {
+  if (args.target === undefined) {
+    return args.required
+      ? Result.err(
+          new RuntimeControlTargetPreconditionError({
+            actual: "missing",
+            expected: "present",
+            field: "target",
+            message: `runtime control ${args.operation} request target is required`,
+            operation: args.operation,
+          })
+        )
+      : Result.ok(undefined);
+  }
+
+  const expected = {
+    dataDir: args.state.identity.dataDir,
+    launchId: args.state.identity.launchId,
+    pid: args.state.identity.pid,
+    supervisorGeneration: args.state.identity.supervisorGeneration,
+    supervisorPid: args.state.identity.supervisorPid,
+  };
+  const mismatchedField = findRuntimeTargetMismatch(args.target, expected);
+
+  if (mismatchedField === undefined) {
+    return Result.ok(undefined);
+  }
+
+  return Result.err(
+    new RuntimeControlTargetPreconditionError({
+      actual: mismatchedField.actual,
+      expected: mismatchedField.expected,
+      field: mismatchedField.field,
+      message: `runtime control ${args.operation} target ${mismatchedField.field} mismatch: expected ${mismatchedField.expected}, got ${mismatchedField.actual}`,
+      operation: args.operation,
+    })
+  );
+}
+
+function findRuntimeTargetMismatch(
+  target: RuntimeTargetInit,
+  expected: {
+    dataDir: string;
+    launchId: string;
+    pid: number;
+    supervisorGeneration?: bigint;
+    supervisorPid?: number;
+  }
+):
+  | {
+      actual: string;
+      expected: string;
+      field: string;
+    }
+  | undefined {
+  const actualLaunchId = target.launchId ?? "";
+  if (actualLaunchId !== expected.launchId) {
+    return {
+      actual: actualLaunchId,
+      expected: expected.launchId,
+      field: "launch_id",
+    };
+  }
+
+  const actualDataDir = target.dataDir ?? "";
+  if (actualDataDir !== expected.dataDir) {
+    return {
+      actual: actualDataDir,
+      expected: expected.dataDir,
+      field: "data_dir",
+    };
+  }
+
+  const actualPid = target.pid;
+  if (runtimeTargetFieldIsSet(target, "pid") && actualPid !== expected.pid) {
+    return {
+      actual: actualPid?.toString() ?? "unset",
+      expected: expected.pid.toString(),
+      field: "pid",
+    };
+  }
+
+  const actualSupervisorPid = target.supervisorPid;
+  if (
+    runtimeTargetFieldIsSet(target, "supervisorPid") &&
+    actualSupervisorPid !== expected.supervisorPid
+  ) {
+    return {
+      actual: actualSupervisorPid?.toString() ?? "unset",
+      expected: expected.supervisorPid?.toString() ?? "unset",
+      field: "supervisor_pid",
+    };
+  }
+
+  const actualSupervisorGeneration = target.supervisorGeneration;
+  if (
+    runtimeTargetFieldIsSet(target, "supervisorGeneration") &&
+    actualSupervisorGeneration !== expected.supervisorGeneration
+  ) {
+    return {
+      actual: actualSupervisorGeneration?.toString() ?? "unset",
+      expected: expected.supervisorGeneration?.toString() ?? "unset",
+      field: "supervisor_generation",
+    };
+  }
+
+  return undefined;
+}
+
+function runtimeTargetFieldIsSet(
+  target: RuntimeTargetInit,
+  field: "pid" | "supervisorGeneration" | "supervisorPid"
+): boolean {
+  if (isRuntimeTargetMessage(target)) {
+    return isFieldSet(target, RuntimeTargetSchema.field[field]);
+  }
+
+  return target[field] !== undefined;
+}
+
+function isRuntimeTargetMessage(
+  target: RuntimeTargetInit
+): target is RuntimeTargetInit & { $typeName: string } {
+  return "$typeName" in target;
 }
 
 async function commitRuntimeControlReduction(
@@ -545,7 +856,9 @@ async function commitRuntimeControlReduction(
     return reduction.state;
   }
 
-  if (reduction.transition === undefined) {
+  const transition =
+    "transition" in reduction ? reduction.transition : undefined;
+  if (transition === undefined) {
     return reduction.state;
   }
 
@@ -553,12 +866,12 @@ async function commitRuntimeControlReduction(
   const event = {
     event: {
       case: "transition",
-      value: toRuntimeTransitionInit(reduction.transition),
+      value: toRuntimeTransitionInit(transition),
     },
   } satisfies WatchStatusResponseInit;
 
   for (const watcher of reduction.state.watchers) {
-    if (reduction.transition.sequence <= watcher.afterSequence) {
+    if (transition.runtimeSequence <= watcher.afterRuntimeSequence) {
       continue;
     }
 
@@ -623,10 +936,11 @@ async function* watchRuntimeStatus(args: {
 
   await args.request(
     (responseTx) => ({
-      afterSequence: args.watchRequest.afterSequence ?? 0n,
+      afterRuntimeSequence: args.watchRequest.afterRuntimeSequence ?? 0n,
       eventTx: watchTx,
       includeSnapshot: args.watchRequest.includeSnapshot ?? false,
       responseTx,
+      target: args.watchRequest.target,
       type: "watch_status",
       watcherId: args.watcherId,
     }),
@@ -697,7 +1011,7 @@ function respond<T>(
 }
 
 function toRuntimeStatusInit(
-  state: RuntimeControlMachineState
+  state: RuntimeControlStatusSnapshot
 ): RuntimeStatusInit {
   return {
     failure: state.failure ? toRuntimeFailureInit(state.failure) : undefined,
@@ -707,7 +1021,7 @@ function toRuntimeStatusInit(
       pid: state.identity.pid,
     },
     phase: toProtoPhase(state.phase),
-    sequence: state.sequence,
+    runtimeSequence: state.runtimeSequence,
     updatedAt: timestampFromDate(state.updatedAt),
   };
 }
@@ -716,20 +1030,21 @@ function toRuntimeTransitionInit(
   transition: RuntimeControlTransition
 ): RuntimeTransitionInit {
   return {
+    ...(transition.callerOperationId
+      ? { callerOperationId: transition.callerOperationId }
+      : {}),
+    ...(transition.correlationId
+      ? { correlationId: transition.correlationId }
+      : {}),
     currentPhase: toProtoPhase(transition.currentPhase),
     failure: transition.failure
       ? toRuntimeFailureInit(transition.failure)
       : undefined,
     occurredAt: timestampFromDate(transition.occurredAt),
-    operation: transition.operation
-      ? {
-          name: transition.operation.name,
-          operationId: transition.operation.operationId,
-        }
-      : undefined,
     previousPhase: toProtoPhase(transition.previousPhase),
     reason: transition.reason,
-    sequence: transition.sequence,
+    runtimeSequence: transition.runtimeSequence,
+    transitionId: transition.transitionId,
   };
 }
 

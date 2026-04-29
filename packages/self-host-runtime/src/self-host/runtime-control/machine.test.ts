@@ -4,6 +4,29 @@ import {
   createInitialRuntimeControlState,
   reduceRuntimeControlMachine,
 } from "./machine";
+import type {
+  RuntimeControlStopOperationConflict,
+  RuntimeControlStopRequest,
+} from "./machine";
+
+function stopRequest(
+  overrides: Partial<RuntimeControlStopRequest> = {}
+): RuntimeControlStopRequest {
+  return {
+    completion: "cleanup_and_exit",
+    graceTimeout: {
+      nanos: 0,
+      seconds: 30n,
+    },
+    reason: "gateway_stop",
+    target: {
+      dataDir: "/tmp/onequery-data",
+      launchId: "launch-a",
+      pid: 123,
+    },
+    ...overrides,
+  };
+}
 
 describe("runtime control machine", () => {
   it("records lifecycle shutdown failure transitions", () => {
@@ -19,10 +42,9 @@ describe("runtime control machine", () => {
       now: startedAt,
     });
     const stopping = reduceRuntimeControlMachine(initialState, {
-      completion: "cleanup_and_exit",
       occurredAt: stoppedAt,
-      operationId: "stop-1",
-      reason: "gateway_stop",
+      operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a001",
+      request: stopRequest(),
       type: "stop_requested",
     });
 
@@ -38,20 +60,17 @@ describe("runtime control machine", () => {
         ...stopping.state,
         failure: undefined,
         phase: "shutdown_failed",
-        sequence: 3n,
+        runtimeSequence: 3n,
         updatedAt: failedAt,
       },
       transition: {
         currentPhase: "shutdown_failed",
         failure: undefined,
         occurredAt: failedAt,
-        operation: {
-          name: "lifecycle",
-          operationId: `lifecycle:shutdown_failed:${failedAt.toISOString()}`,
-        },
         previousPhase: "stopping",
         reason: "gateway_stop",
-        sequence: 3n,
+        runtimeSequence: 3n,
+        transitionId: "runtime:3",
       },
       type: "transition",
     });
@@ -70,10 +89,9 @@ describe("runtime control machine", () => {
       now: startedAt,
     });
     const stopping = reduceRuntimeControlMachine(initialState, {
-      completion: "cleanup_and_exit",
       occurredAt: stoppingAt,
-      operationId: "stop-1",
-      reason: "gateway_stop",
+      operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a002",
+      request: stopRequest(),
       type: "stop_requested",
     });
 
@@ -94,20 +112,17 @@ describe("runtime control machine", () => {
         ...stopping.state,
         failure,
         phase: "shutdown_failed",
-        sequence: 3n,
+        runtimeSequence: 3n,
         updatedAt: failedAt,
       },
       transition: {
         currentPhase: "shutdown_failed",
         failure,
         occurredAt: failedAt,
-        operation: {
-          name: "release",
-          operationId: `release_failed:gateway_stop:${failedAt.toISOString()}`,
-        },
         previousPhase: "stopping",
         reason: "gateway_stop",
-        sequence: 3n,
+        runtimeSequence: 3n,
+        transitionId: "runtime:3",
       },
       type: "transition",
     });
@@ -116,6 +131,8 @@ describe("runtime control machine", () => {
   it("reports stop requests after shutdown failure as already finished", () => {
     const startedAt = new Date("2026-04-27T00:00:00.000Z");
     const failedAt = new Date("2026-04-27T00:00:01.000Z");
+    const retryAt = new Date("2026-04-27T00:00:02.000Z");
+    const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a003";
     const initialState = createInitialRuntimeControlState({
       identity: {
         dataDir: "/tmp/onequery-data",
@@ -132,17 +149,200 @@ describe("runtime control machine", () => {
     });
 
     const reduction = reduceRuntimeControlMachine(failed.state, {
-      completion: "cleanup_and_exit",
-      occurredAt: new Date("2026-04-27T00:00:02.000Z"),
-      operationId: "stop-2",
-      reason: "gateway_stop",
+      occurredAt: retryAt,
+      operationId,
+      request: stopRequest(),
       type: "stop_requested",
     });
 
-    expect(reduction).toEqual({
+    expect(reduction).toMatchObject({
       disposition: "already_finished",
-      state: failed.state,
+      idempotentReplay: false,
+      response: {
+        disposition: "already_finished",
+        operationId,
+        status: {
+          phase: "shutdown_failed",
+          runtimeSequence: 2n,
+          updatedAt: failedAt,
+        },
+      },
+      state: {
+        ...failed.state,
+        recentStopOperationOutcomes: [
+          {
+            disposition: "already_finished",
+            operationId,
+            request: stopRequest(),
+            status: {
+              failure: failed.state.failure,
+              identity: failed.state.identity,
+              phase: "shutdown_failed",
+              runtimeSequence: 2n,
+              updatedAt: failedAt,
+            },
+          },
+        ],
+      },
       type: "stop",
     });
   });
+
+  it("replays the original stop operation outcome for idempotent retries", () => {
+    const startedAt = new Date("2026-04-27T00:00:00.000Z");
+    const stoppingAt = new Date("2026-04-27T00:00:01.000Z");
+    const drainingAt = new Date("2026-04-27T00:00:02.000Z");
+    const retryAt = new Date("2026-04-27T00:00:03.000Z");
+    const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a004";
+    const initialState = createInitialRuntimeControlState({
+      identity: {
+        dataDir: "/tmp/onequery-data",
+        launchId: "launch-a",
+        pid: 123,
+      },
+      now: startedAt,
+    });
+    const accepted = reduceRuntimeControlMachine(initialState, {
+      occurredAt: stoppingAt,
+      operationId,
+      request: stopRequest(),
+      type: "stop_requested",
+    });
+    expect(accepted.type).toBe("stop");
+    if (accepted.type !== "stop" || "conflict" in accepted) {
+      throw new Error("expected accepted stop reduction");
+    }
+    const draining = reduceRuntimeControlMachine(accepted.state, {
+      occurredAt: drainingAt,
+      phase: "draining",
+      reason: "gateway_stop",
+      type: "lifecycle_transition_requested",
+    });
+    expect(draining.type).toBe("transition");
+    if (draining.type !== "transition") {
+      throw new Error(`expected transition reduction, got ${draining.type}`);
+    }
+
+    const replay = reduceRuntimeControlMachine(draining.state, {
+      occurredAt: retryAt,
+      operationId,
+      request: stopRequest(),
+      type: "stop_requested",
+    });
+    expect(replay.type).toBe("stop");
+    if (replay.type !== "stop" || "conflict" in replay) {
+      throw new Error("expected stop replay reduction");
+    }
+
+    expect(replay).toMatchObject({
+      disposition: "accepted",
+      idempotentReplay: true,
+      state: draining.state,
+      type: "stop",
+    });
+    expect(replay.transition).toBeUndefined();
+    expect(replay.response).toEqual(accepted.response);
+    expect(replay.response.status).toMatchObject({
+      phase: "stopping",
+      runtimeSequence: 2n,
+      updatedAt: stoppingAt,
+    });
+    expect(replay.state.recentStopOperationOutcomes).toHaveLength(1);
+  });
+
+  it.each([
+    {
+      actual: stopRequest({
+        target: {
+          dataDir: "/tmp/onequery-data",
+          launchId: "launch-a",
+        },
+      }),
+      field: "target.pid",
+      name: "target",
+      actualValue: "unset",
+      expectedValue: "123",
+    },
+    {
+      actual: stopRequest({
+        reason: "operator_stop",
+      }),
+      field: "reason",
+      name: "reason",
+      actualValue: "operator_stop",
+      expectedValue: "gateway_stop",
+    },
+    {
+      actual: stopRequest({
+        completion: "cleanup_only",
+      }),
+      field: "completion",
+      name: "completion",
+      actualValue: "cleanup_only",
+      expectedValue: "cleanup_and_exit",
+    },
+    {
+      actual: stopRequest({
+        graceTimeout: {
+          nanos: 0,
+          seconds: 45n,
+        },
+      }),
+      field: "grace_timeout",
+      name: "grace timeout",
+      actualValue: "45s/0ns",
+      expectedValue: "30s/0ns",
+    },
+  ] satisfies {
+    actual: RuntimeControlStopRequest;
+    actualValue: string;
+    expectedValue: string;
+    field: RuntimeControlStopOperationConflict["field"];
+    name: string;
+  }[])(
+    "rejects operation id reuse with a different stop request $name",
+    ({ actual, actualValue, expectedValue, field }) => {
+      const startedAt = new Date("2026-04-27T00:00:00.000Z");
+      const stoppingAt = new Date("2026-04-27T00:00:01.000Z");
+      const retryAt = new Date("2026-04-27T00:00:02.000Z");
+      const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a005";
+      const initialState = createInitialRuntimeControlState({
+        identity: {
+          dataDir: "/tmp/onequery-data",
+          launchId: "launch-a",
+          pid: 123,
+        },
+        now: startedAt,
+      });
+      const accepted = reduceRuntimeControlMachine(initialState, {
+        occurredAt: stoppingAt,
+        operationId,
+        request: stopRequest(),
+        type: "stop_requested",
+      });
+      expect(accepted.type).toBe("stop");
+      if (accepted.type !== "stop" || "conflict" in accepted) {
+        throw new Error("expected accepted stop reduction");
+      }
+
+      const conflict = reduceRuntimeControlMachine(accepted.state, {
+        occurredAt: retryAt,
+        operationId,
+        request: actual,
+        type: "stop_requested",
+      });
+
+      expect(conflict).toEqual({
+        conflict: {
+          actual: actualValue,
+          expected: expectedValue,
+          field,
+          operationId,
+        },
+        idempotentReplay: false,
+        state: accepted.state,
+        type: "stop",
+      });
+    }
+  );
 });

@@ -19,10 +19,8 @@ export type {
   ProcessSignalSource,
   RuntimeLifecycleLease,
   RuntimeLifecyclePhase,
-  RuntimeLockRecord,
   RuntimeShutdownCompletion,
   RuntimeShutdownResource,
-  RuntimeStateRecord,
   SelfHostLifecyclePaths,
   ServerHandle,
 } from "./lifecycle/types";

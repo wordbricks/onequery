@@ -1,4 +1,5 @@
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
 
 export type RuntimeControlEndpoint = NonNullable<
   ServerLaunchConfig["runtimeControl"]
@@ -7,9 +8,9 @@ export type RuntimeControlEndpoint = NonNullable<
 export interface SelfHostLifecyclePaths {
   controlEndpoint: RuntimeControlEndpoint;
   dataDir: string;
-  lockPath: string;
   logsDir: string;
-  pidPath: string;
+  runtimeLeasePath: string;
+  runtimeStatusSnapshotPath: string;
 }
 
 export type LifecyclePathsResolution =
@@ -41,27 +42,13 @@ export interface RuntimeShutdownResource {
 
 export type RuntimeShutdownCompletion = "cleanup_only" | "cleanup_and_exit";
 
-export interface RuntimeLockRecord {
-  pid: number;
-  acquiredAt: string;
-  dataDir: string;
-  launchId: string;
-}
-
-export interface RuntimeStateRecord {
-  pid: number;
-  phase: RuntimeLifecyclePhase;
-  updatedAt: string;
-  dataDir: string;
-  launchId: string;
-}
-
 export interface LifecycleOptions {
   isProcessRunning?: (pid: number) => boolean;
   launchId: string;
   logWriter?: LifecycleLogWriter;
   now?: () => Date;
   pid?: number;
+  supervisor?: SupervisorIdentity;
 }
 
 export interface CleanupOptions {

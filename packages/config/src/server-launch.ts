@@ -20,10 +20,10 @@ export const serverLaunchRuntimePathsSchema = z
   .object({
     backupsDir: nonEmptyStringSchema,
     dataDir: nonEmptyStringSchema,
-    lockPath: nonEmptyStringSchema,
     logsDir: nonEmptyStringSchema,
-    pidPath: nonEmptyStringSchema,
     runDir: nonEmptyStringSchema,
+    runtimeLeasePath: nonEmptyStringSchema,
+    runtimeStatusSnapshotPath: nonEmptyStringSchema,
   })
   .strict();
 

@@ -31,7 +31,7 @@ import { file_onequery_runtime_v1_common } from "./common_pb.js";
  * Describes the file onequery/runtime/v1/control.proto.
  */
 export const file_onequery_runtime_v1_control: GenFile /*@__PURE__*/ = fileDesc(
-  "CiFvbmVxdWVyeS9ydW50aW1lL3YxL2NvbnRyb2wucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEiEgoQR2V0U3RhdHVzUmVxdWVzdCJPChFHZXRTdGF0dXNSZXNwb25zZRI6CgZzdGF0dXMYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNCBrpIA8gBASLiAQoLU3RvcFJlcXVlc3QSIQoMb3BlcmF0aW9uX2lkGAEgASgJQgu6SAjIAQFyA7ABARIdCgZyZWFzb24YAiABKAlCDbpICsgBAXIFEAEYgAQSTQoKY29tcGxldGlvbhgDIAEoDjIqLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0b3BDb21wbGV0aW9uQg26SArIAQGCAQQQASAAEkIKDWdyYWNlX3RpbWVvdXQYBCABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CELpIDcgBAaoBByIDCKwCKgAi1wEKDFN0b3BSZXNwb25zZRJPCgtkaXNwb3NpdGlvbhgBIAEoDjIrLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0b3BEaXNwb3NpdGlvbkINukgKyAEBggEEEAEgABI6CgZzdGF0dXMYAiABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNCBrpIA8gBARI6Cgp0cmFuc2l0aW9uGAMgASgLMiYub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lVHJhbnNpdGlvbiJXChJXYXRjaFN0YXR1c1JlcXVlc3QSHwoOYWZ0ZXJfc2VxdWVuY2UYASABKARCB7pIBDICKAASIAoQaW5jbHVkZV9zbmFwc2hvdBgCIAEoCEIGukgDyAEBIpsBChNXYXRjaFN0YXR1c1Jlc3BvbnNlEjYKCHNuYXBzaG90GAEgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzSAASPAoKdHJhbnNpdGlvbhgCIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRyYW5zaXRpb25IAEIOCgVldmVudBIFukgCCAEyrgIKFVJ1bnRpbWVDb250cm9sU2VydmljZRJfCglHZXRTdGF0dXMSJS5vbmVxdWVyeS5ydW50aW1lLnYxLkdldFN0YXR1c1JlcXVlc3QaJi5vbmVxdWVyeS5ydW50aW1lLnYxLkdldFN0YXR1c1Jlc3BvbnNlIgOQAgESSwoEU3RvcBIgLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3RvcFJlcXVlc3QaIS5vbmVxdWVyeS5ydW50aW1lLnYxLlN0b3BSZXNwb25zZRJnCgtXYXRjaFN0YXR1cxInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuV2F0Y2hTdGF0dXNSZXF1ZXN0Gigub25lcXVlcnkucnVudGltZS52MS5XYXRjaFN0YXR1c1Jlc3BvbnNlIgOQAgEwAWIIZWRpdGlvbnNw6Ac",
+  "CiFvbmVxdWVyeS9ydW50aW1lL3YxL2NvbnRyb2wucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEiwAEKDVJ1bnRpbWVUYXJnZXQSIAoJbGF1bmNoX2lkGAEgASgJQg26SArIAQFyBRABGIABEh8KCGRhdGFfZGlyGAIgASgJQg26SArIAQFyBRABGIAgEhkKA3BpZBgDIAEoDUIMqgECCAG6SAQqAigAEiQKDnN1cGVydmlzb3JfcGlkGAQgASgNQgyqAQIIAbpIBCoCKAASKwoVc3VwZXJ2aXNvcl9nZW5lcmF0aW9uGAUgASgEQgyqAQIIAbpIBDICKAAiRgoQR2V0U3RhdHVzUmVxdWVzdBIyCgZ0YXJnZXQYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUYXJnZXQiTwoRR2V0U3RhdHVzUmVzcG9uc2USOgoGc3RhdHVzGAEgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQEingIKC1N0b3BSZXF1ZXN0EiEKDG9wZXJhdGlvbl9pZBgBIAEoCUILukgIyAEBcgOwAQESHQoGcmVhc29uGAIgASgJQg26SArIAQFyBRABGIAEEk0KCmNvbXBsZXRpb24YAyABKA4yKi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wQ29tcGxldGlvbkINukgKyAEBggEEEAEgABJCCg1ncmFjZV90aW1lb3V0GAQgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uQhC6SA3IAQGqAQciAwisAioAEjoKBnRhcmdldBgFIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRhcmdldEIGukgDyAEBItcBCgxTdG9wUmVzcG9uc2USTwoLZGlzcG9zaXRpb24YASABKA4yKy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wRGlzcG9zaXRpb25CDbpICsgBAYIBBBABIAASOgoGc3RhdHVzGAIgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQESOgoKdHJhbnNpdGlvbhgDIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRyYW5zaXRpb24imwEKEldhdGNoU3RhdHVzUmVxdWVzdBInChZhZnRlcl9ydW50aW1lX3NlcXVlbmNlGAEgASgEQge6SAQyAigAEiAKEGluY2x1ZGVfc25hcHNob3QYAiABKAhCBrpIA8gBARI6CgZ0YXJnZXQYAyABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUYXJnZXRCBrpIA8gBASKbAQoTV2F0Y2hTdGF0dXNSZXNwb25zZRI2CghzbmFwc2hvdBgBIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c0gAEjwKCnRyYW5zaXRpb24YAiABKAsyJi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUcmFuc2l0aW9uSABCDgoFZXZlbnQSBbpIAggBMq4CChVSdW50aW1lQ29udHJvbFNlcnZpY2USXwoJR2V0U3RhdHVzEiUub25lcXVlcnkucnVudGltZS52MS5HZXRTdGF0dXNSZXF1ZXN0GiYub25lcXVlcnkucnVudGltZS52MS5HZXRTdGF0dXNSZXNwb25zZSIDkAIBEksKBFN0b3ASIC5vbmVxdWVyeS5ydW50aW1lLnYxLlN0b3BSZXF1ZXN0GiEub25lcXVlcnkucnVudGltZS52MS5TdG9wUmVzcG9uc2USZwoLV2F0Y2hTdGF0dXMSJy5vbmVxdWVyeS5ydW50aW1lLnYxLldhdGNoU3RhdHVzUmVxdWVzdBooLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuV2F0Y2hTdGF0dXNSZXNwb25zZSIDkAIBMAFiCGVkaXRpb25zcOgH",
   [
     file_buf_validate_validate,
     file_google_protobuf_duration,
@@ -40,17 +40,59 @@ export const file_onequery_runtime_v1_control: GenFile /*@__PURE__*/ = fileDesc(
 );
 
 /**
+ * @generated from message onequery.runtime.v1.RuntimeTarget
+ */
+export type RuntimeTarget = Message<"onequery.runtime.v1.RuntimeTarget"> & {
+  /**
+   * @generated from field: string launch_id = 1;
+   */
+  launchId: string;
+
+  /**
+   * @generated from field: string data_dir = 2;
+   */
+  dataDir: string;
+
+  /**
+   * @generated from field: uint32 pid = 3 [features.field_presence = EXPLICIT];
+   */
+  pid: number;
+
+  /**
+   * @generated from field: uint32 supervisor_pid = 4 [features.field_presence = EXPLICIT];
+   */
+  supervisorPid: number;
+
+  /**
+   * @generated from field: uint64 supervisor_generation = 5 [features.field_presence = EXPLICIT];
+   */
+  supervisorGeneration: bigint;
+};
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeTarget.
+ * Use `create(RuntimeTargetSchema)` to create a new message.
+ */
+export const RuntimeTargetSchema: GenMessage<RuntimeTarget> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_control, 0);
+
+/**
  * @generated from message onequery.runtime.v1.GetStatusRequest
  */
 export type GetStatusRequest =
-  Message<"onequery.runtime.v1.GetStatusRequest"> & {};
+  Message<"onequery.runtime.v1.GetStatusRequest"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeTarget target = 1;
+     */
+    target?: RuntimeTarget;
+  };
 
 /**
  * Describes the message onequery.runtime.v1.GetStatusRequest.
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 0);
+  messageDesc(file_onequery_runtime_v1_control, 1);
 
 /**
  * @generated from message onequery.runtime.v1.GetStatusResponse
@@ -68,7 +110,7 @@ export type GetStatusResponse =
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 1);
+  messageDesc(file_onequery_runtime_v1_control, 2);
 
 /**
  * @generated from message onequery.runtime.v1.StopRequest
@@ -93,6 +135,11 @@ export type StopRequest = Message<"onequery.runtime.v1.StopRequest"> & {
    * @generated from field: google.protobuf.Duration grace_timeout = 4;
    */
   graceTimeout?: Duration;
+
+  /**
+   * @generated from field: onequery.runtime.v1.RuntimeTarget target = 5;
+   */
+  target?: RuntimeTarget;
 };
 
 /**
@@ -100,7 +147,7 @@ export type StopRequest = Message<"onequery.runtime.v1.StopRequest"> & {
  * Use `create(StopRequestSchema)` to create a new message.
  */
 export const StopRequestSchema: GenMessage<StopRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 2);
+  messageDesc(file_onequery_runtime_v1_control, 3);
 
 /**
  * @generated from message onequery.runtime.v1.StopResponse
@@ -127,7 +174,7 @@ export type StopResponse = Message<"onequery.runtime.v1.StopResponse"> & {
  * Use `create(StopResponseSchema)` to create a new message.
  */
 export const StopResponseSchema: GenMessage<StopResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 3);
+  messageDesc(file_onequery_runtime_v1_control, 4);
 
 /**
  * @generated from message onequery.runtime.v1.WatchStatusRequest
@@ -135,14 +182,19 @@ export const StopResponseSchema: GenMessage<StopResponse> /*@__PURE__*/ =
 export type WatchStatusRequest =
   Message<"onequery.runtime.v1.WatchStatusRequest"> & {
     /**
-     * @generated from field: uint64 after_sequence = 1;
+     * @generated from field: uint64 after_runtime_sequence = 1;
      */
-    afterSequence: bigint;
+    afterRuntimeSequence: bigint;
 
     /**
      * @generated from field: bool include_snapshot = 2;
      */
     includeSnapshot: boolean;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeTarget target = 3;
+     */
+    target?: RuntimeTarget;
   };
 
 /**
@@ -150,7 +202,7 @@ export type WatchStatusRequest =
  * Use `create(WatchStatusRequestSchema)` to create a new message.
  */
 export const WatchStatusRequestSchema: GenMessage<WatchStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 4);
+  messageDesc(file_onequery_runtime_v1_control, 5);
 
 /**
  * @generated from message onequery.runtime.v1.WatchStatusResponse
@@ -183,7 +235,7 @@ export type WatchStatusResponse =
  * Use `create(WatchStatusResponseSchema)` to create a new message.
  */
 export const WatchStatusResponseSchema: GenMessage<WatchStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 5);
+  messageDesc(file_onequery_runtime_v1_control, 6);
 
 /**
  * @generated from service onequery.runtime.v1.RuntimeControlService

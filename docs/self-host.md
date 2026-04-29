@@ -123,14 +123,19 @@ Files under those roots:
 - `pglite/onequery/`
 - `logs/server.log`
 - `backups/`
-- `run/server.pid`
-- `run/server.lock`
-- `run/server.state.json`
 - `run/launch.json`
+- `run/runtime.lease.json`
+- `run/runtime.status.json`
+- `run/supervisor.status.json`
 
 The CLI creates these paths on first `onequery gateway` or
 `onequery gateway start`. `run/launch.json` is a resolved runtime artifact
 written by the CLI; it is not a user-edited config file.
+
+Durable lifecycle records are generated protobuf messages. State snapshots are
+stored as inspectable protobuf JSON; append-only lifecycle event evidence uses
+framed binary protobuf entries. See
+[`lifecycle-durable-records.md`](./lifecycle-durable-records.md).
 
 ## Reverse Proxy And Public Origin
 

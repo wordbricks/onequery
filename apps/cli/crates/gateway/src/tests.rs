@@ -54,8 +54,8 @@ fn sample_state() -> GatewayRuntimeState {
         config: Some(SelfHostConfig::default()),
         pglite_dir_present: false,
         log_file_present: false,
-        pid_file_present: false,
-        lock_file_present: false,
+        runtime_lease_present: false,
+        runtime_status_snapshot_present: false,
     }
 }
 
@@ -84,7 +84,7 @@ fn render_gateway_status_output_prefers_live_runtime_control_phase() {
         launch_id: Some("launch-a".to_owned()),
         data_dir: Some("/tmp/onequery-data".to_owned()),
         phase: RuntimeControlPhase::Ready,
-        sequence: Some(17),
+        runtime_sequence: Some(17),
     };
 
     let output = render_gateway_status_output_with_live_status(&sample_state(), Some(&live_status));
@@ -114,10 +114,53 @@ fn render_gateway_status_output_prefers_live_runtime_control_phase() {
     );
 }
 
+fn runtime_lease_json(paths: &SelfHostRuntimePaths, pid: u32, launch_id: &str) -> String {
+    format!(
+        r#"{{
+  "header": {{
+    "schemaVersion": 1,
+    "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_RUNTIME", "writerId": "runtime:{pid}"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {pid}, "supervisorPid": 1, "supervisorGeneration": "1"}},
+    "writtenAt": "2026-03-25T00:00:00Z"
+  }},
+  "runtime": {{"pid": {pid}, "launchId": "{launch_id}", "dataDir": "{}"}},
+  "supervisor": {{"supervisorId": "supervisor-a", "pid": 1, "generation": "1"}},
+  "runtimeSequence": "1",
+  "acquiredAt": "2026-03-25T00:00:00Z",
+  "renewedAt": "2026-03-25T00:00:00Z",
+  "leaseTtl": "60s"
+}}"#,
+        paths.data_dir.display(),
+        paths.data_dir.display()
+    )
+}
+
+fn runtime_status_snapshot_json(paths: &SelfHostRuntimePaths, pid: u32, launch_id: &str) -> String {
+    format!(
+        r#"{{
+  "header": {{
+    "schemaVersion": 1,
+    "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_RUNTIME", "writerId": "runtime:{pid}"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {pid}, "supervisorPid": 1, "supervisorGeneration": "1"}},
+    "writtenAt": "2026-03-25T00:00:00Z"
+  }},
+  "status": {{
+    "identity": {{"pid": {pid}, "launchId": "{launch_id}", "dataDir": "{}"}},
+    "phase": "RUNTIME_PHASE_READY",
+    "runtimeSequence": "1",
+    "updatedAt": "2026-03-25T00:00:00Z"
+  }},
+  "snapshotAt": "2026-03-25T00:00:00Z"
+}}"#,
+        paths.data_dir.display(),
+        paths.data_dir.display()
+    )
+}
+
 #[test]
-fn render_gateway_status_output_treats_lock_without_runtime_state_as_stale_markers_snapshot() {
+fn render_gateway_status_output_reports_running_from_lease_without_status_snapshot() {
     let test_dir =
-        std::env::temp_dir().join(format!("onequery-gateway-lock-status-{}", Uuid::new_v4()));
+        std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
     let paths = SelfHostRuntimePaths::from_dirs(
         test_dir.join("config").join("self-host"),
         test_dir.join("data"),
@@ -130,14 +173,10 @@ fn render_gateway_status_output_treats_lock_without_runtime_state_as_stale_marke
     )
     .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
     fs::write(
-        &paths.lock_path,
-        format!(
-            "{{\"pid\":{},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\",\"launchId\":\"launch-a\"}}\n",
-            std::process::id(),
-            paths.data_dir.display()
-        ),
+        &paths.runtime_lease_path,
+        runtime_lease_json(&paths, std::process::id(), "launch-a"),
     )
-    .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths,
@@ -153,9 +192,9 @@ fn render_gateway_status_output_treats_lock_without_runtime_state_as_stale_marke
 }
 
 #[test]
-fn render_gateway_status_output_reports_running_from_lock_and_runtime_state_snapshot() {
+fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_snapshot() {
     let test_dir =
-        std::env::temp_dir().join(format!("onequery-gateway-lock-status-{}", Uuid::new_v4()));
+        std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
     let paths = SelfHostRuntimePaths::from_dirs(
         test_dir.join("config").join("self-host"),
         test_dir.join("data"),
@@ -168,23 +207,15 @@ fn render_gateway_status_output_reports_running_from_lock_and_runtime_state_snap
     )
     .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
     fs::write(
-        &paths.lock_path,
-        format!(
-            "{{\"pid\":{},\"acquiredAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\",\"launchId\":\"launch-a\"}}\n",
-            std::process::id(),
-            paths.data_dir.display()
-        ),
+        &paths.runtime_lease_path,
+        runtime_lease_json(&paths, std::process::id(), "launch-a"),
     )
-    .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
     fs::write(
-        paths.run_dir.join("server.state.json"),
-        format!(
-            "{{\"pid\":{},\"phase\":\"ready\",\"updatedAt\":\"2026-03-25T00:00:00.000Z\",\"dataDir\":\"{}\",\"launchId\":\"launch-a\"}}\n",
-            std::process::id(),
-            paths.data_dir.display()
-        ),
+        &paths.runtime_status_snapshot_path,
+        runtime_status_snapshot_json(&paths, std::process::id(), "launch-a"),
     )
-    .unwrap_or_else(|error| panic!("expected state fixture write to succeed: {error}"));
+    .unwrap_or_else(|error| panic!("expected status snapshot fixture write to succeed: {error}"));
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths,
@@ -229,9 +260,9 @@ fn render_gateway_logs_output_snapshot() {
 }
 
 #[test]
-fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
+fn runtime_state_json_reports_stale_durable_records_when_lease_or_snapshot_is_present() {
     let state = GatewayRuntimeState {
-        pid_file_present: true,
+        runtime_lease_present: true,
         ..sample_state()
     };
 
@@ -239,7 +270,7 @@ fn runtime_state_json_reports_marker_status_when_pid_or_lock_is_present() {
         super::render::runtime_state_json(&state)
             .get("status")
             .and_then(serde_json::Value::as_str),
-        Some("stale_markers")
+        Some("stale_durable_records")
     );
 }
 
@@ -510,8 +541,8 @@ fn resolve_runtime_state_with_paths_for_test(
             .unwrap_or(false),
         pglite_dir_present: paths.pglite_dir.is_dir(),
         log_file_present: paths.server_log_path.is_file(),
-        pid_file_present: paths.pid_path.is_file(),
-        lock_file_present: paths.lock_path.is_file(),
+        runtime_lease_present: paths.runtime_lease_path.is_file(),
+        runtime_status_snapshot_present: paths.runtime_status_snapshot_path.is_file(),
         paths,
         config,
     })

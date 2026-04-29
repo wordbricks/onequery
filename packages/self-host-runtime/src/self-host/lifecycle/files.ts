@@ -15,7 +15,7 @@ import {
   RuntimeLifecycleDirectoryError,
   RuntimeLifecycleFileError,
 } from "./errors";
-import type { RuntimeStateRecord, SelfHostLifecyclePaths } from "./types";
+import type { SelfHostLifecyclePaths } from "./types";
 
 export async function ensureRuntimeDirectories(
   paths: SelfHostLifecyclePaths
@@ -25,8 +25,8 @@ export async function ensureRuntimeDirectories(
       ...new Set([
         paths.dataDir,
         paths.logsDir,
-        dirname(paths.pidPath),
-        dirname(paths.lockPath),
+        dirname(paths.runtimeLeasePath),
+        dirname(paths.runtimeStatusSnapshotPath),
       ]),
     ].map((path) => ensureRuntimeDirectory(path))
   );
@@ -74,17 +74,13 @@ export async function readLifecycleFile(
   });
 }
 
-export function runtimeStatePath(paths: SelfHostLifecyclePaths): string {
-  return join(dirname(paths.lockPath), "server.state.json");
-}
-
-export async function writeRuntimeState(
+export async function writeRuntimeStatusSnapshot(
   paths: SelfHostLifecyclePaths,
-  record: RuntimeStateRecord
+  contents: string
 ): Promise<ResultType<void, RuntimeLifecycleFileError>> {
   return replaceFileWithCompleteContents(
-    runtimeStatePath(paths),
-    `${JSON.stringify(record)}\n`,
+    paths.runtimeStatusSnapshotPath,
+    contents,
     {
       encoding: "utf8",
       mode: 0o600,

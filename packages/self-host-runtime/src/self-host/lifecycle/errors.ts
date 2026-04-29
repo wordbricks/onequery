@@ -15,7 +15,7 @@ export class DuplicateRuntimeStartError extends TaggedError(
       existingPid,
       message:
         existingPid === null
-          ? `Self-host runtime is already locked for ${paths.dataDir}`
+          ? `Self-host runtime is already leased for ${paths.dataDir}`
           : `Self-host runtime already running for ${paths.dataDir} (pid ${existingPid})`,
     });
   }
@@ -59,8 +59,8 @@ export class RuntimeLifecycleOptionsError extends TaggedError(
   message: string;
 }>() {}
 
-export class RuntimeLockRecordReadError extends TaggedError(
-  "RuntimeLockRecordReadError"
+export class RuntimeLeaseRecordReadError extends TaggedError(
+  "RuntimeLeaseRecordReadError"
 )<{
   cause: unknown;
   message: string;
@@ -89,7 +89,7 @@ export type AcquireRuntimeLifecycleLeaseError =
   | RuntimeLifecycleFileError
   | RuntimeLifecycleLogWriteError
   | RuntimeLifecycleOptionsError
-  | RuntimeLockRecordReadError;
+  | RuntimeLeaseRecordReadError;
 
 export type RuntimeLifecycleMutationError =
   | RuntimeLifecycleFileError

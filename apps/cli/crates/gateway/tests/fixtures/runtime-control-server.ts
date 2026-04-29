@@ -5,7 +5,7 @@ import {
   serveRuntimeControl,
 } from "../../../../../../packages/self-host-runtime/src/self-host/runtime-control";
 
-const [socketPath, readyPath] = process.argv.slice(2);
+const [socketPath, readyPath, mode] = process.argv.slice(2);
 
 if (!socketPath || !readyPath) {
   throw new Error(
@@ -20,9 +20,9 @@ const lease = {
       transport: "unix" as const,
     },
     dataDir: "/tmp/onequery-data",
-    lockPath: "/tmp/onequery-run/server.lock",
     logsDir: "/tmp/onequery-logs",
-    pidPath: "/tmp/onequery-run/server.pid",
+    runtimeLeasePath: "/tmp/onequery-run/runtime.lease.json",
+    runtimeStatusSnapshotPath: "/tmp/onequery-run/runtime.status.json",
   },
   release: async () => undefined,
   transition: async () => undefined,
@@ -36,6 +36,15 @@ const actor = createRuntimeControlActor({
   },
   lease,
   now: () => new Date("2026-04-27T00:00:00.000Z"),
+});
+actor.attachShutdownController({
+  dispose: () => undefined,
+  shutdown: async (reason, completion = "cleanup_only") => {
+    await actor.lease.release({
+      reason,
+      stopServer: completion === "cleanup_and_exit",
+    });
+  },
 });
 const server = await serveRuntimeControl({
   actor,
@@ -62,5 +71,8 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
+if (mode === "transition-ready") {
+  await actor.lease.transition("ready");
+}
 await writeFile(readyPath, "ready\n");
 await new Promise(() => undefined);

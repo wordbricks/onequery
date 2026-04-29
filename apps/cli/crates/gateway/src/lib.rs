@@ -111,6 +111,7 @@ pub async fn execute(
                 command_line,
                 FOREGROUND_GATEWAY_RETRY_COMMAND,
             )
+            .await
         }
         GatewayCommand::Start => {
             let state =
@@ -121,6 +122,7 @@ pub async fn execute(
                 command_line,
                 BACKGROUND_GATEWAY_RETRY_COMMAND,
             )
+            .await
         }
         GatewayCommand::Stop => {
             let state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
@@ -150,7 +152,7 @@ pub async fn execute_supervisor(
     ensure_self_host_runtime_supported(command_line)?;
     let state = resolve_runtime_state(command_line, GatewayStateAccessMode::BootstrapIfMissing)?;
 
-    run_gateway_supervisor(&state, args, command_line)
+    run_gateway_supervisor(&state, args, command_line).await
 }
 
 /// Reads the pid for a running managed gateway process, when present.
@@ -158,6 +160,14 @@ pub fn read_running_gateway_pid(command_line: &str) -> Result<Option<u32>, CliEr
     let state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
 
     read_managed_runtime_pid(&state.paths, command_line)
+}
+
+/// Reads the pid for a running managed gateway process using resolved paths.
+pub fn read_running_gateway_pid_from_paths(
+    paths: &self_host::SelfHostRuntimePaths,
+    command_line: &str,
+) -> Result<Option<u32>, CliError> {
+    read_managed_runtime_pid(paths, command_line)
 }
 
 /// Ensures the self-host runtime is supported on this platform.

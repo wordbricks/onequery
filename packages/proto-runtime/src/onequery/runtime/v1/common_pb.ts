@@ -31,7 +31,7 @@ import { file_google_rpc_error_details } from "../../../google/rpc/error_details
  * Describes the file onequery/runtime/v1/common.proto.
  */
 export const file_onequery_runtime_v1_common: GenFile /*@__PURE__*/ = fileDesc(
-  "CiBvbmVxdWVyeS9ydW50aW1lL3YxL2NvbW1vbi5wcm90bxITb25lcXVlcnkucnVudGltZS52MSJtCg9SdW50aW1lSWRlbnRpdHkSFwoDcGlkGAEgASgNQgq6SAfIAQEqAiAAEiAKCWxhdW5jaF9pZBgCIAEoCUINukgKyAEBcgUQARiAARIfCghkYXRhX2RpchgDIAEoCUINukgKyAEBcgUQARiAICLLAQoOUnVudGltZUZhaWx1cmUSRAoEY29kZRgBIAEoDjInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZUZhaWx1cmVDb2RlQg26SArIAQGCAQQQASAAEh4KB21lc3NhZ2UYAiABKAlCDbpICsgBAXIFEAEYgCASGQoJcmV0cnlhYmxlGAMgASgIQga6SAPIAQESOAoLcmV0cnlfYWZ0ZXIYBCABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CCLpIBaoBAioAImUKEFJ1bnRpbWVPcGVyYXRpb24SIQoMb3BlcmF0aW9uX2lkGAEgASgJQgu6SAjIAQFyA7ABARIuCgRuYW1lGAIgASgJQiC6SB3IAQFyGBABGIABMhFeW2Etel1bYS16MC05X10qJCKZAgoNUnVudGltZVN0YXR1cxI+CghpZGVudGl0eRgBIAEoCzIkLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZUlkZW50aXR5Qga6SAPIAQESPwoFcGhhc2UYAiABKA4yIS5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVQaGFzZUINukgKyAEBggEEEAEgABIZCghzZXF1ZW5jZRgDIAEoBEIHukgEMgIoABI2Cgp1cGRhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBEjQKB2ZhaWx1cmUYBSABKAsyIy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVGYWlsdXJlIokDChFSdW50aW1lVHJhbnNpdGlvbhI4CglvcGVyYXRpb24YASABKAsyJS5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVPcGVyYXRpb24SGQoIc2VxdWVuY2UYAiABKARCB7pIBDICKAESSAoOcHJldmlvdXNfcGhhc2UYAyABKA4yIS5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVQaGFzZUINukgKyAEBggEEEAEgABJHCg1jdXJyZW50X3BoYXNlGAQgASgOMiEub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lUGhhc2VCDbpICsgBAYIBBBABIAASHQoGcmVhc29uGAUgASgJQg26SArIAQFyBRABGIAEEjcKC29jY3VycmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBEjQKB2ZhaWx1cmUYByABKAsyIy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVGYWlsdXJlIrICCiJSdW50aW1lQ29ubmVjdEVycm9yRGV0YWlsUmVmZXJlbmNlEisKCmVycm9yX2luZm8YASABKAsyFS5nb29nbGUucnBjLkVycm9ySW5mb0gAEi0KC2JhZF9yZXF1ZXN0GAIgASgLMhYuZ29vZ2xlLnJwYy5CYWRSZXF1ZXN0SAASKwoKcmV0cnlfaW5mbxgDIAEoCzIVLmdvb2dsZS5ycGMuUmV0cnlJbmZvSAASMQoNcmVzb3VyY2VfaW5mbxgEIAEoCzIYLmdvb2dsZS5ycGMuUmVzb3VyY2VJbmZvSAASPwoUcHJlY29uZGl0aW9uX2ZhaWx1cmUYBSABKAsyHy5nb29nbGUucnBjLlByZWNvbmRpdGlvbkZhaWx1cmVIAEIPCgZkZXRhaWwSBbpIAggBKpMCCgxSdW50aW1lUGhhc2USHQoZUlVOVElNRV9QSEFTRV9VTlNQRUNJRklFRBAAEhoKFlJVTlRJTUVfUEhBU0VfU1RBUlRJTkcQARIXChNSVU5USU1FX1BIQVNFX1JFQURZEAISGgoWUlVOVElNRV9QSEFTRV9EUkFJTklORxADEh8KG1JVTlRJTUVfUEhBU0VfQ0hFQ0tQT0lOVElORxAEEhoKFlJVTlRJTUVfUEhBU0VfU1RPUFBJTkcQBRIZChVSVU5USU1FX1BIQVNFX1NUT1BQRUQQBhIhCh1SVU5USU1FX1BIQVNFX1NIVVRET1dOX0ZBSUxFRBAHEhgKFFJVTlRJTUVfUEhBU0VfRkFJTEVEEAgqmAEKFVJ1bnRpbWVTdG9wQ29tcGxldGlvbhInCiNSVU5USU1FX1NUT1BfQ09NUExFVElPTl9VTlNQRUNJRklFRBAAEigKJFJVTlRJTUVfU1RPUF9DT01QTEVUSU9OX0NMRUFOVVBfT05MWRABEiwKKFJVTlRJTUVfU1RPUF9DT01QTEVUSU9OX0NMRUFOVVBfQU5EX0VYSVQQAirHAQoWUnVudGltZVN0b3BEaXNwb3NpdGlvbhIoCiRSVU5USU1FX1NUT1BfRElTUE9TSVRJT05fVU5TUEVDSUZJRUQQABIlCiFSVU5USU1FX1NUT1BfRElTUE9TSVRJT05fQUNDRVBURUQQARItCilSVU5USU1FX1NUT1BfRElTUE9TSVRJT05fQUxSRUFEWV9TVE9QUElORxACEi0KKVJVTlRJTUVfU1RPUF9ESVNQT1NJVElPTl9BTFJFQURZX0ZJTklTSEVEEAMqkAIKElJ1bnRpbWVGYWlsdXJlQ29kZRIkCiBSVU5USU1FX0ZBSUxVUkVfQ09ERV9VTlNQRUNJRklFRBAAEioKJlJVTlRJTUVfRkFJTFVSRV9DT0RFX1NIVVRET1dOX1JFSkVDVEVEEAESKQolUlVOVElNRV9GQUlMVVJFX0NPREVfU0hVVERPV05fVElNRU9VVBACEi4KKlJVTlRJTUVfRkFJTFVSRV9DT0RFX1JFU09VUkNFX0NMT1NFX0ZBSUxFRBADEioKJlJVTlRJTUVfRkFJTFVSRV9DT0RFX0NIRUNLUE9JTlRfRkFJTEVEEAQSIQodUlVOVElNRV9GQUlMVVJFX0NPREVfSU5URVJOQUwQBWIIZWRpdGlvbnNw6Ac",
+  "CiBvbmVxdWVyeS9ydW50aW1lL3YxL2NvbW1vbi5wcm90bxITb25lcXVlcnkucnVudGltZS52MSJtCg9SdW50aW1lSWRlbnRpdHkSFwoDcGlkGAEgASgNQgq6SAfIAQEqAiAAEiAKCWxhdW5jaF9pZBgCIAEoCUINukgKyAEBcgUQARiAARIfCghkYXRhX2RpchgDIAEoCUINukgKyAEBcgUQARiAICLLAQoOUnVudGltZUZhaWx1cmUSRAoEY29kZRgBIAEoDjInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZUZhaWx1cmVDb2RlQg26SArIAQGCAQQQASAAEh4KB21lc3NhZ2UYAiABKAlCDbpICsgBAXIFEAEYgCASGQoJcmV0cnlhYmxlGAMgASgIQga6SAPIAQESOAoLcmV0cnlfYWZ0ZXIYBCABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CCLpIBaoBAioAIsUDChFSdW50aW1lVHJhbnNpdGlvbhIkCg10cmFuc2l0aW9uX2lkGAEgASgJQg26SArIAQFyBRABGIABEiEKEHJ1bnRpbWVfc2VxdWVuY2UYAiABKARCB7pIBDICKAESSAoOcHJldmlvdXNfcGhhc2UYAyABKA4yIS5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVQaGFzZUINukgKyAEBggEEEAEgABJHCg1jdXJyZW50X3BoYXNlGAQgASgOMiEub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lUGhhc2VCDbpICsgBAYIBBBABIAASHQoGcmVhc29uGAUgASgJQg26SArIAQFyBRABGIAEEjcKC29jY3VycmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBEjQKB2ZhaWx1cmUYByABKAsyIy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVGYWlsdXJlEiQKE2NhbGxlcl9vcGVyYXRpb25faWQYCCABKAlCB7pIBHICGEASIAoOY29ycmVsYXRpb25faWQYCSABKAlCCLpIBXIDGIABIqECCg1SdW50aW1lU3RhdHVzEj4KCGlkZW50aXR5GAEgASgLMiQub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lSWRlbnRpdHlCBrpIA8gBARI/CgVwaGFzZRgCIAEoDjIhLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVBoYXNlQg26SArIAQGCAQQQASAAEiEKEHJ1bnRpbWVfc2VxdWVuY2UYAyABKARCB7pIBDICKAASNgoKdXBkYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARI0CgdmYWlsdXJlGAUgASgLMiMub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lRmFpbHVyZSKMAQodTGlmZWN5Y2xlUmVjb3JkV3JpdGVySWRlbnRpdHkSSQoGd3JpdGVyGAEgASgOMioub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVSZWNvcmRXcml0ZXJCDbpICsgBAYIBBBABIAASIAoJd3JpdGVyX2lkGAIgASgJQg26SArIAQFyBRABGIABIsMBChdMaWZlY3ljbGVMYXVuY2hJZGVudGl0eRIgCglsYXVuY2hfaWQYASABKAlCDbpICsgBAXIFEAEYgAESHwoIZGF0YV9kaXIYAiABKAlCDbpICsgBAXIFEAEYgCASHAoLcnVudGltZV9waWQYAyABKA1CB7pIBCoCKAASHwoOc3VwZXJ2aXNvcl9waWQYBCABKA1CB7pIBCoCKAASJgoVc3VwZXJ2aXNvcl9nZW5lcmF0aW9uGAUgASgEQge6SAQyAigAIoUCChVMaWZlY3ljbGVSZWNvcmRIZWFkZXISIgoOc2NoZW1hX3ZlcnNpb24YASABKA1CCrpIB8gBASoCKAESSgoGd3JpdGVyGAIgASgLMjIub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVSZWNvcmRXcml0ZXJJZGVudGl0eUIGukgDyAEBEkQKBmxhdW5jaBgDIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuTGlmZWN5Y2xlTGF1bmNoSWRlbnRpdHlCBrpIA8gBARI2Cgp3cml0dGVuX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBInMKElN1cGVydmlzb3JJZGVudGl0eRIkCg1zdXBlcnZpc29yX2lkGAEgASgJQg26SArIAQFyBRABGIABEhcKA3BpZBgCIAEoDUIKukgHyAEBKgIgABIeCgpnZW5lcmF0aW9uGAMgASgEQgq6SAfIAQEyAigBItEBChFTdXBlcnZpc29yRmFpbHVyZRJHCgRjb2RlGAEgASgOMioub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yRmFpbHVyZUNvZGVCDbpICsgBAYIBBBABIAASHgoHbWVzc2FnZRgCIAEoCUINukgKyAEBcgUQARiAIBIZCglyZXRyeWFibGUYAyABKAhCBrpIA8gBARI4CgtyZXRyeV9hZnRlchgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbkIIukgFqgECKgAirQMKEFN1cGVydmlzb3JTdGF0dXMSQQoIaWRlbnRpdHkYASABKAsyJy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JJZGVudGl0eUIGukgDyAEBEkQKBmxhdW5jaBgCIAEoCzIsLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuTGlmZWN5Y2xlTGF1bmNoSWRlbnRpdHlCBrpIA8gBARJCCgVwaGFzZRgDIAEoDjIkLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvclBoYXNlQg26SArIAQGCAQQQASAAEiQKE3N1cGVydmlzb3Jfc2VxdWVuY2UYBCABKARCB7pIBDICKAASNgoKdXBkYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARI1CgdydW50aW1lGAYgASgLMiQub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lSWRlbnRpdHkSNwoHZmFpbHVyZRgHIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvckZhaWx1cmUiqwMKElJ1bnRpbWVMZWFzZVJlY29yZBJCCgZoZWFkZXIYASABKAsyKi5vbmVxdWVyeS5ydW50aW1lLnYxLkxpZmVjeWNsZVJlY29yZEhlYWRlckIGukgDyAEBEj0KB3J1bnRpbWUYAiABKAsyJC5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVJZGVudGl0eUIGukgDyAEBEkMKCnN1cGVydmlzb3IYAyABKAsyJy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JJZGVudGl0eUIGukgDyAEBEiEKEHJ1bnRpbWVfc2VxdWVuY2UYBCABKARCB7pIBDICKAASNwoLYWNxdWlyZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQESNgoKcmVuZXdlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBARI5CglsZWFzZV90dGwYByABKAsyGS5nb29nbGUucHJvdG9idWYuRHVyYXRpb25CC7pICMgBAaoBAioAItABChVSdW50aW1lU3RhdHVzU25hcHNob3QSQgoGaGVhZGVyGAEgASgLMioub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVSZWNvcmRIZWFkZXJCBrpIA8gBARI6CgZzdGF0dXMYAiABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNCBrpIA8gBARI3CgtzbmFwc2hvdF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXBCBrpIA8gBASLWAQoYU3VwZXJ2aXNvclN0YXR1c1NuYXBzaG90EkIKBmhlYWRlchgBIAEoCzIqLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuTGlmZWN5Y2xlUmVjb3JkSGVhZGVyQga6SAPIAQESPQoGc3RhdHVzGAIgASgLMiUub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yU3RhdHVzQga6SAPIAQESNwoLc25hcHNob3RfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQga6SAPIAQEi4gMKFFN1cGVydmlzb3JUcmFuc2l0aW9uEkMKCnN1cGVydmlzb3IYASABKAsyJy5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JJZGVudGl0eUIGukgDyAEBEiQKE3N1cGVydmlzb3Jfc2VxdWVuY2UYAiABKARCB7pIBDICKAESSwoOcHJldmlvdXNfcGhhc2UYAyABKA4yJC5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JQaGFzZUINukgKyAEBggEEEAEgABJKCg1jdXJyZW50X3BoYXNlGAQgASgOMiQub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yUGhhc2VCDbpICsgBAYIBBBABIAASHQoGcmVhc29uGAUgASgJQg26SArIAQFyBRABGIAEEjcKC29jY3VycmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBEjUKB3J1bnRpbWUYByABKAsyJC5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVJZGVudGl0eRI3CgdmYWlsdXJlGAggASgLMiYub25lcXVlcnkucnVudGltZS52MS5TdXBlcnZpc29yRmFpbHVyZSLxAQoUTGlmZWN5Y2xlUHJvY2Vzc0V4aXQSPQoHcnVudGltZRgBIAEoCzIkLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZUlkZW50aXR5Qga6SAPIAQESRwoNcnVudGltZV9waGFzZRgCIAEoDjIhLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVBoYXNlQg26SArIAQGCAQQQASAAEh0KCWV4aXRfY29kZRgDIAEoBUIKukgHGgUY/wEoABIXCgZzaWduYWwYBCABKAlCB7pIBHICGEASGQoJcmV0cnlhYmxlGAUgASgIQga6SAPIAQEiOwoZTGlmZWN5Y2xlUmVjb3ZlcnlEZWNpc2lvbhIeCgdzdW1tYXJ5GAEgASgJQg26SArIAQFyBRABGIAgIloKG0xpZmVjeWNsZUFydGlmYWN0Q29ycnVwdGlvbhIbCgRwYXRoGAEgASgJQg26SArIAQFyBRABGIAgEh4KB21lc3NhZ2UYAiABKAlCDbpICsgBAXIFEAEYgCAioAgKFkxpZmVjeWNsZUV2ZW50TG9nRW50cnkSQgoGaGVhZGVyGAEgASgLMioub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVSZWNvcmRIZWFkZXJCBrpIA8gBARImChJsaWZlY3ljbGVfc2VxdWVuY2UYAiABKARCCrpIB8gBATICKAESRAoEa2luZBgDIAEoDjInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuTGlmZWN5Y2xlRXZlbnRLaW5kQg26SArIAQGCAQQQASAAEjcKC29jY3VycmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcEIGukgDyAEBEiEKEHJ1bnRpbWVfc2VxdWVuY2UYBSABKARCB7pIBDICKAASJAoTc3VwZXJ2aXNvcl9zZXF1ZW5jZRgGIAEoBEIHukgEMgIoABIkChNjYWxsZXJfb3BlcmF0aW9uX2lkGAcgASgJQge6SARyAhhAEh8KDXRyYW5zaXRpb25faWQYCCABKAlCCLpIBXIDGIABEiAKDmNvcnJlbGF0aW9uX2lkGAkgASgJQgi6SAVyAxiAARJACg1ydW50aW1lX2xlYXNlGAogASgLMicub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lTGVhc2VSZWNvcmRIABJNChdydW50aW1lX3N0YXR1c19zbmFwc2hvdBgLIAEoCzIqLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c1NuYXBzaG90SAASUwoac3VwZXJ2aXNvcl9zdGF0dXNfc25hcHNob3QYDCABKAsyLS5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JTdGF0dXNTbmFwc2hvdEgAEkQKEnJ1bnRpbWVfdHJhbnNpdGlvbhgNIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRyYW5zaXRpb25IABJKChVzdXBlcnZpc29yX3RyYW5zaXRpb24YDiABKAsyKS5vbmVxdWVyeS5ydW50aW1lLnYxLlN1cGVydmlzb3JUcmFuc2l0aW9uSAASQQoMcHJvY2Vzc19leGl0GA8gASgLMikub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVQcm9jZXNzRXhpdEgAEksKEXJlY292ZXJ5X2RlY2lzaW9uGBAgASgLMi4ub25lcXVlcnkucnVudGltZS52MS5MaWZlY3ljbGVSZWNvdmVyeURlY2lzaW9uSAASTwoTYXJ0aWZhY3RfY29ycnVwdGlvbhgRIAEoCzIwLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuTGlmZWN5Y2xlQXJ0aWZhY3RDb3JydXB0aW9uSABCEAoHcGF5bG9hZBIFukgCCAEisgIKIlJ1bnRpbWVDb25uZWN0RXJyb3JEZXRhaWxSZWZlcmVuY2USKwoKZXJyb3JfaW5mbxgBIAEoCzIVLmdvb2dsZS5ycGMuRXJyb3JJbmZvSAASLQoLYmFkX3JlcXVlc3QYAiABKAsyFi5nb29nbGUucnBjLkJhZFJlcXVlc3RIABIrCgpyZXRyeV9pbmZvGAMgASgLMhUuZ29vZ2xlLnJwYy5SZXRyeUluZm9IABIxCg1yZXNvdXJjZV9pbmZvGAQgASgLMhguZ29vZ2xlLnJwYy5SZXNvdXJjZUluZm9IABI/ChRwcmVjb25kaXRpb25fZmFpbHVyZRgFIAEoCzIfLmdvb2dsZS5ycGMuUHJlY29uZGl0aW9uRmFpbHVyZUgAQg8KBmRldGFpbBIFukgCCAEqkwIKDFJ1bnRpbWVQaGFzZRIdChlSVU5USU1FX1BIQVNFX1VOU1BFQ0lGSUVEEAASGgoWUlVOVElNRV9QSEFTRV9TVEFSVElORxABEhcKE1JVTlRJTUVfUEhBU0VfUkVBRFkQAhIaChZSVU5USU1FX1BIQVNFX0RSQUlOSU5HEAMSHwobUlVOVElNRV9QSEFTRV9DSEVDS1BPSU5USU5HEAQSGgoWUlVOVElNRV9QSEFTRV9TVE9QUElORxAFEhkKFVJVTlRJTUVfUEhBU0VfU1RPUFBFRBAGEiEKHVJVTlRJTUVfUEhBU0VfU0hVVERPV05fRkFJTEVEEAcSGAoUUlVOVElNRV9QSEFTRV9GQUlMRUQQCCqYAQoVUnVudGltZVN0b3BDb21wbGV0aW9uEicKI1JVTlRJTUVfU1RPUF9DT01QTEVUSU9OX1VOU1BFQ0lGSUVEEAASKAokUlVOVElNRV9TVE9QX0NPTVBMRVRJT05fQ0xFQU5VUF9PTkxZEAESLAooUlVOVElNRV9TVE9QX0NPTVBMRVRJT05fQ0xFQU5VUF9BTkRfRVhJVBACKscBChZSdW50aW1lU3RvcERpc3Bvc2l0aW9uEigKJFJVTlRJTUVfU1RPUF9ESVNQT1NJVElPTl9VTlNQRUNJRklFRBAAEiUKIVJVTlRJTUVfU1RPUF9ESVNQT1NJVElPTl9BQ0NFUFRFRBABEi0KKVJVTlRJTUVfU1RPUF9ESVNQT1NJVElPTl9BTFJFQURZX1NUT1BQSU5HEAISLQopUlVOVElNRV9TVE9QX0RJU1BPU0lUSU9OX0FMUkVBRFlfRklOSVNIRUQQAyqQAgoSUnVudGltZUZhaWx1cmVDb2RlEiQKIFJVTlRJTUVfRkFJTFVSRV9DT0RFX1VOU1BFQ0lGSUVEEAASKgomUlVOVElNRV9GQUlMVVJFX0NPREVfU0hVVERPV05fUkVKRUNURUQQARIpCiVSVU5USU1FX0ZBSUxVUkVfQ09ERV9TSFVURE9XTl9USU1FT1VUEAISLgoqUlVOVElNRV9GQUlMVVJFX0NPREVfUkVTT1VSQ0VfQ0xPU0VfRkFJTEVEEAMSKgomUlVOVElNRV9GQUlMVVJFX0NPREVfQ0hFQ0tQT0lOVF9GQUlMRUQQBBIhCh1SVU5USU1FX0ZBSUxVUkVfQ09ERV9JTlRFUk5BTBAFKo0BChVMaWZlY3ljbGVSZWNvcmRXcml0ZXISJwojTElGRUNZQ0xFX1JFQ09SRF9XUklURVJfVU5TUEVDSUZJRUQQABIjCh9MSUZFQ1lDTEVfUkVDT1JEX1dSSVRFUl9SVU5USU1FEAESJgoiTElGRUNZQ0xFX1JFQ09SRF9XUklURVJfU1VQRVJWSVNPUhACKrICCg9TdXBlcnZpc29yUGhhc2USIAocU1VQRVJWSVNPUl9QSEFTRV9VTlNQRUNJRklFRBAAEh0KGVNVUEVSVklTT1JfUEhBU0VfU1RBUlRJTkcQARIgChxTVVBFUlZJU09SX1BIQVNFX0hBTkRTSEFLSU5HEAISGgoWU1VQRVJWSVNPUl9QSEFTRV9SRUFEWRADEiMKH1NVUEVSVklTT1JfUEhBU0VfU1RPUF9SRVFVRVNURUQQBBIgChxTVVBFUlZJU09SX1BIQVNFX1RFUk1JTkFUSU5HEAUSHwobU1VQRVJWSVNPUl9QSEFTRV9FU0NBTEFUSU5HEAYSGwoXU1VQRVJWSVNPUl9QSEFTRV9FWElURUQQBxIbChdTVVBFUlZJU09SX1BIQVNFX0ZBSUxFRBAIKowDChVTdXBlcnZpc29yRmFpbHVyZUNvZGUSJwojU1VQRVJWSVNPUl9GQUlMVVJFX0NPREVfVU5TUEVDSUZJRUQQABIrCidTVVBFUlZJU09SX0ZBSUxVUkVfQ09ERV9TVEFSVFVQX1RJTUVPVVQQARIsCihTVVBFUlZJU09SX0ZBSUxVUkVfQ09ERV9IQU5EU0hBS0VfRkFJTEVEEAISKwonU1VQRVJWSVNPUl9GQUlMVVJFX0NPREVfU1RPUF9SUENfRkFJTEVEEAMSLworU1VQRVJWSVNPUl9GQUlMVVJFX0NPREVfVEVSTUlOQVRJT05fVElNRU9VVBAEEjUKMVNVUEVSVklTT1JfRkFJTFVSRV9DT0RFX0NISUxEX0VYSVRFRF9VTkVYUEVDVEVETFkQBRI0CjBTVVBFUlZJU09SX0ZBSUxVUkVfQ09ERV9BUlRJRkFDVF9SRUNPVkVSWV9GQUlMRUQQBhIkCiBTVVBFUlZJU09SX0ZBSUxVUkVfQ09ERV9JTlRFUk5BTBAHKvIDChJMaWZlY3ljbGVFdmVudEtpbmQSJAogTElGRUNZQ0xFX0VWRU5UX0tJTkRfVU5TUEVDSUZJRUQQABIvCitMSUZFQ1lDTEVfRVZFTlRfS0lORF9SVU5USU1FX0xFQVNFX1JFQ09SREVEEAESOQo1TElGRUNZQ0xFX0VWRU5UX0tJTkRfUlVOVElNRV9TVEFUVVNfU05BUFNIT1RfUkVDT1JERUQQAhI8CjhMSUZFQ1lDTEVfRVZFTlRfS0lORF9TVVBFUlZJU09SX1NUQVRVU19TTkFQU0hPVF9SRUNPUkRFRBADEjQKMExJRkVDWUNMRV9FVkVOVF9LSU5EX1JVTlRJTUVfVFJBTlNJVElPTl9SRUNPUkRFRBAEEjcKM0xJRkVDWUNMRV9FVkVOVF9LSU5EX1NVUEVSVklTT1JfVFJBTlNJVElPTl9SRUNPUkRFRBAFEi4KKkxJRkVDWUNMRV9FVkVOVF9LSU5EX1BST0NFU1NfRVhJVF9SRUNPUkRFRBAGEjMKL0xJRkVDWUNMRV9FVkVOVF9LSU5EX1JFQ09WRVJZX0RFQ0lTSU9OX1JFQ09SREVEEAcSOAo0TElGRUNZQ0xFX0VWRU5UX0tJTkRfQ09SUlVQVF9EVVJBQkxFX1JFQ09SRF9PQlNFUlZFRBAIYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_google_protobuf_duration,
@@ -100,79 +100,19 @@ export const RuntimeFailureSchema: GenMessage<RuntimeFailure> /*@__PURE__*/ =
   messageDesc(file_onequery_runtime_v1_common, 1);
 
 /**
- * @generated from message onequery.runtime.v1.RuntimeOperation
- */
-export type RuntimeOperation =
-  Message<"onequery.runtime.v1.RuntimeOperation"> & {
-    /**
-     * @generated from field: string operation_id = 1;
-     */
-    operationId: string;
-
-    /**
-     * @generated from field: string name = 2;
-     */
-    name: string;
-  };
-
-/**
- * Describes the message onequery.runtime.v1.RuntimeOperation.
- * Use `create(RuntimeOperationSchema)` to create a new message.
- */
-export const RuntimeOperationSchema: GenMessage<RuntimeOperation> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_common, 2);
-
-/**
- * @generated from message onequery.runtime.v1.RuntimeStatus
- */
-export type RuntimeStatus = Message<"onequery.runtime.v1.RuntimeStatus"> & {
-  /**
-   * @generated from field: onequery.runtime.v1.RuntimeIdentity identity = 1;
-   */
-  identity?: RuntimeIdentity;
-
-  /**
-   * @generated from field: onequery.runtime.v1.RuntimePhase phase = 2;
-   */
-  phase: RuntimePhase;
-
-  /**
-   * @generated from field: uint64 sequence = 3;
-   */
-  sequence: bigint;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp updated_at = 4;
-   */
-  updatedAt?: Timestamp;
-
-  /**
-   * @generated from field: onequery.runtime.v1.RuntimeFailure failure = 5;
-   */
-  failure?: RuntimeFailure;
-};
-
-/**
- * Describes the message onequery.runtime.v1.RuntimeStatus.
- * Use `create(RuntimeStatusSchema)` to create a new message.
- */
-export const RuntimeStatusSchema: GenMessage<RuntimeStatus> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_common, 3);
-
-/**
  * @generated from message onequery.runtime.v1.RuntimeTransition
  */
 export type RuntimeTransition =
   Message<"onequery.runtime.v1.RuntimeTransition"> & {
     /**
-     * @generated from field: onequery.runtime.v1.RuntimeOperation operation = 1;
+     * @generated from field: string transition_id = 1;
      */
-    operation?: RuntimeOperation;
+    transitionId: string;
 
     /**
-     * @generated from field: uint64 sequence = 2;
+     * @generated from field: uint64 runtime_sequence = 2;
      */
-    sequence: bigint;
+    runtimeSequence: bigint;
 
     /**
      * @generated from field: onequery.runtime.v1.RuntimePhase previous_phase = 3;
@@ -198,6 +138,16 @@ export type RuntimeTransition =
      * @generated from field: onequery.runtime.v1.RuntimeFailure failure = 7;
      */
     failure?: RuntimeFailure;
+
+    /**
+     * @generated from field: string caller_operation_id = 8;
+     */
+    callerOperationId: string;
+
+    /**
+     * @generated from field: string correlation_id = 9;
+     */
+    correlationId: string;
   };
 
 /**
@@ -205,7 +155,603 @@ export type RuntimeTransition =
  * Use `create(RuntimeTransitionSchema)` to create a new message.
  */
 export const RuntimeTransitionSchema: GenMessage<RuntimeTransition> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 2);
+
+/**
+ * @generated from message onequery.runtime.v1.RuntimeStatus
+ */
+export type RuntimeStatus = Message<"onequery.runtime.v1.RuntimeStatus"> & {
+  /**
+   * @generated from field: onequery.runtime.v1.RuntimeIdentity identity = 1;
+   */
+  identity?: RuntimeIdentity;
+
+  /**
+   * @generated from field: onequery.runtime.v1.RuntimePhase phase = 2;
+   */
+  phase: RuntimePhase;
+
+  /**
+   * @generated from field: uint64 runtime_sequence = 3;
+   */
+  runtimeSequence: bigint;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 4;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: onequery.runtime.v1.RuntimeFailure failure = 5;
+   */
+  failure?: RuntimeFailure;
+};
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeStatus.
+ * Use `create(RuntimeStatusSchema)` to create a new message.
+ */
+export const RuntimeStatusSchema: GenMessage<RuntimeStatus> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 3);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleRecordWriterIdentity
+ */
+export type LifecycleRecordWriterIdentity =
+  Message<"onequery.runtime.v1.LifecycleRecordWriterIdentity"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordWriter writer = 1;
+     */
+    writer: LifecycleRecordWriter;
+
+    /**
+     * @generated from field: string writer_id = 2;
+     */
+    writerId: string;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleRecordWriterIdentity.
+ * Use `create(LifecycleRecordWriterIdentitySchema)` to create a new message.
+ */
+export const LifecycleRecordWriterIdentitySchema: GenMessage<LifecycleRecordWriterIdentity> /*@__PURE__*/ =
   messageDesc(file_onequery_runtime_v1_common, 4);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleLaunchIdentity
+ */
+export type LifecycleLaunchIdentity =
+  Message<"onequery.runtime.v1.LifecycleLaunchIdentity"> & {
+    /**
+     * @generated from field: string launch_id = 1;
+     */
+    launchId: string;
+
+    /**
+     * @generated from field: string data_dir = 2;
+     */
+    dataDir: string;
+
+    /**
+     * @generated from field: uint32 runtime_pid = 3;
+     */
+    runtimePid: number;
+
+    /**
+     * @generated from field: uint32 supervisor_pid = 4;
+     */
+    supervisorPid: number;
+
+    /**
+     * @generated from field: uint64 supervisor_generation = 5;
+     */
+    supervisorGeneration: bigint;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleLaunchIdentity.
+ * Use `create(LifecycleLaunchIdentitySchema)` to create a new message.
+ */
+export const LifecycleLaunchIdentitySchema: GenMessage<LifecycleLaunchIdentity> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 5);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleRecordHeader
+ */
+export type LifecycleRecordHeader =
+  Message<"onequery.runtime.v1.LifecycleRecordHeader"> & {
+    /**
+     * @generated from field: uint32 schema_version = 1;
+     */
+    schemaVersion: number;
+
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordWriterIdentity writer = 2;
+     */
+    writer?: LifecycleRecordWriterIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleLaunchIdentity launch = 3;
+     */
+    launch?: LifecycleLaunchIdentity;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp written_at = 4;
+     */
+    writtenAt?: Timestamp;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleRecordHeader.
+ * Use `create(LifecycleRecordHeaderSchema)` to create a new message.
+ */
+export const LifecycleRecordHeaderSchema: GenMessage<LifecycleRecordHeader> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 6);
+
+/**
+ * @generated from message onequery.runtime.v1.SupervisorIdentity
+ */
+export type SupervisorIdentity =
+  Message<"onequery.runtime.v1.SupervisorIdentity"> & {
+    /**
+     * @generated from field: string supervisor_id = 1;
+     */
+    supervisorId: string;
+
+    /**
+     * @generated from field: uint32 pid = 2;
+     */
+    pid: number;
+
+    /**
+     * @generated from field: uint64 generation = 3;
+     */
+    generation: bigint;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.SupervisorIdentity.
+ * Use `create(SupervisorIdentitySchema)` to create a new message.
+ */
+export const SupervisorIdentitySchema: GenMessage<SupervisorIdentity> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 7);
+
+/**
+ * @generated from message onequery.runtime.v1.SupervisorFailure
+ */
+export type SupervisorFailure =
+  Message<"onequery.runtime.v1.SupervisorFailure"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorFailureCode code = 1;
+     */
+    code: SupervisorFailureCode;
+
+    /**
+     * @generated from field: string message = 2;
+     */
+    message: string;
+
+    /**
+     * @generated from field: bool retryable = 3;
+     */
+    retryable: boolean;
+
+    /**
+     * @generated from field: google.protobuf.Duration retry_after = 4;
+     */
+    retryAfter?: Duration;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.SupervisorFailure.
+ * Use `create(SupervisorFailureSchema)` to create a new message.
+ */
+export const SupervisorFailureSchema: GenMessage<SupervisorFailure> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 8);
+
+/**
+ * @generated from message onequery.runtime.v1.SupervisorStatus
+ */
+export type SupervisorStatus =
+  Message<"onequery.runtime.v1.SupervisorStatus"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorIdentity identity = 1;
+     */
+    identity?: SupervisorIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleLaunchIdentity launch = 2;
+     */
+    launch?: LifecycleLaunchIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorPhase phase = 3;
+     */
+    phase: SupervisorPhase;
+
+    /**
+     * @generated from field: uint64 supervisor_sequence = 4;
+     */
+    supervisorSequence: bigint;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp updated_at = 5;
+     */
+    updatedAt?: Timestamp;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeIdentity runtime = 6;
+     */
+    runtime?: RuntimeIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorFailure failure = 7;
+     */
+    failure?: SupervisorFailure;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.SupervisorStatus.
+ * Use `create(SupervisorStatusSchema)` to create a new message.
+ */
+export const SupervisorStatusSchema: GenMessage<SupervisorStatus> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 9);
+
+/**
+ * @generated from message onequery.runtime.v1.RuntimeLeaseRecord
+ */
+export type RuntimeLeaseRecord =
+  Message<"onequery.runtime.v1.RuntimeLeaseRecord"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordHeader header = 1;
+     */
+    header?: LifecycleRecordHeader;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeIdentity runtime = 2;
+     */
+    runtime?: RuntimeIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorIdentity supervisor = 3;
+     */
+    supervisor?: SupervisorIdentity;
+
+    /**
+     * @generated from field: uint64 runtime_sequence = 4;
+     */
+    runtimeSequence: bigint;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp acquired_at = 5;
+     */
+    acquiredAt?: Timestamp;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp renewed_at = 6;
+     */
+    renewedAt?: Timestamp;
+
+    /**
+     * @generated from field: google.protobuf.Duration lease_ttl = 7;
+     */
+    leaseTtl?: Duration;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeLeaseRecord.
+ * Use `create(RuntimeLeaseRecordSchema)` to create a new message.
+ */
+export const RuntimeLeaseRecordSchema: GenMessage<RuntimeLeaseRecord> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 10);
+
+/**
+ * @generated from message onequery.runtime.v1.RuntimeStatusSnapshot
+ */
+export type RuntimeStatusSnapshot =
+  Message<"onequery.runtime.v1.RuntimeStatusSnapshot"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordHeader header = 1;
+     */
+    header?: LifecycleRecordHeader;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeStatus status = 2;
+     */
+    status?: RuntimeStatus;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp snapshot_at = 3;
+     */
+    snapshotAt?: Timestamp;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeStatusSnapshot.
+ * Use `create(RuntimeStatusSnapshotSchema)` to create a new message.
+ */
+export const RuntimeStatusSnapshotSchema: GenMessage<RuntimeStatusSnapshot> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 11);
+
+/**
+ * @generated from message onequery.runtime.v1.SupervisorStatusSnapshot
+ */
+export type SupervisorStatusSnapshot =
+  Message<"onequery.runtime.v1.SupervisorStatusSnapshot"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordHeader header = 1;
+     */
+    header?: LifecycleRecordHeader;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorStatus status = 2;
+     */
+    status?: SupervisorStatus;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp snapshot_at = 3;
+     */
+    snapshotAt?: Timestamp;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.SupervisorStatusSnapshot.
+ * Use `create(SupervisorStatusSnapshotSchema)` to create a new message.
+ */
+export const SupervisorStatusSnapshotSchema: GenMessage<SupervisorStatusSnapshot> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 12);
+
+/**
+ * @generated from message onequery.runtime.v1.SupervisorTransition
+ */
+export type SupervisorTransition =
+  Message<"onequery.runtime.v1.SupervisorTransition"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorIdentity supervisor = 1;
+     */
+    supervisor?: SupervisorIdentity;
+
+    /**
+     * @generated from field: uint64 supervisor_sequence = 2;
+     */
+    supervisorSequence: bigint;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorPhase previous_phase = 3;
+     */
+    previousPhase: SupervisorPhase;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorPhase current_phase = 4;
+     */
+    currentPhase: SupervisorPhase;
+
+    /**
+     * @generated from field: string reason = 5;
+     */
+    reason: string;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp occurred_at = 6;
+     */
+    occurredAt?: Timestamp;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeIdentity runtime = 7;
+     */
+    runtime?: RuntimeIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorFailure failure = 8;
+     */
+    failure?: SupervisorFailure;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.SupervisorTransition.
+ * Use `create(SupervisorTransitionSchema)` to create a new message.
+ */
+export const SupervisorTransitionSchema: GenMessage<SupervisorTransition> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 13);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleProcessExit
+ */
+export type LifecycleProcessExit =
+  Message<"onequery.runtime.v1.LifecycleProcessExit"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimeIdentity runtime = 1;
+     */
+    runtime?: RuntimeIdentity;
+
+    /**
+     * @generated from field: onequery.runtime.v1.RuntimePhase runtime_phase = 2;
+     */
+    runtimePhase: RuntimePhase;
+
+    /**
+     * @generated from field: int32 exit_code = 3;
+     */
+    exitCode: number;
+
+    /**
+     * @generated from field: string signal = 4;
+     */
+    signal: string;
+
+    /**
+     * @generated from field: bool retryable = 5;
+     */
+    retryable: boolean;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleProcessExit.
+ * Use `create(LifecycleProcessExitSchema)` to create a new message.
+ */
+export const LifecycleProcessExitSchema: GenMessage<LifecycleProcessExit> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 14);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleRecoveryDecision
+ */
+export type LifecycleRecoveryDecision =
+  Message<"onequery.runtime.v1.LifecycleRecoveryDecision"> & {
+    /**
+     * @generated from field: string summary = 1;
+     */
+    summary: string;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleRecoveryDecision.
+ * Use `create(LifecycleRecoveryDecisionSchema)` to create a new message.
+ */
+export const LifecycleRecoveryDecisionSchema: GenMessage<LifecycleRecoveryDecision> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 15);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleArtifactCorruption
+ */
+export type LifecycleArtifactCorruption =
+  Message<"onequery.runtime.v1.LifecycleArtifactCorruption"> & {
+    /**
+     * @generated from field: string path = 1;
+     */
+    path: string;
+
+    /**
+     * @generated from field: string message = 2;
+     */
+    message: string;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleArtifactCorruption.
+ * Use `create(LifecycleArtifactCorruptionSchema)` to create a new message.
+ */
+export const LifecycleArtifactCorruptionSchema: GenMessage<LifecycleArtifactCorruption> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 16);
+
+/**
+ * @generated from message onequery.runtime.v1.LifecycleEventLogEntry
+ */
+export type LifecycleEventLogEntry =
+  Message<"onequery.runtime.v1.LifecycleEventLogEntry"> & {
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleRecordHeader header = 1;
+     */
+    header?: LifecycleRecordHeader;
+
+    /**
+     * @generated from field: uint64 lifecycle_sequence = 2;
+     */
+    lifecycleSequence: bigint;
+
+    /**
+     * @generated from field: onequery.runtime.v1.LifecycleEventKind kind = 3;
+     */
+    kind: LifecycleEventKind;
+
+    /**
+     * @generated from field: google.protobuf.Timestamp occurred_at = 4;
+     */
+    occurredAt?: Timestamp;
+
+    /**
+     * @generated from field: uint64 runtime_sequence = 5;
+     */
+    runtimeSequence: bigint;
+
+    /**
+     * @generated from field: uint64 supervisor_sequence = 6;
+     */
+    supervisorSequence: bigint;
+
+    /**
+     * @generated from field: string caller_operation_id = 7;
+     */
+    callerOperationId: string;
+
+    /**
+     * @generated from field: string transition_id = 8;
+     */
+    transitionId: string;
+
+    /**
+     * @generated from field: string correlation_id = 9;
+     */
+    correlationId: string;
+
+    /**
+     * @generated from oneof onequery.runtime.v1.LifecycleEventLogEntry.payload
+     */
+    payload:
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.RuntimeLeaseRecord runtime_lease = 10;
+           */
+          value: RuntimeLeaseRecord;
+          case: "runtimeLease";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.RuntimeStatusSnapshot runtime_status_snapshot = 11;
+           */
+          value: RuntimeStatusSnapshot;
+          case: "runtimeStatusSnapshot";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.SupervisorStatusSnapshot supervisor_status_snapshot = 12;
+           */
+          value: SupervisorStatusSnapshot;
+          case: "supervisorStatusSnapshot";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.RuntimeTransition runtime_transition = 13;
+           */
+          value: RuntimeTransition;
+          case: "runtimeTransition";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.SupervisorTransition supervisor_transition = 14;
+           */
+          value: SupervisorTransition;
+          case: "supervisorTransition";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.LifecycleProcessExit process_exit = 15;
+           */
+          value: LifecycleProcessExit;
+          case: "processExit";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.LifecycleRecoveryDecision recovery_decision = 16;
+           */
+          value: LifecycleRecoveryDecision;
+          case: "recoveryDecision";
+        }
+      | {
+          /**
+           * @generated from field: onequery.runtime.v1.LifecycleArtifactCorruption artifact_corruption = 17;
+           */
+          value: LifecycleArtifactCorruption;
+          case: "artifactCorruption";
+        }
+      | { case: undefined; value?: undefined };
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.LifecycleEventLogEntry.
+ * Use `create(LifecycleEventLogEntrySchema)` to create a new message.
+ */
+export const LifecycleEventLogEntrySchema: GenMessage<LifecycleEventLogEntry> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_common, 17);
 
 /**
  * Codegen anchor for standard Connect error-detail schemas used by the
@@ -263,7 +809,7 @@ export type RuntimeConnectErrorDetailReference =
  * Use `create(RuntimeConnectErrorDetailReferenceSchema)` to create a new message.
  */
 export const RuntimeConnectErrorDetailReferenceSchema: GenMessage<RuntimeConnectErrorDetailReference> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_common, 5);
+  messageDesc(file_onequery_runtime_v1_common, 18);
 
 /**
  * @generated from enum onequery.runtime.v1.RuntimePhase
@@ -420,3 +966,192 @@ export enum RuntimeFailureCode {
  */
 export const RuntimeFailureCodeSchema: GenEnum<RuntimeFailureCode> /*@__PURE__*/ =
   enumDesc(file_onequery_runtime_v1_common, 3);
+
+/**
+ * @generated from enum onequery.runtime.v1.LifecycleRecordWriter
+ */
+export enum LifecycleRecordWriter {
+  /**
+   * @generated from enum value: LIFECYCLE_RECORD_WRITER_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LIFECYCLE_RECORD_WRITER_RUNTIME = 1;
+   */
+  RUNTIME = 1,
+
+  /**
+   * @generated from enum value: LIFECYCLE_RECORD_WRITER_SUPERVISOR = 2;
+   */
+  SUPERVISOR = 2,
+}
+
+/**
+ * Describes the enum onequery.runtime.v1.LifecycleRecordWriter.
+ */
+export const LifecycleRecordWriterSchema: GenEnum<LifecycleRecordWriter> /*@__PURE__*/ =
+  enumDesc(file_onequery_runtime_v1_common, 4);
+
+/**
+ * @generated from enum onequery.runtime.v1.SupervisorPhase
+ */
+export enum SupervisorPhase {
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_STARTING = 1;
+   */
+  STARTING = 1,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_HANDSHAKING = 2;
+   */
+  HANDSHAKING = 2,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_READY = 3;
+   */
+  READY = 3,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_STOP_REQUESTED = 4;
+   */
+  STOP_REQUESTED = 4,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_TERMINATING = 5;
+   */
+  TERMINATING = 5,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_ESCALATING = 6;
+   */
+  ESCALATING = 6,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_EXITED = 7;
+   */
+  EXITED = 7,
+
+  /**
+   * @generated from enum value: SUPERVISOR_PHASE_FAILED = 8;
+   */
+  FAILED = 8,
+}
+
+/**
+ * Describes the enum onequery.runtime.v1.SupervisorPhase.
+ */
+export const SupervisorPhaseSchema: GenEnum<SupervisorPhase> /*@__PURE__*/ =
+  enumDesc(file_onequery_runtime_v1_common, 5);
+
+/**
+ * @generated from enum onequery.runtime.v1.SupervisorFailureCode
+ */
+export enum SupervisorFailureCode {
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT = 1;
+   */
+  STARTUP_TIMEOUT = 1,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_HANDSHAKE_FAILED = 2;
+   */
+  HANDSHAKE_FAILED = 2,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_STOP_RPC_FAILED = 3;
+   */
+  STOP_RPC_FAILED = 3,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_TERMINATION_TIMEOUT = 4;
+   */
+  TERMINATION_TIMEOUT = 4,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY = 5;
+   */
+  CHILD_EXITED_UNEXPECTEDLY = 5,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_ARTIFACT_RECOVERY_FAILED = 6;
+   */
+  ARTIFACT_RECOVERY_FAILED = 6,
+
+  /**
+   * @generated from enum value: SUPERVISOR_FAILURE_CODE_INTERNAL = 7;
+   */
+  INTERNAL = 7,
+}
+
+/**
+ * Describes the enum onequery.runtime.v1.SupervisorFailureCode.
+ */
+export const SupervisorFailureCodeSchema: GenEnum<SupervisorFailureCode> /*@__PURE__*/ =
+  enumDesc(file_onequery_runtime_v1_common, 6);
+
+/**
+ * @generated from enum onequery.runtime.v1.LifecycleEventKind
+ */
+export enum LifecycleEventKind {
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_RUNTIME_LEASE_RECORDED = 1;
+   */
+  RUNTIME_LEASE_RECORDED = 1,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_RUNTIME_STATUS_SNAPSHOT_RECORDED = 2;
+   */
+  RUNTIME_STATUS_SNAPSHOT_RECORDED = 2,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_SUPERVISOR_STATUS_SNAPSHOT_RECORDED = 3;
+   */
+  SUPERVISOR_STATUS_SNAPSHOT_RECORDED = 3,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_RUNTIME_TRANSITION_RECORDED = 4;
+   */
+  RUNTIME_TRANSITION_RECORDED = 4,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_SUPERVISOR_TRANSITION_RECORDED = 5;
+   */
+  SUPERVISOR_TRANSITION_RECORDED = 5,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_PROCESS_EXIT_RECORDED = 6;
+   */
+  PROCESS_EXIT_RECORDED = 6,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_RECOVERY_DECISION_RECORDED = 7;
+   */
+  RECOVERY_DECISION_RECORDED = 7,
+
+  /**
+   * @generated from enum value: LIFECYCLE_EVENT_KIND_CORRUPT_DURABLE_RECORD_OBSERVED = 8;
+   */
+  CORRUPT_DURABLE_RECORD_OBSERVED = 8,
+}
+
+/**
+ * Describes the enum onequery.runtime.v1.LifecycleEventKind.
+ */
+export const LifecycleEventKindSchema: GenEnum<LifecycleEventKind> /*@__PURE__*/ =
+  enumDesc(file_onequery_runtime_v1_common, 7);

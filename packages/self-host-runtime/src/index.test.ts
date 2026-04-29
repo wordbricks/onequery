@@ -38,10 +38,10 @@ function createTempSelfHostRuntimePaths() {
   return createSelfHostRuntimePaths({
     backupsDir: join(root, "backups"),
     dataDir: join(root, "data"),
-    lockPath: join(root, "run", "server.lock"),
     logsDir: join(root, "logs"),
-    pidPath: join(root, "run", "server.pid"),
     runDir: join(root, "run"),
+    runtimeLeasePath: join(root, "run", "runtime.lease.json"),
+    runtimeStatusSnapshotPath: join(root, "run", "runtime.status.json"),
   });
 }
 
@@ -143,7 +143,7 @@ function createMocks() {
           pid: process.pid,
         },
         phase: 2,
-        sequence: 1n,
+        runtimeSequence: 1n,
       })),
       lease,
       stop: vi.fn(async () => ({
@@ -155,7 +155,7 @@ function createMocks() {
             pid: process.pid,
           },
           phase: 5,
-          sequence: 2n,
+          runtimeSequence: 2n,
         },
       })),
       watchStatus: vi.fn(async function* watchStatus() {}),
@@ -308,9 +308,9 @@ describe("startServer", () => {
       {
         controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
-        lockPath: runtimePaths.lockPath,
         logsDir: runtimePaths.logsDir,
-        pidPath: runtimePaths.pidPath,
+        runtimeLeasePath: runtimePaths.runtimeLeasePath,
+        runtimeStatusSnapshotPath: runtimePaths.runtimeStatusSnapshotPath,
       },
       expect.objectContaining({
         launchId: "launch-a",
@@ -358,9 +358,9 @@ describe("startServer", () => {
       {
         controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
-        lockPath: runtimePaths.lockPath,
         logsDir: runtimePaths.logsDir,
-        pidPath: runtimePaths.pidPath,
+        runtimeLeasePath: runtimePaths.runtimeLeasePath,
+        runtimeStatusSnapshotPath: runtimePaths.runtimeStatusSnapshotPath,
       },
       "[onequery-server] listening on http://127.0.0.1:5656"
     );

@@ -13,11 +13,9 @@ const CONFIG_FILENAME: &str = "config.toml";
 const SECRETS_CONFIG_FILENAME: &str = "secrets.toml";
 const PGLITE_DIRNAME: &str = "onequery";
 const SERVER_LOG_FILENAME: &str = "server.log";
-const PID_FILENAME: &str = "server.pid";
-const LOCK_FILENAME: &str = "server.lock";
-const STOP_REQUEST_FILENAME: &str = "server.stop";
-const SUPERVISOR_PID_FILENAME: &str = "supervisor.pid";
-const SUPERVISOR_STATE_FILENAME: &str = "supervisor.state.json";
+const RUNTIME_LEASE_FILENAME: &str = "runtime.lease.json";
+const RUNTIME_STATUS_SNAPSHOT_FILENAME: &str = "runtime.status.json";
+const SUPERVISOR_STATUS_SNAPSHOT_FILENAME: &str = "supervisor.status.json";
 const RELEASES_DIR_NAME: &str = "releases";
 const ACTIVE_RELEASE_FILENAME: &str = "active.json";
 const RECOVERY_POINTS_DIR_NAME: &str = "recovery-points";
@@ -35,11 +33,9 @@ pub struct SelfHostRuntimePaths {
     pub backups_dir: PathBuf,
     pub run_dir: PathBuf,
     pub runtime_control_socket_path: PathBuf,
-    pub pid_path: PathBuf,
-    pub lock_path: PathBuf,
-    pub stop_request_path: PathBuf,
-    pub supervisor_pid_path: PathBuf,
-    pub supervisor_state_path: PathBuf,
+    pub runtime_lease_path: PathBuf,
+    pub runtime_status_snapshot_path: PathBuf,
+    pub supervisor_status_snapshot_path: PathBuf,
     pub releases_dir: PathBuf,
     pub active_release_path: PathBuf,
     pub recovery_points_dir: PathBuf,
@@ -57,11 +53,9 @@ impl SelfHostRuntimePaths {
         let run_dir = data_dir.join("run");
         let runtime_control_socket_path =
             runtime_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
-        let pid_path = run_dir.join(PID_FILENAME);
-        let lock_path = run_dir.join(LOCK_FILENAME);
-        let stop_request_path = run_dir.join(STOP_REQUEST_FILENAME);
-        let supervisor_pid_path = run_dir.join(SUPERVISOR_PID_FILENAME);
-        let supervisor_state_path = run_dir.join(SUPERVISOR_STATE_FILENAME);
+        let runtime_lease_path = run_dir.join(RUNTIME_LEASE_FILENAME);
+        let runtime_status_snapshot_path = run_dir.join(RUNTIME_STATUS_SNAPSHOT_FILENAME);
+        let supervisor_status_snapshot_path = run_dir.join(SUPERVISOR_STATUS_SNAPSHOT_FILENAME);
         let releases_dir = data_dir.join(RELEASES_DIR_NAME);
         let active_release_path = releases_dir.join(ACTIVE_RELEASE_FILENAME);
         let recovery_points_dir = data_dir.join(RECOVERY_POINTS_DIR_NAME);
@@ -78,11 +72,9 @@ impl SelfHostRuntimePaths {
             backups_dir,
             run_dir,
             runtime_control_socket_path,
-            pid_path,
-            lock_path,
-            stop_request_path,
-            supervisor_pid_path,
-            supervisor_state_path,
+            runtime_lease_path,
+            runtime_status_snapshot_path,
+            supervisor_status_snapshot_path,
             releases_dir,
             active_release_path,
             recovery_points_dir,

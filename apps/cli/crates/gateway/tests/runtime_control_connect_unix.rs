@@ -5,15 +5,20 @@ use std::process::Child;
 use std::process::Command;
 use std::time::Duration;
 
+use buffa::MessageField;
+use connectrpc::client::CallOptions;
+use connectrpc::client::ClientConfig;
 use connectrpc::client::ClientTransport;
 use connectrpc::client::Http2Connection;
 use http::Method;
 use http::StatusCode;
 use http_body_util::BodyExt as _;
+use onequery_proto_runtime::onequery::runtime::v1 as runtime;
 use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 
 const GET_STATUS_PATH: &str = "/onequery.runtime.v1.RuntimeControlService/GetStatus";
+const RUNTIME_CONTROL_TEST_MAX_MESSAGE_SIZE: usize = 64 * 1024;
 const READY_WAIT_ATTEMPTS: usize = 100;
 const READY_WAIT_INTERVAL: Duration = Duration::from_millis(50);
 
@@ -27,7 +32,7 @@ async fn rust_http2_connect_unix_calls_node_runtime_control_listener() {
 
     wait_for_ready_file(&ready_path, server.child_mut()).await;
 
-    let authority = "http://onequery-runtime"
+    let authority: http::Uri = "http://onequery-runtime"
         .parse()
         .unwrap_or_else(|error| panic!("expected runtime control authority URI: {error}"));
     let connection = Http2Connection::connect_unix(&socket_path, authority)
@@ -66,23 +71,209 @@ async fn rust_http2_connect_unix_calls_node_runtime_control_listener() {
     assert_runtime_status_response(&body);
 }
 
+#[tokio::test]
+async fn rust_generated_watch_status_client_receives_ready_snapshot() {
+    let temp_dir =
+        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    let socket_path = temp_dir.path().join("runtime-control.sock");
+    let ready_path = temp_dir.path().join("runtime-control.ready");
+    let mut server =
+        RuntimeControlServerProcess::spawn_with_mode(&socket_path, &ready_path, "transition-ready");
+
+    wait_for_ready_file(&ready_path, server.child_mut()).await;
+
+    let authority: http::Uri = "http://onequery-runtime"
+        .parse()
+        .unwrap_or_else(|error| panic!("expected runtime control authority URI: {error}"));
+    let connection = Http2Connection::connect_unix(&socket_path, authority.clone())
+        .await
+        .unwrap_or_else(|error| panic!("expected Rust HTTP/2 UDS connection: {error}"));
+    let client = runtime::RuntimeControlServiceClient::new(
+        connection.shared(4),
+        ClientConfig::new(authority),
+    );
+    let mut stream = client
+        .watch_status_with_options(
+            runtime::WatchStatusRequest {
+                after_runtime_sequence: Some(0),
+                include_snapshot: Some(true),
+                target: MessageField::some(runtime::RuntimeTarget {
+                    launch_id: Some("launch-rust-connect-unix".to_owned()),
+                    data_dir: Some("/tmp/onequery-data".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            runtime_control_test_call_options(),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected WatchStatus stream: {error}"));
+
+    let message = stream
+        .message()
+        .await
+        .unwrap_or_else(|error| panic!("expected WatchStatus message: {error}"))
+        .unwrap_or_else(|| panic!("expected WatchStatus snapshot"));
+    let response = message.to_owned_message();
+    let Some(runtime::watch_status_response::Event::Snapshot(status)) = response.event else {
+        panic!("expected WatchStatus snapshot response: {response:?}");
+    };
+
+    assert_eq!(
+        status
+            .identity
+            .as_option()
+            .and_then(|identity| identity.pid),
+        Some(4242)
+    );
+    assert_eq!(
+        status.phase.and_then(|phase| phase.as_known()),
+        Some(runtime::RuntimePhase::RUNTIME_PHASE_READY)
+    );
+    assert_eq!(status.runtime_sequence, Some(2));
+}
+
+#[tokio::test]
+async fn rust_generated_stop_status_sequence_drives_follow_up_watch_status() {
+    let temp_dir =
+        tempdir().unwrap_or_else(|error| panic!("expected runtime control temp dir: {error}"));
+    let socket_path = temp_dir.path().join("runtime-control.sock");
+    let ready_path = temp_dir.path().join("runtime-control.ready");
+    let mut server = RuntimeControlServerProcess::spawn(&socket_path, &ready_path);
+
+    wait_for_ready_file(&ready_path, server.child_mut()).await;
+
+    let authority: http::Uri = "http://onequery-runtime"
+        .parse()
+        .unwrap_or_else(|error| panic!("expected runtime control authority URI: {error}"));
+    let connection = Http2Connection::connect_unix(&socket_path, authority.clone())
+        .await
+        .unwrap_or_else(|error| panic!("expected Rust HTTP/2 UDS connection: {error}"));
+    let client = runtime::RuntimeControlServiceClient::new(
+        connection.shared(4),
+        ClientConfig::new(authority),
+    );
+    let stop = client
+        .stop_with_options(
+            runtime::StopRequest {
+                completion: Some(
+                    runtime::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT.into(),
+                ),
+                grace_timeout: MessageField::some(buffa_types::google::protobuf::Duration {
+                    seconds: 30,
+                    nanos: 0,
+                    ..Default::default()
+                }),
+                operation_id: Some("018f0789-cc38-7d46-9a6b-83a2c8f0a101".to_owned()),
+                reason: Some("gateway_stop".to_owned()),
+                target: MessageField::some(runtime::RuntimeTarget {
+                    launch_id: Some("launch-rust-connect-unix".to_owned()),
+                    data_dir: Some("/tmp/onequery-data".to_owned()),
+                    pid: Some(4242),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            runtime_control_test_call_options(),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected Stop response: {error}"))
+        .into_owned();
+    let stop_status = stop
+        .status
+        .into_option()
+        .unwrap_or_else(|| panic!("expected Stop response status"));
+    let after_sequence = stop_status
+        .runtime_sequence
+        .unwrap_or_else(|| panic!("expected Stop response runtime sequence"));
+
+    assert_eq!(
+        stop.disposition.and_then(|phase| phase.as_known()),
+        Some(runtime::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED)
+    );
+    assert_eq!(
+        stop_status.phase.and_then(|phase| phase.as_known()),
+        Some(runtime::RuntimePhase::RUNTIME_PHASE_STOPPING)
+    );
+    assert_eq!(after_sequence, 2);
+
+    let mut stream = client
+        .watch_status_with_options(
+            runtime::WatchStatusRequest {
+                after_runtime_sequence: Some(after_sequence),
+                include_snapshot: Some(true),
+                target: MessageField::some(runtime::RuntimeTarget {
+                    launch_id: Some("launch-rust-connect-unix".to_owned()),
+                    data_dir: Some("/tmp/onequery-data".to_owned()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            runtime_control_test_call_options(),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected WatchStatus stream after Stop: {error}"));
+    let response = stream
+        .message()
+        .await
+        .unwrap_or_else(|error| panic!("expected WatchStatus terminal message: {error}"))
+        .unwrap_or_else(|| panic!("expected WatchStatus terminal response"))
+        .to_owned_message();
+    let (phase, sequence) = watch_status_phase_and_sequence(response);
+
+    assert_eq!(
+        phase,
+        Some(runtime::RuntimePhase::RUNTIME_PHASE_STOPPED),
+        "expected WatchStatus to report the terminal stopped phase"
+    );
+    assert_eq!(sequence, Some(after_sequence + 1));
+}
+
+fn runtime_control_test_call_options() -> CallOptions {
+    CallOptions::default()
+        .with_timeout(Duration::from_secs(5))
+        .with_max_message_size(RUNTIME_CONTROL_TEST_MAX_MESSAGE_SIZE)
+        .with_header("x-onequery-runtime-control-client", "onequery-gateway-test")
+        .with_header("x-request-id", "req-runtime-control-connect-test")
+        .with_header(
+            "x-onequery-runtime-control-supervisor-id",
+            "gateway-supervisor-test",
+        )
+        .with_header(
+            "x-onequery-runtime-control-launch-id",
+            "launch-rust-connect-unix",
+        )
+        .with_header("x-onequery-cli-version", env!("CARGO_PKG_VERSION"))
+}
+
 struct RuntimeControlServerProcess {
     child: Child,
 }
 
 impl RuntimeControlServerProcess {
     fn spawn(socket_path: &Path, ready_path: &Path) -> Self {
+        Self::spawn_with_args(socket_path, ready_path, &[])
+    }
+
+    fn spawn_with_mode(socket_path: &Path, ready_path: &Path, mode: &str) -> Self {
+        Self::spawn_with_args(socket_path, ready_path, &[mode])
+    }
+
+    fn spawn_with_args(socket_path: &Path, ready_path: &Path, extra_args: &[&str]) -> Self {
         let repo_root = onequery_utils::repo_root()
             .unwrap_or_else(|error| panic!("expected repo root from onequery-utils: {error}"));
         let fixture_path =
             onequery_utils::find_resource!("tests/fixtures/runtime-control-server.ts")
                 .and_then(|path| path.canonicalize())
                 .unwrap_or_else(|error| panic!("expected runtime control fixture: {error}"));
-        let child = Command::new("bun")
+        let mut command = Command::new("bun");
+        command
             .arg(fixture_path)
             .arg(socket_path)
             .arg(ready_path)
-            .current_dir(repo_root)
+            .args(extra_args)
+            .current_dir(repo_root);
+        let child = command
             .spawn()
             .unwrap_or_else(|error| panic!("expected to spawn runtime control fixture: {error}"));
 
@@ -144,7 +335,7 @@ fn assert_runtime_status_response(response: &[u8]) {
     );
     assert_eq!(required_varint_field(status, 2, "RuntimeStatus.phase"), 1);
     assert_eq!(
-        required_varint_field(status, 3, "RuntimeStatus.sequence"),
+        required_varint_field(status, 3, "RuntimeStatus.runtime_sequence"),
         1
     );
     let updated_at = required_length_delimited_field(status, 4, "RuntimeStatus.updated_at");
@@ -152,6 +343,22 @@ fn assert_runtime_status_response(response: &[u8]) {
         !updated_at.is_empty(),
         "expected RuntimeStatus.updated_at to be populated"
     );
+}
+
+fn watch_status_phase_and_sequence(
+    response: runtime::WatchStatusResponse,
+) -> (Option<runtime::RuntimePhase>, Option<u64>) {
+    match response.event {
+        Some(runtime::watch_status_response::Event::Snapshot(status)) => (
+            status.phase.and_then(|phase| phase.as_known()),
+            status.runtime_sequence,
+        ),
+        Some(runtime::watch_status_response::Event::Transition(transition)) => (
+            transition.current_phase.and_then(|phase| phase.as_known()),
+            transition.runtime_sequence,
+        ),
+        None => (None, None),
+    }
 }
 
 fn required_varint_field(message: &[u8], field_number: u64, label: &str) -> u64 {

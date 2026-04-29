@@ -21,8 +21,8 @@ pub(super) struct GatewayRuntimeState {
     pub(super) config: Option<SelfHostConfig>,
     pub(super) pglite_dir_present: bool,
     pub(super) log_file_present: bool,
-    pub(super) pid_file_present: bool,
-    pub(super) lock_file_present: bool,
+    pub(super) runtime_lease_present: bool,
+    pub(super) runtime_status_snapshot_present: bool,
 }
 
 pub(super) fn resolve_runtime_state(
@@ -58,8 +58,8 @@ pub(super) fn resolve_runtime_state(
         secrets_created,
         pglite_dir_present: paths.pglite_dir.is_dir(),
         log_file_present: paths.server_log_path.is_file(),
-        pid_file_present: paths.pid_path.is_file(),
-        lock_file_present: paths.lock_path.is_file(),
+        runtime_lease_present: paths.runtime_lease_path.is_file(),
+        runtime_status_snapshot_present: paths.runtime_status_snapshot_path.is_file(),
         paths,
         config,
     })

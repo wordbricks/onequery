@@ -3,7 +3,8 @@ use std::time::Duration as StdDuration;
 use buffa::EnumValue;
 use buffa::MessageField;
 use connectrpc::ConnectError;
-use connectrpc::ErrorCode;
+use connectrpc::client::CallOptions;
+use connectrpc::client::ClientTransport;
 #[cfg(unix)]
 use connectrpc::client::Http2Connection;
 use uuid::Uuid;
@@ -13,12 +14,24 @@ use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
 
 use super::super::state::GatewayRuntimeState;
-use super::lifecycle::read_managed_runtime_pid;
+use super::lifecycle::ManagedRuntimeIdentity;
+use super::lifecycle::ManagedSupervisorIdentity;
+use super::lifecycle::read_active_supervisor_identity_for_runtime;
+use super::lifecycle::read_managed_runtime_identity;
+
+pub(crate) use super::control_error::runtime_control_error_allows_fallback;
 
 const RUNTIME_CONTROL_AUTHORITY: &str = "http://onequery-runtime";
 const RUNTIME_CONTROL_SHARED_STREAM_BOUND: usize = 8;
 const RUNTIME_CONTROL_REQUEST_TIMEOUT: StdDuration = StdDuration::from_secs(5);
 const RUNTIME_CONTROL_MAX_MESSAGE_SIZE: usize = 64 * 1024;
+const RUNTIME_CONTROL_CLIENT_HEADER_NAME: &str = "x-onequery-runtime-control-client";
+const RUNTIME_CONTROL_CLIENT_HEADER_VALUE: &str = "onequery-gateway";
+const RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME: &str = "x-request-id";
+const RUNTIME_CONTROL_SUPERVISOR_ID_HEADER_NAME: &str = "x-onequery-runtime-control-supervisor-id";
+const RUNTIME_CONTROL_LAUNCH_ID_HEADER_NAME: &str = "x-onequery-runtime-control-launch-id";
+const RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME: &str = "x-onequery-cli-version";
+const RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct RuntimeControlStatus {
@@ -26,7 +39,7 @@ pub(crate) struct RuntimeControlStatus {
     pub(crate) launch_id: Option<String>,
     pub(crate) data_dir: Option<String>,
     pub(crate) phase: RuntimeControlPhase,
-    pub(crate) sequence: Option<u64>,
+    pub(crate) runtime_sequence: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -43,6 +56,34 @@ pub(crate) enum RuntimeControlPhase {
     Unknown(i32),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum RuntimeControlStatusWatchEvent {
+    Snapshot(RuntimeControlStatus),
+    Transition {
+        phase: RuntimeControlPhase,
+        runtime_sequence: Option<u64>,
+    },
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) struct RuntimeControlStopResponse {
+    pub(crate) status: RuntimeControlStatus,
+}
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+pub(crate) struct RuntimeControlCallHeaders<'a> {
+    launch_id: Option<&'a str>,
+    supervisor_id: Option<&'a str>,
+}
+
+type RuntimeControlResponseBody =
+    <connectrpc::client::SharedHttp2Connection as ClientTransport>::ResponseBody;
+
+pub(crate) type RuntimeControlStatusStream = connectrpc::client::ServerStream<
+    RuntimeControlResponseBody,
+    types::WatchStatusResponseView<'static>,
+>;
+
 impl RuntimeControlPhase {
     pub(crate) const fn label(self) -> &'static str {
         match self {
@@ -57,6 +98,10 @@ impl RuntimeControlPhase {
             Self::Failed => "failed",
             Self::Unknown(_) => "unknown",
         }
+    }
+
+    pub(crate) const fn is_terminal(self) -> bool {
+        matches!(self, Self::Stopped | Self::ShutdownFailed | Self::Failed)
     }
 
     fn from_proto(value: Option<EnumValue<types::RuntimePhase>>) -> Self {
@@ -79,46 +124,119 @@ impl RuntimeControlPhase {
     }
 }
 
+impl<'a> RuntimeControlCallHeaders<'a> {
+    pub(crate) fn for_launch(launch_id: &'a str) -> Self {
+        Self {
+            launch_id: Some(launch_id),
+            supervisor_id: None,
+        }
+    }
+
+    pub(crate) fn with_supervisor_id(mut self, supervisor_id: &'a str) -> Self {
+        self.supervisor_id = Some(supervisor_id);
+        self
+    }
+}
+
 pub(crate) async fn read_live_runtime_status(
     state: &GatewayRuntimeState,
     command_line: &str,
 ) -> Option<RuntimeControlStatus> {
-    read_managed_runtime_pid(&state.paths, command_line)
+    let identity = read_managed_runtime_identity(&state.paths, command_line)
         .ok()
         .flatten()?;
+    let supervisor =
+        read_active_supervisor_identity_for_runtime(&state.paths, &identity, command_line)
+            .ok()
+            .flatten();
 
     // CONTEXT: `gateway status` remains useful during startup, shutdown, and
     // crash recovery even when the private control socket is not accepting RPCs.
-    get_runtime_control_status(&state.paths).await.ok()
+    get_runtime_control_status(
+        &state.paths,
+        runtime_control_call_headers_for_identity(&identity, supervisor.as_ref()),
+    )
+    .await
+    .ok()
 }
 
 pub(crate) async fn request_runtime_control_stop(
     paths: &SelfHostRuntimePaths,
+    identity: &ManagedRuntimeIdentity,
+    supervisor_id: &str,
     reason: &str,
     grace_timeout: StdDuration,
-) -> Result<(), ConnectError> {
+) -> Result<RuntimeControlStopResponse, ConnectError> {
     let client = runtime_control_client(paths).await?;
-    let request = stop_request(&Uuid::new_v4().to_string(), reason, grace_timeout);
+    let operation_id = Uuid::new_v4().to_string();
+    let request = stop_request(
+        runtime_target(paths, identity),
+        &operation_id,
+        reason,
+        grace_timeout,
+    );
+    let call_headers = RuntimeControlCallHeaders::for_launch(identity.launch_id.as_str())
+        .with_supervisor_id(supervisor_id);
 
-    validate_stop_response(client.stop(request).await?.into_owned())
+    validate_stop_response(
+        client
+            .stop_with_options(request, runtime_control_call_options(call_headers)?)
+            .await?
+            .into_owned(),
+    )
 }
 
-pub(crate) fn runtime_control_error_allows_fallback(error: &ConnectError) -> bool {
-    matches!(
-        error.code,
-        ErrorCode::DeadlineExceeded
-            | ErrorCode::Unavailable
-            | ErrorCode::Unimplemented
-            | ErrorCode::Unknown
-    )
+pub(crate) async fn watch_runtime_control_status(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+    call_headers: RuntimeControlCallHeaders<'_>,
+) -> Result<RuntimeControlStatusStream, ConnectError> {
+    watch_runtime_control_status_after(paths, launch_id, 0, true, call_headers).await
+}
+
+pub(crate) async fn watch_runtime_control_status_after(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+    after_runtime_sequence: u64,
+    include_snapshot: bool,
+    call_headers: RuntimeControlCallHeaders<'_>,
+) -> Result<RuntimeControlStatusStream, ConnectError> {
+    let client = runtime_control_client(paths).await?;
+
+    client
+        .watch_status_with_options(
+            watch_status_request(paths, launch_id, after_runtime_sequence, include_snapshot),
+            runtime_control_call_options(call_headers)?,
+        )
+        .await
+}
+
+pub(crate) fn runtime_control_watch_event_from_proto(
+    response: types::WatchStatusResponse,
+) -> Option<RuntimeControlStatusWatchEvent> {
+    match response.event? {
+        types::watch_status_response::Event::Snapshot(status) => Some(
+            RuntimeControlStatusWatchEvent::Snapshot(status_from_proto(*status)),
+        ),
+        types::watch_status_response::Event::Transition(transition) => {
+            Some(RuntimeControlStatusWatchEvent::Transition {
+                phase: RuntimeControlPhase::from_proto(transition.current_phase),
+                runtime_sequence: transition.runtime_sequence,
+            })
+        }
+    }
 }
 
 async fn get_runtime_control_status(
     paths: &SelfHostRuntimePaths,
+    call_headers: RuntimeControlCallHeaders<'_>,
 ) -> Result<RuntimeControlStatus, ConnectError> {
     let client = runtime_control_client(paths).await?;
     let response = client
-        .get_status(types::GetStatusRequest::default())
+        .get_status_with_options(
+            types::GetStatusRequest::default(),
+            runtime_control_call_options(call_headers)?,
+        )
         .await?
         .into_owned();
     let status = response.status.into_option().ok_or_else(|| {
@@ -136,9 +254,7 @@ async fn runtime_control_client(
     let connection =
         Http2Connection::connect_unix(&paths.runtime_control_socket_path, authority.clone())
             .await?;
-    let config = connectrpc::client::ClientConfig::new(authority)
-        .default_timeout(RUNTIME_CONTROL_REQUEST_TIMEOUT)
-        .default_max_message_size(RUNTIME_CONTROL_MAX_MESSAGE_SIZE);
+    let config = connectrpc::client::ClientConfig::new(authority);
 
     Ok(RuntimeControlClient::new(
         connection.shared(RUNTIME_CONTROL_SHARED_STREAM_BOUND),
@@ -165,7 +281,57 @@ fn runtime_control_authority() -> Result<http::Uri, ConnectError> {
     })
 }
 
+fn runtime_control_call_options(
+    call_headers: RuntimeControlCallHeaders<'_>,
+) -> Result<CallOptions, ConnectError> {
+    let request_id = Uuid::new_v4().to_string();
+
+    runtime_control_call_options_with_request_id(call_headers, request_id.as_str())
+}
+
+fn runtime_control_call_options_with_request_id(
+    call_headers: RuntimeControlCallHeaders<'_>,
+    request_id: &str,
+) -> Result<CallOptions, ConnectError> {
+    let mut options = CallOptions::default()
+        .with_timeout(RUNTIME_CONTROL_REQUEST_TIMEOUT)
+        .with_max_message_size(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
+        .try_with_header(
+            RUNTIME_CONTROL_CLIENT_HEADER_NAME,
+            RUNTIME_CONTROL_CLIENT_HEADER_VALUE,
+        )?
+        .try_with_header(RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME, request_id)?
+        .try_with_header(
+            RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME,
+            RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE,
+        )?;
+
+    if let Some(launch_id) = call_headers.launch_id {
+        options = options.try_with_header(RUNTIME_CONTROL_LAUNCH_ID_HEADER_NAME, launch_id)?;
+    }
+
+    if let Some(supervisor_id) = call_headers.supervisor_id {
+        options =
+            options.try_with_header(RUNTIME_CONTROL_SUPERVISOR_ID_HEADER_NAME, supervisor_id)?;
+    }
+
+    Ok(options)
+}
+
+fn runtime_control_call_headers_for_identity<'a>(
+    identity: &'a ManagedRuntimeIdentity,
+    supervisor: Option<&'a ManagedSupervisorIdentity>,
+) -> RuntimeControlCallHeaders<'a> {
+    let mut call_headers = RuntimeControlCallHeaders::for_launch(identity.launch_id.as_str());
+    if let Some(supervisor) = supervisor {
+        call_headers = call_headers.with_supervisor_id(supervisor.supervisor_id.as_str());
+    }
+
+    call_headers
+}
+
 fn stop_request(
+    target: types::RuntimeTarget,
     operation_id: &str,
     reason: &str,
     grace_timeout: StdDuration,
@@ -177,22 +343,73 @@ fn stop_request(
             types::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT.into(),
         ),
         grace_timeout: MessageField::some(protobuf_duration(grace_timeout)),
+        target: MessageField::some(target),
         ..Default::default()
     }
 }
 
-fn validate_stop_response(response: types::StopResponse) -> Result<(), ConnectError> {
+fn watch_status_request(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+    after_runtime_sequence: u64,
+    include_snapshot: bool,
+) -> types::WatchStatusRequest {
+    types::WatchStatusRequest {
+        after_runtime_sequence: Some(after_runtime_sequence),
+        include_snapshot: Some(include_snapshot),
+        target: MessageField::some(runtime_target_for_launch(paths, launch_id)),
+        ..Default::default()
+    }
+}
+
+fn runtime_target(
+    paths: &SelfHostRuntimePaths,
+    identity: &ManagedRuntimeIdentity,
+) -> types::RuntimeTarget {
+    types::RuntimeTarget {
+        launch_id: Some(identity.launch_id.clone()),
+        data_dir: Some(paths.data_dir.display().to_string()),
+        pid: Some(identity.pid),
+        supervisor_pid: identity.supervisor_pid,
+        supervisor_generation: identity.supervisor_generation,
+        ..Default::default()
+    }
+}
+
+fn runtime_target_for_launch(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+) -> types::RuntimeTarget {
+    types::RuntimeTarget {
+        launch_id: Some(launch_id.to_owned()),
+        data_dir: Some(paths.data_dir.display().to_string()),
+        ..Default::default()
+    }
+}
+
+fn validate_stop_response(
+    response: types::StopResponse,
+) -> Result<RuntimeControlStopResponse, ConnectError> {
     match response
         .disposition
         .and_then(|disposition| disposition.as_known())
     {
         Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED)
         | Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING)
-        | Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED) => Ok(()),
+        | Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED) => {}
         Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_UNSPECIFIED) | None => Err(
             ConnectError::internal("runtime control Stop response omitted stop disposition"),
-        ),
+        )?,
     }
+
+    let status = response
+        .status
+        .into_option()
+        .ok_or_else(|| ConnectError::internal("runtime control Stop response omitted status"))?;
+
+    Ok(RuntimeControlStopResponse {
+        status: status_from_proto(status),
+    })
 }
 
 fn protobuf_duration(value: StdDuration) -> buffa_types::google::protobuf::Duration {
@@ -219,7 +436,7 @@ fn status_from_proto(status: types::RuntimeStatus) -> RuntimeControlStatus {
         launch_id,
         data_dir,
         phase: RuntimeControlPhase::from_proto(status.phase),
-        sequence: status.sequence,
+        runtime_sequence: status.runtime_sequence,
     }
 }
 
@@ -229,12 +446,28 @@ mod tests {
 
     use pretty_assertions::assert_eq;
 
+    use super::RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME;
+    use super::RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE;
+    use super::RUNTIME_CONTROL_CLIENT_HEADER_NAME;
+    use super::RUNTIME_CONTROL_CLIENT_HEADER_VALUE;
+    use super::RUNTIME_CONTROL_LAUNCH_ID_HEADER_NAME;
+    use super::RUNTIME_CONTROL_MAX_MESSAGE_SIZE;
+    use super::RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME;
+    use super::RUNTIME_CONTROL_REQUEST_TIMEOUT;
+    use super::RUNTIME_CONTROL_SUPERVISOR_ID_HEADER_NAME;
+    use super::RuntimeControlCallHeaders;
     use super::RuntimeControlPhase;
     use super::protobuf_duration;
+    use super::runtime_control_call_options_with_request_id;
+    use super::runtime_control_watch_event_from_proto;
+    use super::runtime_target;
     use super::status_from_proto;
     use super::stop_request;
     use super::validate_stop_response;
+    use super::watch_status_request;
+    use crate::runtime::lifecycle::ManagedRuntimeIdentity;
     use crate::runtime_control::types;
+    use crate::self_host::SelfHostRuntimePaths;
 
     #[test]
     fn status_from_proto_maps_identity_phase_and_sequence() {
@@ -246,7 +479,7 @@ mod tests {
                 ..Default::default()
             }),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_READY.into()),
-            sequence: Some(17),
+            runtime_sequence: Some(17),
             ..Default::default()
         });
 
@@ -254,13 +487,71 @@ mod tests {
         assert_eq!(status.launch_id.as_deref(), Some("launch-a"));
         assert_eq!(status.data_dir.as_deref(), Some("/tmp/onequery-data"));
         assert_eq!(status.phase, RuntimeControlPhase::Ready);
-        assert_eq!(status.sequence, Some(17));
+        assert_eq!(status.runtime_sequence, Some(17));
+    }
+
+    #[test]
+    fn runtime_control_call_options_set_per_call_limits_and_headers() {
+        let options = runtime_control_call_options_with_request_id(
+            RuntimeControlCallHeaders::for_launch("launch-a")
+                .with_supervisor_id("gateway-supervisor:123"),
+            "018f0789-cc38-7d46-9a6b-83a2c8f0a123",
+        )
+        .unwrap_or_else(|error| panic!("expected runtime control call options: {error}"));
+
+        assert_eq!(options.timeout, Some(RUNTIME_CONTROL_REQUEST_TIMEOUT));
+        assert_eq!(
+            options.max_message_size,
+            Some(RUNTIME_CONTROL_MAX_MESSAGE_SIZE)
+        );
+        assert_eq!(
+            options
+                .headers
+                .get(RUNTIME_CONTROL_CLIENT_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some(RUNTIME_CONTROL_CLIENT_HEADER_VALUE)
+        );
+        assert_eq!(
+            options
+                .headers
+                .get(RUNTIME_CONTROL_REQUEST_ID_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some("018f0789-cc38-7d46-9a6b-83a2c8f0a123")
+        );
+        assert_eq!(
+            options
+                .headers
+                .get(RUNTIME_CONTROL_SUPERVISOR_ID_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some("gateway-supervisor:123")
+        );
+        assert_eq!(
+            options
+                .headers
+                .get(RUNTIME_CONTROL_LAUNCH_ID_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some("launch-a")
+        );
+        assert_eq!(
+            options
+                .headers
+                .get(RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME)
+                .and_then(|value| value.to_str().ok()),
+            Some(RUNTIME_CONTROL_CLI_VERSION_HEADER_VALUE)
+        );
     }
 
     #[test]
     fn stop_request_asks_runtime_to_cleanup_and_exit() {
+        let target = types::RuntimeTarget {
+            launch_id: Some("launch-a".to_owned()),
+            data_dir: Some("/tmp/onequery-data".to_owned()),
+            pid: Some(4242),
+            ..Default::default()
+        };
         let request = stop_request(
-            "operation-a",
+            target,
+            "018f0789-cc38-7d46-9a6b-83a2c8f0a001",
             "onequery gateway stop",
             Duration::from_millis(1_500),
         );
@@ -269,8 +560,29 @@ mod tests {
             .into_option()
             .unwrap_or_else(|| panic!("expected stop request grace timeout"));
 
-        assert_eq!(request.operation_id.as_deref(), Some("operation-a"));
+        assert_eq!(
+            request.operation_id.as_deref(),
+            Some("018f0789-cc38-7d46-9a6b-83a2c8f0a001")
+        );
         assert_eq!(request.reason.as_deref(), Some("onequery gateway stop"));
+        assert_eq!(
+            request
+                .target
+                .as_option()
+                .and_then(|target| target.launch_id.as_deref()),
+            Some("launch-a")
+        );
+        assert_eq!(
+            request
+                .target
+                .as_option()
+                .and_then(|target| target.data_dir.as_deref()),
+            Some("/tmp/onequery-data")
+        );
+        assert_eq!(
+            request.target.as_option().and_then(|target| target.pid),
+            Some(4242)
+        );
         assert_eq!(
             request
                 .completion
@@ -284,17 +596,113 @@ mod tests {
     }
 
     #[test]
+    fn runtime_target_includes_supervisor_fencing_when_available() {
+        let paths = SelfHostRuntimePaths::from_dirs(
+            "/tmp/onequery-config".into(),
+            "/tmp/onequery-data".into(),
+        );
+        let target = runtime_target(
+            &paths,
+            &ManagedRuntimeIdentity {
+                launch_id: "launch-a".to_owned(),
+                pid: 4242,
+                supervisor_pid: Some(1001),
+                supervisor_generation: Some(7),
+            },
+        );
+
+        assert_eq!(
+            target,
+            types::RuntimeTarget {
+                launch_id: Some("launch-a".to_owned()),
+                data_dir: Some("/tmp/onequery-data".to_owned()),
+                pid: Some(4242),
+                supervisor_pid: Some(1001),
+                supervisor_generation: Some(7),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
     fn validate_stop_response_accepts_idempotent_stop_dispositions() {
         for disposition in [
             types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED,
             types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING,
             types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED,
         ] {
-            validate_stop_response(types::StopResponse {
+            let response = validate_stop_response(types::StopResponse {
                 disposition: Some(disposition.into()),
+                status: buffa::MessageField::some(types::RuntimeStatus {
+                    identity: buffa::MessageField::some(types::RuntimeIdentity {
+                        pid: Some(4242),
+                        launch_id: Some("launch-a".to_owned()),
+                        data_dir: Some("/tmp/onequery-data".to_owned()),
+                        ..Default::default()
+                    }),
+                    phase: Some(types::RuntimePhase::RUNTIME_PHASE_STOPPING.into()),
+                    runtime_sequence: Some(2),
+                    ..Default::default()
+                }),
                 ..Default::default()
             })
             .unwrap_or_else(|error| panic!("expected stop disposition to pass: {error}"));
+
+            assert_eq!(response.status.phase, RuntimeControlPhase::Stopping);
+            assert_eq!(response.status.runtime_sequence, Some(2));
         }
+    }
+
+    #[test]
+    fn watch_status_request_fences_launch_and_asks_for_snapshot() {
+        let paths = SelfHostRuntimePaths::from_dirs(
+            "/tmp/onequery-config".into(),
+            "/tmp/onequery-data".into(),
+        );
+
+        let request = watch_status_request(&paths, "launch-a", 9, true);
+
+        assert_eq!(request.after_runtime_sequence, Some(9));
+        assert_eq!(request.include_snapshot, Some(true));
+        assert_eq!(
+            request
+                .target
+                .as_option()
+                .and_then(|target| target.launch_id.as_deref()),
+            Some("launch-a")
+        );
+        assert_eq!(
+            request
+                .target
+                .as_option()
+                .and_then(|target| target.data_dir.as_deref()),
+            Some("/tmp/onequery-data")
+        );
+        assert_eq!(
+            request.target.as_option().and_then(|target| target.pid),
+            None
+        );
+    }
+
+    #[test]
+    fn watch_status_event_maps_ready_transition_phase() {
+        let event = runtime_control_watch_event_from_proto(types::WatchStatusResponse {
+            event: Some(types::watch_status_response::Event::Transition(Box::new(
+                types::RuntimeTransition {
+                    current_phase: Some(types::RuntimePhase::RUNTIME_PHASE_READY.into()),
+                    runtime_sequence: Some(2),
+                    ..Default::default()
+                },
+            ))),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            event,
+            Some(super::RuntimeControlStatusWatchEvent::Transition {
+                phase: RuntimeControlPhase::Ready,
+                runtime_sequence: Some(2),
+            })
+        );
     }
 }

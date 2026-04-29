@@ -42,6 +42,47 @@ enum RuntimeFailureCode {
   RUNTIME_FAILURE_CODE_INTERNAL = 5;
 }
 
+enum LifecycleRecordWriter {
+  LIFECYCLE_RECORD_WRITER_UNSPECIFIED = 0;
+  LIFECYCLE_RECORD_WRITER_RUNTIME = 1;
+  LIFECYCLE_RECORD_WRITER_SUPERVISOR = 2;
+}
+
+enum SupervisorPhase {
+  SUPERVISOR_PHASE_UNSPECIFIED = 0;
+  SUPERVISOR_PHASE_STARTING = 1;
+  SUPERVISOR_PHASE_HANDSHAKING = 2;
+  SUPERVISOR_PHASE_READY = 3;
+  SUPERVISOR_PHASE_STOP_REQUESTED = 4;
+  SUPERVISOR_PHASE_TERMINATING = 5;
+  SUPERVISOR_PHASE_ESCALATING = 6;
+  SUPERVISOR_PHASE_EXITED = 7;
+  SUPERVISOR_PHASE_FAILED = 8;
+}
+
+enum SupervisorFailureCode {
+  SUPERVISOR_FAILURE_CODE_UNSPECIFIED = 0;
+  SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT = 1;
+  SUPERVISOR_FAILURE_CODE_HANDSHAKE_FAILED = 2;
+  SUPERVISOR_FAILURE_CODE_STOP_RPC_FAILED = 3;
+  SUPERVISOR_FAILURE_CODE_TERMINATION_TIMEOUT = 4;
+  SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY = 5;
+  SUPERVISOR_FAILURE_CODE_ARTIFACT_RECOVERY_FAILED = 6;
+  SUPERVISOR_FAILURE_CODE_INTERNAL = 7;
+}
+
+enum LifecycleEventKind {
+  LIFECYCLE_EVENT_KIND_UNSPECIFIED = 0;
+  LIFECYCLE_EVENT_KIND_RUNTIME_LEASE_RECORDED = 1;
+  LIFECYCLE_EVENT_KIND_RUNTIME_STATUS_SNAPSHOT_RECORDED = 2;
+  LIFECYCLE_EVENT_KIND_SUPERVISOR_STATUS_SNAPSHOT_RECORDED = 3;
+  LIFECYCLE_EVENT_KIND_RUNTIME_TRANSITION_RECORDED = 4;
+  LIFECYCLE_EVENT_KIND_SUPERVISOR_TRANSITION_RECORDED = 5;
+  LIFECYCLE_EVENT_KIND_PROCESS_EXIT_RECORDED = 6;
+  LIFECYCLE_EVENT_KIND_RECOVERY_DECISION_RECORDED = 7;
+  LIFECYCLE_EVENT_KIND_CORRUPT_DURABLE_RECORD_OBSERVED = 8;
+}
+
 message RuntimeIdentity {
   uint32 pid = 1 [
     (buf.validate.field).required = true,
@@ -74,34 +115,13 @@ message RuntimeFailure {
   google.protobuf.Duration retry_after = 4 [(buf.validate.field).duration.gt = {}];
 }
 
-message RuntimeOperation {
-  string operation_id = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.uuid = true
-  ];
-  string name = 2 [
+message RuntimeTransition {
+  string transition_id = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128,
-    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+    (buf.validate.field).string.max_len = 128
   ];
-}
-
-message RuntimeStatus {
-  RuntimeIdentity identity = 1 [(buf.validate.field).required = true];
-  RuntimePhase phase = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
-  uint64 sequence = 3 [(buf.validate.field).uint64.gte = 0];
-  google.protobuf.Timestamp updated_at = 4 [(buf.validate.field).required = true];
-  RuntimeFailure failure = 5;
-}
-
-message RuntimeTransition {
-  RuntimeOperation operation = 1;
-  uint64 sequence = 2 [(buf.validate.field).uint64.gte = 1];
+  uint64 runtime_sequence = 2 [(buf.validate.field).uint64.gte = 1];
   RuntimePhase previous_phase = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
@@ -119,6 +139,220 @@ message RuntimeTransition {
   ];
   google.protobuf.Timestamp occurred_at = 6 [(buf.validate.field).required = true];
   RuntimeFailure failure = 7;
+  string caller_operation_id = 8 [(buf.validate.field).string.max_len = 64];
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 128];
+}
+
+message RuntimeStatus {
+  RuntimeIdentity identity = 1 [(buf.validate.field).required = true];
+  RuntimePhase phase = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  uint64 runtime_sequence = 3 [(buf.validate.field).uint64.gte = 0];
+  google.protobuf.Timestamp updated_at = 4 [(buf.validate.field).required = true];
+  RuntimeFailure failure = 5;
+}
+
+message LifecycleRecordWriterIdentity {
+  LifecycleRecordWriter writer = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string writer_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+message LifecycleLaunchIdentity {
+  string launch_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string data_dir = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  uint32 runtime_pid = 3 [(buf.validate.field).uint32.gte = 0];
+  uint32 supervisor_pid = 4 [(buf.validate.field).uint32.gte = 0];
+  uint64 supervisor_generation = 5 [(buf.validate.field).uint64.gte = 0];
+}
+
+message LifecycleRecordHeader {
+  uint32 schema_version = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  LifecycleRecordWriterIdentity writer = 2 [(buf.validate.field).required = true];
+  LifecycleLaunchIdentity launch = 3 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp written_at = 4 [(buf.validate.field).required = true];
+}
+
+message SupervisorIdentity {
+  string supervisor_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  uint32 pid = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gt = 0
+  ];
+  uint64 generation = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
+}
+
+message SupervisorFailure {
+  SupervisorFailureCode code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string message = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  bool retryable = 3 [(buf.validate.field).required = true];
+  google.protobuf.Duration retry_after = 4 [(buf.validate.field).duration.gt = {}];
+}
+
+message SupervisorStatus {
+  SupervisorIdentity identity = 1 [(buf.validate.field).required = true];
+  LifecycleLaunchIdentity launch = 2 [(buf.validate.field).required = true];
+  SupervisorPhase phase = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  uint64 supervisor_sequence = 4 [(buf.validate.field).uint64.gte = 0];
+  google.protobuf.Timestamp updated_at = 5 [(buf.validate.field).required = true];
+  RuntimeIdentity runtime = 6;
+  SupervisorFailure failure = 7;
+}
+
+message RuntimeLeaseRecord {
+  LifecycleRecordHeader header = 1 [(buf.validate.field).required = true];
+  RuntimeIdentity runtime = 2 [(buf.validate.field).required = true];
+  SupervisorIdentity supervisor = 3 [(buf.validate.field).required = true];
+  uint64 runtime_sequence = 4 [(buf.validate.field).uint64.gte = 0];
+  google.protobuf.Timestamp acquired_at = 5 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp renewed_at = 6 [(buf.validate.field).required = true];
+  google.protobuf.Duration lease_ttl = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {}
+  ];
+}
+
+message RuntimeStatusSnapshot {
+  LifecycleRecordHeader header = 1 [(buf.validate.field).required = true];
+  RuntimeStatus status = 2 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp snapshot_at = 3 [(buf.validate.field).required = true];
+}
+
+message SupervisorStatusSnapshot {
+  LifecycleRecordHeader header = 1 [(buf.validate.field).required = true];
+  SupervisorStatus status = 2 [(buf.validate.field).required = true];
+  google.protobuf.Timestamp snapshot_at = 3 [(buf.validate.field).required = true];
+}
+
+message SupervisorTransition {
+  SupervisorIdentity supervisor = 1 [(buf.validate.field).required = true];
+  uint64 supervisor_sequence = 2 [(buf.validate.field).uint64.gte = 1];
+  SupervisorPhase previous_phase = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  SupervisorPhase current_phase = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string reason = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  google.protobuf.Timestamp occurred_at = 6 [(buf.validate.field).required = true];
+  RuntimeIdentity runtime = 7;
+  SupervisorFailure failure = 8;
+}
+
+message LifecycleProcessExit {
+  RuntimeIdentity runtime = 1 [(buf.validate.field).required = true];
+  RuntimePhase runtime_phase = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  int32 exit_code = 3 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 255
+  ];
+  string signal = 4 [(buf.validate.field).string.max_len = 64];
+  bool retryable = 5 [(buf.validate.field).required = true];
+}
+
+message LifecycleRecoveryDecision {
+  string summary = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message LifecycleArtifactCorruption {
+  string path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string message = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message LifecycleEventLogEntry {
+  LifecycleRecordHeader header = 1 [(buf.validate.field).required = true];
+  uint64 lifecycle_sequence = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
+  LifecycleEventKind kind = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  google.protobuf.Timestamp occurred_at = 4 [(buf.validate.field).required = true];
+  uint64 runtime_sequence = 5 [(buf.validate.field).uint64.gte = 0];
+  uint64 supervisor_sequence = 6 [(buf.validate.field).uint64.gte = 0];
+  string caller_operation_id = 7 [(buf.validate.field).string.max_len = 64];
+  string transition_id = 8 [(buf.validate.field).string.max_len = 128];
+  string correlation_id = 9 [(buf.validate.field).string.max_len = 128];
+
+  oneof payload {
+    option (buf.validate.oneof).required = true;
+
+    RuntimeLeaseRecord runtime_lease = 10;
+    RuntimeStatusSnapshot runtime_status_snapshot = 11;
+    SupervisorStatusSnapshot supervisor_status_snapshot = 12;
+    RuntimeTransition runtime_transition = 13;
+    SupervisorTransition supervisor_transition = 14;
+    LifecycleProcessExit process_exit = 15;
+    LifecycleRecoveryDecision recovery_decision = 16;
+    LifecycleArtifactCorruption artifact_corruption = 17;
+  }
 }
 
 // Codegen anchor for standard Connect error-detail schemas used by the

@@ -174,7 +174,8 @@ fn ensure_runtime_not_running(
     paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let Some(pid) = read_pid(paths.pid_path.as_path())? else {
+    let Some(pid) = onequery_gateway::read_running_gateway_pid_from_paths(paths, command_line)?
+    else {
         return Ok(());
     };
 
@@ -261,27 +262,6 @@ fn archive_error(title: &str, command_line: &str, error: impl std::fmt::Display)
     )
 }
 
-fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
-    let Ok(contents) = fs::read_to_string(path) else {
-        return Ok(None);
-    };
-
-    let trimmed = contents.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-
-    trimmed.parse::<u32>().map(Some).map_err(|error| {
-        CliError::new(
-            "failed to parse runtime pid file",
-            "onequery backup",
-            ErrorStage::LoadConfig,
-            format!("{error} ({})", path.display()),
-            vec!["remove the stale pid file and retry".to_owned()],
-        )
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -366,8 +346,14 @@ mod tests {
                 entries.contains(&"data/backups/old-backup.tar.gz".to_owned()),
                 false
             );
-            assert_eq!(entries.contains(&"data/run/server.pid".to_owned()), false);
-            assert_eq!(entries.contains(&"data/run/server.lock".to_owned()), false);
+            assert_eq!(
+                entries.contains(&"data/run/runtime.status.json".to_owned()),
+                false
+            );
+            assert_eq!(
+                entries.contains(&"data/run/runtime.lease.json".to_owned()),
+                false
+            );
 
             fs::remove_dir_all(temp_root)
                 .unwrap_or_else(|error| panic!("expected backup test temp dir cleanup: {error}"));
@@ -428,10 +414,10 @@ mod tests {
         .unwrap_or_else(|error| panic!("expected runtime file write to succeed: {error}"));
         fs::write(paths.backups_dir.join("old-backup.tar.gz"), "skip")
             .unwrap_or_else(|error| panic!("expected backup fixture write to succeed: {error}"));
-        fs::write(&paths.pid_path, "9999\n")
-            .unwrap_or_else(|error| panic!("expected pid fixture write to succeed: {error}"));
-        fs::write(&paths.lock_path, "{\"pid\":9999}\n")
-            .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
+        fs::write(&paths.runtime_status_snapshot_path, "{}\n")
+            .unwrap_or_else(|error| panic!("expected status fixture write to succeed: {error}"));
+        fs::write(&paths.runtime_lease_path, "{}\n")
+            .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
     }
 
     fn archive_entries(archive_path: &Path) -> Vec<String> {

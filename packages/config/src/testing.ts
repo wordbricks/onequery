@@ -58,18 +58,21 @@ export function createWorkspaceDevLaunchConfig(input?: {
 export function createSelfHostRuntimePaths(input?: {
   backupsDir?: string;
   dataDir?: string;
-  lockPath?: string;
   logsDir?: string;
-  pidPath?: string;
   runDir?: string;
+  runtimeLeasePath?: string;
+  runtimeStatusSnapshotPath?: string;
 }): NonNullable<ServerLaunchConfig["runtimePaths"]> {
   return {
     backupsDir: input?.backupsDir ?? "/tmp/onequery/backups",
     dataDir: input?.dataDir ?? "/tmp/onequery/data",
-    lockPath: input?.lockPath ?? "/tmp/onequery/run/server.lock",
     logsDir: input?.logsDir ?? "/tmp/onequery/logs",
-    pidPath: input?.pidPath ?? "/tmp/onequery/run/server.pid",
     runDir: input?.runDir ?? "/tmp/onequery/run",
+    runtimeLeasePath:
+      input?.runtimeLeasePath ?? "/tmp/onequery/run/runtime.lease.json",
+    runtimeStatusSnapshotPath:
+      input?.runtimeStatusSnapshotPath ??
+      "/tmp/onequery/run/runtime.status.json",
   };
 }
 
