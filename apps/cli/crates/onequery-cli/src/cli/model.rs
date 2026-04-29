@@ -220,7 +220,7 @@ pub(crate) enum Command {
     Gateway(GatewayArgs),
     /// Upgrade this published CLI installation in place.
     Upgrade,
-    /// Open the OneQuery dashboard in your browser.
+    /// Open the OneQuery dashboard in browser.
     Web,
     /// Internal process supervisor for the managed gateway.
     #[command(name = "__gateway-supervisor", hide = true)]

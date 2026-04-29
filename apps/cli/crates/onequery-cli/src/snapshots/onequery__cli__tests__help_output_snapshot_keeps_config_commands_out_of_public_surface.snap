@@ -16,6 +16,7 @@ Commands:
   restore  Restore a self-host backup archive into the runtime directories
   gateway  Run the self-host gateway in foreground by default or manage the background lifecycle
   upgrade  Upgrade this published CLI installation in place
+  web      Open the OneQuery dashboard in browser
   api      Describe or execute a connected source API
   explain  Explain a stable CLI error code
   doctor   Inspect local CLI state and diagnostics

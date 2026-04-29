@@ -128,6 +128,11 @@ fn upgrade_help_output_snapshot_targets_upgrade_surface() {
 }
 
 #[test]
+fn web_help_output_snapshot_targets_dashboard_surface() {
+    assert_snapshot!(rendered_display(&["onequery", "web", "--help"]));
+}
+
+#[test]
 fn config_get_help_output_lists_supported_keys() {
     assert_snapshot!(rendered_display(&["onequery", "config", "get", "--help"]));
 }
@@ -507,6 +512,14 @@ fn parse_invocation_accepts_upgrade_command() {
     let invocation = parse_invocation(&["onequery", "upgrade"]);
 
     assert!(matches!(invocation.command, Command::Upgrade));
+}
+
+#[test]
+fn parse_invocation_accepts_web_command() {
+    let invocation = parse_invocation(&["onequery", "web"]);
+
+    assert!(matches!(invocation.command, Command::Web));
+    assert_eq!(invocation.command.command_path(), "web");
 }
 
 #[test]

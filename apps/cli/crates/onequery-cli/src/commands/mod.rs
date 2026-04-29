@@ -15,6 +15,7 @@ mod source_connect;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod upgrade;
+mod web;
 
 use crate::cli::Command;
 use crate::cli::Invocation;
@@ -262,6 +263,7 @@ where
         .await
         .map(CommandOutput::from),
         Command::Upgrade => upgrade::execute(context, runtime).await,
+        Command::Web => web::execute(context, runtime).await,
         Command::GatewaySupervisor(args) => {
             let args = args.into_gateway_args();
             onequery_gateway::execute_supervisor(&args, &context.command_line)
