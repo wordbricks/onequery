@@ -772,6 +772,11 @@ fn supervisor_control_identity_from_snapshot(
     is_process_running: impl Fn(u32) -> bool,
 ) -> Option<ManagedSupervisorControlIdentity> {
     let status = snapshot.status.as_option()?;
+    let phase = supervisor_status_phase(status)?;
+    if supervisor_phase_is_terminal(phase) {
+        return None;
+    }
+
     let launch = status.launch.as_option()?;
     if !launch_identity_matches_data_dir(launch, expected_data_dir) {
         return None;

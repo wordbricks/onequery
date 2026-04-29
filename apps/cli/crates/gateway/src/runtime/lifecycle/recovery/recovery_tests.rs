@@ -757,7 +757,7 @@ fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_supervisor_term
 }
 
 #[test]
-fn supervisor_control_identity_recovery_can_probe_from_terminal_supervisor_snapshot() {
+fn supervisor_control_identity_recovery_ignores_terminal_supervisor_snapshot() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -779,9 +779,35 @@ fn supervisor_control_identity_recovery_can_probe_from_terminal_supervisor_snaps
         None
     );
 
+    assert_eq!(
+        read_supervisor_control_identity_for_recovery(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| panic!(
+                "expected supervisor control identity recovery: {error}"
+            )),
+        None
+    );
+}
+
+#[test]
+fn supervisor_control_identity_recovery_uses_active_supervisor_snapshot() {
+    let (_temp_dir, paths) = test_paths();
+    let pid = std::process::id();
+
+    fs::write(
+        &paths.supervisor_status_snapshot_path,
+        supervisor_status_snapshot_json_with_supervisor(
+            &paths.data_dir.display().to_string(),
+            pid,
+            pid,
+            "launch-a",
+            "SUPERVISOR_PHASE_READY",
+        ),
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor snapshot write: {error}"));
+
     let identity = read_supervisor_control_identity_for_recovery(&paths, "onequery gateway status")
         .unwrap_or_else(|error| panic!("expected supervisor control identity recovery: {error}"))
-        .expect("expected supervisor control identity from terminal snapshot");
+        .expect("expected supervisor control identity from active snapshot");
 
     assert_eq!(identity.runtime.launch_id, "launch-a");
     assert_eq!(identity.runtime.pid, pid);
