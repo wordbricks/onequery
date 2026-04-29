@@ -3,6 +3,11 @@
 Use `diagram-system-reference.png` as the visual reference when creating new
 OneQuery blog diagrams.
 
+Use the `ONEQUERY ICON` sample in `diagram-system-reference.png` whenever a
+diagram needs to represent OneQuery as a node, product, service, or actor. The
+sample is a simplified line version of `apps/web/public/onequery.svg` adapted to
+the Diagram System.
+
 ## Visual Language
 
 - White canvas with generous margins.
@@ -13,7 +18,18 @@ OneQuery blog diagrams.
 - Rounded rectangles and pills with soft, restrained corners.
 - Sparse uppercase monospace labels inside modules.
 - Thin black arrows with small arrowheads.
-- No logos, brand marks, watermarks, decorative blobs, 3D, or glossy effects.
+- No logos, brand marks, watermarks, decorative blobs, 3D, or glossy effects,
+  except the OneQuery line icon when OneQuery itself is a diagram subject.
+
+## OneQuery Icon
+
+- Reference: the `ONEQUERY ICON` sample in `diagram-system-reference.png`.
+- Use as a simple charcoal stroke icon inside a pale gray rounded tile.
+- Keep the icon unfilled except for the small eye dot.
+- Use the same stroke weight as other diagram icons.
+- Do not use the filled app icon in diagrams.
+- Do not add the OneQuery wordmark unless the image explicitly needs a title or
+  caption outside the diagram.
 
 ## Color Tokens
 
@@ -39,6 +55,10 @@ thin charcoal outlines, pale gray translucent fills, rounded rectangles, subtle
 gray halftone dot texture for grouped containers, sparse uppercase monospace
 module labels, thin black arrows with small arrowheads, calm technical diagram
 composition.
+
+OneQuery:
+when the diagram needs a OneQuery node, use the simplified line icon shown in
+the `ONEQUERY ICON` sample inside a pale gray rounded tile.
 
 Composition:
 [Describe the nodes, groups, arrows, and hierarchy.]
