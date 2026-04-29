@@ -28,44 +28,61 @@ use super::transport::retry_command_hint;
 
 const SUPERVISOR_POLL_INTERVAL: Duration = Duration::from_millis(100);
 const SUPERVISOR_RUNTIME_STOP_REASON: &str = "onequery gateway stop";
-#[cfg(not(test))]
-fn supervisor_runtime_stop_grace_timeout() -> Duration {
-    Duration::from_secs(30)
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SupervisorTimeouts {
+    stop_grace: Duration,
+    terminate: Duration,
+    kill: Duration,
 }
 
-#[cfg(test)]
-fn supervisor_runtime_stop_grace_timeout() -> Duration {
-    Duration::from_millis(150)
+impl Default for SupervisorTimeouts {
+    fn default() -> Self {
+        #[cfg(not(test))]
+        {
+            Self {
+                stop_grace: Duration::from_secs(30),
+                terminate: Duration::from_secs(5),
+                kill: Duration::from_secs(5),
+            }
+        }
+
+        #[cfg(test)]
+        {
+            Self {
+                stop_grace: Duration::from_millis(150),
+                terminate: Duration::from_millis(500),
+                kill: Duration::from_millis(150),
+            }
+        }
+    }
 }
 
-#[cfg(not(test))]
-fn supervisor_runtime_terminate_timeout() -> Duration {
-    Duration::from_secs(5)
-}
-
-#[cfg(test)]
-fn supervisor_runtime_terminate_timeout() -> Duration {
-    Duration::from_millis(500)
-}
-
-#[cfg(not(test))]
-fn supervisor_runtime_kill_timeout() -> Duration {
-    Duration::from_secs(5)
-}
-
-#[cfg(test)]
-fn supervisor_runtime_kill_timeout() -> Duration {
-    Duration::from_millis(150)
+impl SupervisorTimeouts {
+    #[cfg(test)]
+    pub(super) fn with_kill_timeout(mut self, kill: Duration) -> Self {
+        self.kill = kill;
+        self
+    }
 }
 
 #[derive(Debug, Default)]
 pub(super) struct SupervisorTimers {
+    timeouts: SupervisorTimeouts,
     stop_deadline: Option<Instant>,
     terminate_deadline: Option<Instant>,
     kill_deadline: Option<Instant>,
 }
 
 impl SupervisorTimers {
+    #[cfg(test)]
+    pub(super) fn with_timeouts(timeouts: SupervisorTimeouts) -> Self {
+        Self {
+            timeouts,
+            ..Self::default()
+        }
+    }
+
     pub(super) fn no_active_deadlines(&self) -> bool {
         self.stop_deadline.is_none()
             && self.terminate_deadline.is_none()
@@ -88,17 +105,21 @@ impl SupervisorTimers {
     }
 
     fn schedule_grace_deadline(&mut self, now: Instant) {
-        self.stop_deadline = Some(now + supervisor_runtime_stop_grace_timeout());
+        self.stop_deadline = Some(now + self.timeouts.stop_grace);
+    }
+
+    fn stop_grace_timeout(&self) -> Duration {
+        self.timeouts.stop_grace
     }
 
     fn schedule_terminate_deadline(&mut self, now: Instant) {
         self.stop_deadline = None;
-        self.terminate_deadline = Some(now + supervisor_runtime_terminate_timeout());
+        self.terminate_deadline = Some(now + self.timeouts.terminate);
     }
 
     fn schedule_escalation_deadline(&mut self, now: Instant) {
         self.terminate_deadline = None;
-        self.kill_deadline = Some(now + supervisor_runtime_kill_timeout());
+        self.kill_deadline = Some(now + self.timeouts.kill);
     }
 
     pub(super) fn next_poll_interval(&self) -> Duration {
@@ -282,8 +303,16 @@ async fn execute_supervisor_effects(
                 runtime_pid: _,
                 operation_id,
             } => {
-                let stop_result =
-                    request_supervised_runtime_stop(context.supervisor_control, operation_id).await;
+                let grace_timeout = timers.as_deref().map_or_else(
+                    || SupervisorTimeouts::default().stop_grace,
+                    SupervisorTimers::stop_grace_timeout,
+                );
+                let stop_result = request_supervised_runtime_stop(
+                    context.supervisor_control,
+                    operation_id,
+                    grace_timeout,
+                )
+                .await;
 
                 if report.runtime_stop_result.replace(stop_result).is_some() {
                     return Err(supervisor_effect_context_error(
@@ -354,6 +383,7 @@ fn live_runtime_sequence_for_terminal_status(
 async fn request_supervised_runtime_stop(
     supervisor_control: &SupervisorControlActor,
     operation_id: &str,
+    grace_timeout: Duration,
 ) -> Result<(), ConnectError> {
     supervisor_control
         .send_stop_command(types::SupervisorStopCommand {
@@ -362,9 +392,7 @@ async fn request_supervised_runtime_stop(
             completion: Some(
                 types::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT.into(),
             ),
-            grace_timeout: buffa::MessageField::some(protobuf_duration(
-                supervisor_runtime_stop_grace_timeout(),
-            )),
+            grace_timeout: buffa::MessageField::some(protobuf_duration(grace_timeout)),
             ..Default::default()
         })
         .await

@@ -42,11 +42,28 @@ pub(super) async fn monitor_supervised_runtime_with_stop_signal<
 >(
     context: SupervisedRuntimeContext<'_>,
     child: &mut Child,
-    mut machine: SupervisorMachine,
+    machine: SupervisorMachine,
     stop_signal: &mut S,
 ) -> Result<SupervisedRuntimeExit, CliError> {
-    let mut timers = SupervisorTimers::default();
+    monitor_supervised_runtime_with_timers(
+        context,
+        child,
+        machine,
+        stop_signal,
+        SupervisorTimers::default(),
+    )
+    .await
+}
 
+pub(super) async fn monitor_supervised_runtime_with_timers<
+    S: SupervisorStopSignalSource + ?Sized,
+>(
+    context: SupervisedRuntimeContext<'_>,
+    child: &mut Child,
+    mut machine: SupervisorMachine,
+    stop_signal: &mut S,
+    mut timers: SupervisorTimers,
+) -> Result<SupervisedRuntimeExit, CliError> {
     loop {
         if let Some(status) = child.try_wait().map_err(|error| {
             CliError::new(
