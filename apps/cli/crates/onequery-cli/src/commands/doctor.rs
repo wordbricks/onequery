@@ -246,15 +246,9 @@ mod tests {
         })
     }
 
-    fn report_snapshot_filters(temp_dir: &tempfile::TempDir) -> Vec<(&str, &str)> {
+    fn report_snapshot_filters(temp_dir_path: &str) -> Vec<(&str, &str)> {
         vec![
-            (
-                temp_dir
-                    .path()
-                    .to_str()
-                    .expect("expected temp path to be valid UTF-8"),
-                "<tmp>",
-            ),
+            (temp_dir_path, "<tmp>"),
             (r"CLI version: `[^`]+`", "CLI version: `<cli-version>`"),
             (
                 r#""cliVersion": "[^"]+""#,
@@ -355,9 +349,10 @@ mod tests {
             true
         );
 
+        let temp_dir_path = temp_dir.path().to_string_lossy();
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => report_snapshot_filters(&temp_dir)
+                filters => report_snapshot_filters(&temp_dir_path)
             }, {
                 assert_snapshot!(rendered);
             });
@@ -397,9 +392,10 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
+        let temp_dir_path = temp_dir.path().to_string_lossy();
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => report_snapshot_filters(&temp_dir)
+                filters => report_snapshot_filters(&temp_dir_path)
             }, {
                 assert_snapshot!(rendered);
             });
@@ -450,9 +446,10 @@ mod tests {
             "doctor report JSON should keep browser draft URLs out of structured output"
         );
 
+        let temp_dir_path = temp_dir.path().to_string_lossy();
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => report_snapshot_filters(&temp_dir)
+                filters => report_snapshot_filters(&temp_dir_path)
             }, {
                 assert_snapshot!(pretty);
             });
@@ -490,10 +487,11 @@ mod tests {
         let rendered = output.lines.join("\n");
         let opened_urls = browser.urls();
 
+        let temp_dir_path = temp_dir.path().to_string_lossy();
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
                 filters => {
-                    let mut filters = report_snapshot_filters(&temp_dir);
+                    let mut filters = report_snapshot_filters(&temp_dir_path);
                     filters.push((
                         r"https://github\\.com/wordbricks/onequery/issues/new\\?\\S+",
                         "<ISSUE_URL>",
@@ -593,9 +591,10 @@ mod tests {
             EffectiveOutputMode::Text,
         );
 
+        let temp_dir_path = temp_dir.path().to_string_lossy();
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => report_snapshot_filters(&temp_dir)
+                filters => report_snapshot_filters(&temp_dir_path)
             }, {
                 assert_snapshot!(rendered);
             });
