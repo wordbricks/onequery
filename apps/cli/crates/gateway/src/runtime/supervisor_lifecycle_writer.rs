@@ -302,15 +302,7 @@ pub(super) fn write_terminal_runtime_status_snapshot(
             ..Default::default()
         }
     });
-    let status = terminal_runtime_status_projection(
-        record.runtime_pid,
-        record.launch_id,
-        &data_dir,
-        record.phase,
-        runtime_sequence,
-        now,
-        failure,
-    );
+    let status = terminal_runtime_status_projection(record.phase, runtime_sequence, now, failure);
 
     let snapshot = types::RuntimeStatusSnapshot {
         header: MessageField::some(lifecycle_record_header(
@@ -369,16 +361,12 @@ pub(super) fn write_terminal_runtime_status_snapshot(
 }
 
 fn terminal_runtime_status_projection(
-    runtime_pid: u32,
-    launch_id: &str,
-    data_dir: &str,
     phase: types::RuntimePhase,
     runtime_sequence: u64,
     updated_at: chrono::DateTime<Utc>,
     failure: Option<types::RuntimeFailure>,
 ) -> types::RuntimeStatus {
     types::RuntimeStatus {
-        identity: MessageField::some(runtime_identity(runtime_pid, launch_id, data_dir)),
         phase: Some(phase.into()),
         runtime_sequence: Some(runtime_sequence),
         updated_at: MessageField::some(protobuf_timestamp(updated_at)),
@@ -472,7 +460,11 @@ fn next_terminal_runtime_sequence(
             command_line,
         );
     };
-    let Some(identity) = status.identity.as_option() else {
+    let Some(identity) = snapshot
+        .header
+        .as_option()
+        .and_then(|header| header.launch.as_option())
+    else {
         return next_terminal_runtime_sequence_from_supervisor_snapshot(
             paths,
             launch_id,
@@ -481,7 +473,7 @@ fn next_terminal_runtime_sequence(
         );
     };
 
-    if identity.pid != Some(runtime_pid)
+    if identity.runtime_pid != Some(runtime_pid)
         || identity.launch_id.as_deref() != Some(launch_id)
         || identity
             .data_dir

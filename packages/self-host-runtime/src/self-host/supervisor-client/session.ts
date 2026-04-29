@@ -88,8 +88,6 @@ export function openSupervisorRuntimeSession(input: {
         dataDir: input.dataDir,
         launchId: input.launchId,
         runtimePid,
-        runtimeSequence,
-        startedAt: timestampFromDate(now()),
         supervisor: input.supervisor,
       },
     },
@@ -327,11 +325,6 @@ async function handleStopCommand(input: {
     };
     const status = {
       failure,
-      identity: {
-        dataDir: input.dataDir,
-        launchId: input.launchId,
-        pid: input.runtimePid,
-      },
       phase: RuntimePhase.SHUTDOWN_FAILED,
       runtimeSequence: input.getRuntimeSequence() + 1n,
       updatedAt: timestampFromDate(failedAt),

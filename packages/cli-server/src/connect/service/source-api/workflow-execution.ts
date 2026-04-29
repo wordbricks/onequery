@@ -95,7 +95,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
       );
 
       if (requestPreparation.step.result.kind === "failed") {
-        return Result.err(requestPreparation.step.result.problem);
+        return yield* requestPreparation.step.result.problem;
       }
 
       let preparedRequest = yield* Result.await(
@@ -221,24 +221,20 @@ export async function runResumeSourceApiExecuteWorkflowResult(
       );
 
       if (stored.isErr()) {
-        return Result.err(
-          createSourceApiAuditFailure(
-            "source_api_action resume_invoke could not be stored",
-            stored.error
-          )
+        return yield* createSourceApiAuditFailure(
+          "source_api_action resume_invoke could not be stored",
+          stored.error
         );
       }
 
       if (stored.value.kind === "rejected") {
-        return Result.err(
-          createCliServiceFailure({
-            detail:
-              stored.value.rejectCode === "causation_mismatch"
-                ? "Source API continuation token is stale"
-                : "Source API continuation token can no longer resume this action",
-            key: "SOURCE_API_EXECUTION_STATE_INVALID",
-          })
-        );
+        return yield* createCliServiceFailure({
+          detail:
+            stored.value.rejectCode === "causation_mismatch"
+              ? "Source API continuation token is stale"
+              : "Source API continuation token can no longer resume this action",
+          key: "SOURCE_API_EXECUTION_STATE_INVALID",
+        });
       }
 
       const resumeDecision = stored.value;

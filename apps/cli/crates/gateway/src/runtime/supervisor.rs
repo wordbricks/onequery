@@ -14,7 +14,7 @@ use tokio::time::sleep;
 
 use crate::GatewayCommandOutput;
 use crate::GatewaySupervisorArgs;
-use crate::self_host::ServerLaunchSupervisorConfig;
+use crate::self_host::read_self_host_launch_id;
 use crate::self_host::write_self_host_launch_supervisor_identity;
 use crate::supervisor_control_proto::types;
 
@@ -51,7 +51,11 @@ pub(crate) async fn run_gateway_supervisor(
     args: &GatewaySupervisorArgs,
     command_line: &str,
 ) -> Result<GatewayCommandOutput, CliError> {
-    let launch_id = read_supervised_launch_id(args.launch_config.as_path(), command_line)?;
+    let launch_id = read_self_host_launch_id(
+        args.launch_config.as_path(),
+        command_line,
+        retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND),
+    )?;
     let exit = run_supervised_runtime_to_exit(
         state,
         SupervisedRuntimeLaunch {
@@ -371,34 +375,7 @@ fn stamp_launch_config_supervisor_identity(
     supervisor: &types::SupervisorIdentity,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let supervisor_id = supervisor.supervisor_id.clone().ok_or_else(|| {
-        CliError::internal(
-            command_line.to_owned(),
-            "supervisor identity omitted supervisor id before runtime launch",
-        )
-    })?;
-    let pid = supervisor.pid.ok_or_else(|| {
-        CliError::internal(
-            command_line.to_owned(),
-            "supervisor identity omitted pid before runtime launch",
-        )
-    })?;
-    let generation = supervisor.generation.ok_or_else(|| {
-        CliError::internal(
-            command_line.to_owned(),
-            "supervisor identity omitted generation before runtime launch",
-        )
-    })?;
-
-    write_self_host_launch_supervisor_identity(
-        launch_config_path,
-        command_line,
-        ServerLaunchSupervisorConfig {
-            generation: generation.to_string(),
-            pid,
-            supervisor_id,
-        },
-    )
+    write_self_host_launch_supervisor_identity(launch_config_path, command_line, supervisor.clone())
 }
 
 async fn start_supervisor_control_runtime_server(
@@ -527,45 +504,6 @@ fn monitored_runtime_exit_kind(exit_kind: SupervisorChildExitKind) -> MonitoredR
         SupervisorChildExitKind::Expected => MonitoredRuntimeExitKind::Expected,
         SupervisorChildExitKind::Unexpected => MonitoredRuntimeExitKind::Unexpected,
     }
-}
-
-fn read_supervised_launch_id(
-    path: &std::path::Path,
-    command_line: &str,
-) -> Result<String, CliError> {
-    let contents = std::fs::read_to_string(path).map_err(|error| {
-        CliError::new(
-            "failed to read self-host launch config for supervisor status",
-            command_line,
-            ErrorStage::Internal,
-            format!("{error} ({})", path.display()),
-            vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
-        )
-    })?;
-    let value = serde_json::from_str::<serde_json::Value>(&contents).map_err(|error| {
-        CliError::new(
-            "failed to parse self-host launch config for supervisor status",
-            command_line,
-            ErrorStage::Internal,
-            format!("{error} ({})", path.display()),
-            vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
-        )
-    })?;
-
-    value
-        .get("launchId")
-        .and_then(serde_json::Value::as_str)
-        .filter(|launch_id| !launch_id.is_empty())
-        .map(str::to_owned)
-        .ok_or_else(|| {
-            CliError::new(
-                "self-host launch config omitted launch id for supervisor status",
-                command_line,
-                ErrorStage::Internal,
-                format!("{}", path.display()),
-                vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
-            )
-        })
 }
 
 pub(super) fn supervisor_id_for_pid(supervisor_pid: u32) -> String {
@@ -960,14 +898,6 @@ mod tests {
 
     impl SupervisorFixture {
         fn new() -> Self {
-            Self::new_with_test_launch_options(&[], None, None)
-        }
-
-        fn new_with_test_launch_options(
-            test_modes: &[&str],
-            test_ready_delay_ms: Option<u64>,
-            test_exit_after_ready_delay_ms: Option<u64>,
-        ) -> Self {
             let temp_dir =
                 tempdir().unwrap_or_else(|error| panic!("expected supervisor temp dir: {error}"));
             let paths = SelfHostRuntimePaths::from_dirs(
@@ -995,40 +925,67 @@ mod tests {
 
             let launch_config_path = temp_dir.path().join("launch.json");
             let supervisor_pid = std::process::id();
-            let mut launch_config = json!({
-                "launchId": LAUNCH_ID,
-                "supervisor": {
-                    "generation": "1",
-                    "pid": supervisor_pid,
-                    "supervisorId": supervisor_id_for_pid(supervisor_pid),
-                },
-                "supervisorControl": {
-                    "baseUrl": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY,
-                    "maxMessageBytes": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES,
-                    "transport": {
-                        "kind": "unix",
-                        "socketPath": paths.supervisor_control_socket_path.display().to_string(),
+            let launch_config = json!({
+                "selfHost": {
+                    "common": {
+                        "assets": {
+                            "distDir": temp_dir.path().join("assets").display().to_string(),
+                        },
+                        "auth": {
+                            "secret": "fixture-auth-secret",
+                        },
+                        "connectors": {
+                            "enrollmentToken": "fixture-enrollment-token",
+                        },
+                        "crypto": {
+                            "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+                        },
+                        "listen": {
+                            "host": "127.0.0.1",
+                            "port": 7777,
+                        },
+                        "migrations": {
+                            "dir": temp_dir.path().join("migrations").display().to_string(),
+                        },
+                        "publicOrigin": "http://127.0.0.1:7777",
+                        "rateLimit": {
+                            "api": {
+                                "storage": "SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_PERSISTENT",
+                            },
+                            "enabled": true,
+                        },
+                        "storage": {
+                            "pglite": {
+                                "dir": paths.pglite_dir.display().to_string(),
+                            },
+                        },
                     },
-                },
-                "runtimePaths": {
-                    "backupsDir": paths.backups_dir.display().to_string(),
-                    "dataDir": paths.data_dir.display().to_string(),
-                    "lifecycleEventLogPath": paths.lifecycle_event_log_path.display().to_string(),
-                    "logsDir": paths.logs_dir.display().to_string(),
-                    "runDir": paths.run_dir.display().to_string(),
-                    "runtimeLeasePath": paths.runtime_lease_path.display().to_string(),
-                    "runtimeStatusSnapshotPath": paths.runtime_status_snapshot_path.display().to_string(),
-                },
+                    "launchId": LAUNCH_ID,
+                    "supervisor": {
+                        "generation": "1",
+                        "pid": supervisor_pid,
+                        "supervisorId": supervisor_id_for_pid(supervisor_pid),
+                    },
+                    "supervisorControl": {
+                        "baseUrl": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY,
+                        "maxMessageBytes": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES,
+                        "transport": {
+                            "unix": {
+                                "socketPath": paths.supervisor_control_socket_path.display().to_string(),
+                            },
+                        },
+                    },
+                    "runtimePaths": {
+                        "backupsDir": paths.backups_dir.display().to_string(),
+                        "dataDir": paths.data_dir.display().to_string(),
+                        "lifecycleEventLogPath": paths.lifecycle_event_log_path.display().to_string(),
+                        "logsDir": paths.logs_dir.display().to_string(),
+                        "runDir": paths.run_dir.display().to_string(),
+                        "runtimeLeasePath": paths.runtime_lease_path.display().to_string(),
+                        "runtimeStatusSnapshotPath": paths.runtime_status_snapshot_path.display().to_string(),
+                    },
+                }
             });
-            if !test_modes.is_empty() {
-                launch_config["testModes"] = json!(test_modes);
-            }
-            if let Some(delay_ms) = test_ready_delay_ms {
-                launch_config["testReadyDelayMs"] = json!(delay_ms);
-            }
-            if let Some(delay_ms) = test_exit_after_ready_delay_ms {
-                launch_config["testExitAfterReadyDelayMs"] = json!(delay_ms);
-            }
             fs::write(
                 &launch_config_path,
                 serde_json::to_string_pretty(&launch_config).unwrap_or_else(|error| {

@@ -14,14 +14,6 @@ use super::config::SelfHostConfig;
 use super::config::ServerSection;
 use super::config::SmtpConfig;
 use super::config::default_port;
-use super::launch_config::ServerLaunchApiRateLimitConfig;
-use super::launch_config::ServerLaunchApiRateLimitStorage;
-use super::launch_config::ServerLaunchConfig;
-use super::launch_config::ServerLaunchMigrationsConfig;
-use super::launch_config::ServerLaunchRateLimitConfig;
-use super::launch_config::ServerLaunchSmtpConfig;
-use super::launch_config::ServerLaunchStorageConfig;
-use super::launch_config::ServerLaunchSupervisorConfig;
 use super::launch_config::write_self_host_launch_config;
 use super::launch_config::write_self_host_launch_supervisor_identity;
 use super::paths::SelfHostRuntimePaths;
@@ -33,6 +25,7 @@ use super::secrets::MASTER_ENCRYPTION_KEY_BYTE_LENGTH;
 use super::secrets::SecretsConfig;
 use super::secrets::SmtpSecrets;
 use crate::self_host_paths::supervisor_control_socket_path_for_runtime;
+use crate::supervisor_control_proto::types;
 
 const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
 
@@ -395,7 +388,7 @@ secure = false
     .unwrap_or_else(|error| panic!("expected self-host launch config write to succeed: {error}"));
     let launch_config_contents = fs::read_to_string(&launch_config_path)
         .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
-    let launch_config: ServerLaunchConfig = serde_json::from_str(&launch_config_contents)
+    let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
         .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
 
     assert_eq!(
@@ -404,61 +397,101 @@ secure = false
     );
     assert!(!paths.run_dir.join("launch.json").is_file());
     assert_eq!(
-        launch_config.assets.dist_dir,
-        asset_dir.display().to_string()
-    );
-    assert_eq!(launch_config.listen.host, "0.0.0.0".to_owned());
-    assert_eq!(launch_config.listen.port, 7777);
-    assert_eq!(
-        launch_config.migrations,
-        ServerLaunchMigrationsConfig {
-            dir: "/tmp/onequery/runtime/migrations".to_owned(),
-        }
-    );
-    assert_eq!(launch_config.launch_id, "launch-a".to_owned());
-    assert_eq!(launch_config.supervisor, None);
-    assert_eq!(
-        launch_config.public_origin,
-        "http://127.0.0.1:7777".to_owned()
+        launch_config.pointer("/selfHost/common/assets/distDir"),
+        Some(&serde_json::Value::String(asset_dir.display().to_string()))
     );
     assert_eq!(
-        launch_config.rate_limit,
-        ServerLaunchRateLimitConfig {
-            api: ServerLaunchApiRateLimitConfig {
-                storage: ServerLaunchApiRateLimitStorage::Persistent,
-            },
-            enabled: true,
-        }
+        launch_config.pointer("/selfHost/common/listen/host"),
+        Some(&serde_json::Value::String("0.0.0.0".to_owned()))
     );
     assert_eq!(
-        launch_config.supervisor_control.base_url,
-        crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY.to_owned()
+        launch_config.pointer("/selfHost/common/listen/port"),
+        Some(&serde_json::Value::Number(7777.into()))
     );
     assert_eq!(
-        launch_config.supervisor_control.max_message_bytes,
-        crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES
+        launch_config.pointer("/selfHost/common/migrations/dir"),
+        Some(&serde_json::Value::String(
+            "/tmp/onequery/runtime/migrations".to_owned()
+        ))
     );
     assert_eq!(
-        launch_config.runtime_paths.run_dir,
-        paths.run_dir.display().to_string()
+        launch_config.pointer("/selfHost/launchId"),
+        Some(&serde_json::Value::String("launch-a".to_owned()))
+    );
+    assert!(launch_config.pointer("/selfHost/supervisor").is_none());
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/publicOrigin"),
+        Some(&serde_json::Value::String(
+            "http://127.0.0.1:7777".to_owned()
+        ))
     );
     assert_eq!(
-        launch_config.storage,
-        ServerLaunchStorageConfig::Pglite {
-            dir: paths.pglite_dir.display().to_string(),
-        }
+        launch_config.pointer("/selfHost/common/rateLimit/api/storage"),
+        Some(&serde_json::Value::String(
+            "SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_PERSISTENT".to_owned()
+        ))
     );
     assert_eq!(
-        launch_config.smtp,
-        Some(ServerLaunchSmtpConfig {
-            from_email: "hello@example.com".to_owned(),
-            from_name: Some("OneQuery OSS".to_owned()),
-            host: "smtp.example.com".to_owned(),
-            password: Some("smtp-pass".to_owned()),
-            port: 587,
-            secure: Some(false),
-            username: Some("smtp-user".to_owned()),
-        })
+        launch_config.pointer("/selfHost/common/rateLimit/enabled"),
+        Some(&serde_json::Value::Bool(true))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/supervisorControl/baseUrl"),
+        Some(&serde_json::Value::String(
+            crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY.to_owned()
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/supervisorControl/maxMessageBytes"),
+        Some(&serde_json::Value::Number(
+            crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES.into()
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/supervisorControl/transport/unix/socketPath"),
+        Some(&serde_json::Value::String(
+            paths.supervisor_control_socket_path.display().to_string()
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/runtimePaths/runDir"),
+        Some(&serde_json::Value::String(
+            paths.run_dir.display().to_string()
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/storage/pglite/dir"),
+        Some(&serde_json::Value::String(
+            paths.pglite_dir.display().to_string()
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/fromEmail"),
+        Some(&serde_json::Value::String("hello@example.com".to_owned()))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/fromName"),
+        Some(&serde_json::Value::String("OneQuery OSS".to_owned()))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/host"),
+        Some(&serde_json::Value::String("smtp.example.com".to_owned()))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/password"),
+        Some(&serde_json::Value::String("smtp-pass".to_owned()))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/port"),
+        Some(&serde_json::Value::Number(587.into()))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/secure"),
+        Some(&serde_json::Value::Bool(false))
+    );
+    assert_eq!(
+        launch_config.pointer("/selfHost/common/smtp/username"),
+        Some(&serde_json::Value::String("smtp-user".to_owned()))
     );
 
     fs::remove_dir_all(test_dir)
@@ -489,28 +522,32 @@ fn write_self_host_launch_supervisor_identity_stamps_runtime_launch_config() {
     write_self_host_launch_supervisor_identity(
         launch_config_path.as_path(),
         "onequery gateway",
-        ServerLaunchSupervisorConfig {
-            generation: "42".to_owned(),
-            pid: 1001,
-            supervisor_id: "gateway-supervisor:1001".to_owned(),
+        types::SupervisorIdentity {
+            generation: Some(42),
+            pid: Some(1001),
+            supervisor_id: Some("gateway-supervisor:1001".to_owned()),
+            ..Default::default()
         },
     )
     .unwrap_or_else(|error| panic!("expected supervisor identity stamp to succeed: {error}"));
 
     let launch_config_contents = fs::read_to_string(&launch_config_path)
         .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
-    let launch_config: ServerLaunchConfig = serde_json::from_str(&launch_config_contents)
+    let launch_config: serde_json::Value = serde_json::from_str(&launch_config_contents)
         .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
 
     assert_eq!(
-        launch_config.supervisor,
-        Some(ServerLaunchSupervisorConfig {
-            generation: "42".to_owned(),
-            pid: 1001,
-            supervisor_id: "gateway-supervisor:1001".to_owned(),
-        })
+        launch_config.pointer("/selfHost/supervisor"),
+        Some(&serde_json::json!({
+            "generation": "42",
+            "pid": 1001,
+            "supervisorId": "gateway-supervisor:1001",
+        }))
     );
-    assert_eq!(launch_config.launch_id, "launch-a".to_owned());
+    assert_eq!(
+        launch_config.pointer("/selfHost/launchId"),
+        Some(&serde_json::Value::String("launch-a".to_owned()))
+    );
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
@@ -547,11 +584,11 @@ fn write_self_host_launch_config_does_not_overwrite_other_launches() {
 
     let launch_a_contents = fs::read_to_string(&launch_a_path)
         .unwrap_or_else(|error| panic!("expected launch-a config read: {error}"));
-    let launch_a_config: ServerLaunchConfig = serde_json::from_str(&launch_a_contents)
+    let launch_a_config: serde_json::Value = serde_json::from_str(&launch_a_contents)
         .unwrap_or_else(|error| panic!("expected launch-a config parse: {error}"));
     let launch_b_contents = fs::read_to_string(&launch_b_path)
         .unwrap_or_else(|error| panic!("expected launch-b config read: {error}"));
-    let launch_b_config: ServerLaunchConfig = serde_json::from_str(&launch_b_contents)
+    let launch_b_config: serde_json::Value = serde_json::from_str(&launch_b_contents)
         .unwrap_or_else(|error| panic!("expected launch-b config parse: {error}"));
 
     assert_ne!(launch_a_path, launch_b_path);
@@ -563,8 +600,14 @@ fn write_self_host_launch_config_does_not_overwrite_other_launches() {
         launch_b_path,
         self_host_launch_config_path_for_launch(&paths, "launch-b")
     );
-    assert_eq!(launch_a_config.launch_id, "launch-a".to_owned());
-    assert_eq!(launch_b_config.launch_id, "launch-b".to_owned());
+    assert_eq!(
+        launch_a_config.pointer("/selfHost/launchId"),
+        Some(&serde_json::Value::String("launch-a".to_owned()))
+    );
+    assert_eq!(
+        launch_b_config.pointer("/selfHost/launchId"),
+        Some(&serde_json::Value::String("launch-b".to_owned()))
+    );
     assert!(!paths.run_dir.join("launch.json").is_file());
 
     fs::remove_dir_all(test_dir)

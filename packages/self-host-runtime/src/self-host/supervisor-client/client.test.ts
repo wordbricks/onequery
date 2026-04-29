@@ -6,6 +6,7 @@ import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type { ServiceImpl } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
+import { createSelfHostSupervisorControl } from "@onequery/config/testing";
 import { SupervisorPhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import {
   SupervisorLifecycleService,
@@ -42,14 +43,7 @@ describe("createSupervisorLifecycleClient", () => {
     await listen(server, socketPath);
 
     const client = createSupervisorLifecycleClient({
-      endpoint: {
-        baseUrl: "http://onequery-supervisor",
-        maxMessageBytes: 64 * 1024,
-        transport: {
-          kind: "unix",
-          socketPath,
-        },
-      },
+      endpoint: createSelfHostSupervisorControl({ socketPath }),
     });
     const response = await client.getStatus({
       target: {

@@ -1,35 +1,15 @@
-import { Result } from "better-result";
-import type { Result as ResultType } from "better-result";
-
-import { SelfHostRuntimePathsMissingError } from "./errors";
 import type { LifecycleLaunchConfig, LifecyclePathsResolution } from "./types";
 
-export function toLifecyclePathsResult(
+export function toLifecyclePaths(
   launchConfig: LifecycleLaunchConfig
-): ResultType<LifecyclePathsResolution, SelfHostRuntimePathsMissingError> {
+): LifecyclePathsResolution {
   if (launchConfig.mode !== "self-host") {
-    return Result.ok({
+    return {
       kind: "unmanaged",
-    });
+    };
   }
 
-  if (!launchConfig.runtimePaths) {
-    return Result.err(
-      new SelfHostRuntimePathsMissingError({
-        message: "Self-host launch config requires runtimePaths.",
-      })
-    );
-  }
-
-  if (!launchConfig.supervisorControl) {
-    return Result.err(
-      new SelfHostRuntimePathsMissingError({
-        message: "Self-host launch config requires supervisorControl.",
-      })
-    );
-  }
-
-  return Result.ok({
+  return {
     kind: "self-host",
     paths: {
       controlEndpoint: launchConfig.supervisorControl,
@@ -40,17 +20,5 @@ export function toLifecyclePathsResult(
       runtimeStatusSnapshotPath:
         launchConfig.runtimePaths.runtimeStatusSnapshotPath,
     },
-  });
-}
-
-export function toLifecyclePaths(
-  launchConfig: LifecycleLaunchConfig
-): LifecyclePathsResolution {
-  const paths = toLifecyclePathsResult(launchConfig);
-
-  if (paths.isErr()) {
-    throw paths.error;
-  }
-
-  return paths.value;
+  };
 }

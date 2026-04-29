@@ -1,5 +1,15 @@
-import { decodeMasterEncryptionKey } from "@onequery/config/server-launch";
-import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import {
+  serverLaunchApiRateLimitStorageLabel,
+  viewServerLaunchCommonConfig,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
+import type {
+  ServerLaunchConfig,
+  ServerLaunchRateLimitStorage,
+  ServerLaunchRuntimePathsConfig,
+  ServerLaunchSmtpConfig,
+  ServerLaunchStorageConfig,
+} from "@onequery/config/server-launch";
 
 import type { AuthEmailDeliveryConfig } from "./lib/email-delivery";
 
@@ -27,55 +37,68 @@ export interface ServerRuntimeConfig {
   readonly crypto: {
     readonly masterEncryptionKey: Uint8Array;
   };
-  readonly listen: ServerLaunchConfig["listen"];
+  readonly listen: {
+    readonly host: string;
+    readonly port: number;
+  };
   readonly publicOrigin: string;
   readonly rateLimit: {
     readonly api: {
-      readonly storage: ServerLaunchConfig["rateLimit"]["api"]["storage"];
+      readonly storage: ServerLaunchRateLimitStorage;
     };
     readonly enabled: boolean;
   };
-  readonly runtimePaths: ServerLaunchConfig["runtimePaths"];
+  readonly runtimePaths?: ServerLaunchRuntimePathsConfig;
   readonly storage: ServerRuntimeStorageConfig;
 }
 
 function resolveStorageConfig(
-  launchConfig: ServerLaunchConfig
+  storage: ServerLaunchStorageConfig
 ): ServerRuntimeStorageConfig {
-  if (launchConfig.storage.kind === "postgres") {
-    return {
-      connectionString: launchConfig.storage.url,
-      kind: "postgres",
-      url: launchConfig.storage.url,
-    };
+  switch (storage.kind.case) {
+    case "postgres":
+      return {
+        connectionString: storage.kind.value.url,
+        kind: "postgres",
+        url: storage.kind.value.url,
+      };
+    case "pglite":
+      return {
+        connectionString: `pglite:${storage.kind.value.dir}`,
+        dir: storage.kind.value.dir,
+        kind: "pglite",
+      };
+    case undefined:
+      throw new Error(
+        "Invalid launch config from runtime.\n- storage.kind: Required oneof is missing."
+      );
+    default:
+      throw new Error(
+        "Invalid launch config from runtime.\n- storage.kind: Unsupported storage kind."
+      );
   }
-
-  return {
-    connectionString: `pglite:${launchConfig.storage.dir}`,
-    dir: launchConfig.storage.dir,
-    kind: "pglite",
-  };
 }
 
 function resolveEmailDelivery(
-  launchConfig: ServerLaunchConfig
+  publicOrigin: string,
+  smtp: ServerLaunchSmtpConfig | undefined
 ): AuthEmailDeliveryConfig {
-  if (!launchConfig.smtp) {
+  if (!smtp) {
     return {
-      baseURL: launchConfig.publicOrigin,
+      baseURL: publicOrigin,
     };
   }
 
   return {
-    baseURL: launchConfig.publicOrigin,
+    baseURL: publicOrigin,
     smtp: {
-      fromEmail: launchConfig.smtp.fromEmail,
-      fromName: launchConfig.smtp.fromName,
-      host: launchConfig.smtp.host,
-      password: launchConfig.smtp.password,
-      port: launchConfig.smtp.port,
-      secure: launchConfig.smtp.secure ?? false,
-      username: launchConfig.smtp.username,
+      fromEmail: smtp.fromEmail,
+      fromName: optionalString(smtp.fromName),
+      host: smtp.host,
+      password: optionalString(smtp.password),
+      port: smtp.port,
+      secure: smtp.secure,
+      username: optionalString(smtp.username),
     },
   };
 }
@@ -83,29 +106,43 @@ function resolveEmailDelivery(
 export function createServerRuntimeConfig(
   launchConfig: ServerLaunchConfig
 ): ServerRuntimeConfig {
+  const launchView = viewServerLaunchConfig(launchConfig, "runtime");
+  const commonView = viewServerLaunchCommonConfig(launchView.common, "runtime");
+
   return {
     auth: {
-      baseURL: launchConfig.publicOrigin,
-      emailDelivery: resolveEmailDelivery(launchConfig),
-      secret: launchConfig.auth.secret,
+      baseURL: commonView.common.publicOrigin,
+      emailDelivery: resolveEmailDelivery(
+        commonView.common.publicOrigin,
+        commonView.common.smtp
+      ),
+      secret: commonView.auth.secret,
     },
     connectors: {
-      enrollmentToken: launchConfig.connectors.enrollmentToken,
+      enrollmentToken: commonView.connectors.enrollmentToken,
     },
     crypto: {
-      masterEncryptionKey: decodeMasterEncryptionKey(
-        launchConfig.crypto.masterEncryptionKey
-      ),
+      masterEncryptionKey: commonView.crypto.masterEncryptionKey,
     },
-    listen: launchConfig.listen,
-    publicOrigin: launchConfig.publicOrigin,
+    listen: {
+      host: commonView.listen.host,
+      port: commonView.listen.port,
+    },
+    publicOrigin: commonView.common.publicOrigin,
     rateLimit: {
       api: {
-        storage: launchConfig.rateLimit.api.storage,
+        storage: serverLaunchApiRateLimitStorageLabel(
+          commonView.apiRateLimit.storage
+        ),
       },
-      enabled: launchConfig.rateLimit.enabled,
+      enabled: commonView.rateLimit.enabled,
     },
-    runtimePaths: launchConfig.runtimePaths,
-    storage: resolveStorageConfig(launchConfig),
+    runtimePaths:
+      launchView.mode === "self-host" ? launchView.runtimePaths : undefined,
+    storage: resolveStorageConfig(commonView.storage),
   };
+}
+
+function optionalString(value: string): string | undefined {
+  return value.length === 0 ? undefined : value;
 }

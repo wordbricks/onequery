@@ -162,7 +162,9 @@ message RuntimeTransition {
 }
 
 message RuntimeStatus {
-  RuntimeIdentity identity = 1 [(buf.validate.field).required = true];
+  reserved 1;
+  reserved identity;
+
   RuntimePhase phase = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,

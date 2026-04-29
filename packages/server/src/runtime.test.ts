@@ -1,5 +1,6 @@
 import {
   createSelfHostLaunchConfig,
+  createSelfHostRuntimePaths,
   createSelfHostSmtpConfig,
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
@@ -27,7 +28,7 @@ describe("createServerRuntimeConfig", () => {
         authSecret: "auth-secret",
         migrationsDir: "/tmp/migrations",
         publicOrigin: "https://onequery.example.com",
-        runtimePaths: {
+        runtimePaths: createSelfHostRuntimePaths({
           backupsDir: "/tmp/runtime/backups",
           dataDir: "/tmp/runtime/data",
           lifecycleEventLogPath: "/tmp/runtime/run/lifecycle.events.pb",
@@ -35,7 +36,7 @@ describe("createServerRuntimeConfig", () => {
           runDir: "/tmp/runtime/run",
           runtimeLeasePath: "/tmp/runtime/run/runtime.lease.json",
           runtimeStatusSnapshotPath: "/tmp/runtime/run/runtime.status.json",
-        },
+        }),
         smtp: createSelfHostSmtpConfig({
           fromName: "OneQuery",
           password: "smtp-password",

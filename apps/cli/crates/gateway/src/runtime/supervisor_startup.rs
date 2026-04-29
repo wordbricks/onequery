@@ -308,13 +308,16 @@ fn startup_ready_snapshot_detail(
     snapshot: &types::RuntimeStatusSnapshot,
 ) -> Option<StartupReadySnapshotDetail> {
     let status = snapshot.status.as_option()?;
-    let identity = status.identity.as_option()?;
-    let pid = identity.pid?;
+    let launch = snapshot
+        .header
+        .as_option()
+        .and_then(|header| header.launch.as_option())?;
+    let pid = launch.runtime_pid?;
     let phase = status.phase.and_then(|phase| phase.as_known())?;
 
     (phase == types::RuntimePhase::RUNTIME_PHASE_READY
-        && identity.launch_id.as_deref() == Some(check.launch_id)
-        && identity
+        && launch.launch_id.as_deref() == Some(check.launch_id)
+        && launch
             .data_dir
             .as_deref()
             .is_some_and(|data_dir| Path::new(data_dir) == check.state.paths.data_dir.as_path()))

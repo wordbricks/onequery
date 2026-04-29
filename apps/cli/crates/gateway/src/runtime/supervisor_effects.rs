@@ -11,7 +11,6 @@ use crate::supervisor_control_proto::types;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
 use super::super::state::GatewayRuntimeState;
-use super::lifecycle::ManagedRuntimeIdentity;
 use super::shutdown::hard_kill_process;
 use super::shutdown::terminate_process;
 use super::supervisor_control::actor::SupervisorControlActor;
@@ -274,18 +273,11 @@ async fn execute_supervisor_effects(
                     .await;
             }
             SupervisorEffect::RequestRuntimeStop {
-                runtime_pid,
+                runtime_pid: _,
                 operation_id,
             } => {
-                let stop_result = request_supervised_runtime_stop(
-                    context.supervisor_control,
-                    context.paths,
-                    context.supervisor,
-                    context.launch_id,
-                    *runtime_pid,
-                    operation_id,
-                )
-                .await;
+                let stop_result =
+                    request_supervised_runtime_stop(context.supervisor_control, operation_id).await;
 
                 if report.runtime_stop_result.replace(stop_result).is_some() {
                     return Err(supervisor_effect_context_error(
@@ -328,29 +320,8 @@ async fn execute_supervisor_effects(
 
 async fn request_supervised_runtime_stop(
     supervisor_control: &SupervisorControlActor,
-    paths: &SelfHostRuntimePaths,
-    supervisor: &types::SupervisorIdentity,
-    launch_id: &str,
-    runtime_pid: u32,
     operation_id: &str,
 ) -> Result<(), ConnectError> {
-    let identity = ManagedRuntimeIdentity {
-        launch_id: launch_id.to_owned(),
-        pid: runtime_pid,
-        supervisor_pid: supervisor.pid.ok_or_else(|| {
-            ConnectError::internal("supervisor identity omitted supervisor pid for runtime stop")
-        })?,
-        supervisor_generation: supervisor.generation.ok_or_else(|| {
-            ConnectError::internal(
-                "supervisor identity omitted supervisor generation for runtime stop",
-            )
-        })?,
-    };
-
-    let supervisor_id = supervisor.supervisor_id.as_deref().ok_or_else(|| {
-        ConnectError::internal("supervisor identity omitted supervisor id for runtime stop")
-    })?;
-
     supervisor_control
         .send_stop_command(types::SupervisorStopCommand {
             operation_id: Some(operation_id.to_owned()),
@@ -361,18 +332,6 @@ async fn request_supervised_runtime_stop(
             grace_timeout: buffa::MessageField::some(protobuf_duration(
                 supervisor_runtime_stop_grace_timeout(),
             )),
-            target: buffa::MessageField::some(types::SupervisorControlTarget {
-                launch_id: Some(identity.launch_id),
-                data_dir: Some(paths.data_dir.display().to_string()),
-                runtime_pid: Some(identity.pid),
-                supervisor: buffa::MessageField::some(types::SupervisorIdentity {
-                    supervisor_id: Some(supervisor_id.to_owned()),
-                    pid: Some(identity.supervisor_pid),
-                    generation: Some(identity.supervisor_generation),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }),
             ..Default::default()
         })
         .await

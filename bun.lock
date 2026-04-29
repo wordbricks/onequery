@@ -205,7 +205,10 @@
       "name": "@onequery/config",
       "version": "0.0.0",
       "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
+        "@bufbuild/protovalidate": "catalog:",
         "@onequery/codecs": "workspace:*",
+        "@onequery/proto-runtime": "workspace:*",
         "better-result": "catalog:",
         "zod": "catalog:",
       },
@@ -414,7 +417,7 @@
     "@xstate/react": "6.1.0",
     "antiox": "0.1.4",
     "better-auth": "1.5.5",
-    "better-result": "2.8.2",
+    "better-result": "2.9.0",
     "hono": "4.12.14",
     "hono-problem-details": "0.4.0",
     "hono-rate-limiter": "0.5.3",
@@ -1988,7 +1991,7 @@
 
     "better-call": ["better-call@1.3.2", "", { "dependencies": { "@better-auth/utils": "^0.3.1", "@better-fetch/fetch": "^1.1.21", "rou3": "^0.7.12", "set-cookie-parser": "^3.0.1" }, "peerDependencies": { "zod": "^4.0.0" }, "optionalPeers": ["zod"] }, "sha512-4cZIfrerDsNTn3cm+MhLbUePN0gdwkhSXEuG7r/zuQ8c/H7iU0/jSK5TD3FW7U0MgKHce/8jGpPYNO4Ve+4NBw=="],
 
-    "better-result": ["better-result@2.8.2", "", {}, "sha512-YOf0VSj5nUPI27doTtXF+BBnsiRq3qY7avHqfIWnppxTLGyvkLq1QV2RTxkwoZwJ60ywLfZ0raFF4J/G886i7A=="],
+    "better-result": ["better-result@2.9.0", "", {}, "sha512-NHwGDGVbRlWDOce3CwcfGIrcNR9zY37ut3SVwQVfv57DZdVhxjhA4mfaHN1n8QwWnRAR4iErpW1X/eaiaUaFYg=="],
 
     "big.js": ["big.js@5.2.2", "", {}, "sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ=="],
 

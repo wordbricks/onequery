@@ -131,12 +131,6 @@ export function createRuntimeShutdownError(input: {
   });
 }
 
-export class SelfHostRuntimePathsMissingError extends TaggedError(
-  "SelfHostRuntimePathsMissingError"
-)<{
-  message: string;
-}>() {}
-
 export type AppendLifecycleLogError =
   | RuntimeLifecycleDirectoryError
   | RuntimeLifecycleFileError;

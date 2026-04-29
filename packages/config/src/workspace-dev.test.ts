@@ -4,6 +4,7 @@ import { projectDockerComposeConfig } from "./projections/docker";
 import { projectDrizzleConfig } from "./projections/drizzle";
 import { projectWorkspaceDevServerLaunchConfig } from "./projections/server-launch";
 import { projectViteDevServerConfig } from "./projections/vite";
+import { encodeServerLaunchConfigJson } from "./server-launch";
 import { deriveTestProfile } from "./test-profile";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "./testing";
 import {
@@ -134,10 +135,14 @@ describe("@onequery/config workspace-dev", () => {
     expect({
       dockerCompose: projectDockerComposeConfig(workspaceDev),
       drizzle: projectDrizzleConfig(workspaceDev),
-      serverLaunch: projectWorkspaceDevServerLaunchConfig(workspaceDev, {
-        assetDir: "/tmp/workspace-web",
-        migrationsDir: "/tmp/workspace-migrations",
-      }),
+      serverLaunch: JSON.parse(
+        encodeServerLaunchConfigJson(
+          projectWorkspaceDevServerLaunchConfig(workspaceDev, {
+            assetDir: "/tmp/workspace-web",
+            migrationsDir: "/tmp/workspace-migrations",
+          })
+        )
+      ),
       testProfile: deriveTestProfile(workspaceDev),
       vite: projectViteDevServerConfig(workspaceDev),
     }).toMatchSnapshot();

@@ -3,9 +3,8 @@ use tokio::sync::oneshot;
 use crate::supervisor_control_proto::types;
 
 use super::super::errors::failed_precondition;
-use super::super::errors::invalid_argument;
 use super::SupervisorControlActor;
-use super::validation::validate_uuid;
+use super::validation::required_operation_id;
 
 pub(crate) struct SupervisorStopRequest {
     operation_id: String,
@@ -56,12 +55,10 @@ impl SupervisorControlActor {
         &self,
         operation_id: String,
     ) -> Result<types::SupervisorLifecycleServiceStopResponse, connectrpc::ConnectError> {
-        if operation_id.is_empty() {
-            return Err(invalid_argument(
-                "supervisor control stop operation_id is required",
-            ));
-        }
-        validate_uuid(&operation_id, "supervisor control stop operation_id")?;
+        required_operation_id(
+            Some(operation_id.as_str()),
+            "supervisor control stop operation_id",
+        )?;
         {
             let mut current_stop = self.state.current_stop.lock().await;
             if current_stop.is_some() {

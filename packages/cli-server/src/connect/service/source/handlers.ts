@@ -122,11 +122,9 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
         level: "warn",
       });
 
-      return Result.err(
-        createCliSourceNotFoundFailure(
-          access.authorizedOrg.org.slug,
-          request.sourceKey
-        )
+      return yield* createCliSourceNotFoundFailure(
+        access.authorizedOrg.org.slug,
+        request.sourceKey
       );
     }
 
@@ -183,11 +181,9 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
         level: "warn",
       });
 
-      return Result.err(
-        createCliSourceNotFoundFailure(
-          access.authorizedOrg.org.slug,
-          request.sourceKey
-        )
+      return yield* createCliSourceNotFoundFailure(
+        access.authorizedOrg.org.slug,
+        request.sourceKey
       );
     }
 
@@ -303,11 +299,9 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
       masterEncryptionKey: access.c.var.runtime.crypto.masterEncryptionKey,
     });
     if (result.kind === "name_conflict") {
-      return Result.err(
-        createCliSourceNameConflictFailure(
-          access.authorizedOrg.org.slug,
-          result.sourceName
-        )
+      return yield* createCliSourceNameConflictFailure(
+        access.authorizedOrg.org.slug,
+        result.sourceName
       );
     }
 

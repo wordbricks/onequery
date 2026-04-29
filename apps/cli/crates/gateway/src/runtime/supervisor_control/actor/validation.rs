@@ -29,7 +29,6 @@ impl SupervisorStatusIdentityExt for types::SupervisorStatus {
         self.launch
             .as_option()
             .and_then(|launch| launch.runtime_pid)
-            .or_else(|| self.runtime.as_option().and_then(|runtime| runtime.pid))
     }
 
     fn supervisor_id(&self) -> Option<&str> {
@@ -39,25 +38,13 @@ impl SupervisorStatusIdentityExt for types::SupervisorStatus {
     }
 
     fn supervisor_pid(&self) -> Option<u32> {
-        self.identity
-            .as_option()
-            .and_then(|identity| identity.pid)
-            .or_else(|| {
-                self.launch
-                    .as_option()
-                    .and_then(|launch| launch.supervisor_pid)
-            })
+        self.identity.as_option().and_then(|identity| identity.pid)
     }
 
     fn supervisor_generation(&self) -> Option<u64> {
         self.identity
             .as_option()
             .and_then(|identity| identity.generation)
-            .or_else(|| {
-                self.launch
-                    .as_option()
-                    .and_then(|launch| launch.supervisor_generation)
-            })
     }
 }
 
@@ -127,29 +114,4 @@ pub(super) fn validate_runtime_sequence_not_backward(
     }
 
     Ok(())
-}
-
-pub(super) fn validate_required_timestamp<T: Default>(
-    timestamp: &buffa::MessageField<T>,
-    field: &'static str,
-) -> Result<(), connectrpc::ConnectError> {
-    if timestamp.as_option().is_some() {
-        return Ok(());
-    }
-
-    Err(invalid_argument(format!("{field} is required")))
-}
-
-pub(super) fn validate_required_phase(
-    phase: Option<buffa::EnumValue<types::RuntimePhase>>,
-    field: &'static str,
-) -> Result<types::RuntimePhase, connectrpc::ConnectError> {
-    let Some(phase) = phase.and_then(|phase| phase.as_known()) else {
-        return Err(invalid_argument(format!("{field} is required")));
-    };
-    if phase == types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED {
-        return Err(invalid_argument(format!("{field} must not be unspecified")));
-    }
-
-    Ok(phase)
 }

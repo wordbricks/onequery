@@ -23,6 +23,9 @@ service SupervisorLifecycleService {
 }
 
 message RuntimeSessionHello {
+  reserved 5, 6;
+  reserved runtime_sequence, started_at;
+
   string launch_id = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -38,8 +41,6 @@ message RuntimeSessionHello {
     (buf.validate.field).uint32.gt = 0
   ];
   SupervisorIdentity supervisor = 4 [(buf.validate.field).required = true];
-  uint64 runtime_sequence = 5 [(buf.validate.field).uint64.gte = 0];
-  google.protobuf.Timestamp started_at = 6 [(buf.validate.field).required = true];
 }
 
 message RuntimeSessionHeartbeat {
@@ -126,6 +127,9 @@ message SupervisorControlTarget {
 }
 
 message SupervisorStopCommand {
+  reserved 5;
+  reserved target;
+
   string operation_id = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
@@ -145,7 +149,6 @@ message SupervisorStopCommand {
     (buf.validate.field).duration.gt = {},
     (buf.validate.field).duration.lte = {seconds: 300}
   ];
-  SupervisorControlTarget target = 5 [(buf.validate.field).required = true];
 }
 
 message SupervisorCloseCommand {

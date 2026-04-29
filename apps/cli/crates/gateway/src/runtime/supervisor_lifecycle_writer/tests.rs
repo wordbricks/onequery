@@ -153,7 +153,25 @@ async fn expected_child_exit_projects_terminal_runtime_status_to_durable_and_liv
     );
     assert_eq!(live_status.runtime_sequence, Some(1));
     assert_eq!(live_status.active_session, Some(false));
-    assert_eq!(live_status.runtime, durable_runtime_status.identity);
+    let launch = runtime_snapshot
+        .header
+        .as_option()
+        .and_then(|header| header.launch.as_option())
+        .expect("expected runtime snapshot launch identity");
+    assert_eq!(
+        live_status
+            .runtime
+            .as_option()
+            .and_then(|runtime| runtime.pid),
+        launch.runtime_pid
+    );
+    assert_eq!(
+        live_status
+            .runtime
+            .as_option()
+            .and_then(|runtime| runtime.launch_id.as_deref()),
+        launch.launch_id.as_deref()
+    );
 }
 
 #[test]
@@ -227,10 +245,6 @@ fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_f
         .status
         .as_option()
         .expect("expected runtime status");
-    let runtime = status
-        .identity
-        .as_option()
-        .expect("expected runtime identity");
     let failure = status
         .failure
         .as_option()
@@ -245,8 +259,6 @@ fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_f
     assert_eq!(launch.runtime_pid, Some(4242));
     assert_eq!(launch.supervisor_pid, Some(123));
     assert_eq!(launch.supervisor_generation, Some(1));
-    assert_eq!(runtime.pid, Some(4242));
-    assert_eq!(runtime.launch_id.as_deref(), Some("launch-a"));
     assert_eq!(
         status.phase.and_then(|phase| phase.as_known()),
         Some(types::RuntimePhase::RUNTIME_PHASE_FAILED)
@@ -638,19 +650,20 @@ fn assert_unexpected_child_exit_recovery_records(
         .status
         .as_option()
         .expect("expected runtime status");
-    let runtime = runtime_status
-        .identity
+    let launch = runtime_snapshot
+        .header
         .as_option()
-        .expect("expected runtime identity");
+        .and_then(|header| header.launch.as_option())
+        .expect("expected runtime snapshot launch identity");
     let runtime_failure = runtime_status
         .failure
         .as_option()
         .expect("expected runtime failure");
 
-    assert_eq!(runtime.pid, Some(4242));
-    assert_eq!(runtime.launch_id.as_deref(), Some("launch-a"));
+    assert_eq!(launch.runtime_pid, Some(4242));
+    assert_eq!(launch.launch_id.as_deref(), Some("launch-a"));
     assert_eq!(
-        runtime.data_dir.as_deref(),
+        launch.data_dir.as_deref(),
         Some(paths.data_dir.to_string_lossy().as_ref())
     );
     assert_eq!(

@@ -11,6 +11,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
+import { viewServerLaunchConfig } from "@onequery/config/server-launch";
+import {
+  createSelfHostLaunchConfig,
+  createSelfHostRuntimePaths,
+  createSelfHostSupervisorControl,
+  createWorkspaceDevLaunchConfig,
+} from "@onequery/config/testing";
 import {
   RuntimePhase,
   SupervisorIdentitySchema,
@@ -26,7 +33,7 @@ import {
   acquireRuntimeLifecycleLeaseResult,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
-  toLifecyclePathsResult,
+  toLifecyclePaths,
 } from "./lifecycle";
 import type { SelfHostLifecyclePaths } from "./lifecycle";
 
@@ -41,14 +48,9 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
   const runDir = join(dataDir, "run");
 
   return {
-    controlEndpoint: {
-      baseUrl: "http://onequery-supervisor",
-      maxMessageBytes: 64 * 1024,
-      transport: {
-        kind: "unix",
-        socketPath: join(runDir, "supervisor-control.sock"),
-      },
-    },
+    controlEndpoint: createSelfHostSupervisorControl({
+      socketPath: join(runDir, "supervisor-control.sock"),
+    }),
     dataDir,
     lifecycleEventLogPath: join(runDir, "lifecycle.events.pb"),
     logsDir,
@@ -580,17 +582,11 @@ describe("self-host lifecycle lease", () => {
   });
 
   it("returns an unmanaged lifecycle-path resolution for workspace-dev launch configs", () => {
-    const result = toLifecyclePathsResult({
-      mode: "workspace-dev",
-      runtimePaths: undefined,
-      supervisorControl: undefined,
-    });
+    const result = toLifecyclePaths(
+      viewServerLaunchConfig(createWorkspaceDevLaunchConfig(), "test")
+    );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
+    expect(result).toEqual({
       kind: "unmanaged",
     });
   });
@@ -602,25 +598,25 @@ describe("self-host lifecycle lease", () => {
     tempRoots.push(root);
     const paths = createPaths(root);
 
-    const result = toLifecyclePathsResult({
-      mode: "self-host",
-      runtimePaths: {
-        backupsDir: join(root, "backups"),
-        dataDir: paths.dataDir,
-        lifecycleEventLogPath: paths.lifecycleEventLogPath,
-        logsDir: paths.logsDir,
-        runDir: paths.runDir,
-        runtimeLeasePath: paths.leasePath,
-        runtimeStatusSnapshotPath: paths.statusPath,
-      },
-      supervisorControl: paths.controlEndpoint,
-    });
+    const result = toLifecyclePaths(
+      viewServerLaunchConfig(
+        createSelfHostLaunchConfig({
+          runtimePaths: createSelfHostRuntimePaths({
+            backupsDir: join(root, "backups"),
+            dataDir: paths.dataDir,
+            lifecycleEventLogPath: paths.lifecycleEventLogPath,
+            logsDir: paths.logsDir,
+            runDir: paths.runDir,
+            runtimeLeasePath: paths.leasePath,
+            runtimeStatusSnapshotPath: paths.statusPath,
+          }),
+          supervisorControl: paths.controlEndpoint,
+        }),
+        "test"
+      )
+    );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
+    expect(result).toEqual({
       kind: "self-host",
       paths: {
         controlEndpoint: paths.controlEndpoint,

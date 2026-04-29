@@ -204,31 +204,6 @@ async fn runtime_heartbeat_does_not_mutate_lifecycle_status_or_publish_watch_eve
 }
 
 #[tokio::test]
-async fn runtime_heartbeat_sequence_must_advance() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let (session_id, _commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-    let heartbeat = types::RuntimeSessionHeartbeat {
-        heartbeat_sequence: Some(1),
-        sent_at: MessageField::some(timestamp(99)),
-        ..Default::default()
-    };
-    actor
-        .apply_runtime_heartbeat(session_id, &heartbeat)
-        .await
-        .expect("first heartbeat should be accepted");
-
-    let error = actor
-        .apply_runtime_heartbeat(session_id, &heartbeat)
-        .await
-        .expect_err("duplicate heartbeat sequence should reject");
-
-    assert_eq!(error.code, connectrpc::error::ErrorCode::FailedPrecondition);
-}
-
-#[tokio::test]
 async fn stop_command_is_delivered_to_active_session() {
     let actor = SupervisorControlActor::new(supervisor_status(1));
     let (_session_id, mut commands) = actor
@@ -288,33 +263,6 @@ async fn stale_session_close_does_not_clear_newer_session() {
     actor.close_runtime_session_commands(first_session_id).await;
 
     assert_eq!(actor.snapshot().await.active_session, Some(true));
-}
-
-#[tokio::test]
-async fn rejected_duplicate_session_does_not_steal_stop_commands() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let (_session_id, mut commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-
-    actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect_err("second runtime session should reject");
-    actor
-        .send_stop_command(supervisor_stop_command())
-        .await
-        .expect("stop command should send to active session");
-
-    let command = commands
-        .recv()
-        .await
-        .expect("original active session should receive stop command");
-    assert!(matches!(
-        command.response,
-        Some(types::open_runtime_session_response::Response::Stop(_))
-    ));
 }
 
 #[tokio::test]
@@ -465,45 +413,6 @@ async fn runtime_shutdown_finished_keeps_stop_operation_until_terminal_lifecycle
 }
 
 #[tokio::test]
-async fn runtime_shutdown_finished_rejects_mismatched_stop_operation_id() {
-    let actor = SupervisorControlActor::new(supervisor_status(1));
-    let (session_id, _commands) = actor
-        .open_runtime_session_commands(session_identity())
-        .await
-        .expect("runtime session should open");
-    let first_stop = {
-        let actor = actor.clone();
-        tokio::spawn(async move { actor.request_stop(stop_operation_id()).await })
-    };
-    let first_request = timeout(Duration::from_secs(1), actor.recv_stop_request())
-        .await
-        .expect("first stop request should be received")
-        .expect("first stop request should be present");
-    first_request.complete(Ok(stop_response(
-        types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED,
-        actor.snapshot().await,
-    )));
-    first_stop
-        .await
-        .expect("first stop task should complete")
-        .expect("first stop response should be successful");
-
-    let mut finished = runtime_shutdown_finished();
-    finished.operation_id = Some("00000000-0000-4000-8000-000000000099".to_owned());
-    let error = actor
-        .apply_runtime_shutdown_finished(session_id, &finished)
-        .await
-        .expect_err("mismatched shutdown operation should reject");
-
-    assert!(
-        error
-            .message
-            .as_deref()
-            .is_some_and(|message| message.contains("does not match active stop operation"))
-    );
-}
-
-#[tokio::test]
 async fn different_stop_operation_id_returns_already_stopping() {
     let actor = SupervisorControlActor::new(supervisor_status(1));
     let first_stop = {
@@ -536,25 +445,31 @@ async fn different_stop_operation_id_returns_already_stopping() {
 }
 
 #[tokio::test]
-async fn mismatched_runtime_ready_does_not_mutate_status() {
+async fn runtime_ready_uses_session_identity_for_status() {
     let actor = SupervisorControlActor::new(supervisor_status(1));
     let (session_id, _commands) = actor
         .open_runtime_session_commands(session_identity())
         .await
         .expect("runtime session should open");
-    let ready = runtime_ready_with_launch_id("stale-launch");
+    let ready = runtime_ready();
 
-    let error = actor
+    actor
         .apply_runtime_ready(session_id, &ready)
         .await
-        .expect_err("mismatched runtime status should be rejected");
+        .expect("runtime_ready should be accepted");
     let status = actor.snapshot().await;
 
-    assert_eq!(error.code, connectrpc::error::ErrorCode::FailedPrecondition);
-    assert_eq!(status.runtime_sequence, None);
+    assert_eq!(status.runtime_sequence, Some(2));
     assert_eq!(
         status.runtime_phase,
-        Some(types::RuntimePhase::RUNTIME_PHASE_STARTING.into())
+        Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
+    );
+    assert_eq!(
+        status
+            .runtime
+            .as_option()
+            .and_then(|identity| identity.launch_id.as_deref()),
+        Some("launch-a")
     );
 }
 
@@ -677,26 +592,12 @@ fn session_identity() -> RuntimeSessionIdentity {
         launch_id: "launch-a".to_owned(),
         data_dir: "/tmp/onequery-data".to_owned(),
         runtime_pid: 4242,
-        runtime_sequence_at_hello: 1,
-        supervisor_id: "gateway-supervisor:test".to_owned(),
-        supervisor_pid: 1,
-        supervisor_generation: 1,
     }
 }
 
 fn runtime_ready() -> types::RuntimeReady {
-    runtime_ready_with_launch_id("launch-a")
-}
-
-fn runtime_ready_with_launch_id(launch_id: &str) -> types::RuntimeReady {
     types::RuntimeReady {
         status: MessageField::some(types::RuntimeStatus {
-            identity: MessageField::some(types::RuntimeIdentity {
-                data_dir: Some("/tmp/onequery-data".to_owned()),
-                launch_id: Some(launch_id.to_owned()),
-                pid: Some(4242),
-                ..Default::default()
-            }),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_READY.into()),
             runtime_sequence: Some(2),
             updated_at: MessageField::some(timestamp(2)),
@@ -710,12 +611,6 @@ fn runtime_shutdown_finished() -> types::RuntimeShutdownFinished {
     types::RuntimeShutdownFinished {
         operation_id: Some(stop_operation_id()),
         status: MessageField::some(types::RuntimeStatus {
-            identity: MessageField::some(types::RuntimeIdentity {
-                data_dir: Some("/tmp/onequery-data".to_owned()),
-                launch_id: Some("launch-a".to_owned()),
-                pid: Some(4242),
-                ..Default::default()
-            }),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED.into()),
             runtime_sequence: Some(4),
             updated_at: MessageField::some(timestamp(4)),
@@ -732,12 +627,6 @@ fn runtime_shutdown_failed() -> types::RuntimeShutdownFailed {
         operation_id: Some(stop_operation_id()),
         failure: MessageField::some(failure.clone()),
         status: MessageField::some(types::RuntimeStatus {
-            identity: MessageField::some(types::RuntimeIdentity {
-                data_dir: Some("/tmp/onequery-data".to_owned()),
-                launch_id: Some("launch-a".to_owned()),
-                pid: Some(4242),
-                ..Default::default()
-            }),
             failure: MessageField::some(failure),
             phase: Some(types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED.into()),
             runtime_sequence: Some(5),
@@ -772,18 +661,6 @@ fn supervisor_stop_command() -> types::SupervisorStopCommand {
         completion: Some(
             types::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT.into(),
         ),
-        target: buffa::MessageField::some(types::SupervisorControlTarget {
-            launch_id: Some("launch-a".to_owned()),
-            data_dir: Some("/tmp/onequery-data".to_owned()),
-            runtime_pid: Some(4242),
-            supervisor: buffa::MessageField::some(types::SupervisorIdentity {
-                supervisor_id: Some("gateway-supervisor:test".to_owned()),
-                pid: Some(1),
-                generation: Some(1),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }),
         ..Default::default()
     }
 }

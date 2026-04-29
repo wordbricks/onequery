@@ -506,37 +506,33 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
         self_host_launch_config_path_for_launch(&state.paths, "launch-a")
     );
     assert_eq!(
-        launch_config.pointer("/listen/host"),
+        launch_config.pointer("/selfHost/common/listen/host"),
         Some(&serde_json::Value::String(
             DEFAULT_SELF_HOST_LISTEN_HOST.to_owned(),
         ))
     );
     assert_eq!(
-        launch_config.pointer("/listen/port"),
+        launch_config.pointer("/selfHost/common/listen/port"),
         Some(&serde_json::Value::Number(default_port().into()))
     );
     assert_eq!(
-        launch_config.get("launchId"),
+        launch_config.pointer("/selfHost/launchId"),
         Some(&serde_json::Value::String("launch-a".to_owned()))
     );
     assert_eq!(
-        launch_config.pointer("/supervisorControl/transport/kind"),
-        Some(&serde_json::Value::String("unix".to_owned()))
-    );
-    assert_eq!(
-        launch_config.pointer("/supervisorControl/baseUrl"),
+        launch_config.pointer("/selfHost/supervisorControl/baseUrl"),
         Some(&serde_json::Value::String(
             crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY.to_owned(),
         ))
     );
     assert_eq!(
-        launch_config.pointer("/supervisorControl/maxMessageBytes"),
+        launch_config.pointer("/selfHost/supervisorControl/maxMessageBytes"),
         Some(&serde_json::Value::Number(
             crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES.into(),
         ))
     );
     assert_eq!(
-        launch_config.pointer("/supervisorControl/transport/socketPath"),
+        launch_config.pointer("/selfHost/supervisorControl/transport/unix/socketPath"),
         Some(&serde_json::Value::String(
             state
                 .paths
@@ -546,7 +542,7 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
         ))
     );
     assert_eq!(
-        launch_config.get("publicOrigin"),
+        launch_config.pointer("/selfHost/common/publicOrigin"),
         Some(&serde_json::Value::String(
             crate::self_host::default_public_origin(),
         ))

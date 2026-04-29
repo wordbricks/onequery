@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { resolvePackagedRuntimeAssetPath } from "@onequery/base/runtime-bundle";
+import { viewServerLaunchConfig } from "@onequery/config/server-launch";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -68,15 +69,20 @@ describe("self-host runtime dev entrypoint", () => {
       );
 
       const launchConfig = createLaunchConfig(rootDir);
+      const launchView = viewServerLaunchConfig(launchConfig, "test");
+      const listen = launchView.common.listen;
+      if (listen === undefined) {
+        throw new Error("expected launch config listen settings");
+      }
 
-      expect(launchConfig.mode).toBe("workspace-dev");
-      expect(launchConfig.listen).toEqual({
+      expect(launchView.mode).toBe("workspace-dev");
+      expect(listen).toMatchObject({
         host: "127.0.0.1",
         port: 4555,
       });
-      expect(launchConfig.publicOrigin).toBe("http://localhost:4545");
-      expect(launchConfig.listen.port).not.toBe(
-        Number.parseInt(new URL(launchConfig.publicOrigin).port, 10)
+      expect(launchView.common.publicOrigin).toBe("http://localhost:4545");
+      expect(listen.port).not.toBe(
+        Number.parseInt(new URL(launchView.common.publicOrigin).port, 10)
       );
     } finally {
       rmSync(rootDir, { force: true, recursive: true });

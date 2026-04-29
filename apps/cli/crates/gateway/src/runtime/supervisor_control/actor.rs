@@ -11,8 +11,6 @@ use tokio::sync::mpsc;
 use crate::supervisor_control_proto::types;
 
 use super::errors::failed_precondition;
-use super::errors::invalid_argument;
-
 mod stop;
 mod supervisor;
 mod transitions;
@@ -30,8 +28,6 @@ use validation::SupervisorStatusIdentityExt;
 use validation::required_operation_id;
 use validation::required_runtime_status_sequence;
 use validation::required_u64;
-use validation::validate_required_phase;
-use validation::validate_required_timestamp;
 use validation::validate_runtime_sequence_not_backward;
 use validation::validate_target_field;
 use watch::SupervisorWatchEvent;
@@ -64,10 +60,43 @@ pub(super) struct RuntimeSessionIdentity {
     launch_id: String,
     data_dir: String,
     runtime_pid: u32,
-    runtime_sequence_at_hello: u64,
-    supervisor_id: String,
-    supervisor_pid: u32,
-    supervisor_generation: u64,
+}
+
+struct ControlIdentityFields<'a> {
+    launch_id: Option<&'a str>,
+    data_dir: Option<&'a str>,
+    runtime_pid: Option<u32>,
+    supervisor: Option<&'a types::SupervisorIdentityView<'a>>,
+}
+
+fn validate_control_identity<'a>(
+    fields: ControlIdentityFields<'a>,
+    status: &types::SupervisorStatus,
+    context: &'static str,
+) -> Result<(), connectrpc::ConnectError> {
+    validate_target_field("launch_id", fields.launch_id, status.launch_id())?;
+    validate_target_field("data_dir", fields.data_dir, status.data_dir())?;
+    validate_target_field("runtime_pid", fields.runtime_pid, status.runtime_pid())?;
+
+    let Some(supervisor) = fields.supervisor else {
+        return Err(failed_precondition(format!(
+            "{context} supervisor is required"
+        )));
+    };
+
+    validate_target_field(
+        "supervisor.supervisor_id",
+        supervisor.supervisor_id,
+        status.supervisor_id(),
+    )?;
+    validate_target_field("supervisor.pid", supervisor.pid, status.supervisor_pid())?;
+    validate_target_field(
+        "supervisor.generation",
+        supervisor.generation,
+        status.supervisor_generation(),
+    )?;
+
+    Ok(())
 }
 
 impl SupervisorControlActor {
@@ -101,27 +130,15 @@ impl SupervisorControlActor {
             return Err(failed_precondition("supervisor control target is required"));
         };
         let status = self.snapshot().await;
-
-        validate_target_field("launch_id", target.launch_id, status.launch_id())?;
-        validate_target_field("data_dir", target.data_dir, status.data_dir())?;
-        validate_target_field("runtime_pid", target.runtime_pid, status.runtime_pid())?;
-
-        let Some(supervisor) = target.supervisor.as_option() else {
-            return Err(failed_precondition(
-                "supervisor control target supervisor is required",
-            ));
-        };
-
-        validate_target_field(
-            "supervisor.supervisor_id",
-            supervisor.supervisor_id,
-            status.supervisor_id(),
-        )?;
-        validate_target_field("supervisor.pid", supervisor.pid, status.supervisor_pid())?;
-        validate_target_field(
-            "supervisor.generation",
-            supervisor.generation,
-            status.supervisor_generation(),
+        validate_control_identity(
+            ControlIdentityFields {
+                launch_id: target.launch_id,
+                data_dir: target.data_dir,
+                runtime_pid: target.runtime_pid,
+                supervisor: target.supervisor.as_option(),
+            },
+            &status,
+            "supervisor control target",
         )?;
 
         Ok(())
@@ -136,41 +153,22 @@ impl SupervisorControlActor {
                 "runtime session hello is required before lifecycle events",
             ));
         };
-        if hello.started_at.as_option().is_none() {
-            return Err(invalid_argument("hello.started_at is required"));
-        }
         let status = self.snapshot().await;
-
-        validate_target_field("launch_id", hello.launch_id, status.launch_id())?;
-        validate_target_field("data_dir", hello.data_dir, status.data_dir())?;
-        validate_target_field("runtime_pid", hello.runtime_pid, status.runtime_pid())?;
-
-        let Some(supervisor) = hello.supervisor.as_option() else {
-            return Err(failed_precondition(
-                "runtime session hello supervisor is required",
-            ));
-        };
-
-        validate_target_field(
-            "supervisor.supervisor_id",
-            supervisor.supervisor_id,
-            status.supervisor_id(),
-        )?;
-        validate_target_field("supervisor.pid", supervisor.pid, status.supervisor_pid())?;
-        validate_target_field(
-            "supervisor.generation",
-            supervisor.generation,
-            status.supervisor_generation(),
+        validate_control_identity(
+            ControlIdentityFields {
+                launch_id: hello.launch_id,
+                data_dir: hello.data_dir,
+                runtime_pid: hello.runtime_pid,
+                supervisor: hello.supervisor.as_option(),
+            },
+            &status,
+            "runtime session hello",
         )?;
 
         Ok(RuntimeSessionIdentity {
             launch_id: hello.launch_id.unwrap_or_default().to_owned(),
             data_dir: hello.data_dir.unwrap_or_default().to_owned(),
             runtime_pid: hello.runtime_pid.unwrap_or_default(),
-            runtime_sequence_at_hello: hello.runtime_sequence.unwrap_or(0),
-            supervisor_id: supervisor.supervisor_id.unwrap_or_default().to_owned(),
-            supervisor_pid: supervisor.pid.unwrap_or_default(),
-            supervisor_generation: supervisor.generation.unwrap_or_default(),
         })
     }
 
@@ -228,9 +226,8 @@ impl SupervisorControlActor {
         let Some(runtime_status) = ready.status.as_option() else {
             return Err(failed_precondition("runtime_ready status is required"));
         };
-        identity.validate_runtime_status(runtime_status, "runtime_ready.status")?;
         let transition = self
-            .apply_runtime_status_update(runtime_status, "runtime-ready", None)
+            .apply_runtime_status_update(&identity, runtime_status, "runtime-ready", None)
             .await?;
         self.state.runtime_ready.notify_waiters();
         self.publish_runtime_transition(transition);
@@ -254,12 +251,6 @@ impl SupervisorControlActor {
                 runtime_sequence,
                 "runtime_transition.runtime_sequence",
             )?;
-            validate_required_timestamp(&transition.occurred_at, "runtime_transition.occurred_at")?;
-            validate_required_phase(
-                transition.previous_phase,
-                "runtime_transition.previous_phase",
-            )?;
-            validate_required_phase(transition.current_phase, "runtime_transition.current_phase")?;
             status.runtime_phase = transition.current_phase;
             status.runtime_sequence = transition.runtime_sequence;
             status.updated_at = transition.occurred_at.clone();
@@ -276,7 +267,6 @@ impl SupervisorControlActor {
     ) -> Result<(), connectrpc::ConnectError> {
         let heartbeat_sequence =
             required_u64(heartbeat.heartbeat_sequence, "heartbeat.heartbeat_sequence")?;
-        validate_required_timestamp(&heartbeat.sent_at, "heartbeat.sent_at")?;
         {
             let mut sink = self.state.command_sink.write().await;
             let Some(active) = sink.as_mut() else {
@@ -318,7 +308,6 @@ impl SupervisorControlActor {
             started.runtime_sequence,
             "shutdown_started.runtime_sequence",
         )?;
-        validate_required_timestamp(&started.started_at, "shutdown_started.started_at")?;
         let transition = {
             let mut status = self.state.status.write().await;
             validate_runtime_sequence_not_backward(
@@ -365,8 +354,6 @@ impl SupervisorControlActor {
         let Some(runtime_status) = finished.status.as_option() else {
             return Err(failed_precondition("shutdown_finished status is required"));
         };
-        identity.validate_runtime_status(runtime_status, "shutdown_finished.status")?;
-        validate_required_timestamp(&finished.finished_at, "shutdown_finished.finished_at")?;
         self.validate_current_stop_operation_id(
             Some(operation_id),
             "shutdown_finished.operation_id",
@@ -374,6 +361,7 @@ impl SupervisorControlActor {
         .await?;
         let transition = self
             .apply_runtime_status_update(
+                &identity,
                 runtime_status,
                 "shutdown-finished",
                 Some(operation_id.to_owned()),
@@ -396,8 +384,6 @@ impl SupervisorControlActor {
         let Some(runtime_status) = failed.status.as_option() else {
             return Err(failed_precondition("shutdown_failed status is required"));
         };
-        identity.validate_runtime_status(runtime_status, "shutdown_failed.status")?;
-        validate_required_timestamp(&failed.failed_at, "shutdown_failed.failed_at")?;
         self.validate_current_stop_operation_id(Some(operation_id), "shutdown_failed.operation_id")
             .await?;
         let transition = {
@@ -411,10 +397,6 @@ impl SupervisorControlActor {
                 runtime_sequence,
                 "shutdown_failed.status.runtime_sequence",
             )?;
-            validate_required_timestamp(
-                &runtime_status.updated_at,
-                "shutdown_failed.status.updated_at",
-            )?;
             let previous_phase = status
                 .runtime_phase
                 .and_then(|phase| phase.as_known())
@@ -422,9 +404,7 @@ impl SupervisorControlActor {
             status.runtime_phase = runtime_status.phase;
             status.runtime_sequence = runtime_status.runtime_sequence;
             status.updated_at = runtime_status.updated_at.clone();
-            if let Some(runtime_identity) = runtime_status.identity.as_option() {
-                status.runtime = buffa::MessageField::some(runtime_identity.clone());
-            }
+            status.runtime = buffa::MessageField::some(identity.runtime_identity());
             status.active_session = Some(true);
             runtime_transition_from_fields(RuntimeTransitionFields {
                 transition_id: format!("shutdown-failed:{operation_id}"),
@@ -452,6 +432,10 @@ impl SupervisorControlActor {
     ) {
         let transition = {
             let mut status = self.state.status.write().await;
+            let runtime_identity = status
+                .launch
+                .as_option()
+                .and_then(runtime_identity_from_launch);
             let previous_phase = status
                 .runtime_phase
                 .and_then(|phase| phase.as_known())
@@ -460,8 +444,8 @@ impl SupervisorControlActor {
             status.runtime_sequence = runtime_status.runtime_sequence;
             status.updated_at = runtime_status.updated_at.clone();
             status.active_session = Some(false);
-            if let Some(identity) = runtime_status.identity.as_option() {
-                status.runtime = buffa::MessageField::some(identity.clone());
+            if let Some(identity) = runtime_identity {
+                status.runtime = buffa::MessageField::some(identity);
             }
             runtime_transition_from_status_update(
                 transition_id_prefix,
@@ -475,6 +459,7 @@ impl SupervisorControlActor {
 
     async fn apply_runtime_status_update(
         &self,
+        identity: &RuntimeSessionIdentity,
         runtime_status: &types::RuntimeStatus,
         transition_id_prefix: &str,
         operation_id: Option<String>,
@@ -493,7 +478,6 @@ impl SupervisorControlActor {
             runtime_sequence,
             "runtime_status.runtime_sequence",
         )?;
-        validate_required_timestamp(&runtime_status.updated_at, "runtime_status.updated_at")?;
         let previous_phase = status
             .runtime_phase
             .and_then(|phase| phase.as_known())
@@ -502,9 +486,7 @@ impl SupervisorControlActor {
         status.runtime_phase = runtime_status.phase;
         status.runtime_sequence = runtime_status.runtime_sequence;
         status.updated_at = runtime_status.updated_at.clone();
-        if let Some(identity) = runtime_status.identity.as_option() {
-            status.runtime = buffa::MessageField::some(identity.clone());
-        }
+        status.runtime = buffa::MessageField::some(identity.runtime_identity());
         Ok(runtime_transition_from_status_update(
             transition_id_prefix,
             previous_phase,
@@ -548,27 +530,13 @@ impl SupervisorControlActor {
 }
 
 impl RuntimeSessionIdentity {
-    fn validate_runtime_status(
-        &self,
-        status: &types::RuntimeStatus,
-        field: &'static str,
-    ) -> Result<(), connectrpc::ConnectError> {
-        let Some(identity) = status.identity.as_option() else {
-            return Err(failed_precondition(format!("{field} identity is required")));
-        };
-
-        validate_target_field(
-            "launch_id",
-            identity.launch_id.as_deref(),
-            Some(self.launch_id.as_str()),
-        )?;
-        validate_target_field(
-            "data_dir",
-            identity.data_dir.as_deref(),
-            Some(self.data_dir.as_str()),
-        )?;
-        validate_target_field("runtime_pid", identity.pid, Some(self.runtime_pid))?;
-        Ok(())
+    fn runtime_identity(&self) -> types::RuntimeIdentity {
+        types::RuntimeIdentity {
+            launch_id: Some(self.launch_id.clone()),
+            data_dir: Some(self.data_dir.clone()),
+            pid: Some(self.runtime_pid),
+            ..Default::default()
+        }
     }
 }
 
@@ -587,6 +555,17 @@ fn ready_runtime_pid(status: &types::SupervisorStatus) -> Option<u32> {
                 .as_option()
                 .and_then(|launch| launch.runtime_pid)
         })
+}
+
+fn runtime_identity_from_launch(
+    launch: &types::LifecycleLaunchIdentity,
+) -> Option<types::RuntimeIdentity> {
+    Some(types::RuntimeIdentity {
+        launch_id: Some(launch.launch_id.clone()?),
+        data_dir: Some(launch.data_dir.clone()?),
+        pid: Some(launch.runtime_pid?),
+        ..Default::default()
+    })
 }
 
 #[cfg(test)]

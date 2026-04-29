@@ -16,7 +16,6 @@ use crate::supervisor_control_proto::types;
 
 use super::actor::SupervisorControlActor;
 use super::errors::failed_precondition;
-use super::errors::invalid_argument;
 
 #[derive(Clone)]
 pub(crate) struct SupervisorControlService {
@@ -207,7 +206,6 @@ impl SupervisorLifecycleService for SupervisorControlService {
         self.actor
             .validate_target(request.target.as_option())
             .await?;
-        validate_uuid(request.operation_id, "supervisor control stop operation_id")?;
         Ok((
             self.actor
                 .request_stop(request.operation_id.map(str::to_owned).unwrap_or_default())
@@ -271,13 +269,4 @@ fn runtime_session_command_stream(
             }
         },
     )
-}
-
-fn validate_uuid(value: Option<&str>, field: &'static str) -> Result<(), connectrpc::ConnectError> {
-    let Some(value) = value.filter(|value| !value.is_empty()) else {
-        return Err(invalid_argument(format!("{field} is required")));
-    };
-    uuid::Uuid::parse_str(value)
-        .map(|_| ())
-        .map_err(|_| invalid_argument(format!("{field} must be a UUID")))
 }

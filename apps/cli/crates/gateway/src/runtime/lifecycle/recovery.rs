@@ -486,13 +486,16 @@ fn runtime_ready_pid_reported_during_startup_poll(
         read_runtime_status_snapshot_during_startup_poll(path, command_line)?.and_then(
             |snapshot| {
                 let status = snapshot.status.as_option()?;
-                let identity = status.identity.as_option()?;
-                let pid = identity.pid?;
+                let launch = snapshot
+                    .header
+                    .as_option()
+                    .and_then(|header| header.launch.as_option())?;
+                let pid = launch.runtime_pid?;
                 let phase = runtime_status_phase(status)?;
 
                 (phase == types::RuntimePhase::RUNTIME_PHASE_READY
-                    && runtime_identity_matches_data_dir(identity, expected_data_dir)
-                    && identity.launch_id.as_deref() == Some(expected_launch_id))
+                    && launch_identity_matches_data_dir(launch, expected_data_dir)
+                    && launch.launch_id.as_deref() == Some(expected_launch_id))
                 .then_some(pid)
             },
         ),
@@ -504,12 +507,11 @@ fn runtime_status_snapshot_recovery_decision(
     expected_data_dir: &Path,
 ) -> Option<DurableRecoveryDecision> {
     let status = snapshot.status.as_option()?;
-    let runtime = status.identity.as_option()?;
     let launch = snapshot
         .header
         .as_option()
         .and_then(|header| header.launch.as_option())?;
-    let identity = managed_runtime_identity_from_parts(runtime, launch, None, expected_data_dir)?;
+    let identity = managed_runtime_identity_from_launch(launch, None, expected_data_dir)?;
 
     let phase = runtime_status_phase(status)?;
     if runtime_phase_is_terminal(phase) {
@@ -592,6 +594,39 @@ fn managed_runtime_identity_from_parts(
         supervisor_generation: launch
             .supervisor_generation
             .filter(|generation| *generation > 0)?,
+    })
+}
+
+fn managed_runtime_identity_from_launch(
+    launch: &types::LifecycleLaunchIdentity,
+    supervisor: Option<&types::SupervisorIdentity>,
+    expected_data_dir: &Path,
+) -> Option<ManagedRuntimeIdentity> {
+    if !launch_identity_matches_data_dir(launch, expected_data_dir)
+        || !launch
+            .launch_id
+            .as_deref()
+            .is_some_and(|launch_id| !launch_id.is_empty())
+        || !launch.runtime_pid.is_some_and(|pid| pid > 0)
+        || !launch.supervisor_pid.is_some_and(|pid| pid > 0)
+        || !launch
+            .supervisor_generation
+            .is_some_and(|generation| generation > 0)
+    {
+        return None;
+    }
+
+    if let Some(supervisor) = supervisor
+        && !supervisor_identity_matches_launch(supervisor, launch)
+    {
+        return None;
+    }
+
+    Some(ManagedRuntimeIdentity {
+        launch_id: launch.launch_id.clone()?,
+        pid: launch.runtime_pid?,
+        supervisor_pid: launch.supervisor_pid?,
+        supervisor_generation: launch.supervisor_generation?,
     })
 }
 
@@ -803,9 +838,12 @@ fn runtime_status_snapshot_pid_and_phase(
     snapshot: &types::RuntimeStatusSnapshot,
 ) -> Option<(u32, types::RuntimePhase)> {
     let status = snapshot.status.as_option()?;
-    let identity = status.identity.as_option()?;
+    let launch = snapshot
+        .header
+        .as_option()
+        .and_then(|header| header.launch.as_option())?;
 
-    Some((identity.pid?, runtime_status_phase(status)?))
+    Some((launch.runtime_pid?, runtime_status_phase(status)?))
 }
 
 fn runtime_status_phase(status: &types::RuntimeStatus) -> Option<types::RuntimePhase> {

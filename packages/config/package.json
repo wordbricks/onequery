@@ -22,7 +22,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "catalog:",
+    "@bufbuild/protovalidate": "catalog:",
     "@onequery/codecs": "workspace:*",
+    "@onequery/proto-runtime": "workspace:*",
     "better-result": "catalog:",
     "zod": "catalog:"
   },

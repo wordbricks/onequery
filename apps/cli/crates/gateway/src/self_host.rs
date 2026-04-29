@@ -25,7 +25,7 @@ pub use self::paths::SelfHostRuntimePaths;
 pub use self::paths::self_host_runtime_paths;
 
 pub(crate) use self::bootstrap::load_self_host_config;
-pub(crate) use self::launch_config::ServerLaunchSupervisorConfig;
+pub(crate) use self::launch_config::read_self_host_launch_id;
 pub(crate) use self::launch_config::write_self_host_launch_config;
 pub(crate) use self::launch_config::write_self_host_launch_supervisor_identity;
 #[cfg(test)]

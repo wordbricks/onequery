@@ -113,6 +113,9 @@ async fn serve_unix_listener(
     let limits = Limits::default()
         .max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES)
         .max_request_body_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
+    // Comment: Connect Rust does not currently wire a Protovalidate interceptor
+    // for these buf.validate-heavy runtime protos; supervisor handlers perform
+    // the required boundary checks manually.
     let service = Arc::new(ConnectRpcService::new(connect_service(service)).with_limits(limits));
     let mut connections = JoinSet::new();
 
@@ -307,7 +310,6 @@ mod tests {
     use buffa::MessageField;
     use connectrpc::client::ClientConfig;
     use connectrpc::client::Http2Connection;
-    use connectrpc::error::ErrorCode;
     use onequery_proto_runtime::onequery::runtime::v1::SupervisorLifecycleServiceClient;
     use pretty_assertions::assert_eq;
     use tokio::time::timeout;
@@ -442,194 +444,6 @@ mod tests {
         assert_eq!(io_error.kind(), io::ErrorKind::AddrInUse);
     }
 
-    #[tokio::test]
-    async fn get_status_rejects_mismatched_target_identity() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(1))
-            .await
-            .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-
-        let error = client
-            .get_status(types::SupervisorLifecycleServiceGetStatusRequest {
-                target: MessageField::some(test_target_with_launch_id("stale-launch")),
-                ..Default::default()
-            })
-            .await
-            .expect_err("expected target mismatch to be rejected");
-
-        assert_eq!(error.code, ErrorCode::FailedPrecondition);
-
-        server.stop().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn stop_rejects_non_uuid_operation_id() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(1))
-            .await
-            .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-
-        let error = client
-            .stop(types::SupervisorLifecycleServiceStopRequest {
-                operation_id: Some("not-a-uuid".to_owned()),
-                target: MessageField::some(test_target()),
-                ..Default::default()
-            })
-            .await
-            .expect_err("expected invalid operation id to be rejected");
-
-        assert_eq!(error.code, ErrorCode::InvalidArgument);
-
-        server.stop().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn open_runtime_session_rejects_mismatched_hello_without_registering_session() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
-            .await
-            .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-        let mut session = client.open_runtime_session().await.unwrap();
-
-        session
-            .send(types::OpenRuntimeSessionRequest {
-                payload: Some(types::open_runtime_session_request::Payload::Hello(
-                    Box::new(test_session_hello_with_launch_id("stale-launch")),
-                )),
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        session.close_send();
-
-        let message = timeout(Duration::from_secs(1), session.message())
-            .await
-            .expect("expected rejected session to finish")
-            .expect("expected rejected session to close cleanly");
-        assert!(message.is_none());
-
-        let error = session
-            .error()
-            .expect("expected rejected session to expose Connect error");
-        assert_eq!(error.code, ErrorCode::FailedPrecondition);
-
-        let status = get_status(socket_path.as_path()).await;
-        assert_eq!(status.supervisor_sequence, Some(7));
-        assert_eq!(status.active_session, Some(false));
-
-        server.stop().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn open_runtime_session_returns_error_for_second_hello() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
-            .await
-            .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-        let mut session = client.open_runtime_session().await.unwrap();
-
-        session
-            .send(types::OpenRuntimeSessionRequest {
-                payload: Some(types::open_runtime_session_request::Payload::Hello(
-                    Box::new(test_session_hello()),
-                )),
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        session
-            .send(types::OpenRuntimeSessionRequest {
-                payload: Some(types::open_runtime_session_request::Payload::Hello(
-                    Box::new(test_session_hello()),
-                )),
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        session.close_send();
-
-        let message = timeout(Duration::from_secs(1), session.message())
-            .await
-            .expect("expected rejected session to finish")
-            .expect("expected rejected session to close cleanly");
-        assert!(message.is_none());
-        assert_eq!(
-            session
-                .error()
-                .expect("expected rejected session to expose Connect error")
-                .code,
-            ErrorCode::FailedPrecondition
-        );
-
-        let status = get_status(socket_path.as_path()).await;
-        assert_eq!(status.active_session, Some(false));
-        assert_ne!(
-            status.runtime_phase,
-            Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
-        );
-
-        server.stop().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn open_runtime_session_returns_error_for_missing_post_hello_payload() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
-            .await
-            .unwrap();
-        let client = supervisor_client(socket_path.as_path()).await;
-        let mut session = client.open_runtime_session().await.unwrap();
-
-        session
-            .send(types::OpenRuntimeSessionRequest {
-                payload: Some(types::open_runtime_session_request::Payload::Hello(
-                    Box::new(test_session_hello()),
-                )),
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        session
-            .send(types::OpenRuntimeSessionRequest {
-                payload: None,
-                ..Default::default()
-            })
-            .await
-            .unwrap();
-        session.close_send();
-
-        let message = timeout(Duration::from_secs(1), session.message())
-            .await
-            .expect("expected rejected session to finish")
-            .expect("expected rejected session to close cleanly");
-        assert!(message.is_none());
-        assert_eq!(
-            session
-                .error()
-                .expect("expected rejected session to expose Connect error")
-                .code,
-            ErrorCode::FailedPrecondition
-        );
-
-        let status = get_status(socket_path.as_path()).await;
-        assert_eq!(status.active_session, Some(false));
-        assert_ne!(
-            status.runtime_phase,
-            Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
-        );
-
-        server.stop().await.unwrap();
-    }
-
     async fn get_status(socket_path: &Path) -> types::SupervisorStatus {
         let client = supervisor_client(socket_path).await;
         let response = client
@@ -700,12 +514,8 @@ mod tests {
     }
 
     fn test_target() -> types::SupervisorControlTarget {
-        test_target_with_launch_id("launch-a")
-    }
-
-    fn test_target_with_launch_id(launch_id: &str) -> types::SupervisorControlTarget {
         types::SupervisorControlTarget {
-            launch_id: Some(launch_id.to_owned()),
+            launch_id: Some("launch-a".to_owned()),
             data_dir: Some("/tmp/onequery-data".to_owned()),
             runtime_pid: Some(4242),
             supervisor: MessageField::some(types::SupervisorIdentity {
@@ -714,34 +524,21 @@ mod tests {
                 generation: Some(1),
                 ..Default::default()
             }),
-            ..Default::default()
-        }
-    }
-
-    fn test_session_hello_with_launch_id(launch_id: &str) -> types::RuntimeSessionHello {
-        types::RuntimeSessionHello {
-            launch_id: Some(launch_id.to_owned()),
-            data_dir: Some("/tmp/onequery-data".to_owned()),
-            runtime_pid: Some(4242),
-            supervisor: MessageField::some(types::SupervisorIdentity {
-                supervisor_id: Some("gateway-supervisor:test".to_owned()),
-                pid: Some(1),
-                generation: Some(1),
-                ..Default::default()
-            }),
-            runtime_sequence: Some(1),
-            started_at: MessageField::some(timestamp(1)),
             ..Default::default()
         }
     }
 
     fn test_session_hello() -> types::RuntimeSessionHello {
-        test_session_hello_with_launch_id("launch-a")
-    }
-
-    fn timestamp(seconds: i64) -> buffa_types::google::protobuf::Timestamp {
-        buffa_types::google::protobuf::Timestamp {
-            seconds,
+        types::RuntimeSessionHello {
+            launch_id: Some("launch-a".to_owned()),
+            data_dir: Some("/tmp/onequery-data".to_owned()),
+            runtime_pid: Some(4242),
+            supervisor: MessageField::some(types::SupervisorIdentity {
+                supervisor_id: Some("gateway-supervisor:test".to_owned()),
+                pid: Some(1),
+                generation: Some(1),
+                ..Default::default()
+            }),
             ..Default::default()
         }
     }

@@ -131,8 +131,8 @@ export function decryptCredentialsObjectResult<T extends z.ZodType>(
     });
     const parsedCredentials = schema.safeParse(parsedJson);
     if (!parsedCredentials.success) {
-      return Result.err(
-        createInvalidEncryptedCredentialsError(parsedCredentials.error)
+      return yield* createInvalidEncryptedCredentialsError(
+        parsedCredentials.error
       );
     }
 

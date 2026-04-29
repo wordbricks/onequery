@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  encodeServerLaunchConfigJson,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import {
   createSelfHostLaunchConfig,
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
@@ -13,8 +18,11 @@ import {
   resolveStartupInputFromArgv,
 } from "./startup";
 
-function writeLaunchConfig(launchConfigPath: string, value: unknown): void {
-  writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
+function writeLaunchConfig(
+  launchConfigPath: string,
+  value: ServerLaunchConfig
+): void {
+  writeFileSync(launchConfigPath, encodeServerLaunchConfigJson(value));
 }
 
 describe("packaged server startup", () => {
@@ -65,9 +73,12 @@ describe("packaged server startup", () => {
       })
     );
 
-    expect(loadStartupLaunchConfig({ launchConfigPath })).toMatchObject({
+    const loaded = loadStartupLaunchConfig({ launchConfigPath });
+    expect(viewServerLaunchConfig(loaded, "test")).toMatchObject({
+      common: {
+        publicOrigin: "http://127.0.0.1:5656",
+      },
       mode: "self-host",
-      publicOrigin: "http://127.0.0.1:5656",
       runtimePaths: {
         dataDir: "/tmp/onequery",
       },

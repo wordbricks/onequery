@@ -5,8 +5,14 @@ import { join } from "node:path";
 import { create } from "@bufbuild/protobuf";
 import { DurationSchema, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import {
+  encodeServerLaunchConfigJson,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
+import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import {
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
+  createSelfHostSupervisorControl,
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
 import type { DatabasePreparationResult } from "@onequery/db/server";
@@ -15,11 +21,9 @@ import {
   RuntimeStatusSchema,
   SupervisorIdentitySchema,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
-import {
-  SupervisorStopCommandSchema,
-  SupervisorControlTargetSchema,
-} from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
+import { SupervisorStopCommandSchema } from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
+import { createServerRuntimeConfig as defaultCreateServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type {
   ServerStorage,
@@ -32,11 +36,11 @@ import { createStartServer } from "./index";
 import type { StartServerDependencies } from "./index";
 import { loadStartupLaunchConfigResult } from "./startup";
 
-function writeLaunchConfigFile(value: unknown): string {
+function writeLaunchConfigFile(value: ServerLaunchConfig): string {
   const root = mkdtempSync(join(tmpdir(), "onequery-self-host-index-test-"));
   const launchConfigPath = join(root, "launch.json");
 
-  writeFileSync(launchConfigPath, JSON.stringify(value, null, 2));
+  writeFileSync(launchConfigPath, encodeServerLaunchConfigJson(value));
 
   return launchConfigPath;
 }
@@ -60,14 +64,9 @@ function createTempSelfHostRuntimePaths() {
 function createTempSupervisorControlEndpoint(
   runtimePaths: ReturnType<typeof createTempSelfHostRuntimePaths>
 ) {
-  return {
-    baseUrl: "http://onequery-supervisor",
-    maxMessageBytes: 64 * 1024,
-    transport: {
-      kind: "unix" as const,
-      socketPath: join(runtimePaths.runDir, "supervisor-control.sock"),
-    },
-  };
+  return createSelfHostSupervisorControl({
+    socketPath: join(runtimePaths.runDir, "supervisor-control.sock"),
+  });
 }
 
 function createMocks() {
@@ -82,42 +81,8 @@ function createMocks() {
     );
   const createServerRuntimeConfig: StartServerDependencies["createServerRuntimeConfig"] =
     vi.fn(
-      (launchConfig): ServerRuntimeConfig => ({
-        auth: {
-          baseURL: launchConfig.publicOrigin,
-          emailDelivery: {
-            baseURL: launchConfig.publicOrigin,
-          },
-          secret: launchConfig.auth.secret,
-        },
-        connectors: {
-          enrollmentToken: launchConfig.connectors.enrollmentToken,
-        },
-        crypto: {
-          masterEncryptionKey: new Uint8Array(32),
-        },
-        listen: launchConfig.listen,
-        publicOrigin: launchConfig.publicOrigin,
-        rateLimit: {
-          api: {
-            storage: launchConfig.rateLimit.api.storage,
-          },
-          enabled: launchConfig.rateLimit.enabled,
-        },
-        runtimePaths: launchConfig.runtimePaths,
-        storage:
-          launchConfig.storage.kind === "postgres"
-            ? {
-                connectionString: launchConfig.storage.url,
-                kind: "postgres",
-                url: launchConfig.storage.url,
-              }
-            : {
-                connectionString: `pglite:${launchConfig.storage.dir}`,
-                dir: launchConfig.storage.dir,
-                kind: "pglite",
-              },
-      })
+      (launchConfig): ServerRuntimeConfig =>
+        defaultCreateServerRuntimeConfig(launchConfig)
     );
   const closeServerStorage = vi.fn(async () => undefined);
   const createServerStorageHandle: StartServerDependencies["createServerStorageHandle"] =
@@ -253,12 +218,17 @@ describe("startServer", () => {
       launchConfigPath,
     });
 
-    expect(mocks.createServerRuntimeConfig).toHaveBeenCalledWith(
-      expect.objectContaining({
-        mode: "workspace-dev",
+    const runtimeLaunchConfig = vi.mocked(mocks.createServerRuntimeConfig).mock
+      .calls[0]?.[0];
+    if (runtimeLaunchConfig === undefined) {
+      throw new Error("expected runtime config creation call");
+    }
+    expect(viewServerLaunchConfig(runtimeLaunchConfig, "test")).toMatchObject({
+      common: {
         publicOrigin: "http://localhost:4545",
-      })
-    );
+      },
+      mode: "workspace-dev",
+    });
     expect(mocks.prepareRuntimeDatabaseResult).toHaveBeenCalledWith({
       databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
       migrationsDir: "/tmp/migrations",
@@ -382,19 +352,12 @@ describe("startServer", () => {
       supervisorId: "gateway-supervisor:1001",
     });
     const graceTimeout = create(DurationSchema, { seconds: 30n });
-    const supervisorControlTarget = create(SupervisorControlTargetSchema, {
-      dataDir: runtimePaths.dataDir,
-      launchId: "launch-a",
-      runtimePid: process.pid,
-      supervisor: supervisorIdentity,
-    });
     await supervisorSessionInput?.onStopCommand?.(
       create(SupervisorStopCommandSchema, {
         completion: 2,
         graceTimeout,
         operationId: "00000000-0000-4000-8000-000000000001",
         reason: "test stop",
-        target: supervisorControlTarget,
       })
     );
     expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
@@ -508,11 +471,6 @@ function mockRuntimeStatus(
   phase = RuntimePhase.READY
 ) {
   return create(RuntimeStatusSchema, {
-    identity: {
-      dataDir: "/tmp/onequery-data",
-      launchId: "launch-a",
-      pid: process.pid,
-    },
     phase,
     runtimeSequence,
     updatedAt: timestampFromDate(new Date("2026-04-29T00:00:00.000Z")),

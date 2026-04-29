@@ -102,11 +102,6 @@ export function createRuntimeStatusSnapshot(input: {
     }),
     snapshotAt: timestampFromDate(input.snapshotAt),
     status: {
-      identity: {
-        dataDir: input.paths.dataDir,
-        launchId: input.launchId,
-        pid: input.pid,
-      },
       phase: input.phase,
       runtimeSequence: input.runtimeSequence,
       updatedAt: timestampFromDate(input.snapshotAt),

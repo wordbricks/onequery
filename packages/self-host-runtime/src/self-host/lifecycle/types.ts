@@ -1,4 +1,7 @@
-import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import type {
+  ServerLaunchSupervisorControlConfig,
+  ServerLaunchView,
+} from "@onequery/config/server-launch";
 import { RuntimePhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import type {
   RuntimeStatus,
@@ -10,9 +13,7 @@ export type RuntimeSupervisorIdentity = Pick<
   "generation" | "pid" | "supervisorId"
 >;
 
-export type SupervisorControlEndpoint = NonNullable<
-  ServerLaunchConfig["supervisorControl"]
->;
+export type SupervisorControlEndpoint = ServerLaunchSupervisorControlConfig;
 
 export interface SelfHostLifecyclePaths {
   controlEndpoint: SupervisorControlEndpoint;
@@ -149,7 +150,4 @@ export interface GracefulShutdownController {
   shutdown(request: RuntimeShutdownRequest): Promise<void>;
 }
 
-export type LifecycleLaunchConfig = Pick<
-  ServerLaunchConfig,
-  "mode" | "runtimePaths" | "supervisorControl"
->;
+export type LifecycleLaunchConfig = ServerLaunchView;

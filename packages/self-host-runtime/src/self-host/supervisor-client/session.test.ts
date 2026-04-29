@@ -6,6 +6,7 @@ import { create } from "@bufbuild/protobuf";
 import { DurationSchema, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type { ServiceImpl } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
+import { createSelfHostSupervisorControl } from "@onequery/config/testing";
 import {
   RuntimePhase,
   RuntimeStatusSchema,
@@ -43,30 +44,13 @@ describe("openSupervisorRuntimeSession", () => {
             graceTimeout: create(DurationSchema, { seconds: 30n }),
             operationId: "00000000-0000-4000-8000-000000000001",
             reason: "test stop",
-            target: {
-              dataDir: "/tmp/onequery-data",
-              launchId: "launch-a",
-              runtimePid: 4242,
-              supervisor: {
-                generation: 1n,
-                pid: 1001,
-                supervisorId: "gateway-supervisor:test",
-              },
-            },
           },
         },
       }),
     ]);
     const { socketPath } = await startSupervisorService(service.impl);
     const client = createSupervisorLifecycleClient({
-      endpoint: {
-        baseUrl: "http://onequery-supervisor",
-        maxMessageBytes: 64 * 1024,
-        transport: {
-          kind: "unix",
-          socketPath,
-        },
-      },
+      endpoint: createSelfHostSupervisorControl({ socketPath }),
     });
     const session = openSupervisorRuntimeSession({
       client,
@@ -76,11 +60,6 @@ describe("openSupervisorRuntimeSession", () => {
       now: () => new Date("2026-04-29T00:00:00.000Z"),
       onStopCommand: async () => ({
         status: create(RuntimeStatusSchema, {
-          identity: {
-            dataDir: "/tmp/onequery-data",
-            launchId: "launch-a",
-            pid: 4242,
-          },
           phase: RuntimePhase.STOPPED,
           runtimeSequence: 3n,
           updatedAt: timestampFromDate(new Date("2026-04-29T00:00:02.000Z")),
@@ -127,30 +106,13 @@ describe("openSupervisorRuntimeSession", () => {
             graceTimeout: create(DurationSchema, { seconds: 30n }),
             operationId: "00000000-0000-4000-8000-000000000001",
             reason: "test stop",
-            target: {
-              dataDir: "/tmp/onequery-data",
-              launchId: "launch-a",
-              runtimePid: 4242,
-              supervisor: {
-                generation: 1n,
-                pid: 1001,
-                supervisorId: "gateway-supervisor:test",
-              },
-            },
           },
         },
       }),
     ]);
     const { socketPath } = await startSupervisorService(service.impl);
     const client = createSupervisorLifecycleClient({
-      endpoint: {
-        baseUrl: "http://onequery-supervisor",
-        maxMessageBytes: 64 * 1024,
-        transport: {
-          kind: "unix",
-          socketPath,
-        },
-      },
+      endpoint: createSelfHostSupervisorControl({ socketPath }),
     });
     const session = openSupervisorRuntimeSession({
       client,
@@ -201,14 +163,7 @@ describe("openSupervisorRuntimeSession", () => {
     const service = createSessionCapturingSupervisorService();
     const { socketPath } = await startSupervisorService(service.impl);
     const client = createSupervisorLifecycleClient({
-      endpoint: {
-        baseUrl: "http://onequery-supervisor",
-        maxMessageBytes: 64 * 1024,
-        transport: {
-          kind: "unix",
-          socketPath,
-        },
-      },
+      endpoint: createSelfHostSupervisorControl({ socketPath }),
     });
     const session = openSupervisorRuntimeSession({
       client,
@@ -228,11 +183,6 @@ describe("openSupervisorRuntimeSession", () => {
 
     await session.ready(
       create(RuntimeStatusSchema, {
-        identity: {
-          dataDir: "/tmp/onequery-data",
-          launchId: "launch-a",
-          pid: 4242,
-        },
         phase: RuntimePhase.READY,
         runtimeSequence: 2n,
         updatedAt: timestampFromDate(new Date("2026-04-29T00:00:01.000Z")),
@@ -251,7 +201,6 @@ describe("openSupervisorRuntimeSession", () => {
       dataDir: "/tmp/onequery-data",
       launchId: "launch-a",
       runtimePid: 4242,
-      runtimeSequence: 1n,
     });
     expect(events[1]?.payload.value).toMatchObject({
       status: {

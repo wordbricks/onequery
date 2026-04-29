@@ -3,6 +3,10 @@ import { dirname } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
+import {
+  decodeServerLaunchConfigJson,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
 
 import {
   RuntimePhase,
@@ -22,64 +26,57 @@ if (!launchConfigPath) {
   );
 }
 
-const launchConfig = JSON.parse(await readFile(launchConfigPath, "utf8"));
-const configModes = Array.isArray(launchConfig.testModes)
-  ? launchConfig.testModes.filter(
-      (mode: unknown): mode is string => typeof mode === "string"
-    )
-  : [];
-const modeSet = new Set([...configModes, ...argvModes]);
-const supervisorControlEndpoint = launchConfig.supervisorControl;
+const launchConfig = decodeServerLaunchConfigJson(
+  await readFile(launchConfigPath, "utf8"),
+  launchConfigPath
+);
+const launchView = viewServerLaunchConfig(launchConfig, launchConfigPath);
+if (launchView.mode !== "self-host") {
+  throw new Error(
+    "supervisor escalation fixture requires selfHost launch config"
+  );
+}
 
-if (supervisorControlEndpoint?.transport?.kind !== "unix") {
+const modeSet = new Set(argvModes);
+const supervisorControlEndpoint = launchView.supervisorControl;
+const supervisorControlTransport = supervisorControlEndpoint.transport?.kind;
+
+if (supervisorControlTransport?.case !== "unix") {
   throw new Error(
     "supervisor escalation fixture requires unix supervisorControl"
   );
 }
 
+const socketPath = supervisorControlTransport.value.socketPath;
 const lifecyclePaths: SelfHostLifecyclePaths = {
   controlEndpoint: supervisorControlEndpoint,
-  dataDir: launchConfig.runtimePaths.dataDir,
-  lifecycleEventLogPath: launchConfig.runtimePaths.lifecycleEventLogPath,
-  logsDir: launchConfig.runtimePaths.logsDir,
-  runtimeLeasePath: launchConfig.runtimePaths.runtimeLeasePath,
-  runtimeStatusSnapshotPath:
-    launchConfig.runtimePaths.runtimeStatusSnapshotPath,
+  dataDir: launchView.runtimePaths.dataDir,
+  lifecycleEventLogPath: launchView.runtimePaths.lifecycleEventLogPath,
+  logsDir: launchView.runtimePaths.logsDir,
+  runtimeLeasePath: launchView.runtimePaths.runtimeLeasePath,
+  runtimeStatusSnapshotPath: launchView.runtimePaths.runtimeStatusSnapshotPath,
 };
-const launchSupervisor = launchConfig.supervisor;
-if (!launchSupervisor) {
-  throw new Error(
-    "supervisor escalation fixture requires a launchConfig.supervisor block"
-  );
-}
+const launchSupervisor = launchView.supervisor;
 
-const supervisorPid = Number(launchSupervisor.pid);
-const supervisorId = launchSupervisor.supervisorId;
-const supervisorGeneration = BigInt(launchSupervisor.generation);
-
-await mkdir(dirname(supervisorControlEndpoint.transport.socketPath), {
+await mkdir(dirname(socketPath), {
   mode: 0o700,
   recursive: true,
 });
 
 const lease = await acquireRuntimeLifecycleLease(lifecyclePaths, {
-  launchId: launchConfig.launchId,
+  launchId: launchView.launchId,
   pid: process.pid,
-  supervisor: {
-    generation: supervisorGeneration,
-    pid: supervisorPid,
-    supervisorId,
-  },
+  supervisor: launchSupervisor,
 });
 let runtimeSequence = 1n;
 
 const supervisorSession = openSupervisorRuntimeSession({
   client: createSupervisorLifecycleClient({
-    endpoint: supervisorControlEndpoint,
+    endpoint: lifecyclePaths.controlEndpoint,
   }),
   dataDir: lifecyclePaths.dataDir,
   heartbeatIntervalMs: 50,
-  launchId: launchConfig.launchId,
+  launchId: launchView.launchId,
   onStopCommand: async (command) => {
     if (modeSet.has("ignore-graceful-stop")) {
       if (modeSet.has("exit-on-sigterm")) {
@@ -110,11 +107,7 @@ const supervisorSession = openSupervisorRuntimeSession({
   },
   runtimePid: process.pid,
   runtimeSequence,
-  supervisor: {
-    generation: supervisorGeneration,
-    pid: supervisorPid,
-    supervisorId,
-  },
+  supervisor: launchSupervisor,
 });
 
 let exiting = false;
@@ -153,7 +146,12 @@ process.on("SIGINT", () => {
   exitSoon(0);
 });
 
-const readyDelayMs = Number(launchConfig.testReadyDelayMs ?? 0);
+const readyDelayArg = argvModes.find((mode) =>
+  mode.startsWith("--ready-delay-ms=")
+);
+const readyDelayMs = Number(
+  readyDelayArg?.slice("--ready-delay-ms=".length) ?? 0
+);
 if (Number.isFinite(readyDelayMs) && readyDelayMs > 0) {
   await new Promise((resolve) => setTimeout(resolve, readyDelayMs));
 }
@@ -163,7 +161,12 @@ runtimeSequence += 1n;
 await supervisorSession.ready(runtimeStatus(RuntimePhase.READY));
 
 if (modeSet.has("exit-after-ready")) {
-  const exitDelayMs = Number(launchConfig.testExitAfterReadyDelayMs ?? 150);
+  const exitDelayArg = argvModes.find((mode) =>
+    mode.startsWith("--exit-after-ready-delay-ms=")
+  );
+  const exitDelayMs = Number(
+    exitDelayArg?.slice("--exit-after-ready-delay-ms=".length) ?? 150
+  );
   setTimeout(
     () => {
       void closeAndExit(0);
@@ -176,11 +179,6 @@ await new Promise<void>(() => undefined);
 
 function runtimeStatus(phase: RuntimePhase) {
   return create(RuntimeStatusSchema, {
-    identity: {
-      dataDir: lifecyclePaths.dataDir,
-      launchId: launchConfig.launchId,
-      pid: process.pid,
-    },
     phase,
     runtimeSequence,
     updatedAt: timestampFromDate(new Date()),
