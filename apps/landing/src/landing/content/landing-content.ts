@@ -3,7 +3,6 @@ import {
   DOWNLOAD_COMMAND,
   INSTALL_SCRIPT_URL,
   REPOSITORY_URL,
-  SECTION_IDS,
 } from "../config/landing-config";
 import type { TerminalLine } from "../terminal/terminal-surface";
 
@@ -74,10 +73,7 @@ export const INSTALL_STEPS = [
 ] as const;
 
 export const NAVIGATION_ITEMS = [
-  { href: `#${SECTION_IDS.surface}`, label: "Product" },
-  { href: `#${SECTION_IDS.install}`, label: "Install" },
-  { href: `#${SECTION_IDS.workflow}`, label: "Workflow" },
-  { href: `#${SECTION_IDS.roadmap}`, label: "Roadmap" },
+  { href: "/blog", label: "Blog" },
 ] satisfies ReadonlyArray<NavigationItem>;
 
 export const ROADMAP_LANES = [

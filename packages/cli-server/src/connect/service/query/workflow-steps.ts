@@ -6,7 +6,7 @@ import type {
   CliValidateQueryEffectResult,
 } from "../../../domain/effects";
 import type { AccessibleCliOrg } from "../../../domain/workflows";
-import { getCliQueryableDatabaseProviderType } from "../../../source/model";
+import { getCliQueryDatabaseProviderType } from "../../../source/model";
 import {
   toCliSourceRecord,
   toQueryActionSourceDescriptor,
@@ -118,20 +118,20 @@ export async function runQuerySourceLookupStep(input: {
         };
       }
 
-      const databaseType = getCliQueryableDatabaseProviderType(
+      const databaseType = getCliQueryDatabaseProviderType(
         source.source.provider,
         source.source.status
       );
       if (!databaseType) {
         return {
           commandPayload: {
-            kind: "not_queryable",
+            kind: "query_interface_missing",
             provider: source.source.provider,
             sourceStatus: source.source.status,
             type: "record_source_lookup",
           },
           result: {
-            kind: "source_not_queryable",
+            kind: "source_query_interface_missing",
             provider: source.source.provider,
             requestId: input.requestId,
             sourceName: input.sourceName,
@@ -148,7 +148,7 @@ export async function runQuerySourceLookupStep(input: {
           type: "record_source_lookup",
         },
         result: {
-          kind: "queryable_source_loaded",
+          kind: "source_query_interface_loaded",
         },
       };
     },
@@ -186,13 +186,13 @@ export async function runQueryValidationStep(input: {
       toStoredQueryValidationResult(stored.commandPayload),
     requestId: input.requestId,
     run: async (effect) => {
-      const databaseType = getCliQueryableDatabaseProviderType(
+      const databaseType = getCliQueryDatabaseProviderType(
         effect.source.provider,
         effect.source.sourceStatus
       );
       if (!databaseType) {
         throw createQueryAuditProblem(
-          `query_action validate_query effect became non-queryable for source "${effect.source.sourceKey}"`
+          `query_action validate_query effect lost the query interface for source "${effect.source.sourceKey}"`
         );
       }
 

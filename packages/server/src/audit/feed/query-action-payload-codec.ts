@@ -54,7 +54,7 @@ export type QueryActionEventPayload =
   | {
       provider: ProviderType;
       sourceStatus: DataSourceStatus;
-      type: "source_not_queryable";
+      type: "source_query_interface_missing";
     }
   | {
       type: "query_validated";
@@ -192,13 +192,13 @@ function fromQueryActionEventPayload(
         sourceKey: payload.event.value.sourceKey,
         type: "source_not_found",
       };
-    case "sourceNotQueryable":
+    case "sourceQueryInterfaceMissing":
       return {
         provider: fromWorkflowSourceProvider(payload.event.value.provider),
         sourceStatus: fromWorkflowDataSourceStatus(
           payload.event.value.sourceStatus
         ),
-        type: "source_not_queryable",
+        type: "source_query_interface_missing",
       };
     case "queryValidated":
       return {

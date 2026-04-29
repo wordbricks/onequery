@@ -6,7 +6,7 @@ exports[`amplitude source api adapter > describes the canonical fetch operation 
   "descriptorVersion": "amplitude.v1",
   "examples": [
     {
-      "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07",
+      "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]={"event_type":"Signup"}' -f params[start]=20260301 -f params[end]=20260307 -f params[m]=totals",
       "description": "Run an Amplitude segmentation request against the connected source.",
       "label": "Fetch event segmentation",
     },
@@ -19,7 +19,7 @@ exports[`amplitude source api adapter > describes the canonical fetch operation 
       "description": "Call an Amplitude REST endpoint for the connected source.",
       "examples": [
         {
-          "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07",
+          "command": "onequery api --source amplitude-prod /2/events/segmentation -f 'params[e]={"event_type":"Signup"}' -f params[start]=20260301 -f params[end]=20260307 -f params[m]=totals",
           "description": "Run an Amplitude segmentation request against the connected source.",
           "label": "Fetch event segmentation",
         },
@@ -109,7 +109,7 @@ exports[`amplitude source api adapter > normalizes path selectors into canonical
   "method": "GET",
   "operation": "fetch_api",
   "paginationPolicy": "none",
-  "preparedBinding": "fHopa1TNVC66Yk7eS_WSPv6mG4I8SBgWb6MP82Kk4ls",
+  "preparedBinding": "eZ42ZcCAnmGVmpntyOJ2_zhLdfw2jsgFMGCuo8omdNc",
   "provider": "amplitude",
   "query": {
     "end": "2026-03-07",
@@ -120,6 +120,6 @@ exports[`amplitude source api adapter > normalizes path selectors into canonical
   "sourceId": "source_1",
   "sourceKey": "amplitude-prod",
   "timeoutMs": undefined,
-  "url": "https://amplitude.com/2/events/segmentation?end=2026-03-07&start=2026-03-01",
+  "url": "https://amplitude.com/api/2/events/segmentation?end=2026-03-07&start=2026-03-01",
 }
 `;

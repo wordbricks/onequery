@@ -23,7 +23,7 @@ export type QueryActionEvent =
   | {
       provider: ProviderType;
       sourceStatus: DataSourceStatus;
-      type: "source_not_queryable";
+      type: "source_query_interface_missing";
     }
   | {
       type: "query_validated";

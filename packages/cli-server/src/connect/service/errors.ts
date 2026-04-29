@@ -42,8 +42,8 @@ export function createCliFailureForQueryWorkflowResult(
   switch (result.kind) {
     case "source_not_found":
       return createCliSourceNotFoundFailure(result.orgSlug, result.sourceName);
-    case "source_not_queryable":
-      return createCliSourceNotQueryableFailure({
+    case "source_query_interface_missing":
+      return createCliMissingQueryInterfaceFailure({
         provider: result.provider,
         sourceName: result.sourceName,
         status: result.status,
@@ -79,8 +79,8 @@ export function createCliFailureForQueryPlanResult(
   switch (result.kind) {
     case "source_not_found":
       return createCliSourceNotFoundFailure(result.orgSlug, result.sourceName);
-    case "source_not_queryable":
-      return createCliSourceNotQueryableFailure({
+    case "source_query_interface_missing":
+      return createCliMissingQueryInterfaceFailure({
         provider: result.provider,
         sourceName: result.sourceName,
         status: result.status,
@@ -95,19 +95,19 @@ export function createCliFailureForQueryPlanResult(
   }
 }
 
-function createCliSourceNotQueryableFailure(input: {
+function createCliMissingQueryInterfaceFailure(input: {
   sourceName: string;
   provider: ProviderType;
   status: DataSourceStatus;
 }) {
   const detail =
     input.status !== "active"
-      ? `source "${input.sourceName}" is "${input.status}" and cannot be queried`
-      : `source "${input.sourceName}" uses provider "${input.provider}", which is visible in OneQuery but does not support SQL query execution in v1`;
+      ? `source "${input.sourceName}" is "${input.status}" and does not expose the query interface`
+      : `source "${input.sourceName}" uses provider "${input.provider}", which is visible in OneQuery but does not expose the query interface`;
 
   return createCliServiceFailure({
     detail,
-    key: "SOURCE_NOT_QUERYABLE",
+    key: "SOURCE_QUERY_INTERFACE_MISSING",
     resource: {
       description: detail,
       name: input.sourceName,

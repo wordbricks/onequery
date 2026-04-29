@@ -82,10 +82,11 @@ const supervisorSession = openSupervisorRuntimeSession({
     if (modeSet.has("ignore-graceful-stop")) {
       if (modeSet.has("exit-on-sigterm")) {
         // COMMENT: Bun did not reliably run the SIGTERM handler while this fixture
-        // was awaiting an intentionally pending graceful stop; delay the exit so
-        // the supervisor observes the terminate phase.
+        // was awaiting an intentionally pending graceful stop. Force the fixture
+        // process out after the supervisor has time to observe the terminate phase;
+        // graceful session cleanup can outlive the test terminate deadline.
         await new Promise((resolve) => setTimeout(resolve, 250));
-        exitSoon(0);
+        forceExitSoon(0);
       }
       return new Promise<never>(() => undefined);
     }
@@ -134,11 +135,21 @@ function exitSoon(code: number): void {
   }, 25);
 }
 
+function forceExitSoon(code: number): void {
+  if (exiting) {
+    return;
+  }
+  exiting = true;
+  setTimeout(() => {
+    process.exit(code);
+  }, 25);
+}
+
 if (modeSet.has("ignore-sigterm")) {
   process.on("SIGTERM", () => undefined);
 } else if (modeSet.has("exit-on-sigterm")) {
   process.on("SIGTERM", () => {
-    exitSoon(0);
+    forceExitSoon(0);
   });
 }
 

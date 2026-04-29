@@ -14,7 +14,7 @@ import {
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
   QueryActionQuerySourceRecordSchema,
-  QueryActionRecordSourceNotQueryableCommandSchema,
+  QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
   QueryActionStartValidateCommandSchema,
 } from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import type { Result as ResultType } from "better-result";
@@ -109,10 +109,10 @@ const commandPayloads = [
     },
   ],
   [
-    "record_source_lookup/not_queryable",
-    "record_source_not_queryable",
+    "record_source_lookup/query_interface_missing",
+    "record_source_query_interface_missing",
     {
-      kind: "not_queryable",
+      kind: "query_interface_missing",
       provider: "postgres",
       sourceStatus: "disconnected",
       type: "record_source_lookup",
@@ -244,11 +244,11 @@ const eventPayloads = [
     },
   ],
   [
-    "source_not_queryable",
+    "source_query_interface_missing",
     {
       provider: "postgres",
       sourceStatus: "error",
-      type: "source_not_queryable",
+      type: "source_query_interface_missing",
     },
   ],
   [
@@ -682,11 +682,14 @@ describe("query action protobuf codec", () => {
         QueryActionCommandPayloadSchema,
         create(QueryActionCommandPayloadSchema, {
           command: {
-            case: "recordSourceNotQueryable",
-            value: create(QueryActionRecordSourceNotQueryableCommandSchema, {
-              provider: WorkflowSourceProvider.POSTGRES,
-              sourceStatus: WorkflowDataSourceStatus.UNSPECIFIED,
-            }),
+            case: "recordSourceQueryInterfaceMissing",
+            value: create(
+              QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
+              {
+                provider: WorkflowSourceProvider.POSTGRES,
+                sourceStatus: WorkflowDataSourceStatus.UNSPECIFIED,
+              }
+            ),
           },
         })
       )
@@ -695,11 +698,11 @@ describe("query action protobuf codec", () => {
     const error = expectCorruptRow(
       decodeQueryActionCommandPayload(
         bytes,
-        decodeContext("record_source_not_queryable")
+        decodeContext("record_source_query_interface_missing")
       ),
       {
         entity: "query_action_command_payload",
-        payloadType: "record_source_not_queryable",
+        payloadType: "record_source_query_interface_missing",
       }
     );
 

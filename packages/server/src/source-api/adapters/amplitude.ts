@@ -32,8 +32,8 @@ import type {
 } from "../types";
 
 const AMPLITUDE_API_BASE_URLS = {
-  eu: "https://analytics.eu.amplitude.com",
-  us: "https://amplitude.com",
+  eu: "https://analytics.eu.amplitude.com/api",
+  us: "https://amplitude.com/api",
 } as const;
 const AMPLITUDE_DESCRIPTOR_VERSION = "amplitude.v1";
 const AMPLITUDE_ALLOWED_METHODS = ["DELETE", "GET", "POST", "PUT"] as const;
@@ -216,8 +216,12 @@ export function buildAmplitudeUrl(input: {
   endpoint: string;
   params?: Record<string, unknown>;
 }): string {
+  const endpointPath = normalizeAmplitudeSelector(input.endpoint).replace(
+    /^\/+/,
+    ""
+  );
   const url = new URL(
-    normalizeAmplitudeSelector(input.endpoint),
+    endpointPath,
     `${AMPLITUDE_API_BASE_URLS[input.credentials.region]}/`
   );
 
@@ -235,7 +239,7 @@ export function buildAmplitudeUrl(input: {
 function buildAmplitudeExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery api --source ${sourceKey} /2/events/segmentation -f 'params[e]=[{"event_type":"Signup"}]' -f params[start]=2026-03-01 -f params[end]=2026-03-07`,
+      command: `onequery api --source ${sourceKey} /2/events/segmentation -f 'params[e]={"event_type":"Signup"}' -f params[start]=20260301 -f params[end]=20260307 -f params[m]=totals`,
       description:
         "Run an Amplitude segmentation request against the connected source.",
       label: "Fetch event segmentation",

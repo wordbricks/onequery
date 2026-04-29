@@ -48,6 +48,10 @@ import type {
   StoredAcceptedSourceApiActionResultCommand,
 } from "./workflow-types";
 
+export const SOURCE_API_ACTION_DETAIL_MAX_LENGTH = 16_384;
+
+const SOURCE_API_ACTION_DETAIL_TRUNCATED_SUFFIX = " [truncated]";
+
 export async function dispatchStoredSourceApiActionEffect<
   EffectType extends SourceApiActionEffect["type"],
   TResult,
@@ -93,9 +97,13 @@ export async function storeAcceptedSourceApiActionCommand(
     db: Database;
   }
 ): Promise<StoredAcceptedSourceApiActionDecision> {
+  const commandPayload = normalizeSourceApiActionCommandPayloadForStorage(
+    input.commandPayload
+  );
   const stored = await storeSourceApiActionCommand({
     command: {
       ...input,
+      commandPayload,
       family: "source_api_action",
       observedAt: new Date(),
     },
@@ -116,6 +124,55 @@ export async function storeAcceptedSourceApiActionCommand(
   }
 
   return stored.value;
+}
+
+export function normalizeSourceApiActionCommandPayloadForStorage(
+  payload: SourceApiActionCommandPayload
+): SourceApiActionCommandPayload {
+  switch (payload.type) {
+    case "record_descriptor_resolution":
+    case "record_request_preparation":
+      if (payload.kind !== "failed") {
+        return payload;
+      }
+      return withStoredDetailCap(payload);
+    case "record_page_fetch":
+      if (payload.kind !== "terminal_failure") {
+        return payload;
+      }
+      return withStoredDetailCap(payload);
+    default:
+      return payload;
+  }
+}
+
+function withStoredDetailCap<TPayload extends { detail: string }>(
+  payload: TPayload
+): TPayload {
+  const detail = truncateSourceApiActionDetail(payload.detail);
+  if (detail === payload.detail) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    detail,
+  };
+}
+
+function truncateSourceApiActionDetail(detail: string): string {
+  const characters = Array.from(detail);
+  if (characters.length <= SOURCE_API_ACTION_DETAIL_MAX_LENGTH) {
+    return detail;
+  }
+
+  return `${characters
+    .slice(
+      0,
+      SOURCE_API_ACTION_DETAIL_MAX_LENGTH -
+        SOURCE_API_ACTION_DETAIL_TRUNCATED_SUFFIX.length
+    )
+    .join("")}${SOURCE_API_ACTION_DETAIL_TRUNCATED_SUFFIX}`;
 }
 
 export async function loadPreparedSourceConnection(input: {

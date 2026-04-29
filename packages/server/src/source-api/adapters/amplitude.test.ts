@@ -2,17 +2,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
-import { amplitudeSourceApiAdapter } from "./amplitude";
+import { amplitudeSourceApiAdapter, buildAmplitudeUrl } from "./amplitude";
 
 const originalFetch = globalThis.fetch;
 
+const amplitudeCredentials = {
+  apiKey: "amp-api-key",
+  region: "us",
+  secretKey: "amp-secret-key",
+  type: "amplitude",
+} as const;
+
 const source: PreparedSourceConnection = {
-  credentials: {
-    apiKey: "amp-api-key",
-    region: "us",
-    secretKey: "amp-secret-key",
-    type: "amplitude",
-  },
+  credentials: amplitudeCredentials,
   displayName: "Amplitude Prod",
   id: "source_1",
   provider: "amplitude",
@@ -38,6 +40,13 @@ describe("amplitude source api adapter", () => {
     });
 
     expect(descriptor.defaultPathOperation).toBe("fetch_api");
+    expect(descriptor.examples[0]?.command).toContain(
+      `-f 'params[e]={"event_type":"Signup"}'`
+    );
+    expect(descriptor.examples[0]?.command).toContain(
+      "-f params[start]=20260301"
+    );
+    expect(descriptor.examples[0]?.command).not.toContain("params[e]=[");
     expect(descriptor).toMatchSnapshot();
   });
 
@@ -120,7 +129,7 @@ describe("amplitude source api adapter", () => {
         selector: "/2/events/segmentation",
         sourceId: "source_1",
         sourceKey: "amplitude-prod",
-        url: "https://amplitude.com/2/events/segmentation?start=2026-03-01",
+        url: "https://amplitude.com/api/2/events/segmentation?start=2026-03-01",
       },
       source,
     });
@@ -129,10 +138,19 @@ describe("amplitude source api adapter", () => {
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(calledUrl)).toBe(
-      "https://amplitude.com/2/events/segmentation?start=2026-03-01"
+      "https://amplitude.com/api/2/events/segmentation?start=2026-03-01"
     );
     expect(calledInit?.headers).toMatchObject({
       Accept: "application/json",
     });
+  });
+
+  it("does not rewrite selectors that include the Amplitude API mount", () => {
+    expect(
+      buildAmplitudeUrl({
+        credentials: amplitudeCredentials,
+        endpoint: "/api/2/events/segmentation",
+      })
+    ).toBe("https://amplitude.com/api/api/2/events/segmentation");
   });
 });

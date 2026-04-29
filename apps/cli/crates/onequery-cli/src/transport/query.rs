@@ -549,8 +549,8 @@ mod tests {
             "source": {
                 "sourceKey": "warehouse",
                 "provider": "postgres",
-                "queryable": true,
-                "status": "active"
+                "status": "active",
+                "interfaces": ["query"]
             },
             "columns": [
                 {"name": "value", "logicalType": "number"}
@@ -575,8 +575,8 @@ mod tests {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
-                    queryable: true,
                     status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
                 },
                 row_count: 1,
                 elapsed_ms: 25,
@@ -615,8 +615,8 @@ mod tests {
             "source": {
                 "sourceKey": "warehouse",
                 "provider": "postgres",
-                "queryable": true,
-                "status": "active"
+                "status": "active",
+                "interfaces": ["query"]
             },
             "sqlNormalized": false
         });
@@ -645,8 +645,8 @@ mod tests {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
-                    queryable: true,
                     status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
                 },
                 sql_normalized: false,
             }
@@ -715,10 +715,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 row_count: Some(1),
@@ -758,8 +756,8 @@ mod tests {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
-                    queryable: true,
                     status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
                 },
                 row_count: 1,
                 elapsed_ms: 25,
@@ -789,10 +787,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 row_count: Some(1),
@@ -847,10 +843,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 sql_normalized: Some(false),
@@ -881,8 +875,8 @@ mod tests {
                     source_key: "warehouse".to_owned(),
                     display_name: None,
                     provider: "postgres".to_owned(),
-                    queryable: true,
                     status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
                 },
                 sql_normalized: false,
             }
@@ -928,10 +922,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 row_count: Some(1),
@@ -958,10 +950,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 row_count: Some(1),
@@ -1036,10 +1026,8 @@ mod tests {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
                     provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
-                    query_support: Some(
-                        super::types::SourceQuerySupport::SOURCE_QUERY_SUPPORT_SUPPORTED.into(),
-                    ),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                    interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
                 }),
                 ..Default::default()

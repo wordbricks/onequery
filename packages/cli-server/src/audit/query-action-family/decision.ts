@@ -135,14 +135,14 @@ export function decideQueryAction(
               ],
             })
           );
-        case "not_queryable":
+        case "query_interface_missing":
           return okQueryDecision(
             acceptWorkflowDecision({
               events: [
                 {
                   provider: command.commandPayload.provider,
                   sourceStatus: command.commandPayload.sourceStatus,
-                  type: "source_not_queryable",
+                  type: "source_query_interface_missing",
                 },
               ],
             })

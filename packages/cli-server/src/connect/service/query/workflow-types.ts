@@ -73,12 +73,12 @@ export type DispatchedQueryActionEffect<
   result: TResult;
 };
 
-export type QueryableSourceLoadedResult = {
-  kind: "queryable_source_loaded";
+export type SourceQueryInterfaceLoadedResult = {
+  kind: "source_query_interface_loaded";
 };
 
 export type QuerySourceLookupResult =
-  | QueryableSourceLoadedResult
+  | SourceQueryInterfaceLoadedResult
   | {
       kind: "source_not_found";
       orgSlug: string;
@@ -86,7 +86,7 @@ export type QuerySourceLookupResult =
       sourceName: string;
     }
   | {
-      kind: "source_not_queryable";
+      kind: "source_query_interface_missing";
       provider: ProviderType;
       requestId: string;
       sourceName: string;

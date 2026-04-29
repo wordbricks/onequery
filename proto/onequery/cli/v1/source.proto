@@ -55,10 +55,11 @@ message CliSource {
     (buf.validate.field).enum.not_in = 0,
     (buf.validate.field).enum.defined_only = true
   ];
-  SourceQuerySupport query_support = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+  repeated SourceInterface interfaces = 4 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items.enum.not_in = 0,
+    (buf.validate.field).repeated.items.enum.defined_only = true
   ];
   SourceStatus status = 5 [
     (buf.validate.field).required = true,
@@ -670,10 +671,10 @@ enum SourceStatus {
   SOURCE_STATUS_DISCONNECTED = 3;
 }
 
-enum SourceQuerySupport {
-  SOURCE_QUERY_SUPPORT_UNSPECIFIED = 0;
-  SOURCE_QUERY_SUPPORT_NOT_SUPPORTED = 1;
-  SOURCE_QUERY_SUPPORT_SUPPORTED = 2;
+enum SourceInterface {
+  SOURCE_INTERFACE_UNSPECIFIED = 0;
+  SOURCE_INTERFACE_QUERY = 1;
+  SOURCE_INTERFACE_API = 2;
 }
 
 enum SourceTestUnsupportedReason {

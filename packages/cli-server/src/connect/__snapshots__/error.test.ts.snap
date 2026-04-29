@@ -558,7 +558,7 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
     "resourceInfo": [],
     "retryInfo": [],
   },
-  "SOURCE_NOT_QUERYABLE": {
+  "SOURCE_QUERY_INTERFACE_MISSING": {
     "badRequest": [],
     "code": "InvalidArgument",
     "errorInfo": [
@@ -568,11 +568,11 @@ exports[`connect error helpers > projects every canonical CLI problem into a Con
           "problemStage": "resolve_source",
           "retryable": "false",
         },
-        "reason": "SOURCE_NOT_QUERYABLE",
+        "reason": "SOURCE_QUERY_INTERFACE_MISSING",
       },
     ],
     "metadata": {},
-    "rawMessage": "SOURCE_NOT_QUERYABLE",
+    "rawMessage": "SOURCE_QUERY_INTERFACE_MISSING",
     "resourceInfo": [],
     "retryInfo": [],
   },
