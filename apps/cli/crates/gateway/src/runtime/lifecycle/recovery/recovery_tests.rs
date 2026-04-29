@@ -289,9 +289,9 @@ fn durable_recovery_precedence_matches_contract_order() {
     assert_eq!(
         DURABLE_RECOVERY_PRECEDENCE,
         [
-            DurableRecoveryStep::SupervisorTerminalRecord,
             DurableRecoveryStep::RuntimeStatusSnapshot,
             DurableRecoveryStep::RuntimeLeaseRecord,
+            DurableRecoveryStep::SupervisorTerminalRecord,
         ]
     );
 }
@@ -533,7 +533,7 @@ fn read_managed_runtime_pid_records_corrupt_runtime_status_snapshot_and_fails_re
 }
 
 #[test]
-fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_fails_recovery() {
+fn read_managed_runtime_pid_uses_live_lease_before_corrupt_supervisor_status_snapshot() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -544,6 +544,20 @@ fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_fails
         runtime_lease_json(&paths, pid, "launch-a"),
     )
     .unwrap_or_else(|error| panic!("expected lease write: {error}"));
+
+    assert_eq!(
+        read_managed_runtime_pid(&paths, "onequery gateway status")
+            .unwrap_or_else(|error| panic!("expected pid read: {error}")),
+        Some(pid)
+    );
+}
+
+#[test]
+fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_fails_recovery() {
+    let (_temp_dir, paths) = test_paths();
+
+    fs::write(&paths.supervisor_status_snapshot_path, "{\"status\":")
+        .unwrap_or_else(|error| panic!("expected malformed supervisor snapshot write: {error}"));
 
     let error = read_managed_runtime_pid(&paths, "onequery gateway status")
         .expect_err("expected corrupt supervisor status snapshot to fail recovery");
@@ -709,7 +723,7 @@ fn read_active_supervisor_identity_rejects_mismatched_supervisor_generation() {
 }
 
 #[test]
-fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_runtime_status_snapshot() {
+fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_supervisor_terminal_record() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -738,7 +752,7 @@ fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_runtime_stat
     assert_eq!(
         read_managed_runtime_pid(&paths, "onequery gateway status")
             .unwrap_or_else(|error| panic!("expected pid read: {error}")),
-        None
+        Some(pid)
     );
 }
 
@@ -917,7 +931,7 @@ fn read_managed_runtime_pid_ignores_invalid_terminal_supervisor_snapshot() {
 }
 
 #[test]
-fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_live_lease() {
+fn read_managed_runtime_pid_prefers_live_lease_over_supervisor_terminal_record() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -940,6 +954,6 @@ fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_live_lease()
     assert_eq!(
         read_managed_runtime_pid(&paths, "onequery gateway status")
             .unwrap_or_else(|error| panic!("expected pid read: {error}")),
-        None
+        Some(pid)
     );
 }

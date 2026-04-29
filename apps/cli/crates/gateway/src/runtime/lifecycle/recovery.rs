@@ -26,9 +26,11 @@ enum DurableRecoveryStep {
 }
 
 const DURABLE_RECOVERY_PRECEDENCE: [DurableRecoveryStep; 3] = [
-    DurableRecoveryStep::SupervisorTerminalRecord,
     DurableRecoveryStep::RuntimeStatusSnapshot,
     DurableRecoveryStep::RuntimeLeaseRecord,
+    // Terminal supervisor snapshots can be older than active runtime artifacts
+    // when lifecycle writes are reordered, so they are only authoritative last.
+    DurableRecoveryStep::SupervisorTerminalRecord,
 ];
 
 #[derive(Debug, Clone, Eq, PartialEq)]
