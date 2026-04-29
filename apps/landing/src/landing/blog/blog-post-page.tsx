@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 
 import { SiteFooter, SiteHeader } from "./blog-page";
 import { blogPosts } from "./blog-posts";
-import type { BlogPost } from "./blog-posts";
+import type { BlogPost, BlogPostSection } from "./blog-posts";
 
-function getPostSections(post: BlogPost) {
+function getPostSections(post: BlogPost): BlogPostSection[] {
   if (post.sections) {
     return post.sections;
   }
@@ -12,12 +12,12 @@ function getPostSections(post: BlogPost) {
   return [
     {
       id: "why-it-matters",
-      paragraphs: [post.body[0]],
+      paragraphs: [post.body[0] ?? ""],
       title: "Why it matters",
     },
     {
       id: "how-it-works",
-      paragraphs: [post.body[1]],
+      paragraphs: [post.body[1] ?? ""],
       title: "How it works",
     },
     {
@@ -89,6 +89,14 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
                   {section.paragraphs.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
+                  {section.imageSrc ? (
+                    <figure className="blog-post-figure">
+                      <img
+                        src={section.imageSrc}
+                        alt={section.imageAlt ?? ""}
+                      />
+                    </figure>
+                  ) : null}
                 </section>
               ))}
             </div>
