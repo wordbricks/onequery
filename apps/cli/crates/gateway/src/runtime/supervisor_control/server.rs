@@ -26,10 +26,14 @@ use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTE
 
 type SupervisorControlServerResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct SocketFileIdentity {
     dev: u64,
     ino: u64,
+    mtime: i64,
+    mtime_nsec: i64,
+    ctime: i64,
+    ctime_nsec: i64,
 }
 
 pub(super) fn connect_service(
@@ -309,13 +313,22 @@ fn is_socket_file(_metadata: &std::fs::Metadata) -> bool {
 
 #[cfg(unix)]
 async fn socket_file_identity(socket_path: &Path) -> io::Result<SocketFileIdentity> {
+    let metadata = tokio::fs::symlink_metadata(socket_path).await?;
+    Ok(socket_file_identity_from_metadata(&metadata))
+}
+
+#[cfg(unix)]
+fn socket_file_identity_from_metadata(metadata: &std::fs::Metadata) -> SocketFileIdentity {
     use std::os::unix::fs::MetadataExt;
 
-    let metadata = tokio::fs::symlink_metadata(socket_path).await?;
-    Ok(SocketFileIdentity {
+    SocketFileIdentity {
         dev: metadata.dev(),
         ino: metadata.ino(),
-    })
+        mtime: metadata.mtime(),
+        mtime_nsec: metadata.mtime_nsec(),
+        ctime: metadata.ctime(),
+        ctime_nsec: metadata.ctime_nsec(),
+    }
 }
 
 #[cfg(not(unix))]
@@ -331,14 +344,12 @@ async fn remove_socket_file_if_matches(
     socket_path: &Path,
     expected: SocketFileIdentity,
 ) -> io::Result<()> {
-    use std::os::unix::fs::MetadataExt;
-
     let metadata = match tokio::fs::symlink_metadata(socket_path).await {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
         Err(error) => return Err(error),
     };
-    if metadata.dev() != expected.dev || metadata.ino() != expected.ino {
+    if socket_file_identity_from_metadata(&metadata) != expected {
         tracing::debug!(
             socket_path = %socket_path.display(),
             "skipping supervisor control socket cleanup because path was rebound"
@@ -475,6 +486,8 @@ mod tests {
         remove_socket_file(socket_path.as_path()).await.unwrap();
 
         let new_listener = UnixListener::bind(socket_path.as_path()).unwrap();
+        let rebound_socket_file = socket_file_identity(socket_path.as_path()).await.unwrap();
+        assert_ne!(rebound_socket_file, old_socket_file);
 
         remove_socket_file_if_matches(socket_path.as_path(), old_socket_file)
             .await
