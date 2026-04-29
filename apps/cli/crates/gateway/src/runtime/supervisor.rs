@@ -539,8 +539,11 @@ mod tests {
 
     use super::super::lifecycle_records;
     use super::*;
+    use crate::runtime::supervisor_effects::SupervisorTimeouts;
+    use crate::runtime::supervisor_effects::SupervisorTimers;
     use crate::runtime::supervisor_monitor::SupervisorStopSignalSource;
     use crate::runtime::supervisor_monitor::monitor_supervised_runtime_with_stop_signal;
+    use crate::runtime::supervisor_monitor::monitor_supervised_runtime_with_timers;
     use crate::self_host::SelfHostConfig;
     use crate::self_host::SelfHostRuntimePaths;
 
@@ -590,7 +593,15 @@ mod tests {
 
     #[tokio::test]
     async fn stop_monitor_hard_kills_runtime_that_ignores_graceful_stop_and_sigterm() {
-        let result = run_stop_escalation_fixture(&["ignore-graceful-stop", "ignore-sigterm"]).await;
+        // COMMENT: This fixture uses a real Bun child process. After SIGKILL,
+        // CI can be slow to schedule the supervisor back onto the CPU to reap
+        // the child, so this test gets a realistic hard-kill observation window
+        // without slowing the other stop-escalation cases.
+        let result = run_stop_escalation_fixture_with_kill_timeout(
+            &["ignore-graceful-stop", "ignore-sigterm"],
+            Duration::from_secs(1),
+        )
+        .await;
 
         assert_eq!(result.exit_kind, SupervisorChildExitKind::Expected);
         assert_eq!(
@@ -855,6 +866,13 @@ mod tests {
     }
 
     async fn run_stop_escalation_fixture(modes: &[&str]) -> StopEscalationResult {
+        run_stop_escalation_fixture_with_kill_timeout(modes, Duration::from_millis(150)).await
+    }
+
+    async fn run_stop_escalation_fixture_with_kill_timeout(
+        modes: &[&str],
+        kill_timeout: Duration,
+    ) -> StopEscalationResult {
         let fixture = SupervisorFixture::new();
         let state = fixture.state();
         let supervisor = supervisor_identity(std::process::id(), 1);
@@ -927,11 +945,15 @@ mod tests {
         }
 
         let mut stop_signal = ImmediateStopSignal::default();
-        let exit = monitor_supervised_runtime_with_stop_signal(
+        let timers = SupervisorTimers::with_timeouts(
+            SupervisorTimeouts::default().with_kill_timeout(kill_timeout),
+        );
+        let exit = monitor_supervised_runtime_with_timers(
             runtime_context,
             &mut child,
             machine,
             &mut stop_signal,
+            timers,
         )
         .await
         .unwrap_or_else(|error| panic!("expected supervised runtime stop: {error}"));
