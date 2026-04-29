@@ -1,11 +1,21 @@
 import { create, fromJson, toBinary } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { durationFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
-import { auditListResponseSchema } from "@onequery/contracts/audit";
+import { auditListResponseSchema } from "@onequery/audit-contracts/audit";
+import {
+  auditFeedEntries,
+  auditProjectionCheckpoints,
+  createDb,
+  queryActionEvents,
+  queryActions,
+  sourceApiActionEvents,
+  sourceApiActions,
+  workflowCommands,
+} from "@onequery/db/server";
 import {
   WorkflowDataSourceStatus,
   WorkflowSourceProvider,
-} from "@onequery/contracts/workflow/v1/common_pb";
+} from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionCredentialsLoadedEventSchema,
@@ -28,7 +38,7 @@ import {
   QueryActionQueryPreparationFailedEventSchema,
   QueryActionStartExecuteCommandSchema,
   QueryActionStartValidateCommandSchema,
-} from "@onequery/contracts/workflow/v1/query_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import {
   SourceApiActionCommandPayloadSchema,
   SourceApiActionDescriptorSchema,
@@ -52,17 +62,7 @@ import {
   SourceApiActionSourceDescriptorSchema,
   SourceApiActionSourceLoadedEventSchema,
   SourceApiActionStartInvokeCommandSchema,
-} from "@onequery/contracts/workflow/v1/source_api_action_pb";
-import {
-  auditFeedEntries,
-  auditProjectionCheckpoints,
-  createDb,
-  queryActionEvents,
-  queryActions,
-  sourceApiActionEvents,
-  sourceApiActions,
-  workflowCommands,
-} from "@onequery/db/server";
+} from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import { describe, expect, it } from "vitest";
 
 import {

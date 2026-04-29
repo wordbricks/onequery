@@ -2,8 +2,8 @@ use serde_json::Map;
 use serde_json::Value;
 
 use super::CommandContext;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 pub(super) fn parse_org_scoped_json_input(
     raw_input: &str,

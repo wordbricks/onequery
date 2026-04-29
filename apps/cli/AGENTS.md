@@ -59,7 +59,7 @@ When output changes intentionally, update the snapshots as follows:
 - Review changes by reading the generated `*.snap.new` files directly in the repo, or preview a specific file:
   - `cargo insta show path/to/file.snap.new`
 - Only if you intend to accept all new snapshots in this crate, run:
-  - `cargo insta accept>`
+  - `cargo insta accept`
 
 If you do not have the tool:
 
@@ -70,3 +70,7 @@ If you do not have the tool:
 - Tests should use `pretty_assertions::assert_eq` for clearer diffs. Import this at the top of the test module if it isn't already.
 - Prefer deep equals comparisons whenever possible. Perform `assert_eq!()` on entire objects, rather than individual fields.
 - Avoid mutating process environment in tests; prefer passing environment-derived flags or dependencies from above.
+
+### Spawning workspace binaries in tests
+
+- Prefer `onequery_utils_cargo_bin::cargo_bin("...")` over `assert_cmd::Command::cargo_bin(...)` or `escargot` when tests need to spawn first-party binaries.

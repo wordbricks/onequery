@@ -1,12 +1,19 @@
+use std::ffi::OsString;
 use std::num::NonZeroU64;
+use std::path::PathBuf;
 
 use clap::Args;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use clap::ValueHint;
 use onequery_config::parse_cli_overrides;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS;
+use onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS;
+use onequery_gateway::GatewayCommand;
 
 use crate::config::RawCliConfigOverrides;
 use crate::identifiers::OrgSlug;
@@ -213,6 +220,9 @@ pub(crate) enum Command {
     Gateway(GatewayArgs),
     /// Upgrade this published CLI installation in place.
     Upgrade,
+    /// Internal process supervisor for the managed gateway.
+    #[command(name = "__gateway-supervisor", hide = true)]
+    GatewaySupervisor(GatewaySupervisorArgs),
     /// Describe or execute a connected source API.
     #[command(override_usage = "\
 onequery api [OPTIONS] --source <SOURCE_KEY>
@@ -256,6 +266,7 @@ impl Command {
             Self::Restore(_) => "restore",
             Self::Gateway(args) => args.command_path(),
             Self::Upgrade => "upgrade",
+            Self::GatewaySupervisor(_) => "__gateway-supervisor",
             Self::Api(_) => "api",
             Self::Explain(_) => "explain",
             Self::Doctor(DoctorSubcommand::Report(_)) => "doctor report",
@@ -383,13 +394,44 @@ impl GatewayArgs {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum GatewayCommand {
-    Foreground,
-    Start,
-    Stop,
-    Status,
-    Logs,
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct GatewaySupervisorArgs {
+    /// JavaScript runtime command used to launch the packaged server.
+    #[arg(
+        long,
+        value_name = "COMMAND",
+        allow_hyphen_values = true,
+        value_hint = ValueHint::CommandName
+    )]
+    pub(crate) runtime_command: OsString,
+    /// Packaged server entrypoint path.
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    pub(crate) runtime_entry: PathBuf,
+    /// Runtime launch config path prepared by `onequery gateway start`.
+    #[arg(long, value_name = "PATH", value_hint = ValueHint::FilePath)]
+    pub(crate) launch_config: PathBuf,
+    /// Maximum unexpected-exit restarts before terminal failed.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS, value_name = "COUNT")]
+    pub(crate) crash_loop_max_restarts: u32,
+    /// Initial bounded restart backoff in milliseconds.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS, value_name = "MILLISECONDS")]
+    pub(crate) crash_loop_initial_backoff_ms: u64,
+    /// Maximum bounded restart backoff in milliseconds.
+    #[arg(long, default_value_t = DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS, value_name = "MILLISECONDS")]
+    pub(crate) crash_loop_max_backoff_ms: u64,
+}
+
+impl GatewaySupervisorArgs {
+    pub(crate) fn into_gateway_args(self) -> onequery_gateway::GatewaySupervisorArgs {
+        onequery_gateway::GatewaySupervisorArgs {
+            runtime_command: self.runtime_command,
+            runtime_entry: self.runtime_entry,
+            launch_config: self.launch_config,
+            crash_loop_max_restarts: self.crash_loop_max_restarts,
+            crash_loop_initial_backoff_ms: self.crash_loop_initial_backoff_ms,
+            crash_loop_max_backoff_ms: self.crash_loop_max_backoff_ms,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Subcommand, Eq, PartialEq)]

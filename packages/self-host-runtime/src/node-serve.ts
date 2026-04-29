@@ -195,11 +195,11 @@ async function stopNodeServerResult(
       });
 
       if (closeActiveConnections) {
-        if ("closeAllConnections" in server) {
-          server.closeAllConnections?.();
-        }
         if ("closeIdleConnections" in server) {
           server.closeIdleConnections?.();
+        }
+        if ("closeAllConnections" in server) {
+          server.closeAllConnections?.();
         }
       }
     },

@@ -3,6 +3,6 @@ source: crates/onequery-cli/src/output.rs
 expression: rendered
 ---
 Error: failed to resolve config directory
-Why: XDG_CONFIG_HOME points to /Users/alice/.config-missing, but that path does not exist
+Why: ONEQUERY_HOME points to /Users/alice/.onequery-missing, but that path does not exist
 Try:
-  - set XDG_CONFIG_HOME or HOME to a valid directory
+  - set ONEQUERY_HOME to a valid directory

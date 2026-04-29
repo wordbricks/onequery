@@ -1,5 +1,5 @@
 use buffa::EnumValue;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -439,7 +439,7 @@ fn source_test_unsupported_reason_to_str(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 

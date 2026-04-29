@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use clap::CommandFactory;
 use insta::assert_snapshot;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 use pretty_assertions::assert_eq;
 use toml::Value as TomlValue;
 
@@ -478,14 +478,16 @@ fn parse_invocation_rejects_doctor_report_last_and_request_id_together() {
 }
 
 #[test]
-fn parse_invocation_accepts_gateway_foreground_start_and_status_subcommands() {
+fn parse_invocation_accepts_gateway_foreground_and_lifecycle_subcommands() {
     for (args, expected) in [
         (&["onequery", "gateway"][..], GatewayCommand::Foreground),
         (&["onequery", "gateway", "start"][..], GatewayCommand::Start),
+        (&["onequery", "gateway", "stop"][..], GatewayCommand::Stop),
         (
             &["onequery", "gateway", "status"][..],
             GatewayCommand::Status,
         ),
+        (&["onequery", "gateway", "logs"][..], GatewayCommand::Logs),
     ] {
         let invocation = parse_invocation(args);
 
@@ -501,6 +503,42 @@ fn parse_invocation_accepts_upgrade_command() {
     let invocation = parse_invocation(&["onequery", "upgrade"]);
 
     assert!(matches!(invocation.command, Command::Upgrade));
+}
+
+#[test]
+fn parse_invocation_accepts_hidden_gateway_supervisor_command() {
+    let invocation = parse_invocation(&[
+        "onequery",
+        "__gateway-supervisor",
+        "--runtime-command",
+        "node",
+        "--runtime-entry",
+        "/tmp/runtime/onequery-server.mjs",
+        "--launch-config",
+        "/tmp/run/launch.json",
+    ]);
+
+    let Command::GatewaySupervisor(args) = invocation.command else {
+        panic!("expected hidden gateway supervisor command");
+    };
+    assert_eq!(args.runtime_command, OsString::from("node"));
+    assert_eq!(
+        args.runtime_entry,
+        PathBuf::from("/tmp/runtime/onequery-server.mjs")
+    );
+    assert_eq!(args.launch_config, PathBuf::from("/tmp/run/launch.json"));
+    assert_eq!(
+        args.crash_loop_max_restarts,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_RESTARTS
+    );
+    assert_eq!(
+        args.crash_loop_initial_backoff_ms,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_INITIAL_BACKOFF_MS
+    );
+    assert_eq!(
+        args.crash_loop_max_backoff_ms,
+        onequery_gateway::DEFAULT_GATEWAY_SUPERVISOR_CRASH_LOOP_MAX_BACKOFF_MS
+    );
 }
 
 #[test]
@@ -626,7 +664,7 @@ fn normalize_command_line_redacts_raw_config_override_values() {
             "org",
             "list",
         ])),
-        "onequery --config api.access_token=<redacted> --config=query.output.format=<redacted> org list"
+        "onequery --config 'api.access_token=<redacted>' '--config=query.output.format=<redacted>' org list"
             .to_owned()
     );
 }

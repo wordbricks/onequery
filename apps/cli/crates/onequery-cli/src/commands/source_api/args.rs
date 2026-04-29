@@ -1,13 +1,13 @@
 use std::io::IsTerminal;
 use std::path::Path;
 
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use tokio::fs;
 use tokio::io::AsyncReadExt;
 
 use crate::cli::ApiArgs;
-use crate::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
 
 use super::CommandContext;
 

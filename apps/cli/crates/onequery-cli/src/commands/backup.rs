@@ -6,16 +6,16 @@ use std::path::Path;
 use chrono::Utc;
 use flate2::Compression;
 use flate2::write::GzEncoder;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use serde_json::json;
 use tar::Builder;
 
 use crate::cli::BackupArgs;
-use crate::config::self_host::SelfHostRuntimePaths;
-use crate::config::self_host::self_host_runtime_paths;
 use crate::output::CommandOutput;
-use crate::path_utils::resolve_user_path_for_cli;
+use onequery_core::cli_paths::resolve_user_path_for_cli;
+use onequery_gateway::self_host::SelfHostRuntimePaths;
+use onequery_gateway::self_host::self_host_runtime_paths;
 
 use super::CommandContext;
 use super::Runtime;
@@ -151,7 +151,7 @@ fn execute_with_paths(
 }
 
 fn ensure_backup_inputs_exist(
-    paths: &crate::config::self_host::SelfHostRuntimePaths,
+    paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
     if !paths.config_path.is_file() {
@@ -171,10 +171,11 @@ fn ensure_backup_inputs_exist(
 }
 
 fn ensure_runtime_not_running(
-    paths: &crate::config::self_host::SelfHostRuntimePaths,
+    paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
-    let Some(pid) = read_pid(paths.pid_path.as_path())? else {
+    let Some(pid) = onequery_gateway::read_running_gateway_pid_from_paths(paths, command_line)?
+    else {
         return Ok(());
     };
 
@@ -261,27 +262,6 @@ fn archive_error(title: &str, command_line: &str, error: impl std::fmt::Display)
     )
 }
 
-fn read_pid(path: &Path) -> Result<Option<u32>, CliError> {
-    let Ok(contents) = fs::read_to_string(path) else {
-        return Ok(None);
-    };
-
-    let trimmed = contents.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-
-    trimmed.parse::<u32>().map(Some).map_err(|error| {
-        CliError::new(
-            "failed to parse runtime pid file",
-            "onequery backup",
-            ErrorStage::LoadConfig,
-            format!("{error} ({})", path.display()),
-            vec!["remove the stale pid file and retry".to_owned()],
-        )
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -298,10 +278,10 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
-    use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
-    use crate::config::self_host::SelfHostRuntimePaths;
-    use crate::config::self_host::default_port;
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
+    use onequery_gateway::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
+    use onequery_gateway::self_host::SelfHostRuntimePaths;
+    use onequery_gateway::self_host::default_port;
 
     #[test]
     fn backup_archives_runtime_files_and_toggles_secrets() {
@@ -315,7 +295,7 @@ mod tests {
         ] {
             let temp_root =
                 std::env::temp_dir().join(format!("{temp_dir_name}-{}", Uuid::new_v4()));
-            let paths = SelfHostRuntimePaths::for_test(
+            let paths = SelfHostRuntimePaths::from_dirs(
                 temp_root.join("config").join("self-host"),
                 temp_root.join("data"),
             );
@@ -366,8 +346,14 @@ mod tests {
                 entries.contains(&"data/backups/old-backup.tar.gz".to_owned()),
                 false
             );
-            assert_eq!(entries.contains(&"data/run/server.pid".to_owned()), false);
-            assert_eq!(entries.contains(&"data/run/server.lock".to_owned()), false);
+            assert_eq!(
+                entries.contains(&"data/run/runtime.status.json".to_owned()),
+                false
+            );
+            assert_eq!(
+                entries.contains(&"data/run/runtime.lease.json".to_owned()),
+                false
+            );
 
             fs::remove_dir_all(temp_root)
                 .unwrap_or_else(|error| panic!("expected backup test temp dir cleanup: {error}"));
@@ -428,10 +414,10 @@ mod tests {
         .unwrap_or_else(|error| panic!("expected runtime file write to succeed: {error}"));
         fs::write(paths.backups_dir.join("old-backup.tar.gz"), "skip")
             .unwrap_or_else(|error| panic!("expected backup fixture write to succeed: {error}"));
-        fs::write(&paths.pid_path, "9999\n")
-            .unwrap_or_else(|error| panic!("expected pid fixture write to succeed: {error}"));
-        fs::write(&paths.lock_path, "{\"pid\":9999}\n")
-            .unwrap_or_else(|error| panic!("expected lock fixture write to succeed: {error}"));
+        fs::write(&paths.runtime_status_snapshot_path, "{}\n")
+            .unwrap_or_else(|error| panic!("expected status fixture write to succeed: {error}"));
+        fs::write(&paths.runtime_lease_path, "{}\n")
+            .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
     }
 
     fn archive_entries(archive_path: &Path) -> Vec<String> {

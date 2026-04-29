@@ -4,14 +4,13 @@ import type {
   DataSourceStatus,
   ProviderType,
 } from "@onequery/db/server";
-
 import {
   CliSourceSchema,
   ConnectSourceResponseSchema,
   GetSourceConnectGuideResponseSchema,
   GetSourceResponseSchema,
   TestSourceResponseSchema,
-} from "../../gen/onequery/cli/v1/source_pb";
+} from "@onequery/proto-cli/cli/v1/source_pb";
 
 export type GetSourceConnectGuideResponseInit = MessageInitShape<
   typeof GetSourceConnectGuideResponseSchema

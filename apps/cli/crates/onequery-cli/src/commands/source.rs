@@ -33,7 +33,7 @@ use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 #[derive(Debug)]
 enum SourceMode {
@@ -774,8 +774,8 @@ fn append_page_lines(lines: &mut Vec<String>, page: &PageInfo, force_render: boo
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::cli::ListReadArgs;

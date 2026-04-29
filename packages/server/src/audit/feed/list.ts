@@ -6,7 +6,7 @@ import {
   auditSourceApiActionMetricsSchema,
   auditSourceApiActionPreviewSchema,
   auditTargetSchema,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type {
   AuditListQuery,
   AuditListResponse,
@@ -19,7 +19,7 @@ import type {
   AuditSourceApiActionEventType,
   AuditSourceApiActionFailureCode,
   AuditSourceApiActionPhase,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import {
   and,
   auditFeedEntries,

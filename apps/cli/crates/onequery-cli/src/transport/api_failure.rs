@@ -1,19 +1,14 @@
-use base64::Engine;
-use buffa::Message;
 use connectrpc::ConnectError;
 use connectrpc::ErrorCode;
 use http::HeaderMap;
-use onequery_cli_core::error::ErrorStage;
+use onequery_connect_support::error_details;
+use onequery_core::error::ErrorStage;
 
 use crate::output_metadata::SanitizationMetadata;
 use crate::transport::generated;
 use crate::transport::generated::types;
 
 const CLI_ERROR_INFO_DOMAIN: &str = "onequery.cli.v1";
-const ERROR_INFO_DETAIL_TYPE: &str = "google.rpc.ErrorInfo";
-const BAD_REQUEST_DETAIL_TYPE: &str = "google.rpc.BadRequest";
-const RETRY_INFO_DETAIL_TYPE: &str = "google.rpc.RetryInfo";
-const RESOURCE_INFO_DETAIL_TYPE: &str = "google.rpc.ResourceInfo";
 const ERROR_INFO_PROBLEM_STAGE_METADATA: &str = "problemStage";
 const ERROR_INFO_RETRYABLE_METADATA: &str = "retryable";
 const REQUEST_ID_HEADER: &str = "x-request-id";
@@ -218,23 +213,26 @@ fn parse_connect_problem_details(
 
     for detail in &error.details {
         match detail.type_url.as_str() {
-            ERROR_INFO_DETAIL_TYPE => {}
-            RETRY_INFO_DETAIL_TYPE => {
-                let retry_info = decode_connect_detail::<generated::google::rpc::RetryInfo>(detail)
-                    .ok_or_else(|| "failed to decode RetryInfo".to_owned())?;
+            error_details::ERROR_INFO_DETAIL_TYPE => {}
+            error_details::RETRY_INFO_DETAIL_TYPE => {
+                let retry_info = error_details::decode_connect_detail::<
+                    generated::google::rpc::RetryInfo,
+                >(detail)
+                .map_err(|_| "failed to decode RetryInfo".to_owned())?;
                 let retry_after_ms = retry_info
                     .retry_delay
                     .into_option()
-                    .and_then(duration_to_ms)
+                    .and_then(error_details::protobuf_duration_to_ms)
                     .ok_or_else(|| "server returned invalid RetryInfo.retry_delay".to_owned())?;
                 if parsed.retry_after_ms.replace(retry_after_ms).is_some() {
                     return Err("server returned duplicate RetryInfo entries".to_owned());
                 }
             }
-            BAD_REQUEST_DETAIL_TYPE => {
-                let bad_request =
-                    decode_connect_detail::<generated::google::rpc::BadRequest>(detail)
-                        .ok_or_else(|| "failed to decode BadRequest".to_owned())?;
+            error_details::BAD_REQUEST_DETAIL_TYPE => {
+                let bad_request = error_details::decode_connect_detail::<
+                    generated::google::rpc::BadRequest,
+                >(detail)
+                .map_err(|_| "failed to decode BadRequest".to_owned())?;
 
                 parsed.validation_issues.extend(
                     bad_request
@@ -244,10 +242,11 @@ fn parse_connect_problem_details(
                         .collect::<Vec<_>>(),
                 );
             }
-            RESOURCE_INFO_DETAIL_TYPE => {
-                let resource_info =
-                    decode_connect_detail::<generated::google::rpc::ResourceInfo>(detail)
-                        .ok_or_else(|| "failed to decode ResourceInfo".to_owned())?;
+            error_details::RESOURCE_INFO_DETAIL_TYPE => {
+                let resource_info = error_details::decode_connect_detail::<
+                    generated::google::rpc::ResourceInfo,
+                >(detail)
+                .map_err(|_| "failed to decode ResourceInfo".to_owned())?;
                 let resource = resource_info_from_generated(resource_info)?;
                 if parsed.resource.replace(resource).is_some() {
                     return Err("server returned duplicate ResourceInfo entries".to_owned());
@@ -261,8 +260,8 @@ fn parse_connect_problem_details(
     let retryable = error_info_retryable(&error_info)?;
     let reason = ApiProblemReason::new(error_info.reason)
         .ok_or_else(|| "server returned ErrorInfo without reason".to_owned())?;
-    let server_message =
-        non_empty(error.message.clone()).unwrap_or_else(|| reason.as_str().to_owned());
+    let server_message = error_details::non_empty(error.message.clone())
+        .unwrap_or_else(|| reason.as_str().to_owned());
 
     Ok(Some(ApiProblem {
         reason,
@@ -282,12 +281,13 @@ fn onequery_error_info(
     let mut onequery_error_info = None;
 
     for detail in &error.details {
-        if detail.type_url.as_str() != ERROR_INFO_DETAIL_TYPE {
+        if detail.type_url.as_str() != error_details::ERROR_INFO_DETAIL_TYPE {
             continue;
         }
 
-        let error_info = decode_connect_detail::<generated::google::rpc::ErrorInfo>(detail)
-            .ok_or_else(|| "failed to decode ErrorInfo".to_owned())?;
+        let error_info =
+            error_details::decode_connect_detail::<generated::google::rpc::ErrorInfo>(detail)
+                .map_err(|_| "failed to decode ErrorInfo".to_owned())?;
         if error_info.domain != CLI_ERROR_INFO_DOMAIN {
             continue;
         }
@@ -325,12 +325,7 @@ fn required_error_info_metadata<'a>(
     error_info: &'a generated::google::rpc::ErrorInfo,
     key: &str,
 ) -> Option<&'a str> {
-    error_info
-        .metadata
-        .get(key)
-        .map(String::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
+    error_details::metadata_value(&error_info.metadata, key)
 }
 
 fn validation_issue_from_generated(
@@ -339,35 +334,24 @@ fn validation_issue_from_generated(
     ApiValidationIssue {
         field: violation.field,
         message: violation.description,
-        code: reason_to_code(violation.reason.as_str()).unwrap_or_else(|| "invalid".to_owned()),
+        code: error_details::reason_to_code(violation.reason.as_str())
+            .unwrap_or_else(|| "invalid".to_owned()),
     }
-}
-
-fn duration_to_ms(duration: buffa_types::google::protobuf::Duration) -> Option<u64> {
-    if duration.seconds < 0 || duration.nanos < 0 {
-        return None;
-    }
-
-    let seconds = u64::try_from(duration.seconds).ok()?;
-    let nanos = u64::try_from(duration.nanos).ok()?;
-    let millis_from_seconds = seconds.checked_mul(1000)?;
-    let millis_from_nanos = nanos / 1_000_000;
-    millis_from_seconds.checked_add(millis_from_nanos)
 }
 
 fn resource_info_from_generated(
     resource_info: generated::google::rpc::ResourceInfo,
 ) -> Result<ApiResourceInfo, String> {
-    let resource_type = non_empty_string(resource_info.resource_type)
+    let resource_type = error_details::non_empty_string(resource_info.resource_type)
         .ok_or_else(|| "server returned ResourceInfo without resource_type".to_owned())?;
-    let resource_name = non_empty_string(resource_info.resource_name)
+    let resource_name = error_details::non_empty_string(resource_info.resource_name)
         .ok_or_else(|| "server returned ResourceInfo without resource_name".to_owned())?;
 
     Ok(ApiResourceInfo {
         resource_type,
         resource_name,
-        owner: non_empty_string(resource_info.owner),
-        description: non_empty_string(resource_info.description),
+        owner: error_details::non_empty_string(resource_info.owner),
+        description: error_details::non_empty_string(resource_info.description),
     })
 }
 
@@ -390,28 +374,6 @@ fn invalid_request_reason_for_stage(stage: ErrorStage) -> &'static str {
     }
 }
 
-fn reason_to_code(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    Some(trimmed.replace('-', "_").to_ascii_lowercase())
-}
-
-fn decode_connect_detail<MessageType>(
-    detail: &connectrpc::error::ErrorDetail,
-) -> Option<MessageType>
-where
-    MessageType: Message,
-{
-    let value = detail.value.as_deref()?;
-    let bytes = base64::engine::general_purpose::STANDARD_NO_PAD
-        .decode(value)
-        .ok()?;
-    MessageType::decode_from_slice(bytes.as_slice()).ok()
-}
-
 fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
     headers
         .get(name)
@@ -419,14 +381,6 @@ fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
-}
-
-fn non_empty(value: Option<String>) -> Option<String> {
-    value.filter(|candidate| !candidate.trim().is_empty())
-}
-
-fn non_empty_string(value: String) -> Option<String> {
-    non_empty(Some(value))
 }
 
 fn connect_transport_retryable(code: ErrorCode) -> bool {
@@ -441,7 +395,8 @@ fn connect_request_id(error: &ConnectError) -> Option<String> {
 }
 
 fn connect_error_message(error: &ConnectError) -> String {
-    non_empty(error.message.clone()).unwrap_or_else(|| error.code.as_str().replace('_', " "))
+    error_details::non_empty(error.message.clone())
+        .unwrap_or_else(|| error.code.as_str().replace('_', " "))
 }
 
 fn untyped_connect_error_message(error: &ConnectError) -> String {
@@ -458,7 +413,7 @@ mod tests {
     use buffa::Message;
     use connectrpc::ConnectError;
     use connectrpc::ErrorCode;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::generated;

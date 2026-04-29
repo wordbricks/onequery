@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 pub(crate) trait WorkflowLabel {
     fn workflow_label(&self) -> &'static str;
@@ -385,7 +385,7 @@ mod tests {
         assert_eq!(
             (error.stage, error.why.clone()),
             (
-                onequery_cli_core::error::ErrorStage::Internal,
+                onequery_core::error::ErrorStage::Internal,
                 "test workflow exceeded max step count (2) without reaching terminal state"
                     .to_owned(),
             )

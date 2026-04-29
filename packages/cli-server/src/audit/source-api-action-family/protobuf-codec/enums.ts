@@ -1,4 +1,6 @@
 import type { ProviderType } from "@onequery/db/server";
+import * as commonPb from "@onequery/proto-workflow/workflow/v1/common_pb";
+import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type {
   SourceApiFieldPolicy,
   SourceApiOperationKind,
@@ -6,8 +8,6 @@ import type {
   SourceApiSelectorKind,
 } from "@onequery/server/source-api";
 
-import * as commonPb from "../../../connect/gen/onequery/workflow/v1/common_pb";
-import * as sourceApiPb from "../../../connect/gen/onequery/workflow/v1/source_api_action_pb";
 import { assertNever } from "../../storage/protobuf-codec";
 import type {
   SourceApiActionInvokeMode,

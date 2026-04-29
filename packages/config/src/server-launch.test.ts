@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { validateServerLaunchConfig } from "./server-launch";
+import {
+  decodeServerLaunchConfigJson,
+  encodeServerLaunchConfigJson,
+  validateServerLaunchConfig,
+  viewServerLaunchConfig,
+} from "./server-launch";
 import {
   createSelfHostLaunchConfig,
-  createSelfHostRuntimePaths,
-  createSelfHostSmtpConfig,
   createWorkspaceDevLaunchConfig,
 } from "./testing";
 
@@ -15,114 +18,42 @@ describe("server launch contract", () => {
     expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
       launchConfig
     );
+    expect(viewServerLaunchConfig(launchConfig, "test").mode).toBe(
+      "workspace-dev"
+    );
   });
 
   it("accepts a self-host launch config sample with runtime-only fields", () => {
-    const launchConfig = createSelfHostLaunchConfig({
-      runtimePaths: createSelfHostRuntimePaths({
-        backupsDir: "/tmp/onequery/data/backups",
-        dataDir: "/tmp/onequery/data",
-        lockPath: "/tmp/onequery/data/run/server.lock",
-        logsDir: "/tmp/onequery/data/logs",
-        pidPath: "/tmp/onequery/data/run/server.pid",
-        runDir: "/tmp/onequery/data/run",
-      }),
-      smtp: createSelfHostSmtpConfig({
-        fromName: "OneQuery OSS",
-        password: "smtp-pass",
-        secure: false,
-        username: "smtp-user",
-      }),
-      storageDir: "/tmp/onequery/data/pglite/onequery",
-    });
+    const launchConfig = createSelfHostLaunchConfig();
 
     expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
       launchConfig
     );
+    expect(viewServerLaunchConfig(launchConfig, "test").mode).toBe("self-host");
   });
 
-  it("rejects unknown keys", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          unexpected: true,
-        },
-        "test"
-      )
-    ).toThrow("unexpected");
+  it("encodes and decodes ProtoJSON using the generated schema", () => {
+    const launchConfig = createWorkspaceDevLaunchConfig();
+    const encoded = encodeServerLaunchConfigJson(launchConfig);
+    const parsed = JSON.parse(encoded);
+
+    expect(parsed).toHaveProperty("workspaceDev");
+    expect(parsed.workspaceDev.common.crypto.masterEncryptionKey).toBe(
+      "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+    );
+    expect(decodeServerLaunchConfigJson(encoded, "test")).toEqual(launchConfig);
   });
 
-  it("rejects missing required keys", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          auth: undefined,
-        },
-        "test"
-      )
-    ).toThrow("auth");
-  });
+  it("requires the Rust-stamped supervisor identity for self-host runtime use", () => {
+    const launchConfig = createSelfHostLaunchConfig();
+    if (launchConfig.profile.case !== "selfHost") {
+      throw new Error("expected self-host launch config");
+    }
 
-  it("rejects wrong scalar types", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          listen: {
-            host: "127.0.0.1",
-            port: "4555",
-          },
-        },
-        "test"
-      )
-    ).toThrow("listen.port");
-  });
+    launchConfig.profile.value.supervisor = undefined;
 
-  it("rejects invalid storage union members", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          storage: {
-            kind: "sqlite",
-            path: "/tmp/onequery.sqlite",
-          },
-        },
-        "test"
-      )
-    ).toThrow("storage.kind");
-  });
-
-  it("requires runtimePaths for persistent rate limiting", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createWorkspaceDevLaunchConfig(),
-          rateLimit: {
-            api: {
-              storage: "persistent",
-            },
-            enabled: true,
-          },
-        },
-        "test"
-      )
-    ).toThrow("runtimePaths");
-  });
-
-  it("rejects master keys that do not decode to exactly 32 bytes", () => {
-    expect(() =>
-      validateServerLaunchConfig(
-        {
-          ...createSelfHostLaunchConfig(),
-          crypto: {
-            masterEncryptionKey: "master",
-          },
-        },
-        "test"
-      )
-    ).toThrow("crypto.masterEncryptionKey");
+    expect(() => validateServerLaunchConfig(launchConfig, "test")).toThrow(
+      "selfHost.supervisor"
+    );
   });
 });

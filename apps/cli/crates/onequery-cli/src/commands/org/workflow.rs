@@ -1,5 +1,5 @@
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 use tokio::time::Duration;
 use tokio::time::sleep;
 

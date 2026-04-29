@@ -1,4 +1,4 @@
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::commands::CommandContext;
 use crate::local_target::managed_gateway_recovery_try_next;
@@ -127,8 +127,8 @@ fn build_missing_auth_try_next(managed_gateway_layer: Option<Vec<String>>) -> Ve
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::output::EffectiveOutputMode;

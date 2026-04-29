@@ -6,7 +6,7 @@ use crate::output::EffectiveOutputMode;
 pub(super) fn normalize_command_line(args: &[OsString]) -> String {
     let mut normalized = vec!["onequery".to_owned()];
     if args.is_empty() {
-        return normalized.join(" ");
+        return "onequery".to_owned();
     }
 
     let mut index = 1;
@@ -67,27 +67,27 @@ pub(super) fn normalize_command_line(args: &[OsString]) -> String {
         index += 1;
     }
 
-    normalized.join(" ")
+    shlex::try_join(normalized.iter().map(String::as_str)).unwrap_or_else(|_| normalized.join(" "))
 }
 
 fn abbreviate_sql_arg(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
-        return "\"<empty>\"".to_owned();
+        return "<empty>".to_owned();
     }
 
     let (excerpt, truncated) = excerpt(trimmed, 48);
     if truncated {
-        format!("\"<excerpt: {excerpt}...>\"")
+        format!("<excerpt: {excerpt}...>")
     } else {
-        format!("\"<excerpt: {excerpt}>\"")
+        format!("<excerpt: {excerpt}>")
     }
 }
 
 fn abbreviate_input_arg(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
-        return "\"<empty>\"".to_owned();
+        return "<empty>".to_owned();
     }
 
     if !(trimmed.starts_with('{') || trimmed.starts_with('[')) && trimmed.len() <= 64 {
@@ -96,9 +96,9 @@ fn abbreviate_input_arg(raw: &str) -> String {
 
     let (excerpt, truncated) = excerpt(trimmed, 48);
     if truncated {
-        format!("\"{excerpt}…\"")
+        format!("{excerpt}…")
     } else {
-        format!("\"{excerpt}\"")
+        excerpt
     }
 }
 
@@ -155,6 +155,7 @@ mod tests {
 
     use crate::output::EffectiveOutputMode;
 
+    use super::normalize_command_line;
     use super::requested_output_mode_from_args;
     use super::requested_verbose_from_args;
 
@@ -167,6 +168,36 @@ mod tests {
         assert_eq!(
             requested_verbose_from_args(&argv(&["onequery", "--verbose", "query", "exec"])),
             true
+        );
+    }
+
+    #[test]
+    fn normalize_command_line_shell_quotes_abbreviated_sql() {
+        assert_eq!(
+            normalize_command_line(&argv(&[
+                "onequery",
+                "query",
+                "exec",
+                "--source",
+                "warehouse",
+                "--sql",
+                "select 1",
+            ])),
+            "onequery query exec --source warehouse --sql '<excerpt: select 1>'"
+        );
+    }
+
+    #[test]
+    fn normalize_command_line_shell_quotes_input_paths() {
+        assert_eq!(
+            normalize_command_line(&argv(&[
+                "onequery",
+                "auth",
+                "import",
+                "--input",
+                "reports/auth session.json",
+            ])),
+            "onequery auth import --input 'reports/auth session.json'"
         );
     }
 

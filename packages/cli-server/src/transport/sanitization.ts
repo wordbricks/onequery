@@ -1,6 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
-
-import type { CliSanitizationSchema } from "../connect/gen/onequery/cli/v1/common_pb";
+import type { CliSanitizationSchema } from "@onequery/proto-cli/cli/v1/common_pb";
 
 type CliSanitizationInit = MessageInitShape<typeof CliSanitizationSchema>;
 

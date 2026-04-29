@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::config::config_dir;
 

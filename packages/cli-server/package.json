@@ -21,6 +21,8 @@
     "@onequery/base": "workspace:*",
     "@onequery/codecs": "workspace:*",
     "@onequery/db": "workspace:*",
+    "@onequery/proto-cli": "workspace:*",
+    "@onequery/proto-workflow": "workspace:*",
     "@onequery/server": "workspace:*",
     "better-result": "catalog:",
     "hono": "catalog:",

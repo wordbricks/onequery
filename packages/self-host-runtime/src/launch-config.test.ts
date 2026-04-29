@@ -2,6 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { encodeServerLaunchConfigJson } from "@onequery/config/server-launch";
 import {
   createSelfHostLaunchConfig,
   createWorkspaceDevLaunchConfig,
@@ -28,7 +29,7 @@ describe("launch config", () => {
       assetsDistDir: assetDir,
     });
 
-    writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
+    writeFileSync(launchConfigPath, encodeServerLaunchConfigJson(launchConfig));
 
     expect(loadLaunchConfigFile(launchConfigPath)).toEqual(launchConfig);
   });
@@ -41,7 +42,7 @@ describe("launch config", () => {
       assetsDistDir: assetDir,
     });
 
-    writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
+    writeFileSync(launchConfigPath, encodeServerLaunchConfigJson(launchConfig));
 
     expect(loadLaunchConfigFile(launchConfigPath)).toEqual(launchConfig);
   });
@@ -61,7 +62,7 @@ describe("launch config", () => {
     writeFileSync(launchConfigPath, "{");
 
     expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
-      "Invalid launch config JSON"
+      "Invalid launch config file"
     );
   });
 
@@ -71,16 +72,26 @@ describe("launch config", () => {
 
     writeFileSync(
       launchConfigPath,
-      JSON.stringify({
-        ...createSelfHostLaunchConfig({
-          assetsDistDir: createTempSpaBuildDir(),
-        }),
-        runtimePaths: undefined,
-      })
+      JSON.stringify(
+        {
+          selfHost: {
+            ...JSON.parse(
+              encodeServerLaunchConfigJson(
+                createSelfHostLaunchConfig({
+                  assetsDistDir: createTempSpaBuildDir(),
+                })
+              )
+            ).selfHost,
+            runtimePaths: undefined,
+          },
+        },
+        null,
+        2
+      )
     );
 
     expect(() => loadLaunchConfigFile(launchConfigPath)).toThrow(
-      "runtimePaths"
+      "self_host.runtime_paths"
     );
   });
 });

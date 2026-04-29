@@ -1,5 +1,5 @@
 use buffa::EnumValue;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -225,7 +225,7 @@ fn org_capability_from_generated(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::api_failure::ApiFailure;

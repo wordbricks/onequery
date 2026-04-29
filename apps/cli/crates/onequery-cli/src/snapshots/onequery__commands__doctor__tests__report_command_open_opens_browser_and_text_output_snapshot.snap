@@ -6,7 +6,7 @@ Created diagnostic report:
   <tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md
 
 Create a GitHub issue with:
-  gh issue create -R wordbricks/onequery --label "bug" --label "cli" --title "[cli] decode_error" --body-file "<tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md"
+  gh issue create -R wordbricks/onequery --label bug --label cli --title '[cli] decode_error' --body-file <tmp>/onequery-data/reports/onequery-report-2026-04-23T03-20-00Z-req_123.md
 
 Opened a GitHub issue draft in your browser.
 Paste the report contents before submitting.

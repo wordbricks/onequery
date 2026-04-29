@@ -1,6 +1,6 @@
 use buffa::EnumValue;
 use buffa::MessageField;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use serde_json::Value as JsonValue;
 
 use crate::transport::api_failure::ApiFailure;
@@ -513,7 +513,7 @@ fn preview_source_api_response_from_generated(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 

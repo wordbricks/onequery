@@ -2,21 +2,8 @@ version: v2
 clean: true
 plugins:
   - local: protoc-gen-es
-    out: packages/cli-server/src/connect/gen
+    out: src
     include_imports: true
-    opt:
-      - target=ts
-      - import_extension=.js
-  - local: protoc-gen-es
-    out: packages/contracts/src/connect/gen
-    include_imports: true
-    types:
-      - onequery.workflow.v1.QueryActionCommandPayload
-      - onequery.workflow.v1.QueryActionEventPayload
-      - onequery.workflow.v1.QueryActionEffectPayload
-      - onequery.workflow.v1.SourceApiActionCommandPayload
-      - onequery.workflow.v1.SourceApiActionEventPayload
-      - onequery.workflow.v1.SourceApiActionEffectPayload
     opt:
       - target=ts
       - import_extension=.js

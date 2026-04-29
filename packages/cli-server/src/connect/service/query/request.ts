@@ -1,8 +1,7 @@
 import { isFieldSet } from "@bufbuild/protobuf";
 import { durationMs } from "@bufbuild/protobuf/wkt";
-
-import { CliQueryRequestSchema } from "../../gen/onequery/cli/v1/query_pb";
-import type { CliQueryRequest } from "../../gen/onequery/cli/v1/query_pb";
+import { CliQueryRequestSchema } from "@onequery/proto-cli/cli/v1/query_pb";
+import type { CliQueryRequest } from "@onequery/proto-cli/cli/v1/query_pb";
 
 export function parseCliQueryRequest(query: CliQueryRequest) {
   // Comment: editions track scalar presence, but Protobuf-ES still exposes the

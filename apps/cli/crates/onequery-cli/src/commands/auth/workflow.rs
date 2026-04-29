@@ -3,7 +3,7 @@ use serde_json::json;
 use crate::output::CommandOutput;
 use crate::workflows::runner::Transition;
 use crate::workflows::runner::WorkflowLabel;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::super::CommandContext;
 use super::AuthEffect;

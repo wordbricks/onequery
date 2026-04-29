@@ -31,6 +31,30 @@ const rules: BoundaryRule[] = [
     sourceDescription: "API proto",
     sourceDir: resolve(protoRoot, "onequery/api/v1"),
   },
+  {
+    forbiddenImport: /^onequery\/(?:cli|workflow)\/v1\//,
+    importDescription: "onequery/cli/v1/** or onequery/workflow/v1/**",
+    sourceDescription: "runtime proto",
+    sourceDir: resolve(protoRoot, "onequery/runtime/v1"),
+  },
+  {
+    forbiddenImport: /^onequery\/runtime\/v1\//,
+    importDescription: "onequery/runtime/v1/**",
+    sourceDescription: "CLI/API proto",
+    sourceDir: resolve(protoRoot, "onequery/cli/v1"),
+  },
+  {
+    forbiddenImport: /^onequery\/runtime\/v1\//,
+    importDescription: "onequery/runtime/v1/**",
+    sourceDescription: "workflow proto",
+    sourceDir: resolve(protoRoot, "onequery/workflow/v1"),
+  },
+  {
+    forbiddenImport: /^onequery\/runtime\/v1\//,
+    importDescription: "onequery/runtime/v1/**",
+    sourceDescription: "API proto",
+    sourceDir: resolve(protoRoot, "onequery/api/v1"),
+  },
 ];
 
 type BoundaryViolation = {

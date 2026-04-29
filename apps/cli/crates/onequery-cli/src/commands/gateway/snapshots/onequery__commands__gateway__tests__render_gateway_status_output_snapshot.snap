@@ -1,8 +1,0 @@
----
-source: crates/onequery-cli/src/commands/gateway/tests.rs
-expression: "output.lines.join(\"\\n\")"
----
-Gateway status
-Bootstrapped: yes
-Listen: 127.0.0.1:5656
-Runtime: not_running

@@ -1,4 +1,4 @@
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::commands::CommandContext;
 use crate::output::CommandOutput;

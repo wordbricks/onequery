@@ -1,16 +1,16 @@
 import { Code, ConnectError } from "@connectrpc/connect";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+  ResourceInfoSchema,
+  RetryInfoSchema,
+} from "@onequery/proto-cli/google/rpc/error_details_pb";
 import { describe, expect, it } from "vitest";
 
 import { CLI_PROBLEM_DEFINITIONS } from "../domain/problems";
 import type { CliProblemDefinition, CliProblemKey } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../request-context";
 import { createCliConnectError, withCliRequestId } from "./error";
-import {
-  BadRequestSchema,
-  ErrorInfoSchema,
-  ResourceInfoSchema,
-  RetryInfoSchema,
-} from "./gen/google/rpc/error_details_pb";
 
 function summarizeConnectError(error: ConnectError) {
   return {

@@ -1,13 +1,13 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
-import { describe, expect, it } from "vitest";
-
 import {
   ConnectSourceAwsAthenaConnectorCredentialsSchema,
   ConnectSourceCredentialsSchema,
   ConnectSourceMySqlCredentialsSchema,
   ConnectSourcePostgresCredentialsSchema,
-} from "../../gen/onequery/cli/v1/source_pb";
+} from "@onequery/proto-cli/cli/v1/source_pb";
+import { describe, expect, it } from "vitest";
+
 import { parseConnectSourceCredentials } from "./credentials";
 
 describe("parseConnectSourceCredentials", () => {

@@ -35,8 +35,8 @@ use jaq_core::load::File;
 use jaq_core::load::Loader;
 use jaq_core::unwrap_valr;
 use jaq_json::Val as JaqValue;
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
 use super::SourceApiExecutionPage;
 use super::format::push_section;

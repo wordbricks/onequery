@@ -3,7 +3,7 @@ use serde_json::json;
 use crate::cli::ExplainArgs;
 use crate::explain::report_command_for_explanation;
 use crate::output::CommandOutput;
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 pub(crate) fn execute(args: &ExplainArgs) -> Result<CommandOutput, CliError> {
     let explanation = args.code.explanation();

@@ -1,4 +1,4 @@
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::conversion_failure;
@@ -53,7 +53,7 @@ pub(crate) fn page_request_from_controls(
 #[cfg(test)]
 mod tests {
     use buffa::MessageField;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
     use crate::transport::api_failure::conversion_failure;

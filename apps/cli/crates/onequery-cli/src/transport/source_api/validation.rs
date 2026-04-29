@@ -1,7 +1,7 @@
 use buffa::EnumValue;
 use buffa::Enumeration;
 use buffa::MessageField;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 
 use super::SourceApiBodyKind;
 use super::SourceApiDescriptor;

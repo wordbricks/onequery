@@ -1,14 +1,14 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { Duration } from "@bufbuild/protobuf/wkt";
-
-import type { AuthorizedCliOrgContext } from "../../../authorization";
-import type { CliSessionIdentity } from "../../../domain/workflows";
-import { resolveQueryResultWindow } from "../../../query/result-window";
 import {
   QueryLogicalType,
   ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
-} from "../../gen/onequery/cli/v1/query_pb";
+} from "@onequery/proto-cli/cli/v1/query_pb";
+
+import type { AuthorizedCliOrgContext } from "../../../authorization";
+import type { CliSessionIdentity } from "../../../domain/workflows";
+import { resolveQueryResultWindow } from "../../../query/result-window";
 import type { CliSourceInit } from "../source/types";
 import type { CliHonoContext } from "../types";
 import type {

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use insta::assert_snapshot;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use pretty_assertions::assert_eq;
 use tokio::time::Duration;
 
@@ -351,7 +351,7 @@ fn authenticated_query_transition_materializes_scoped_request_after_authenticati
 #[test]
 fn retryable_query_failure_transitions_to_explicit_retry_state() {
     let context = sample_context();
-    let retryable_error = onequery_cli_core::error::CliError::new(
+    let retryable_error = onequery_core::error::CliError::new(
         "query failed",
         context.command_line.clone(),
         ErrorStage::Http,
@@ -418,7 +418,7 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
 #[test]
 fn retryable_query_failure_exhausts_after_max_attempts() {
     let context = sample_context();
-    let terminal_error = onequery_cli_core::error::CliError::new(
+    let terminal_error = onequery_core::error::CliError::new(
         "query failed",
         context.command_line.clone(),
         ErrorStage::Http,
@@ -456,7 +456,7 @@ fn retryable_query_failure_exhausts_after_max_attempts() {
 #[test]
 fn unauthorized_query_failure_transitions_to_explicit_reauth_terminal_state() {
     let context = sample_context();
-    let reauth_error = onequery_cli_core::error::CliError::new(
+    let reauth_error = onequery_core::error::CliError::new(
         "query failed",
         context.command_line.clone(),
         ErrorStage::Auth,
@@ -491,7 +491,7 @@ fn unauthorized_query_failure_transitions_to_explicit_reauth_terminal_state() {
 #[test]
 fn validate_unauthorized_failure_transitions_to_explicit_reauth_terminal_state() {
     let context = sample_context();
-    let reauth_error = onequery_cli_core::error::CliError::new(
+    let reauth_error = onequery_core::error::CliError::new(
         "query validation failed",
         context.command_line.clone(),
         ErrorStage::ReadQueryInput,

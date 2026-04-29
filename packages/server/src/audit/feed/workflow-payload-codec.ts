@@ -1,15 +1,15 @@
 import { fromBinary } from "@bufbuild/protobuf";
 import type { DescMessage, MessageShape } from "@bufbuild/protobuf";
 import { createValidator } from "@bufbuild/protovalidate";
-import {
-  WorkflowDataSourceStatus,
-  WorkflowSourceProvider,
-} from "@onequery/contracts/workflow/v1/common_pb";
 import type {
   DataSourceStatus,
   ProviderType,
   WorkflowFamily,
 } from "@onequery/db/server";
+import {
+  WorkflowDataSourceStatus,
+  WorkflowSourceProvider,
+} from "@onequery/proto-workflow/workflow/v1/common_pb";
 
 import { AuditFeedProjectionCorruptPayloadError } from "./errors";
 import type {

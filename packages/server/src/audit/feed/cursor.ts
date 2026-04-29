@@ -1,5 +1,5 @@
-import { AUDIT_FAMILIES } from "@onequery/contracts/audit";
-import type { AuditFamily } from "@onequery/contracts/audit";
+import { AUDIT_FAMILIES } from "@onequery/audit-contracts/audit";
+import type { AuditFamily } from "@onequery/audit-contracts/audit";
 
 export type AuditCursor = {
   family: AuditFamily;

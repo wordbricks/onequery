@@ -18,37 +18,40 @@ exports[`@onequery/config workspace-dev > parses workspace-dev config and produc
     "databaseUrl": "postgres://workspace:secret@localhost:6500/workspace",
   },
   "serverLaunch": {
-    "assets": {
-      "distDir": "/tmp/workspace-web",
-    },
-    "auth": {
-      "secret": "workspace-auth-secret",
-    },
-    "connectors": {
-      "enrollmentToken": "workspace-connector-token",
-    },
-    "crypto": {
-      "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
-    },
-    "listen": {
-      "host": "127.0.0.1",
-      "port": 4601,
-    },
-    "migrations": {
-      "dir": "/tmp/workspace-migrations",
-    },
-    "mode": "workspace-dev",
-    "publicOrigin": "http://127.0.0.1:4600",
-    "rateLimit": {
-      "api": {
-        "storage": "memory",
+    "workspaceDev": {
+      "common": {
+        "assets": {
+          "distDir": "/tmp/workspace-web",
+        },
+        "auth": {
+          "secret": "workspace-auth-secret",
+        },
+        "connectors": {
+          "enrollmentToken": "workspace-connector-token",
+        },
+        "crypto": {
+          "masterEncryptionKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+        },
+        "listen": {
+          "host": "127.0.0.1",
+          "port": 4601,
+        },
+        "migrations": {
+          "dir": "/tmp/workspace-migrations",
+        },
+        "publicOrigin": "http://127.0.0.1:4600",
+        "rateLimit": {
+          "api": {
+            "storage": "SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_MEMORY",
+          },
+          "enabled": true,
+        },
+        "storage": {
+          "postgres": {
+            "url": "postgres://workspace:secret@localhost:6500/workspace",
+          },
+        },
       },
-      "enabled": true,
-    },
-    "smtp": undefined,
-    "storage": {
-      "kind": "postgres",
-      "url": "postgres://workspace:secret@localhost:6500/workspace",
     },
   },
   "testProfile": {

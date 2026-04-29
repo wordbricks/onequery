@@ -1,0 +1,22 @@
+[package]
+name = "onequery-install-context"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "onequery_install_context"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+onequery-core = { workspace = true }
+onequery-utils-home-dir = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

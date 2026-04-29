@@ -73,7 +73,6 @@ const defaultRuntimeBase = {
     host: "127.0.0.1",
     port: 4555,
   },
-  mode: "workspace-dev",
   publicOrigin: TEST_PUBLIC_ORIGIN,
   rateLimit: {
     api: {

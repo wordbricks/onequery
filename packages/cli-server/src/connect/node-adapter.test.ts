@@ -11,6 +11,17 @@ import {
   ConnectError,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceApiService,
+  CliSourceService,
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "@onequery/proto-cli/google/rpc/error_details_pb";
 import { Result } from "better-result";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -18,17 +29,6 @@ import type { CliSessionIdentity } from "../domain/workflows";
 import type { CliConnectRequestContext } from "./context";
 import { cliConnectRequestContextKey } from "./context";
 import { CLI_ERROR_INFO_DOMAIN } from "./error";
-import {
-  BadRequestSchema,
-  ErrorInfoSchema,
-} from "./gen/google/rpc/error_details_pb";
-import {
-  CliAuthService,
-  CliOrganizationService,
-  CliQueryService,
-  CliSourceApiService,
-  CliSourceService,
-} from "./gen/onequery/cli/v1/cli_pb";
 import {
   createCliConnectHandler,
   listCliConnectMountedRequestPaths,

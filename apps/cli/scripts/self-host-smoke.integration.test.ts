@@ -18,26 +18,26 @@ import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
 import type { CallOptions, Client } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { afterAll, describe, expect, it } from "vitest";
-
-import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/auth_pb.js";
+import { AuthMode } from "@onequery/proto-cli/cli/v1/auth_pb";
 import {
   CliAuthService,
   CliOrganizationService,
   CliQueryService,
   CliSourceService,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
-import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+import { ContentFormat } from "@onequery/proto-cli/cli/v1/common_pb";
 import {
   OrgCapability,
   OrganizationRole,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
+} from "@onequery/proto-cli/cli/v1/org_pb";
 import {
   SourceConnectSslMode,
   SourceInterface,
   SourceProvider,
   SourceStatus,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/source_pb.js";
+} from "@onequery/proto-cli/cli/v1/source_pb";
+import { afterAll, describe, expect, it } from "vitest";
+
 import {
   cleanupPath,
   cliRootDir,
@@ -726,12 +726,12 @@ async function stopGatewayProcess(input: {
 
   const stopOutput =
     `${stopResult.stdout ?? ""}${stopResult.stderr ?? ""}`.trim();
-  const pidPath = join(input.homeDir, "data", "run", "server.pid");
-  const lockPath = join(input.homeDir, "data", "run", "server.lock");
+  const statusPath = join(input.homeDir, "data", "run", "runtime.status.json");
+  const leasePath = join(input.homeDir, "data", "run", "runtime.lease.json");
 
   try {
     const exit = await waitForExit(input.child, SHUTDOWN_TIMEOUT_MS);
-    const cleanedUp = !existsSync(pidPath) && !existsSync(lockPath);
+    const cleanedUp = !existsSync(statusPath) && !existsSync(leasePath);
 
     if (
       cleanedUp &&
@@ -741,7 +741,7 @@ async function stopGatewayProcess(input: {
     }
 
     // Comment: the packaged self-host runtime can finish a managed SIGTERM shutdown
-    // and clear pid/lock markers before the foreground `onequery gateway` process
+    // and clear durable lifecycle records before the foreground `onequery gateway` process
     // reports a nonzero exit. Smoke cleanup only needs to prove the runtime is
     // no longer live for the temp home directory.
     if (cleanedUp) {
@@ -766,8 +766,8 @@ describe("CLI self-host smoke", () => {
   it("starts and stops the packaged gateway in background", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-background-gateway-home-");
-    const pidPath = join(homeDir, "data", "run", "server.pid");
-    const lockPath = join(homeDir, "data", "run", "server.lock");
+    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
+    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
 
     writeSelfHostConfig(homeDir, port);
 
@@ -825,8 +825,8 @@ describe("CLI self-host smoke", () => {
       });
 
       await waitForGatewayShutdown(baseUrl);
-      expect(existsSync(pidPath)).toBe(false);
-      expect(existsSync(lockPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(leasePath)).toBe(false);
 
       const statusAfterStop = runPackagedCliJsonCommand({
         args: ["gateway", "status"],
@@ -856,11 +856,11 @@ describe("CLI self-host smoke", () => {
     }
   }, 240_000);
 
-  it("stops the packaged gateway when the pid file is missing but the lock lease remains", async () => {
+  it("stops the packaged gateway using durable lifecycle records", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
-      await prepareSelfHostRuntime("onequery-cli-missing-gateway-pid-home-");
-    const pidPath = join(homeDir, "data", "run", "server.pid");
-    const lockPath = join(homeDir, "data", "run", "server.lock");
+      await prepareSelfHostRuntime("onequery-cli-durable-lifecycle-home-");
+    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
+    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
 
     writeSelfHostConfig(homeDir, port);
 
@@ -879,14 +879,13 @@ describe("CLI self-host smoke", () => {
       });
 
       await waitForBootstrap(baseUrl);
-      rmSync(pidPath);
 
-      const statusWhilePidMissing = runPackagedCliJsonCommand({
+      const statusWhileDurableRecordsExist = runPackagedCliJsonCommand({
         args: ["gateway", "status"],
         env,
         stagedBundleRoot,
       });
-      expect(statusWhilePidMissing.output).toMatchObject({
+      expect(statusWhileDurableRecordsExist.output).toMatchObject({
         ok: true,
         data: {
           kind: "gateway-status",
@@ -916,8 +915,8 @@ describe("CLI self-host smoke", () => {
       });
 
       await waitForGatewayShutdown(baseUrl);
-      expect(existsSync(pidPath)).toBe(false);
-      expect(existsSync(lockPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(leasePath)).toBe(false);
     } finally {
       runPackagedCliCommand({
         args: ["gateway", "stop"],
@@ -934,8 +933,8 @@ describe("CLI self-host smoke", () => {
   it("fails gateway start when another process already listens on the configured port", async () => {
     const { env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-occupied-gateway-port-home-");
-    const pidPath = join(homeDir, "data", "run", "server.pid");
-    const lockPath = join(homeDir, "data", "run", "server.lock");
+    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
+    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
     const logPath = join(homeDir, "data", "logs", "server.log");
     const portBlocker = createServer();
 
@@ -965,8 +964,8 @@ describe("CLI self-host smoke", () => {
         },
         ok: false,
       });
-      expect(existsSync(pidPath)).toBe(false);
-      expect(existsSync(lockPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(leasePath)).toBe(false);
       expect(readFileSync(logPath, "utf8")).toContain("EADDRINUSE");
     } finally {
       await new Promise<void>((resolve, reject) => {
@@ -1602,9 +1601,9 @@ describe("CLI self-host smoke", () => {
       expect(exit.code).not.toBe(0);
       expect(output).toContain("invalid self-host secrets config");
       expect(output).toContain("crypto.master_encryption_key");
-      expect(existsSync(join(homeDir, "data", "run", "server.pid"))).toBe(
-        false
-      );
+      expect(
+        existsSync(join(homeDir, "data", "run", "runtime.status.json"))
+      ).toBe(false);
     } finally {
       rmSync(homeDir, {
         force: true,

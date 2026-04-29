@@ -1,15 +1,15 @@
 import type { ServiceImpl } from "@connectrpc/connect";
-import type { Context } from "hono";
-
-import type { CliRouteEnv } from "../../app";
-import type { CliAction } from "../../authorization";
 import {
   CliAuthService,
   CliOrganizationService,
   CliQueryService,
   CliSourceApiService,
   CliSourceService,
-} from "../gen/onequery/cli/v1/cli_pb";
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+import type { Context } from "hono";
+
+import type { CliRouteEnv } from "../../app";
+import type { CliAction } from "../../authorization";
 
 type CliServiceImplementation = ServiceImpl<typeof CliAuthService> &
   ServiceImpl<typeof CliOrganizationService> &

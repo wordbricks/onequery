@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { loadWorkspaceDev } from "@onequery/config-node";
 import { projectWorkspaceDevServerLaunchConfig } from "@onequery/config/projections/server-launch";
+import { encodeServerLaunchConfigJson } from "@onequery/config/server-launch";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { getDefaultSpaBuildDir } from "@onequery/self-host-runtime/assets";
 import {
@@ -82,7 +83,7 @@ export function writeLaunchConfigFile(launchConfig: ServerLaunchConfig): {
   const tempDir = mkdtempSync(join(tmpdir(), "onequery-self-host-runtime-"));
   const launchConfigPath = join(tempDir, "launch.json");
 
-  writeFileSync(launchConfigPath, JSON.stringify(launchConfig, null, 2));
+  writeFileSync(launchConfigPath, encodeServerLaunchConfigJson(launchConfig));
 
   return {
     launchConfigPath,

@@ -102,35 +102,35 @@ For provider-specific setup steps and example JSON, run `onequery source connect
 
 ## Config Files
 
-Roots on supported hosts:
+The OneQuery home defaults to `~/.onequery`. Set `ONEQUERY_HOME` to use a
+different root.
 
-- with `ONEQUERY_HOME` set:
-  - config root: `$ONEQUERY_HOME/config`
-  - data root: `$ONEQUERY_HOME/data`
-- without `ONEQUERY_HOME`:
-  - Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-  - Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- default self-host secrets path:
+  `~/.onequery/self-host/secrets.toml`
+- self-host secrets path with `ONEQUERY_HOME`:
+  `$ONEQUERY_HOME/self-host/secrets.toml`
 
-- default self-host secrets path on Unix:
-  `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml`
-- self-host secrets path with override:
-  `$ONEQUERY_HOME/config/self-host/secrets.toml`
-
-Files under those roots:
+Files under that root:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
 - `pglite/onequery/`
 - `logs/server.log`
 - `backups/`
-- `run/server.pid`
-- `run/server.lock`
-- `run/server.state.json`
 - `run/launch.json`
+- `run/runtime.lease.json`
+- `run/runtime.status.json`
+- `run/supervisor.status.json`
+- `run/lifecycle.events.pb`
 
 The CLI creates these paths on first `onequery gateway` or
 `onequery gateway start`. `run/launch.json` is a resolved runtime artifact
 written by the CLI; it is not a user-edited config file.
+
+Durable lifecycle records are generated protobuf messages. State snapshots are
+stored as inspectable protobuf JSON; append-only lifecycle event evidence uses
+framed binary protobuf entries. See
+[`lifecycle-durable-records.md`](./lifecycle-durable-records.md).
 
 ## Reverse Proxy And Public Origin
 

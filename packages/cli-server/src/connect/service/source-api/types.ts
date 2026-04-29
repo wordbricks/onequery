@@ -1,11 +1,5 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import type {
-  PreparedSourceConnection,
-  SourceApiActorContext,
-} from "@onequery/server/source-api";
-
-import type { AuthorizedCliOrgContext } from "../../../authorization";
-import type {
   DescribeSourceApiResponseSchema,
   ExecuteSourceApiRequest,
   ExecuteSourceApiResponseSchema,
@@ -16,7 +10,13 @@ import type {
   SourceApiExecutionResultSchema,
   SourceApiDraft as CliSourceApiDraft,
   SourceApiPreviewSchema,
-} from "../../gen/onequery/cli/v1/source_api_pb";
+} from "@onequery/proto-cli/cli/v1/source_api_pb";
+import type {
+  PreparedSourceConnection,
+  SourceApiActorContext,
+} from "@onequery/server/source-api";
+
+import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliHonoContext } from "../types";
 
 export type DescribeSourceApiResponseInit = MessageInitShape<

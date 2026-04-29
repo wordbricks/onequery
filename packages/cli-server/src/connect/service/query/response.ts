@@ -1,11 +1,11 @@
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
+import { QueryLogicalType } from "@onequery/proto-cli/cli/v1/query_pb";
 
 import type { CliQueryColumn } from "../../../domain/workflows";
 import {
   buildCliSanitization,
   sanitizeCliRemoteText,
 } from "../../../transport/sanitization";
-import { QueryLogicalType } from "../../gen/onequery/cli/v1/query_pb";
 import { buildCliSource } from "../source/response";
 import type {
   ExecuteQueryColumnMessage,

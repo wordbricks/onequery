@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::cli::ApiArgs;
 use crate::identifiers::OrgSlug;

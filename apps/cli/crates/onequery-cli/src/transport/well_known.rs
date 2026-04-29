@@ -1,7 +1,7 @@
 use buffa::MessageField;
 use buffa_types::google::protobuf::Duration;
 use buffa_types::google::protobuf::Timestamp;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::conversion_failure;

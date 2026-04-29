@@ -2,7 +2,7 @@ use serde_json::Map;
 use serde_json::Number;
 use serde_json::Value;
 
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use super::CommandContext;
 use super::args::SourceApiInputReader;

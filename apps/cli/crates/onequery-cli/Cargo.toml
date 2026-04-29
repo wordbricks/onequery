@@ -9,24 +9,23 @@ name = "onequery"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = { workspace = true }
 base64 = { workspace = true }
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
 connectrpc = { workspace = true, features = ["client", "client-tls"] }
-dirs = { workspace = true }
+ctor = { workspace = true }
 flate2 = { workspace = true }
-getrandom = { workspace = true }
 http = { workspace = true }
 http-body = { workspace = true }
 jaq-core = { workspace = true }
 jaq-json = { workspace = true, features = ["serde"] }
 jaq-std = { workspace = true }
-libc = { workspace = true }
-path-absolutize = { workspace = true }
 regress = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+shlex = { workspace = true }
 tar = { workspace = true }
 tabled = { workspace = true }
 tempfile = { workspace = true }
@@ -49,8 +48,14 @@ url = { workspace = true }
 webbrowser = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 webpki-roots = { workspace = true }
-onequery-cli-core = { workspace = true }
+onequery-core = { workspace = true }
+onequery-connect-support = { workspace = true }
 onequery-config = { workspace = true }
+onequery-gateway = { workspace = true }
+onequery-install-context = { workspace = true }
+onequery-proto-cli = { workspace = true }
+onequery-utils = { workspace = true }
+onequery-utils-path = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
@@ -61,11 +66,7 @@ windows-sys = { workspace = true, features = [
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 insta = { workspace = true, features = ["filters"] }
-
-[build-dependencies]
-buffa = { workspace = true, features = ["json"] }
-buffa-codegen = { workspace = true }
-connectrpc-build = { workspace = true }
+onequery-core-test-support = { workspace = true }
 
 [lints]
 workspace = true

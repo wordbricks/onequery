@@ -31,32 +31,26 @@ parity workflow becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
-Roots on supported hosts:
+The OneQuery home defaults to `~/.onequery`. Set `ONEQUERY_HOME` to use a
+different root.
 
-- with `ONEQUERY_HOME` set:
-  - config root: `$ONEQUERY_HOME/config`
-  - data root: `$ONEQUERY_HOME/data`
-- without `ONEQUERY_HOME`:
-  - config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-  - data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
-
-The runtime-managed files under those roots are:
+The runtime-managed files under that root are:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
 - `pglite/onequery/`
 - `logs/server.log`
 - `backups/`
-- `run/server.pid`
-- `run/server.lock`
-- `run/server.state.json`
 - `run/launch.json`
+- `run/runtime.lease.json`
+- `run/runtime.status.json`
+- `run/supervisor.status.json`
+- `run/lifecycle.events.pb`
 
 The self-host secrets file is therefore resolved at:
 
-- `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml` on default
-  Unix roots
-- `$ONEQUERY_HOME/config/self-host/secrets.toml` when `ONEQUERY_HOME` is set
+- `~/.onequery/self-host/secrets.toml` by default
+- `$ONEQUERY_HOME/self-host/secrets.toml` when `ONEQUERY_HOME` is set
 
 The bundled self-host runtime is discovered from one fixed executable-relative
 layout:
@@ -117,12 +111,14 @@ use `scripts/run-self-host-runtime.ts`.
 The packaged runtime owns the process-local guarantees:
 
 - acquire the runtime lease before accepting requests
-- fail fast if `server.lock` belongs to a live process
-- write `run/server.state.json` transitions so `gateway start` waits for an
+- fail fast when the runtime lease belongs to a live matching process
+- write `run/runtime.status.json` snapshots so `gateway start` waits for an
   explicit ready signal from the launched pid
-- replace stale pid and lock markers only when the recorded pid is gone
-- append lifecycle events to `logs/server.log`
-- release pid and lock markers during graceful shutdown or startup failure
+- replace stale runtime lease and status snapshots only after process-liveness
+  checks prove the previous runtime is gone
+- append operator-facing lifecycle log lines to `logs/server.log`
+- release runtime lease and status snapshots during graceful shutdown or
+  startup failure
 - apply the checked-in Drizzle migrations before the server begins handling
   requests
 

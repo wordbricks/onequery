@@ -9,7 +9,7 @@ import {
   createTestRuntimeConfigFromDatabaseUrl,
   TEST_SERVER_MASTER_ENCRYPTION_KEY,
 } from "./routes/test-env";
-import { createServerStorage } from "./storage";
+import { createServerStorage, createServerStorageHandle } from "./storage";
 import {
   closeDatabase,
   createPgliteDatabaseUrl,
@@ -121,5 +121,51 @@ describe("server storage", () => {
 
     expect(persistedSources).toHaveLength(1);
     expect(persistedSources[0]?.provider).toBe("postgres");
+  });
+
+  it("reopens PGlite storage after close without losing app data", async () => {
+    const databaseUrl = await createPgliteDatabaseUrl(
+      "onequery-storage-persist-test-"
+    );
+    const runtimeConfig = createTestRuntimeConfigFromDatabaseUrl(databaseUrl, {
+      auth: {
+        secret: "test-better-auth-secret-1234567890",
+      },
+      crypto: {
+        masterEncryptionKey: TEST_SERVER_MASTER_ENCRYPTION_KEY,
+      },
+    });
+
+    expect(runtimeConfig.isOk()).toBe(true);
+    if (runtimeConfig.isErr()) {
+      return;
+    }
+
+    const firstStorage = createServerStorageHandle(
+      runtimeConfig.value,
+      createMemoryApiRateLimitStorage()
+    );
+    await firstStorage.storage.db.insert(organization).values({
+      id: "org_persisted",
+      name: "Persisted Org",
+      slug: "persisted-org",
+    });
+    await firstStorage.close();
+
+    const reopenedStorage = createServerStorageHandle(
+      runtimeConfig.value,
+      createMemoryApiRateLimitStorage()
+    );
+    try {
+      const organizations =
+        await reopenedStorage.storage.db.query.organization.findMany({
+          where: eq(organization.id, "org_persisted"),
+        });
+
+      expect(organizations).toHaveLength(1);
+      expect(organizations[0]?.name).toBe("Persisted Org");
+    } finally {
+      await reopenedStorage.close();
+    }
   });
 });

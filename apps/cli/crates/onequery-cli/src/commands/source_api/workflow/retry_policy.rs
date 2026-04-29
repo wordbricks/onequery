@@ -1,4 +1,4 @@
-use onequery_cli_core::error::CliError;
+use onequery_core::error::CliError;
 
 use crate::transport::api_failure::ApiFailure;
 use crate::workflows::retry::RetryTransition;

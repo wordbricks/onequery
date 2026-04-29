@@ -2,12 +2,12 @@ import {
   auditListResponseSchema,
   auditSearchSchema,
   sanitizeAuditSearch,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type {
   AuditListItem,
   AuditListResponse,
   AuditSearch,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import { queryOptions } from "@tanstack/react-query";
 
 import { createApiClient } from "@/lib/api-client";

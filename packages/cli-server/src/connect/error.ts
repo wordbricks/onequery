@@ -1,5 +1,11 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { ConnectError } from "@connectrpc/connect";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+  ResourceInfoSchema,
+  RetryInfoSchema,
+} from "@onequery/proto-cli/google/rpc/error_details_pb";
 
 import { CliFailure, createCliFailure } from "../domain/failures";
 import type {
@@ -10,12 +16,6 @@ import type {
 import { CLI_PROBLEM_DEFINITIONS } from "../domain/problems";
 import type { CliProblemDefinition } from "../domain/problems";
 import { CLI_REQUEST_ID_HEADER } from "../request-context";
-import {
-  BadRequestSchema,
-  ErrorInfoSchema,
-  ResourceInfoSchema,
-  RetryInfoSchema,
-} from "./gen/google/rpc/error_details_pb";
 
 export const CLI_ERROR_INFO_DOMAIN = "onequery.cli.v1";
 

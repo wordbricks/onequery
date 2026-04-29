@@ -1,6 +1,6 @@
 use buffa::EnumValue;
 use buffa::MessageField;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -902,7 +902,7 @@ fn source_connect_result_from_generated(
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::json;
 

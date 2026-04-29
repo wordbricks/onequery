@@ -1,6 +1,13 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { durationFromMs, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import { isoDatetimeToDate } from "@onequery/codecs/date";
+import {
+  AuthMode,
+  CliAuthorizedDeviceAuthorizationSchema,
+  GetSessionResponseSchema,
+  PollDeviceAuthorizationResponseSchema,
+  RefreshSessionResponseSchema,
+} from "@onequery/proto-cli/cli/v1/auth_pb";
 import { Result } from "better-result";
 
 import {
@@ -29,13 +36,6 @@ import {
 import type { CliSessionIdentity } from "../../domain/workflows";
 import { toCliAuthUserView } from "../../domain/workflows";
 import { requireCliConnectRequestContext } from "../context";
-import {
-  AuthMode,
-  CliAuthorizedDeviceAuthorizationSchema,
-  GetSessionResponseSchema,
-  PollDeviceAuthorizationResponseSchema,
-  RefreshSessionResponseSchema,
-} from "../gen/onequery/cli/v1/auth_pb";
 import { resolveCliSessionIdentityResult } from "./access";
 import type { CliResultServiceMethod } from "./result";
 import { cliServiceErr, liftCliServiceMethod } from "./result";

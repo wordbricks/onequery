@@ -1,0 +1,9 @@
+---
+source: crates/onequery-gateway/src/tests.rs
+expression: "output.lines.join(\"\\n\")"
+---
+Gateway logs
+Log path: /tmp/onequery/logs/server.log
+Preview:
+[onequery-server] listening on http://127.0.0.1:5656
+[api] GET /api/health 200

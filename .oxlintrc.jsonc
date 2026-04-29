@@ -101,6 +101,7 @@
     "typescript/no-var-requires": "off",
     "typescript/promise-function-async": "off",
     "typescript/require-await": "off",
+    "typescript/unbound-method": "off",
 
     // TEMP: type-aware rules to fix incrementally
     "typescript/strict-boolean-expressions": "off", // TEMP ~293

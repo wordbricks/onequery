@@ -36,6 +36,7 @@
     "@connectrpc/connect": "catalog:",
     "@connectrpc/connect-node": "catalog:",
     "@onequery/base": "workspace:*",
+    "@onequery/proto-cli": "workspace:*",
     "rolldown": "1.0.0-rc.15",
     "vitest": "catalog:testing"
   }

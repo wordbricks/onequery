@@ -36,11 +36,12 @@ pub(crate) use model::Command;
 pub(crate) use model::ConfigCommand;
 pub(crate) use model::ConfigKey;
 pub(crate) use model::ConfigSetKey;
-pub(crate) use model::GatewayCommand;
 #[cfg(test)]
 pub(crate) use model::GlobalOptions;
 pub(crate) use model::Invocation;
 pub(crate) use model::ParseOutcome;
 pub(crate) use normalize::requested_output_mode_from_args;
 pub(crate) use normalize::requested_verbose_from_args;
+#[cfg(test)]
+pub(crate) use onequery_gateway::GatewayCommand;
 pub(crate) use parse::parse_invocation_from_with_stdout_tty;

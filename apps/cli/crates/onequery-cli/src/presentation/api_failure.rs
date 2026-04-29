@@ -1,6 +1,6 @@
-use onequery_cli_core::error::CliError;
-use onequery_cli_core::error::CliValidationIssue;
-use onequery_cli_core::error::ErrorStage;
+use onequery_core::error::CliError;
+use onequery_core::error::CliValidationIssue;
+use onequery_core::error::ErrorStage;
 
 use crate::commands::CommandContext;
 use crate::local_target::managed_gateway_unavailable_error;
@@ -176,8 +176,8 @@ fn humanize_error_code(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use onequery_cli_core::error::CliError;
-    use onequery_cli_core::error::ErrorStage;
+    use onequery_core::error::CliError;
+    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
     use serde_json::Value;
     use serde_json::json;

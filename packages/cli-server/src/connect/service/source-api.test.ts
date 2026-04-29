@@ -5,6 +5,27 @@ import { organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { pgliteTestDb } from "@onequery/db/testing/setup";
 import {
+  SourceApiBodyKind,
+  SourceApiOperationKind,
+  SourceApiPaginationPolicy,
+  DescribeSourceApiRequestSchema,
+  DescribeSourceApiResponseSchema,
+  ExecuteSourceApiRequestSchema,
+  ExecuteSourceApiResponseSchema,
+  PreviewSourceApiRequestSchema,
+  PreviewSourceApiResponseSchema,
+  ResumeSourceApiRequestSchema,
+  ResumeSourceApiResponseSchema,
+} from "@onequery/proto-cli/cli/v1/source_api_pb";
+import type {
+  DescribeSourceApiResponse,
+  ExecuteSourceApiResponse,
+  PreviewSourceApiResponse,
+  ResumeSourceApiResponse,
+} from "@onequery/proto-cli/cli/v1/source_api_pb";
+import { SourceProvider } from "@onequery/proto-cli/cli/v1/source_pb";
+import { ErrorInfoSchema } from "@onequery/proto-cli/google/rpc/error_details_pb";
+import {
   SourceApiAdapterNotRegisteredError,
   SourceApiDescriptorVersionMismatchError,
   SourceApiExecutionStageError,
@@ -19,27 +40,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
 import { CLI_ERROR_INFO_DOMAIN } from "../error";
-import { ErrorInfoSchema } from "../gen/google/rpc/error_details_pb";
-import {
-  SourceApiBodyKind,
-  SourceApiOperationKind,
-  SourceApiPaginationPolicy,
-  DescribeSourceApiRequestSchema,
-  DescribeSourceApiResponseSchema,
-  ExecuteSourceApiRequestSchema,
-  ExecuteSourceApiResponseSchema,
-  PreviewSourceApiRequestSchema,
-  PreviewSourceApiResponseSchema,
-  ResumeSourceApiRequestSchema,
-  ResumeSourceApiResponseSchema,
-} from "../gen/onequery/cli/v1/source_api_pb";
-import type {
-  DescribeSourceApiResponse,
-  ExecuteSourceApiResponse,
-  PreviewSourceApiResponse,
-  ResumeSourceApiResponse,
-} from "../gen/onequery/cli/v1/source_api_pb";
-import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import { createCliServiceFailure } from "./result";
 import {
   createHandleDescribeSourceApi,

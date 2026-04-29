@@ -1,5 +1,5 @@
-import { sanitizeAuditSearch } from "@onequery/contracts/audit";
-import type { AuditSearch } from "@onequery/contracts/audit";
+import { sanitizeAuditSearch } from "@onequery/audit-contracts/audit";
+import type { AuditSearch } from "@onequery/audit-contracts/audit";
 
 export type AuditDraftFilters = {
   q: string;

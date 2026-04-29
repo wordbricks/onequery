@@ -1,12 +1,12 @@
 import type { ConnectRouter, ServiceImpl } from "@connectrpc/connect";
-
 import {
   CliAuthService,
   CliOrganizationService,
   CliQueryService,
   CliSourceApiService,
   CliSourceService,
-} from "./gen/onequery/cli/v1/cli_pb";
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+
 import {
   handleGetSession,
   handlePollDeviceAuthorization,

@@ -399,7 +399,7 @@ fn should_resume(execution: &SourceApiExecutionState, continuation_token: Option
 
 #[cfg(test)]
 mod tests {
-    use onequery_cli_core::error::CliError;
+    use onequery_core::error::CliError;
     use pretty_assertions::assert_eq;
 
     use crate::cli::ApiArgs;

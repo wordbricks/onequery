@@ -1,0 +1,243 @@
+// Private runtime launch contract shared by the gateway and packaged runtime.
+edition = "2023";
+
+package onequery.runtime.v1;
+
+import "buf/validate/validate.proto";
+import "onequery/runtime/v1/common.proto";
+
+message ServerLaunchConfig {
+  oneof profile {
+    option (buf.validate.oneof).required = true;
+
+    WorkspaceDevServerLaunchConfig workspace_dev = 1;
+    SelfHostServerLaunchConfig self_host = 2;
+  }
+}
+
+message WorkspaceDevServerLaunchConfig {
+  ServerLaunchCommonConfig common = 1 [(buf.validate.field).required = true];
+}
+
+message SelfHostServerLaunchConfig {
+  ServerLaunchCommonConfig common = 1 [(buf.validate.field).required = true];
+  string launch_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  ServerLaunchRuntimePathsConfig runtime_paths = 3 [(buf.validate.field).required = true];
+  ServerLaunchSupervisorControlConfig supervisor_control = 4 [(buf.validate.field).required = true];
+  SupervisorIdentity supervisor = 5;
+}
+
+message ServerLaunchCommonConfig {
+  ServerLaunchAssetsConfig assets = 1 [(buf.validate.field).required = true];
+  ServerLaunchAuthConfig auth = 2 [(buf.validate.field).required = true];
+  ServerLaunchConnectorsConfig connectors = 3 [(buf.validate.field).required = true];
+  ServerLaunchCryptoConfig crypto = 4 [(buf.validate.field).required = true];
+  ServerLaunchListenConfig listen = 5 [(buf.validate.field).required = true];
+  ServerLaunchMigrationsConfig migrations = 6 [(buf.validate.field).required = true];
+  string public_origin = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true,
+    (buf.validate.field).string.max_len = 2048
+  ];
+  ServerLaunchRateLimitConfig rate_limit = 8 [(buf.validate.field).required = true];
+  ServerLaunchStorageConfig storage = 9 [(buf.validate.field).required = true];
+  ServerLaunchSmtpConfig smtp = 10;
+}
+
+message ServerLaunchAssetsConfig {
+  string dist_dir = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchAuthConfig {
+  string secret = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchConnectorsConfig {
+  string enrollment_token = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchCryptoConfig {
+  bytes master_encryption_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).bytes.len = 32
+  ];
+}
+
+message ServerLaunchListenConfig {
+  string host = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  uint32 port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 65535
+  ];
+}
+
+message ServerLaunchMigrationsConfig {
+  string dir = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchRateLimitConfig {
+  ServerLaunchApiRateLimitConfig api = 1 [(buf.validate.field).required = true];
+  bool enabled = 2 [(buf.validate.field).required = true];
+}
+
+message ServerLaunchApiRateLimitConfig {
+  ServerLaunchApiRateLimitStorage storage = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
+enum ServerLaunchApiRateLimitStorage {
+  SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_UNSPECIFIED = 0;
+  SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_MEMORY = 1;
+  SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_PERSISTENT = 2;
+}
+
+message ServerLaunchStorageConfig {
+  oneof kind {
+    option (buf.validate.oneof).required = true;
+
+    ServerLaunchPostgresStorageConfig postgres = 1;
+    ServerLaunchPgliteStorageConfig pglite = 2;
+  }
+}
+
+message ServerLaunchPostgresStorageConfig {
+  string url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchPgliteStorageConfig {
+  string dir = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchRuntimePathsConfig {
+  string backups_dir = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string data_dir = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string lifecycle_event_log_path = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string logs_dir = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string run_dir = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string runtime_lease_path = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string runtime_status_snapshot_path = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchSupervisorControlConfig {
+  string base_url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true,
+    (buf.validate.field).string.max_len = 2048
+  ];
+  uint32 max_message_bytes = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  ServerLaunchSupervisorControlTransportConfig transport = 3 [(buf.validate.field).required = true];
+}
+
+message ServerLaunchSupervisorControlTransportConfig {
+  oneof kind {
+    option (buf.validate.oneof).required = true;
+
+    ServerLaunchUnixSupervisorControlTransportConfig unix = 1;
+  }
+}
+
+message ServerLaunchUnixSupervisorControlTransportConfig {
+  string socket_path = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message ServerLaunchSmtpConfig {
+  string from_email = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.email = true,
+    (buf.validate.field).string.max_len = 320
+  ];
+  string from_name = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
+  string host = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string password = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  uint32 port = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 65535
+  ];
+  bool secure = 6;
+  string username = 7 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}

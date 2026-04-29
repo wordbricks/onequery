@@ -183,9 +183,9 @@ bun run proto:generate
 bun run proto:check
 ```
 
-CLI config is stored at `~/.config/onequery/` on macOS and Linux or
-`%APPDATA%\\onequery\\` on Windows.
+CLI config is stored under `~/.onequery/` by default. Set `ONEQUERY_HOME` to
+use a different root.
 
-The self-host runtime writes operator-managed files under the standard config
-and data roots, including `self-host/config.toml`, `self-host/secrets.toml`,
-and the resolved startup contract at `run/launch.json`.
+The self-host runtime writes operator-managed files under that root, including
+`self-host/config.toml`, `self-host/secrets.toml`, and the resolved startup
+contract at `run/launch.json`.
