@@ -15,7 +15,8 @@
     "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-runtime.ts --dev",
     "start": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'src/**/*.integration.test.ts'",
+    "test:integration": "vitest run integration.test.ts",
     "test:watch": "vitest",
     "typecheck": "tsgo --noEmit"
   },

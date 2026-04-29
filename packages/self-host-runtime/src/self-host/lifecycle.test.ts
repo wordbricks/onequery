@@ -574,7 +574,7 @@ describe("self-host lifecycle lease", () => {
     const shutdown = controller.shutdown({
       completion: "cleanup_only",
       graceTimeout: {
-        nanos: 10_000_000,
+        nanos: 250_000_000,
         seconds: 0n,
       },
       reason: "manual",

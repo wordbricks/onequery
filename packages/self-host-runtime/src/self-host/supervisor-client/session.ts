@@ -304,7 +304,6 @@ async function heartbeatTaskClosure(task: PromiseLike<void>): Promise<void> {
     return;
   }
   if (isCancelledJoinError(result.error)) {
-    await new Promise<void>(() => {});
     return;
   }
 
