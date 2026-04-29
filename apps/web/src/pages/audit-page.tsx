@@ -344,7 +344,7 @@ function AuditTraceDetail({
 
       <div>
         <div className="mb-3 flex flex-wrap gap-2">
-          {["Timeline", "SQL", "Payload", "Metrics", "Raw events"].map(
+          {["Timeline", "SQL", "Payload", "Metrics", "Events"].map(
             (tab, index) => (
               <Button
                 key={tab}
@@ -421,10 +421,19 @@ function AuditTraceDetail({
 
       <div className="grid gap-3">
         <JsonBlock
-          title="command_payload_bytes"
-          value={firstCommand?.commandPayload ?? null}
+          title="command_payload_json"
+          value={firstCommand?.decodedPayload ?? null}
         />
-        <JsonBlock title="raw_events" value={detail.events} />
+        <JsonBlock
+          title="event_payloads_json"
+          value={detail.events.map((event) => ({
+            commandId: event.commandId,
+            eventType: event.eventType,
+            id: event.id,
+            payload: event.decodedPayload,
+            sequence: event.sequence,
+          }))}
+        />
       </div>
     </div>
   );

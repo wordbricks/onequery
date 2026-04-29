@@ -1,3 +1,5 @@
+import { toJson } from "@bufbuild/protobuf";
+import type { DescMessage, JsonValue, MessageShape } from "@bufbuild/protobuf";
 import {
   auditActionDetailSchema,
   auditOriginActorSchema,
@@ -18,9 +20,18 @@ import {
   workflowCommands,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
+import {
+  QueryActionCommandPayloadSchema,
+  QueryActionEventPayloadSchema,
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
+import {
+  SourceApiActionCommandPayloadSchema,
+  SourceApiActionEventPayloadSchema,
+} from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 
 import { serializeAuditFeedItem } from "./list";
 import { syncAuditFeedProjection } from "./projection";
+import { decodeValidatedAuditFeedPayload } from "./workflow-payload-codec";
 
 function serializeBytes(bytes: Buffer | Uint8Array) {
   const buffer = Buffer.from(bytes);
@@ -31,6 +42,49 @@ function serializeBytes(bytes: Buffer | Uint8Array) {
   };
 }
 
+function decodeJsonPayload<Schema extends DescMessage>(
+  schema: Schema,
+  bytes: Buffer | Uint8Array
+): JsonValue {
+  const decoded = decodeValidatedAuditFeedPayload(
+    schema,
+    Buffer.from(bytes)
+  ) as MessageShape<Schema>;
+  return toJson(schema, decoded);
+}
+
+function serializeDecodedPayload(input: {
+  bytes: Buffer | Uint8Array;
+  entity: "command" | "event";
+  family: AuditFamily;
+}) {
+  try {
+    if (input.family === "query_action") {
+      return decodeJsonPayload(
+        input.entity === "command"
+          ? QueryActionCommandPayloadSchema
+          : QueryActionEventPayloadSchema,
+        input.bytes
+      );
+    }
+
+    return decodeJsonPayload(
+      input.entity === "command"
+        ? SourceApiActionCommandPayloadSchema
+        : SourceApiActionEventPayloadSchema,
+      input.bytes
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    // Comment: Detail reads should still expose raw bytes when an old or corrupt
+    // row cannot be decoded with the current protobuf schema.
+    return {
+      decodeError: message,
+    };
+  }
+}
+
 function serializeCommand(row: typeof workflowCommands.$inferSelect) {
   return {
     actor: auditOriginActorSchema.parse(row.actorSnapshotJson),
@@ -39,6 +93,11 @@ function serializeCommand(row: typeof workflowCommands.$inferSelect) {
     commandPayload: serializeBytes(row.commandPayloadBytes),
     commandType: row.commandType,
     createdAt: row.createdAt.toISOString(),
+    decodedPayload: serializeDecodedPayload({
+      bytes: row.commandPayloadBytes,
+      entity: "command",
+      family: row.family,
+    }),
     decisionKind: row.decisionKind,
     id: row.id,
     rejectCode: row.rejectCode,
@@ -56,6 +115,11 @@ function serializeQueryEvent(row: typeof queryActionEvents.$inferSelect) {
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
     payload: serializeBytes(row.payloadBytes),
+    decodedPayload: serializeDecodedPayload({
+      bytes: row.payloadBytes,
+      entity: "event",
+      family: "query_action",
+    }),
     sequence: row.sequence,
   };
 }
@@ -70,6 +134,11 @@ function serializeSourceApiEvent(
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
     payload: serializeBytes(row.payloadBytes),
+    decodedPayload: serializeDecodedPayload({
+      bytes: row.payloadBytes,
+      entity: "event",
+      family: "source_api_action",
+    }),
     sequence: row.sequence,
   };
 }

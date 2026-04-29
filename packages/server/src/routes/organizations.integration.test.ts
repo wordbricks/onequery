@@ -1,7 +1,10 @@
 import { create, fromJson, toBinary } from "@bufbuild/protobuf";
 import type { JsonValue } from "@bufbuild/protobuf";
 import { durationFromMs, ValueSchema } from "@bufbuild/protobuf/wkt";
-import { auditListResponseSchema } from "@onequery/audit-contracts/audit";
+import {
+  auditActionDetailSchema,
+  auditListResponseSchema,
+} from "@onequery/audit-contracts/audit";
 import {
   auditFeedEntries,
   auditProjectionCheckpoints,
@@ -1623,6 +1626,50 @@ describe("organizations audit route", () => {
         `source_api_action:source-api-pending-${runId}`,
         `query_action:query-preparation-failed-${runId}`,
       ]);
+
+      const detailResponse = await client.api.organizations[":slug"].audit[
+        ":family"
+      ][":actionId"].$get(
+        {
+          param: {
+            actionId: `query-success-${runId}`,
+            family: "query_action",
+            slug: organization.slug as string,
+          },
+        },
+        {
+          headers: { cookie: ownerCookie },
+        }
+      );
+
+      expect(detailResponse.status).toBe(200);
+
+      const detail = auditActionDetailSchema.parse(await detailResponse.json());
+
+      expect(detail.commands[0]).toMatchObject({
+        commandPayload: {
+          byteLength: expect.any(Number),
+        },
+        commandType: "start_execute",
+        decodedPayload: {
+          startExecute: {
+            queryText: "select * from customers",
+            sourceKey: "warehouse",
+          },
+        },
+      });
+      expect(detail.events[0]).toMatchObject({
+        decodedPayload: {
+          actionReceived: {
+            queryMode: "QUERY_ACTION_MODE_EXECUTE",
+            queryText: "select * from customers",
+          },
+        },
+        eventType: "action_received",
+        payload: {
+          byteLength: expect.any(Number),
+        },
+      });
     } finally {
       await closeDatabase(db as ClosableDatabase);
     }

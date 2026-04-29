@@ -403,6 +403,7 @@ export const auditWorkflowCommandTraceSchema = z
     commandPayload: auditPayloadBytesSchema,
     commandType: z.string(),
     createdAt: z.iso.datetime(),
+    decodedPayload: z.unknown().nullable(),
     decisionKind: z.string(),
     id: z.string(),
     rejectCode: z.string().nullable(),
@@ -423,6 +424,7 @@ export const auditWorkflowEventTraceSchema = z
     id: z.string(),
     occurredAt: z.iso.datetime(),
     payload: auditPayloadBytesSchema,
+    decodedPayload: z.unknown().nullable(),
     sequence: z.number().int().positive(),
   })
   .strict();
